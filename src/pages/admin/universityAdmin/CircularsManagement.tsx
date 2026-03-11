@@ -18,12 +18,11 @@ import {
   ChartBarIcon,
   ArrowPathIcon,
   ExclamationTriangleIcon,
+  InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 import { getLogger } from '../../../config/logging';
 
 const logger = getLogger('university-admin-circulars-management');
-  InformationCircleIcon,
-} from "@heroicons/react/24/outline";
 
 interface Circular {
   id: number;

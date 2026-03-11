@@ -7,14 +7,17 @@ import {
   KeyIcon,
   ArrowUpTrayIcon,
 } from "@heroicons/react/24/outline";
+import { getLogger } from "../../../config/logging";
 import { useUsers } from "../../../hooks/college/useUsers";
 import { departmentService } from "../../../services/college";
 import { supabase } from "../../../lib/supabaseClient";
+
 import UserFormModal from "./components/UserFormModal";
 import { ConfirmModal } from "../../../components/shared/ConfirmModal";
 import type { User } from "../../../types/college";
 
 const UserManagement: React.FC = () => {
+  const logger = getLogger('college-admin-user-management');
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"active" | "inactive" | "">("");
@@ -99,7 +102,7 @@ const UserManagement: React.FC = () => {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         
         if (!currentUser?.email) {
-          console.error('No user logged in');
+          logger.error('No user logged in');
           return;
         }
 
@@ -150,7 +153,7 @@ const UserManagement: React.FC = () => {
         }
 
         if (!collegeId) {
-          console.error('Could not determine college ID for departments');
+          logger.error('Could not determine college ID for departments');
           return;
         }
 
@@ -160,7 +163,7 @@ const UserManagement: React.FC = () => {
           setDepartments(result.map(d => ({ id: d.id, name: d.name })));
         }
       } catch (error) {
-        console.error('Error fetching departments:', error);
+        logger.error('Error fetching departments:', error as Error);
       }
     };
     fetchDepartments();

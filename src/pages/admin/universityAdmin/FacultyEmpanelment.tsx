@@ -18,14 +18,13 @@ import {
   StarIcon,
   ChevronDownIcon,
   ArrowUpTrayIcon,
-} from '@heroicons/react/24/outline';
-import { getLogger } from '../../../config/logging';
-
-const logger = getLogger('university-admin-faculty-empanelment');
   ArrowDownTrayIcon,
   PrinterIcon,
   ShareIcon,
 } from '@heroicons/react/24/outline';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('university-admin-faculty-empanelment');
 
 interface Faculty {
   id: string;

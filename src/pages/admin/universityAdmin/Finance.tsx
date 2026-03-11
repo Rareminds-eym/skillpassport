@@ -18,15 +18,14 @@ import {
   Eye,
   Edit,
   Trash2,
+  IndianRupee,
+  Receipt,
+  PieChart,
 } from 'lucide-react';
+import FeeStructureModal from '../../../components/admin/universityAdmin/FeeStructureModal';
 import { getLogger } from '../../../config/logging';
 
 const logger = getLogger('university-admin-finance');
-  IndianRupee,
-  Receipt,
-  PieChart
-} from 'lucide-react';
-import FeeStructureModal from '../../../components/admin/universityAdmin/FeeStructureModal';
 
 interface FeeStructure {
   id: string;
@@ -257,15 +256,16 @@ const mockPaymentRecords: PaymentRecord[] = [
 ];
 
 const mockStats: FinanceStats = {
-  totalRevenue: 15750000, // ₹1.575 Cr
-  pendingPayments: 2340000, // ₹23.4 L
-  completedPayments: 13410000, // ₹1.341 Cr
-  overduePayments: 890000, // ₹8.9 L
+  totalRevenue: 15750000,
+  pendingPayments: 2340000,
+  completedPayments: 13410000,
+  overduePayments: 890000,
   totalColleges: 45,
   totalStudents: 12500,
   collectionRate: 85.2,
   averagePaymentTime: 12
 };
+
 const UniversityFinance: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'fee-structures' | 'payments' | 'reports'>('overview');
   const [feeStructures, setFeeStructures] = useState<FeeStructure[]>(mockFeeStructures);
@@ -280,31 +280,29 @@ const UniversityFinance: React.FC = () => {
   const [showFeeStructureModal, setShowFeeStructureModal] = useState(false);
   const [editingFeeStructure, setEditingFeeStructure] = useState<FeeStructure | null>(null);
 
-  // Filter data based on selections
   const filteredFeeStructures = feeStructures.filter(structure => {
     const matchesCollege = !selectedCollege || structure.college_id === selectedCollege;
     const matchesYear = structure.academic_year === selectedAcademicYear;
-    const matchesSearch = !searchTerm || 
+    const matchesSearch = !searchTerm ||
       structure.fee_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       structure.college_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       structure.program_name.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     return matchesCollege && matchesYear && matchesSearch;
   });
 
   const filteredPaymentRecords = paymentRecords.filter(payment => {
     const matchesCollege = !selectedCollege || payment.college_id === selectedCollege;
     const matchesYear = payment.academic_year === selectedAcademicYear;
-    
+
     return matchesCollege && matchesYear;
   });
 
   const handleSaveFeeStructure = async (data: Partial<FeeStructure>): Promise<boolean> => {
     try {
       setLoading(true);
-      
+
       if (editingFeeStructure) {
-        // Update existing structure
         const updatedStructures = feeStructures.map(structure =>
           structure.id === editingFeeStructure.id
             ? { ...structure, ...data, updated_at: new Date().toISOString() }
@@ -312,7 +310,6 @@ const UniversityFinance: React.FC = () => {
         );
         setFeeStructures(updatedStructures);
       } else {
-        // Create new structure
         const newStructure: FeeStructure = {
           id: Date.now().toString(),
           college_name: colleges.find(c => c.id === data.college_id)?.name || 'Unknown College',
@@ -321,10 +318,10 @@ const UniversityFinance: React.FC = () => {
           updated_at: new Date().toISOString(),
           ...data
         } as FeeStructure;
-        
+
         setFeeStructures([...feeStructures, newStructure]);
       }
-      
+
       setEditingFeeStructure(null);
       return true;
     } catch (error) {
@@ -337,7 +334,7 @@ const UniversityFinance: React.FC = () => {
 
   const handleDeleteFeeStructure = async (id: string) => {
     if (!confirm('Are you sure you want to delete this fee structure?')) return;
-    
+
     try {
       const updatedStructures = feeStructures.filter(structure => structure.id !== id);
       setFeeStructures(updatedStructures);
@@ -358,7 +355,7 @@ const UniversityFinance: React.FC = () => {
   };
 
   const getStatusColor = (status: string) => {
-    const colors = {
+    const colors: Record<string, string> = {
       completed: 'bg-green-100 text-green-800',
       pending: 'bg-yellow-100 text-yellow-800',
       processing: 'bg-blue-100 text-blue-800',
@@ -370,13 +367,19 @@ const UniversityFinance: React.FC = () => {
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
-  const StatCard = ({ title, value, icon: Icon, color, change }: any) => (
+  const StatCard = ({ title, value, icon: Icon, color, change }: {
+    title: string;
+    value: string;
+    icon: React.ElementType;
+    color: string;
+    change?: number;
+  }) => (
     <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-gray-600">{title}</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
-          {change && (
+          {change !== undefined && (
             <p className={`text-sm mt-1 ${change > 0 ? 'text-green-600' : 'text-red-600'}`}>
               {change > 0 ? '+' : ''}{change}% from last month
             </p>
@@ -391,39 +394,13 @@ const UniversityFinance: React.FC = () => {
 
   const OverviewTab = () => (
     <div className="space-y-6">
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Revenue"
-          value={formatCurrency(stats.totalRevenue)}
-          icon={DollarSign}
-          color="bg-green-500"
-          change={12.5}
-        />
-        <StatCard
-          title="Pending Payments"
-          value={formatCurrency(stats.pendingPayments)}
-          icon={Clock}
-          color="bg-yellow-500"
-          change={-5.2}
-        />
-        <StatCard
-          title="Completed Payments"
-          value={formatCurrency(stats.completedPayments)}
-          icon={CheckCircle}
-          color="bg-blue-500"
-          change={8.3}
-        />
-        <StatCard
-          title="Overdue Payments"
-          value={formatCurrency(stats.overduePayments)}
-          icon={AlertTriangle}
-          color="bg-red-500"
-          change={-15.7}
-        />
+        <StatCard title="Total Revenue" value={formatCurrency(stats.totalRevenue)} icon={DollarSign} color="bg-green-500" change={12.5} />
+        <StatCard title="Pending Payments" value={formatCurrency(stats.pendingPayments)} icon={Clock} color="bg-yellow-500" change={-5.2} />
+        <StatCard title="Completed Payments" value={formatCurrency(stats.completedPayments)} icon={CheckCircle} color="bg-blue-500" change={8.3} />
+        <StatCard title="Overdue Payments" value={formatCurrency(stats.overduePayments)} icon={AlertTriangle} color="bg-red-500" change={-15.7} />
       </div>
 
-      {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Distribution</h3>
@@ -468,7 +445,6 @@ const UniversityFinance: React.FC = () => {
 
   const FeeStructuresTab = () => (
     <div className="space-y-6">
-      {/* Header with Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Fee Structures</h2>
@@ -483,7 +459,6 @@ const UniversityFinance: React.FC = () => {
         </button>
       </div>
 
-      {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -508,9 +483,7 @@ const UniversityFinance: React.FC = () => {
             >
               <option value="">All Colleges</option>
               {colleges.map(college => (
-                <option key={college.id} value={college.id}>
-                  {college.name}
-                </option>
+                <option key={college.id} value={college.id}>{college.name}</option>
               ))}
             </select>
           </div>
@@ -529,40 +502,25 @@ const UniversityFinance: React.FC = () => {
         </div>
       </div>
 
-      {/* Fee Structures Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  College/Program
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Fee Type
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Amount
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Due Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">College/Program</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fee Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredFeeStructures.map((structure) => (
                 <tr key={structure.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{structure.college_name}</div>
-                      <div className="text-sm text-gray-500">{structure.program_name}</div>
-                    </div>
+                    <div className="text-sm font-medium text-gray-900">{structure.college_name}</div>
+                    <div className="text-sm text-gray-500">{structure.program_name}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 capitalize">
@@ -617,48 +575,31 @@ const UniversityFinance: React.FC = () => {
           <h2 className="text-xl font-semibold text-gray-900">Payment Records</h2>
           <p className="text-sm text-gray-600">Track and manage all payment transactions</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
-            <Download className="h-4 w-4" />
-            Export
-          </button>
-        </div>
+        <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+          <Download className="h-4 w-4" />
+          Export
+        </button>
       </div>
 
-      {/* Payment Records Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Student/College
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Amount
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Payment Method
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student/College</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredPaymentRecords.map((payment) => (
                 <tr key={payment.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{payment.student_name}</div>
-                      <div className="text-sm text-gray-500">{payment.college_name}</div>
-                    </div>
+                    <div className="text-sm font-medium text-gray-900">{payment.student_name}</div>
+                    <div className="text-sm text-gray-500">{payment.college_name}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatCurrency(payment.amount_paid)}
@@ -669,7 +610,7 @@ const UniversityFinance: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(payment.payment_date).toLocaleDateString()}
+                    {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(payment.status)}`}>
@@ -750,7 +691,6 @@ const UniversityFinance: React.FC = () => {
 
   return (
     <div className="space-y-6 p-6">
-      {/* Header */}
       <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
           Finance & Fees Management
@@ -760,7 +700,6 @@ const UniversityFinance: React.FC = () => {
         </p>
       </div>
 
-      {/* Tab Navigation */}
       <div className="bg-white rounded-xl border border-gray-200 p-1">
         <nav className="flex space-x-1">
           {[
@@ -771,7 +710,7 @@ const UniversityFinance: React.FC = () => {
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as 'overview' | 'fee-structures' | 'payments' | 'reports')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? 'bg-blue-100 text-blue-700'
@@ -785,13 +724,11 @@ const UniversityFinance: React.FC = () => {
         </nav>
       </div>
 
-      {/* Tab Content */}
       {activeTab === 'overview' && <OverviewTab />}
       {activeTab === 'fee-structures' && <FeeStructuresTab />}
       {activeTab === 'payments' && <PaymentsTab />}
       {activeTab === 'reports' && <ReportsTab />}
 
-      {/* Fee Structure Modal */}
       <FeeStructureModal
         isOpen={showFeeStructureModal}
         onClose={() => {
