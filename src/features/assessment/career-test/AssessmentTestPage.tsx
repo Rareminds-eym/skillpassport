@@ -90,7 +90,7 @@ import {
 import { supabase } from '@/lib/supabaseClient';
 
 // Tour context to detect when tour is running
-import { useTour } from '../../../components/Tours/TourProvider';
+import { useTour } from '../../../stores/index.ts'
 
 /**
  * Get icon image path for a section based on section ID
