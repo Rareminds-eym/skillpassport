@@ -5,14 +5,18 @@
   "type": "module",
   "scripts": {
     "start": " npm run build:dev && concurrently -n \"workers,pages\" -c \"yellow,magenta\" \"npm run workers:dev\" \"npm run pages:dev\"",
+    "dev:local": "vite --mode development --port 3000",
     "dev": "vite --mode development --port 3000",
     "dev:staging": "vite --mode staging --port 3000",
     "dev:prod": "vite --port 3000",
     "build": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build",
     "build:dev": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build --mode development",
     "build:staging": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build --mode staging",
+    "build:production": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "preview:staging": "vite preview",
+    "preview:production": "vite preview",
     "test": "vitest",
     "test:property": "vitest --run src/__tests__/property/",
     "test:e2e": "bash tests/e2e/run-tests.sh",
@@ -35,10 +39,31 @@
     "dev:all": "npm run cleanup && npm run build && concurrently -n \"frontend,pages,workers,supabase\" -c \"cyan,magenta,yellow,green\" \"npm run dev\" \"npm run pages:dev\" \"npm run workers:dev\" \"npm run supabase:start\"",
     "dev:fast": "bash scripts/start-docker.sh && npm run cleanup && concurrently -n \"supabase,build,frontend,pages,workers\" -c \"green,white,cyan,magenta,yellow\" \"npm run supabase:start\" \"npm run build\" \"npm run dev\" \"sleep 15 && npm run pages:dev\" \"npm run workers:dev\"",
     "dev:auto": "bash scripts/start-docker.sh && npm run dev:fast",
-    "start:full": "npm run dev:all",
-    "generate-embeddings": "node scripts/generateEmbeddings.js",
-    "generate-student-embeddings": "node scripts/generateStudentEmbeddingsViaEdge.js",
-    "embed-courses": "node scripts/embedCourses.js"
+    "start:full": "npm run dev:all",  
+    "env:validate": "node scripts/validate-env.js validate",
+    "env:validate:all": "node scripts/validate-env.js validate:all",
+    "env:validate:local": "node scripts/validate-env.js local",
+    "env:validate:development": "node scripts/validate-env.js development",
+    "env:validate:staging": "node scripts/validate-env.js staging",
+    "env:validate:production": "node scripts/validate-env.js production",
+    "env:check": "node scripts/validate-env.js check",
+    "env:diff": "node scripts/validate-env.js diff"
+  },
+  "scripts-info": {
+    "ENVIRONMENT_SETUP": "See .env.schema and .env.example for complete variable documentation",
+    "LOCAL_DEVELOPMENT": "npm run dev:local - Uses .env.local with localhost URLs (http://127.0.0.1:54321)",
+    "DEVELOPMENT": "npm run dev - Uses .env.development with remote dev environment",
+    "STAGING": "npm run build:staging - Uses .env.staging for pre-production testing",
+    "PRODUCTION": "npm run build:production - Uses .env.production with LIVE Razorpay keys ⚠️",
+    "PREVIEW_COMMANDS": "npm run preview | preview:staging | preview:production",
+    "VALIDATION_COMMANDS": {
+      "env:validate": "Validate current environment file",
+      "env:validate:all": "Validate all environment files (local, development, staging, production)",
+      "env:validate:production": "Validate production environment",
+      "env:check": "See which variables are set",
+      "env:diff": "Compare two environments (usage: npm run env:diff development production)"
+    }
+    
   },
   "dependencies": {
     "@casl/ability": "^6.8.0",

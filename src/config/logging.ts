@@ -22,9 +22,13 @@ const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
 };
 
 // Get minimum log level from environment
-const MIN_LOG_LEVEL: LogLevel = 
-  (import.meta.env.VITE_LOG_LEVEL as LogLevel) || 
-  (import.meta.env.PROD ? 'info' : 'debug');
+const MIN_LOG_LEVEL: LogLevel = (() => {
+  const envLevel = import.meta.env.VITE_LOG_LEVEL as LogLevel | undefined;
+  if (envLevel && ['debug', 'info', 'warn', 'error'].includes(envLevel)) {
+    return envLevel;
+  }
+  return import.meta.env.PROD ? 'info' : 'debug';
+})();
 
 // ============================================================================
 // LOG ENTRY STRUCTURE
@@ -137,13 +141,13 @@ class Logger {
   /**
    * Send log to aggregation service
    */
-  private sendToAggregator(entry: LogEntry): void {
+  private sendToAggregator(_entry: LogEntry): void {
     // TODO: Integrate with log aggregation service (e.g., Datadog, Logtail)
     // Example:
     // fetch(LOG_AGGREGATOR_URL, {
     //   method: 'POST',
     //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(entry),
+    //   body: JSON.stringify(_entry),
     // }).catch(() => {}); // Silently fail
   }
 
@@ -161,15 +165,15 @@ class Logger {
   }
 
   error(message: string, error?: Error, metadata?: Record<string, unknown>): void {
-    const entry = this.createEntry('error', message, metadata);
+    const logEntry = this.createEntry('error', message, metadata);
     if (error) {
-      entry.error = {
+      logEntry.error = {
         name: error.name,
         message: error.message,
         stack: error.stack,
       };
     }
-    this.output(entry);
+    this.output(logEntry);
   }
 
   /**
