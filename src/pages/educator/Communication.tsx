@@ -26,14 +26,14 @@ import { MessageService, Conversation } from '@/features/messaging';
 import { useEducatorMessages } from '../../hooks/useEducatorMessages.js';
 import { useEducatorAdminMessages } from '../../hooks/useEducatorAdminMessages.js';
 import { formatDistanceToNow } from 'date-fns';
-import { useAuth } from '@/features/auth';
-import { useGlobalPresence } from '../../context/GlobalPresenceContext';
+import { useGlobalPresence } from '../../stores/globalPresenceStore.js';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
 import { useTypingIndicator } from '@/features/messaging';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
-import { DeleteConversationModal, ConversationModal } from '@/features/messaging';
+import { DeleteConversationModal,  } from '@/features/messaging';
 import { supabase } from '../../lib/supabaseClient';
-
+import NewStudentConversationModal from '../../components/messaging/NewStudentConversationModalEducator.jsx';
+import NewEducatorAdminConversationModal from '../../components/messaging/NewEducatorAdminConversationModal';
 const Communication = () => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();

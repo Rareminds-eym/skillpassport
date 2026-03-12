@@ -8,3 +8,10 @@ export { useVideoProgress } from './useVideoProgress';
 export { useStudentDataByEmail } from './useStudentDataByEmail';
 export { useStudentCertificates } from './useStudentCertificates';
 
+// User Role Hook
+export { useUserRole } from './useUserRole';
+
+// Promotional Hooks
+export { useCurrentPromotional } from './useCurrentPromotional';
+export { useAssessmentPromotional } from './useAssessmentPromotional';
+

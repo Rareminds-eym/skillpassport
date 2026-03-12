@@ -11,14 +11,12 @@ import {
     updateEducationByEmail,
     updateExperienceByEmail,
     updateProjectsByEmail,
+    updateSingleTrainingById,
+    updateSoftSkillsByEmail,
+    updateStudentByEmail,
     updateTechnicalSkillsByEmail,
     updateTrainingByEmail
-<<<<<<< HEAD
 } from '@/features/student-profile/api';
-import { updateSingleTrainingById, updateSkillsByEmail, updateSoftSkillsByEmail, updateStudentByEmail } from '@/services/studentServiceProfile';
-=======
-} from '../services/studentService';
->>>>>>> 671d7d32e0483a5f964254def742552c6208ec47
 // Note: Embedding regeneration is now handled automatically by database triggers
 // No need to call scheduleEmbeddingRegeneration from frontend
 
@@ -216,7 +214,8 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
 
   const updateSkills = async (skillsData) => {
     try {
-      const result = await updateSkillsByEmail(email, skillsData);
+      // Since updateSkillsByEmail doesn't exist, we'll use the technical skills function
+      const result = await updateTechnicalSkillsByEmail(email, skillsData);
       if (result.success) {
         setStudentData(result.data);
         // Embedding regeneration handled by database trigger

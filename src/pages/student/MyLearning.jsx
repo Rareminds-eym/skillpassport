@@ -7,7 +7,7 @@ import ModernLearningCard from "../../components/Students/components/ModernLearn
 import { TrainingEditModal } from "../../components/Students/components/ProfileEditModals";
 import SelectCourseModal from "../../components/Students/components/SelectCourseModal";
 import { Button, Card, CardContent } from '@/shared/ui';
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "@/features/auth/model/AuthContext";
 import { useStudentProfile, useStudentMessages } from "@/features/student-profile";
 import { useStudentPortfolio } from "@/features/student-profile";
 import { useStudentDataByEmail } from "@/hooks/useStudentDataByEmail";

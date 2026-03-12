@@ -24,8 +24,8 @@ import { DeleteConversationModal, ConversationModal } from '@/features/messaging
 import NewEducatorConversationModal from '@/features/messaging/ui/NewEducatorConversationModal';
 import NewAdminConversationModal from '@/features/messaging/ui/NewAdminConversationModal';
 import NewCollegeAdminConversationModal from '@/features/messaging/ui/NewCollegeAdminConversationModal';
-import { useAuth } from '../../context/AuthContext';
-import { useGlobalPresence } from '../../context/GlobalPresenceContext';
+import { useAuth } from '@/features/auth/model/useAuth';
+import { useGlobalPresence } from '../../stores/globalPresenceStore';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
 import { useStudentProfile, useStudentMessages } from '@/features/student-profile';

@@ -2,12 +2,9 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Footer from '../components/Footer';
 import { PromotionalBanner, AssessmentPromotionalBanner } from '../components/Homepage';
-import {
-  PromotionalEventProvider,
-  usePromotionalEventContext,
-} from '../contexts/PromotionalEventContext';
-import { AssessmentPromotionalProvider, useAssessmentPromotionalContext } from '../contexts/AssessmentPromotionalContext';
-import { useAuth } from '@/features/auth';
+import { useAssessmentPromotional, useCurrentPromotional } from '../stores';
+import { useIsAuthenticated, useUserRole, useUser, useSubscriptionAccess } from '../stores';
+import { useAuth } from '@/features/auth/model/useAuth';
 import { useSubscriptionQuery } from '@/features/subscription/model';
 import { isActiveOrPaused } from '../utils/subscriptionHelpers';
 

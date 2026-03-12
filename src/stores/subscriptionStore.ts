@@ -22,6 +22,12 @@ export type WarningType =
   | 'grace_period'
   | 'paused';
 
+export const WARNING_TYPES = {
+  EXPIRING_SOON: 'expiring_soon' as const,
+  GRACE_PERIOD: 'grace_period' as const,
+  PAUSED: 'paused' as const
+} as const;
+
 export const ACCESS_REASONS = {
   ACTIVE: 'active',
   PAUSED: 'paused',

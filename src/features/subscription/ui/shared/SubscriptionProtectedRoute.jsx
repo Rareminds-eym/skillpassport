@@ -24,7 +24,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
-import { ACCESS_REASONS, useSubscriptionContext } from '@/context/SubscriptionContext';
+import { ACCESS_REASONS, useSubscriptionContext } from '@/stores';
 import Loader from '@/components/Loader';
 import SubscriptionBanner from './SubscriptionBanner';
 
