@@ -8,22 +8,25 @@ import { BaseProvider } from './BaseProvider';
 
 export class SESProvider extends BaseProvider {
   readonly type = 'ses';
+  private aws: AwsClient;
   
   constructor(private config: EmailConfig) {
     super();
+    // 'service' must be set explicitly — aws4fetch infers 'email' from the
+    // hostname (email.{region}.amazonaws.com) but AWS SES signing requires 'ses'.
+    this.aws = new AwsClient({
+      accessKeyId: this.config.aws.accessKeyId,
+      secretAccessKey: this.config.aws.secretAccessKey,
+      region: this.config.aws.region,
+      service: 'ses',
+    });
   }
   
   async send(message: EmailMessage): Promise<ProviderResponse> {
     try {
-      const aws = new AwsClient({
-        accessKeyId: this.config.aws.accessKeyId,
-        secretAccessKey: this.config.aws.secretAccessKey,
-        region: this.config.aws.region,
-      });
-      
       const sesEndpoint = `https://email.${this.config.aws.region}.amazonaws.com/v2/email/outbound-emails`;
       
-      const response = await aws.fetch(sesEndpoint, {
+      const response = await this.aws.fetch(sesEndpoint, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',

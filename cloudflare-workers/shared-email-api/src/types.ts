@@ -9,6 +9,7 @@
 export interface Env {
   // KV Namespaces
   RATE_LIMIT_KV: KVNamespace;
+  RATE_LIMITER_MINUTE: RateLimit;
   
   // Environment variables
   ENVIRONMENT: 'development' | 'staging' | 'production';
@@ -115,6 +116,8 @@ export interface RateLimitInfo {
   limit: number;
   resetAt: Date;
   retryAfter?: number;
+  hourlyRemaining?: number;
+  dailyRemaining?: number;
 }
 
 // ==================== ERROR TYPES ====================
