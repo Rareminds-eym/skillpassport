@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useStudentData } from '../../hooks/useStudentData';
 import SchoolClassHeader from './common/SchoolClassHeader';
 import OverviewTab from './Tabs/OverviewTab';
 import ClassmatesTab from './Tabs/ClassmatesTab';
@@ -54,10 +54,8 @@ type TimetableViewType = 'week' | 'day';
  * - Network request reduction: From 12+N to 6 requests on initial load
  */
 const SchoolMyClass: React.FC = () => {
-  const user = useUser();
-  const userEmail = localStorage.getItem('userEmail') || user?.email;
-  const { studentData, loading: authLoading } = useStudentDataByEmail(userEmail) as { studentData: any; loading: boolean };
-  const studentId = studentData?.id;
+  const { student, studentId: rawStudentId, isLoading: authLoading } = useStudentData({ loadRelated: false });
+  const studentId = rawStudentId ?? undefined;
 
   // UI State
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -87,7 +85,7 @@ const SchoolMyClass: React.FC = () => {
   const assignmentsHook = useAssignmentsData(studentId);
   const timetableHook = useTimetableData(classId);
   const classmatesHook = useClassmatesData(classId, studentId);
-  const coCurricularsHook = useOptimizedCoCurricularsData(userEmail || null);
+  const coCurricularsHook = useOptimizedCoCurricularsData(student?.email || null);
   const examsHook = useOptimizedExamsData(studentId);
 
   const { showNotification, notification, showNotificationModal, hideNotification } = useNotification();

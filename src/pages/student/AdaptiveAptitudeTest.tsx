@@ -36,7 +36,7 @@ import {
 } from '../../components/Students/components/ui/alert-dialog';
 import { useAdaptiveAptitude } from '../../hooks/useAdaptiveAptitude';
 import { useUser } from '../../stores';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useStudentData } from '../../hooks/useStudentData';
 import { useAntiCheating } from '../../hooks/useAntiCheating';
 import { GradeLevel, TestPhase, Subtag, DifficultyLevel, ConfidenceTag } from '../../types/adaptiveAptitude';
 import { getLogger } from '../../config/logging';
@@ -104,7 +104,7 @@ const AdaptiveAptitudeTest = () => {
   const gradeLevel: GradeLevel = location.state?.gradeLevel || 'high_school';
   
   // Get student data
-  const { studentData, loading: studentLoading } = useStudentDataByEmail(user?.email || '', false);
+  const { student, isLoading: studentLoading } = useStudentData({ loadRelated: false });
   
   // Local state
   const [selectedAnswer, setSelectedAnswer] = useState<'A' | 'B' | 'C' | 'D' | null>(null);
@@ -128,7 +128,7 @@ const AdaptiveAptitudeTest = () => {
     // abandonTest is available for future use
     clearError,
   } = useAdaptiveAptitude({
-    studentId: studentData?.id || '',
+    studentId: student?.id || '',
     gradeLevel,
     onTestComplete: (testResults) => {
       logger.info('Adaptive aptitude test completed', testResults);
@@ -146,7 +146,7 @@ const AdaptiveAptitudeTest = () => {
     if (DEBUG_MODE) {
       logger.info('🔍 [AdaptiveAptitudeTest] Component State:', {
         user: user?.email,
-        studentData: studentData ? { id: studentData.id, email: studentData.email } : null,
+        studentData: student ? { id: student.id, email: student.email } : null,
         studentLoading,
         gradeLevel,
         testInitialized,
@@ -159,19 +159,19 @@ const AdaptiveAptitudeTest = () => {
         results: results ? 'Available' : null,
       });
     }
-  }, [user, studentData, studentLoading, gradeLevel, testInitialized, loading, error, currentQuestion, session, phase, isTestComplete, results]);
+  }, [user, student, studentLoading, gradeLevel, testInitialized, loading, error, currentQuestion, session, phase, isTestComplete, results]);
 
   // Initialize test when student data is available
   useEffect(() => {
     const initializeTest = async () => {
       logger.info('initializeTest called', {
-        hasStudentId: !!studentData?.id,
-        studentId: studentData?.id,
+        hasStudentId: !!student?.id,
+        studentId: student?.id,
         testInitialized,
         loading
       });
       
-      if (studentData?.id && !testInitialized && !loading) {
+      if (student?.id && !testInitialized && !loading) {
         logger.info('Starting test initialization');
         setTestInitialized(true);
         
@@ -192,7 +192,7 @@ const AdaptiveAptitudeTest = () => {
         }
       } else {
         logger.info('Waiting for conditions', {
-          hasStudentId: !!studentData?.id,
+          hasStudentId: !!student?.id,
           testInitialized,
           loading,
         });
@@ -200,7 +200,7 @@ const AdaptiveAptitudeTest = () => {
     };
 
     initializeTest();
-  }, [studentData?.id, testInitialized, loading, checkAndResumeSession, startTest]);
+  }, [student?.id, testInitialized, loading, checkAndResumeSession, startTest]);
 
   // Reset selected answer when question changes
   useEffect(() => {
@@ -263,7 +263,7 @@ const AdaptiveAptitudeTest = () => {
               </div>
               <div className="space-y-1 font-mono">
                 <p>User Email: {user?.email || 'Not logged in'}</p>
-                <p>Student ID: {studentData?.id || 'Loading...'}</p>
+                <p>Student ID: {student?.id || 'Loading...'}</p>
                 <p>Student Loading: {studentLoading ? 'Yes' : 'No'}</p>
                 <p>Hook Loading: {loading ? 'Yes' : 'No'}</p>
                 <p>Test Initialized: {testInitialized ? 'Yes' : 'No'}</p>

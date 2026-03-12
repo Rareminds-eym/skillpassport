@@ -8,12 +8,21 @@ import JourneyMapLayout from '../../components/digital-pp/portfolio/layouts/Jour
 import ModernLayout from '../../components/digital-pp/portfolio/layouts/ModernLayout';
 import SplitScreenLayout from '../../components/digital-pp/portfolio/layouts/SplitScreenLayout';
 import { usePortfolio } from '../../stores';
+import { useUser } from '../../stores';
 import { exportAsHTML, exportAsPDF } from '../../utils/exportppUtils';
 
 const PortfolioPage: React.FC = () => {
   const navigate = useNavigate();
-  const { student, settings, isLoading, isManuallySet, viewerRole } = usePortfolio();
+  const { student, settings, isLoading, isManuallySet, viewerRole, loadStudentByEmail } = usePortfolio();
+  const user = useUser();
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Load current user's data if no student is set
+  useEffect(() => {
+    if (!student && !isLoading && user?.email) {
+      loadStudentByEmail(user.email);
+    }
+  }, [student, isLoading, user?.email, loadStudentByEmail]);
 
   // Check if user is admin
   const isAdminViewing = viewerRole && (viewerRole.includes('admin') || viewerRole === 'admin');

@@ -32,7 +32,7 @@ import {
   completeAssessment,
   checkAssessmentStatus
 } from '../../services/externalAssessmentService';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useStudentData } from '../../hooks/useStudentData';
 import { useUser } from '../../stores';
 
 /**
@@ -52,7 +52,7 @@ const DynamicAssessment = () => {
   const preGeneratedQuestions = location.state?.preGeneratedQuestions; // For pre-generated questions
   
   // Get student data
-  const { studentData } = useStudentDataByEmail(user?.email, false);
+  const { student: studentData } = useStudentData();
   
   const [assessment, setAssessment] = useState(null);
   const [loading, setLoading] = useState(true);

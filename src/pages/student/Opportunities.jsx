@@ -39,7 +39,7 @@ import IndustrialVisitPreview from '../../components/Students/components/Industr
 import Pagination from '../../components/educator/Pagination';
 import { useUser } from '../../stores';
 import { useOpportunities } from '../../hooks/useOpportunities';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useStudentData } from '../../hooks/useStudentData';
 import { useProfileCompletion } from '../../hooks/useProfileCompletion';
 import AppliedJobsService from '../../services/appliedJobsService';
 import SavedJobsService from '../../services/savedJobsService';
@@ -55,29 +55,29 @@ import MessageService from '../../services/messageService';
 import StudentPipelineService from '../../services/studentPipelineService';
 
 // Helper function to check if institution details are complete
-const checkInstitutionDetailsComplete = (studentData) => {
-  if (!studentData) return false;
+const checkInstitutionDetailsComplete = (student) => {
+  if (!student) return false;
   
   // Learners don't need institution details
-  if (isLearner(studentData)) return true;
+  if (isLearner(student)) return true;
   
   logger.info('Checking institution details:', {
-    universityId: studentData.universityId,
-    university: studentData.university,
-    university_college_id: studentData.university_college_id,
-    college_school_name: studentData.college_school_name,
-    college: studentData.college,
-    program_id: studentData.program_id,
-    branch_field: studentData.branch_field,
-    branch: studentData.branch,
-    program_section_id: studentData.program_section_id,
-    section: studentData.section,
-    semester: studentData.semester,
-    grade: studentData.grade,
-    school_id: studentData.school_id
+    universityId: student.universityId,
+    university: student.university,
+    university_college_id: student.university_college_id,
+    college_school_name: student.college_school_name,
+    college: student.college,
+    program_id: student.program_id,
+    branch_field: student.branch_field,
+    branch: student.branch,
+    program_section_id: student.program_section_id,
+    section: student.section,
+    semester: student.semester,
+    grade: student.grade,
+    school_id: student.school_id
   });
   
-  const gradeStr = String(studentData.grade || '').toUpperCase().trim();
+  const gradeStr = String(student.grade || '').toUpperCase().trim();
   const isSchool = gradeStr.match(/(\d+)/) || gradeStr.includes('DIPLOMA');
   const isCollege = gradeStr.includes('UG') || gradeStr.includes('PG') || 
                     gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') || 
@@ -86,13 +86,13 @@ const checkInstitutionDetailsComplete = (studentData) => {
   
   if (isSchool && !isCollege) {
     // School students need: school_id OR college/college_school_name (custom school)
-    const isComplete = !!(studentData.school_id || studentData.college || studentData.college_school_name);
+    const isComplete = !!(student.school_id || student.college || student.college_school_name);
    
     return isComplete;
   } else if (isCollege) {
     // College students need: college + program (university is optional for custom entries)
-    const hasCollege = !!(studentData.university_college_id || studentData.college || studentData.college_school_name);
-    const hasProgram = !!(studentData.program_id || studentData.branch_field || studentData.branch);
+    const hasCollege = !!(student.university_college_id || student.college || student.college_school_name);
+    const hasProgram = !!(student.program_id || student.branch_field || student.branch);
     
     // Consider complete if at least college and program are filled
     const isComplete = hasCollege && hasProgram;
@@ -100,14 +100,14 @@ const checkInstitutionDetailsComplete = (studentData) => {
       isComplete, 
       hasCollege, 
       hasProgram,
-      universityId: studentData.universityId,
-      university: studentData.university,
-      university_college_id: studentData.university_college_id,
-      college: studentData.college,
-      college_school_name: studentData.college_school_name,
-      program_id: studentData.program_id,
-      branch_field: studentData.branch_field,
-      branch: studentData.branch
+      universityId: student.universityId,
+      university: student.university,
+      university_college_id: student.university_college_id,
+      college: student.college,
+      college_school_name: student.college_school_name,
+      program_id: student.program_id,
+      branch_field: student.branch_field,
+      branch: student.branch
     });
     return isComplete;
   }
@@ -116,9 +116,9 @@ const checkInstitutionDetailsComplete = (studentData) => {
 };
 
 // Empty state component with modal
-const EmptyOpportunitiesState = ({ studentData, navigate }) => {
+const EmptyOpportunitiesState = ({ student, navigate }) => {
   const [showModal, setShowModal] = useState(false);
-  const isComplete = checkInstitutionDetailsComplete(studentData);
+  const isComplete = checkInstitutionDetailsComplete(student);
   
   useEffect(() => {
     // Show modal automatically if institution details are incomplete
@@ -172,7 +172,7 @@ const EmptyOpportunitiesState = ({ studentData, navigate }) => {
             <div className="bg-blue-50 rounded-lg p-4 mb-6">
               <p className="text-sm font-semibold text-gray-800 mb-2">Required Information:</p>
               {(() => {
-                const gradeStr = String(studentData?.grade || '').toUpperCase().trim();
+                const gradeStr = String(student?.grade || '').toUpperCase().trim();
                 const isSchool = gradeStr.match(/(\d+)/) || gradeStr.includes('DIPLOMA');
                 const isCollege = gradeStr.includes('UG') || gradeStr.includes('PG') || 
                                   gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') || 
@@ -266,28 +266,26 @@ const Opportunities = () => {
   const location = useLocation();
   const queryClient = useQueryClient();
   const user = useUser();
-  const userEmail = localStorage.getItem('userEmail') || user?.email;
-  const { studentData } = useStudentDataByEmail(userEmail);
-  const studentId = studentData?.id; // Use students.id (database ID)
+  const { student, studentId } = useStudentData({ loadRelated: false });
 
   // Check institution details completion
   const [showInstitutionModal, setShowInstitutionModal] = useState(false);
-  const isInstitutionComplete = checkInstitutionDetailsComplete(studentData);
+  const isInstitutionComplete = checkInstitutionDetailsComplete(student);
 
   // Show modal on mount if institution details are incomplete
   useEffect(() => {
-    if (studentData && !isInstitutionComplete) {
+    if (student && !isInstitutionComplete) {
       setShowInstitutionModal(true);
     }
-  }, [studentData, isInstitutionComplete]);
+  }, [student, isInstitutionComplete]);
 
   // Check profile completion status
   const { canApplyToJobs, needsProfileCompletion, isLoading: profileCheckLoading } = useProfileCompletion(studentId, !!studentId);
 
   // Left sidebar tab state - Set default based on student type
   const getDefaultTab = () => {
-    if (!studentData) return 'my-jobs'; // Temporary default while loading
-    const gradeStr = String(studentData.grade || '').toUpperCase().trim();
+    if (!student) return 'my-jobs'; // Temporary default while loading
+    const gradeStr = String(student.grade || '').toUpperCase().trim();
     
     // Check for college/university grades (UG, PG, etc.) - default to my-jobs
     if (gradeStr.includes('UG') || gradeStr.includes('PG') || 
@@ -337,13 +335,13 @@ const Opportunities = () => {
     // Don't override if we have a navigation state
     if (location.state?.activeTab) return;
     
-    if (studentData && studentData.grade) {
+    if (student && student.grade) {
       const correctTab = getDefaultTab();
       if (activeTab !== correctTab) {
         setActiveTab(correctTab);
       }
     }
-  }, [studentData, location.state]);
+  }, [student, location.state]);
 
   // My Jobs state (existing opportunities logic)
   const [searchTerm, setSearchTerm] = useState('');
@@ -392,18 +390,18 @@ const Opportunities = () => {
 
   // Memoize student type to prevent unnecessary recalculations
   const studentType = React.useMemo(() => {
-    if (!studentData) return { isSchoolStudent: false, isUniversityStudent: false, isMiddleSchool: false, isHighSchool: false, isLearner: false };
+    if (!student) return { isSchoolStudent: false, isUniversityStudent: false, isMiddleSchool: false, isHighSchool: false, isLearner: false };
     
-    const isSchool = isSchoolStudent(studentData);
-    const isUniversity = isCollegeStudent(studentData);
-    const isLearnerType = isLearner(studentData);
+    const isSchool = isSchoolStudent(student);
+    const isUniversity = isCollegeStudent(student);
+    const isLearnerType = isLearner(student);
     
     // Determine specific school level
     let isMiddleSchool = false;
     let isHighSchool = false;
     
-    if (studentData.grade) {
-      const gradeStr = String(studentData.grade).toUpperCase().trim();
+    if (student.grade) {
+      const gradeStr = String(student.grade).toUpperCase().trim();
       
       // Check for college/university grades (UG, PG, etc.)
       if (gradeStr.includes('UG') || gradeStr.includes('PG') || 
@@ -436,7 +434,7 @@ const Opportunities = () => {
       isHighSchool,
       isLearner: isLearnerType
     };
-  }, [studentData]);
+  }, [student]);
 
   // Build server-side filters (excluding skills which needs client-side filtering)
   const serverFilters = React.useMemo(() => {
@@ -490,15 +488,15 @@ const Opportunities = () => {
   }, [advancedFilters, studentType.isMiddleSchool, studentType.isHighSchool, studentType.isUniversityStudent, studentType.isLearner]);
 
   // Fetch opportunities with server-side pagination
-  // IMPORTANT: Only fetch after studentData is loaded to ensure correct filters
+  // IMPORTANT: Only fetch after student is loaded to ensure correct filters
   const [isLoading, setIsLoading] = useState(true);
   
   // Determine if we should fetch opportunities based on student type and active tab
   const shouldFetchOpportunities = React.useMemo(() => {
-    if (!studentData) return false;
+    if (!student) return false;
     // Fetch opportunities for high school, college students, and learners when on my-jobs tab
     return (studentType.isHighSchool || studentType.isUniversityStudent || studentType.isLearner) && activeTab === 'my-jobs';
-  }, [studentData, studentType.isHighSchool, studentType.isUniversityStudent, studentType.isLearner, activeTab]);
+  }, [student, studentType.isHighSchool, studentType.isUniversityStudent, studentType.isLearner, activeTab]);
   
   const {
     opportunities,
@@ -591,11 +589,11 @@ const Opportunities = () => {
         setIsLoading(false);
       }
     }
-    // Fallback: if studentData is loaded but no specific type detected
-    else if (studentData) {
+    // Fallback: if student is loaded but no specific type detected
+    else if (student) {
       setIsLoading(false);
     }
-  }, [dataLoading, industrialVisitsLoading, studentType.isMiddleSchool, studentType.isHighSchool, studentType.isUniversityStudent, studentData]);
+  }, [dataLoading, industrialVisitsLoading, studentType.isMiddleSchool, studentType.isHighSchool, studentType.isUniversityStudent, student]);
 
   useMessageNotifications({
     userId: studentId,
@@ -630,8 +628,7 @@ const Opportunities = () => {
 
     try {
       const applicationsData = await StudentPipelineService.getStudentApplicationsWithPipeline(
-        studentId,
-        userEmail
+        studentId
       );
 
       const transformedApplications = applicationsData.map(app => ({
@@ -666,7 +663,7 @@ const Opportunities = () => {
     } catch (err) {
       logger.error('Error fetching applications:', err);
     }
-  }, [studentId, userEmail]);
+  }, [studentId]);
 
   // Fetch applications when tab changes to my-applications or history
   useEffect(() => {
@@ -911,7 +908,7 @@ const Opportunities = () => {
             <div className="bg-blue-50 rounded-lg p-4 mb-6">
               <p className="text-sm font-semibold text-gray-800 mb-2">Required Information:</p>
               {(() => {
-                const gradeStr = String(studentData?.grade || '').toUpperCase().trim();
+                const gradeStr = String(student?.grade || '').toUpperCase().trim();
                 const isSchool = gradeStr.match(/(\d+)/) || gradeStr.includes('DIPLOMA');
                 const isCollege = gradeStr.includes('UG') || gradeStr.includes('PG') || 
                                   gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') || 
@@ -1155,7 +1152,7 @@ const Opportunities = () => {
             {/* AI Recommended Jobs - Show for high school, college, and learners only */}
             {(studentType.isHighSchool || studentType.isUniversityStudent || studentType.isLearner) && activeTab === 'my-jobs' && (
               <RecommendedJobs
-                studentProfile={{ ...studentData, id: studentId, profile: studentData }}
+                studentProfile={{ ...student, id: studentId, profile: student }}
                 onSelectJob={setSelectedOpportunity}
                 appliedJobs={appliedJobs}
                 savedJobs={savedJobs}
@@ -1195,7 +1192,7 @@ const Opportunities = () => {
                 canApplyToJobs={canApplyToJobs}
                 needsProfileCompletion={needsProfileCompletion}
                 navigate={navigate}
-                studentData={studentData}
+                studentData={student}
               />
             )}
 
@@ -1627,7 +1624,7 @@ const MyJobsContent = ({
   cached,
   fallback,
   trackView,
-  studentData,
+  student,
   totalCount = 0,
   totalPages: serverTotalPages = 1,
   isServerPaginated = false,
@@ -1905,7 +1902,7 @@ const MyJobsContent = ({
                           isSaved={savedJobs.has(opp.id)}
                           onApply={() => handleApply(opp)}
                           onToggleSave={handleToggleSave}
-                          studentData={studentData}
+                          studentData={student}
                         />
                       ))}
                     </div>
@@ -1913,7 +1910,7 @@ const MyJobsContent = ({
                 </>
               ) : (
                 <EmptyOpportunitiesState 
-                  studentData={studentData}
+                  student={student}
                   navigate={navigate}
                 />
               )}
@@ -1930,7 +1927,7 @@ const MyJobsContent = ({
                 canApplyToJobs={canApplyToJobs}
                 needsProfileCompletion={needsProfileCompletion}
                 navigate={navigate}
-                studentData={studentData}
+                studentData={student}
               />
             </div>
           </div>

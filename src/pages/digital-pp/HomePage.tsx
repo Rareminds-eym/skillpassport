@@ -5,19 +5,24 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { BackgroundRippleEffect } from '../../components/digital-pp/ui/background-ripple-effect';
 import { usePortfolio } from '../../stores';
 import { useUserRole } from '../../stores';
+import { useUser } from '../../stores';
 
 const HomePage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { setStudent } = usePortfolio();
+  const { setStudent, loadStudentByEmail } = usePortfolio();
   const { role } = useUserRole();
+  const user = useUser();
 
   useEffect(() => {
     // Set the candidate data from navigation state into PortfolioContext
     if (location.state?.candidate) {
       setStudent(location.state.candidate);
+    } else if (user?.email) {
+      // If no candidate passed, load current user's data
+      loadStudentByEmail(user.email);
     }
-  }, [location.state, setStudent]);
+  }, [location.state, setStudent, loadStudentByEmail, user?.email]);
 
   // Determine if user is viewing as admin/educator (not as student)
   // Admins and educators should use public portfolio routes to view student portfolios

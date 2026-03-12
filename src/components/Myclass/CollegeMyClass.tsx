@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Target, FileText, Loader2, AlertCircle, X, Upload, Paperclip } from 'lucide-react';
-import { useUser } from '../../stores';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useStudentData } from '../../hooks/useStudentData';
 
 // Import shared components
 import CollegeClassHeader from './common/CollegeClassHeader';
@@ -44,10 +43,8 @@ type CollegeTabType = 'overview' | 'classmates' | 'assignments';
  * - Assignments management with full functionality
  */
 const CollegeMyClass: React.FC = () => {
-  const user = useUser();
-  const userEmail = localStorage.getItem('userEmail') || user?.email;
-  const { studentData, loading: authLoading } = useStudentDataByEmail(userEmail);
-  const studentId = studentData?.id;
+  const { studentId: rawStudentId, isLoading: authLoading } = useStudentData({ loadRelated: false });
+  const studentId = rawStudentId ?? undefined;
 
   // State management
   const [activeTab, setActiveTab] = useState<CollegeTabType>('overview');
@@ -137,7 +134,7 @@ const CollegeMyClass: React.FC = () => {
   }, [studentId, authLoading]);
 
   // Handle assignment status change
-  const handleStatusChange = async (assignmentId: string, studentAssignmentId: string, newStatus: string) => {
+  const handleStatusChange = async (_assignmentId: string, studentAssignmentId: string, newStatus: string) => {
     try {
       const result = await updateCollegeStudentAssignmentStatus(studentAssignmentId, newStatus);
       

@@ -1,222 +1,125 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Edit3, BookOpen, Code, Briefcase, MessageCircle, Award, User, Upload } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
-import { Badge } from './ui/badge';
 import {
   EducationEditModal,
   TrainingEditModal,
   ExperienceEditModal,
-  SkillsEditModal,
-  PersonalInfoEditModal
+  SoftSkillsEditModal,
+  TechnicalSkillsEditModal,
+  PersonalInfoEditModal,
+  ProjectsEditModal,
+  CertificatesEditModal
 } from './ProfileEditModals';
-import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
+import { useStudentData } from '../../../hooks/useStudentData';
 import { useUser } from '../../../stores';
-import DatabaseSaveVerification from './DatabaseSaveVerification';
-import StudentFindingDebug from './StudentFindingDebug';
-import QuickFix from './QuickFix';
 import PersonalInfoSummary from './PersonalInfoSummary';
 import ResumeParser from './ResumeParser';
 import { mergeResumeData } from '../../../services/resumeParserService';
-import {
-  educationData,
-  trainingData,
-  experienceData,
-  technicalSkills,
-  softSkills
-} from '../data/mockData';
 
-const ProfileEditSection = ({ profileEmail }) => {
+const ProfileEditSection = () => {
   const [activeModal, setActiveModal] = useState(null);
-  const [refreshCounter, setRefreshCounter] = useState(0);
   const [showResumeParser, setShowResumeParser] = useState(false);
   
-  // Get user email from Zustand store
   const user = useUser();
-  const userEmail = user?.email;
   
-  // Determine which email to fetch data for
-  const displayEmail = profileEmail || userEmail;
-  
-  // Check if viewing own profile or someone else's
-  const isOwnProfile = !profileEmail || profileEmail === userEmail;
-
-  // Use Supabase hook for real data
+  // Use new architecture - ID-based state management
   const {
-    studentData,
-    loading,
+    student,
+    education,
+    experience,
+    skills,
+    trainings,
+    certificates,
+    projects,
+    isLoading,
     error,
-    refresh,
-    updateProfile,
-    updateEducation,
-    updateTraining,
-    updateExperience,
-    updateTechnicalSkills,
-    updateSoftSkills,
-    updateProjects,
-    updateCertificates
-  } = useStudentDataByEmail(displayEmail);
+    updateStudentData,
+    updateEducationBulk,
+    updateExperienceBulk,
+    updateSkillsBulk,
+    updateTechnicalSkillsBulk,
+    updateSoftSkillsBulk,
+    updateTrainingsBulk,
+    updateCertificatesBulk,
+    updateProjectsBulk,
+    refreshProfile
+  } = useStudentData({ loadRelated: true });
 
-  // Extract data from Supabase or use fallback
-  const education = studentData?.education || educationData;
-  const training = studentData?.training || trainingData;
-  const experience = studentData?.experience || experienceData;
-  const techSkills = studentData?.technicalSkills || technicalSkills;
-  const soft = studentData?.softSkills || softSkills;
-
-  const [userData, setUserData] = useState({
-    education: education,
-    training: training,
-    experience: experience,
-    technicalSkills: techSkills,
-    softSkills: soft
-  });
-
-  // Update local state when Supabase data changes
-  useEffect(() => {
-    setUserData({
-      education: education,
-      training: training,
-      experience: experience,
-      technicalSkills: techSkills,
-      softSkills: soft
-    });
-  }, [studentData, education, training, experience, techSkills, soft]);
+  // Separate skills by type
+  const technicalSkills = skills.filter(s => s.type === 'technical');
+  const softSkills = skills.filter(s => s.type === 'soft');
 
   const handleSave = async (section, data) => {
-    
-    setUserData(prev => ({
-      ...prev,
-      [section]: data
-    }));
-    
-    // Save to Supabase if user is logged in
-    if (userEmail && studentData?.profile) {
-      try {
-        
-        let result;
-        switch (section) {
-          case 'education':
-            result = await updateEducation(data);
-            break;
-          case 'training':
-            result = await updateTraining(data);
-            break;
-          case 'experience':
-            result = await updateExperience(data);
-            break;
-          case 'projects':
-            result = await updateProjects(data);
-            break;
-          case 'certificates':
-            result = await updateCertificates(data);
-            break;
-          case 'technicalSkills':
-            result = await updateTechnicalSkills(data);
-            break;
-          case 'softSkills':
-            result = await updateSoftSkills(data);
-            break;
-          case 'personalInfo':
-            result = await updateProfile(data);
-            // Refresh the data after updating personal info
-            if (result?.success) {
-              await refresh();
-              setRefreshCounter(prev => prev + 1); // Force re-render of modal
-            } else {
-              console.error('🔵 Update failed:', result?.error);
-            }
-            break;
-          default:
-            return;
-        }
-
-        if (result?.success) {
-        } else {
-          console.error(`❌ ProfileEditSection: Error saving ${section}:`, result?.error);
-        }
-      } catch (err) {
-        console.error(`❌ ProfileEditSection: Error saving ${section} to Supabase:`, err);
+    try {
+      switch (section) {
+        case 'education':
+          await updateEducationBulk(data);
+          break;
+        case 'training':
+          await updateTrainingsBulk(data);
+          break;
+        case 'experience':
+          await updateExperienceBulk(data);
+          break;
+        case 'projects':
+          await updateProjectsBulk(data);
+          break;
+        case 'certificates':
+          await updateCertificatesBulk(data);
+          break;
+        case 'technicalSkills':
+          await updateTechnicalSkillsBulk(data);
+          break;
+        case 'softSkills':
+          await updateSoftSkillsBulk(data);
+          break;
+        case 'personalInfo':
+          await updateStudentData(data);
+          await refreshProfile();
+          break;
+        default:
+          return;
       }
-    } else {
+    } catch (err) {
+      console.error(`Error saving ${section}:`, err);
     }
   };
 
   const handleResumeDataExtracted = async (parsedData) => {
-    
     try {
-      // Merge parsed data with existing profile data
-      const currentProfile = studentData?.profile || {};
-      const mergedData = mergeResumeData(currentProfile, parsedData);
+      const mergedData = mergeResumeData(student || {}, parsedData);
       
+      // Update personal info
+      await handleSave('personalInfo', {
+        name: mergedData.name,
+        email: mergedData.email,
+        contact_number: mergedData.contact_number,
+        date_of_birth: mergedData.date_of_birth
+      });
       
-      // Update profile with merged data
-      if (userEmail && studentData?.profile) {
-        // Update personal info
-        await handleSave('personalInfo', {
-          name: mergedData.name,
-          email: mergedData.email,
-          contact_number: mergedData.contact_number,
-          age: mergedData.age,
-          date_of_birth: mergedData.date_of_birth,
-          college_school_name: mergedData.college_school_name,
-          university: mergedData.university,
-          registration_number: mergedData.registration_number,
-          district_name: mergedData.district_name,
-          branch_field: mergedData.branch_field,
-          trainer_name: mergedData.trainer_name,
-          nm_id: mergedData.nm_id,
-          course: mergedData.course,
-          alternate_number: mergedData.alternate_number,
-          contact_number_dial_code: mergedData.contact_number_dial_code,
-          skill: mergedData.skill
-        });
-        
-        // Update education if present
-        if (mergedData.education && mergedData.education.length > 0) {
-          await handleSave('education', mergedData.education);
-        }
-        
-        // Update training if present
-        if (mergedData.training && mergedData.training.length > 0) {
-          await handleSave('training', mergedData.training);
-        }
-        
-        // Update experience if present
-        if (mergedData.experience && mergedData.experience.length > 0) {
-          await handleSave('experience', mergedData.experience);
-        }
-        
-        // Update projects if present
-        if (mergedData.projects && mergedData.projects.length > 0) {
-          await handleSave('projects', mergedData.projects);
-        }
-        
-        // Update certificates if present
-        if (mergedData.certificates && mergedData.certificates.length > 0) {
-          await handleSave('certificates', mergedData.certificates);
-        }
-        
-        // Update technical skills if present
-        if (mergedData.technicalSkills && mergedData.technicalSkills.length > 0) {
-          await handleSave('technicalSkills', mergedData.technicalSkills);
-        }
-        
-        // Update soft skills if present
-        if (mergedData.softSkills && mergedData.softSkills.length > 0) {
-          await handleSave('softSkills', mergedData.softSkills);
-        }
-        
-        // Refresh the data
-        await refresh();
-        setRefreshCounter(prev => prev + 1);
-        
+      // Update entities if present
+      if (mergedData.education?.length > 0) {
+        await handleSave('education', mergedData.education);
+      }
+      if (mergedData.training?.length > 0) {
+        await handleSave('training', mergedData.training);
+      }
+      if (mergedData.experience?.length > 0) {
+        await handleSave('experience', mergedData.experience);
+      }
+      if (mergedData.technicalSkills?.length > 0) {
+        await handleSave('technicalSkills', mergedData.technicalSkills);
+      }
+      if (mergedData.softSkills?.length > 0) {
+        await handleSave('softSkills', mergedData.softSkills);
       }
       
-      // Close the resume parser modal
+      await refreshProfile();
       setShowResumeParser(false);
     } catch (error) {
-      console.error('❌ Error saving resume data:', error);
+      console.error('Error saving resume data:', error);
     }
   };
 
@@ -228,8 +131,8 @@ const ProfileEditSection = ({ profileEmail }) => {
       description: 'Manage your personal details, contact information, and educational background',
       iconBg: 'bg-blue-50',
       iconColor: 'text-blue-600',
-      data: studentData?.profile || {},
-      count: 1 // Always show as having data since it's basic profile info
+      data: student || {},
+      count: 1
     },
     {
       id: 'education',
@@ -238,8 +141,8 @@ const ProfileEditSection = ({ profileEmail }) => {
       description: 'Manage your academic qualifications - Add multiple degrees, certifications',
       iconBg: 'bg-blue-100',
       iconColor: 'text-blue-700',
-      data: userData.education,
-      count: Array.isArray(userData.education) ? userData.education.filter(item => item.enabled !== false).length : 0
+      data: education,
+      count: education.filter(item => item.enabled !== false).length
     },
     {
       id: 'training',
@@ -248,8 +151,8 @@ const ProfileEditSection = ({ profileEmail }) => {
       description: 'Add courses and certifications',
       iconBg: 'bg-blue-50',
       iconColor: 'text-blue-600',
-      data: userData.training,
-      count: Array.isArray(userData.training) ? userData.training.filter(item => item.enabled !== false).length : 0
+      data: trainings,
+      count: trainings.filter(item => item.enabled !== false).length
     },
     {
       id: 'experience',
@@ -258,8 +161,28 @@ const ProfileEditSection = ({ profileEmail }) => {
       description: 'Add internships and work experience',
       iconBg: 'bg-blue-100',
       iconColor: 'text-blue-700',
-      data: userData.experience,
-      count: Array.isArray(userData.experience) ? userData.experience.filter(item => item.enabled !== false).length : 0
+      data: experience,
+      count: experience.filter(item => item.enabled !== false).length
+    },
+    {
+      id: 'projects',
+      title: 'Projects',
+      icon: Code,
+      description: 'Showcase your projects and portfolio work',
+      iconBg: 'bg-blue-50',
+      iconColor: 'text-blue-600',
+      data: projects,
+      count: projects.filter(item => item.enabled !== false).length
+    },
+    {
+      id: 'certificates',
+      title: 'Certificates',
+      icon: Award,
+      description: 'Add professional certifications and credentials',
+      iconBg: 'bg-blue-100',
+      iconColor: 'text-blue-700',
+      data: certificates,
+      count: certificates.filter(item => item.enabled !== false).length
     },
     {
       id: 'softSkills',
@@ -268,8 +191,8 @@ const ProfileEditSection = ({ profileEmail }) => {
       description: 'Languages and communication skills',
       iconBg: 'bg-blue-50',
       iconColor: 'text-blue-600',
-      data: userData.softSkills,
-      count: Array.isArray(userData.softSkills) ? userData.softSkills.filter(item => item.enabled !== false).length : 0
+      data: softSkills,
+      count: softSkills.filter(item => item.enabled !== false).length
     },
     {
       id: 'technicalSkills',
@@ -278,13 +201,13 @@ const ProfileEditSection = ({ profileEmail }) => {
       description: 'Programming languages and technical skills',
       iconBg: 'bg-blue-100',
       iconColor: 'text-blue-700',
-      data: userData.technicalSkills,
-      count: Array.isArray(userData.technicalSkills) ? userData.technicalSkills.length : 0
+      data: technicalSkills,
+      count: technicalSkills.length
     }
   ];
 
   // Show loading state
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 py-12 px-6">
         <div className="max-w-4xl mx-auto text-center">
@@ -303,7 +226,6 @@ const ProfileEditSection = ({ profileEmail }) => {
           <div className="bg-red-50 border border-red-200 rounded-xl p-6 shadow-sm">
             <h3 className="text-red-800 font-semibold mb-2">Unable to Load Profile</h3>
             <p className="text-red-600 text-sm">{error}</p>
-            <p className="text-red-500 text-xs mt-2">Using offline mode with mock data</p>
           </div>
         </div>
       </div>
@@ -320,51 +242,26 @@ const ProfileEditSection = ({ profileEmail }) => {
             Professional Profile
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 tracking-tight">
-            {isOwnProfile ? 'Your Profile' : studentData?.profile?.name || 'Student Profile'}
+            Your Profile
           </h1>
           <p className="text-base text-slate-600 max-w-2xl mx-auto leading-relaxed">
-            {isOwnProfile
-              ? 'Manage your professional information and showcase your skills, experience, and achievements.'
-              : 'Comprehensive profile overview with skills, experience, and qualifications.'}
+            Manage your professional information and showcase your skills, experience, and achievements.
           </p>
 
-          {/* Resume Upload Button - Only show for own profile */}
-          {isOwnProfile && (
-            <div className="mt-8">
-              <Button
-                onClick={() => setShowResumeParser(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 font-medium"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Upload Resume & Auto-Fill Profile
-              </Button>
-              <p className="text-sm text-slate-500 mt-3">
-                Upload your resume to automatically extract and fill your profile information
-              </p>
-            </div>
-          )}
+          {/* Resume Upload Button */}
+          <div className="mt-8">
+            <Button
+              onClick={() => setShowResumeParser(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 font-medium"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Upload Resume & Auto-Fill Profile
+            </Button>
+            <p className="text-sm text-slate-500 mt-3">
+              Upload your resume to automatically extract and fill your profile information
+            </p>
+          </div>
         </div>
-
-        {/* Quick Fix Notification - Only for own profile */}
-        {isOwnProfile && (
-          <div className="mb-6">
-            <QuickFix />
-          </div>
-        )}
-
-        {/* Database Save Verification Component - Only for own profile */}
-        {isOwnProfile && (
-          <div className="mb-8">
-            <DatabaseSaveVerification />
-          </div>
-        )}
-
-        {/* Debug Component for Testing Student Finding - Only for own profile */}
-        {isOwnProfile && (
-          <div className="mb-8">
-            <StudentFindingDebug />
-          </div>
-        )}
 
         {/* Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -390,27 +287,25 @@ const ProfileEditSection = ({ profileEmail }) => {
                   </div>
 
                   {/* Action Buttons */}
-                  {isOwnProfile && (
-                    <div className="space-y-3 mt-auto">
-                      {section.id === 'personalInfo' && (
-                        <Button
-                          onClick={() => setActiveModal('viewPersonalInfo')}
-                          variant="outline"
-                          className="w-full border border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 font-medium py-2.5"
-                        >
-                          <User className="w-4 h-4 mr-2" />
-                          View Details
-                        </Button>
-                      )}
+                  <div className="space-y-3 mt-auto">
+                    {section.id === 'personalInfo' && (
                       <Button
-                        onClick={() => setActiveModal(section.id)}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 shadow-sm hover:shadow-md transition-all duration-200"
+                        onClick={() => setActiveModal('viewPersonalInfo')}
+                        variant="outline"
+                        className="w-full border border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 font-medium py-2.5"
                       >
-                        <Edit3 className="w-4 h-4 mr-2" />
-                        {section.id === 'personalInfo' ? 'Edit Profile' : 'Manage'}
+                        <User className="w-4 h-4 mr-2" />
+                        View Details
                       </Button>
-                    </div>
-                  )}
+                    )}
+                    <Button
+                      onClick={() => setActiveModal(section.id)}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 shadow-sm hover:shadow-md transition-all duration-200"
+                    >
+                      <Edit3 className="w-4 h-4 mr-2" />
+                      {section.id === 'personalInfo' ? 'Edit Profile' : 'Manage'}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -450,9 +345,9 @@ const ProfileEditSection = ({ profileEmail }) => {
               {/* Modal Content */}
               <div className="p-8 overflow-y-auto max-h-[calc(90vh-180px)]">
                 <PersonalInfoSummary
-                  data={studentData?.profile}
-                  studentData={studentData}
-                  isOwnProfile={isOwnProfile}
+                  data={student}
+                  studentData={{ student, education, experience, skills, trainings, certificates }}
+                  isOwnProfile={true}
                 />
               </div>
 
@@ -480,67 +375,70 @@ const ProfileEditSection = ({ profileEmail }) => {
           </div>
         )}
 
-        {/* Modals - Only show if own profile */}
-        {isOwnProfile && (
-          <>
-            <PersonalInfoEditModal
-              key={`personal-${refreshCounter}`}
-              isOpen={activeModal === 'personalInfo'}
-              onClose={() => setActiveModal(null)}
-              data={studentData?.profile}
-              onSave={(data) => handleSave('personalInfo', data)}
-            />
+        {/* Modals */}
+        <PersonalInfoEditModal
+          isOpen={activeModal === 'personalInfo'}
+          onClose={() => setActiveModal(null)}
+          data={student}
+          onSave={(data) => handleSave('personalInfo', data)}
+        />
 
-            <EducationEditModal
-              isOpen={activeModal === 'education'}
-              onClose={() => setActiveModal(null)}
-              data={userData.education}
-              onSave={(data) => handleSave('education', data)}
-            />
+        <EducationEditModal
+          isOpen={activeModal === 'education'}
+          onClose={() => setActiveModal(null)}
+          data={education}
+          onSave={(data) => handleSave('education', data)}
+        />
 
-            <TrainingEditModal
-              isOpen={activeModal === 'training'}
-              onClose={() => setActiveModal(null)}
-              data={userData.training}
-              onSave={(data) => handleSave('training', data)}
-            />
+        <TrainingEditModal
+          isOpen={activeModal === 'training'}
+          onClose={() => setActiveModal(null)}
+          data={trainings}
+          onSave={(data) => handleSave('training', data)}
+        />
 
-            <ExperienceEditModal
-              isOpen={activeModal === 'experience'}
-              onClose={() => setActiveModal(null)}
-              data={userData.experience}
-              onSave={(data) => handleSave('experience', data)}
-            />
+        <ExperienceEditModal
+          isOpen={activeModal === 'experience'}
+          onClose={() => setActiveModal(null)}
+          data={experience}
+          onSave={(data) => handleSave('experience', data)}
+        />
 
-            <SkillsEditModal
-              isOpen={activeModal === 'softSkills'}
-              onClose={() => setActiveModal(null)}
-              data={userData.softSkills}
-              title="Soft Skills"
-              type="Skill"
-              onSave={(data) => handleSave('softSkills', data)}
-              showAllStatuses={true}
-            />
+        <SoftSkillsEditModal
+          isOpen={activeModal === 'softSkills'}
+          onClose={() => setActiveModal(null)}
+          data={softSkills}
+          onSave={(data) => handleSave('softSkills', data)}
+        />
 
-            <SkillsEditModal
-              isOpen={activeModal === 'technicalSkills'}
-              onClose={() => setActiveModal(null)}
-              data={userData.technicalSkills}
-              title="Technical Skills"
-              type="Skill"
-              onSave={(data) => handleSave('technicalSkills', data)}
-              showAllStatuses={true}
-            />
-          </>
-        )}
+        <TechnicalSkillsEditModal
+          isOpen={activeModal === 'technicalSkills'}
+          onClose={() => setActiveModal(null)}
+          data={technicalSkills}
+          onSave={(data) => handleSave('technicalSkills', data)}
+        />
+
+        <ProjectsEditModal
+          isOpen={activeModal === 'projects'}
+          onClose={() => setActiveModal(null)}
+          data={projects}
+          onSave={(data) => handleSave('projects', data)}
+        />
+
+        <CertificatesEditModal
+          isOpen={activeModal === 'certificates'}
+          onClose={() => setActiveModal(null)}
+          data={certificates}
+          onSave={(data) => handleSave('certificates', data)}
+        />
 
         {/* Resume Parser Modal */}
         {showResumeParser && (
           <ResumeParser
             onDataExtracted={handleResumeDataExtracted}
             onClose={() => setShowResumeParser(false)}
-            userEmail={userEmail}
-            studentData={studentData}
+            userEmail={user?.email}
+            studentData={{ student, education, experience, skills, trainings, certificates }}
             user={user}
           />
         )}

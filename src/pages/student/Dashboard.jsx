@@ -49,7 +49,8 @@ import {
   EducationEditModal,
   ExperienceEditModal,
   ProjectsEditModal,
-  SkillsEditModal,
+  TechnicalSkillsEditModal,
+  SoftSkillsEditModal,
   TrainingEditModal,
 } from "../../components/Students/components/ProfileEditModals";
 import TrainingRecommendations from "../../components/Students/components/TrainingRecommendations";
@@ -71,14 +72,6 @@ import {
   DropdownMenuTrigger,
 } from "../../components/Students/components/ui/dropdown-menu";
 import { LampContainer } from "../../components/Students/components/ui/lamp";
-import {
-  educationData,
-  experienceData,
-  softSkills,
-  suggestions,
-  technicalSkills,
-  trainingData,
-} from "../../components/Students/data/mockData";
 import { useAIRecommendations } from "../../hooks/useAIRecommendations";
 import { useAssessmentRecommendations } from "../../hooks/useAssessmentRecommendations";
 import { useUserRole, useUser } from "../../stores";
@@ -725,12 +718,6 @@ const StudentDashboard = () => {
   const {
     student: studentData,
     studentId,
-    education: studentEducation,
-    experience: studentExperience,
-    skills: studentSkills,
-    projects: studentProjects,
-    trainings: studentTrainings,
-    certificates: studentCertificates,
     isLoading: authStudentLoading,
     error: authStudentError,
     updateStudentData: updateProfile,
@@ -738,18 +725,16 @@ const StudentDashboard = () => {
     updateTrainingsBulk: updateTraining,
     updateExperienceBulk: updateExperience,
     updateSkillsBulk: updateSkills,
+    updateTechnicalSkillsBulk: updateTechnicalSkills,
+    updateSoftSkillsBulk: updateSoftSkills,
     updateProjectsBulk: updateProjects,
     updateCertificatesBulk: updateCertificates,
     refreshProfile: refresh,
-  } = useStudentData({ loadRelated: true });
-
-  // Map technical/soft skills to the same bulk update function
-  const updateTechnicalSkills = updateSkills;
-  const updateSoftSkills = updateSkills;
+  } = useStudentData({ loadRelated: false }); // Don't load related data, use dedicated hooks instead
 
   // Fetch data from separate tables
   const {
-    learning: tableTraining, // Renamed from training to learning in hook
+    learning: tableTraining,
     loading: trainingLoading,
     error: trainingError,
     refresh: refreshTraining
@@ -769,9 +754,6 @@ const StudentDashboard = () => {
     refresh: refreshProjects
   } = useStudentProjects(studentId, !!studentId && !isViewingOthersProfile);
 
-
-
-  // Fetch experience from dedicated table
   const {
     experience: tableExperience,
     loading: experienceLoading,
@@ -779,7 +761,6 @@ const StudentDashboard = () => {
     refresh: refreshExperience
   } = useStudentExperience(studentId, !!studentId && !isViewingOthersProfile);
 
-  // Fetch education from dedicated table
   const {
     education: tableEducation,
     loading: educationLoading,
@@ -787,9 +768,6 @@ const StudentDashboard = () => {
     refresh: refreshEducation
   } = useStudentEducation(studentId, !!studentId && !isViewingOthersProfile);
 
-
-
-  // Fetch technical skills from dedicated table
   const {
     skills: tableTechnicalSkills,
     loading: technicalSkillsLoading,
@@ -797,13 +775,17 @@ const StudentDashboard = () => {
     refresh: refreshTechnicalSkills
   } = useStudentTechnicalSkills(studentId, !!studentId && !isViewingOthersProfile);
 
-  // Fetch soft skills from dedicated table
   const {
     skills: tableSoftSkills,
     loading: softSkillsLoading,
     error: softSkillsError,
     refresh: refreshSoftSkills
   } = useStudentSoftSkills(studentId, !!studentId && !isViewingOthersProfile);
+
+  // Get studentSkills for AI recommendations (combine technical + soft)
+  const studentSkills = useMemo(() => {
+    return [...(tableTechnicalSkills || []), ...(tableSoftSkills || [])];
+  }, [tableTechnicalSkills, tableSoftSkills]);
 
   // Setup message notifications with hot-toast
   useStudentMessageNotifications({
@@ -843,15 +825,6 @@ const StudentDashboard = () => {
   const isLearnerUser = isLearner(studentData);
 
   const [activeModal, setActiveModal] = useState(null);
-  const [userData, setUserData] = useState({
-    education: educationData,
-    training: [],
-    experience: experienceData,
-    technicalSkills: technicalSkills,
-    softSkills: softSkills,
-    projects: [],
-    certificates: [],
-  });
   const [showAllOpportunities, setShowAllOpportunities] = useState(false);
   const [showAllTraining, setShowAllTraining] = useState(false);
   const [showAllProjects, setShowAllProjects] = useState(false);
@@ -862,18 +835,8 @@ const StudentDashboard = () => {
     return `${window.location.origin}/student/profile/${studentId}`;
   }, [studentData?.id]);
 
-  // Memoize studentSkills to prevent infinite re-renders
-  const studentSkillsNames = useMemo(() => {
-    return (
-      studentSkills?.filter(s => s.type === 'technical').map((skill) => skill.name) || []
-    );
-  }, [studentSkills]);
-
   const enabledProjects = useMemo(() => {
-    // Prioritize table data over profile data
-    const projectsData = Array.isArray(tableProjects) && tableProjects.length > 0
-      ? tableProjects
-      : userData.projects;
+    const projectsData = tableProjects || [];
     if (!Array.isArray(projectsData)) return [];
 
     return projectsData
@@ -920,14 +883,11 @@ const StudentDashboard = () => {
         );
         return shouldShow;
       });
-  }, [tableProjects, userData.projects]);
+  }, [tableProjects]);
 
   // Memoize education with versioning logic
   const enabledEducation = useMemo(() => {
-    // Prioritize table data over profile data
-    const educationData = Array.isArray(tableEducation) && tableEducation.length > 0
-      ? tableEducation
-      : userData.education;
+    const educationData = tableEducation || [];
     if (!Array.isArray(educationData)) return [];
 
     return educationData
@@ -975,13 +935,11 @@ const StudentDashboard = () => {
         const yearB = parseInt(b.yearOfPassing || b.year || b.endYear || 0);
         return yearB - yearA; // Descending order
       });
-  }, [tableEducation, userData.education]);
+  }, [tableEducation]);
 
   // Memoize technical skills with versioning logic
   const enabledTechnicalSkills = useMemo(() => {
-    const skillsData = Array.isArray(tableTechnicalSkills) && tableTechnicalSkills.length > 0
-      ? tableTechnicalSkills
-      : userData.technicalSkills;
+    const skillsData = tableTechnicalSkills || [];
 
     if (!Array.isArray(skillsData)) return [];
 
@@ -1024,13 +982,11 @@ const StudentDashboard = () => {
     }
 
     return deduplicated;
-  }, [tableTechnicalSkills, userData.technicalSkills]);
+  }, [tableTechnicalSkills]);
 
   // Memoize soft skills with versioning logic
   const enabledSoftSkills = useMemo(() => {
-    const skillsData = Array.isArray(tableSoftSkills) && tableSoftSkills.length > 0
-      ? tableSoftSkills
-      : userData.softSkills;
+    const skillsData = tableSoftSkills || [];
     if (!Array.isArray(skillsData)) return [];
 
     const processed = skillsData
@@ -1072,13 +1028,10 @@ const StudentDashboard = () => {
     }
 
     return deduplicated;
-  }, [tableSoftSkills, userData.softSkills]);
+  }, [tableSoftSkills]);
 
   const enabledExperience = useMemo(() => {
-    // Prioritize table data over profile data
-    const experienceData = Array.isArray(tableExperience) && tableExperience.length > 0
-      ? tableExperience
-      : userData.experience;
+    const experienceData = tableExperience || [];
     if (!Array.isArray(experienceData)) return [];
 
     // Apply versioning logic: show verified data on dashboard when there's a pending edit
@@ -1135,13 +1088,10 @@ const StudentDashboard = () => {
         const dateB = getDate(b);
         return dateB - dateA;
       });
-  }, [tableExperience, userData.experience]);
+  }, [tableExperience]);
 
   const enabledCertificates = useMemo(() => {
-    // Prioritize table data over profile data
-    const certificatesData = Array.isArray(tableCertificates) && tableCertificates.length > 0
-      ? tableCertificates
-      : userData.certificates;
+    const certificatesData = tableCertificates || [];
     if (!Array.isArray(certificatesData)) return [];
 
     return certificatesData
@@ -1188,7 +1138,7 @@ const StudentDashboard = () => {
         const dateB = getDate(b);
         return dateB - dateA; // Descending order (most recent first)
       });
-  }, [tableCertificates, userData.certificates]);
+  }, [tableCertificates]);
 
   // Fetch opportunities data from Supabase (including industrial visits)
   const {
@@ -1229,21 +1179,6 @@ const StudentDashboard = () => {
     refetch: refreshRecentUpdates,
     isConnected: realtimeConnected,
   } = useStudentRealtimeActivities(userEmail, 10);
-
-  // Debug log for authentication and student data
-  // useEffect(() => {
-  //   // Authentication and student data loaded
-  // }, [studentData, authStudentLoading, authStudentError]);
-
-  // Debug log for opportunities
-  // useEffect(() => {
-  //   // Opportunities data loaded
-  // }, [opportunities, opportunitiesLoading, opportunitiesError]);
-
-  // Debug log for recent updates
-  // useEffect(() => {
-  //   // Recent updates data loaded
-  // }, [recentUpdates, recentUpdatesLoading, recentUpdatesError, userEmail]);
 
   // Poll for new opportunities and refresh Recent Updates
   useEffect(() => {
@@ -1303,137 +1238,35 @@ const StudentDashboard = () => {
     };
   }, [refresh]);
 
-  // Direct Supabase test
-  useEffect(() => {
-    const testSupabaseDirectly = async () => {
-      try {
-        const { data, error, count } = await supabase
-          .from("opportunities")
-          .select("*", { count: "exact" });
+  // Save handler with DB update logic
+  const handleSave = async (section, data) => {
+    if (!studentId || !studentData) return;
 
-        // Run debug for recent updates (commented out to prevent automatic execution)
-        // await debugRecentUpdates();
-        // To debug recent updates, run: await window.debugRecentUpdates() in console
-      } catch (err) {
-        // Handle error silently
-      }
+    // Map section to update function and refresh function
+    const sectionMap = {
+      education: { update: updateEducation, refresh: refreshEducation },
+      training: { update: updateTraining, refresh: refreshTraining },
+      experience: { update: updateExperience, refresh: refreshExperience },
+      skills: { update: updateSkills, refresh: refreshTechnicalSkills },
+      technicalSkills: { update: updateTechnicalSkills, refresh: refreshTechnicalSkills },
+      softSkills: { update: updateSoftSkills, refresh: refreshSoftSkills },
+      projects: { update: updateProjects, refresh: refreshProjects },
+      certificates: { update: updateCertificates, refresh: refreshCertificates },
+      personalInfo: { update: updateProfile, refresh: refresh }
     };
 
-    testSupabaseDirectly();
-  }, []);
+    const handler = sectionMap[section];
+    if (!handler) return;
 
-  // Update userData when real student data is loaded
-  useEffect(() => {
-    if (studentData) {
-      setUserData({
-        education: Array.isArray(studentData.education)
-          ? studentData.education
-          : [],
-        training: Array.isArray(tableTraining) && tableTraining.length > 0
-          ? tableTraining
-          : Array.isArray(studentData.training)
-            ? studentData.training
-            : [],
-        experience: Array.isArray(tableExperience) && tableExperience.length > 0
-          ? tableExperience
-          : Array.isArray(studentData.experience)
-            ? studentData.experience
-            : [],
-        technicalSkills: Array.isArray(studentData.technicalSkills)
-          ? studentData.technicalSkills
-          : [],
-        softSkills: Array.isArray(studentData.softSkills)
-          ? studentData.softSkills
-          : [],
-        projects: Array.isArray(tableProjects) && tableProjects.length > 0
-          ? tableProjects
-          : Array.isArray(studentData.projects)
-            ? studentData.projects
-            : Array.isArray(studentData.profile?.projects)
-              ? studentData.profile.projects
-              : [],
-        certificates: Array.isArray(tableCertificates) && tableCertificates.length > 0
-          ? tableCertificates
-          : Array.isArray(studentData.certificates)
-            ? studentData.certificates
-            : Array.isArray(studentData.profile?.certificates)
-              ? studentData.profile.certificates
-              : [],
-      });
-    }
-  }, [studentData, tableTraining, tableCertificates, tableProjects, tableExperience]);
-
-  // Save handler with DB update logic (like ProfileEditSection)
-  const handleSave = async (section, data) => {
-    // Immediately update UI
-    setUserData((prev) => ({
-      ...prev,
-      [section]: data,
-    }));
-
-    // Save to Supabase if studentData exists
-    if (studentId && studentData) {
-      try {
-        let result;
-        switch (section) {
-          case "education":
-            result = await updateEducation(data);
-            break;
-          case "training":
-            result = await updateTraining(data);
-            break;
-          case "experience":
-            result = await updateExperience(data);
-            break;
-          case "skills":
-            // Save skills with their selected type (technical 
-            result = await updateSkills(data);
-            break;
-          case "technicalSkills":
-            result = await updateTechnicalSkills(data);
-            break;
-          case "softSkills":
-            result = await updateSoftSkills(data);
-            break;
-          case "projects":
-            result = await updateProjects(data); // Use dedicated function
-            break;
-          case "certificates":
-            result = await updateCertificates(data);
-            break;
-          case "personalInfo":
-            result = await updateProfile(data);
-            break;
-          default:
-            return;
-        }
-        if (result?.success) {
-          // Refresh from database to ensure sync
-          await refresh();
-
-          // Refresh table data based on section
-          if (section === 'training') {
-            refreshTraining();
-          } else if (section === 'certificates') {
-            refreshCertificates();
-          } else if (section === 'projects') {
-            refreshProjects();
-          } else if (section === 'experience') {
-            refreshExperience();
-          } else if (section === 'education') {
-            refreshEducation();
-          } else if (section === 'skills' || section === 'technicalSkills') {
-            refreshTechnicalSkills();
-          } else if (section === 'softSkills') {
-            refreshSoftSkills();
-          }
-
-          // Refresh Recent Updates to show the new activity
-          refreshRecentUpdates();
-        }
-      } catch (err) {
-        logger.error("Error saving", err);
+    try {
+      const result = await handler.update(data);
+      if (result?.success) {
+        await refresh();
+        handler.refresh();
+        refreshRecentUpdates();
       }
+    } catch (err) {
+      logger.error("Error saving", err);
     }
   };
 
@@ -2379,14 +2212,16 @@ const StudentDashboard = () => {
           )}
 
           {/* My Learning Section - Enrolled Courses */}
-          {tableTraining && tableTraining.length > 0 && (
+          {tableTraining && tableTraining.filter(course => course.verified === true || course.approval_status === 'verified' || course.approval_status === 'approved').length > 0 && (
             <div className="mt-6">
               <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-blue-600" />
                 My Learning
               </h3>
               <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 blue-scrollbar">
-                {tableTraining.map((course, idx) => (
+                {tableTraining
+                  .filter(course => course.verified === true || course.approval_status === 'verified' || course.approval_status === 'approved')
+                  .map((course, idx) => (
                   <div
                     key={course.id || `course-${idx}`}
                     className="p-4 rounded-xl bg-white border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer"
@@ -3185,7 +3020,12 @@ const StudentDashboard = () => {
 
               {/* Achievement Timeline - 1 column */}
               <div>
-                <AchievementsTimeline userData={userData} />
+                <AchievementsTimeline userData={{
+                  certificates: tableCertificates || [],
+                  projects: tableProjects || [],
+                  education: tableEducation || [],
+                  experience: tableExperience || []
+                }} />
               </div>
             </div>
           </>
@@ -3197,7 +3037,7 @@ const StudentDashboard = () => {
         <EducationEditModal
           isOpen
           onClose={() => setActiveModal(null)}
-          data={Array.isArray(tableEducation) && tableEducation.length > 0 ? tableEducation : userData.education}
+          data={tableEducation || []}
           onSave={createSaveHandler("education", refreshEducation)}
         />
       )}
@@ -3206,7 +3046,7 @@ const StudentDashboard = () => {
         <TrainingEditModal
           isOpen
           onClose={() => setActiveModal(null)}
-          data={userData.training}
+          data={tableTraining || []}
           onSave={createSaveHandler("training", refreshTraining)}
         />
       )}
@@ -3215,28 +3055,26 @@ const StudentDashboard = () => {
         <ExperienceEditModal
           isOpen
           onClose={() => setActiveModal(null)}
-          data={Array.isArray(tableExperience) && tableExperience.length > 0 ? tableExperience : userData.experience}
+          data={tableExperience || []}
           onSave={createSaveHandler("experience", refreshExperience)}
         />
       )}
 
       {activeModal === "softSkills" && (
-        <SkillsEditModal
+        <SoftSkillsEditModal
           isOpen
           onClose={() => setActiveModal(null)}
           data={tableSoftSkills || []}
           onSave={createSaveHandler("softSkills", refreshSoftSkills)}
-          title="Soft Skills"
         />
       )}
 
       {activeModal === "skills" && (
-        <SkillsEditModal
+        <TechnicalSkillsEditModal
           isOpen
           onClose={() => setActiveModal(null)}
           data={tableTechnicalSkills || []}
           onSave={createSaveHandler("technicalSkills", refreshTechnicalSkills)}
-          title="Technical Skills"
         />
       )}
 
@@ -3244,7 +3082,7 @@ const StudentDashboard = () => {
         <ProjectsEditModal
           isOpen
           onClose={() => setActiveModal(null)}
-          data={Array.isArray(tableProjects) && tableProjects.length > 0 ? tableProjects : userData.projects}
+          data={tableProjects || []}
           onSave={createSaveHandler("projects", refreshProjects)}
         />
       )}
@@ -3253,7 +3091,7 @@ const StudentDashboard = () => {
         <CertificatesEditModal
           isOpen
           onClose={() => setActiveModal(null)}
-          data={Array.isArray(tableCertificates) && tableCertificates.length > 0 ? tableCertificates : userData.certificates}
+          data={tableCertificates || []}
           onSave={createSaveHandler("certificates", refreshCertificates)}
         />
       )}

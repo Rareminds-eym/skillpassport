@@ -15,28 +15,16 @@ const TopSkillsInDemand = ({ limit = 5, showHeader = true, className = "" }) => 
   const [lastUpdated, setLastUpdated] = useState(null);
   const [debugInfo, setDebugInfo] = useState(null);
 
-  // Debug logging
-  const debugLog = (message, data = null) => {
-    console.log(`[TopSkillsInDemand] ${message}`, data || '');
-  };
-
   useEffect(() => {
-    debugLog('Component mounted, fetching top skills...');
     fetchTopSkills();
   }, [limit]);
 
   const fetchTopSkills = async () => {
     try {
-      debugLog('Starting fetchTopSkills...');
       setLoading(true);
       setError(null);
       
-      // Debug the opportunities table first
-      await SkillsAnalyticsService.debugOpportunitiesTable();
-      
       const analysis = await SkillsAnalyticsService.getSkillsDemandAnalysis(limit);
-      
-      debugLog('Received analysis:', analysis);
       
       setSkillsData(analysis.topSkills);
       setLastUpdated(analysis.lastUpdated);
@@ -46,15 +34,11 @@ const TopSkillsInDemand = ({ limit = 5, showHeader = true, className = "" }) => 
         mostDemanded: analysis.analysis.mostDemandedSkill,
         averageDemand: analysis.analysis.averageDemand
       });
-
-      debugLog('State updated with skills data:', analysis.topSkills);
     } catch (err) {
-      debugLog('Error in fetchTopSkills:', err);
       console.error('Error fetching top skills:', err);
       setError('Failed to load skills data');
     } finally {
       setLoading(false);
-      debugLog('fetchTopSkills completed');
     }
   };
 

@@ -30,7 +30,7 @@ import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
 import { useCreateStudentAdminConversation, useStudentAdminConversations, useStudentAdminMessages } from '../../hooks/useStudentAdminMessages';
 import { useCreateStudentCollegeAdminConversation, useStudentCollegeAdminConversations, useStudentCollegeAdminMessages } from '../../hooks/useStudentCollegeAdminMessages';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useStudentData } from '../../hooks/useStudentData';
 import { useStudentEducatorConversations, useStudentEducatorMessages } from '../../hooks/useStudentEducatorMessages';
 import { useStudentConversations, useStudentMessages } from '../../hooks/useStudentMessages';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
@@ -77,17 +77,15 @@ const Messages = () => {
 
   // Get student data - same approach as Applications page
   const user = useUser();
-  const userEmail = localStorage.getItem('userEmail') || user?.email;
-  const { studentData, loading: loadingStudentData } = useStudentDataByEmail(userEmail);
-  const studentId = studentData?.id || user?.id;
-  const studentName = studentData?.profile?.name || user?.name || 'Student';
+  const { student, studentId, isLoading: loadingStudentData } = useStudentData({ loadRelated: false });
+  const studentName = student?.name || user?.name || 'Student';
 
   // Check if user is a learner using the utility function
-  const isLearnerUser = checkIsLearner(studentData);
+  const isLearnerUser = checkIsLearner(student);
 
   // Determine available tabs based on student's school_id and university_college_id
-  const hasSchoolId = !!studentData?.school_id;
-  const hasCollegeId = !!studentData?.university_college_id;
+  const hasSchoolId = !!student?.school_id;
+  const hasCollegeId = !!student?.university_college_id;
 
   // Available tabs logic:
   // - Recruiters: Always available
@@ -314,10 +312,10 @@ const Messages = () => {
 
   // Debug logging - only when there's an issue
   useEffect(() => {
-    if (!studentId && !loadingStudentData && userEmail) {
-      logger.warn('No studentId found for email', { email: userEmail });
+    if (!studentId && !loadingStudentData) {
+      logger.warn('No studentId found');
     }
-  }, [studentId, loadingStudentData, userEmail]);
+  }, [studentId, loadingStudentData]);
 
   // Helper functions for admin online status - MOVED UP to fix initialization order
   const getSchoolAdminUserId = useCallback(async (conversation) => {

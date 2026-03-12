@@ -88,6 +88,8 @@ interface StudentState {
   updateEducationBulk: (records: Partial<Education>[]) => Promise<{ success: boolean; data?: Education[] | null; error?: string | null }>;
   updateExperienceBulk: (records: Partial<Experience>[]) => Promise<{ success: boolean; data?: Experience[] | null; error?: string | null }>;
   updateSkillsBulk: (records: Partial<Skill>[]) => Promise<{ success: boolean; data?: Skill[] | null; error?: string | null }>;
+  updateTechnicalSkillsBulk: (records: Partial<Skill>[]) => Promise<{ success: boolean; data?: Skill[] | null; error?: string | null }>;
+  updateSoftSkillsBulk: (records: Partial<Skill>[]) => Promise<{ success: boolean; data?: Skill[] | null; error?: string | null }>;
   updateProjectsBulk: (records: Partial<Project>[]) => Promise<{ success: boolean; data?: Project[] | null; error?: string | null }>;
   updateTrainingsBulk: (records: Partial<Training>[]) => Promise<{ success: boolean; data?: Training[] | null; error?: string | null }>;
   updateCertificatesBulk: (records: Partial<Certificate>[]) => Promise<{ success: boolean; data?: Certificate[] | null; error?: string | null }>;
@@ -153,7 +155,18 @@ export const useStudentStore = create<StudentState>()(
       // ==================== CORE STUDENT ACTIONS ====================
       
       loadStudentByUserId: async (userId) => {
+        // Clear old student data first
         set((state) => {
+          state.student = null;
+          state.studentId = null;
+          state.education = [];
+          state.experience = [];
+          state.skills = [];
+          state.projects = [];
+          state.trainings = [];
+          state.certificates = [];
+          state.hasStudent = false;
+          state.isProfileComplete = false;
           state.isLoading = true;
           state.error = null;
         });
@@ -184,7 +197,18 @@ export const useStudentStore = create<StudentState>()(
       },
       
       loadStudentById: async (studentId) => {
+        // Clear old student data first
         set((state) => {
+          state.student = null;
+          state.studentId = null;
+          state.education = [];
+          state.experience = [];
+          state.skills = [];
+          state.projects = [];
+          state.trainings = [];
+          state.certificates = [];
+          state.hasStudent = false;
+          state.isProfileComplete = false;
           state.isLoading = true;
           state.error = null;
         });
@@ -400,8 +424,6 @@ export const useStudentStore = create<StudentState>()(
       },
       
       loadTrainings: async (studentId) => {
-        console.log('🔵 [studentStore] loadTrainings called', { studentId });
-        
         set((state) => {
           state.isLoadingTrainings = true;
         });
@@ -409,21 +431,17 @@ export const useStudentStore = create<StudentState>()(
         try {
           const result = await trainingsService.getTrainingsByStudentId(studentId);
           
-          console.log('🔵 [studentStore] loadTrainings result', { success: result.success, count: result.data?.length, trainings: result.data });
-          
           if (result.success) {
             set((state) => {
               state.trainings = result.data || [];
               state.isLoadingTrainings = false;
             });
           } else {
-            console.error('🔴 [studentStore] loadTrainings failed', result.error);
             set((state) => {
               state.isLoadingTrainings = false;
             });
           }
         } catch (err) {
-          console.error('🔴 [studentStore] loadTrainings error', err);
           set((state) => {
             state.isLoadingTrainings = false;
           });
@@ -510,6 +528,80 @@ export const useStudentStore = create<StudentState>()(
           return { success: false, error: result.error };
         } catch (err) {
           console.error('Failed to bulk update skills', err);
+          return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+        }
+      },
+      
+      updateTechnicalSkillsBulk: async (records) => {
+        const { studentId, skills } = get();
+        if (!studentId) return { success: false, error: 'No student ID' };
+        
+        try {
+          // Valid DB fields only
+          const validFields = ['id', 'student_id', 'name', 'type', 'level', 'description', 'verified', 'enabled', 'approval_status', 'training_id', 'proficiency_level', 'pending_edit_data', 'has_pending_edit', 'verified_data'];
+          
+          const cleanRecord = (record: any) => {
+            const clean: any = {};
+            validFields.forEach(field => {
+              if (record[field] !== undefined) {
+                clean[field] = record[field];
+              }
+            });
+            return clean;
+          };
+          
+          // Keep existing soft skills, update only technical skills
+          const softSkills = skills.filter(s => s.type === 'soft').map(cleanRecord);
+          const technicalSkills = records.map(r => cleanRecord({ ...r, type: 'technical' }));
+          const allSkills = [...softSkills, ...technicalSkills];
+          
+          const result = await skillsService.bulkUpsertSkills(studentId, allSkills);
+          if (result.success) {
+            set((state) => {
+              state.skills = result.data || [];
+            });
+            return { success: true, data: result.data };
+          }
+          return { success: false, error: result.error };
+        } catch (err) {
+          console.error('Failed to bulk update technical skills', err);
+          return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+        }
+      },
+      
+      updateSoftSkillsBulk: async (records) => {
+        const { studentId, skills } = get();
+        if (!studentId) return { success: false, error: 'No student ID' };
+        
+        try {
+          // Valid DB fields only
+          const validFields = ['id', 'student_id', 'name', 'type', 'level', 'description', 'verified', 'enabled', 'approval_status', 'training_id', 'proficiency_level', 'pending_edit_data', 'has_pending_edit', 'verified_data'];
+          
+          const cleanRecord = (record: any) => {
+            const clean: any = {};
+            validFields.forEach(field => {
+              if (record[field] !== undefined) {
+                clean[field] = record[field];
+              }
+            });
+            return clean;
+          };
+          
+          // Keep existing technical skills, update only soft skills
+          const technicalSkills = skills.filter(s => s.type === 'technical').map(cleanRecord);
+          const softSkills = records.map(r => cleanRecord({ ...r, type: 'soft' }));
+          const allSkills = [...technicalSkills, ...softSkills];
+          
+          const result = await skillsService.bulkUpsertSkills(studentId, allSkills);
+          if (result.success) {
+            set((state) => {
+              state.skills = result.data || [];
+            });
+            return { success: true, data: result.data };
+          }
+          return { success: false, error: result.error };
+        } catch (err) {
+          console.error('Failed to bulk update soft skills', err);
           return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
         }
       },
@@ -784,6 +876,8 @@ export const useStudentEntityActions = () => ({
   updateSkillItem: useStudentStore((state) => state.updateSkillItem),
   deleteSkillItem: useStudentStore((state) => state.deleteSkillItem),
   updateSkillsBulk: useStudentStore((state) => state.updateSkillsBulk),
+  updateTechnicalSkillsBulk: useStudentStore((state) => state.updateTechnicalSkillsBulk),
+  updateSoftSkillsBulk: useStudentStore((state) => state.updateSoftSkillsBulk),
   
   // Projects
   addProject: useStudentStore((state) => state.addProject),
@@ -828,3 +922,6 @@ export const useStudentProfile = () => {
     error,
   };
 };
+
+// Export clearStudent for use in other stores
+export const clearStudent = () => useStudentStore.getState().clearStudent();

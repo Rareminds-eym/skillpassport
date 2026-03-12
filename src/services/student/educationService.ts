@@ -57,12 +57,51 @@ export async function updateEducation(
   updates: Partial<CreateEducationInput>
 ): Promise<ServiceResponse<Education>> {
   try {
+    // First, get the current education to check if it's verified
+    const { data: currentEducation, error: fetchError } = await supabase
+      .from('education')
+      .select('*')
+      .eq('id', educationId)
+      .single();
+
+    if (fetchError) {
+      logger.error('Failed to fetch current education', fetchError, { educationId });
+      return { success: false, data: null, error: fetchError.message };
+    }
+
+    // Check if education is verified/approved
+    const isVerified = currentEducation.approval_status === 'verified' || currentEducation.approval_status === 'approved';
+
+    let updateData: any = {
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (isVerified) {
+      // If verified, store changes as pending edit
+      updateData = {
+        has_pending_edit: true,
+        pending_edit_data: updates,
+        updated_at: new Date().toISOString(),
+      };
+      
+      // Store current verified data if not already stored
+      if (!currentEducation.verified_data) {
+        updateData.verified_data = {
+          degree: currentEducation.degree,
+          department: currentEducation.department,
+          university: currentEducation.university,
+          year_of_passing: currentEducation.year_of_passing,
+          cgpa: currentEducation.cgpa,
+          level: currentEducation.level,
+          status: currentEducation.status,
+        };
+      }
+    }
+
     const { data, error } = await supabase
       .from('education')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', educationId)
       .select()
       .single();
@@ -109,6 +148,18 @@ export async function bulkUpsertEducation(
       'has_pending_edit', 'pending_edit_data', 'verified_data', 'created_at', 'updated_at'
     ];
     
+    // Get existing education records to check verification status
+    const existingIds = educationRecords.filter(r => r.id).map(r => r.id);
+    let existingEducation: any[] = [];
+    
+    if (existingIds.length > 0) {
+      const { data } = await supabase
+        .from('education')
+        .select('*')
+        .in('id', existingIds);
+      existingEducation = data || [];
+    }
+    
     const records = educationRecords.map(record => {
       const cleanRecord: any = {
         student_id: studentId,
@@ -119,12 +170,82 @@ export async function bulkUpsertEducation(
       if (record.institution) cleanRecord.university = record.institution;
       if (record.yearOfPassing) cleanRecord.year_of_passing = record.yearOfPassing;
       
-      // Copy valid fields
-      validFields.forEach(field => {
-        if (record[field] !== undefined && field !== 'student_id' && field !== 'updated_at') {
-          cleanRecord[field] = record[field];
+      // Find existing education if updating
+      const existingEdu = existingEducation.find(e => e.id === record.id);
+      const isVerified = existingEdu && (existingEdu.approval_status === 'verified' || existingEdu.approval_status === 'approved');
+      
+      if (isVerified) {
+        // For verified education, store changes as pending edit
+        // CRITICAL: Keep all existing fields to avoid NOT NULL violations
+        cleanRecord.id = record.id;
+        
+        // Copy all existing fields from the database
+        Object.keys(existingEdu).forEach(key => {
+          if (key !== 'updated_at' && existingEdu[key] !== undefined) {
+            cleanRecord[key] = existingEdu[key];
+          }
+        });
+        
+        // Check if any field actually changed
+        let hasChanges = false;
+        const pendingChanges: any = {};
+        
+        const compareField = (fieldName: string, newValue: any) => {
+          const oldValue = existingEdu[fieldName];
+          const oldNorm = oldValue === null || oldValue === undefined ? '' : String(oldValue);
+          const newNorm = newValue === null || newValue === undefined ? '' : String(newValue);
+          
+          if (oldNorm !== newNorm) {
+            hasChanges = true;
+            pendingChanges[fieldName] = newValue;
+          }
+        };
+        
+        // Check direct fields
+        if (record.degree !== undefined) compareField('degree', record.degree);
+        if (record.department !== undefined) compareField('department', record.department);
+        if (record.university !== undefined) compareField('university', record.university);
+        if (record.year_of_passing !== undefined) compareField('year_of_passing', record.year_of_passing);
+        if (record.cgpa !== undefined) compareField('cgpa', record.cgpa);
+        if (record.level !== undefined) compareField('level', record.level);
+        if (record.status !== undefined) compareField('status', record.status);
+        
+        // Check mapped fields
+        if (record.institution !== undefined) compareField('university', record.institution);
+        if (record.yearOfPassing !== undefined) compareField('year_of_passing', record.yearOfPassing);
+        
+        // Only set has_pending_edit if there are actual changes
+        if (hasChanges) {
+          cleanRecord.has_pending_edit = true;
+          cleanRecord.pending_edit_data = pendingChanges;
+          
+          if (!existingEdu.verified_data) {
+            cleanRecord.verified_data = {
+              degree: existingEdu.degree,
+              department: existingEdu.department,
+              university: existingEdu.university,
+              year_of_passing: existingEdu.year_of_passing,
+              cgpa: existingEdu.cgpa,
+              level: existingEdu.level,
+              status: existingEdu.status,
+            };
+          } else {
+            cleanRecord.verified_data = existingEdu.verified_data;
+          }
         }
-      });
+      } else {
+        // For new or unverified education, update normally
+        validFields.forEach(field => {
+          if (record[field] !== undefined && field !== 'student_id' && field !== 'updated_at') {
+            cleanRecord[field] = record[field];
+          }
+        });
+        
+        // Set has_pending_edit to false for new/unverified education
+        if (cleanRecord.has_pending_edit === undefined) {
+          cleanRecord.has_pending_edit = false;
+        }
+      }
       
       return cleanRecord;
     });

@@ -90,16 +90,16 @@ const ProfileItemModal = ({
       
       // Special field mapping for training data
       if (type === 'training') {
-        // Ensure numeric fields are properly set
-        if (sourceData.completedModules !== undefined) {
-          editData.completedModules = sourceData.completedModules || 0;
-        }
-        if (sourceData.totalModules !== undefined) {
-          editData.totalModules = sourceData.totalModules || 0;
-        }
-        if (sourceData.hoursSpent !== undefined) {
-          editData.hoursSpent = sourceData.hoursSpent || 0;
-        }
+        // Map database fields to form fields
+        if (sourceData.title !== undefined) editData.course = sourceData.title;
+        if (sourceData.organization !== undefined) editData.provider = sourceData.organization;
+        if (sourceData.start_date !== undefined) editData.startDate = sourceData.start_date;
+        if (sourceData.end_date !== undefined) editData.endDate = sourceData.end_date;
+        if (sourceData.completed_modules !== undefined) editData.completedModules = sourceData.completed_modules;
+        if (sourceData.total_modules !== undefined) editData.totalModules = sourceData.total_modules;
+        if (sourceData.hours_spent !== undefined) editData.hoursSpent = sourceData.hours_spent;
+        if (sourceData.status !== undefined) editData.status = sourceData.status;
+        if (sourceData.description !== undefined) editData.description = sourceData.description;
         
         // Ensure skills are properly loaded for training
         if (sourceData.skills && Array.isArray(sourceData.skills) && sourceData.skills.length > 0) {
@@ -306,6 +306,39 @@ const ProfileItemModal = ({
       }
     });
 
+    // Special processing for training: map form fields back to database fields
+    if (type === 'training') {
+      // Map form fields to database fields
+      if (processedData.course !== undefined) {
+        processedData.title = processedData.course;
+        delete processedData.course;
+      }
+      if (processedData.provider !== undefined) {
+        processedData.organization = processedData.provider;
+        delete processedData.provider;
+      }
+      if (processedData.startDate !== undefined) {
+        processedData.start_date = processedData.startDate;
+        delete processedData.startDate;
+      }
+      if (processedData.endDate !== undefined) {
+        processedData.end_date = processedData.endDate;
+        delete processedData.endDate;
+      }
+      if (processedData.completedModules !== undefined) {
+        processedData.completed_modules = processedData.completedModules;
+        delete processedData.completedModules;
+      }
+      if (processedData.totalModules !== undefined) {
+        processedData.total_modules = processedData.totalModules;
+        delete processedData.totalModules;
+      }
+      if (processedData.hoursSpent !== undefined) {
+        processedData.hours_spent = processedData.hoursSpent;
+        delete processedData.hoursSpent;
+      }
+    }
+
     // Special processing for skills: map fields correctly to database
     if (type === 'skills' || type === 'technicalSkills' || type === 'softSkills') {
       // Map rating (1-5) to level field in database
@@ -313,11 +346,21 @@ const ProfileItemModal = ({
         processedData.level = parseInt(processedData.rating) || 3;
       }
       
-      // Map level text ("Intermediate", "Advanced") to proficiency_level field in database
-      if (processedData.level && typeof processedData.level === 'string') {
-        processedData.proficiency_level = processedData.level;
-        // Set level to the rating value instead
-        processedData.level = parseInt(processedData.rating) || 3;
+      // Map level dropdown text ("Beginner", "Intermediate", "Advanced", "Expert") to proficiency_level
+      // The form field "level" contains the text, which should go to proficiency_level in DB
+      // The form field "rating" contains the number, which should go to level in DB
+      if (formData.level && typeof formData.level === 'string') {
+        processedData.proficiency_level = formData.level;
+      }
+      
+      // If no proficiency_level set but we have the original item's value, preserve it
+      if (!processedData.proficiency_level && item?.proficiency_level) {
+        processedData.proficiency_level = item.proficiency_level;
+      }
+      
+      // Set has_pending_edit to false by default for new/updated skills
+      if (processedData.has_pending_edit === undefined) {
+        processedData.has_pending_edit = false;
       }
     }
 
@@ -332,8 +375,8 @@ const ProfileItemModal = ({
 
     // Calculate progress for training type
     if (config.hasProgress) {
-      const completed = parsePositiveNumber(processedData.completedModules);
-      const total = parsePositiveNumber(processedData.totalModules);
+      const completed = parsePositiveNumber(processedData.completed_modules || processedData.completedModules);
+      const total = parsePositiveNumber(processedData.total_modules || processedData.totalModules);
       processedData.progress = total > 0 ? calculateProgress(completed, total) : 0;
       
       // Auto-determine status based on modules
@@ -641,10 +684,12 @@ const ProfileItemModal = ({
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto pr-2 -mr-2">
           <div className="space-y-5 pt-2">
-            {/* Pending Approval Note */}
-            {item && item._hasPendingEdit && (
+            {/* Pending Approval Note for verified items being edited */}
+            {item && (item._hasPendingEdit || item.has_pending_edit || (item.approval_status === 'verified' || item.approval_status === 'approved')) && (
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-                <strong>Note:</strong> Your changes are saved but pending approval. The dashboard shows the verified version until approved.
+                <strong>Note:</strong> {item._hasPendingEdit || item.has_pending_edit 
+                  ? 'Your changes are saved but pending approval. The dashboard shows the verified version until approved.'
+                  : 'This item is verified. Any changes you make will be pending approval before being displayed.'}
               </div>
             )}
             

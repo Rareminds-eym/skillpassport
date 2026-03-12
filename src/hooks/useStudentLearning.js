@@ -24,12 +24,12 @@ export const useStudentLearning = (studentId, enabled = true) => {
       setError(null);
 
       // 1. Fetch trainings (table name stays same for backend compatibility)
+      // Fetch ALL trainings (verified and unverified) for editing
       const { data: trainings, error: fetchError } = await supabase
         .from('trainings')
         .select('*')
         .eq('student_id', studentId)
         .eq('enabled', true)
-        .in('approval_status', ['verified', 'approved'])
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;

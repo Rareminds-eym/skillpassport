@@ -82,7 +82,7 @@ export const getCollegeStudentClassInfo = async (studentId: string): Promise<Col
     let collegeName = '';
     if (data.college_id) {
       const { data: collegeData } = await supabase
-        .from('colleges')
+        .from('university_colleges')
         .select('name')
         .eq('id', data.college_id)
         .single();

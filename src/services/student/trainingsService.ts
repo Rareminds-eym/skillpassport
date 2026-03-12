@@ -10,8 +10,6 @@ const logger = getLogger('trainings-service');
 
 export async function getTrainingsByStudentId(studentId: string): Promise<ServiceResponse<Training[]>> {
   try {
-    console.log('🔵 [trainingsService] getTrainingsByStudentId called', { studentId });
-    
     const { data, error } = await supabase
       .from('trainings')
       .select('*')
@@ -20,11 +18,8 @@ export async function getTrainingsByStudentId(studentId: string): Promise<Servic
 
     if (error) {
       logger.error('Failed to fetch trainings', error, { studentId });
-      console.error('🔴 [trainingsService] Failed to fetch trainings from DB', error);
       return { success: false, data: null, error: error.message };
     }
-
-    console.log('🔵 [trainingsService] Trainings fetched from DB', { count: data?.length, trainings: data });
 
     // Fetch related skills for each training
     if (data && Array.isArray(data)) {
@@ -35,8 +30,6 @@ export async function getTrainingsByStudentId(studentId: string): Promise<Servic
             .select('*')
             .eq('training_id', training.id);
           
-          console.log('🔵 [trainingsService] Skills fetched for training', { trainingId: training.id, skillsCount: skills?.length, skills });
-          
           return {
             ...training,
             skills: skills || []
@@ -44,14 +37,12 @@ export async function getTrainingsByStudentId(studentId: string): Promise<Servic
         })
       );
       
-      console.log('🔵 [trainingsService] All trainings with skills loaded', { count: trainingsWithSkills.length });
       return { success: true, data: trainingsWithSkills, error: null };
     }
 
     return { success: true, data: data || [], error: null };
   } catch (err: any) {
     logger.error('Exception in getTrainingsByStudentId', err, { studentId });
-    console.error('🔴 [trainingsService] Exception in getTrainingsByStudentId', err);
     return { success: false, data: null, error: err.message };
   }
 }
@@ -110,6 +101,18 @@ export async function updateTraining(
   updates: any
 ): Promise<ServiceResponse<Training>> {
   try {
+    // First, get the current training to check if it's verified
+    const { data: currentTraining, error: fetchError } = await supabase
+      .from('trainings')
+      .select('*')
+      .eq('id', trainingId)
+      .single();
+
+    if (fetchError) {
+      logger.error('Failed to fetch current training', fetchError, { trainingId });
+      return { success: false, data: null, error: fetchError.message };
+    }
+
     // Extract skills separately
     const skills = updates.skills || updates.skillsList || [];
     
@@ -138,12 +141,42 @@ export async function updateTraining(
       }
     });
 
+    // Check if training is verified/approved
+    const isVerified = currentTraining.approval_status === 'verified' || currentTraining.approval_status === 'approved';
+
+    let updateData: any = {
+      ...cleanUpdates,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (isVerified) {
+      // If verified, store changes as pending edit
+      updateData = {
+        has_pending_edit: true,
+        pending_edit_data: cleanUpdates,
+        updated_at: new Date().toISOString(),
+      };
+      
+      // Store current verified data if not already stored
+      if (!currentTraining.verified_data) {
+        updateData.verified_data = {
+          title: currentTraining.title,
+          organization: currentTraining.organization,
+          start_date: currentTraining.start_date,
+          end_date: currentTraining.end_date,
+          duration: currentTraining.duration,
+          description: currentTraining.description,
+          status: currentTraining.status,
+          completed_modules: currentTraining.completed_modules,
+          total_modules: currentTraining.total_modules,
+          hours_spent: currentTraining.hours_spent,
+        };
+      }
+    }
+
     const { data, error } = await supabase
       .from('trainings')
-      .update({
-        ...cleanUpdates,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', trainingId)
       .select()
       .single();
@@ -259,6 +292,18 @@ export async function bulkUpsertTrainings(
     // Store skills separately before cleaning records
     const skillsByTrainingId: { [key: string]: any[] } = {};
     
+    // Get existing training records to check verification status
+    const existingIds = trainingRecords.filter(r => r.id).map(r => r.id);
+    let existingTrainings: any[] = [];
+    
+    if (existingIds.length > 0) {
+      const { data } = await supabase
+        .from('trainings')
+        .select('*')
+        .in('id', existingIds);
+      existingTrainings = data || [];
+    }
+    
     const records = trainingRecords.map(record => {
       // Extract skills separately
       const skills = record.skills || record.skillsList || [];
@@ -266,6 +311,12 @@ export async function bulkUpsertTrainings(
       const cleanRecord: any = {
         student_id: studentId,
         updated_at: new Date().toISOString(),
+      };
+      
+      // Helper to convert empty strings to null for date fields
+      const cleanDateField = (value: any) => {
+        if (value === '' || value === null || value === undefined) return null;
+        return value;
       };
       
       // Map common field name variations to DB columns
@@ -276,16 +327,90 @@ export async function bulkUpsertTrainings(
       if (record.completedModules !== undefined) cleanRecord.completed_modules = record.completedModules;
       if (record.totalModules !== undefined) cleanRecord.total_modules = record.totalModules;
       if (record.hoursSpent !== undefined) cleanRecord.hours_spent = record.hoursSpent;
-      if (record.startDate) cleanRecord.start_date = record.startDate;
-      if (record.endDate) cleanRecord.end_date = record.endDate;
+      if (record.startDate) cleanRecord.start_date = cleanDateField(record.startDate);
+      if (record.endDate) cleanRecord.end_date = cleanDateField(record.endDate);
       if (record.courseId) cleanRecord.course_id = record.courseId;
       
-      // Copy only valid fields (these will override the mappings above if present)
-      validFields.forEach(field => {
-        if (record[field] !== undefined && field !== 'student_id' && field !== 'updated_at') {
-          cleanRecord[field] = record[field];
+      // Also clean direct date fields
+      if (record.start_date !== undefined) cleanRecord.start_date = cleanDateField(record.start_date);
+      if (record.end_date !== undefined) cleanRecord.end_date = cleanDateField(record.end_date);
+      
+      // Find existing training if updating
+      const existingTraining = existingTrainings.find(t => t.id === record.id);
+      const isVerified = existingTraining && (existingTraining.approval_status === 'verified' || existingTraining.approval_status === 'approved');
+      
+      if (isVerified) {
+        // For verified trainings, store changes as pending edit
+        // CRITICAL: Keep all existing fields to avoid NOT NULL violations
+        cleanRecord.id = record.id;
+        
+        // Copy all existing fields from the database
+        Object.keys(existingTraining).forEach(key => {
+          if (key !== 'updated_at' && existingTraining[key] !== undefined) {
+            cleanRecord[key] = existingTraining[key];
+          }
+        });
+        
+        // Now set the versioning metadata
+        cleanRecord.has_pending_edit = true;
+        cleanRecord.pending_edit_data = {};
+        
+        // Store current verified data if not already stored
+        if (!existingTraining.verified_data) {
+          cleanRecord.verified_data = {
+            title: existingTraining.title,
+            organization: existingTraining.organization,
+            start_date: existingTraining.start_date,
+            end_date: existingTraining.end_date,
+            duration: existingTraining.duration,
+            description: existingTraining.description,
+            status: existingTraining.status,
+            completed_modules: existingTraining.completed_modules,
+            total_modules: existingTraining.total_modules,
+            hours_spent: existingTraining.hours_spent,
+          };
+        } else {
+          cleanRecord.verified_data = existingTraining.verified_data;
         }
-      });
+        
+        // Build pending_edit_data with the changes
+        validFields.forEach(field => {
+          if (record[field] !== undefined && field !== 'student_id' && field !== 'updated_at' && field !== 'id' && 
+              field !== 'has_pending_edit' && field !== 'pending_edit_data' && field !== 'verified_data') {
+            const value = record[field];
+            // Clean empty strings for date fields
+            if ((field === 'start_date' || field === 'end_date') && value === '') {
+              cleanRecord.pending_edit_data[field] = null;
+            } else {
+              cleanRecord.pending_edit_data[field] = value;
+            }
+          }
+        });
+        
+        // Also handle mapped fields
+        if (record.course) cleanRecord.pending_edit_data.title = record.course;
+        if (record.courseName) cleanRecord.pending_edit_data.title = record.courseName;
+        if (record.training_name) cleanRecord.pending_edit_data.title = record.training_name;
+        if (record.provider) cleanRecord.pending_edit_data.organization = record.provider;
+        if (record.completedModules !== undefined) cleanRecord.pending_edit_data.completed_modules = record.completedModules;
+        if (record.totalModules !== undefined) cleanRecord.pending_edit_data.total_modules = record.totalModules;
+        if (record.hoursSpent !== undefined) cleanRecord.pending_edit_data.hours_spent = record.hoursSpent;
+        if (record.startDate) cleanRecord.pending_edit_data.start_date = cleanDateField(record.startDate);
+        if (record.endDate) cleanRecord.pending_edit_data.end_date = cleanDateField(record.endDate);
+        if (record.courseId) cleanRecord.pending_edit_data.course_id = record.courseId;
+      } else {
+        // For new or unverified trainings, update normally
+        validFields.forEach(field => {
+          if (record[field] !== undefined && field !== 'student_id' && field !== 'updated_at') {
+            cleanRecord[field] = record[field];
+          }
+        });
+        
+        // Set has_pending_edit to false for new/unverified trainings
+        if (cleanRecord.has_pending_edit === undefined) {
+          cleanRecord.has_pending_edit = false;
+        }
+      }
       
       // Store skills for later processing (don't include in upsert)
       if (cleanRecord.id) {

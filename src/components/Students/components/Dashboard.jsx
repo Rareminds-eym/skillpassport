@@ -23,24 +23,13 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
-import { 
-  recentUpdates as mockRecentUpdates, 
-  suggestions as mockSuggestions, 
-  educationData as mockEducationData, 
-  trainingData as mockTrainingData, 
-  experienceData as mockExperienceData, 
-  technicalSkills as mockTechnicalSkills, 
-  softSkills as mockSoftSkills, 
-  opportunities as mockOpportunities,
-  studentData as mockStudentData
-} from '../data/mockData'; // Removed mock data imports
 import {
   EducationEditModal,
   TrainingEditModal,
   ExperienceEditModal,
   SkillsEditModal
 } from './ProfileEditModals';
-import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
+import { useStudentData } from '../../../hooks/useStudentData';
 import { useStudentRealtimeActivities } from '../../../hooks/useStudentRealtimeActivities';
 
 const Dashboard = () => {
@@ -53,97 +42,65 @@ const Dashboard = () => {
   const user = useUser();
   const userEmail = user?.email;
 
-  // Fetch student data by EMAIL (from real Supabase table)
+  // Fetch student data using new architecture
   const {
-    studentData,
-    loading,
+    student: studentData,
+    education,
+    trainings,
+    experience,
+    skills,
+    isLoading: loading,
     error,
-    refresh,
-    updateEducation,
-    updateTraining,
-    updateExperience,
-    updateTechnicalSkills,
-    updateSoftSkills
-  } = useStudentDataByEmail(userEmail, false); // no fallback to mock data
+    refreshProfile: refresh,
+    updateEducationBulk,
+    updateTrainingsBulk,
+    updateExperienceBulk,
+    updateTechnicalSkillsBulk,
+    updateSoftSkillsBulk
+  } = useStudentData({ loadRelated: true });
 
-  // Fetch real-time student activities (replaces mock recentUpdates)
+  // Fetch real-time student activities
   const { 
     activities: recentActivities, 
     isLoading: activitiesLoading,
     isError: activitiesError
   } = useStudentRealtimeActivities(userEmail, 10);
 
-  // Extract data with fallback to mock data
-  const profile = studentData?.profile;
-  const education = studentData?.education || mockEducationData;
-  const training = studentData?.training || mockTrainingData;
-  const experience = studentData?.experience || mockExperienceData;
-  const technicalSkills = studentData?.technicalSkills || mockTechnicalSkills;
-  const softSkills = studentData?.softSkills || mockSoftSkills;
-  
-  // Use real activities instead of mock data
-  const recentUpdates = recentActivities.length > 0 ? recentActivities : mockRecentUpdates;
-  
-  const suggestions = studentData?.suggestions || mockSuggestions;
-  const opportunities = studentData?.opportunities || mockOpportunities;
-
-  const [userData, setUserData] = useState({
-    education: education || mockEducationData,
-    training: training || mockTrainingData,
-    experience: experience || mockExperienceData,
-    technicalSkills: technicalSkills || mockTechnicalSkills,
-    softSkills: softSkills || mockSoftSkills
-  });
-
-  // Update local state when Supabase data changess
-  React.useEffect(() => {
-    setUserData({
-      education: education || mockEducationData,
-      training: training || mockTrainingData,
-      experience: experience || mockExperienceData,
-      technicalSkills: technicalSkills || mockTechnicalSkills,
-      softSkills: softSkills || mockSoftSkills
-    });
-  }, [studentData, education, training, experience, technicalSkills, softSkills]);
+  // Separate skills by type
+  const technicalSkills = skills.filter(s => s.type === 'technical');
+  const softSkills = skills.filter(s => s.type === 'soft');
 
   const handleSave = async (section, data) => {
-    setUserData(prev => ({
-      ...prev,
-      [section]: data
-    }));
-    
-    // If connected to Supabase, save to database
-    if (userEmail && studentData?.profile) {
-      try {
-        
-        let result;
-        switch (section) {
-          case 'education':
-            result = await updateEducation(data);
-            break;
-          case 'training':
-            result = await updateTraining(data);
-            break;
-          case 'experience':
-            result = await updateExperience(data);
-            break;
-          case 'technicalSkills':
-            result = await updateTechnicalSkills(data);
-            break;
-          case 'softSkills':
-            result = await updateSoftSkills(data);
-            break;
-          default:
-            return;
-        }
-
-        if (result.success) {
-        } else {
-          console.error(`❌ Error saving ${section}:`, result.error);
-        }
-      } catch (err) {
-        console.error(`❌ Error saving ${section} to Supabase:`, err);
+    try {
+      let result;
+      switch (section) {
+        case 'education':
+          result = await updateEducationBulk(data);
+          break;
+        case 'training':
+          result = await updateTrainingsBulk(data);
+          break;
+        case 'experience':
+          result = await updateExperienceBulk(data);
+          break;
+        case 'technicalSkills':
+          result = await updateTechnicalSkillsBulk(data);
+          break;
+        case 'softSkills':
+          result = await updateSoftSkillsBulk(data);
+          break;
+        default:
+          return;
       }
+
+      // Refresh to get updated data from database
+      if (result && result.success) {
+        await refresh();
+      } else if (result) {
+        console.error(`Error saving ${section}:`, result.error);
+      }
+    } catch (err) {
+      console.error(`Error saving ${section}:`, err);
     }
   };
 
@@ -167,7 +124,7 @@ const Dashboard = () => {
                 <Award className="w-5 h-5" />
                 My Education
                 <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                  {userData.education?.filter(education => education.enabled !== false).length || 0} Qualifications
+                  {education?.filter(edu => edu.enabled !== false).length || 0} Qualifications
                 </Badge>
               </div>
               <div className="flex gap-2">
@@ -184,41 +141,41 @@ const Dashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 max-h-80 overflow-y-auto">
-            {userData.education?.filter(education => education.enabled !== false).map((education, index) => (
-              <div key={education.id} className={`p-4 rounded-lg border-l-4 ${
-                education.status === 'ongoing' 
+            {education?.filter(edu => edu.enabled !== false).map((edu, index) => (
+              <div key={edu.id} className={`p-4 rounded-lg border-l-4 ${
+                edu.status === 'ongoing' 
                   ? 'border-l-blue-500 bg-blue-50' 
-                  : education.level === 'Bachelor\'s' 
+                  : edu.level === 'Bachelor\'s' 
                     ? 'border-l-emerald-500 bg-emerald-50'
-                    : education.level === 'Certificate'
+                    : edu.level === 'Certificate'
                       ? 'border-l-amber-500 bg-amber-50'
                       : 'border-l-gray-500 bg-gray-50'
               } hover:shadow-md transition-shadow`}>
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
-                    <h4 className="font-semibold text-gray-800 text-sm">{education.degree}</h4>
-                    <p className="text-sm text-gray-600 font-medium">{education.university}</p>
+                    <h4 className="font-semibold text-gray-800 text-sm">{edu.degree}</h4>
+                    <p className="text-sm text-gray-600 font-medium">{edu.university}</p>
                   </div>
                   <Badge className={`${
-                    education.status === 'ongoing' 
+                    edu.status === 'ongoing' 
                       ? 'bg-blue-500 hover:bg-blue-500' 
                       : 'bg-emerald-500 hover:bg-emerald-500'
                   } text-white text-xs`}>
-                    {education.status}
+                    {edu.status}
                   </Badge>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div key={`level-${education.id}`}>
+                  <div key={`level-${edu.id}`}>
                     <p className="text-gray-500 font-medium">Level</p>
-                    <p className="font-semibold text-gray-700">{education.level}</p>
+                    <p className="font-semibold text-gray-700">{edu.level}</p>
                   </div>
-                  <div key={`year-${education.id}`}>
+                  <div key={`year-${edu.id}`}>
                     <p className="text-gray-500 font-medium">Year</p>
-                    <p className="font-semibold text-gray-700">{education.yearOfPassing}</p>
+                    <p className="font-semibold text-gray-700">{edu.yearOfPassing}</p>
                   </div>
-                  <div key={`grade-${education.id}`}>
+                  <div key={`grade-${edu.id}`}>
                     <p className="text-gray-500 font-medium">Grade</p>
-                    <p className="font-semibold text-gray-700">{education.cgpa}</p>
+                    <p className="font-semibold text-gray-700">{edu.cgpa}</p>
                   </div>
                 </div>
               </div>
@@ -273,7 +230,7 @@ const Dashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 bg-gradient-to-br from-[#5378f1]/5 to-[#5378f1]/10">
-            {userData.training?.filter(training => training.enabled !== false).slice(0, 2).map((training, index) => (
+            {trainings?.filter(training => training.enabled !== false && training.verified === true).slice(0, 2).map((training, index) => (
               <div key={index} className="space-y-3 p-4 bg-gradient-to-br from-[#5378f1]/20 to-[#5378f1]/30 rounded-lg border border-[#5378f1]/40 shadow-sm">
                 <div className="flex justify-between items-start">
                   <p className="text-sm font-semibold text-[#5378f1]">{training.course}</p>
@@ -287,6 +244,12 @@ const Dashboard = () => {
                 <p className="text-xs text-[#5378f1] font-medium">{training.progress}% Complete</p>
               </div>
             ))}
+            {trainings?.filter(training => training.enabled !== false && training.verified === true).length === 0 && (
+              <div className="text-center py-6 text-gray-500">
+                <p className="text-sm">No verified trainings yet</p>
+                <p className="text-xs mt-1">Add trainings and wait for verification</p>
+              </div>
+            )}
             <Button 
               variant="outline" 
               onClick={() => setActiveModal('training')}
@@ -334,7 +297,7 @@ const Dashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {userData.experience?.filter(exp => exp.enabled !== false).slice(0, 2).map((exp, index) => (
+            {experience?.filter(exp => exp.enabled !== false).slice(0, 2).map((exp, index) => (
               <div key={index} className="p-4 bg-gradient-to-r from-indigo-50 to-white rounded-lg border-l-4 border-l-indigo-400 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -548,13 +511,13 @@ const Dashboard = () => {
               </div>
               <p className="text-xs text-red-600 ml-5">{error}</p>
             </div>
-          ) : studentData && studentData.profile ? (
-            // 🟢 CONNECTED STATE - Has real data
+          ) : studentData ? (
+            // Connected to database with real data
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Database className="w-5 h-5 text-green-600" />
                 <span className="text-sm font-medium text-green-700">
-                  Connected to Supabase ✓ (Real Data: {profile.name})
+                  Connected to Database ✓ ({studentData.name || studentData.email})
                 </span>
               </div>
               <Button 
@@ -747,7 +710,7 @@ const Dashboard = () => {
         {/* Edit Modals */}
         {activeModal === 'education' && (
           <EducationEditModal
-            data={userData.education}
+            data={education}
             onSave={(data) => handleSave('education', data)}
             onClose={() => setActiveModal(null)}
           />
@@ -755,7 +718,7 @@ const Dashboard = () => {
         
         {activeModal === 'training' && (
           <TrainingEditModal
-            data={userData.training}
+            data={trainings}
             onSave={(data) => handleSave('training', data)}
             onClose={() => setActiveModal(null)}
           />
@@ -763,7 +726,7 @@ const Dashboard = () => {
         
         {activeModal === 'experience' && (
           <ExperienceEditModal
-            data={userData.experience}
+            data={experience}
             onSave={(data) => handleSave('experience', data)}
             onClose={() => setActiveModal(null)}
           />
@@ -771,8 +734,8 @@ const Dashboard = () => {
         
         {activeModal === 'skills' && (
           <SkillsEditModal
-            technicalSkills={userData.technicalSkills}
-            softSkills={userData.softSkills}
+            technicalSkills={technicalSkills}
+            softSkills={softSkills}
             onSave={(technical, soft) => {
               handleSave('technicalSkills', technical);
               handleSave('softSkills', soft);

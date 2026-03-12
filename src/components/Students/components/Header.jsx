@@ -19,7 +19,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useUser, useAuthActions } from "../../../stores";
 import { useNotifications } from "../../../hooks/useNotifications";
-import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
+import { useStudentData } from "../../../hooks/useStudentData";
 import { isLearner } from "../../../utils/studentType";
 import DigitalPortfolioSideDrawer from "./DigitalPortfolioSideDrawer";
 import NotificationPanel from "./NotificationPanel";
@@ -43,7 +43,7 @@ const Header = ({ activeTab, setActiveTab }) => {
   const { unreadCount } = useNotifications(userEmail);
 
   // Fetch student data to check school/college association
-  const { studentData, loading: studentDataLoading } = useStudentDataByEmail(userEmail);
+  const { student: studentData, isLoading: studentDataLoading } = useStudentData();
   const isPartOfSchoolOrCollege = !studentDataLoading && (studentData?.school_id || studentData?.university_college_id) && !isLearner(studentData);
   
   

@@ -410,34 +410,20 @@ const MainSettings = () => {
       }
       
       // Custom university name
-      console.log('🔍 Checking university:', {
-        university: studentData.university,
-        universityId: studentData.universityId,
-        shouldShow: studentData.university && (!studentData.universityId || studentData.universityId === '')
-      });
       if (studentData.university && (!studentData.universityId || studentData.universityId === '')) {
         setShowCustomUniversity(true);
         setCustomUniversityName(studentData.university);
-        console.log('✅ Set custom university:', studentData.university);
       }
       
       // Custom college name (for college students, stored in college field)
       // Check after university to ensure university path is established
-      console.log('🔍 Checking college:', {
-        isCollegeStudent,
-        college: studentData.college,
-        universityCollegeId: studentData.universityCollegeId,
-        shouldShow: isCollegeStudent && studentData.college && (!studentData.universityCollegeId || studentData.universityCollegeId === '')
-      });
       if (isCollegeStudent && studentData.college && (!studentData.universityCollegeId || studentData.universityCollegeId === '')) {
         setShowCustomCollege(true);
         setCustomCollegeName(studentData.college);
-        console.log('✅ Set custom college:', studentData.college);
         
         // IMPORTANT: If there's a custom college but no university, enable custom university input
         // This allows B2C college students to enter both custom college and custom university
         if (!studentData.university && !studentData.universityId) {
-          console.log('🔓 Enabling custom university input for custom college');
           setShowCustomUniversity(true);
         }
       }
@@ -562,18 +548,12 @@ const MainSettings = () => {
     try {
       setIsSaving(true);
       
-      console.log('💾 MainSettings: Saving education list:', educationList);
-      
       const result = await updateEducation(educationList);
-      
-      console.log('✅ MainSettings: Education save result:', result);
       
       if (result.success) {
         // Refresh education data from table to get updated versioning fields
         if (refreshEducation && typeof refreshEducation === 'function') {
-          console.log('🔄 MainSettings: Refreshing education data...');
           await refreshEducation();
-          console.log('✅ MainSettings: Education data refreshed');
         }
         
         setShowEducationModal(false);
@@ -640,8 +620,6 @@ const MainSettings = () => {
         type: "technical" // Force technical type for skills from Technical Skills
       }));
       
-      console.log('🔧 Settings: Technical skills data being saved:', skillsWithType);
-      
       // Use updateSkills (same as Dashboard) instead of updateTechnicalSkills
       const result = await updateSkills(skillsWithType);
       
@@ -671,18 +649,12 @@ const MainSettings = () => {
     try {
       setIsSaving(true);
       
-      console.log('💾 MainSettings: Saving experience list:', experienceList);
-      
       const result = await updateExperience(experienceList);
-      
-      console.log('✅ MainSettings: Experience save result:', result);
       
       if (result.success) {
         // Refresh experience from table
         if (refreshExperience) {
-          console.log('🔄 MainSettings: Refreshing experience data...');
           await refreshExperience();
-          console.log('✅ MainSettings: Experience data refreshed');
         }
         
         setShowExperienceModal(false);

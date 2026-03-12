@@ -66,30 +66,25 @@ const UnifiedProfileEditModal = ({
   const [modalJustOpened, setModalJustOpened] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      setModalJustOpened(true);
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-
-    // Only load data when modal first opens, not when data changes while editing
-    if (!modalJustOpened) return;
-
     if (data) {
       const normalizedData = Array.isArray(data) ? data : [data];
 
+      // FILTER: For skills modals, filter by type
+      let filteredData = normalizedData;
+      if (type === 'technicalSkills') {
+        filteredData = normalizedData.filter(item => item.type === 'technical');
+      } else if (type === 'softSkills') {
+        filteredData = normalizedData.filter(item => item.type === 'soft');
+      }
 
-
-      // VERSIONING FIX: Process items to show pending edits in the list
-      const processedItems = normalizedData.map(item => {
-
+      // VERSIONING: Process items to show pending edits in the list
+      const processedItems = filteredData.map(item => {
+        // Set _hasPendingEdit flag based on database field
+        const hasPendingEdit = item.has_pending_edit === true;
 
         // If there's a pending edit, merge it with the item for display in edit modal
-        if (item.has_pending_edit && item.pending_edit_data) {
-
-
-          // CRITICAL: Only merge valid fields from pending_edit_data to avoid old fields like org_name
+        if (hasPendingEdit && item.pending_edit_data) {
+          // CRITICAL: Only merge valid fields from pending_edit_data to avoid old fields
           const validFieldNames = config.fields.map(f => f.name);
           const cleanPendingData = {};
 
@@ -99,21 +94,27 @@ const UnifiedProfileEditModal = ({
             }
           });
 
-
           return {
             ...item,
-            // Show pending edit data in the edit list (not on dashboard)
             _hasPendingEdit: true,
             _verifiedData: item.verified_data,
-            // Merge ONLY valid fields from pending edit data
             ...cleanPendingData,
-            // Keep original id and metadata
             id: item.id,
             student_id: item.student_id,
             created_at: item.created_at,
             updated_at: item.updated_at,
           };
         }
+        
+        // Even if no pending_edit_data, still set the flag if has_pending_edit is true
+        if (hasPendingEdit) {
+          return {
+            ...item,
+            _hasPendingEdit: true,
+            _verifiedData: item.verified_data,
+          };
+        }
+        
         return item;
       });
 
@@ -183,14 +184,10 @@ const UnifiedProfileEditModal = ({
         setEditingIndex(0);
         setIsFormOpen(true);
       }
-
-      // Reset the flag after loading data
-      setModalJustOpened(false);
     } else {
       setItems([]);
-      setModalJustOpened(false);
     }
-  }, [modalJustOpened, data, singleEditMode, config]);
+  }, [data, singleEditMode, config]);
 
   if (!config) {
     console.error(`Unknown profile type: ${type}`);
@@ -420,11 +417,21 @@ const UnifiedProfileEditModal = ({
         processedData.level = parseInt(processedData.rating) || 3;
       }
 
-      // Map level text ("Intermediate", "Advanced") to proficiency_level field in database
-      if (processedData.level && typeof processedData.level === 'string') {
-        processedData.proficiency_level = processedData.level;
-        // Set level to the rating value instead
-        processedData.level = parseInt(processedData.rating) || 3;
+      // Map level dropdown text ("Beginner", "Intermediate", "Advanced", "Expert") to proficiency_level
+      // The form field "level" contains the text, which should go to proficiency_level in DB
+      // The form field "rating" contains the number, which should go to level in DB
+      if (formData.level && typeof formData.level === 'string') {
+        processedData.proficiency_level = formData.level;
+      }
+      
+      // If no proficiency_level set but we have the original item's value, preserve it
+      if (!processedData.proficiency_level && item?.proficiency_level) {
+        processedData.proficiency_level = item.proficiency_level;
+      }
+      
+      // Set has_pending_edit to false by default for new/updated skills
+      if (processedData.has_pending_edit === undefined) {
+        processedData.has_pending_edit = false;
       }
 
     }
@@ -664,44 +671,33 @@ const UnifiedProfileEditModal = ({
   };
 
   const handleSaveItem = async (savedItem) => {
-
-    if (editingItem && editingItem.index !== undefined) {
-      // Update existing item
-      const updatedItems = items.map((item, idx) =>
-        idx === editingItem.index
-          ? { ...savedItem }
-          : item
-      );
-      setItems(updatedItems);
-
-      // IMPORTANT: Auto-save to database immediately to prevent data loss
-      // This ensures changes persist even if user clicks Cancel
-      try {
-        await onSave(updatedItems);
-        toast.success(`${config.title} updated successfully.`);
-      } catch (error) {
-        console.error('Error auto-saving:', error);
-        toast.error(`${config.title} updated. Click 'Save All Changes' to save to database.`);
+    try {
+      // Build the updated items array
+      let updatedItems;
+      if (editingItem && editingItem.index !== undefined) {
+        // Update existing item
+        updatedItems = items.map((item, idx) =>
+          idx === editingItem.index ? { ...savedItem } : item
+        );
+      } else {
+        // Add new item
+        updatedItems = [...items, savedItem];
       }
-    } else {
-      // Add new item
-      const newItem = {
-        ...savedItem,
-      };
-      const updatedItems = [...items, newItem];
-      setItems(updatedItems);
 
-      // Auto-save new items too
-      try {
-        await onSave(updatedItems);
-        toast.success(`${config.title} added successfully.`);
-      } catch (error) {
-        console.error('Error auto-saving:', error);
-        toast.error(`${config.title} added. Click 'Save All Changes' to save to database.`);
-      }
+      // Save to database
+      await onSave(updatedItems);
+      
+      toast.success(`${config.title} ${editingItem ? 'updated' : 'added'} successfully.`);
+      
+      // Close the item modal
+      setIsItemModalOpen(false);
+      setEditingItem(null);
+      
+      // The parent will refresh data, which will trigger useEffect to update items
+    } catch (error) {
+      console.error('Error saving:', error);
+      toast.error("Failed to save. Please try again.");
     }
-    setIsItemModalOpen(false);
-    setEditingItem(null);
   };
 
   const handleSubmit = async () => {
@@ -1061,6 +1057,10 @@ const UnifiedProfileEditModal = ({
             ) : item.approval_status === 'pending' ? (
               <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">
                 <Clock className="w-3 h-3 mr-1" /> Pending Verification
+              </Badge>
+            ) : (item.has_pending_edit || item._hasPendingEdit) ? (
+              <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">
+                <Clock className="w-3 h-3 mr-1" /> Pending Approval
               </Badge>
             ) : (item.approval_status === 'approved' || item.approval_status === 'verified') ? (
               <Badge className="bg-green-100 text-green-700">

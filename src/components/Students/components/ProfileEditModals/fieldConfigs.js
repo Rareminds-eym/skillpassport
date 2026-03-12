@@ -85,8 +85,8 @@ export const FIELD_CONFIGS = {
       description: "",
       duration: "",
     }),
-    getDisplayTitle: (item) => item.course || "Untitled",
-    getDisplaySubtitle: (item) => item.provider || "",
+    getDisplayTitle: (item) => item.course || item.title || "Untitled",
+    getDisplaySubtitle: (item) => item.provider || item.organization || "",
     hasProgress: true,
     calculateDuration: true,
   },
@@ -227,7 +227,12 @@ export const FIELD_CONFIGS = {
       description: "",
     }),
     getDisplayTitle: (item) => item.name || "Untitled",
-    getDisplaySubtitle: (item) => "", // Remove level display to hide numbers
+    getDisplaySubtitle: (item) => {
+      // Show proficiency level text if available, otherwise show rating
+      if (item.proficiency_level) return item.proficiency_level;
+      if (item.level && typeof item.level === 'number') return `Level ${item.level}/5`;
+      return "";
+    },
   },
 
   softSkills: {
@@ -253,8 +258,7 @@ export const FIELD_CONFIGS = {
         options: ["1", "2", "3", "4", "5"],
         defaultValue: "3"
       },
-      { name: "description", label: "Description", type: "textarea", placeholder: "Describe how you've developed and applied this skill..." },
-      { name: "examples", label: "Examples/Evidence", type: "textarea", placeholder: "Provide specific examples or situations where you demonstrated this skill..." },
+      { name: "description", label: "Description", type: "textarea", placeholder: "Describe your experience with this skill..." },
     ],
     getDefaultValues: () => ({
       name: "",
@@ -262,10 +266,14 @@ export const FIELD_CONFIGS = {
       level: "Intermediate",
       rating: "3",
       description: "",
-      examples: "",
     }),
     getDisplayTitle: (item) => item.name || "Untitled",
-    getDisplaySubtitle: (item) => "", // Remove level display to hide numbers
+    getDisplaySubtitle: (item) => {
+      // Show proficiency level text if available, otherwise show rating
+      if (item.proficiency_level) return item.proficiency_level;
+      if (item.level && typeof item.level === 'number') return `Level ${item.level}/5`;
+      return "";
+    },
   },
 
   technicalSkills: {
@@ -291,29 +299,22 @@ export const FIELD_CONFIGS = {
         options: ["1", "2", "3", "4", "5"],
         defaultValue: "3"
       },
-      // { 
-      //   name: "category", 
-      //   label: "Category", 
-      //   type: "select", 
-      //   options: ["Programming", "Framework", "Database", "Tools", "Cloud", "Other"],
-      //   defaultValue: "Programming"
-      // },
-      { name: "yearsOfExperience", label: "Years of Experience", type: "number", placeholder: "2" },
-      { name: "description", label: "Description", type: "textarea", placeholder: "Describe your experience and projects with this technology..." },
-      { name: "certifications", label: "Related Certifications", type: "text", placeholder: "Any certifications related to this skill..." },
+      { name: "description", label: "Description", type: "textarea", placeholder: "Describe your experience with this skill..." },
     ],
     getDefaultValues: () => ({
       name: "",
       type: "technical",
       level: "Intermediate",
       rating: "3",
-      // category: "Programming",
-      yearsOfExperience: "",
       description: "",
-      certifications: "",
     }),
     getDisplayTitle: (item) => item.name || "Untitled",
-    getDisplaySubtitle: (item) => "", // Remove level display to hide numbers
+    getDisplaySubtitle: (item) => {
+      // Show proficiency level text if available, otherwise show rating
+      if (item.proficiency_level) return item.proficiency_level;
+      if (item.level && typeof item.level === 'number') return `Level ${item.level}/5`;
+      return "";
+    },
   },
 
   personalInfo: {

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { useUser } from '../../stores';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useStudentData } from '../../hooks/useStudentData';
 import { getLogger } from '../../config/logging';
 
 // Import student type detection service
@@ -28,10 +27,7 @@ import CollegeMyClass from '../../components/Myclass/CollegeMyClass';
  * - Professional separation of concerns
  */
 const MyClass: React.FC = () => {
-  const user = useUser();
-  const userEmail = localStorage.getItem('userEmail') || user?.email;
-  const { studentData, loading: authLoading } = useStudentDataByEmail(userEmail);
-  const studentId = studentData?.id;
+  const { studentId, isLoading: authLoading } = useStudentData({ loadRelated: false });
 
   // State for student type detection
   const [studentTypeInfo, setStudentTypeInfo] = useState<{
@@ -46,8 +42,10 @@ const MyClass: React.FC = () => {
   // Determine student type and routing
   useEffect(() => {
     const determineStudentType = async () => {
+      // Wait for auth to complete
       if (authLoading) return;
       
+      // If no studentId after auth completes, show error
       if (!studentId) {
         setLoading(false);
         setError('Student information not found. Please ensure you are logged in correctly.');
@@ -59,8 +57,8 @@ const MyClass: React.FC = () => {
         const typeInfo = await getStudentTypeInfo(studentId);
         setStudentTypeInfo(typeInfo);
         setError(null);
-      } catch (err) {
-        logger.error('Error determining student type', err);
+      } catch (err: unknown) {
+        logger.error('Error determining student type', err as Error);
         setError('Failed to load student information. Please try refreshing the page.');
       } finally {
         setLoading(false);
@@ -70,8 +68,8 @@ const MyClass: React.FC = () => {
     determineStudentType();
   }, [studentId, authLoading]);
 
-  // Loading state
-  if (authLoading || loading) {
+  // Loading state - show loading until we have both auth complete AND student type determined
+  if (authLoading || loading || (studentId && !studentTypeInfo)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
