@@ -4,6 +4,7 @@ import { getActiveSubscription } from '../services/Subscriptions/subscriptionSer
 import addOnPaymentService from '../services/addOnPaymentService';
 import { supabase } from '../lib/supabaseClient';
 import { entitlementService } from '../services/entitlementService';
+import { clearFeatureAccessCache } from '../hooks/useFeatureGate';
 
 // ============================================================================
 // Types
@@ -106,6 +107,8 @@ interface SubscriptionState {
   // Internal
   _lastFetchTime: number | null;
   _currentUserId: string | null;
+  _fetchSubPromise: Promise<void> | null;
+  _fetchEntitlementsPromise: Promise<void> | null;
 
   // Computed helpers
   getIsActive: () => boolean;
@@ -274,6 +277,8 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
     _lastFetchTime: null,
     _currentUserId: null,
+    _fetchSubPromise: null,
+    _fetchEntitlementsPromise: null,
 
     // Computed helpers
     getIsActive: () => get().accessReason === 'active',
@@ -302,61 +307,81 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         return;
       }
 
-      // Set loading (isRefetching if we already have data)
-      const isRefetch = !!state.subscription;
-      set((s) => {
-        s.isLoading = !isRefetch;
-        s.isRefetching = isRefetch;
-        s._currentUserId = userId;
-      });
+      // If a fetch for this user is already in progress, return the existing Promise
+      if (state._fetchSubPromise && state._currentUserId === userId) {
+        return state._fetchSubPromise;
+      }
 
-      try {
-        const result = await getActiveSubscription();
+      const fetchPromise = (async () => {
+        // Set loading (isRefetching if we already have data)
+        const isRefetch = !!get().subscription;
+        set((s) => {
+          s.isLoading = !isRefetch;
+          s.isRefetching = isRefetch;
+          s._currentUserId = userId;
+        });
 
-        // Race condition guard: if user changed while we were fetching, discard
-        if (get()._currentUserId !== userId) return;
+        try {
+          const result = await getActiveSubscription();
 
-        if (result.success && result.data) {
-          const subscription = formatSubscriptionData(result.data);
-          const accessState = computeAccessState(subscription);
+          // Race condition guard: if user changed while we were fetching, discard
+          if (get()._currentUserId !== userId) return;
 
+          if (result.success && result.data) {
+            const subscription = formatSubscriptionData(result.data);
+            const accessState = computeAccessState(subscription);
+
+            set((s) => {
+              s.subscription = subscription;
+              s.hasAccess = accessState.hasAccess;
+              s.accessReason = accessState.accessReason;
+              s.showWarning = accessState.showWarning;
+              s.warningType = accessState.warningType;
+              s.warningMessage = accessState.warningMessage;
+              s.daysUntilExpiry = accessState.daysUntilExpiry;
+              s.isLoading = false;
+              s.isRefetching = false;
+              s.error = null;
+              s._lastFetchTime = Date.now();
+            });
+          } else {
+            // No subscription
+            set((s) => {
+              s.subscription = null;
+              s.hasAccess = false;
+              s.accessReason = 'no_subscription';
+              s.showWarning = false;
+              s.warningType = null;
+              s.warningMessage = null;
+              s.daysUntilExpiry = null;
+              s.isLoading = false;
+              s.isRefetching = false;
+              s.error = null;
+              s._lastFetchTime = Date.now();
+            });
+          }
+        } catch (err) {
+          if (get()._currentUserId !== userId) return;
           set((s) => {
-            s.subscription = subscription;
-            s.hasAccess = accessState.hasAccess;
-            s.accessReason = accessState.accessReason;
-            s.showWarning = accessState.showWarning;
-            s.warningType = accessState.warningType;
-            s.warningMessage = accessState.warningMessage;
-            s.daysUntilExpiry = accessState.daysUntilExpiry;
             s.isLoading = false;
             s.isRefetching = false;
-            s.error = null;
+            s.error = err instanceof Error ? err : new Error(String(err));
             s._lastFetchTime = Date.now();
           });
-        } else {
-          // No subscription
+        } finally {
           set((s) => {
-            s.subscription = null;
-            s.hasAccess = false;
-            s.accessReason = 'no_subscription';
-            s.showWarning = false;
-            s.warningType = null;
-            s.warningMessage = null;
-            s.daysUntilExpiry = null;
-            s.isLoading = false;
-            s.isRefetching = false;
-            s.error = null;
-            s._lastFetchTime = Date.now();
+            if (s._currentUserId === userId) {
+              s._fetchSubPromise = null;
+            }
           });
         }
-      } catch (err) {
-        set((s) => {
-          s.isLoading = false;
-          s.isRefetching = false;
-          s.error = err instanceof Error ? err : new Error(String(err));
-          s._lastFetchTime = Date.now();
-        });
-      }
+      })();
+
+      set((s) => {
+        s._fetchSubPromise = fetchPromise;
+      });
+
+      return fetchPromise;
     },
 
     // Force refresh — bypasses stale time
@@ -375,38 +400,58 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       const userId = explicitUserId || get()._currentUserId;
       if (!userId) return;
 
-      set((s) => { s.isLoadingEntitlements = true; s.entitlementsError = null; });
-      try {
-        const result = await entitlementService.getUserEntitlements(userId);
+      const state = get();
 
-        // Race condition guard
-        if (get()._currentUserId !== userId) return;
+      if (state._fetchEntitlementsPromise && state._currentUserId === userId) {
+        return state._fetchEntitlementsPromise;
+      }
 
-        if (result.success && result.data) {
-          const entitlements = result.data;
-          const now = new Date();
-          set((s) => {
-            s.userEntitlements = entitlements as any;
-            s.activeEntitlements = (entitlements as any[]).filter((ent) => {
-              if (ent.status === 'active' || ent.status === 'grace_period') return true;
-              if (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now) return true;
-              return false;
+      const fetchPromise = (async () => {
+        set((s) => { s.isLoadingEntitlements = true; s.entitlementsError = null; });
+        try {
+          const result = await entitlementService.getUserEntitlements(userId);
+
+          // Race condition guard
+          if (get()._currentUserId !== userId) return;
+
+          if (result.success && result.data) {
+            const entitlements = result.data;
+            const now = new Date();
+            set((s) => {
+              s.userEntitlements = entitlements as any;
+              s.activeEntitlements = (entitlements as any[]).filter((ent) => {
+                if (ent.status === 'active' || ent.status === 'grace_period') return true;
+                if (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now) return true;
+                return false;
+              });
+              s.isLoadingEntitlements = false;
             });
-            s.isLoadingEntitlements = false;
-          });
-        } else {
+          } else {
+            set((s) => {
+              s.isLoadingEntitlements = false;
+              s.entitlementsError = new Error(result.error || 'Failed to fetch entitlements');
+            });
+          }
+        } catch (err) {
+          if (get()._currentUserId !== userId) return;
           set((s) => {
             s.isLoadingEntitlements = false;
-            s.entitlementsError = new Error(result.error || 'Failed to fetch entitlements');
+            s.entitlementsError = err instanceof Error ? err : new Error(String(err));
+          });
+        } finally {
+          set((s) => {
+            if (s._currentUserId === userId) {
+              s._fetchEntitlementsPromise = null;
+            }
           });
         }
-      } catch (err) {
-        if (get()._currentUserId !== userId) return;
-        set((s) => {
-          s.isLoadingEntitlements = false;
-          s.entitlementsError = err instanceof Error ? err : new Error(String(err));
-        });
-      }
+      })();
+
+      set((s) => {
+        s._fetchEntitlementsPromise = fetchPromise;
+      });
+
+      return fetchPromise;
     },
 
     // Manual setter (for edge cases or testing)
@@ -453,6 +498,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
     },
 
     clearAccessCache: () => {
+      clearFeatureAccessCache();
       set((state) => {
         state.hasAccess = false;
         state.accessReason = 'no_subscription';
@@ -462,6 +508,8 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         state.isLoading = true;
         state._lastFetchTime = null;
         state._currentUserId = null;
+        state._fetchSubPromise = null;
+        state._fetchEntitlementsPromise = null;
       });
     },
 
@@ -508,6 +556,10 @@ export const useSubscriptionAccess = () => {
   const refreshAccess = async () => {
     const userId = useSubscriptionStore.getState()._currentUserId;
     if (!userId) return;
+
+    // Clear local feature gate cache so newly purchased addons are accessible immediately
+    clearFeatureAccessCache();
+
     await refreshSubscription();
     // Pass userId explicitly — _currentUserId may have changed during refreshSubscription
     await fetchEntitlements(userId);
