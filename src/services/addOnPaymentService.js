@@ -15,7 +15,7 @@ async function fetchWithRetry(url, options, retries = 3) {
       console.log(`[AddOnPayment] Fetch attempt ${attempt} to ${url}`);
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
       const response = await fetch(url, {
         ...options,
@@ -209,7 +209,7 @@ export const addOnPaymentService = {
         }
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
         const response = await fetch(`${PAYMENTS_API_URL}/verify-addon-payment`, {
           method: 'POST',
@@ -288,7 +288,7 @@ export const addOnPaymentService = {
         }
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
         const response = await fetch(`${PAYMENTS_API_URL}/verify-bundle-payment`, {
           method: 'POST',

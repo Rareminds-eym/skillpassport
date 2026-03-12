@@ -705,7 +705,7 @@ function SubscriptionPlans() {
 
   const studentType = type || 'student';
 
-  const { subscriptionData, loading: subscriptionLoading, error: subscriptionError, refreshSubscription } = useSubscriptionAccess();
+  const { subscriptionData, loading: subscriptionLoading, error: subscriptionError, refreshAccess } = useSubscriptionAccess();
   const daysRemaining = useMemo(() => calculateDaysRemaining(subscriptionData?.endDate), [subscriptionData?.endDate]);
 
   // Combined loading state — wait for auth, subscription, AND plans from API.
@@ -946,7 +946,7 @@ function SubscriptionPlans() {
                 <p className="text-red-700 text-sm">{subscriptionError?.message || 'Please try again.'}</p>
               </div>
             </div>
-            <button onClick={refreshSubscription} className="px-6 py-3 bg-red-600 text-white rounded-2xl hover:bg-red-700 text-sm font-semibold shadow-lg transition-all hover:scale-105">
+            <button onClick={refreshAccess} className="px-6 py-3 bg-red-600 text-white rounded-2xl hover:bg-red-700 text-sm font-semibold shadow-lg transition-all hover:scale-105">
               Retry
             </button>
           </div>

@@ -83,7 +83,7 @@ function MySubscription() {
   const user = useUser();
   const { role } = useUserRole();
   const authLoading = useAuthLoading();
-  const { subscriptionData, loading: subscriptionLoading, refreshSubscription } = useSubscriptionAccess();
+  const { subscriptionData, loading: subscriptionLoading, refreshAccess } = useSubscriptionAccess();
 
   // Get settings, dashboard paths, and user type from current URL (more reliable than role)
   const settingsPath = useMemo(() => getSettingsPathFromUrl(location.pathname), [location.pathname]);
@@ -197,7 +197,7 @@ function MySubscription() {
         alert(`Subscription cancelled successfully. You'll have access until ${formatDate(subscriptionData.endDate)}`);
 
         // Refresh subscription data
-        await refreshSubscription();
+        await refreshAccess();
 
         setShowCancelModal(false);
         setCancelReason('');
@@ -232,7 +232,7 @@ function MySubscription() {
 
       if (result.success) {
         alert(`Subscription paused for ${pauseMonths} month(s). It will automatically resume after this period.`);
-        await refreshSubscription();
+        await refreshAccess();
         setShowPauseModal(false);
         setShowCancelModal(false);
       } else {
@@ -263,7 +263,7 @@ function MySubscription() {
 
       if (result.success) {
         alert('Subscription resumed successfully!');
-        await refreshSubscription();
+        await refreshAccess();
       } else {
         alert(`Failed to resume subscription: ${result.error}`);
       }
