@@ -4,6 +4,25 @@
  */
 
 import { getPagesApiUrl, getAuthHeaders } from '../utils/pagesUrl';
+import type { ApiResponse } from '../types/college';
+import type {
+  SchoolAdminSignupData,
+  EducatorSignupData,
+  StudentSignupData,
+  CollegeAdminSignupData,
+  CollegeEducatorSignupData,
+  CollegeStudentSignupData,
+  UniversityAdminSignupData,
+  UniversityEducatorSignupData,
+  UniversityStudentSignupData,
+  RecruiterSignupData,
+  RecruiterAdminSignupData,
+  CreateUserData,
+  CreateTeacherData,
+  CollegeStaffData,
+  InterviewDetails,
+  DocumentUpdateData
+} from '../types/auth';
 
 const API_URL = getPagesApiUrl('user');
 
