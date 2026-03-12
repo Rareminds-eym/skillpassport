@@ -42,6 +42,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import toast, { Toaster } from "react-hot-toast";
 import { useLocation, useNavigate } from "react-router-dom";
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('Dashboard');
 import AchievementsTimeline from "../../components/Students/components/AchievementsTimeline";
 import AnalyticsView from "../../components/Students/components/AnalyticsView";
 import {

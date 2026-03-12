@@ -1,10 +1,22 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useUser } from '@/stores';
 import { useStudentDataByEmail } from '@/hooks/useStudentDataByEmail';
 import { getPagesApiUrl } from '../../utils/pagesUrl';
 import { useStudentProfile } from '@/features/student-profile';
 import { supabase } from '../../lib/supabaseClient';
+import { useClassInfo } from './hooks/useClassInfo';
+import { useOverviewData } from './hooks/useOverviewData';
+import { useAssignmentsData } from './hooks/useAssignmentsData';
+import { useTimetableData } from './hooks/useTimetableData';
+import { useClassmatesData } from './hooks/useClassmatesData';
+import { useOptimizedCoCurricularsData } from './hooks/useOptimizedCoCurricularsData';
+import { useOptimizedExamsData } from './hooks/useOptimizedExamsData';
+import { useNotification } from './hooks/useNotification';
+import { useAssignmentActions } from './hooks/useAssignmentActions';
+import { parseAsLocalDate } from './utils/dateHelpers';
+import { getStatusBadge } from './utils/assignmentHelpers';
 import SchoolClassHeader, { SchoolClassInfo } from './common/SchoolClassHeader';
 // Import shared components
 import OverviewTab, { AssignmentStats } from './Tabs/OverviewTab';
@@ -20,6 +32,16 @@ import AssignmentUploadModal from './components/AssignmentUploadModal';
 import AssignmentDetailsModal from './components/AssignmentDetailsModal';
 
 // Skeleton Loaders
+import {
+  SkeletonStyles,
+  OverviewSkeletonLoader,
+  AssignmentsSkeletonLoader,
+  TimetableSkeletonLoader,
+  ClassmatesSkeletonLoader,
+  CoCurricularsSkeletonLoader,
+  ExamsSkeletonLoader,
+  ResultsSkeletonLoader
+} from './components/SkeletonLoaders';
 import {
   getStudentClassInfo,
   getClassmates,

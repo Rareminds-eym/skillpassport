@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Target, FileText, Loader2, AlertCircle, X, Upload, Paperclip } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useUser } from '@/stores';
 import { useStudentProfile } from '@/features/student-profile';
 import { useStudentDataByEmail } from '@/hooks/useStudentDataByEmail';
 
