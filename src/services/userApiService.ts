@@ -11,37 +11,19 @@ import type {
   SchoolData,
   CollegeData,
   UniversityData,
-  CompanyData
-} from '../types/auth';
-  UniversityEducatorSignupData,
-  UniversityStudentSignupData,
-  RecruiterSignupData,
-  RecruiterAdminSignupData,
-  CreateUserData,
+  CompanyData,
+  CreateStudentData,
   CreateTeacherData,
-  CollegeStaffData,
-  InterviewDetails,
-  DocumentUpdateData
+  CreateCollegeStaffData,
+  ResetPasswordParams,
+  CreateEventUserParams,
+  InterviewReminderParams,
+  DocumentData
 } from '../types/auth';
 
 const API_URL = getPagesApiUrl('user');
 
 // ==================== SIGNUP ENDPOINTS (No Auth Required) ====================
-
-interface UnifiedSignupData {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  phone?: string;
-  dateOfBirth?: string;
-  country?: string;
-  state?: string;
-  city?: string;
-  preferredLanguage?: string;
-  referralCode?: string;
-}
 
 export async function unifiedSignup(data: SignupData): Promise<AuthApiResponse> {
   const response = await fetch(`${API_URL}/signup`, {
@@ -204,20 +186,21 @@ export async function signupCollegeStudent(data: SignupData): Promise<AuthApiRes
   return result;
 }
 
-export async function getColleges(): Promise<any> {
+export async function getColleges(): Promise<ApiResponse<CollegeData[]>> {
   const response = await fetch(`${API_URL}/colleges`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to fetch colleges');
   }
 
   return result;
 }
+
 
 export async function checkCollegeCode(code: string): Promise<ApiResponse<{valid: boolean}>> {
   const response = await fetch(`${API_URL}/check-college-code`, {
@@ -237,7 +220,7 @@ export async function checkCollegeCode(code: string): Promise<ApiResponse<{valid
 
 // ==================== UNIVERSITY SIGNUP ENDPOINTS ====================
 
-export async function signupUniversityAdmin(data: any): Promise<any> {
+export async function signupUniversityAdmin(data: SignupData): Promise<AuthApiResponse> {
   const response = await fetch(`${API_URL}/signup/university-admin`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -253,7 +236,7 @@ export async function signupUniversityAdmin(data: any): Promise<any> {
   return result;
 }
 
-export async function signupUniversityEducator(data: any): Promise<any> {
+export async function signupUniversityEducator(data: SignupData): Promise<AuthApiResponse> {
   const response = await fetch(`${API_URL}/signup/university-educator`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -269,7 +252,7 @@ export async function signupUniversityEducator(data: any): Promise<any> {
   return result;
 }
 
-export async function signupUniversityStudent(data: any): Promise<any> {
+export async function signupUniversityStudent(data: SignupData): Promise<AuthApiResponse> {
   const response = await fetch(`${API_URL}/signup/university-student`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -285,7 +268,7 @@ export async function signupUniversityStudent(data: any): Promise<any> {
   return result;
 }
 
-export async function getUniversities(): Promise<any> {
+export async function getUniversities(): Promise<ApiResponse<UniversityData[]>> {
   const response = await fetch(`${API_URL}/universities`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
@@ -300,7 +283,7 @@ export async function getUniversities(): Promise<any> {
   return result;
 }
 
-export async function checkUniversityCode(code: string): Promise<any> {
+export async function checkUniversityCode(code: string): Promise<ApiResponse<{valid: boolean}>> {
   const response = await fetch(`${API_URL}/check-university-code`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -318,7 +301,7 @@ export async function checkUniversityCode(code: string): Promise<any> {
 
 // ==================== RECRUITER SIGNUP ENDPOINTS ====================
 
-export async function signupRecruiterAdmin(data: any): Promise<any> {
+export async function signupRecruiterAdmin(data: SignupData): Promise<AuthApiResponse> {
   const response = await fetch(`${API_URL}/signup/recruiter-admin`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -334,7 +317,7 @@ export async function signupRecruiterAdmin(data: any): Promise<any> {
   return result;
 }
 
-export async function signupRecruiter(data: any): Promise<any> {
+export async function signupRecruiter(data: SignupData): Promise<AuthApiResponse> {
   const response = await fetch(`${API_URL}/signup/recruiter`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -350,7 +333,7 @@ export async function signupRecruiter(data: any): Promise<any> {
   return result;
 }
 
-export async function getCompanies(): Promise<any> {
+export async function getCompanies(): Promise<ApiResponse<CompanyData[]>> {
   const response = await fetch(`${API_URL}/companies`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
@@ -365,7 +348,7 @@ export async function getCompanies(): Promise<any> {
   return result;
 }
 
-export async function checkCompanyCode(code: string): Promise<any> {
+export async function checkCompanyCode(code: string): Promise<ApiResponse<{valid: boolean}>> {
   const response = await fetch(`${API_URL}/check-company-code`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -383,7 +366,7 @@ export async function checkCompanyCode(code: string): Promise<any> {
 
 // ==================== AUTHENTICATED ENDPOINTS ====================
 
-export async function createStudent(studentData: any, token?: string): Promise<any> {
+export async function createStudent(studentData: CreateStudentData, token?: string): Promise<ApiResponse> {
   console.log('🔑 userApiService.createStudent called with token length:', token?.length || 'no token');
   
   const response = await fetch(`${API_URL}/create-student`, {
@@ -416,7 +399,7 @@ export async function createStudent(studentData: any, token?: string): Promise<a
   return result;
 }
 
-export async function createTeacher(teacherData: any, token?: string): Promise<any> {
+export async function createTeacher(teacherData: CreateTeacherData, token?: string): Promise<ApiResponse> {
   const response = await fetch(`${API_URL}/create-teacher`, {
     method: 'POST',
     headers: getAuthHeaders(token),
@@ -431,15 +414,7 @@ export async function createTeacher(teacherData: any, token?: string): Promise<a
   return response.json();
 }
 
-interface ResetPasswordParams {
-  userId?: string;
-  newPassword?: string;
-  action?: string;
-  email?: string;
-  otp?: string;
-}
-
-export async function resetPassword(params: ResetPasswordParams, token?: string): Promise<any> {
+export async function resetPassword(params: ResetPasswordParams, token?: string): Promise<ApiResponse> {
   const response = await fetch(`${API_URL}/reset-password`, {
     method: 'POST',
     headers: getAuthHeaders(token),
@@ -454,17 +429,7 @@ export async function resetPassword(params: ResetPasswordParams, token?: string)
   return response.json();
 }
 
-interface CreateEventUserParams {
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  phone?: string;
-  registrationId?: string;
-  metadata?: any;
-}
-
-export async function createEventUser(params: CreateEventUserParams, token?: string): Promise<any> {
+export async function createEventUser(params: CreateEventUserParams, token?: string): Promise<ApiResponse> {
   const response = await fetch(`${API_URL}/create-event-user`, {
     method: 'POST',
     headers: getAuthHeaders(token),
@@ -479,14 +444,7 @@ export async function createEventUser(params: CreateEventUserParams, token?: str
   return response.json();
 }
 
-interface InterviewReminderParams {
-  interviewId: string;
-  recipientEmail: string;
-  recipientName: string;
-  interviewDetails: any;
-}
-
-export async function sendInterviewReminder(params: InterviewReminderParams, token?: string): Promise<any> {
+export async function sendInterviewReminder(params: InterviewReminderParams, token?: string): Promise<ApiResponse> {
   const response = await fetch(`${API_URL}/send-interview-reminder`, {
     method: 'POST',
     headers: getAuthHeaders(token),
@@ -503,9 +461,9 @@ export async function sendInterviewReminder(params: InterviewReminderParams, tok
 
 export async function updateStudentDocuments(
   studentId: string,
-  documents: any,
+  documents: DocumentData[],
   token?: string
-): Promise<any> {
+): Promise<ApiResponse> {
   console.log('🔑 userApiService.updateStudentDocuments called with token length:', token?.length || 'no token');
   
   const response = await fetch(`${API_URL}/update-student-documents`, {
@@ -540,9 +498,9 @@ export async function updateStudentDocuments(
 
 export async function updateTeacherDocuments(
   teacherId: string,
-  documents: any,
+  documents: DocumentData[],
   token?: string
-): Promise<any> {
+): Promise<ApiResponse> {
   console.log('🔑 userApiService.updateTeacherDocuments called with token length:', token?.length || 'no token');
   
   const response = await fetch(`${API_URL}/update-teacher-documents`, {
@@ -575,7 +533,7 @@ export async function updateTeacherDocuments(
   return result;
 }
 
-export async function createCollegeStaff(staffData: any, token?: string): Promise<any> {
+export async function createCollegeStaff(staffData: CreateCollegeStaffData, token?: string): Promise<ApiResponse> {
   console.log('🔑 userApiService.createCollegeStaff called with token length:', token?.length || 'no token');
   
   const response = await fetch(`${API_URL}/create-college-staff`, {
