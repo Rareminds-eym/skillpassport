@@ -1304,12 +1304,17 @@ const CoursePlayer = () => {
 
     // Update course enrollment to completed status
     try {
+      // Calculate actual progress based on completed lessons
+      const totalLessons = course.modules?.reduce((acc, module) => acc + (module.lessons?.length || 0), 0) || 1;
+      const completedCount = completedLessons.size + 1; // +1 for current lesson being marked complete
+      const actualProgress = Math.min(100, Math.round((completedCount / totalLessons) * 100));
+
       const { error } = await supabase
         .from('course_enrollments')
         .update({ 
           status: 'completed',
           completed_at: new Date().toISOString(),
-          progress: 100
+          progress: actualProgress
         })
         .eq('student_id', user.id)
         .eq('course_id', courseId);

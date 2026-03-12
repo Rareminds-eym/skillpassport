@@ -299,8 +299,13 @@ const Courses = () => {
         const progressMap = {};
         const certUrls = {};
         result.data.forEach(enrollment => {
+          // Recalculate progress based on completed_lessons and total_lessons
+          const completedCount = enrollment.completed_lessons?.length || 0;
+          const totalLessons = enrollment.total_lessons || 1;
+          const calculatedProgress = Math.min(100, Math.round((completedCount / totalLessons) * 100));
+          
           progressMap[enrollment.course_id] = {
-            progress: enrollment.progress || 0,
+            progress: calculatedProgress,
             lastModuleIndex: enrollment.last_module_index || 0,
             lastLessonIndex: enrollment.last_lesson_index || 0,
             status: enrollment.status
