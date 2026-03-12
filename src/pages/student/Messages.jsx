@@ -33,6 +33,9 @@ import { useRealtimePresence } from '../../hooks/useRealtimePresence';
 import { useStudentProfile, useStudentMessages } from '@/features/student-profile';
 import { useStudentDataByEmail } from '@/hooks/useStudentDataByEmail';
 import { useStudentConversations } from '../../hooks/useStudentMessages';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('Messages');
 import { useStudentEducatorConversations, useStudentEducatorMessages } from '../../hooks/useStudentEducatorMessages';
 import { useStudentAdminConversations, useCreateStudentAdminConversation, useStudentAdminMessages } from '../../hooks/useStudentAdminMessages';
 import { useStudentCollegeAdminConversations, useCreateStudentCollegeAdminConversation, useStudentCollegeAdminMessages } from '../../hooks/useStudentCollegeAdminMessages';
