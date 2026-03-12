@@ -8,6 +8,7 @@ import { TrainingEditModal } from "../../components/Students/components/ProfileE
 import SelectCourseModal from "../../components/Students/components/SelectCourseModal";
 import { Button, Card, CardContent } from '@/shared/ui';
 import { useAuth } from "@/features/auth/model/AuthContext";
+import { useUser } from "@/stores";
 import { useStudentProfile, useStudentMessages } from "@/features/student-profile";
 import { useStudentPortfolio } from "@/features/student-profile";
 import { useStudentDataByEmail } from "@/hooks/useStudentDataByEmail";

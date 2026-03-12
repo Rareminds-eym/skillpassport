@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useUser } from '@/stores';
 import { useStudentProfile } from '../../features/student-profile/model/useStudentProfile';
 import { useStudentDataByEmail } from '@/hooks/useStudentDataByEmail';
 
 // Import student type detection service
 import { getStudentTypeInfo } from '../../services/collegeClassService';
+import { getLogger } from '../../config/logging';
 
 const logger = getLogger('MyClass');
 
