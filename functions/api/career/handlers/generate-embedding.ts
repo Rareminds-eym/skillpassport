@@ -29,7 +29,7 @@ interface GenerateEmbeddingRequest {
  * Generate embedding using OpenRouter
  */
 async function generateEmbedding(text: string, openRouterKey: string): Promise<number[]> {
-  const response = await fetch('https://openrouter.ai/api/v1/embeddings', {
+  const response = await fetch(API_CONFIG.OPENROUTER.embeddingEndpoint, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${openRouterKey}`,

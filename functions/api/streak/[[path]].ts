@@ -12,6 +12,7 @@
 
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { corsHeaders, jsonResponse, createSupabaseClient } from '../../../src/functions-lib';
+import { authenticateUser } from '../shared/auth';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 // ==================== GET STUDENT STREAK ====================
@@ -205,12 +206,10 @@ export const onRequest: PagesFunction = async (context) => {
   const path = url.pathname;
 
   try {
-    const supabase = createSupabaseClient(env);
-
     // Parse path: /api/streak/:studentId, /api/streak/:studentId/complete, etc.
     const pathParts = path.replace('/api/streak', '').split('/').filter(Boolean);
 
-    // Health check
+    // Health check (public endpoint)
     if (pathParts.length === 0) {
       if (request.method === 'GET') {
         return jsonResponse({
@@ -222,7 +221,14 @@ export const onRequest: PagesFunction = async (context) => {
       }
     }
 
-    // POST /reset-daily
+    // Authenticate user for all other endpoints
+    const authResult = await authenticateUser(request, env as unknown as Record<string, string>);
+    if (!authResult) {
+      return jsonResponse({ error: 'Unauthorized' }, 401);
+    }
+    const { user, supabase } = authResult;
+
+    // POST /reset-daily (admin only - could add role check here)
     if (pathParts.length === 1 && pathParts[0] === 'reset-daily' && request.method === 'POST') {
       return await handleResetDailyFlags(supabase);
     }
@@ -235,6 +241,11 @@ export const onRequest: PagesFunction = async (context) => {
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(studentId)) {
         return jsonResponse({ error: 'Invalid student ID format' }, 400);
+      }
+
+      // Security: Users can only access their own streak data
+      if (studentId !== user.id) {
+        return jsonResponse({ error: 'Forbidden: Can only access your own streak data' }, 403);
       }
 
       // GET /:studentId

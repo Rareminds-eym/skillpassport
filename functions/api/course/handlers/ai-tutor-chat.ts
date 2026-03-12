@@ -13,7 +13,7 @@ import { createSupabaseClient, createSupabaseAdminClient } from '../../../../src
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
 import { authenticateUser } from '../../shared/auth';
-import { getAPIKeys } from '../../shared/ai-config';
+import { getAPIKeys, API_CONFIG, AI_MODELS } from '../../shared/ai-config';
 import { 
   buildCourseContext, 
   buildSystemPrompt 
@@ -44,10 +44,14 @@ export const handleAiTutorChat: PagesFunction<PagesEnv> = async (context) => {
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
 
-  // Authenticate user (optional - can work without auth)
+  // Authenticate user (required)
   const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-  const studentId = auth?.user?.id || null;
-  const supabase = auth?.supabase || createSupabaseClient(env);
+  if (!auth) {
+    return jsonResponse({ error: 'Unauthorized' }, 401);
+  }
+  
+  const { user, supabase } = auth;
+  const studentId = user.id;
   
   // Use admin client for database writes
   const supabaseAdmin = createSupabaseAdminClient(env);
@@ -77,7 +81,7 @@ export const handleAiTutorChat: PagesFunction<PagesEnv> = async (context) => {
     let currentConversationId = conversationId;
     let existingMessages: StoredMessage[] = [];
 
-    if (conversationId && studentId) {
+    if (conversationId) {
       const { data: conversation } = await supabase
         .from('tutor_conversations')
         .select('messages')
@@ -100,6 +104,10 @@ export const handleAiTutorChat: PagesFunction<PagesEnv> = async (context) => {
     // Build course context and system prompt
     const courseContext = await buildCourseContext(supabase, courseId, lessonId || null, studentId);
     const systemPrompt = buildSystemPrompt(courseContext, conversationPhase);
+
+    // Get model and endpoint from shared config
+    const chatModel = AI_MODELS.GPT_4O_MINI;
+    const endpoint = API_CONFIG.OPENROUTER.endpoint;
 
     // Create user message
     const turnId = crypto.randomUUID();
@@ -125,7 +133,7 @@ export const handleAiTutorChat: PagesFunction<PagesEnv> = async (context) => {
       async start(controller) {
         try {
           // Call OpenRouter with streaming
-          const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${openRouterKey}`,
@@ -134,7 +142,7 @@ export const handleAiTutorChat: PagesFunction<PagesEnv> = async (context) => {
               'X-Title': 'AI Course Tutor'
             },
             body: JSON.stringify({
-              model: 'openai/gpt-4o-mini',
+              model: chatModel,
               messages: aiMessages,
               stream: true,
               max_tokens: phaseParams.maxTokens,
@@ -199,80 +207,78 @@ export const handleAiTutorChat: PagesFunction<PagesEnv> = async (context) => {
           const updatedMessages = [...existingMessages, userMessage, assistantMessage];
 
           // Save conversation to database
-          if (studentId) {
-            if (currentConversationId) {
-              // Update existing conversation
-              // Re-fetch latest to avoid race condition
-              const { data: latestConv } = await supabaseAdmin
-                .from('tutor_conversations')
-                .select('messages')
-                .eq('id', currentConversationId)
-                .maybeSingle();
-              
-              const latestMessages: StoredMessage[] = latestConv?.messages || existingMessages;
-              const finalMessages = [...latestMessages, userMessage, assistantMessage];
-              
-              await supabaseAdmin
-                .from('tutor_conversations')
-                .update({
-                  messages: finalMessages,
-                  updated_at: new Date().toISOString()
+          if (currentConversationId) {
+            // Update existing conversation
+            // Re-fetch latest to avoid race condition
+            const { data: latestConv } = await supabaseAdmin
+              .from('tutor_conversations')
+              .select('messages')
+              .eq('id', currentConversationId)
+              .maybeSingle();
+            
+            const latestMessages: StoredMessage[] = latestConv?.messages || existingMessages;
+            const finalMessages = [...latestMessages, userMessage, assistantMessage];
+            
+            await supabaseAdmin
+              .from('tutor_conversations')
+              .update({
+                messages: finalMessages,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', currentConversationId)
+              .eq('student_id', studentId);
+            
+            console.log(`✅ Updated conversation: ${currentConversationId}`);
+          } else {
+            // Create new conversation with generated title
+            let title = message.slice(0, 50);
+            
+            try {
+              const titleResponse = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 
+                  'Authorization': `Bearer ${openRouterKey}`, 
+                  'Content-Type': 'application/json',
+                  'HTTP-Referer': env.SUPABASE_URL || env.VITE_SUPABASE_URL || '',
+                  'X-Title': 'AI Course Tutor - Title Generation'
+                },
+                body: JSON.stringify({
+                  model: chatModel,
+                  messages: [{ 
+                    role: 'user', 
+                    content: `Generate a short title (max 50 chars) for a tutoring conversation about "${courseContext.courseTitle}" starting with: "${message}"` 
+                  }],
+                  max_tokens: 60,
+                  temperature: 0.5
                 })
-                .eq('id', currentConversationId)
-                .eq('student_id', studentId);
+              });
               
-              console.log(`✅ Updated conversation: ${currentConversationId}`);
-            } else {
-              // Create new conversation with generated title
-              let title = message.slice(0, 50);
-              
-              try {
-                const titleResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                  method: 'POST',
-                  headers: { 
-                    'Authorization': `Bearer ${openRouterKey}`, 
-                    'Content-Type': 'application/json',
-                    'HTTP-Referer': env.SUPABASE_URL || env.VITE_SUPABASE_URL || '',
-                    'X-Title': 'AI Course Tutor - Title Generation'
-                  },
-                  body: JSON.stringify({
-                    model: 'openai/gpt-4o-mini',
-                    messages: [{ 
-                      role: 'user', 
-                      content: `Generate a short title (max 50 chars) for a tutoring conversation about "${courseContext.courseTitle}" starting with: "${message}"` 
-                    }],
-                    max_tokens: 60,
-                    temperature: 0.5
-                  })
-                });
-                
-                if (titleResponse.ok) {
-                  const titleData = await titleResponse.json() as { choices?: Array<{ message?: { content?: string } }> };
-                  const generatedTitle = titleData.choices?.[0]?.message?.content?.trim();
-                  if (generatedTitle) {
-                    title = generatedTitle;
-                  }
+              if (titleResponse.ok) {
+                const titleData = await titleResponse.json() as { choices?: Array<{ message?: { content?: string } }> };
+                const generatedTitle = titleData.choices?.[0]?.message?.content?.trim();
+                if (generatedTitle) {
+                  title = generatedTitle;
                 }
-              } catch (error) {
-                console.warn('⚠️ Title generation failed, using default:', error);
               }
+            } catch (error) {
+              console.warn('⚠️ Title generation failed, using default:', error);
+            }
 
-              const { data: newConv } = await supabaseAdmin
-                .from('tutor_conversations')
-                .insert({
-                  student_id: studentId,
-                  course_id: courseId,
-                  lesson_id: lessonId || null,
-                  title: title.slice(0, 255),
-                  messages: updatedMessages
-                })
-                .select('id')
-                .single();
+            const { data: newConv } = await supabaseAdmin
+              .from('tutor_conversations')
+              .insert({
+                student_id: studentId,
+                course_id: courseId,
+                lesson_id: lessonId || null,
+                title: title.slice(0, 255),
+                messages: updatedMessages
+              })
+              .select('id')
+              .single();
 
-              if (newConv) {
-                currentConversationId = newConv.id;
-                console.log(`✅ Created new conversation: ${currentConversationId}`);
-              }
+            if (newConv) {
+              currentConversationId = newConv.id;
+              console.log(`✅ Created new conversation: ${currentConversationId}`);
             }
           }
 
