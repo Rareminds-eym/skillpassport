@@ -4,15 +4,15 @@
  */
 
 import { getPagesApiUrl, getAuthHeaders } from '../utils/pagesUrl';
-import type { ApiResponse } from '../types/college';
 import type {
-  SchoolAdminSignupData,
-  EducatorSignupData,
-  StudentSignupData,
-  CollegeAdminSignupData,
-  CollegeEducatorSignupData,
-  CollegeStudentSignupData,
-  UniversityAdminSignupData,
+  SignupData,
+  ApiResponse,
+  AuthApiResponse,
+  SchoolData,
+  CollegeData,
+  UniversityData,
+  CompanyData
+} from '../types/auth';
   UniversityEducatorSignupData,
   UniversityStudentSignupData,
   RecruiterSignupData,
@@ -43,7 +43,7 @@ interface UnifiedSignupData {
   referralCode?: string;
 }
 
-export async function unifiedSignup(data: UnifiedSignupData): Promise<any> {
+export async function unifiedSignup(data: SignupData): Promise<AuthApiResponse> {
   const response = await fetch(`${API_URL}/signup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -59,7 +59,7 @@ export async function unifiedSignup(data: UnifiedSignupData): Promise<any> {
   return result;
 }
 
-export async function signupSchoolAdmin(data: any): Promise<any> {
+export async function signupSchoolAdmin(data: SignupData): Promise<AuthApiResponse> {
   const response = await fetch(`${API_URL}/signup/school-admin`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -75,7 +75,7 @@ export async function signupSchoolAdmin(data: any): Promise<any> {
   return result;
 }
 
-export async function signupEducator(data: any): Promise<any> {
+export async function signupEducator(data: SignupData): Promise<AuthApiResponse> {
   const response = await fetch(`${API_URL}/signup/educator`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -87,11 +87,11 @@ export async function signupEducator(data: any): Promise<any> {
   if (!response.ok) {
     throw new Error(result.error || 'Failed to create educator account');
   }
-
+//test
   return result;
 }
 
-export async function signupStudent(data: any): Promise<any> {
+export async function signupStudent(data: SignupData): Promise<AuthApiResponse> {
   const response = await fetch(`${API_URL}/signup/student`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -107,7 +107,7 @@ export async function signupStudent(data: any): Promise<any> {
   return result;
 }
 
-export async function getSchools(): Promise<any> {
+export async function getSchools(): Promise<ApiResponse<SchoolData[]>> {
   const response = await fetch(`${API_URL}/schools`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
@@ -122,7 +122,7 @@ export async function getSchools(): Promise<any> {
   return result;
 }
 
-export async function checkSchoolCode(code: string): Promise<any> {
+export async function checkSchoolCode(code: string): Promise<ApiResponse<{valid: boolean}>> {
   const response = await fetch(`${API_URL}/check-school-code`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -138,7 +138,7 @@ export async function checkSchoolCode(code: string): Promise<any> {
   return result;
 }
 
-export async function checkEmail(email: string): Promise<any> {
+export async function checkEmail(email: string): Promise<ApiResponse<{exists: boolean}>> {
   const response = await fetch(`${API_URL}/check-email`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -156,7 +156,7 @@ export async function checkEmail(email: string): Promise<any> {
 
 // ==================== COLLEGE SIGNUP ENDPOINTS ====================
 
-export async function signupCollegeAdmin(data: any): Promise<any> {
+export async function signupCollegeAdmin(data: SignupData): Promise<AuthApiResponse> {
   const response = await fetch(`${API_URL}/signup/college-admin`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -172,7 +172,7 @@ export async function signupCollegeAdmin(data: any): Promise<any> {
   return result;
 }
 
-export async function signupCollegeEducator(data: any): Promise<any> {
+export async function signupCollegeEducator(data: SignupData): Promise<AuthApiResponse> {
   const response = await fetch(`${API_URL}/signup/college-educator`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -188,7 +188,7 @@ export async function signupCollegeEducator(data: any): Promise<any> {
   return result;
 }
 
-export async function signupCollegeStudent(data: any): Promise<any> {
+export async function signupCollegeStudent(data: SignupData): Promise<AuthApiResponse> {
   const response = await fetch(`${API_URL}/signup/college-student`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -219,7 +219,7 @@ export async function getColleges(): Promise<any> {
   return result;
 }
 
-export async function checkCollegeCode(code: string): Promise<any> {
+export async function checkCollegeCode(code: string): Promise<ApiResponse<{valid: boolean}>> {
   const response = await fetch(`${API_URL}/check-college-code`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
