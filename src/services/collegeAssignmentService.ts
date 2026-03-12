@@ -206,9 +206,10 @@ export const fetchEducatorDepartments = async (educatorUserId: string): Promise<
     console.log('🏢 SERVICE: Departments:', departments);
 
     return { data: departments, error: null };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('❌ SERVICE: Error fetching educator departments:', err);
-    return { data: null, error: err.message || 'Failed to fetch departments' };
+    const errorMessage = err instanceof Error ? err.message : 'Failed to fetch departments';
+    return { data: null, error: errorMessage };
   }
 };
 
@@ -269,9 +270,10 @@ export const fetchEducatorPrograms = async (educatorUserId: string, departmentId
     console.log('🎓 SERVICE: Programs:', programs);
 
     return { data: programs, error: null };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('❌ SERVICE: Error fetching educator programs:', err);
-    return { data: null, error: err.message || 'Failed to fetch programs' };
+    const errorMessage = err instanceof Error ? err.message : 'Failed to fetch programs';
+    return { data: null, error: errorMessage };
   }
 };
 
@@ -336,7 +338,7 @@ export const fetchEducatorProgramSections = async (educatorUserId: string): Prom
     }
 
     // Transform the response to include nested program and department info
-    const sectionsWithDetails: ProgramSection[] = (data || []).map((section: any) => {
+    const sectionsWithDetails: ProgramSection[] = (data || []).map((section: Record<string, any>) => {
       console.log('🔄 SERVICE: Transforming section:', section.id, {
         program: section.programs,
         department: section.departments
@@ -379,9 +381,10 @@ export const fetchEducatorProgramSections = async (educatorUserId: string): Prom
     })));
 
     return { data: sectionsWithDetails, error: null };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('❌ SERVICE: Error fetching program sections:', err);
-    return { data: null, error: err.message || 'Failed to fetch program sections' };
+    const errorMessage = err instanceof Error ? err.message : 'Failed to fetch program sections';
+    return { data: null, error: errorMessage };
   }
 };
 
@@ -441,9 +444,10 @@ export const fetchEducatorCoursesByProgram = async (
     console.log('📚 SERVICE: Courses:', courses);
 
     return { data: courses, error: null };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('❌ SERVICE: Error fetching educator courses:', err);
-    return { data: null, error: err.message || 'Failed to fetch courses' };
+    const errorMessage = err instanceof Error ? err.message : 'Failed to fetch courses';
+    return { data: null, error: errorMessage };
   }
 };
 
@@ -511,9 +515,10 @@ export const fetchProgramSectionStudents = async (sectionId: string): Promise<Se
     }
 
     return { data: data || [], error: null };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error fetching program section students:', err);
-    return { data: null, error: err.message || 'Failed to fetch students' };
+    const errorMessage = err instanceof Error ? err.message : 'Failed to fetch students';
+    return { data: null, error: errorMessage };
   }
 };
 
@@ -643,9 +648,10 @@ export const createCollegeAssignment = async (
     };
 
     return { data: assignment, error: null };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('❌ Error creating assignment:', err);
-    return { data: null, error: err.message || 'Failed to create assignment' };
+    const errorMessage = err instanceof Error ? err.message : 'Failed to create assignment';
+    return { data: null, error: errorMessage };
   }
 };
 
@@ -659,7 +665,7 @@ export const fetchEducatorAssignments = async (educatorUserId: string): Promise<
 
     if (error) throw error;
     return { data: data || [], error: null };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error fetching educator assignments:', err);
     
     // Fallback to direct query if RPC function is not available
@@ -690,7 +696,7 @@ export const fetchEducatorAssignments = async (educatorUserId: string): Promise<
 
       if (fallbackError) throw fallbackError;
 
-      const assignments = (fallbackData || []).map((assignment: any) => ({
+      const assignments = (fallbackData || []).map((assignment: Record<string, any>) => ({
         assignment_id: assignment.assignment_id,
         title: assignment.title,
         description: assignment.description || '',
@@ -722,9 +728,10 @@ export const fetchEducatorAssignments = async (educatorUserId: string): Promise<
       }));
 
       return { data: assignments, error: null };
-    } catch (fallbackErr: any) {
+    } catch (fallbackErr: unknown) {
       console.error('Fallback query also failed:', fallbackErr);
-      return { data: null, error: fallbackErr.message || 'Failed to fetch assignments' };
+      const errorMessage = fallbackErr instanceof Error ? fallbackErr.message : 'Failed to fetch assignments';
+      return { data: null, error: errorMessage };
     }
   }
 };
@@ -773,9 +780,10 @@ export const ensureStudentUserAccounts = async (students: CollegeStudent[]): Pro
     }
     
     return { data: userIds, error: null };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error ensuring student user accounts:', err);
-    return { data: null, error: err.message || 'Failed to find user accounts' };
+    const errorMessage = err instanceof Error ? err.message : 'Failed to find user accounts';
+    return { data: null, error: errorMessage };
   }
 };
 
@@ -800,9 +808,10 @@ export const assignTaskToStudents = async (
 
     if (error) throw error;
     return { data: true, error: null };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error assigning task to students:', err);
-    return { data: null, error: err.message || 'Failed to assign task to students' };
+    const errorMessage = err instanceof Error ? err.message : 'Failed to assign task to students';
+    return { data: null, error: errorMessage };
   }
 };
 
@@ -864,9 +873,10 @@ export const getAssignmentStatistics = async (educatorUserId: string): Promise<S
       },
       error: null
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error fetching assignment statistics:', err);
-    return { data: null, error: err.message || 'Failed to fetch statistics' };
+    const errorMessage = err instanceof Error ? err.message : 'Failed to fetch statistics';
+    return { data: null, error: errorMessage };
   }
 };
 
@@ -882,9 +892,10 @@ export const deleteAssignment = async (assignmentId: string): Promise<ServiceRes
 
     if (error) throw error;
     return { data: true, error: null };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error deleting assignment:', err);
-    return { data: null, error: err.message || 'Failed to delete assignment' };
+    const errorMessage = err instanceof Error ? err.message : 'Failed to delete assignment';
+    return { data: null, error: errorMessage };
   }
 };
 
@@ -917,9 +928,10 @@ export const updateAssignment = async (
     };
 
     return { data: assignment, error: null };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error updating assignment:', err);
-    return { data: null, error: err.message || 'Failed to update assignment' };
+    const errorMessage = err instanceof Error ? err.message : 'Failed to update assignment';
+    return { data: null, error: errorMessage };
   }
 };
 
@@ -960,7 +972,7 @@ export interface CollegeStudentAssignment {
   submission_date?: string;
   submission_content?: string;
   submission_url?: string;
-  submission_files?: any;
+  submission_files?: Record<string, any>;
   is_late: boolean;
   program_name?: string;
   department_name?: string;
@@ -1099,9 +1111,10 @@ export const fetchCollegeStudentAssignments = async (studentId: string): Promise
     })));
 
     return { data: combinedAssignments, error: null };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('❌ SERVICE: Error fetching college student assignments:', err);
-    return { data: null, error: err.message || 'Failed to fetch assignments' };
+    const errorMessage = err instanceof Error ? err.message : 'Failed to fetch assignments';
+    return { data: null, error: errorMessage };
   }
 };
 
@@ -1150,9 +1163,10 @@ export const getCollegeStudentAssignmentStats = async (studentId: string): Promi
 
     console.log('✅ SERVICE: Assignment stats:', stats);
     return { data: stats, error: null };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('❌ SERVICE: Error fetching assignment stats:', err);
-    return { data: null, error: err.message || 'Failed to fetch assignment statistics' };
+    const errorMessage = err instanceof Error ? err.message : 'Failed to fetch assignment statistics';
+    return { data: null, error: errorMessage };
   }
 };
 
@@ -1170,7 +1184,7 @@ export const updateCollegeStudentAssignmentStatus = async (
   try {
     console.log('🔄 SERVICE: Updating assignment status:', { studentAssignmentId, newStatus });
     
-    const updateData: any = { 
+    const updateData: Record<string, any> = { 
       status: newStatus,
       updated_date: new Date().toISOString()
     };
@@ -1197,9 +1211,10 @@ export const updateCollegeStudentAssignmentStatus = async (
 
     console.log('✅ SERVICE: Assignment status updated successfully');
     return { data: true, error: null };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('❌ SERVICE: Error updating assignment status:', err);
-    return { data: null, error: err.message || 'Failed to update assignment status' };
+    const errorMessage = err instanceof Error ? err.message : 'Failed to update assignment status';
+    return { data: null, error: errorMessage };
   }
 };
 
@@ -1236,7 +1251,7 @@ export const submitCollegeAssignment = async (
 
     if (assignmentError) throw assignmentError;
 
-    let uploadedFiles: any[] = [];
+    let uploadedFiles: Record<string, any>[] = [];
     
     // Upload files if provided
     if (submissionFiles && submissionFiles.length > 0) {
@@ -1281,9 +1296,10 @@ export const submitCollegeAssignment = async (
 
     console.log('✅ SERVICE: Assignment submitted successfully');
     return { data: true, error: null };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('❌ SERVICE: Error submitting assignment:', err);
-    return { data: null, error: err.message || 'Failed to submit assignment' };
+    const errorMessage = err instanceof Error ? err.message : 'Failed to submit assignment';
+    return { data: null, error: errorMessage };
   }
 };
 

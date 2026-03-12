@@ -105,12 +105,42 @@ interface ProcessVideoRequest {
   enableFlashcards?: boolean;
 }
 
+// Database record interface matching actual video_summaries table schema
+interface VideoSummaryRecord {
+  id: string;
+  lesson_id: string | null;
+  course_id: string | null;
+  video_url: string;
+  video_type: 'youtube' | 'uploaded' | 'vimeo';
+  transcript: string | null;
+  transcript_segments: TranscriptSegment[];
+  summary: string | null;
+  key_points: string[];
+  chapters: VideoChapter[];
+  topics: string[];
+  duration_seconds: number | null;
+  language: string;
+  processing_status: 'pending' | 'processing' | 'completed' | 'failed';
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+  processed_at: string | null;
+  sentiment_data: SentimentData;
+  speakers: Speaker[];
+  deepgram_summary: string | null;
+  notable_quotes: NotableQuote[];
+  quiz_questions: QuizQuestion[];
+  flashcards: Flashcard[];
+  srt_content: string | null;
+  vtt_content: string | null;
+}
+
 // Transform database record to frontend format
-function transformVideoSummary(record: any): VideoSummary {
+function transformVideoSummary(record: VideoSummaryRecord): VideoSummary {
   return {
     id: record.id,
-    lessonId: record.lesson_id,
-    courseId: record.course_id,
+    lessonId: record.lesson_id || undefined,
+    courseId: record.course_id || undefined,
     videoUrl: record.video_url,
     videoType: record.video_type,
     transcript: record.transcript || '',
@@ -122,18 +152,18 @@ function transformVideoSummary(record: any): VideoSummary {
     durationSeconds: record.duration_seconds || 0,
     language: record.language || 'en',
     processingStatus: record.processing_status,
-    errorMessage: record.error_message,
+    errorMessage: record.error_message || undefined,
     // New enhanced fields
     sentimentData: record.sentiment_data,
     speakers: record.speakers || [],
-    deepgramSummary: record.deepgram_summary,
+    deepgramSummary: record.deepgram_summary || undefined,
     notableQuotes: record.notable_quotes || [],
     quizQuestions: record.quiz_questions || [],
     flashcards: record.flashcards || [],
-    srtContent: record.srt_content,
-    vttContent: record.vtt_content,
+    srtContent: record.srt_content || undefined,
+    vttContent: record.vtt_content || undefined,
     createdAt: record.created_at,
-    processedAt: record.processed_at,
+    processedAt: record.processed_at || undefined,
   };
 }
 
@@ -244,8 +274,9 @@ export async function processVideo(
 
     throw new Error('Processing is taking longer than expected. Please try again later.');
 
-  } catch (error: any) {
-    if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    if (errorMessage?.includes('Failed to fetch') || errorMessage?.includes('NetworkError')) {
       throw new Error('Connection issue. Please check your internet and try again.');
     }
     throw error;

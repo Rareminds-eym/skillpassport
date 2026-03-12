@@ -2,6 +2,11 @@ import { supabase } from '../lib/supabaseClient';
 
 export type FunnelRangePreset = '7d' | '30d' | '90d' | 'ytd' | 'custom';
 
+export interface ServiceResponse<T> {
+  data: T | null;
+  error: string | null;
+}
+
 export interface FunnelRange {
   startDate: string; // ISO string (UTC)
   endDate: string;   // ISO string (UTC)
@@ -75,7 +80,7 @@ export const getRecruitmentFunnelStats = async (
   preset: FunnelRangePreset,
   start?: string,
   end?: string
-): Promise<{ data: RecruitmentFunnelStats | null; error: any }> => {
+): Promise<ServiceResponse<RecruitmentFunnelStats>> => {
   try {
     const { startDate, endDate } = buildDateRange(preset, start, end);
 
@@ -125,9 +130,10 @@ export const getRecruitmentFunnelStats = async (
     };
 
     return { data, error: null };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching recruitment funnel stats:', error);
-    return { data: null, error };
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch recruitment funnel stats';
+    return { data: null, error: errorMessage };
   }
 };
 
@@ -148,7 +154,7 @@ export const getAnalyticsKPIMetrics = async (
   preset: FunnelRangePreset,
   start?: string,
   end?: string
-): Promise<{ data: AnalyticsKPIMetrics | null; error: any }> => {
+): Promise<ServiceResponse<AnalyticsKPIMetrics>> => {
   try {
     const { startDate, endDate } = buildDateRange(preset, start, end);
 
@@ -223,7 +229,7 @@ export const getAnalyticsKPIMetrics = async (
       if (!studErr && hiredStudents) {
         const studentIds = hiredStudents
           .map((c: any) => c.student_id)
-          .filter((id: string | null) => id);
+          .filter((id: string | null | undefined) => id);
 
         if (studentIds.length > 0) {
           const { data: students, error: scoresErr } = await supabase
@@ -234,7 +240,7 @@ export const getAnalyticsKPIMetrics = async (
           if (!scoresErr && students && students.length > 0) {
             const scores = students
               .map((s: any) => s.employability_score)
-              .filter((score: number) => score && score > 0);
+              .filter((score: number | undefined) => score && score > 0);
 
             if (scores.length > 0) {
               qualityScore = parseFloat(
@@ -302,7 +308,7 @@ export const getAnalyticsKPIMetrics = async (
       if (prevHiredStudents) {
         const prevStudentIds = prevHiredStudents
           .map((c: any) => c.student_id)
-          .filter((id: string | null) => id);
+          .filter((id: string | null | undefined) => id);
 
         if (prevStudentIds.length > 0) {
           const { data: prevStudents } = await supabase
@@ -313,7 +319,7 @@ export const getAnalyticsKPIMetrics = async (
           if (prevStudents && prevStudents.length > 0) {
             const prevScores = prevStudents
               .map((s: any) => s.employability_score)
-              .filter((score: number) => score && score > 0);
+              .filter((score: number | undefined) => score && score > 0);
 
             if (prevScores.length > 0) {
               prevQualityScore = parseFloat(
@@ -348,9 +354,10 @@ export const getAnalyticsKPIMetrics = async (
     };
 
     return { data, error: null };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching analytics KPI metrics:', error);
-    return { data: null, error };
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch analytics KPI metrics';
+    return { data: null, error: errorMessage };
   }
 };
 
@@ -366,7 +373,7 @@ export const getTopHiringColleges = async (
   start?: string,
   end?: string,
   limit: number = 4
-): Promise<{ data: TopHiringCollege[] | null; error: any }> => {
+): Promise<ServiceResponse<TopHiringCollege[]>> => {
   try {
     const { startDate, endDate } = buildDateRange(preset, start, end);
 
@@ -495,9 +502,10 @@ export const getTopHiringColleges = async (
       .slice(0, limit);
 
     return { data: collegesArray, error: null };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching top hiring colleges:', error);
-    return { data: null, error };
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch top hiring colleges';
+    return { data: null, error: errorMessage };
   }
 };
 
@@ -514,7 +522,7 @@ export const getCoursePerformance = async (
   start?: string,
   end?: string,
   limit: number = 4
-): Promise<{ data: CoursePerformance[] | null; error: any }> => {
+): Promise<ServiceResponse<CoursePerformance[]>> => {
   try {
     const { startDate, endDate } = buildDateRange(preset, start, end);
 
@@ -574,9 +582,10 @@ export const getCoursePerformance = async (
       .slice(0, limit);
 
     return { data: coursesArray, error: null };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching course performance:', error);
-    return { data: null, error };
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch course performance';
+    return { data: null, error: errorMessage };
   }
 };
 
@@ -606,7 +615,7 @@ export const getGeographicDistribution = async (
   start?: string,
   end?: string,
   limit: number = 4
-): Promise<{ data: GeographicLocation[] | null; error: any }> => {
+): Promise<ServiceResponse<GeographicLocation[]>> => {
   try {
     const { startDate, endDate } = buildDateRange(preset, start, end);
 
@@ -659,9 +668,10 @@ export const getGeographicDistribution = async (
       .slice(0, limit);
 
     return { data: locationsArray, error: null };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching geographic distribution:', error);
-    return { data: null, error };
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch geographic distribution';
+    return { data: null, error: errorMessage };
   }
 };
 
@@ -697,7 +707,7 @@ export const getQualityMetrics = async (
   preset: FunnelRangePreset,
   start?: string,
   end?: string
-): Promise<{ data: QualityMetrics | null; error: any }> => {
+): Promise<ServiceResponse<QualityMetrics>> => {
   try {
     const { startDate, endDate } = buildDateRange(preset, start, end);
 
@@ -845,9 +855,10 @@ export const getQualityMetrics = async (
     };
 
     return { data, error: null };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching quality metrics:', error);
-    return { data: null, error };
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch quality metrics';
+    return { data: null, error: errorMessage };
   }
 };
 
@@ -877,7 +888,7 @@ export const getSpeedAnalytics = async (
   preset: FunnelRangePreset,
   start?: string,
   end?: string
-): Promise<{ data: SpeedAnalytics | null; error: any }> => {
+): Promise<ServiceResponse<SpeedAnalytics>> => {
   try {
     const { startDate, endDate } = buildDateRange(preset, start, end);
 
@@ -972,8 +983,9 @@ export const getSpeedAnalytics = async (
     };
 
     return { data, error: null };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching speed analytics:', error);
-    return { data: null, error };
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch speed analytics';
+    return { data: null, error: errorMessage };
   }
 };

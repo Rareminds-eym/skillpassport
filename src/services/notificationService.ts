@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabase } from "../lib/supabaseClient";
 import { NotificationType } from "../hooks/useNotifications";
 
@@ -83,10 +82,11 @@ export async function createNotification(
     if (error) throw error;
 
     return { success: true, data };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Failed to create notification';
     return {
       success: false,
-      error: err.message || "Failed to create notification",
+      error: errorMessage,
     };
   }
 }
@@ -128,10 +128,11 @@ export async function createBatchNotifications(
     if (error) throw error;
 
     return { success: true, data, count: notifications.length };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Failed to create batch notifications';
     return {
       success: false,
-      error: err.message || "Failed to create batch notifications",
+      error: errorMessage,
     };
   }
 }
