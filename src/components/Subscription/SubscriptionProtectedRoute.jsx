@@ -23,7 +23,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useIsAuthenticated, useUserRole, useAuthLoading, useUser, useSubscription, ACCESS_REASONS } from '../../stores';
+import { useIsAuthenticated, useUserRole, useAuthLoading, useUser, useSubscriptionAccess, ACCESS_REASONS } from '../../stores';
 import Loader from '../Loader';
 import SubscriptionBanner from './SubscriptionBanner';
 
@@ -375,7 +375,7 @@ const SubscriptionProtectedRoute = ({
     error: subscriptionError,
     isRefetching,
     refreshAccess,
-  } = useSubscription();
+  } = useSubscriptionAccess();
 
   // Detect post-payment navigation
   const isPostPayment = location.state?.fromPayment === true;

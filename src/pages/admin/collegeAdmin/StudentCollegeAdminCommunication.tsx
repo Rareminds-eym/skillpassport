@@ -28,7 +28,7 @@ import DeleteConversationModal from '../../../components/messaging/DeleteConvers
 import NewStudentConversationModalCollegeAdmin from '../../../components/messaging/NewStudentConversationModalCollegeAdmin';
 import NewCollegeAdminEducatorConversationModal from '../../../components/messaging/NewCollegeAdminEducatorConversationModal';
 import { useUser } from '../../../stores';
-import { useGlobalPresence } from '../../../stores';
+import { useGlobalPresenceStore } from '../../../stores';
 import { useCollegeAdminMessages } from '../../../hooks/useCollegeAdminMessages.js';
 import { useCollegeEducatorAdminConversationsForAdmin } from '../../../hooks/useCollegeEducatorAdminConversations.js';
 import { useCollegeEducatorAdminMessagesForAdmin } from '../../../hooks/useCollegeEducatorAdminMessages.js';
@@ -241,7 +241,7 @@ const StudentCollegeAdminCommunication = () => {
   const { messages, isLoading: loadingMessages, sendMessage, isSending } = activeTab === 'students' ? studentMessages : educatorMessages;
 
   // Use shared global presence context
-  const { isUserOnline: isUserOnlineGlobal } = useGlobalPresence();
+  const isUserOnlineGlobal = useGlobalPresenceStore(s => s.isUserOnline);
   
   // Debug presence system
   useEffect(() => {

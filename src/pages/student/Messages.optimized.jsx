@@ -16,7 +16,7 @@ import MessageService from '../../services/messageService';
 import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '../../stores';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
-import { useGlobalPresence } from '../../stores';
+import { useGlobalPresenceStore } from '../../stores';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 import { getLogger } from '../../config/logging';
@@ -87,7 +87,7 @@ const Messages = () => {
   });
   
   // Realtime Features - Use shared global presence context
-  const { isUserOnline: isUserOnlineGlobal } = useGlobalPresence();
+  const isUserOnlineGlobal = useGlobalPresenceStore(s => s.isUserOnline);
   
   const { setTyping, getTypingText, isAnyoneTyping } = useTypingIndicator({
     conversationId: selectedConversationId || '',

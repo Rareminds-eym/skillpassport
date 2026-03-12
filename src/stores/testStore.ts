@@ -179,19 +179,4 @@ export const useTestActions = () =>
     submitTest: state.submitTest,
   })));
 
-// Combined convenience hook
-export const useTest = () => {
-  const questions = useTestQuestions();
-  const selectedAnswers = useTestAnswers();
-  const isLoading = useTestLoading();
-  const progress = useTestProgress();
-  const actions = useTestActions();
 
-  return {
-    questions,
-    selectedAnswers,
-    isLoading,
-    ...progress,
-    ...actions,
-  };
-};

@@ -434,32 +434,4 @@ export const useTourEligibility = (tourKey: TourKey) =>
     isSkipped: state.isSkipped(tourKey),
   })));
 
-// Combined convenience hook
-export const useTour = () => {
-  const state = useTourState();
-  const loading = useTourLoading();
-  const isTourRunning = useIsTourRunning();
-  const activeTourKey = useActiveTourKey();
-  const progress = useTourProgress();
-  const tourStore = useTourStore();
 
-  return {
-    ...state,
-    loading,
-    isTourRunning,
-    activeTourKey,
-    progress,
-    // Actions
-    startTour: tourStore.startTour,
-    completeTour: tourStore.completeTour,
-    skipTour: tourStore.skipTour,
-    stopTour: tourStore.stopTour,
-    nextStep: tourStore.nextStep,
-    previousStep: tourStore.previousStep,
-    goToStep: tourStore.goToStep,
-    // State checks
-    isEligible: tourStore.isEligible,
-    isCompleted: tourStore.isCompleted,
-    isSkipped: tourStore.isSkipped,
-  };
-};

@@ -25,7 +25,7 @@ import NewAdminConversationModal from '../../components/messaging/NewAdminConver
 import NewCollegeAdminConversationModal from '../../components/messaging/NewCollegeAdminConversationModal';
 import NewEducatorConversationModal from '../../components/messaging/NewEducatorConversationModal';
 import { useUser } from '../../stores';
-import { useGlobalPresence } from '../../stores';
+import { useGlobalPresenceStore } from '../../stores';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
 import { useCreateStudentAdminConversation, useStudentAdminConversations, useStudentAdminMessages } from '../../hooks/useStudentAdminMessages';
@@ -450,7 +450,8 @@ const Messages = () => {
             { messages: [], isLoading: false, sendMessage: () => { }, isSending: false };
 
   // Use shared global presence context (no duplicate subscription)
-  const { isUserOnline: isUserOnlineGlobal, onlineUsers: globalOnlineUsers } = useGlobalPresence();
+  const isUserOnlineGlobal = useGlobalPresenceStore(s => s.isUserOnline);
+  const globalOnlineUsers = useGlobalPresenceStore(s => s.onlineUsers);
 
   const getAdminOnlineStatus = useCallback((conversation) => {
     logger.debug('Full conversation object', { conversationId: conversation.id });

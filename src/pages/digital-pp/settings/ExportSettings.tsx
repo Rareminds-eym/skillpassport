@@ -1,12 +1,13 @@
 import { Download, FileText, Save } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePortfolio } from '../../../stores';
+import { usePortfolioStore } from '../../../stores';
 import { exportAsJSON, exportResume } from '../../../utils/exportppUtils';
 
 const ExportSettings: React.FC = () => {
   const navigate = useNavigate();
-  const { student, settings } = usePortfolio();
+  const student = usePortfolioStore(s => s.student);
+  const settings = usePortfolioStore(s => s.settings);
   const [showExportConfirmation, setShowExportConfirmation] = useState(false);
   const [exportType, setExportType] = useState('');
   const [isExporting, setIsExporting] = useState(false);

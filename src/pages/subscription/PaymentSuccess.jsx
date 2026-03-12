@@ -27,8 +27,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useUser, useUserRole, useSubscription } from '../../stores';
+import { useUser, useUserRole, useSubscriptionAccess } from '../../stores';
 import { usePaymentVerificationFromURL } from '../../hooks/Subscription/usePaymentVerification';
 
 import { downloadReceipt, generateReceiptBase64 } from '../../services/Subscriptions/pdfReceiptGenerator';
@@ -439,9 +438,8 @@ const ErrorScreen = ({ message, onRetry }) => (
 function PaymentSuccess() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const user = useUser();
   const { role } = useUserRole();
-  const { refreshSubscription, refreshAccess } = useSubscription();
+  const { refreshSubscription, refreshAccess } = useSubscriptionAccess();
 
   // State
   const [activationStatus, setActivationStatus] = useState(ACTIVATION_STATES.PENDING);

@@ -11,7 +11,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
-import { 
+import {
   Send,
   Mic,
   Paperclip,
@@ -36,7 +36,7 @@ import { useConversationSwitcher } from '../hooks/useConversationSwitcher';
 import { VirtualMessage } from '../hooks/useVirtualMessage';
 
 // Import Context Provider
-import { useCareerAssistant } from '../../../stores';
+import { useCareerAssistantStore } from '../../../stores';
 
 // Import constants
 import {
@@ -55,23 +55,23 @@ import {
 const CareerAssistantContainer: React.FC = () => {
   const user = useUser();
   const location = useLocation();
-  
+
   // ==================== HOOKS ====================
-  
+
   // Conversation management
   const {
-    conversations,
     currentConversation,
-    loading: conversationsLoading,
     fetchConversations,
     loadConversation,
     createNewConversation,
     deleteConversation,
     currentConversationId,
     setCurrentConversationId,
-    hasMore,
+    hasMore: _hasMore,
     loadMore,
   } = useCareerConversations();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  void _hasMore;
 
   // AI Feedback
   const {
@@ -100,24 +100,19 @@ const CareerAssistantContainer: React.FC = () => {
   } = useSmartScroll([messages]);
 
   // ==================== STATE ====================
-  
+
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(true);
   const [selectedChips, setSelectedChips] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [autoSendQuery, setAutoSendQuery] = useState(false);
-  
-  // Sidebar state - collapsed on mobile by default
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return window.innerWidth < 768;
-    }
-    return false;
-  });
-  
+
+  // Store actions to replace local state
+  const setShowWelcome = useCareerAssistantStore(s => s.setShowWelcome);
+  const toggleSidebar = useCareerAssistantStore(s => s.toggleSidebar);
+
   // ==================== REFS ====================
-  
+
   const inputRef = useRef<HTMLInputElement>(null);
   const typingTimerRef = useRef<number | null>(null);
   const userInteractedRef = useRef(false);
@@ -135,7 +130,7 @@ const CareerAssistantContainer: React.FC = () => {
   });
 
   // ==================== EFFECTS ====================
-  
+
   /**
    * Load conversation messages when currentConversation changes
    * Uses replaceMessages from optimized hook
@@ -176,7 +171,7 @@ const CareerAssistantContainer: React.FC = () => {
   }, [location.state, messages.length]);
 
   // ==================== HANDLERS ====================
-  
+
   /**
    * Stop AI response generation
    * Aborts the current request and cleans up state
@@ -191,12 +186,12 @@ const CareerAssistantContainer: React.FC = () => {
       clearTimeout(typingTimerRef.current);
       typingTimerRef.current = null;
     }
-    
+
     // Remove any empty assistant messages (loading indicators)
-    setMessages(prev => prev.filter(m => 
+    setMessages(prev => prev.filter(m =>
       !(m.role === 'assistant' && m.content.trim() === '')
     ));
-    
+
     setIsTyping(false);
     setLoading(false);
     userInteractedRef.current = false;
@@ -244,7 +239,7 @@ const CareerAssistantContainer: React.FC = () => {
 
     // Track the temporary message ID for cleanup
     let tempMessageId: string | null = null;
-    
+
     try {
       const studentId = user?.id;
       if (!studentId) {
@@ -253,14 +248,14 @@ const CareerAssistantContainer: React.FC = () => {
 
       const id = (Date.now() + 1).toString();
       tempMessageId = id; // Track for cleanup
-      
+
       const aiMessage: Message = {
         id,
         role: 'assistant',
         content: '',
         timestamp: new Date().toISOString()
       };
-      
+
       setMessages(prev => [...prev, aiMessage]);
       setLoading(false);
       setIsTyping(true);
@@ -273,10 +268,10 @@ const CareerAssistantContainer: React.FC = () => {
         currentConversationId,
         selectedChips,
         (chunk: string) => {
-          setMessages(prev => prev.map(m => 
+          setMessages(prev => prev.map(m =>
             m.id === id ? { ...m, content: m.content + chunk } : m
           ));
-          
+
           if (!userInteractedRef.current) {
             requestAnimationFrame(() => {
               if (!userInteractedRef.current) {
@@ -287,7 +282,7 @@ const CareerAssistantContainer: React.FC = () => {
         },
         abortControllerRef.current.signal
       );
-      
+
       if (!result.success && result.error) {
         // Remove the empty loading message before showing error
         setMessages(prev => prev.filter(m => m.id !== id));
@@ -297,16 +292,16 @@ const CareerAssistantContainer: React.FC = () => {
 
       // Success - update message with backend's messageId
       tempMessageId = null; // Clear since message is now permanent
-      
+
       if (result.conversationId && result.conversationId !== currentConversationId) {
         setCurrentConversationId(result.conversationId);
         fetchConversations();
       }
 
       // Update message with backend's messageId, interactive content and metadata
-      setMessages(prev => prev.map(m => 
-        m.id === id ? { 
-          ...m, 
+      setMessages(prev => prev.map(m =>
+        m.id === id ? {
+          ...m,
           id: result.messageId || m.id,
           interactive: result.interactive,
           intent: result.intent,
@@ -316,7 +311,7 @@ const CareerAssistantContainer: React.FC = () => {
       ));
     } catch (error: any) {
       console.error('Career AI Error:', error);
-      
+
       // Check if error is from abort (user stopped generation)
       if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
         // Remove any temporary loading message
@@ -325,19 +320,19 @@ const CareerAssistantContainer: React.FC = () => {
         }
         return;
       }
-      
+
       // Remove temporary loading message if it still exists
       if (tempMessageId) {
         setMessages(prev => prev.filter(m => m.id !== tempMessageId));
       }
-      
+
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: `I'm sorry, I encountered an error: ${error?.message || 'Unknown error'}. Please try again!`,
         timestamp: new Date().toISOString()
       };
-      
+
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setLoading(false);
@@ -407,7 +402,7 @@ const CareerAssistantContainer: React.FC = () => {
    * Finds the corresponding user message for context
    */
   const handleFeedback = useCallback(async (
-    messageId: string, 
+    messageId: string,
     thumbsUp: boolean,
     rating?: number,
     feedbackText?: string
@@ -446,46 +441,105 @@ const CareerAssistantContainer: React.FC = () => {
 
 
   // ==================== RENDER ====================
-  
-  return <CareerAssistantUI />;
+
+  // Wire computed callbacks + refs into the store for UI to use
+  // We pass them explicitly as props so the UI component only reads real store state
+  // via granular selectors, never via a full-store subscription.
+
+  return (
+    <CareerAssistantUI
+      // Actions
+      onSelectConversation={selectConversation}
+      onNewConversation={handleNewConversation}
+      onDeleteConversation={deleteConversation}
+      onSendMessage={handleSend}
+      onStopTyping={stopTyping}
+      onSendQuery={handleSendQuery}
+      onQuickAction={handleQuickAction}
+      onRemoveChip={removeChip}
+      onFeedback={handleFeedback}
+      onLoadMore={loadMore}
+      onToggleSidebar={toggleSidebar}
+      // Refs
+      messagesContainerRef={messagesContainerRef}
+      messagesEndRef={messagesEndRef}
+      handleScroll={handleScroll}
+      scrollToBottom={scrollToBottom}
+      setUserScrolledUp={setUserScrolledUp}
+      // Derived state (not in store)
+      isTyping={isTyping}
+      userScrolledUp={userScrolledUp}
+      // Feedback
+      getFeedback={getFeedback}
+      isFeedbackLoading={isFeedbackLoading}
+    />
+  );
 };
+
+interface CareerAssistantUIProps {
+  // Action callbacks (computed by container, not in store)
+  onSelectConversation: (id: string) => Promise<void>;
+  onNewConversation: () => void;
+  onDeleteConversation: (id: string) => Promise<void>;
+  onSendMessage: () => Promise<void>;
+  onStopTyping: () => void;
+  onSendQuery: (query: string) => void;
+  onQuickAction: (prompt: string, label: string) => void;
+  onRemoveChip: (chip: string) => void;
+  onFeedback: (messageId: string, thumbsUp: boolean, rating?: number, feedbackText?: string) => Promise<void>;
+  onLoadMore?: () => Promise<void>;
+  onToggleSidebar: () => void;
+  // Refs / scroll (from useSmartScroll, not in store)
+  messagesContainerRef: React.RefObject<HTMLDivElement>;
+  messagesEndRef: React.RefObject<HTMLDivElement>;
+  handleScroll: (e: React.UIEvent<HTMLDivElement>) => void;
+  scrollToBottom: (force?: boolean) => void;
+  setUserScrolledUp: (v: boolean) => void;
+  // Derived state not in store
+  isTyping: boolean;
+  userScrolledUp: boolean;
+  // Feedback helpers (uses useAIFeedback FeedbackData shape, not store's)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getFeedback: (id: string) => any | null;
+  isFeedbackLoading: (id: string) => boolean;
+}
 
 /**
  * Career Assistant UI Component
- * Uses Zustand store for state management
+ * Reads UI state from the store via granular selectors.
+ * Receives action callbacks and refs from CareerAssistantContainer as props.
  */
-const CareerAssistantUI: React.FC = () => {
-  const {
-    // UI state
-    showWelcome,
-    selectedChips,
-    sidebarCollapsed,
-    messages,
-    loading,
-    isTyping,
-    input,
-    
-    // Handlers
-    onToggleSidebar,
-    onQuickAction,
-    onRemoveChip,
-    onSendMessage,
-    setInput,
-    
-    // Scroll
-    messagesContainerRef,
-    messagesEndRef,
-    handleScroll,
-    userScrolledUp,
-    scrollToBottom,
-    onStopTyping,
-    onSendQuery,
-    onFeedback,
-    getFeedback,
-    isFeedbackLoading,
-    setUserScrolledUp,
-  } = useCareerAssistant();
-  
+const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
+  onSelectConversation,
+  onNewConversation,
+  onDeleteConversation,
+  onSendMessage,
+  onStopTyping,
+  onSendQuery,
+  onQuickAction,
+  onRemoveChip,
+  onFeedback,
+  onLoadMore,
+  onToggleSidebar,
+  messagesContainerRef,
+  messagesEndRef,
+  handleScroll,
+  scrollToBottom,
+  setUserScrolledUp,
+  isTyping,
+  userScrolledUp,
+  getFeedback,
+  isFeedbackLoading,
+}) => {
+  // Granular store selectors — only re-render when these specific slices change
+  const showWelcome = useCareerAssistantStore((s) => s.showWelcome);
+  const selectedChips = useCareerAssistantStore((s) => s.selectedChips);
+  const sidebarCollapsed = useCareerAssistantStore((s) => s.sidebarCollapsed);
+  const messages = useCareerAssistantStore((s) => s.messages);
+  const loading = useCareerAssistantStore((s) => s.loading);
+  const input = useCareerAssistantStore((s) => s.input);
+  const setInput = useCareerAssistantStore((s) => s.setInput);
+
   const inputRef = useRef<HTMLInputElement>(null);
   const userInteractedRef = useRef(false);
 
@@ -499,7 +553,13 @@ const CareerAssistantUI: React.FC = () => {
   return (
     <div className="flex h-full min-h-0 bg-white">
       {/* Conversation History Sidebar */}
-      <ConversationSidebar />
+      <ConversationSidebar
+        onSelectConversation={onSelectConversation}
+        onNewConversation={onNewConversation}
+        onDeleteConversation={onDeleteConversation}
+        onToggleSidebar={onToggleSidebar}
+        onLoadMore={onLoadMore}
+      />
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col max-w-5xl mx-auto relative">
@@ -514,7 +574,7 @@ const CareerAssistantUI: React.FC = () => {
         </div>
 
         {/* Messages Area */}
-        <div 
+        <div
           ref={messagesContainerRef}
           onScroll={handleScroll}
           className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-8"
@@ -551,11 +611,11 @@ const CareerAssistantUI: React.FC = () => {
                   // Create unique key by combining ID with role and index
                   // Backend uses same turnId for user+assistant pair, so we need unique keys for React
                   const uniqueKey = `${message.id}-${message.role}-${index}`;
-                  
+
                   // Virtual scrolling: Always render first 5 and last 5 messages
                   // Virtualize messages in the middle for performance
                   const isInitialVisible = index < INITIAL_VISIBLE_MESSAGES || index >= messages.length - INITIAL_VISIBLE_MESSAGES;
-                  
+
                   return (
                     <VirtualMessage
                       key={uniqueKey}
@@ -579,13 +639,13 @@ const CareerAssistantUI: React.FC = () => {
                           </div>
                         </motion.div>
                       ) : (
-                        <SimpleMessage 
-                          content={message.content} 
-                          timestamp={message.timestamp} 
+                        <SimpleMessage
+                          content={message.content}
+                          timestamp={message.timestamp}
                           isUser={false}
                           messageId={message.id}
                           onFeedback={onFeedback}
-                          feedbackData={getFeedback(message.id)}
+                          feedbackData={getFeedback(message.id) as any}
                           feedbackLoading={isFeedbackLoading(message.id)}
                         />
                       )}
@@ -708,7 +768,7 @@ const CareerAssistantUI: React.FC = () => {
                 disabled={loading || isTyping}
                 className="w-full px-5 py-4 pr-32 text-gray-900 placeholder-gray-500 bg-gray-50 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
               />
-              
+
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
                 <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors" title="Attach file">
                   <Paperclip className="w-5 h-5" />

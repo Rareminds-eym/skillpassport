@@ -2,12 +2,13 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Award, Book, Briefcase, Camera, CheckCircle, ChevronLeft, ChevronRight, Code, Coffee, Dumbbell, Gamepad2, Globe, Mountain, Music, Palette, Plane, Shield, Star, Target, Users, XCircle } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePortfolio } from '../../stores';
+import { usePortfolioStore } from '../../stores';
 import { useUserRole } from '../../stores';
 
 const PassportPage: React.FC = () => {
   const navigate = useNavigate();
-  const { student, isLoading } = usePortfolio();
+  const student = usePortfolioStore(s => s.student);
+  const isLoading = usePortfolioStore(s => s.isLoading);
   const { role } = useUserRole();
   const [currentPage, setCurrentPage] = useState(0);
   const [direction, setDirection] = useState(0);

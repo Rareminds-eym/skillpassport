@@ -651,17 +651,4 @@ export const useSubscriptionPurchase = () => {
   return { isPurchasing, isCancelling, purchaseError, clearPurchaseError, purchaseAddOn, purchaseBundle };
 };
 
-// Combined hook — single import for components that need everything
-export const useSubscription = () => {
-  const access = useSubscriptionAccess();
-  const warnings = useSubscriptionWarnings();
-  const entitlements = useUserEntitlements();
-  const purchase = useSubscriptionPurchase();
 
-  return {
-    ...access,
-    ...warnings,
-    ...entitlements,
-    ...purchase,
-  };
-};

@@ -149,24 +149,4 @@ export const usePresenceActions = () =>
     updateStatus: state.updateStatus,
   })));
 
-// Combined convenience hook
-export const useGlobalPresence = () => {
-  const onlineUsers = useOnlineUsers();
-  const isConnected = useIsConnected();
-  const { userId, userName, userType } = useCurrentPresence();
-  const actions = usePresenceActions();
 
-  return {
-    onlineUsers,
-    isConnected,
-    currentUserId: userId,
-    currentUserName: userName,
-    currentUserType: userType,
-    isUserOnline: (uid: string) => onlineUsers.some((u) => u.userId === uid && u.status === 'online'),
-    getUserStatus: (uid: string) => {
-      const user = onlineUsers.find((u) => u.userId === uid);
-      return user ? user.status : 'offline';
-    },
-    ...actions,
-  };
-};

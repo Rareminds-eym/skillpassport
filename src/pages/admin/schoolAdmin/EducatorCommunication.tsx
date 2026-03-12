@@ -26,7 +26,7 @@ import { supabase } from '../../../lib/supabaseClient';
 import { useEducatorAdminMessages } from '../../../hooks/useEducatorAdminMessages.js';
 import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '../../../stores';
-import { useGlobalPresence } from '../../../stores';
+import { useGlobalPresenceStore } from '../../../stores';
 import { useRealtimePresence } from '../../../hooks/useRealtimePresence';
 import { useTypingIndicator } from '../../../hooks/useTypingIndicator';
 import { useNotificationBroadcast } from '../../../hooks/useNotificationBroadcast';
@@ -168,7 +168,7 @@ const EducatorCommunication = () => {
   });
 
   // Use shared global presence context
-  const { isUserOnline: isUserOnlineGlobal } = useGlobalPresence();
+  const isUserOnlineGlobal = useGlobalPresenceStore(s => s.isUserOnline);
 
   // Presence tracking for current conversation
   const { } = useRealtimePresence({

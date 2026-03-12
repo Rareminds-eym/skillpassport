@@ -3,13 +3,13 @@ import { ArrowLeft, ArrowRight, BookOpen, CheckCircle, Sparkles, User } from 'lu
 import React, { useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { BackgroundRippleEffect } from '../../components/digital-pp/ui/background-ripple-effect';
-import { usePortfolio } from '../../stores';
+import { usePortfolioStore } from '../../stores';
 import { useUserRole } from '../../stores';
 
 const HomePage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { setStudent } = usePortfolio();
+  const setStudent = usePortfolioStore(s => s.setStudent);
   const { role } = useUserRole();
 
   useEffect(() => {

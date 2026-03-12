@@ -21,7 +21,7 @@ import toast from 'react-hot-toast';
 import { useLocation } from 'react-router-dom';
 import DeleteConversationModal from '../../components/messaging/DeleteConversationModal';
 import { useUser } from '../../stores';
-import { useGlobalPresence } from '../../stores';
+import { useGlobalPresenceStore } from '../../stores';
 import { useEducatorAdminMessages } from '../../hooks/useEducatorAdminMessages.js';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
@@ -138,7 +138,7 @@ const AdminCommunication = () => {
   });
 
   // Use shared global presence context
-  const { isUserOnline: isUserOnlineGlobal } = useGlobalPresence();
+  const isUserOnlineGlobal = useGlobalPresenceStore(s => s.isUserOnline);
 
   // Presence tracking for current conversation
   const { } = useRealtimePresence({

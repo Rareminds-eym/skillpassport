@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Joyride, { CallBackProps, STATUS } from 'react-joyride';
-import { useTour } from '../../../stores';
+import { useTourStore } from '../../../stores';
 import { TOUR_KEYS } from '../constants';
 import { waitForElement } from '../utils';
 import { supabase } from '../../../lib/supabaseClient';
@@ -19,7 +19,8 @@ import {
  * Flow: Welcome → Navigation → Summary → Finish
  */
 const GenericAssessmentResultTour: React.FC = () => {
-  const { startTour, completeTour, skipTour, isEligible, loading, isTourRunning, activeTourKey } = useTour();
+  const { startTour, completeTour, skipTour, isEligible, loading, activeTourKey } = useTourStore(s => ({ startTour: s.startTour, completeTour: s.completeTour, skipTour: s.skipTour, isEligible: s.isEligible, loading: s.loading, activeTourKey: s.activeTourKey }));
+  const isTourRunning = useTourStore(s => s.getIsTourRunning());
   const [shouldRun, setShouldRun] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);

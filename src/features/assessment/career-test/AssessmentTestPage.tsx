@@ -20,7 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 
 // Auth & Database
-import { useUser, useTour } from '../../../stores';
+import { useUser, useTourStore } from '../../../stores';
 // @ts-ignore - JS file without type declarations
 import { useAssessment } from '../../../hooks/useAssessment';
 import { useAdaptiveAptitude } from '../../../hooks/useAdaptiveAptitude';
@@ -261,7 +261,7 @@ const AssessmentTestPage: React.FC = () => {
   const user = useUser();
   
   // Tour hook - check if tour is running to pause timers
-  const { isTourRunning } = useTour();
+  const isTourRunning = useTourStore(s => s.getIsTourRunning());
 
   // Environment flags
   const isDevMode = import.meta.env.DEV || window.location.hostname === 'localhost';

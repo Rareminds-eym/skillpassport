@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useSubscription } from '../../stores';
+import { useSubscriptionAccess } from '../../stores';
 import entitlementService from '../../services/entitlementService';
 
 /**
@@ -62,7 +62,7 @@ export function SubscriptionDashboard({ className = '', subscriptionData: propSu
     fetchUserEntitlements,
     cancelAddOn,
     isCancelling
-  } = useSubscription();
+  } = useSubscriptionAccess();
 
   // Use prop subscriptionData if provided (from Zustand store), otherwise fall back to context
   const subscriptionData = propSubscriptionData || subscription;

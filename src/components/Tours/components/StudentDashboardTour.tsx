@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Joyride, { CallBackProps, STATUS } from 'react-joyride';
-import { useTour } from '../../../stores';
+import { useTourStore } from '../../../stores';
 import { TOUR_KEYS } from '../constants';
 import { waitForElement } from '../utils';
 import {
@@ -50,7 +50,7 @@ const scrollToElementSmooth = (element: Element, stepIndex: number) => {
 const STEPS_NEEDING_SCROLL = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]); // Use Set for O(1) lookup
 
 const StudentDashboardTour: React.FC = () => {
-  const { startTour, completeTour, skipTour, isEligible, loading } = useTour();
+  const { startTour, completeTour, skipTour, isEligible, loading } = useTourStore(s => ({ startTour: s.startTour, completeTour: s.completeTour, skipTour: s.skipTour, isEligible: s.isEligible, loading: s.loading }));
   const [shouldRun, setShouldRun] = useState(false);
   const [isReady, setIsReady] = useState(false);
   

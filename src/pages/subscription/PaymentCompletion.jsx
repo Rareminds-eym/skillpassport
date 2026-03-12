@@ -15,7 +15,7 @@ import {
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import SubscriptionRouteGuard from '../../components/Subscription/SubscriptionRouteGuard';
-import { useUser, useUserRole, useIsAuthenticated, useAuthLoading, useSubscription } from '../../stores';
+import { useUser, useUserRole, useIsAuthenticated, useAuthLoading, useSubscriptionAccess } from '../../stores';
 import { supabase } from '../../lib/supabaseClient';
 import { initiateRazorpayPayment } from '../../services/Subscriptions/razorpayService';
 
@@ -219,7 +219,7 @@ function PaymentCompletion() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [userDetails, setUserDetails] = useState({ name: '', email: '', phone: '' });
 
-  const { subscriptionData, loading: subscriptionLoading } = useSubscription();
+  const { subscriptionData, loading: subscriptionLoading } = useSubscriptionAccess();
 
   const plansUrl = useMemo(() => {
     return studentType ? `/subscription/plans/${studentType}` : '/subscription/plans/student';

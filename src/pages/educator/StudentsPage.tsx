@@ -13,7 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useStudents, UICandidate } from '../../hooks/useStudents';
 import { useEducatorSchool } from '../../hooks/useEducatorSchool';
-import { useSearch } from '../../stores';
+import { useSearchStore } from '../../stores';
 import SearchBar from '../../components/common/SearchBar';
 import Pagination from '../../components/educator/Pagination';
 import AddStudentModal from '../../components/educator/modals/Addstudentmodal';
@@ -243,7 +243,8 @@ type EducatorOutletContext = {
 
 const StudentsPage = () => {
   const { onViewProfile } = useOutletContext<EducatorOutletContext>()
-  const { searchQuery, setSearchQuery } = useSearch();
+  const searchQuery = useSearchStore(s => s.searchQuery);
+  const setSearchQuery = useSearchStore(s => s.setSearchQuery);
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState('grid');
   const [showFilters, setShowFilters] = useState(false);

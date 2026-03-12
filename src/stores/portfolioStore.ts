@@ -336,21 +336,4 @@ export const usePortfolioActions = () =>
 export const useIsViewingOtherStudent = () =>
   usePortfolioStore((state) => state.isManuallySet && state.student !== null);
 
-// Combined convenience hook
-export const usePortfolio = () => {
-  const student = usePortfolioStudent();
-  const settings = usePortfolioSettings();
-  const isLoading = usePortfolioLoading();
-  const viewerRole = usePortfolioViewerRole();
-  const actions = usePortfolioActions();
-  const isManuallySet = useIsViewingOtherStudent();
 
-  return {
-    student,
-    settings,
-    isLoading,
-    viewerRole,
-    isManuallySet,
-    ...actions,
-  };
-};

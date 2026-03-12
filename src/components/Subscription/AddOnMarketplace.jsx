@@ -15,7 +15,7 @@
 
 import { Filter, Grid, List, Package, Search, Sparkles, X } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
-import { useSubscription } from '../../stores';
+import { useSubscriptionAccess } from '../../stores';
 import { useAddOnCatalog } from '../../hooks/useAddOnCatalog';
 import { clearFeatureAccessCache } from '../../hooks/useFeatureGate';
 import addOnPaymentService from '../../services/addOnPaymentService';
@@ -55,7 +55,7 @@ export function AddOnMarketplace({
     searchAddOns 
   } = useAddOnCatalog({ role });
 
-  const { purchaseAddOn, purchaseBundle, isPurchasing, refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscription();
+  const { purchaseAddOn, purchaseBundle, isPurchasing, refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscriptionAccess();
   const [purchaseError, setPurchaseError] = useState(null);
 
   // Helper to check if user already owns an add-on (including cancelled but not expired)

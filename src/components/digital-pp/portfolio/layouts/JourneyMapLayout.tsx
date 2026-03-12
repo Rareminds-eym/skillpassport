@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GraduationCap, Briefcase, Award, Code, Trophy, MapPin, Calendar, Github, ExternalLink, ChevronRight, BookOpen } from 'lucide-react';
-import { usePortfolio } from '../../../../stores';
+import { usePortfolioStore } from '../../../../stores';
 import type { Student, AnimationType, DisplayPreferences } from '../../../../types/student';
 
 interface JourneyMapLayoutProps {
@@ -14,7 +14,7 @@ interface JourneyMapLayoutProps {
 }
 
 const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
-  const { student: contextStudent } = usePortfolio();
+  const contextStudent = usePortfolioStore(s => s.student);
   const student = props.student || contextStudent;
   const displayPreferences = props.displayPreferences || {
     showSocialLinks: true,

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Joyride, { CallBackProps, STATUS } from 'react-joyride';
-import { useTour } from '../../../stores';
+import { useTourStore } from '../../../stores';
 import { TOUR_KEYS } from '../constants';
 import { waitForElement } from '../utils';
 import { supabase } from '../../../lib/supabaseClient';
@@ -18,7 +18,7 @@ import {
  * Shows ONLY when personal_assessment_results.grade_level = 'after10'
  */
 const After10AssessmentResultTour: React.FC = () => {
-  const { startTour, completeTour, skipTour, isEligible, loading } = useTour();
+  const { startTour, completeTour, skipTour, isEligible, loading } = useTourStore(s => ({ startTour: s.startTour, completeTour: s.completeTour, skipTour: s.skipTour, isEligible: s.isEligible, loading: s.loading }));
   const [shouldRun, setShouldRun] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);

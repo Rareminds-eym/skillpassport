@@ -27,7 +27,7 @@ import { useEducatorMessages } from '../../hooks/useEducatorMessages.js';
 import { useEducatorAdminMessages } from '../../hooks/useEducatorAdminMessages.js';
 import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '../../stores';
-import { useGlobalPresence } from '../../stores';
+import { useGlobalPresenceStore } from '../../stores';
 import { getLogger } from '../../config/logging';
 
 const logger = getLogger('EducatorCommunication');
@@ -413,7 +413,8 @@ const Communication = () => {
     { messages: [], isLoading: false, sendMessage: async () => {}, isSending: false };
 
   // Use shared global presence context
-  const { isUserOnline: isUserOnlineGlobal, onlineUsers: globalOnlineUsers } = useGlobalPresence();
+  const isUserOnlineGlobal = useGlobalPresenceStore(s => s.isUserOnline);
+  const globalOnlineUsers = useGlobalPresenceStore(s => s.onlineUsers);
 // ADD THIS DEBUG LOG HERE:
 logger.info('🔍 [EDUCATOR] GlobalPresence Debug:', {
   isUserOnlineGlobal: typeof isUserOnlineGlobal,

@@ -82,16 +82,6 @@ interface CareerAssistantState {
   setFeedbackLoading: (messageId: string, loading: boolean) => void;
   isFeedbackLoading: (messageId: string) => boolean;
 
-  // Async handlers (placeholders - actual logic in components)
-  onSelectConversation: (id: string) => Promise<void>;
-  onNewConversation: () => Promise<void>;
-  onDeleteConversation: (id: string) => Promise<void>;
-  onLoadMore: () => Promise<void>;
-  onSendMessage: () => Promise<void>;
-  onSendQuery: (query: string) => void;
-  onStopTyping: () => void;
-  onQuickAction: (prompt: string, label: string) => void;
-  onFeedback: (messageId: string, thumbsUp: boolean, rating?: number, feedbackText?: string) => Promise<void>;
 
   // Reset
   reset: () => void;
@@ -273,44 +263,6 @@ export const useCareerAssistantStore = create<CareerAssistantState>()(
       return get().feedbackLoadingMap[messageId] || false;
     },
 
-    // Async handlers (placeholders - to be overridden or called from components)
-    onSelectConversation: async () => {
-      // Implement in component with actual logic
-    },
-
-    onNewConversation: async () => {
-      // Implement in component with actual logic
-    },
-
-    onDeleteConversation: async () => {
-      // Implement in component with actual logic
-    },
-
-    onLoadMore: async () => {
-      // Implement in component with actual logic
-    },
-
-    onSendMessage: async () => {
-      // Implement in component with actual logic
-    },
-
-    onSendQuery: () => {
-      // Implement in component with actual logic
-    },
-
-    onStopTyping: () => {
-      set((state) => {
-        state.isTyping = false;
-      });
-    },
-
-    onQuickAction: () => {
-      // Implement in component with actual logic
-    },
-
-    onFeedback: async () => {
-      // Implement in component with actual logic
-    },
 
     // Reset
     reset: () => {
@@ -368,10 +320,8 @@ export const useCareerAssistantActions = () => {
   const toggleSidebar = useCareerAssistantStore((state) => state.toggleSidebar);
   const addChip = useCareerAssistantStore((state) => state.addChip);
   const removeChip = useCareerAssistantStore((state) => state.removeChip);
-  const onSendQuery = useCareerAssistantStore((state) => state.onSendQuery);
-  const onStopTyping = useCareerAssistantStore((state) => state.onStopTyping);
   const reset = useCareerAssistantStore((state) => state.reset);
-  return { setConversations, setCurrentConversationId, setMessages, addMessage, setInput, setShowWelcome, toggleSidebar, addChip, removeChip, onSendQuery, onStopTyping, reset };
+  return { setConversations, setCurrentConversationId, setMessages, addMessage, setInput, setShowWelcome, toggleSidebar, addChip, removeChip, reset };
 };
 
 export const useCareerFeedback = (messageId: string) =>
@@ -381,18 +331,4 @@ export const useCareerFeedback = (messageId: string) =>
     setFeedback: (feedback: FeedbackData) => state.setFeedback(messageId, feedback),
   })));
 
-// Combined convenience hook
-// Uses individual selectors to avoid full-store subscription
-export const useCareerAssistant = () => {
-  const conversations = useCareerConversations();
-  const messages = useCareerMessages();
-  const uiState = useCareerUIState();
-  const actions = useCareerAssistantActions();
 
-  return {
-    ...conversations,
-    ...messages,
-    ...uiState,
-    ...actions,
-  };
-};

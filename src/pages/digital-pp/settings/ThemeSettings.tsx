@@ -2,14 +2,15 @@ import { Palette, Save } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ThemeToggle from '../../../components/digital-pp/ThemeToggle';
-import { usePortfolio } from '../../../stores';
+import { usePortfolioStore } from '../../../stores';
 import { useTheme } from '../../../stores';
 import type { AnimationType } from '../../../types/student';
 
 const ThemeSettings: React.FC = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
-  const { settings, updateSettings } = usePortfolio();
+  const settings = usePortfolioStore(s => s.settings);
+  const updateSettings = usePortfolioStore(s => s.updateSettings);
   
   const colorThemes = [
     { id: 'blue', name: 'Ocean Blue', primary: '#3b82f6', secondary: '#1e40af', accent: '#60a5fa' },

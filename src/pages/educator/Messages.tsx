@@ -32,7 +32,7 @@ import { getLogger } from '../../config/logging';
 
 const logger = getLogger('EducatorMessages');
 import { useUser } from '../../stores';
-import { useGlobalPresence } from '../../stores';
+import { useGlobalPresenceStore } from '../../stores';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
@@ -296,7 +296,7 @@ const CollegeLecturerMessages = () => {
   }, [selectedConversationId, messages, loadingMessages]);
 
   // Use shared global presence context
-  const { isUserOnline: isUserOnlineGlobal } = useGlobalPresence();
+  const isUserOnlineGlobal = useGlobalPresenceStore(s => s.isUserOnline);
   
   // Debug presence system
   useEffect(() => {

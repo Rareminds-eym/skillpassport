@@ -294,21 +294,4 @@ export const useSearchActions = () =>
     clearFilters: state.clearFilters,
   })));
 
-// Combined convenience hook
-export const useSearch = () => {
-  const searchQuery = useSearchQuery();
-  const searchResults = useSearchResults();
-  const isSearching = useIsSearching();
-  const filters = useSearchFilters();
-  const searchHistory = useSearchHistory();
-  const actions = useSearchActions();
 
-  return {
-    searchQuery,
-    searchResults,
-    isSearching,
-    filters,
-    searchHistory,
-    ...actions,
-  };
-};

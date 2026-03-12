@@ -29,7 +29,7 @@ import { useEducatorMessages } from '../../../hooks/useEducatorMessages.js';
 import { useEducatorAdminMessages } from '../../../hooks/useEducatorAdminMessages.js';
 import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '../../../stores';
-import { useGlobalPresence } from '../../../stores';
+import { useGlobalPresenceStore } from '../../../stores';
 import { useRealtimePresence } from '../../../hooks/useRealtimePresence';
 import { useTypingIndicator } from '../../../hooks/useTypingIndicator';
 import { useNotificationBroadcast } from '../../../hooks/useNotificationBroadcast';
@@ -379,7 +379,8 @@ const StudentCommunication = () => {
     activeTab === 'students' ? studentMessages : educatorMessages;
 
   // Use shared global presence context
-  const { isUserOnline: isUserOnlineGlobal, onlineUsers: globalOnlineUsers } = useGlobalPresence();
+  const isUserOnlineGlobal = useGlobalPresenceStore(s => s.isUserOnline);
+  const globalOnlineUsers = useGlobalPresenceStore(s => s.onlineUsers);
 
   // Debug: Log school admin presence info
   useEffect(() => {

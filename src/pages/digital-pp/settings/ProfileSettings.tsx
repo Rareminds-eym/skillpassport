@@ -1,11 +1,12 @@
 import { Save, Upload, User } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePortfolio } from '../../../stores';
+import { usePortfolioStore } from '../../../stores';
 
 const ProfileSettings: React.FC = () => {
   const navigate = useNavigate();
-  const { settings, updateSettings } = usePortfolio();
+  const settings = usePortfolioStore(s => s.settings);
+  const updateSettings = usePortfolioStore(s => s.updateSettings);
   const [profileImage, setProfileImage] = useState(settings.profileImage || '');
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 

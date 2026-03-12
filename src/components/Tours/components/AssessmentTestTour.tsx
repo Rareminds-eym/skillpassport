@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Joyride, { CallBackProps, STATUS } from 'react-joyride';
-import { useTour } from '../../../stores';
+import { useTourStore } from '../../../stores';
 import { TOUR_KEYS } from '../constants';
 import { waitForElement } from '../utils';
 import {
@@ -11,7 +11,7 @@ import {
 } from '../configs';
 
 const AssessmentTestTour: React.FC = () => {
-  const { startTour, completeTour, skipTour, isEligible, loading } = useTour();
+  const { startTour, completeTour, skipTour, isEligible, loading } = useTourStore(s => ({ startTour: s.startTour, completeTour: s.completeTour, skipTour: s.skipTour, isEligible: s.isEligible, loading: s.loading }));
   const [shouldRun, setShouldRun] = useState(false);
   const [isReady, setIsReady] = useState(false);
   

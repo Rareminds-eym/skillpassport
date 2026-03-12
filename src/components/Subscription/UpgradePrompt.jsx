@@ -15,7 +15,7 @@
 import { ArrowRight, ExternalLink, Lock, Sparkles, X, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useSubscription } from '../../stores';
+import { useSubscriptionAccess } from '../../stores';
 import { clearFeatureAccessCache } from '../../hooks/useFeatureGate';
 import addOnPaymentService from '../../services/addOnPaymentService';
 import { loadRazorpayScript } from '../../services/Subscriptions/razorpayService';
@@ -54,7 +54,7 @@ export function UpgradePrompt({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { purchaseAddOn, isPurchasing, refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscription();
+  const { purchaseAddOn, isPurchasing, refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscriptionAccess();
   const [billingPeriod, setBillingPeriod] = useState('monthly');
   const [error, setError] = useState(null);
   

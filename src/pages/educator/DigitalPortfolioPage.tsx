@@ -18,7 +18,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useStudents } from '../../hooks/useStudents';
 import { useEducatorSchool } from '../../hooks/useEducatorSchool';
-import { useSearch } from '../../stores';
+import { useSearchStore } from '../../stores';
 import SearchBar from '../../components/common/SearchBar';
 import Pagination from '../../components/educator/Pagination';
 import { useUser, useIsAuthenticated } from '../../stores';
@@ -212,7 +212,8 @@ const DigitalPortfolioPage = () => {
   const navigate = useNavigate()
   const user = useUser()
   const isAuthenticated = useIsAuthenticated()
-  const { searchQuery, setSearchQuery } = useSearch()
+  const searchQuery = useSearchStore(s => s.searchQuery);
+  const setSearchQuery = useSearchStore(s => s.setSearchQuery);
   
   // Permission controls for Digital Portfolio module - same pattern as Program Sections
   const canView = usePermission("Digital Portfolio", "view")

@@ -1,12 +1,12 @@
 import { Check, Copy, Globe, Link2, Linkedin, Lock, Mail, MessageCircle, Share2, Twitter } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePortfolio } from '../../../stores';
+import { usePortfolioStore } from '../../../stores';
 import { copyToClipboard, downloadQRCode, generateQRCode, generateShareableLink, sharePortfolio } from '../../../utils/exportppUtils';
 
 const SharingSettings: React.FC = () => {
   const navigate = useNavigate();
-  const { student } = usePortfolio();
+  const student = usePortfolioStore(s => s.student);
   const [shareLink, setShareLink] = useState('');
   const [copied, setCopied] = useState(false);
   const [isPublic, setIsPublic] = useState(true);

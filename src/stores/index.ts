@@ -30,7 +30,6 @@ export {
 
 export {
   useSearchStore,
-  useSearch,
   useSearchQuery,
   useSearchResults,
   useIsSearching,
@@ -43,7 +42,6 @@ export {
 
 export {
   usePortfolioStore,
-  usePortfolio,
   usePortfolioStudent,
   usePortfolioSettings,
   usePortfolioLoading,
@@ -81,7 +79,6 @@ export {
   useTourProgress,
   useTourActions,
   useTourEligibility,
-  useTour,
   type TourKey,
   type TourProgress,
   type TourState
@@ -93,7 +90,6 @@ export {
   useSubscriptionWarnings,
   useUserEntitlements,
   useSubscriptionPurchase,
-  useSubscription,
   ACCESS_REASONS,
   type AccessReason,
   type WarningType,
@@ -108,7 +104,6 @@ export {
 
 export {
   useGlobalPresenceStore,
-  useGlobalPresence,
   useOnlineUsers,
   useIsConnected,
   useOnlineCount,
@@ -120,7 +115,6 @@ export {
 
 export {
   useTestStore,
-  useTest,
   useTestQuestions,
   useTestAnswers,
   useTestLoading,
@@ -145,7 +139,6 @@ export {
   useCareerUIState,
   useCareerAssistantActions,
   useCareerFeedback,
-  useCareerAssistant,
   type Conversation,
   type Message,
   type FeedbackData

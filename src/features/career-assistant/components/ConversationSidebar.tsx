@@ -9,9 +9,9 @@ import {
   MoreHorizontal,
   Clock
 } from 'lucide-react';
-import { Conversation } from '../hooks/useCareerConversations';
+import { Conversation } from '../../../stores/careerAssistantStore';
 import { VirtualMessage } from '../hooks/useVirtualMessage';
-import { useCareerAssistant } from '../../../stores';
+import { useCareerAssistantStore } from '../../../stores';
 import { formatConversationDate, getConversationGroup } from '../utils/dateUtils';
 import { LoadingSpinner } from './LoadingSpinner';
 import {
@@ -20,19 +20,26 @@ import {
   CONVERSATION_ITEM_HEIGHT,
 } from '../constants';
 
-export const ConversationSidebar: React.FC = () => {
-  const {
-    conversations,
-    currentConversationId,
-    onSelectConversation,
-    onNewConversation,
-    onDeleteConversation,
-    sidebarCollapsed,
-    onToggleSidebar,
-    conversationsLoading,
-    hasMore,
-    onLoadMore,
-  } = useCareerAssistant();
+interface ConversationSidebarProps {
+  onSelectConversation: (id: string) => Promise<void>;
+  onNewConversation: () => void;
+  onDeleteConversation: (id: string) => Promise<void>;
+  onToggleSidebar: () => void;
+  onLoadMore?: () => Promise<void>;
+}
+
+export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
+  onSelectConversation,
+  onNewConversation,
+  onDeleteConversation,
+  onToggleSidebar,
+  onLoadMore,
+}) => {
+  const conversations = useCareerAssistantStore((s) => s.conversations);
+  const currentConversationId = useCareerAssistantStore((s) => s.currentConversationId);
+  const sidebarCollapsed = useCareerAssistantStore((s) => s.sidebarCollapsed);
+  const conversationsLoading = useCareerAssistantStore((s) => s.conversationsLoading);
+  const hasMore = useCareerAssistantStore((s) => s.hasMore);
 
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
@@ -51,7 +58,7 @@ export const ConversationSidebar: React.FC = () => {
     };
 
     conversations.forEach(conv => {
-      const group = getConversationGroup(conv.updated_at);
+      const group = getConversationGroup(conv.updated_at ?? conv.created_at);
       groups[group].push(conv);
     });
 
@@ -146,7 +153,7 @@ export const ConversationSidebar: React.FC = () => {
                     // Virtual scrolling: Always show first 10 conversations
                     // Virtualize the rest for performance with large lists
                     const isInitialVisible = convIndex < INITIAL_VISIBLE_CONVERSATIONS;
-                    
+
                     return (
                       <VirtualMessage
                         key={conv.id}
@@ -164,20 +171,17 @@ export const ConversationSidebar: React.FC = () => {
                             if (menuOpenId === conv.id) setMenuOpenId(null);
                           }}
                           onClick={() => onSelectConversation(conv.id)}
-                          className={`mx-2 px-3 py-2.5 rounded-lg cursor-pointer transition-all relative group ${
-                            currentConversationId === conv.id
-                              ? 'bg-gray-200'
-                              : 'hover:bg-gray-100'
-                          }`}
+                          className={`mx-2 px-3 py-2.5 rounded-lg cursor-pointer transition-all relative group ${currentConversationId === conv.id
+                            ? 'bg-gray-200'
+                            : 'hover:bg-gray-100'
+                            }`}
                         >
                           <div className="flex items-start gap-3">
-                            <MessageSquare className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
-                              currentConversationId === conv.id ? 'text-gray-900' : 'text-gray-400'
-                            }`} />
+                            <MessageSquare className={`w-4 h-4 mt-0.5 flex-shrink-0 ${currentConversationId === conv.id ? 'text-gray-900' : 'text-gray-400'
+                              }`} />
                             <div className="flex-1 min-w-0">
-                              <p className={`text-sm truncate ${
-                                currentConversationId === conv.id ? 'font-medium text-gray-900' : 'text-gray-700'
-                              }`}>
+                              <p className={`text-sm truncate ${currentConversationId === conv.id ? 'font-medium text-gray-900' : 'text-gray-700'
+                                }`}>
                                 {conv.title || 'New conversation'}
                               </p>
                               <div className="flex items-center gap-1 mt-0.5">
@@ -201,31 +205,31 @@ export const ConversationSidebar: React.FC = () => {
                                     setMenuOpenId(menuOpenId === conv.id ? null : conv.id);
                                   }}
                                   className="p-1 hover:bg-gray-300 rounded transition-colors"
-                            >
-                              <MoreHorizontal className="w-4 h-4 text-gray-500" />
-                            </button>
-                          </motion.div>
-                        )}
-                      </div>
+                                >
+                                  <MoreHorizontal className="w-4 h-4 text-gray-500" />
+                                </button>
+                              </motion.div>
+                            )}
+                          </div>
 
-                      {/* Dropdown Menu */}
-                      {menuOpenId === conv.id && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="absolute right-2 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10"
-                        >
-                          <button
-                            onClick={(e) => handleDelete(e, conv.id)}
-                            className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 w-full"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            Delete
-                          </button>
+                          {/* Dropdown Menu */}
+                          {menuOpenId === conv.id && (
+                            <motion.div
+                              initial={{ opacity: 0, y: -5 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="absolute right-2 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10"
+                            >
+                              <button
+                                onClick={(e) => handleDelete(e, conv.id)}
+                                className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 w-full"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Delete
+                              </button>
+                            </motion.div>
+                          )}
                         </motion.div>
-                      )}
-                    </motion.div>
-                  </VirtualMessage>
+                      </VirtualMessage>
                     );
                   })}
                 </AnimatePresence>
@@ -233,7 +237,7 @@ export const ConversationSidebar: React.FC = () => {
             );
           })
         )}
-        
+
         {/* Load More Button */}
         {hasMore && !conversationsLoading && onLoadMore && (
           <div className="px-4 py-2">

@@ -21,7 +21,7 @@ import MessageService, { Conversation } from '../../services/messageService';
 import { useMessages } from '../../hooks/useMessages';
 import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '../../stores';
-import { useGlobalPresence } from '../../stores';
+import { useGlobalPresenceStore } from '../../stores';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 
@@ -137,7 +137,7 @@ const Messages = () => {
   });
 
   // Global presence tracking - Use shared context
-  const { isUserOnline: isUserOnlineGlobal } = useGlobalPresence();
+  const isUserOnlineGlobal = useGlobalPresenceStore(s => s.isUserOnline);
 
   // Typing indicators
   const { setTyping, getTypingText, isAnyoneTyping } = useTypingIndicator({

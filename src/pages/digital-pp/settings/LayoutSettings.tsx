@@ -1,11 +1,11 @@
 import { BarChart3, Bot, FileText, Layout, Map, Palette, Save, Sparkles, Zap } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePortfolio } from '../../../stores';
+import { usePortfolioStore } from '../../../stores';
 import type { DisplayPreferences, PortfolioLayout } from '../../../types/student';
 
 const LayoutSettings: React.FC = () => {
-  const { settings, updateSettings, resetToRoleDefaults, viewerRole } = usePortfolio();
+  const { settings, updateSettings, resetToRoleDefaults, viewerRole } = usePortfolioStore(s => ({ settings: s.settings, updateSettings: s.updateSettings, resetToRoleDefaults: s.resetToRoleDefaults, viewerRole: s.viewerRole }));
   const navigate = useNavigate();
   const [selectedLayout, setSelectedLayout] = useState<PortfolioLayout>(settings.layout);
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
