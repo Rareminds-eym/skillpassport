@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import { immer } from 'zustand/middleware/immer';
 
 // Types (matching CareerAssistantContext)
@@ -31,25 +32,25 @@ interface CareerAssistantState {
   currentConversationId: string | null;
   conversationsLoading: boolean;
   hasMore: boolean;
-  
+
   // Message state
   messages: Message[];
   loading: boolean;
   isTyping: boolean;
-  
+
   // UI state
   showWelcome: boolean;
   selectedChips: string[];
   sidebarCollapsed: boolean;
   userScrolledUp: boolean;
-  
+
   // Input state
   input: string;
-  
+
   // Feedback state
   feedbackMap: Record<string, FeedbackData>;
   feedbackLoadingMap: Record<string, boolean>;
-  
+
   // Actions
   setConversations: (conversations: Conversation[]) => void;
   addConversation: (conversation: Conversation) => void;
@@ -58,7 +59,7 @@ interface CareerAssistantState {
   setCurrentConversationId: (id: string | null) => void;
   setConversationsLoading: (loading: boolean) => void;
   setHasMore: (hasMore: boolean) => void;
-  
+
   // Message actions
   setMessages: (messages: Message[]) => void;
   addMessage: (message: Message) => void;
@@ -66,7 +67,7 @@ interface CareerAssistantState {
   updateMessage: (id: string, updates: Partial<Message>) => void;
   setLoading: (loading: boolean) => void;
   setIsTyping: (isTyping: boolean) => void;
-  
+
   // UI actions
   setShowWelcome: (show: boolean) => void;
   addChip: (chip: string) => void;
@@ -74,13 +75,13 @@ interface CareerAssistantState {
   toggleSidebar: () => void;
   setUserScrolledUp: (scrolled: boolean) => void;
   setInput: (input: string) => void;
-  
+
   // Feedback actions
   setFeedback: (messageId: string, feedback: FeedbackData) => void;
   getFeedback: (messageId: string) => FeedbackData | null;
   setFeedbackLoading: (messageId: string, loading: boolean) => void;
   isFeedbackLoading: (messageId: string) => boolean;
-  
+
   // Async handlers (placeholders - actual logic in components)
   onSelectConversation: (id: string) => Promise<void>;
   onNewConversation: () => Promise<void>;
@@ -91,7 +92,7 @@ interface CareerAssistantState {
   onStopTyping: () => void;
   onQuickAction: (prompt: string, label: string) => void;
   onFeedback: (messageId: string, thumbsUp: boolean, rating?: number, feedbackText?: string) => Promise<void>;
-  
+
   // Reset
   reset: () => void;
   clearMessages: () => void;
@@ -105,18 +106,18 @@ export const useCareerAssistantStore = create<CareerAssistantState>()(
     currentConversationId: null,
     conversationsLoading: false,
     hasMore: false,
-    
+
     messages: [],
     loading: false,
     isTyping: false,
-    
+
     showWelcome: true,
     selectedChips: [],
     sidebarCollapsed: false,
     userScrolledUp: false,
-    
+
     input: '',
-    
+
     feedbackMap: {},
     feedbackLoadingMap: {},
 
@@ -374,18 +375,24 @@ export const useCareerAssistantActions = () => {
 };
 
 export const useCareerFeedback = (messageId: string) =>
-  useCareerAssistantStore((state) => ({
+  useCareerAssistantStore(useShallow((state) => ({
     feedback: state.getFeedback(messageId),
     isLoading: state.isFeedbackLoading(messageId),
     setFeedback: (feedback: FeedbackData) => state.setFeedback(messageId, feedback),
-  }));
+  })));
 
-// Combined hook that mimics the old Context API
+// Combined convenience hook
+// Uses individual selectors to avoid full-store subscription
 export const useCareerAssistant = () => {
-  const state = useCareerAssistantStore();
+  const conversations = useCareerConversations();
+  const messages = useCareerMessages();
+  const uiState = useCareerUIState();
+  const actions = useCareerAssistantActions();
+
   return {
-    ...state,
-    // Alias for backward compatibility
-    currentConversation: state.conversations.find(c => c.id === state.currentConversationId),
+    ...conversations,
+    ...messages,
+    ...uiState,
+    ...actions,
   };
 };

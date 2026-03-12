@@ -9,6 +9,9 @@ import {
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { curriculumChangeRequestService } from '../../../services/curriculumChangeRequestService';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('university-admin-curriculum-change-requests');
 
 interface ChangeRequest {
   curriculum_id: string;
@@ -47,7 +50,7 @@ const CurriculumChangeRequests: React.FC = () => {
         setChanges(result.data);
       }
     } catch (error) {
-      console.error('Error fetching pending changes:', error);
+      logger.error('Error fetching pending changes:', error as Error);
       toast.error('Failed to load pending changes');
     } finally {
       setLoading(false);
@@ -91,7 +94,7 @@ const CurriculumChangeRequests: React.FC = () => {
         toast.error(result.error || `Failed to ${reviewAction} change`);
       }
     } catch (error) {
-      console.error(`Error ${reviewAction}ing change:`, error);
+      logger.error(`Error ${reviewAction}ing change:`, error as Error);
       toast.error(`Failed to ${reviewAction} change`);
     }
   };

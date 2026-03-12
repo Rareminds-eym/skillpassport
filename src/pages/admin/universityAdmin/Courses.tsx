@@ -18,6 +18,9 @@ import CreateCourseModal from '../../../components/educator/courses/CreateCourse
 
 import toast from 'react-hot-toast'
 import { useUser, useIsAuthenticated } from '../../../stores'
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('university-admin-courses');
 import { supabase } from '../../../lib/supabaseClient';
 
 const UniversityAdminCourses: React.FC = () => {
@@ -153,7 +156,7 @@ const UniversityAdminCourses: React.FC = () => {
 
       setCourses(transformedCourses);
     } catch (err: any) {
-      console.error('Error fetching courses:', err);
+      logger.error('Error fetching courses:', err as Error);
       setError(err?.message || 'Failed to load courses');
     } finally {
       setLoading(false);
@@ -173,7 +176,7 @@ const UniversityAdminCourses: React.FC = () => {
         setColleges(data);
       }
     } catch (err) {
-      console.error('Error fetching colleges:', err);
+      logger.error('Error fetching colleges:', err as Error);
     }
   };
 
@@ -433,7 +436,7 @@ const UniversityAdminCourses: React.FC = () => {
               onEdit={handleEditCourse}
               onViewAnalytics={() => {
                 // University admin analytics - could navigate to analytics page
-                console.log('View analytics for course:', course.id);
+                logger.info('View analytics for course:', { courseId: course.id });
               }}
             />
           ))}
@@ -488,7 +491,7 @@ const UniversityAdminCourses: React.FC = () => {
             setEditingCourse(null);
             fetchUniversityCourses();
           } catch (err: any) {
-            console.error('Error saving course:', err);
+            logger.error('Error saving course:', err as Error);
             toast.error(err?.message || 'Failed to save course');
           }
         }}
@@ -525,7 +528,7 @@ const UniversityAdminCourses: React.FC = () => {
             setSelectedCourse(updatedCourse);
             toast.success('Course updated!');
           } catch (err: any) {
-            console.error('Error updating course:', err);
+            logger.error('Error updating course:', err as Error);
             toast.error('Failed to update course');
           }
         }}

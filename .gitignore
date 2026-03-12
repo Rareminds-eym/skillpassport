@@ -26,12 +26,20 @@ dist-ssr
 *.sw?
 *.kilocode
 
-# Environment files
+# Environment files - DO NOT COMMIT REAL CREDENTIALS
 .env
-.env.*
-!.env.example
+.env.local
+.env.development
+.env.staging
+.env.production
+.env.*.local
 .dev.vars
+.dev.vars.*
 !.dev.vars.example
+
+# Keep only the template and schema
+!.env.example
+!.env.schema
 
 # Build files
 /build
@@ -73,3 +81,5 @@ cloudflare-workers/question-generation-api
 cloudflare-workers/role-overview-api
 cloudflare-workers/storage-api
 cloudflare-workers/streak-api
+
+.agents/

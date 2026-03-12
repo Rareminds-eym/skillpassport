@@ -5,13 +5,13 @@
 // Core Stores
 // ====================
 
-export { 
+export {
   useThemeStore,
   useTheme,
-  useIsDark 
+  useIsDark
 } from './themeStore';
 
-export { 
+export {
   useAuthStore,
   useUser,
   useSession,
@@ -21,7 +21,7 @@ export {
   useAuthActions,
   useErrorNotification,
   type User,
-  type Session 
+  type Session
 } from './authStore';
 
 // ====================
@@ -38,7 +38,7 @@ export {
   useSearchHistory,
   useSearchActions,
   type SearchFilters,
-  type SearchResult 
+  type SearchResult
 } from './searchStore';
 
 export {
@@ -51,7 +51,7 @@ export {
   usePortfolioActions,
   useIsViewingOtherStudent,
   type PortfolioSettings,
-  type DisplayPreferences 
+  type DisplayPreferences
 } from './portfolioStore';
 
 export {
@@ -69,7 +69,7 @@ export {
   type AnswerValue,
   type Answers,
   type SectionTimings,
-  type AssessmentAttempt 
+  type AssessmentAttempt
 } from './assessmentStore';
 
 export {
@@ -84,12 +84,11 @@ export {
   useTour,
   type TourKey,
   type TourProgress,
-  type TourState 
+  type TourState
 } from './tourStore';
 
 export {
   useSubscriptionStore,
-  useSyncSubscriptionWithQuery,
   useSubscriptionAccess,
   useSubscriptionWarnings,
   useUserEntitlements,
@@ -100,7 +99,7 @@ export {
   type WarningType,
   type Subscription,
   type Entitlement,
-  type SubscriptionCost 
+  type SubscriptionCost
 } from './subscriptionStore';
 
 // ====================
@@ -116,7 +115,7 @@ export {
   useCurrentPresence,
   useUserOnlineStatus,
   usePresenceActions,
-  type OnlineUser 
+  type OnlineUser
 } from './globalPresenceStore';
 
 export {
@@ -127,7 +126,7 @@ export {
   useTestLoading,
   useTestProgress,
   useTestActions,
-  type Question 
+  type Question
 } from './testStore';
 
 export {
@@ -136,7 +135,7 @@ export {
   useCurrentPromotional,
   usePromotionalActions,
   type PromotionalEvent,
-  type TimeRemaining 
+  type TimeRemaining
 } from './promotionalStore';
 
 export {
@@ -149,7 +148,7 @@ export {
   useCareerAssistant,
   type Conversation,
   type Message,
-  type FeedbackData 
+  type FeedbackData
 } from './careerAssistantStore';
 
 // ====================
@@ -158,7 +157,7 @@ export {
 
 export {
   useCounsellingStore,
-  type CounsellingStore 
+  type CounsellingStore
 } from './counsellingStore';
 
 export {
@@ -170,7 +169,7 @@ export {
   useMessageLoadingStates,
   useCurrentConversation,
   useUnreadMessagesCount,
-  type MessageState 
+  type MessageState
 } from './useMessageStore';
 
 // ====================
@@ -198,7 +197,7 @@ export const resetAllStores = async () => {
 // Initialize all stores on app load
 export const initializeStores = async () => {
   const { useAuthStore } = await import('./authStore');
-  
+
   // Initialize auth first (other stores may depend on it)
   await useAuthStore.getState().initialize();
 };

@@ -16,17 +16,17 @@
  */
 
 import {
-    AlertCircle,
-    Calendar,
-    Check,
-    ChevronRight,
-    Clock,
-    CreditCard,
-    DollarSign,
-    Package,
-    RefreshCw,
-    Sparkles,
-    X
+  AlertCircle,
+  Calendar,
+  Check,
+  ChevronRight,
+  Clock,
+  CreditCard,
+  DollarSign,
+  Package,
+  RefreshCw,
+  Sparkles,
+  X
 } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -63,8 +63,8 @@ export function SubscriptionDashboard({ className = '', subscriptionData: propSu
     cancelAddOn,
     isCancelling
   } = useSubscription();
-  
-  // Use prop subscriptionData if provided (from useSubscriptionQuery), otherwise fall back to context
+
+  // Use prop subscriptionData if provided (from Zustand store), otherwise fall back to context
   const subscriptionData = propSubscriptionData || subscription;
 
   const [cancellingId, setCancellingId] = useState(null);
@@ -131,10 +131,10 @@ export function SubscriptionDashboard({ className = '', subscriptionData: propSu
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.5) 35px, rgba(255,255,255,.5) 36px)`
         }}></div>
-        
+
         {/* Accent line */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400"></div>
-        
+
         <div className="relative flex items-start justify-between">
           <div>
             <p className="text-white/60 text-sm font-semibold uppercase tracking-wider mb-2">Current Plan</p>
@@ -293,22 +293,21 @@ export function SubscriptionDashboard({ className = '', subscriptionData: propSu
  */
 function CostCard({ title, amount, period, icon: Icon, highlight = false }) {
   // Format amount to 2 decimal places and remove trailing zeros
-  const formattedAmount = typeof amount === 'number' 
+  const formattedAmount = typeof amount === 'number'
     ? amount.toFixed(2).replace(/\.?0+$/, '')
     : amount;
-    
+
   return (
     <div className={`
       rounded-3xl p-6 border-2 shadow-lg hover:shadow-xl transition-all
-      ${highlight 
-        ? 'bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200' 
+      ${highlight
+        ? 'bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200'
         : 'bg-white border-slate-200'
       }
     `}>
       <div className="flex items-center gap-3 mb-4">
-        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg ${
-          highlight ? 'bg-gradient-to-br from-amber-500 to-amber-600' : 'bg-gradient-to-br from-slate-700 to-slate-800'
-        }`}>
+        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg ${highlight ? 'bg-gradient-to-br from-amber-500 to-amber-600' : 'bg-gradient-to-br from-slate-700 to-slate-800'
+          }`}>
           <Icon className="w-5 h-5 text-white" />
         </div>
         <span className="text-sm text-slate-600 font-semibold uppercase tracking-wider">{title}</span>
@@ -326,13 +325,13 @@ function CostCard({ title, amount, period, icon: Icon, highlight = false }) {
 /**
  * EntitlementCard - Displays a single entitlement - Editorial Luxury
  */
-function EntitlementCard({ 
-  entitlement, 
-  onCancel, 
-  onToggleAutoRenew, 
+function EntitlementCard({
+  entitlement,
+  onCancel,
+  onToggleAutoRenew,
   isCancelling = false,
   isToggling = false,
-  isCancelled = false 
+  isCancelled = false
 }) {
   const endDate = new Date(entitlement.end_date);
   const daysRemaining = Math.ceil((endDate - new Date()) / (1000 * 60 * 60 * 24));
@@ -349,9 +348,9 @@ function EntitlementCard({
           {/* Status Indicator */}
           <div className={`
             w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg
-            ${isGracePeriod 
-              ? 'bg-gradient-to-br from-amber-500 to-amber-600' 
-              : isCancelled 
+            ${isGracePeriod
+              ? 'bg-gradient-to-br from-amber-500 to-amber-600'
+              : isCancelled
                 ? 'bg-slate-200'
                 : 'bg-gradient-to-br from-emerald-400 to-emerald-500'
             }
@@ -374,7 +373,7 @@ function EntitlementCard({
               <span>•</span>
               <span>₹{entitlement.price_at_purchase}/{entitlement.billing_period === 'monthly' ? 'mo' : 'yr'}</span>
             </div>
-            
+
             {/* Renewal/Expiry Info */}
             <p className={`text-sm mt-3 font-medium ${isGracePeriod ? 'text-amber-700' : 'text-slate-600'}`}>
               {isCancelled ? (
@@ -399,8 +398,8 @@ function EntitlementCard({
               disabled={isToggling}
               className={`
                 px-4 py-2 text-sm rounded-2xl border-2 transition-all flex items-center gap-2 font-semibold shadow-lg
-                ${entitlement.auto_renew 
-                  ? 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-700' 
+                ${entitlement.auto_renew
+                  ? 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-700'
                   : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                 }
                 ${isToggling ? 'opacity-50' : ''}

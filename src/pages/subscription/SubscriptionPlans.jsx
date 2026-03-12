@@ -5,8 +5,8 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import AddOnMarketplace from '../../components/Subscription/AddOnMarketplace';
 import { OrganizationPurchasePanel } from '../../components/Subscription/Organization';
 import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
-import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
-import { useUser, useUserRole, useIsAuthenticated, useAuthLoading } from '../../stores';
+
+import { useUser, useUserRole, useIsAuthenticated, useAuthLoading, useSubscriptionAccess } from '../../stores';
 
 import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parseStudentType } from '../../utils/getEntityContent';
 import { calculateDaysRemaining, isActiveOrPaused } from '../../utils/subscriptionHelpers';
@@ -707,7 +707,7 @@ function SubscriptionPlans() {
 
   const studentType = type || 'student';
 
-  const { subscriptionData, loading: subscriptionLoading, error: subscriptionError, refreshSubscription } = useSubscriptionQuery();
+  const { subscriptionData, loading: subscriptionLoading, error: subscriptionError, refreshAccess } = useSubscriptionAccess();
   const daysRemaining = useMemo(() => calculateDaysRemaining(subscriptionData?.endDate), [subscriptionData?.endDate]);
 
   // Combined loading state — wait for auth, subscription, AND plans from API.
@@ -948,7 +948,7 @@ function SubscriptionPlans() {
                 <p className="text-red-700 text-sm">{subscriptionError?.message || 'Please try again.'}</p>
               </div>
             </div>
-            <button onClick={refreshSubscription} className="px-6 py-3 bg-red-600 text-white rounded-2xl hover:bg-red-700 text-sm font-semibold shadow-lg transition-all hover:scale-105">
+            <button onClick={refreshAccess} className="px-6 py-3 bg-red-600 text-white rounded-2xl hover:bg-red-700 text-sm font-semibold shadow-lg transition-all hover:scale-105">
               Retry
             </button>
           </div>

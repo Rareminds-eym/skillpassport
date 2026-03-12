@@ -17,6 +17,9 @@ import {
   PrinterIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('university-admin-feedback-certification');
 
 interface FeedbackRecord {
   id: string;
@@ -1056,7 +1059,7 @@ const FeedbackCertification: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Here you would make the actual API call to save the feedback
-      console.log('Submitting feedback:', feedbackFormData);
+      logger.info('Submitting feedback:', { feedbackFormData });
       
       // Reset form and close modal
       setFeedbackFormData({
@@ -1088,7 +1091,7 @@ const FeedbackCertification: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Here you would make the actual API call to issue the certificate
-      console.log('Issuing certificate:', certificateFormData);
+      logger.info('Issuing certificate:', { certificateFormData });
       
       // Reset form and close modal
       setCertificateFormData({
