@@ -28,12 +28,45 @@ export const VALIDATION = {
   MAX_HTML_SIZE: 1024 * 1024, // 1MB
 } as const;
 
-export const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
-  'Access-Control-Max-Age': '86400',
-} as const;
+const ALLOWED_ORIGINS = [
+  'https://skillpassport.rareminds.in',
+  'https://www.skillpassport.rareminds.in',
+  'http://localhost:5173',
+  'http://localhost:8788',
+] as const;
+
+/**
+ * Get CORS headers with dynamic origin validation
+ * Only returns Access-Control-Allow-Origin for allowed origins
+ */
+export function getCorsHeaders(request: Request, env?: { ENVIRONMENT?: string }): Record<string, string> {
+  const origin = request.headers.get('Origin');
+  const headers: Record<string, string> = {
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+    'Access-Control-Max-Age': '86400',
+    'Vary': 'Origin',
+  };
+
+  // Check if origin is allowed
+  if (origin) {
+    const isLocalhost = origin.startsWith('http://localhost:');
+    const isProduction = env?.ENVIRONMENT === 'production';
+    
+    // In production, block localhost origins
+    if (isProduction && isLocalhost) {
+      // Don't set Access-Control-Allow-Origin - browser will block
+      return headers;
+    }
+    
+    // Check if origin is in allowlist
+    if (ALLOWED_ORIGINS.includes(origin as any)) {
+      headers['Access-Control-Allow-Origin'] = origin;
+    }
+  }
+
+  return headers;
+}
 
 export const ERROR_CODES = {
   AUTH_ERROR: 'AUTH_ERROR',

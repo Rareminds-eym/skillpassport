@@ -1,12 +1,12 @@
 /**
  * Shared Email API Worker
- * Multi-tenant email sending service
+ * Shared email sending service via AWS SES
  */
 
 import { Router } from 'itty-router';
 import type { Env } from './types';
 import { EmailWorkerError, AuthenticationError, RateLimitError, ValidationError } from './types';
-import { CORS_HEADERS, VERSION } from './constants';
+import { getCorsHeaders, VERSION } from './constants';
 import { authenticateRequest } from './middleware/auth';
 import { checkRateLimit } from './middleware/rateLimit';
 import { logRequest, logResponse, logError } from './middleware/logger';
@@ -17,10 +17,10 @@ const router = Router();
 
 // ==================== CORS PREFLIGHT ====================
 
-router.options('*', () => {
+router.options('*', (request, env: Env) => {
   return new Response(null, {
     status: 204,
-    headers: CORS_HEADERS,
+    headers: getCorsHeaders(request, env),
   });
 });
 
@@ -59,7 +59,7 @@ router.post('/send', async (request, env: Env) => {
     const response = await handleSend(request, env);
     
     // Add CORS headers
-    Object.entries(CORS_HEADERS).forEach(([key, value]) => {
+    Object.entries(getCorsHeaders(request, env)).forEach(([key, value]) => {
       response.headers.set(key, value);
     });
     
@@ -67,7 +67,7 @@ router.post('/send', async (request, env: Env) => {
     return response;
   } catch (error: any) {
     logError(error, { path: '/send' });
-    return handleError(error);
+    return handleError(error, request, env);
   }
 });
 
@@ -75,23 +75,25 @@ router.post('/send', async (request, env: Env) => {
 
 // ==================== 404 HANDLER ====================
 
-router.all('*', () => {
+router.all('*', (request) => {
   return Response.json({
     success: false,
     error: 'Route not found',
     errorCode: 'NOT_FOUND',
-  }, { status: 404, headers: CORS_HEADERS });
+  }, { status: 404, headers: getCorsHeaders(request) });
 });
 
 // ==================== ERROR HANDLER ====================
 
-function handleError(error: any): Response {
+function handleError(error: any, request: Request, env?: Env): Response {
+  const corsHeaders = getCorsHeaders(request, env);
+  
   if (error instanceof AuthenticationError) {
     return Response.json({
       success: false,
       error: error.message,
       errorCode: error.code,
-    }, { status: error.statusCode, headers: CORS_HEADERS });
+    }, { status: error.statusCode, headers: corsHeaders });
   }
   
   if (error instanceof RateLimitError) {
@@ -103,7 +105,7 @@ function handleError(error: any): Response {
     }, { 
       status: error.statusCode,
       headers: {
-        ...CORS_HEADERS,
+        ...corsHeaders,
         'Retry-After': error.retryAfter.toString(),
       },
     });
@@ -115,7 +117,7 @@ function handleError(error: any): Response {
       error: error.message,
       errorCode: error.code,
       details: error.details,
-    }, { status: error.statusCode, headers: CORS_HEADERS });
+    }, { status: error.statusCode, headers: corsHeaders });
   }
   
   if (error instanceof EmailWorkerError) {
@@ -124,7 +126,7 @@ function handleError(error: any): Response {
       error: error.message,
       errorCode: error.code,
       details: error.details,
-    }, { status: error.statusCode, headers: CORS_HEADERS });
+    }, { status: error.statusCode, headers: corsHeaders });
   }
   
   // Unknown error
@@ -133,7 +135,7 @@ function handleError(error: any): Response {
     success: false,
     error: 'Internal server error',
     errorCode: 'INTERNAL_ERROR',
-  }, { status: 500, headers: CORS_HEADERS });
+  }, { status: 500, headers: corsHeaders });
 }
 
 // ==================== WORKER EXPORT ====================

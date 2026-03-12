@@ -1,7 +1,7 @@
 {
   "name": "shared-email-api",
   "version": "1.0.0",
-  "description": "Shared email worker for multi-tenant email sending",
+  "description": "Shared email API worker powered by AWS SES",
   "main": "src/index.ts",
   "scripts": {
     "dev": "wrangler dev",
