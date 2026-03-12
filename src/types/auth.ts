@@ -35,14 +35,20 @@ export interface SchoolAdminSignupData extends SignupData {
 }
 
 export interface EducatorSignupData extends SignupData {
+<<<<<<< HEAD
   schoolId?: string;
+=======
+>>>>>>> 0da8df84a1014474fb32c61b14c7232a0bafe81f
   subjects?: string[];
   grades?: string[];
   teachingExperience?: number;
 }
 
 export interface StudentSignupData extends SignupData {
+<<<<<<< HEAD
   schoolId?: string;
+=======
+>>>>>>> 0da8df84a1014474fb32c61b14c7232a0bafe81f
   grade?: string;
   section?: string;
   rollNumber?: string;
@@ -52,21 +58,30 @@ export interface StudentSignupData extends SignupData {
 }
 
 export interface CollegeAdminSignupData extends SignupData {
+<<<<<<< HEAD
   collegeId?: string;
+=======
+>>>>>>> 0da8df84a1014474fb32c61b14c7232a0bafe81f
   collegeName?: string;
   collegeCode?: string;
   universityId?: string;
 }
 
 export interface CollegeEducatorSignupData extends SignupData {
+<<<<<<< HEAD
   collegeId?: string;
+=======
+>>>>>>> 0da8df84a1014474fb32c61b14c7232a0bafe81f
   departmentId?: string;
   subjects?: string[];
   qualification?: string;
 }
 
 export interface CollegeStudentSignupData extends SignupData {
+<<<<<<< HEAD
   collegeId?: string;
+=======
+>>>>>>> 0da8df84a1014474fb32c61b14c7232a0bafe81f
   studentId?: string;
   programId?: string;
   semester?: number;

@@ -59,5 +59,9 @@ export interface PendingAttempt {
   grade_level: string;
   stream_id: string | null;
   section_timings: Record<string, unknown> | null;
+<<<<<<< HEAD
+=======
+  restoredResponses: Record<string, unknown> | null;
+>>>>>>> 0da8df84a1014474fb32c61b14c7232a0bafe81f
   all_responses: Record<string, unknown> | null;
 }
