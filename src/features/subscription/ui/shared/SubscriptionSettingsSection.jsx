@@ -20,7 +20,7 @@ import {
   Users
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useSubscriptionContext } from '@/context/SubscriptionContext';
+import { useSubscriptionContext } from '@/stores';
 import { useSubscriptionQuery } from '@/features/subscription/model';
 import { useAuth } from '@/features/auth';
 

@@ -32,7 +32,7 @@ import {
   checkAssessmentStatus
 } from '../../services/externalAssessmentService';
 import { useStudentProfile } from '@/features/student-profile';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/features/auth/model/useAuth';
 
 /**
  * Dynamic Assessment Component

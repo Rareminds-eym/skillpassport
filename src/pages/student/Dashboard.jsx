@@ -42,7 +42,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import toast, { Toaster } from "react-hot-toast";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useTheme } from "../../context/ThemeContext";
 import AchievementsTimeline from "../../components/Students/components/AchievementsTimeline";
 import AnalyticsView from "../../components/Students/components/AnalyticsView";
 import {
@@ -93,7 +92,6 @@ import { isSchoolStudent, isCollegeStudent, isLearner } from '../../utils/studen
 // Import Tour Components - Now handled globally
 // Tours are managed by GlobalTourManager in App.tsx
 
-// Opportunities Card Content Component
 const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matchedJobs = [] }) => {
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -641,7 +639,7 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
 const StudentDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { theme } = useTheme();
+  const { role: userRole } = useUserRole();
 
   // Helper function to calculate duration in simple format
   const calculateDuration = (startDate, endDate) => {
@@ -1395,32 +1393,6 @@ const StudentDashboard = () => {
             return;
         }
         if (result?.success) {
-          // Show success toast notification with theme-aware styling
-          const sectionNames = {
-            education: 'Education',
-            training: 'Training',
-            experience: 'Experience',
-            skills: 'Skills',
-            technicalSkills: 'Technical Skills',
-            softSkills: 'Soft Skills',
-            projects: 'Projects',
-            certificates: 'Certificates',
-            personalInfo: 'Personal Information'
-          };
-          
-          toast.success(`${sectionNames[section] || 'Profile'} updated successfully!`, {
-            style: {
-              background: theme === 'dark' ? '#374151' : '#ffffff',
-              color: theme === 'dark' ? '#f3f4f6' : '#111827',
-              border: theme === 'dark' ? '1px solid #4b5563' : '1px solid #e5e7eb',
-            },
-            iconTheme: {
-              primary: theme === 'dark' ? '#60a5fa' : '#3b82f6',
-              secondary: theme === 'dark' ? '#374151' : '#ffffff',
-            },
-            duration: 3000,
-          });
-
           // Refresh from database to ensure sync
           await refresh();
 
@@ -1445,20 +1417,7 @@ const StudentDashboard = () => {
           refreshRecentUpdates();
         }
       } catch (err) {
-        console.error("Error saving:", err);
-        // Show error toast notification with theme-aware styling
-        toast.error('Failed to update profile. Please try again.', {
-          style: {
-            background: theme === 'dark' ? '#374151' : '#ffffff',
-            color: theme === 'dark' ? '#f3f4f6' : '#111827',
-            border: theme === 'dark' ? '1px solid #4b5563' : '1px solid #e5e7eb',
-          },
-          iconTheme: {
-            primary: theme === 'dark' ? '#ef4444' : '#dc2626',
-            secondary: theme === 'dark' ? '#374151' : '#ffffff',
-          },
-          duration: 4000,
-        });
+        logger.error("Error saving", err);
       }
     }
   };

@@ -1,7 +1,7 @@
 import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../../../context/AuthContext';
+import { useAuth } from '@/features/auth/model/useAuth';
 import { loginStudent } from '@/features/auth/api';
 
 const SignInSchool = () => {

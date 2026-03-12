@@ -5,7 +5,7 @@
 import { ArrowLeft, ArrowRight, Check, Lock, Shield, Sparkles, X, Zap } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSubscriptionContext } from '@/context/SubscriptionContext';
+import { useSubscriptionContext } from '@/stores';
 import { clearFeatureAccessCache, useFeatureGate } from '@/hooks/useFeatureGate';
 import addOnPaymentService from '@/services/addOnPaymentService';
 import { loadRazorpayScript } from '@/features/subscription/api';

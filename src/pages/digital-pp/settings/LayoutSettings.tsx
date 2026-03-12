@@ -1,16 +1,14 @@
 import { BarChart3, Bot, FileText, Layout, Map, Palette, Save, Sparkles, Zap } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePortfolio } from '../../../context/PortfolioContext';
-import { useTheme } from '../../../context/ThemeContext';
+import { usePortfolio } from '../../../stores';
 import type { DisplayPreferences, PortfolioLayout } from '../../../types/student';
-import { showProfileUpdateToast } from '../../../utils/profileToast';
 
 const LayoutSettings: React.FC = () => {
   const { settings, updateSettings, resetToRoleDefaults, viewerRole } = usePortfolio();
-  const { theme } = useTheme();
   const navigate = useNavigate();
   const [selectedLayout, setSelectedLayout] = useState<PortfolioLayout>(settings.layout);
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   const [displayPreferences, setDisplayPreferences] = useState<DisplayPreferences>(
     settings.displayPreferences || {
       showSocialLinks: true,
@@ -118,8 +116,9 @@ const LayoutSettings: React.FC = () => {
       displayPreferences: displayPreferences
     });
     
-    showProfileUpdateToast('Layout saved successfully!', theme);
+    setShowSaveConfirmation(true);
     setTimeout(() => {
+      setShowSaveConfirmation(false);
       navigate('/settings/theme');
     }, 1500);
   };
@@ -131,6 +130,14 @@ const LayoutSettings: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-100 dark:from-gray-900 dark:via-orange-950 dark:to-amber-950 transition-colors duration-300">
+      {/* Save Confirmation Toast */}
+      {showSaveConfirmation && (
+        <div className="fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center space-x-2 animate-slide-in">
+          <Save className="w-5 h-5" />
+          <span>Layout saved successfully!</span>
+        </div>
+      )}
+
       {/* Main Content */}
       <div className="max-w-6xl mx-auto p-8">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 transition-colors duration-300">

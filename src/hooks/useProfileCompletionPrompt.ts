@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePortfolio } from '../context/PortfolioContext';
-import { useTheme } from '../context/ThemeContext';
+import { usePortfolio } from '../stores/portfolioStore';
+import { useTheme } from '../stores/themeStore';
 import { checkProfileCompleteness } from '../utils/profileCompletenessChecker';
 import { getPromptDismissed, setPromptDismissed } from '../utils/profilePromptPreference';
 

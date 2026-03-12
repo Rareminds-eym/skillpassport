@@ -15,7 +15,7 @@
 import { ArrowRight, ExternalLink, Lock, Sparkles, X, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useSubscriptionContext } from '@/context/SubscriptionContext';
+import { useSubscriptionContext } from '@/stores';
 import { clearFeatureAccessCache } from '@/hooks/useFeatureGate';
 import addOnPaymentService from '@/services/addOnPaymentService';
 import { loadRazorpayScript } from '@/features/subscription/api';

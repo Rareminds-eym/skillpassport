@@ -13,13 +13,13 @@ export {
   updateTechnicalSkillsByEmail,
   updateSoftSkillsByEmail,
   updateProjectsByEmail,
-  updateCertificatesByEmail
-} from '@/services/studentServiceProfile';
+  updateCertificatesByEmail,
+  updateStudentByEmail
+} from '@/services/studentServiceProfile.js';
 
 export {
-  updateSingleTrainingById,
-  updateSkillsByEmail
-} from '@/services/studentServiceProfile';
+  updateSingleTrainingById
+} from '@/services/studentServiceProfile.js';
 
 export {
   updateStudent,

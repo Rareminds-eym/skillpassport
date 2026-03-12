@@ -24,7 +24,7 @@ import {
     X
 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
-import { useSubscriptionContext } from '@/context/SubscriptionContext';
+import { useSubscriptionContext } from '@/stores';
 import { clearFeatureAccessCache } from '@/hooks/useFeatureGate';
 import addOnPaymentService from '@/services/addOnPaymentService';
 import { loadRazorpayScript } from '@/features/subscription/api';

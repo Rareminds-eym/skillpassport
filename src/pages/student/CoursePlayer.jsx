@@ -19,7 +19,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { AITutorPanel, VideoLearningPanel } from '../../components/ai-tutor';
 import RestoreProgressModal from '@/features/courses/ui/RestoreProgressModal';
 import { Badge, Button, Card, CardContent } from '@/shared/ui';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/features/auth/model/useAuth';
 import { useSessionRestore } from '../../hooks/useSessionRestore';
 import { supabase } from '../../lib/supabaseClient';
 import { generateCourseCertificate } from '../../services/certificateService';

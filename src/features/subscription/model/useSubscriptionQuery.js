@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
-import { useSupabaseAuth } from '@/context/SupabaseAuthContext';
+import { useAuth } from '@/features/auth/model/AuthContext';
 import { getActiveSubscription } from '@/features/subscription/api';
 import { queryLogger } from '@/utils/queryLogger';
 import { isActiveOrPaused } from '@/features/subscription/lib';
@@ -72,7 +72,7 @@ const fetchSubscription = async (userId) => {
  * @returns {Object} Subscription query result
  */
 export const useSubscriptionQuery = () => {
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   // Check if the query can run
@@ -187,7 +187,7 @@ export const prefetchSubscriptionData = (queryClient, userId) => {
  * Useful for quick checks when data might already be cached
  */
 export const useSubscriptionCache = () => {
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const cachedData = queryClient.getQueryData([SUBSCRIPTION_QUERY_KEY, user?.id]);
