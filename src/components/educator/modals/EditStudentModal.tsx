@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
-import { updateStudent } from '../../../services/studentService';
+import { updateStudent } from '@/features/student-profile/api';
 import { Country, State, City } from 'country-state-city';
 import pincodes from 'indian-pincodes';
 import { supabase } from '../../../lib/supabaseClient';

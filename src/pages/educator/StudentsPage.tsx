@@ -22,7 +22,7 @@ import DeleteStudentModal from '../../components/educator/modals/DeleteStudentMo
 import BulkDeleteStudentsModal from '../../components/educator/modals/BulkDeleteStudentsModal';
 import { UserPlusIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '../../stores';
+import { useAuth } from '@/features/auth';
 
 const FilterSection = ({ title, children, defaultOpen = false }: {
   title: string;

@@ -3,8 +3,8 @@ import { AlertCircle, BarChart3, CheckCircle, Zap } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import loginIllustration from "../../../../../assets/images/auth/Recruiter-illustration.png";
-import SignupFormFields from "../../../../../components/Subscription/shared/SignupFormFields";
-import { capitalizeFirstLetter, formatOtp, formatPhoneNumber, getInitialFormData, validateSignupFields } from "../../../../../components/Subscription/shared/signupValidation";
+import SignupFormFields from "@/features/subscription/ui/shared/SignupFormFields";
+import { capitalizeFirstLetter, formatOtp, formatPhoneNumber, getInitialFormData, validateSignupFields } from "@/components/Subscription/shared/signupValidation";
 import { supabase } from "../../../../../lib/supabaseClient";
 import FeatureCard from "../../ui/FeatureCard";
 

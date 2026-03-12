@@ -1,4 +1,4 @@
-import { BoltStyleChat } from '@/components/ui/bolt-style-chat';
+import { BoltStyleChat } from '@/shared/ui';
 
 export default function EarlyAccessSection() {
   return (

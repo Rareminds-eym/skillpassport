@@ -4,6 +4,10 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePortfolio } from '../../stores';
 import { useUserRole } from '../../stores';
+import { useAuth } from '@/features/auth/model/useAuth';
+import ProfileCompletionModal from '../../components/digital-pp/ProfileCompletionModal';
+import ProfileCompletionErrorBoundary from '../../components/digital-pp/ProfileCompletionErrorBoundary';
+import { useProfileCompletionPrompt } from '../../hooks/useProfileCompletionPrompt';
 
 const PassportPage: React.FC = () => {
   const navigate = useNavigate();
@@ -15,6 +19,16 @@ const PassportPage: React.FC = () => {
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
+
+  // Profile completion prompt hook
+  const {
+    showModal,
+    incompleteSections,
+    handleComplete,
+    handleSkip,
+    handleNeverShow,
+    handleClose,
+  } = useProfileCompletionPrompt();
 
   // Check if user is admin
   const isAdminViewing = role && (role.includes('admin') || role === 'admin');
@@ -716,6 +730,24 @@ const PassportPage: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {/* Profile Completion Modal */}
+      <ProfileCompletionErrorBoundary
+        onError={(error, errorInfo) => {
+          if (import.meta.env.DEV) {
+            console.error('[PassportPage] ProfileCompletionModal error:', error, errorInfo);
+          }
+        }}
+      >
+        <ProfileCompletionModal
+          isOpen={showModal}
+          incompleteSections={incompleteSections}
+          onComplete={handleComplete}
+          onSkip={handleSkip}
+          onNeverShow={handleNeverShow}
+          onClose={handleClose}
+        />
+      </ProfileCompletionErrorBoundary>
     </div>
   );
 };

@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { useAuth } from '@/features/auth';
 import { departmentService, DepartmentWithStats, Faculty } from '@/services/college/departmentService';
 import {
     AcademicCapIcon,
@@ -35,7 +36,7 @@ import DepartmentDetailsDrawer from "../../../components/admin/collegeAdmin/Depa
 import EditDepartmentModal from "../../../components/admin/collegeAdmin/EditDepartmentModal";
 import FacultyAssignmentModal from "../../../components/admin/collegeAdmin/FacultyAssignmentModal";
 import HODAssignmentModal from "../../../components/admin/collegeAdmin/HODAssignmentModal";
-import ConfirmationModal from "../../../components/ui/ConfirmationModal";
+import { ConfirmationModal } from '@/shared/ui';
 
 // Types
 interface Course {

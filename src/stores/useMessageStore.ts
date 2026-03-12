@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Message, Conversation } from '../services/messageService';
+import { Message, Conversation } from '@/features/messaging';
 
 export interface MessageState {
   // Messages state

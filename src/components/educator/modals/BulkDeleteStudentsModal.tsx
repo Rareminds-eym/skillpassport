@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
-import { softDeleteStudent } from '../../../services/studentService';
+import { softDeleteStudent } from '@/features/student-profile/api';
 import { getCurrentEducator } from '../../../services/educatorService';
 
 interface Student {

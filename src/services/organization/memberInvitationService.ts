@@ -5,7 +5,7 @@
  * Supports single and bulk invitations with secure token management.
  */
 
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/shared/api';
 import { LicenseAssignment, licenseManagementService } from './licenseManagementService';
 
 // ============================================================================

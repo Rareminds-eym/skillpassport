@@ -2,10 +2,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { FeatureGate } from '../../../components/Subscription/FeatureGate';
-import ConfirmationModal from '../../../components/ui/ConfirmationModal';
-import { getLogger } from '../../../config/logging';
-
-const logger = getLogger('college-admin-curriculum-builder');
+import { ConfirmationModal } from '@/shared/ui';
 
 // Import the college-adapted curriculum builder UI
 import CollegeCurriculumBuilderUI from '../../../components/admin/collegeAdmin/CollegeCurriculumBuilderUI';

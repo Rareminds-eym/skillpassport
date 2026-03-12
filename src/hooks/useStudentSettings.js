@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { getStudentSettingsByEmail, updateStudentSettings, updateStudentPassword } from '../services/studentSettingsService';
+import { getStudentSettingsByEmail, updateStudentSettings, updateStudentPassword } from '@/features/student-profile/api';
 
 export const useStudentSettings = (email) => {
   const [studentData, setStudentData] = useState(null);

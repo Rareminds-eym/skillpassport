@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getStudentRecentUpdatesByEmail, formatRecentUpdate } from '../services/studentRecentUpdatesService';
+import { getStudentRecentUpdatesByEmail, formatRecentUpdate } from '@/features/student-profile/api';
 
 /**
  * Custom hook for fetching and managing student recent updates

@@ -22,23 +22,18 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import MessageService, { Conversation } from '../../services/messageService';
+import { MessageService, Conversation } from '@/features/messaging';
 // import { useStudentCollegeLecturerMessages } from '../../hooks/useStudentCollegeLecturerMessages.js';
 import { useCollegeLecturerMessages } from '../../hooks/useCollegeLecturerMessages.js';
 import { useCollegeEducatorAdminConversationsForEducator } from '../../hooks/useCollegeEducatorAdminConversations.js';
 import { useCollegeEducatorAdminMessagesForEducator } from '../../hooks/useCollegeEducatorAdminMessages.js';
 import { formatDistanceToNow } from 'date-fns';
-import { getLogger } from '../../config/logging';
-
-const logger = getLogger('EducatorMessages');
-import { useUser } from '../../stores';
-import { useGlobalPresence } from '../../stores';
+import { useAuth } from '@/features/auth';
+import { useGlobalPresence } from '../../stores/globalPresenceStore.js';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
-import { useTypingIndicator } from '../../hooks/useTypingIndicator';
+import { useTypingIndicator } from '@/features/messaging';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
-import DeleteConversationModal from '../../components/messaging/DeleteConversationModal';
-import NewCollegeLecturerConversationModal from '../../components/messaging/NewCollegeLecturerConversationModal';
-import NewCollegeEducatorAdminConversationModal from '../../components/messaging/NewCollegeEducatorAdminConversationModal';
+import { DeleteConversationModal, ConversationModal } from '@/features/messaging';
 import { supabase } from '../../lib/supabaseClient';
 
 const CollegeLecturerMessages = () => {

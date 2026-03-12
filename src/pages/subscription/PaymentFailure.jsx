@@ -13,8 +13,8 @@ import {
   Building2,
   ShieldAlert
 } from 'lucide-react';
-import { extractPaymentParams, logFailedTransaction } from '../../services/Subscriptions/paymentVerificationService';
-import { useUserRole } from '../../stores';
+import { extractPaymentParams, logFailedTransaction } from '@/features/subscription/api';
+import { useAuth } from '@/features/auth';
 
 // Issue Card Component
 const IssueCard = ({ icon: Icon, title, description, index }) => (

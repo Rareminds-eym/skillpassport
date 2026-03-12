@@ -53,17 +53,7 @@ import {
   TrainingEditModal,
 } from "../../components/Students/components/ProfileEditModals";
 import TrainingRecommendations from "../../components/Students/components/TrainingRecommendations";
-import { Badge } from "../../components/Students/components/ui/badge";
-import { Button } from "../../components/Students/components/ui/button";
-import { getLogger } from "../../config/logging";
-
-const logger = getLogger('Dashboard');
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/Students/components/ui/card";
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/ui';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -83,16 +73,17 @@ import { useAIRecommendations } from "../../hooks/useAIRecommendations";
 import { useAssessmentRecommendations } from "../../hooks/useAssessmentRecommendations";
 import { useUserRole } from "../../stores";
 import { useOpportunities } from "../../hooks/useOpportunities";
-import { useStudentAchievements } from "../../hooks/useStudentAchievements";
-import { useStudentCertificates } from "../../hooks/useStudentCertificates";
-import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
-import { useStudentEducation } from "../../hooks/useStudentEducation";
+import { useStudentProfile, useStudentPortfolio, useStudentActivity, useStudentMessages } from "@/features/student-profile";
+import { useStudentDataByEmail } from "@/hooks/useStudentDataByEmail";
+import { useStudentCertificates } from "@/hooks/useStudentCertificates";
+import { useStudentLearning } from "@/hooks/useStudentLearning";
+import { useStudentProjects } from "../../hooks/useStudentProjects";
 import { useStudentExperience } from "../../hooks/useStudentExperience";
+import { useStudentEducation } from "../../hooks/useStudentEducation";
 import { useStudentTechnicalSkills, useStudentSoftSkills } from "../../hooks/useStudentSkills";
-import { useStudentLearning } from "../../hooks/useStudentLearning";
 import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
 import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
-import { useStudentProjects } from "../../hooks/useStudentProjects";
+import { useStudentAchievements } from "../../hooks/useStudentAchievements";
 import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
 import { supabase } from "../../lib/supabaseClient";
 import { isSchoolStudent, isCollegeStudent, isLearner } from '../../utils/studentType';
@@ -101,7 +92,6 @@ import { isSchoolStudent, isCollegeStudent, isLearner } from '../../utils/studen
 // Import Tour Components - Now handled globally
 // Tours are managed by GlobalTourManager in App.tsx
 
-// Opportunities Card Content Component
 const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matchedJobs = [] }) => {
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [showModal, setShowModal] = useState(false);

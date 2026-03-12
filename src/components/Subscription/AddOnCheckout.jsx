@@ -27,7 +27,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useSubscription } from '../../stores';
 import { clearFeatureAccessCache } from '../../hooks/useFeatureGate';
 import addOnPaymentService from '../../services/addOnPaymentService';
-import { loadRazorpayScript } from '../../services/Subscriptions/razorpayService';
+import { loadRazorpayScript } from '@/features/subscription/api';
 
 /**
  * AddOnCheckout - Full checkout component

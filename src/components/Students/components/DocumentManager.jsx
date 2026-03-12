@@ -11,10 +11,7 @@ import {
   deleteStudentDocument,
   getStudentDocumentUrl,
   validateStudentDocument 
-} from '../../../services/studentDocumentService';
-import { getLogger } from '../../../config/logging';
-
-const logger = getLogger('DocumentManager');
+} from '@/features/student-profile/api';
 
 const DocumentManager = ({ studentId, className = '' }) => {
   const [documents, setDocuments] = useState([]);

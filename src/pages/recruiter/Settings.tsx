@@ -12,8 +12,8 @@ import {
     User
 } from "lucide-react"
 import React, { useEffect, useId, useState } from "react"
-import { SubscriptionSettingsSection } from "../../components/Subscription/SubscriptionSettingsSection"
-import { useUser } from "../../stores"
+import { SubscriptionSettingsSection } from "@/components/Subscription/SubscriptionSettingsSection"
+import { useAuth } from "@/features/auth"
 import { supabase } from "../../lib/supabaseClient"
 import { getLogger } from "../../config/logging"
 

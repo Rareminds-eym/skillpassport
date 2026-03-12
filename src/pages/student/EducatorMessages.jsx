@@ -18,20 +18,12 @@ import {
   BookOpen,
   GraduationCap
 } from 'lucide-react';
-import { useStudentEducatorConversations, useStudentEducatorMessages } from '../../hooks/useStudentEducatorMessages';
-import MessageService from '../../services/messageService';
-import { useMutation } from '@tanstack/react-query';
-import { formatDistanceToNow } from 'date-fns';
-import { useUser } from '../../stores';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
-import { useGlobalPresence } from '../../stores';
+import { useStudentProfile, useStudentMessages } from '@/features/student-profile';
+import { useGlobalPresence } from '../../context/GlobalPresenceContext';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
-import { useTypingIndicator } from '../../hooks/useTypingIndicator';
+import { useTypingIndicator } from '@/features/messaging';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
-import DeleteConversationModal from '../../components/messaging/DeleteConversationModal';
-import { getLogger } from '../../config/logging';
-
-const logger = getLogger('EducatorMessages');
+import { DeleteConversationModal } from '@/features/messaging';
 
 const EducatorMessages = () => {
   const queryClient = useQueryClient();

@@ -4,8 +4,8 @@ import { CandidateQuickView } from '../../components/Recruiter/components/Candid
 import PipelineAdvancedFilters from '../../components/Recruiter/components/PipelineAdvancedFilters';
 import PipelineSortMenu from '../../components/Recruiter/components/PipelineSortMenu';
 import { PipelineStats, QuickStats } from '../../components/Recruiter/components/PipelineStats';
-import toast from 'react-hot-toast';
-import { FeatureGate } from '../../components/Subscription/FeatureGate';
+import { useToast } from '../../components/Recruiter/components/Toast';
+import { FeatureGate } from '@/features/subscription/ui/shared';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useOpportunities } from '../../hooks/useOpportunities';
 import { usePipelineData } from '../../hooks/usePipelineData';

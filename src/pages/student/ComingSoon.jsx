@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, ArrowLeft, Sparkles } from 'lucide-react';
-import { Button } from '../../components/Students/components/ui/button';
+import { Button } from '@/shared/ui';
 
 const ComingSoon = () => {
   const navigate = useNavigate();

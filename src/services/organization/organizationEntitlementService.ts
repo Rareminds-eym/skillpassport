@@ -5,7 +5,7 @@
  * Handles both organization-provided and self-purchased entitlements.
  */
 
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/shared/api';
 import type { LicenseAssignment } from './licenseManagementService';
 
 // ============================================================================

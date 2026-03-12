@@ -17,7 +17,7 @@ export default defineConfig({
   },
   build: {
     // Reduce memory usage during build
-    sourcemap: false,
+    sourcemap: true,
     minify: 'esbuild',
     chunkSizeWarningLimit: 1000,
     rollupOptions: {

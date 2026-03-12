@@ -94,7 +94,9 @@ export {
   useUserEntitlements,
   useSubscriptionPurchase,
   useSubscription,
+  useSubscription as useSubscriptionContext, // Alias for backward compatibility
   ACCESS_REASONS,
+  WARNING_TYPES,
   type AccessReason,
   type WarningType,
   type Subscription,

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useParams, useLocation, Link } from 'react-router-dom';
-import { useUser } from '../stores';
-import { useStudentDataByEmail } from '../hooks/useStudentDataByEmail';
+import { useAuth } from '@/features/auth';
+import { useStudentProfile } from '@/features/student-profile';
+import { useUser } from '@/stores';
 import Header from '../components/Students/components/Header';
 import ProfileHeroEdit from '../components/Students/components/ProfileHeroEdit';
 import FloatingAIButton from '../components/FloatingAIButton';

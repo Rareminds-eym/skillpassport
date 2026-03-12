@@ -20,26 +20,25 @@ import {
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
-import DeleteConversationModal from '../../components/messaging/DeleteConversationModal';
-import NewAdminConversationModal from '../../components/messaging/NewAdminConversationModal';
-import NewCollegeAdminConversationModal from '../../components/messaging/NewCollegeAdminConversationModal';
-import NewEducatorConversationModal from '../../components/messaging/NewEducatorConversationModal';
-import { useUser } from '../../stores';
-import { useGlobalPresence } from '../../stores';
+import { DeleteConversationModal, ConversationModal } from '@/features/messaging';
+import NewEducatorConversationModal from '@/features/messaging/ui/NewEducatorConversationModal';
+import NewAdminConversationModal from '@/features/messaging/ui/NewAdminConversationModal';
+import NewCollegeAdminConversationModal from '@/features/messaging/ui/NewCollegeAdminConversationModal';
+import { useAuth } from '@/features/auth/model/useAuth';
+import { useUser } from '@/stores';
+import { isLearner } from '../../utils/studentType';
+import { useGlobalPresence } from '../../stores/globalPresenceStore';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
-import { useCreateStudentAdminConversation, useStudentAdminConversations, useStudentAdminMessages } from '../../hooks/useStudentAdminMessages';
-import { useCreateStudentCollegeAdminConversation, useStudentCollegeAdminConversations, useStudentCollegeAdminMessages } from '../../hooks/useStudentCollegeAdminMessages';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useStudentProfile, useStudentMessages } from '@/features/student-profile';
+import { useStudentDataByEmail } from '@/hooks/useStudentDataByEmail';
+import { useStudentConversations } from '../../hooks/useStudentMessages';
 import { useStudentEducatorConversations, useStudentEducatorMessages } from '../../hooks/useStudentEducatorMessages';
-import { useStudentConversations, useStudentMessages } from '../../hooks/useStudentMessages';
-import { useTypingIndicator } from '../../hooks/useTypingIndicator';
+import { useStudentAdminConversations, useCreateStudentAdminConversation, useStudentAdminMessages } from '../../hooks/useStudentAdminMessages';
+import { useStudentCollegeAdminConversations, useCreateStudentCollegeAdminConversation, useStudentCollegeAdminMessages } from '../../hooks/useStudentCollegeAdminMessages';
+import { useTypingIndicator } from '@/features/messaging';
 import { supabase } from '../../lib/supabaseClient';
-import MessageService from '../../services/messageService';
-import { isLearner as checkIsLearner } from '../../utils/studentType';
-import { getLogger } from '../../config/logging';
-
-const logger = getLogger('Messages');
+import { MessageService } from '@/features/messaging';
 
 const Messages = () => {
   const queryClient = useQueryClient();
@@ -83,7 +82,7 @@ const Messages = () => {
   const studentName = studentData?.profile?.name || user?.name || 'Student';
 
   // Check if user is a learner using the utility function
-  const isLearnerUser = checkIsLearner(studentData);
+  const isLearnerUser = isLearner(studentData);
 
   // Determine available tabs based on student's school_id and university_college_id
   const hasSchoolId = !!studentData?.school_id;

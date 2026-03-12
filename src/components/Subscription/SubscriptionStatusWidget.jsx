@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Shield, Clock, AlertCircle, TrendingUp } from 'lucide-react';
-import { useSubscriptionAccess } from '../../stores';
+import { useSubscriptionQuery } from '@/features/subscription/model';
 
 /**
  * Get the base path for subscription routes based on current location

@@ -23,8 +23,7 @@ import {
     Users,
     Zap
 } from 'lucide-react';
-import { Button } from '../../components/Students/components/ui/button';
-import { Card, CardContent } from '../../components/Students/components/ui/card';
+import { Button, Card, CardContent } from '@/shared/ui';
 import { Label } from '../../components/Students/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '../../components/Students/components/ui/radio-group';
 

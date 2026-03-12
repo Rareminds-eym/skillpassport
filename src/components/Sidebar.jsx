@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useUserRole, useUser } from '../stores';
-import { useStudentDataByEmail } from '../hooks/useStudentDataByEmail';
+import { useAuth } from '../context/AuthContext';
+import { useStudentProfile } from '@/features/student-profile';
 import {
   LayoutDashboard,
   Users,

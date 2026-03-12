@@ -12,7 +12,8 @@ import {
     School
 } from 'lucide-react';
 import React, { useState } from 'react';
-import { useUser } from '../../stores';
+// @ts-ignore - AuthContext is a JS file
+import { useAuth } from '@/features/auth';
 import { supabase } from '../../lib/supabaseClient';
 
 interface OrganizationFormData {

@@ -28,12 +28,12 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '@/features/auth';
 import { useUser, useUserRole, useSubscription } from '../../stores';
-import { usePaymentVerificationFromURL } from '../../hooks/Subscription/usePaymentVerification';
-
-import { downloadReceipt, generateReceiptBase64 } from '../../services/Subscriptions/pdfReceiptGenerator';
-import { getPaymentReceiptUrl, uploadPaymentReceipt, getPaymentReceiptPresignedUrl } from '../../services/storageApiService';
-import { clearPendingUserData } from '../../utils/authCleanup';
+import { usePaymentVerificationFromURL, useSubscriptionQuery } from '@/features/subscription/model';
+import { downloadReceipt, generateReceiptBase64 } from '@/features/subscription/lib';
+import { getPaymentReceiptUrl, uploadPaymentReceipt } from '../../services/storageApiService';
+import { clearPendingUserData } from '@/features/auth/lib';
 
 // ============================================================================
 // CONSTANTS & CONFIGURATION

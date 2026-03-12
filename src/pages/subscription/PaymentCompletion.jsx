@@ -14,10 +14,11 @@ import {
 } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import SubscriptionRouteGuard from '../../components/Subscription/SubscriptionRouteGuard';
-import { useUser, useUserRole, useIsAuthenticated, useAuthLoading, useSubscription } from '../../stores';
+import { SubscriptionRouteGuard } from '@/features/subscription/ui/shared';
+import { useSubscription } from '@/features/subscription/model';
+import { useAuth } from '@/features/auth';
 import { supabase } from '../../lib/supabaseClient';
-import { initiateRazorpayPayment } from '../../services/Subscriptions/razorpayService';
+import { initiateRazorpayPayment } from '@/features/subscription/api';
 
 /**
  * Get the subscription manage path based on user role

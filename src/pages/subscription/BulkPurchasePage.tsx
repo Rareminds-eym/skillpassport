@@ -8,11 +8,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import BulkPurchaseWizard, { PurchaseData } from '../../components/Subscription/Organization/BulkPurchaseWizard';
-import { useUser, useIsAuthenticated } from '../../stores';
+import BulkPurchaseWizard, { PurchaseData } from '@/features/subscription/ui/organization/BulkPurchaseWizard';
+import { useAuth } from '@/features/auth';
 import { supabase } from '../../lib/supabaseClient';
 import { organizationMemberService } from '../../services/organization/organizationMemberService';
-import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
+import { useSubscriptionPlansData } from '@/features/subscription/model';
 
 function BulkPurchasePage() {
   const navigate = useNavigate();

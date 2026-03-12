@@ -5,7 +5,7 @@
  * Supports bulk seat purchases with volume discounts and Razorpay integration.
  */
 
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/shared/api';
 
 // ============================================================================
 // Types & Interfaces

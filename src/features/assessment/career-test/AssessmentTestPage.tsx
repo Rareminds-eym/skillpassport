@@ -87,7 +87,7 @@ import {
   highSchoolLearningQuestions,
   highSchoolAptitudeQuestions,
 } from '../../assessment/data/questions';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/shared/api';
 
 /**
  * Get icon image path for a section based on section ID

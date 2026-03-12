@@ -1,4 +1,4 @@
-import { FeatureGate } from '../../components/Subscription/FeatureGate';
+import { FeatureGate } from '@/features/subscription/ui/shared';
 import CareerAssistant from '../../features/career-assistant/components/CareerAssistant';
 
 /**

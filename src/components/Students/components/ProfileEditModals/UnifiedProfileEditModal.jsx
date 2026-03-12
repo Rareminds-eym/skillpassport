@@ -1,4 +1,4 @@
-import toast from 'react-hot-toast';
+import { useToast } from "@/shared/lib/hooks";
 import {
   Award, Calendar,
   CheckCircle,
@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Progress } from "../ui/progress";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/shared/api";
 import { Textarea } from "../ui/textarea";
 import { FIELD_CONFIGS } from "./fieldConfigs";
 import { calculateDuration, calculateProgress, generateUuid, isValidUrl, parsePositiveNumber, parseSkills } from "./utils";

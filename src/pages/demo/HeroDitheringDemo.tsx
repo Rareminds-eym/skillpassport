@@ -1,4 +1,4 @@
-import { CTASection } from "@/components/ui/hero-dithering-card";
+import { CTASection } from "@/components/ui/hero-dithering-card"; // Not migrated yet
 
 export default function HeroDitheringDemo() {
   return (

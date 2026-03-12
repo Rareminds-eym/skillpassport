@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-import { useAuthActions } from '../stores';
-import { supabase } from '../lib/supabaseClient';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/Students/components/ui/card';
-import { Button } from '../components/Students/components/ui/button';
+import { useSupabaseAuth } from '../context/SupabaseAuthContext';
+import { Card, CardContent, CardHeader, CardTitle, Button } from '@/shared/ui';
 import { Input } from '../components/Students/components/ui/input';
 import { Alert, AlertDescription } from '../components/Students/components/ui/alert';
 

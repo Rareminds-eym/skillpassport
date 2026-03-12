@@ -4,6 +4,8 @@ import Footer from '../components/Footer';
 import { PromotionalBanner, AssessmentPromotionalBanner } from '../components/Homepage';
 import { useAssessmentPromotional, useCurrentPromotional } from '../stores';
 import { useIsAuthenticated, useUserRole, useUser, useSubscriptionAccess } from '../stores';
+import { useAuth } from '@/features/auth/model/useAuth';
+import { useSubscriptionQuery } from '@/features/subscription/model';
 import { isActiveOrPaused } from '../utils/subscriptionHelpers';
 
 // Import role-specific headers

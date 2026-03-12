@@ -2,8 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import toast from 'react-hot-toast';
 import { MessageSquare, X, User, Briefcase } from 'lucide-react';
-import { Message } from '../services/messageService';
-import { useMessageStore } from '../stores/useMessageStore';
+import { Message } from '@/features/messaging';
+import { useMessageStore } from '@/features/messaging';
 
 interface UseStudentMessageNotificationsProps {
   studentId: string | null;

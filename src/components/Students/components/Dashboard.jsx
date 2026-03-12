@@ -40,10 +40,15 @@ import {
   ExperienceEditModal,
   SkillsEditModal
 } from './ProfileEditModals';
-import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
-import { useStudentRealtimeActivities } from '../../../hooks/useStudentRealtimeActivities';
+import { useStudentDataByEmail } from '@/hooks/useStudentDataByEmail';
+import { useStudentCertificates } from '@/hooks/useStudentCertificates';
+import { useAuth } from '@/context/AuthContext';
+import { useStudentRealtimeActivities } from '@/hooks/useStudentRealtimeActivities';
+console.log('🔍 [Dashboard] useStudentDataByEmail imported:', useStudentDataByEmail);
+console.log('🔍 [Dashboard] typeof useStudentDataByEmail:', typeof useStudentDataByEmail);
 
 const Dashboard = () => {
+  console.log('🔍 [Dashboard] Component rendering');
   const navigate = useNavigate();
   const [activeModal, setActiveModal] = useState(null);
   const [activeNavItem, setActiveNavItem] = useState('skills'); // Default to skills
@@ -52,6 +57,9 @@ const Dashboard = () => {
   // Get student ID and email from auth store
   const user = useUser();
   const userEmail = user?.email;
+
+  console.log('🔍 [Dashboard] About to call useStudentDataByEmail with email:', userEmail);
+  console.log('🔍 [Dashboard] useStudentDataByEmail function:', useStudentDataByEmail);
 
   // Fetch student data by EMAIL (from real Supabase table)
   const {
@@ -65,6 +73,8 @@ const Dashboard = () => {
     updateTechnicalSkills,
     updateSoftSkills
   } = useStudentDataByEmail(userEmail, false); // no fallback to mock data
+
+  console.log('🔍 [Dashboard] Hook returned - studentData:', studentData, 'loading:', loading, 'error:', error);
 
   // Fetch real-time student activities (replaces mock recentUpdates)
   const { 

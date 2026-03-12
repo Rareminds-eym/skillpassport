@@ -13,12 +13,14 @@
  * Content-Type: multipart/form-data
  * - file: File (required) - The file to upload
  * - filename: string (required) - Original filename with extension
+ * - context: string (optional) - Upload context (assignment, course_video, document, resume, etc.)
+ *   Defaults to 'default' if not provided
  * 
  * ## Validation Layers
  * 
  * The handler performs six layers of validation in order:
  * 
- * 1. **File Size Validation**: Checks file is between 1 byte and 100MB
+ * 1. **File Size Validation**: Checks file size against context-specific limits (5MB-100MB)
  * 2. **MIME Type Whitelist**: Verifies declared type is in ALLOWED_FILE_TYPES
  * 3. **Extension Validation**: Ensures file extension matches declared MIME type
  * 4. **Dangerous File Detection**: Blocks executables (EXE, ELF, Mach-O, Java Class)
@@ -78,6 +80,14 @@
  * ### 400 Bad Request - Validation Errors
  * ```json
  * {
+ *   "error": "File size exceeds maximum allowed size of 10 MB for Assignment files",
+ *   "maxSize": "10 MB",
+ *   "context": "assignment"
+ * }
+ * ```
+ * 
+ * ```json
+ * {
  *   "error": "File extension '.exe' does not match declared type 'image/png'. Expected one of: .png"
  * }
  * ```
@@ -108,6 +118,15 @@
  * {
  *   "error": "File upload rejected",
  *   "reason": "File is a Windows Executable (EXE). Executable files are not allowed."
+ * }
+ * ```
+ * 
+ * ### 413 Payload Too Large - File Size Exceeded
+ * ```json
+ * {
+ *   "error": "File size exceeds maximum allowed size of 100 MB for Course videos",
+ *   "maxSize": "100 MB",
+ *   "context": "course_video"
  * }
  * ```
  * 
@@ -154,12 +173,8 @@ import {
   validateFileSignature,
   validateSVGContent,
 } from '../utils/file-validator';
-
-/**
- * File size limits (in bytes)
- */
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
-const MIN_FILE_SIZE = 1; // 1 byte
+import { validateFileSizeBackend } from '../utils/file-size-validator';
+import { getFileSizeLimit } from '../config/fileSizeLimits';
 
 /**
  * Allowed file types (MIME types)
@@ -204,21 +219,6 @@ const ALLOWED_FILE_TYPES = [
   'application/json',
   'application/xml',
 ];
-
-/**
- * Validate file size
- */
-function validateFileSize(size: number): { valid: boolean; error?: string } {
-  if (size < MIN_FILE_SIZE) {
-    return { valid: false, error: 'File is empty' };
-  }
-  
-  if (size > MAX_FILE_SIZE) {
-    return { valid: false, error: `File size exceeds maximum allowed size of ${MAX_FILE_SIZE / 1024 / 1024}MB` };
-  }
-  
-  return { valid: true };
-}
 
 /**
  * Validate file type
@@ -267,6 +267,7 @@ export const handleUpload: PagesFunction = async (context) => {
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const filename = formData.get('filename') as string;
+    const uploadContext = (formData.get('context') as string) || 'default';
 
     // Validate required fields
     if (!file) {
@@ -277,10 +278,19 @@ export const handleUpload: PagesFunction = async (context) => {
       return jsonResponse({ error: 'Filename is required' }, 400);
     }
 
-    // Validate file size
-    const sizeValidation = validateFileSize(file.size);
+    // Validate file size using centralized configuration
+    const sizeValidation = validateFileSizeBackend(file.size, {
+      context: uploadContext,
+      userId: user.id,
+      filename
+    });
     if (!sizeValidation.valid) {
-      return jsonResponse({ error: sizeValidation.error }, 400);
+      const config = getFileSizeLimit(uploadContext);
+      return jsonResponse({ 
+        error: sizeValidation.error,
+        maxSize: config.displaySize,
+        context: uploadContext
+      }, sizeValidation.statusCode || 400);
     }
 
     // Validate file type

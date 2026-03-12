@@ -16,7 +16,7 @@ import {
     Share2,
 } from "lucide-react";
 
-import { loginStudent } from "../../services/studentAuthService";
+import { loginStudent } from "@/features/auth/api";
 import FeatureCard from "./components/ui/FeatureCard";
 
 export default function LoginStudent() {

@@ -14,7 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import SearchBar from '../../../components/common/SearchBar';
 import Pagination from '../../../components/admin/Pagination';
-import StudentProfileDrawer from '@/components/shared/StudentProfileDrawer';
+import { StudentProfileDrawer } from '@/features/student-profile';
 import CareerPathDrawer from '@/components/admin/components/CareerPathDrawer';
 import { useStudents } from '../../../hooks/useAdminStudents';
 import { generateCareerPath, type CareerPathResponse, type StudentProfile } from '@/services/aiCareerPathService';

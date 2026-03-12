@@ -5,6 +5,7 @@ import ThemeToggle from '../../../components/digital-pp/ThemeToggle';
 import { usePortfolio } from '../../../stores';
 import { useTheme } from '../../../stores';
 import type { AnimationType } from '../../../types/student';
+import { showProfileUpdateToast } from '../../../utils/profileToast';
 
 const ThemeSettings: React.FC = () => {
   const navigate = useNavigate();
@@ -28,7 +29,6 @@ const ThemeSettings: React.FC = () => {
   const [selectedColorTheme, setSelectedColorTheme] = useState<string>(initialColorId);
   const [selectedAnimation, setSelectedAnimation] = useState<AnimationType>(settings.animation);
   const [selectedFontSize, setSelectedFontSize] = useState(settings.fontSize);
-  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
   // Apply font size on component mount
   useEffect(() => {
@@ -63,23 +63,15 @@ const ThemeSettings: React.FC = () => {
     // Apply font size to root element
     document.documentElement.style.fontSize = `${selectedFontSize}px`;
     
-    setShowSaveConfirmation(true);
+    showProfileUpdateToast('Theme settings saved successfully!', theme);
+    
     setTimeout(() => {
-      setShowSaveConfirmation(false);
       navigate('/portfolio');
     }, 1500);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-100 dark:from-gray-900 dark:via-purple-950 dark:to-indigo-950 transition-colors duration-300">
-      {/* Save Confirmation Toast */}
-      {showSaveConfirmation && (
-        <div className="fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center space-x-2 animate-slide-in">
-          <Save className="w-5 h-5" />
-          <span>Theme settings saved!</span>
-        </div>
-      )}
-
       {/* Main Content */}
       <div className="max-w-4xl mx-auto p-8">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 transition-colors duration-300">
