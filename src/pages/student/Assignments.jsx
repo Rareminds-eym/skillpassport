@@ -32,7 +32,7 @@ import { getLogger } from '../../config/logging';
 
 const logger = getLogger('Assignments');
 import { useUser } from '../../stores';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useStudentData } from '../../hooks/useStudentData';
 import {
   getAssignmentsByStudentId,
   getAssignmentStats,
@@ -97,8 +97,7 @@ const transformAssignment = (dbAssignment) => ({
 
 const Assignments = () => {
   const user = useUser();
-  const userEmail = localStorage.getItem('userEmail') || user?.email;
-  const { studentData, loading: authLoading } = useStudentDataByEmail(userEmail);
+  const { student: studentData, isLoading: authLoading } = useStudentData({ loadRelated: false });
   const studentId = studentData?.id || user?.id;
   
   

@@ -15,7 +15,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from '../../../stores';
-import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
+import { useStudentData } from '../../../hooks/useStudentData';
 import { isLearner } from '../../../utils/studentType';
 
 // Menu item interface
@@ -57,8 +57,7 @@ const DigitalPortfolioSideDrawer: React.FC<DigitalPortfolioSideDrawerProps> = ({
   const user = useUser();
   
   // Get student data to check if learner
-  const userEmail = localStorage.getItem('userEmail') || user?.email;
-  const { studentData } = useStudentDataByEmail(userEmail);
+  const { student: studentData } = useStudentData({ loadRelated: false });
   const isLearnerUser = isLearner(studentData);
   
   // Filter menu items based on user type

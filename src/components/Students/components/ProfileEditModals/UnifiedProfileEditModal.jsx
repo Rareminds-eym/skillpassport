@@ -260,10 +260,22 @@ const UnifiedProfileEditModal = ({
       return;
     }
 
+    const levelValue = parseInt(formData.newSkillLevel || '3');
+    
+    // Map level number to proficiency text
+    const proficiencyMap = {
+      1: 'Beginner',
+      2: 'Basic',
+      3: 'Intermediate',
+      4: 'Advanced',
+      5: 'Expert'
+    };
+
     const newSkill = {
       name: skillName,
       type: formData.newSkillType || 'soft',
-      level: parseInt(formData.newSkillLevel || '3'),
+      level: levelValue,
+      proficiency_level: proficiencyMap[levelValue] || 'Intermediate',
       description: formData.newSkillDescription?.trim() || '',
       verified: true,
       enabled: true,

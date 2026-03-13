@@ -30,7 +30,7 @@ import { QRCodeSVG } from "qrcode.react";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser, useUserRole } from "../../../stores";
-import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
+import { useStudentData } from "../../../hooks/useStudentData";
 import { supabase } from "../../../lib/supabaseClient";
 import { generateBadges } from "../../../services/badgeService";
 import {
@@ -301,29 +301,44 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   const [fetchedInstitutionName, setFetchedInstitutionName] = useState(null);
   const [fetchedInstitutionLocation, setFetchedInstitutionLocation] = useState(null);
 
-  // Fetch real student data
+  // Use already-loaded student data from parent layout
   const {
-    studentData: realStudentData,
-    loading,
+    student: realStudentData,
+    education,
+    experience,
+    skills,
+    trainings,
+    projects,
+    certificates,
+    isLoading: loading,
     error,
-  } = useStudentDataByEmail(userEmail);
-
+  } = useStudentData();
   // Calculate employability score and generate badges when student data changes
   useEffect(() => {
     if (realStudentData) {
-      // Pass the entire realStudentData object which contains profile, technicalSkills, softSkills, etc.
-      const scoreData = calculateEmployabilityScore(realStudentData);
+      // Create full data object with all related entities for badge generation
+      const fullData = {
+        ...realStudentData,
+        education: education || [],
+        experience: experience || [],
+        skills: skills || [],
+        trainings: trainings || [],
+        certificates: certificates || [],
+        projects: projects || []
+      };
+      
+      const scoreData = calculateEmployabilityScore(fullData);
       setEmployabilityData(scoreData);
 
-      // Generate badges based on student data
-      const badges = generateBadges(realStudentData);
+      // Generate badges based on full student data
+      const badges = generateBadges(fullData);
       setEarnedBadges(badges);
     } else {
       // Use default score when no data available
       setEmployabilityData(getDefaultEmployabilityScore());
       setEarnedBadges([]);
     }
-  }, [realStudentData]);
+  }, [realStudentData, education, experience, skills, trainings, projects, certificates]);
 
   // Calculate graduation year for school students
   const getGraduationYear = () => {
@@ -371,7 +386,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     instagram_link: realStudentData.instagram_link || realStudentData.profile?.instagram_link,
     facebook_link: realStudentData.facebook_link || realStudentData.profile?.facebook_link,
     youtube_link: realStudentData.youtube_link || realStudentData.profile?.youtube_link,
-    degree: realStudentData.branch_field,
+    degree: education?.find(e => e.status === 'ongoing')?.degree || education?.[0]?.degree || realStudentData.branch_field,
     // Fallback to profile JSONB for any missing data
     ...realStudentData.profile
   } : null;
@@ -1029,26 +1044,16 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                           <span className="text-gray-500">Sec:</span> {realStudentData.section}
                         </span>
                       )}
+                      {displayData.classYear && (
+                        <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700 shadow-sm">
+                          <span className="text-gray-500">Class of:</span> {displayData.classYear}
+                        </span>
+                      )}
                     </div>
                   </div>
                 )}
 
-                 {/* Tags */}
-                {(displayData.classYear || displayData.department || displayData.degree) && (
-                  <div className="flex flex-wrap gap-2 sm:gap-3">
-                  {/* Only show department/degree badge if NOT already shown in College Info section */}
-                  {(displayData.department || displayData.degree) && !realStudentData?.branch_field && (
-                    <Badge className="bg-white text-indigo-700 border-0 px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm font-medium rounded-full shadow-md hover:scale-105 transition-transform">
-                      {displayData.department || displayData.degree}
-                    </Badge>
-                  )}
-                  {displayData.classYear && (
-                    <Badge className="bg-white text-blue-600 border-0 px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm font-medium rounded-full shadow-md hover:scale-105 transition-transform">
-                      {displayData.classYear}
-                    </Badge>
-                  )}
-                </div>
-                )}
+                 {/* Tags section removed - Class Year now in College Info */}
 
                 {/* Employability Score - New Circular Gauge with Radar Chart */}
                 <EmployabilityScoreCard employabilityData={employabilityData} />

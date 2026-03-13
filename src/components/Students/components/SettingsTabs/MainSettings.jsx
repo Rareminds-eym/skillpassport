@@ -15,7 +15,7 @@ import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { useUser } from "../../../../stores";
 import { useStudentSettings } from "../../../../hooks/useStudentSettings";
-import { useStudentDataByEmail } from "../../../../hooks/useStudentDataByEmail";
+import { useStudentData } from "../../../../hooks/useStudentData";
 import { useStudentCertificates } from "../../../../hooks/useStudentCertificates";
 import { useStudentProjects } from "../../../../hooks/useStudentProjects";
 import { useStudentExperience } from "../../../../hooks/useStudentExperience";
@@ -61,16 +61,19 @@ const MainSettings = () => {
 
   // Get education data from the same source as Dashboard
   const {
-    studentData: studentDataWithEducation,
-    loading: educationLoading,
-    updateEducation,
-    updateTechnicalSkills,
-    updateSoftSkills,
-    updateSkills,
-    updateExperience,
-    updateProjects,
-    updateCertificates,
-  } = useStudentDataByEmail(userEmail);
+    student: studentDataWithEducation,
+    education,
+    skills,
+    experience,
+    projects,
+    certificates,
+    isLoading: educationLoading,
+    updateEducationBulk,
+    updateSkillsBulk,
+    updateExperienceBulk,
+    updateProjectsBulk,
+    updateCertificatesBulk,
+  } = useStudentData({ loadRelated: true });
 
   // Get student ID for messaging
   const studentId = studentData?.id;
@@ -548,7 +551,7 @@ const MainSettings = () => {
     try {
       setIsSaving(true);
       
-      const result = await updateEducation(educationList);
+      const result = await updateEducationBulk(educationList);
       
       if (result.success) {
         // Refresh education data from table to get updated versioning fields
@@ -621,7 +624,7 @@ const MainSettings = () => {
       }));
       
       // Use updateSkills (same as Dashboard) instead of updateTechnicalSkills
-      const result = await updateSkills(skillsWithType);
+      const result = await updateSkillsBulk(skillsWithType);
       
       if (result.success) {
         setShowTechnicalSkillsModal(false);
@@ -649,7 +652,7 @@ const MainSettings = () => {
     try {
       setIsSaving(true);
       
-      const result = await updateExperience(experienceList);
+      const result = await updateExperienceBulk(experienceList);
       
       if (result.success) {
         // Refresh experience from table
@@ -677,7 +680,7 @@ const MainSettings = () => {
     setIsSaving(true);
 
     const result = await safeSave(
-      () => updateCertificates(certificatesList),
+      () => updateCertificatesBulk(certificatesList),
       {
         section: 'certificates',
         action: 'update_certificates',
@@ -701,7 +704,7 @@ const MainSettings = () => {
     try {
       setIsSaving(true);
       
-      const result = await updateProjects(projectsList);
+      const result = await updateProjectsBulk(projectsList);
       
       if (result.success) {
         setShowProjectsModal(false);
@@ -1384,8 +1387,8 @@ const MainSettings = () => {
       
       if (parsedData.education && parsedData.education.length > 0) {
         // Education data will be automatically updated by the hook
-        if (updateEducation) {
-          await updateEducation(parsedData.education);
+        if (updateEducationBulk) {
+          await updateEducationBulk(parsedData.education);
         }
       }
       

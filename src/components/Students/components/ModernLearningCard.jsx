@@ -20,7 +20,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../../stores";
-import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
+import { useStudentData } from "../../../hooks/useStudentData";
 import { supabase } from "../../../lib/supabaseClient";
 import { downloadCertificate, getCertificateProxyUrl } from "../../../services/certificateService";
 import { checkAssessmentStatus } from "../../../services/externalAssessmentService";
@@ -52,8 +52,7 @@ const ModernLearningCard = ({
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
   
-  const userEmail = user?.email;
-  const { studentData } = useStudentDataByEmail(userEmail, false);
+  const { student: studentData } = useStudentData({ loadRelated: false });
 
   // Check if this is a course enrollment (started from course player)
   const isCourseEnrollment = item.type === 'course_enrollment' || item.source === 'course_enrollment';

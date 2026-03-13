@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useUserRole, useUser } from '../stores';
-import { useStudentDataByEmail } from '../hooks/useStudentDataByEmail';
+import { useStudentData } from '../hooks/useStudentData';
 import {
   LayoutDashboard,
   Users,
@@ -19,8 +19,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
   const location = useLocation();
 
   // Fetch student data to check school/college association
-  const userEmail = user?.email || localStorage.getItem("userEmail");
-  const { studentData } = useStudentDataByEmail(userEmail);
+  const { student: studentData } = useStudentData({ loadRelated: false });
 
   // Check if student is part of a school or college
   const isPartOfSchoolOrCollege = studentData?.school_id || studentData?.university_college_id;
