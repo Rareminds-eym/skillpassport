@@ -124,6 +124,7 @@ export const MODEL_PROFILES: Record<ModelUseCase, ModelProfile> = {
 export const API_CONFIG = {
     OPENROUTER: {
         endpoint: 'https://openrouter.ai/api/v1/chat/completions',
+        embeddingEndpoint: 'https://openrouter.ai/api/v1/embeddings',
         headers: {
             'Content-Type': 'application/json',
             'HTTP-Referer': 'https://skillpassport.pages.dev',
