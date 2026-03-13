@@ -3,7 +3,7 @@
  */
 
 import type { Env, WebsiteConfig } from '../types';
-import { WEBSITE_CONFIGS, ERROR_CODES } from '../constants';
+import { WEBSITE_METADATA, ERROR_CODES } from '../constants';
 import { errorResponse } from '../utils/response';
 
 export function authenticateRequest(request: Request, env: Env): WebsiteConfig | Response {
@@ -18,15 +18,22 @@ export function authenticateRequest(request: Request, env: Env): WebsiteConfig |
     );
   }
 
-  // Check against configured website keys
-  const websiteConfig = WEBSITE_CONFIGS[apiKey as keyof typeof WEBSITE_CONFIGS];
-  
-  if (websiteConfig) {
-    return websiteConfig;
+  // Check against environment-based API keys
+  if (apiKey === env.SKILLPASSPORT_API_KEY_PROD) {
+    return WEBSITE_METADATA['skillpassport-prod'];
   }
-
-  // Fallback to legacy shared key for backward compatibility
-  if (apiKey === env.SHARED_API_KEY) {
+  
+  if (apiKey === env.SKILLPASSPORT_API_KEY_DEV) {
+    return WEBSITE_METADATA['skillpassport-dev'];
+  }
+  
+  // Optional legacy key for backward compatibility
+  if (env.LEGACY_API_KEY && apiKey === env.LEGACY_API_KEY) {
+    return WEBSITE_METADATA['legacy'];
+  }
+  
+  // Deprecated: Fallback to old SHARED_API_KEY for backward compatibility
+  if (env.SHARED_API_KEY && apiKey === env.SHARED_API_KEY) {
     return {
       id: 'legacy',
       name: 'Legacy Key',

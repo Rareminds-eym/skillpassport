@@ -7,7 +7,15 @@ export interface Env {
   RAZORPAY_KEY_ID: string;
   RAZORPAY_KEY_SECRET: string;
   RAZORPAY_WEBHOOK_SECRET?: string;
-  SHARED_API_KEY: string;
+  
+  // API Keys for website authentication (stored as Cloudflare Secrets)
+  SKILLPASSPORT_API_KEY_PROD: string;
+  SKILLPASSPORT_API_KEY_DEV: string;
+  LEGACY_API_KEY?: string; // Optional for backward compatibility
+  
+  // Deprecated: Use specific keys above instead
+  SHARED_API_KEY?: string;
+  
   ENVIRONMENT: 'development' | 'production';
   
   // Future: KV for rate limiting

@@ -49,25 +49,23 @@ export const LOG_LEVELS = {
   DEBUG: 'debug',
 } as const;
 
-// Website API Keys Configuration
-// In production, these should be in environment variables
-export const WEBSITE_CONFIGS = {
-  // Website A - Skill Passport
-  'skillpassport-api-key-prod': {
+// Website Configuration Metadata
+// API keys are stored as Cloudflare Secrets, not in source code
+export const WEBSITE_METADATA = {
+  'skillpassport-prod': {
     id: 'website-a',
     name: 'Skill Passport',
-    environment: 'production',
+    environment: 'production' as const,
   },
-  'skillpassport-api-key-dev': {
+  'skillpassport-dev': {
     id: 'website-a',
     name: 'Skill Passport',
-    environment: 'development',
+    environment: 'development' as const,
   },
-  // Fallback for backward compatibility
-  'your-secret-api-key-12345': {
+  'legacy': {
     id: 'legacy',
     name: 'Legacy Key',
-    environment: 'development',
+    environment: 'development' as const,
   },
 } as const;
 
