@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import type { SubjectExpertise } from '@/types/StudentManagement';
 
 export interface Teacher {
   id: string;
@@ -18,7 +19,7 @@ export interface Teacher {
   date_of_joining?: string;
   onboarding_status: 'pending' | 'documents_uploaded' | 'verified' | 'active' | 'inactive';
   verification_status?: string;
-  subject_expertise?: any[];
+  subject_expertise?: SubjectExpertise[];
   subjects_handled?: string[];
   degree_certificate_url?: string;
   id_proof_url?: string;
