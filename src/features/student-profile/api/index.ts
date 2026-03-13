@@ -14,16 +14,8 @@ export {
   updateSoftSkillsByEmail,
   updateProjectsByEmail,
   updateCertificatesByEmail,
-  updateStudentByEmail
-} from '@/services/studentServiceProfile.js';
-
-export {
+  updateStudentByEmail,
   updateSingleTrainingById
-} from '@/services/studentServiceProfile.js';
-
-export {
-  updateStudent,
-  softDeleteStudent
 } from '@/services/studentService';
 
 export {
