@@ -15,7 +15,9 @@ export {
   updateProjectsByEmail,
   updateCertificatesByEmail,
   updateStudentByEmail,
-  updateSingleTrainingById
+  updateSingleTrainingById,
+  updateStudent,
+  softDeleteStudent
 } from '@/services/studentService';
 
 export {
