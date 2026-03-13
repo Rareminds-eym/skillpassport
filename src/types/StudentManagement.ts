@@ -178,6 +178,9 @@ export interface AttendanceAlert {
   createdAt: string;
 }
 
+// Report Data Types
+export type ReportData = Record<string, unknown>;
+
 export interface StudentReport {
   id: string;
   studentId: string;
@@ -189,8 +192,8 @@ export interface StudentReport {
   academicYear: string;
   term?: string;
   
-  // Report Data
-  data: any;
+  // Report Data - now properly typed
+  data: ReportData;
   
   // Export Options
   pdfUrl?: string;
@@ -201,4 +204,104 @@ export interface StudentReport {
 export interface ValidationError {
   field: string;
   message: string;
+}
+// Additional interfaces for services and utils
+
+export interface QualificationData {
+  degree: string;
+  institution: string;
+  year: string;
+  grade?: string;
+  specialization?: string;
+}
+
+export interface SubjectExpertise {
+  subject: string;
+  level: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  yearsOfExperience?: number;
+  certifications?: string[];
+}
+
+export interface BulkImportResult {
+  total_records: number;
+  successful_records: number;
+  failed_records: number;
+  status: string;
+  error_log: ImportError[];
+}
+
+export interface ImportError {
+  row: number;
+  field: string;
+  message: string;
+  data?: Record<string, string | number | boolean>;
+}
+
+export interface NotificationData {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'warning' | 'error' | 'success';
+  read: boolean;
+  created_at: string;
+  student_id?: string;
+  metadata?: NotificationMetadata;
+}
+
+export interface NotificationMetadata {
+  action?: string;
+  url?: string;
+  priority?: 'low' | 'medium' | 'high';
+  category?: string;
+}
+
+export interface MessageData {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  created_at: string;
+  metadata?: MessageMetadata;
+}
+
+export interface MessageMetadata {
+  type?: string;
+  source?: string;
+  confidence?: number;
+}
+
+export interface ConversationData {
+  id: string;
+  title: string;
+  messages: MessageData[];
+  created_at: string;
+  updated_at: string;
+  status: 'active' | 'archived';
+}
+
+export interface OrganizationData {
+  id: string;
+  name: string;
+  code: string;
+  type: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  logo_url?: string;
+  status: 'active' | 'inactive';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserRoleHistoryRecord {
+  id: string;
+  user_id: string;
+  old_role: string;
+  new_role: string;
+  changed_by: string;
+  reason?: string;
+  assigned_at: string;
 }

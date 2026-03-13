@@ -5,47 +5,34 @@
 
 import { supabase } from '../lib/supabaseClient';
 import { getLogger } from '../config/logging';
+import {
+  StudentData,
+  ServiceResponse,
+  StudentUpdateData,
+  TrainingUpdateDataFull,
+  UserCreateData,
+  TrainingData,
+  SkillData,
+  SkillUpdateData,
+  ExperienceData,
+  ExperienceUpdateData,
+  EducationData,
+  EducationUpdateData,
+  CertificateData,
+  CertificateUpdateData,
+  ProjectData,
+  ProjectUpdateData,
+  SkillRecord,
+  EducationRecord,
+  TrainingRecord,
+  CertificateRecord,
+  ExperienceRecord,
+  ProjectRecord
+} from '../types/student';
 
 const logger = getLogger('student-service');
 
-// ==================== TYPES ====================
-
-interface StudentData {
-  name?: string;
-  email: string;
-  phone?: string;
-  studentType?: string;
-  schoolId?: string;
-  collegeId?: string;
-  country?: string;
-  state?: string;
-  city?: string;
-  preferredLanguage?: string;
-  referralCode?: string;
-}
-
-interface RegistrationData extends StudentData {
-  fullName?: string;
-  firstName?: string;
-  lastName?: string;
-  dateOfBirth?: string;
-}
-
-interface ServiceResponse<T = any> {
-  success: boolean;
-  data: T | null;
-  error: string | null;
-}
-
 // ==================== UTILITY FUNCTIONS ====================
-
-/**
- * Capitalize the first letter of a name
- */
-const capitalizeFirstLetter = (name: string): string => {
-  if (!name || typeof name !== 'string') return '';
-  return name.trim().charAt(0).toUpperCase() + name.trim().slice(1).toLowerCase();
-};
 
 /**
  * Generate UUID
@@ -99,7 +86,7 @@ function generateAvatar(name?: string): string {
 /**
  * Create a user record in the users table
  */
-export const createUserRecord = async (userId: string, userData: any): Promise<ServiceResponse> => {
+export const createUserRecord = async (userId: string, userData: UserCreateData): Promise<ServiceResponse> => {
   try {
     const { email, firstName, lastName, user_role, role, dateOfBirth } = userData;
 
@@ -196,7 +183,7 @@ export const createStudent = async (studentData: StudentData, userId: string): P
 /**
  * Update student by student ID
  */
-export const updateStudent = async (studentId: string, updates: any): Promise<ServiceResponse> => {
+export const updateStudent = async (studentId: string, updates: StudentUpdateData): Promise<ServiceResponse> => {
   try {
     const { data, error } = await supabase
       .from('students')
@@ -255,7 +242,7 @@ export const softDeleteStudent = async (studentId: string, educatorId: string): 
 /**
  * Transform profile data to consistent format
  */
-function transformProfileData(profile: any, email: string, studentRecord: any = null): any {
+function transformProfileData(profile: Record<string, unknown> | null, email: string, studentRecord: Record<string, unknown> | null = null): Record<string, unknown> | null {
   if (!profile && !studentRecord) {
     return null;
   }
@@ -510,8 +497,8 @@ export const getStudentByEmail = async (email: string): Promise<ServiceResponse>
     // Format skills from skills table
     const tableSkills = Array.isArray(data?.skills) ? data.skills : [];
     const technicalSkills = tableSkills
-      .filter((skill: any) => skill.type === 'technical')
-      .map((skill: any) => ({
+      .filter((skill: SkillRecord) => skill.type === 'technical')
+      .map((skill: SkillRecord) => ({
         id: skill.id,
         name: skill.name,
         level: skill.level || 3,
@@ -528,8 +515,8 @@ export const getStudentByEmail = async (email: string): Promise<ServiceResponse>
       }));
 
     const softSkills = tableSkills
-      .filter((skill: any) => skill.type === 'soft')
-      .map((skill: any) => ({
+      .filter((skill: SkillRecord) => skill.type === 'soft')
+      .map((skill: SkillRecord) => ({
         id: skill.id,
         name: skill.name,
         level: skill.level || 3,
@@ -547,7 +534,7 @@ export const getStudentByEmail = async (email: string): Promise<ServiceResponse>
 
     // Format education from education table
     const tableEducation = Array.isArray(data?.education) ? data.education : [];
-    const formattedEducation = tableEducation.map((edu: any) => {
+    const formattedEducation = tableEducation.map((edu: EducationRecord) => {
       const displayData = (edu.has_pending_edit && edu.verified_data) 
         ? edu.verified_data 
         : edu;
@@ -574,16 +561,16 @@ export const getStudentByEmail = async (email: string): Promise<ServiceResponse>
     // Format trainings
     const tableTrainings = Array.isArray(data?.trainings) ? data.trainings : [];
     const approvedTrainings = tableTrainings.filter(
-      (train: any) => train.approval_status === 'approved' || 
+      (train: TrainingRecord) => train.approval_status === 'approved' || 
                  train.approval_status === 'verified' ||
                  train.approval_status === 'pending' ||
                  train.has_pending_edit === true
     );
 
     // Fetch training certificates and skills
-    const trainingIds = approvedTrainings.map((t: any) => t.id).filter(Boolean);
-    let trainingCertificates: any[] = [];
-    let trainingSkills: any[] = [];
+    const trainingIds = approvedTrainings.map((t: TrainingRecord) => t.id).filter(Boolean);
+    let trainingCertificates: Array<Record<string, unknown>> = [];
+    let trainingSkills: Array<Record<string, unknown>> = [];
 
     if (trainingIds.length > 0) {
       const { data: certData } = await supabase
@@ -601,7 +588,7 @@ export const getStudentByEmail = async (email: string): Promise<ServiceResponse>
       trainingSkills = skillsData || [];
     }
 
-    const formattedTrainings = approvedTrainings.map((train: any) => {
+    const formattedTrainings = approvedTrainings.map((train: TrainingRecord) => {
       // For display purposes, use verified_data if available, but for editing we need current data
       const displayData = (train.has_pending_edit && train.verified_data) 
         ? train.verified_data 
@@ -654,7 +641,7 @@ export const getStudentByEmail = async (email: string): Promise<ServiceResponse>
 
     // Format certificates
     const tableCertificates = Array.isArray(data?.certificates) ? data.certificates : [];
-    const formattedTableCertificates = tableCertificates.map((certificate: any) => {
+    const formattedTableCertificates = tableCertificates.map((certificate: CertificateRecord) => {
       const displayData = (certificate.has_pending_edit && certificate.verified_data) 
         ? certificate.verified_data 
         : certificate;
@@ -691,7 +678,7 @@ export const getStudentByEmail = async (email: string): Promise<ServiceResponse>
 
     // Format experience
     const tableExperience = Array.isArray(data?.experience) ? data.experience : [];
-    const formattedExperience = tableExperience.map((exp: any) => {
+    const formattedExperience = tableExperience.map((exp: ExperienceRecord) => {
       const displayData = (exp.has_pending_edit && exp.verified_data) 
         ? exp.verified_data 
         : exp;
@@ -758,11 +745,11 @@ export const getStudentByEmail = async (email: string): Promise<ServiceResponse>
 
       projects: Array.isArray(data.projects)
         ? data.projects
-        .filter((project: any) => 
+        .filter((project: ProjectRecord) => 
         project.approval_status === 'verified' || 
         project.approval_status === 'approved'
       )
-        .map((project: any) => ({
+        .map((project: ProjectRecord) => ({
           ...project,
           id: project.id,
           title: project.title,
@@ -939,7 +926,7 @@ export async function findStudentByEmail(email: string): Promise<ServiceResponse
 /**
  * Update student by email
  */
-export async function updateStudentByEmail(email: string, updates: any): Promise<ServiceResponse> {
+export async function updateStudentByEmail(email: string, updates: StudentUpdateData): Promise<ServiceResponse> {
   try {
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
@@ -950,7 +937,7 @@ export async function updateStudentByEmail(email: string, updates: any): Promise
     const studentRecord = findResult.data;
 
     // Map updates to correct column names
-    const columnUpdates: any = {};
+    const columnUpdates: Record<string, unknown> = {};
     
     const fieldMapping: Record<string, string> = {
       'name': 'name',
@@ -1086,7 +1073,7 @@ export async function updateStudentByEmail(email: string, updates: any): Promise
 /**
  * Update training by email
  */
-export async function updateTrainingByEmail(email: string, trainingData: any[] = []): Promise<ServiceResponse> {
+export async function updateTrainingByEmail(email: string, trainingData: TrainingUpdateDataFull[] = []): Promise<ServiceResponse> {
   try {
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
@@ -1109,14 +1096,14 @@ export async function updateTrainingByEmail(email: string, trainingData: any[] =
 
     // Format training data for database
     const formatted = (trainingData || [])
-      .filter((train: any) => {
+      .filter((train: TrainingUpdateDataFull) => {
         const titleField = train.course || train.title;
         return train && typeof titleField === 'string' && titleField.trim().length > 0;
       })
-      .map((train: any) => {
+      .map((train: TrainingUpdateDataFull) => {
         const titleValue = train.course || train.title || '';
         
-        const record: any = {
+        const record: Record<string, unknown> = {
           student_id: studentId,
           title: titleValue.trim(),
           organization: train.provider?.trim() || train.organization?.trim() || null,
@@ -1125,9 +1112,9 @@ export async function updateTrainingByEmail(email: string, trainingData: any[] =
           duration: train.duration?.trim() || null,
           description: train.description?.trim() || null,
           status: train.status || 'ongoing',
-          completed_modules: parseInt(train.completedModules || train.completed_modules) || 0,
-          total_modules: parseInt(train.totalModules || train.total_modules) || 0,
-          hours_spent: parseInt(train.hoursSpent || train.hours_spent) || 0,
+          completed_modules: parseInt(String(train.completedModules || train.completed_modules)) || 0,
+          total_modules: parseInt(String(train.totalModules || train.total_modules)) || 0,
+          hours_spent: parseInt(String(train.hoursSpent || train.hours_spent)) || 0,
           updated_at: nowIso,
         };
 
@@ -1141,7 +1128,7 @@ export async function updateTrainingByEmail(email: string, trainingData: any[] =
         }
 
         // Handle versioning for existing records
-        const existingRecord = (existingTrainings || []).find((e: any) => e.id === record.id);
+        const existingRecord = (existingTrainings || []).find((e: TrainingRecord) => e.id === record.id);
         
         if (existingRecord && existingRecord.has_pending_edit === true) {
           record.verified_data = existingRecord.verified_data;
@@ -1149,7 +1136,7 @@ export async function updateTrainingByEmail(email: string, trainingData: any[] =
           record.has_pending_edit = true;
           record.approval_status = 'pending';
         } else if (existingRecord && (existingRecord.approval_status === 'verified' || existingRecord.approval_status === 'approved')) {
-          const normalize = (val: any) => (val === null || val === undefined || val === '') ? null : val;
+          const normalize = (val: unknown) => (val === null || val === undefined || val === '') ? null : val;
           
           const hasChanges = 
             normalize(record.title) !== normalize(existingRecord.title) ||
@@ -1232,10 +1219,10 @@ export async function updateTrainingByEmail(email: string, trainingData: any[] =
       // Handle skills for each training
       for (const training of formatted) {
         const trainingId = training.id;
-        const originalTrainingData = trainingData.find((t: any) => t.id === trainingId);
+        const originalTrainingData = trainingData.find((t: TrainingUpdateDataFull) => t.id === trainingId);
         
         // Get skills from either skills array or skillsList array
-        let skillsFromTraining: any[] = [];
+        let skillsFromTraining: SkillData[] = [];
         if (originalTrainingData?.skills && Array.isArray(originalTrainingData.skills)) {
           skillsFromTraining = originalTrainingData.skills;
         } else if (originalTrainingData?.skillsList && Array.isArray(originalTrainingData.skillsList)) {
@@ -1250,11 +1237,11 @@ export async function updateTrainingByEmail(email: string, trainingData: any[] =
             .eq('training_id', trainingId);
 
           const existingSkillsMap = new Map(
-            (existingSkills || []).map((s: any) => [`${s.name.toLowerCase().trim()}_${s.type}`, s])
+            (existingSkills || []).map((s: SkillRecord) => [`${s.name.toLowerCase().trim()}_${s.type}`, s])
           );
 
           // Process skills - preserve the type from the skill object
-          const skillsToProcess = skillsFromTraining.map((skill: any) => {
+          const skillsToProcess = skillsFromTraining.map((skill: SkillData) => {
             if (typeof skill === 'object' && skill && skill.name) {
               return {
                 name: skill.name.trim(),
@@ -1262,7 +1249,7 @@ export async function updateTrainingByEmail(email: string, trainingData: any[] =
               };
             } else if (typeof skill === 'string') {
               return {
-                name: skill.trim(),
+                name: (skill as unknown as string).trim(),
                 type: 'technical' // Only default to technical for plain strings
               };
             }
@@ -1293,7 +1280,7 @@ export async function updateTrainingByEmail(email: string, trainingData: any[] =
 
           // Add new skills
           if (skillsToAdd.length > 0) {
-            const skillRecords = skillsToAdd.map((skill: any) => ({
+            const skillRecords = skillsToAdd.map((skill: Record<string, unknown>) => ({
               id: generateUuid(),
               student_id: studentId,
               training_id: trainingId,
@@ -1332,7 +1319,7 @@ export async function updateTrainingByEmail(email: string, trainingData: any[] =
 /**
  * Update technical skills by email
  */
-export async function updateTechnicalSkillsByEmail(email: string, skillsData: any[] = []): Promise<ServiceResponse> {
+export async function updateTechnicalSkillsByEmail(email: string, skillsData: SkillUpdateData[] = []): Promise<ServiceResponse> {
   try {
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
@@ -1357,23 +1344,23 @@ export async function updateTechnicalSkillsByEmail(email: string, skillsData: an
 
     // Format technical skills data
     const formatted = (skillsData || [])
-      .filter((skill: any) => skill && typeof skill.name === 'string' && skill.name.trim().length > 0)
-      .map((skill: any) => {
-        const record: any = {
+      .filter((skill: SkillUpdateData) => skill && typeof skill.name === 'string' && skill.name.trim().length > 0)
+      .map((skill: SkillUpdateData) => {
+        const record: Record<string, unknown> = {
           student_id: studentId,
           name: skill.name.trim(),
           type: 'technical',
-          level: skill.level || skill.rating || 3,
-          proficiency_level: skill.proficiency_level || 'Intermediate',
-          description: skill.description?.trim() || '',
-          verified: skill.verified || false,
-          enabled: skill.enabled !== undefined ? skill.enabled : true,
-          approval_status: skill.approval_status || 'pending',
+          level: (skill as Record<string, unknown>).level || (skill as Record<string, unknown>).rating || 3,
+          proficiency_level: (skill as Record<string, unknown>).proficiency_level || 'Intermediate',
+          description: ((skill as Record<string, unknown>).description as string | undefined)?.trim() || '',
+          verified: (skill as Record<string, unknown>).verified || false,
+          enabled: (skill as Record<string, unknown>).enabled !== undefined ? (skill as Record<string, unknown>).enabled : true,
+          approval_status: (skill as Record<string, unknown>).approval_status || 'pending',
           updated_at: nowIso,
         };
 
         // Preserve existing ID if valid UUID
-        const rawId = typeof skill.id === 'string' ? skill.id.trim() : null;
+        const rawId = typeof (skill as Record<string, unknown>).id === 'string' ? ((skill as Record<string, unknown>).id as string).trim() : null;
         if (rawId && rawId.length === 36) {
           record.id = rawId;
         } else {
@@ -1424,7 +1411,7 @@ export async function updateTechnicalSkillsByEmail(email: string, skillsData: an
 /**
  * Update soft skills by email
  */
-export async function updateSoftSkillsByEmail(email: string, skillsData: any[] = []): Promise<ServiceResponse> {
+export async function updateSoftSkillsByEmail(email: string, skillsData: SkillUpdateData[] = []): Promise<ServiceResponse> {
   try {
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
@@ -1449,23 +1436,23 @@ export async function updateSoftSkillsByEmail(email: string, skillsData: any[] =
 
     // Format soft skills data
     const formatted = (skillsData || [])
-      .filter((skill: any) => skill && typeof skill.name === 'string' && skill.name.trim().length > 0)
-      .map((skill: any) => {
-        const record: any = {
+      .filter((skill: SkillUpdateData) => skill && typeof skill.name === 'string' && skill.name.trim().length > 0)
+      .map((skill: SkillUpdateData) => {
+        const record: Record<string, unknown> = {
           student_id: studentId,
           name: skill.name.trim(),
           type: 'soft',
-          level: skill.level || skill.rating || 3,
-          proficiency_level: skill.proficiency_level || 'Intermediate',
-          description: skill.description?.trim() || '',
-          verified: skill.verified || false,
-          enabled: skill.enabled !== undefined ? skill.enabled : true,
-          approval_status: skill.approval_status || 'pending',
+          level: (skill as Record<string, unknown>).level || (skill as Record<string, unknown>).rating || 3,
+          proficiency_level: (skill as Record<string, unknown>).proficiency_level || 'Intermediate',
+          description: ((skill as Record<string, unknown>).description as string | undefined)?.trim() || '',
+          verified: (skill as Record<string, unknown>).verified || false,
+          enabled: (skill as Record<string, unknown>).enabled !== undefined ? (skill as Record<string, unknown>).enabled : true,
+          approval_status: (skill as Record<string, unknown>).approval_status || 'pending',
           updated_at: nowIso,
         };
 
         // Preserve existing ID if valid UUID
-        const rawId = typeof skill.id === 'string' ? skill.id.trim() : null;
+        const rawId = typeof (skill as Record<string, unknown>).id === 'string' ? ((skill as Record<string, unknown>).id as string).trim() : null;
         if (rawId && rawId.length === 36) {
           record.id = rawId;
         } else {
@@ -1516,7 +1503,7 @@ export async function updateSoftSkillsByEmail(email: string, skillsData: any[] =
 /**
  * Update experience by email
  */
-export async function updateExperienceByEmail(email: string, experienceData: any[] = []): Promise<ServiceResponse> {
+export async function updateExperienceByEmail(email: string, experienceData: ExperienceUpdateData[] = []): Promise<ServiceResponse> {
   try {
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
@@ -1540,24 +1527,24 @@ export async function updateExperienceByEmail(email: string, experienceData: any
 
     // Format experience data
     const formatted = (experienceData || [])
-      .filter((exp: any) => exp && typeof exp.organization === 'string' && exp.organization.trim().length > 0)
-      .map((exp: any) => {
-        const record: any = {
+      .filter((exp: ExperienceUpdateData) => exp && typeof exp.organization === 'string' && exp.organization.trim().length > 0)
+      .map((exp: ExperienceUpdateData) => {
+        const record: Record<string, unknown> = {
           student_id: studentId,
           organization: exp.organization.trim(),
-          role: exp.role?.trim() || '',
-          start_date: exp.start_date || null,
-          end_date: exp.end_date || null,
-          duration: exp.duration?.trim() || '',
-          description: exp.description?.trim() || '',
-          verified: exp.verified || false,
-          approval_status: exp.approval_status || 'pending',
-          enabled: exp.enabled !== undefined ? exp.enabled : true,
+          role: ((exp as Record<string, unknown>).role as string | undefined)?.trim() || '',
+          start_date: (exp as Record<string, unknown>).start_date || null,
+          end_date: (exp as Record<string, unknown>).end_date || null,
+          duration: ((exp as Record<string, unknown>).duration as string | undefined)?.trim() || '',
+          description: ((exp as Record<string, unknown>).description as string | undefined)?.trim() || '',
+          verified: (exp as Record<string, unknown>).verified || false,
+          approval_status: (exp as Record<string, unknown>).approval_status || 'pending',
+          enabled: (exp as Record<string, unknown>).enabled !== undefined ? (exp as Record<string, unknown>).enabled : true,
           updated_at: nowIso,
         };
 
         // Preserve existing ID if valid UUID
-        const rawId = typeof exp.id === 'string' ? exp.id.trim() : null;
+        const rawId = typeof (exp as Record<string, unknown>).id === 'string' ? ((exp as Record<string, unknown>).id as string).trim() : null;
         if (rawId && rawId.length === 36) {
           record.id = rawId;
         } else {
@@ -1608,7 +1595,7 @@ export async function updateExperienceByEmail(email: string, experienceData: any
 /**
  * Update education by email
  */
-export async function updateEducationByEmail(email: string, educationData: any[] = []): Promise<ServiceResponse> {
+export async function updateEducationByEmail(email: string, educationData: EducationUpdateData[] = []): Promise<ServiceResponse> {
   try {
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
@@ -1632,27 +1619,27 @@ export async function updateEducationByEmail(email: string, educationData: any[]
 
     // Format education data
     const formatted = (educationData || [])
-      .filter((edu: any) => {
-        const degreeField = edu.degree || edu.qualification;
-        return edu && typeof degreeField === 'string' && degreeField.trim().length > 0;
+      .filter((edu: EducationUpdateData) => {
+        const degreeField = edu.degree || (edu as Record<string, unknown>).qualification;
+        return edu && typeof degreeField === 'string' && (degreeField as string).trim().length > 0;
       })
-      .map((edu: any) => {
-        const record: any = {
+      .map((edu: EducationUpdateData) => {
+        const record: Record<string, unknown> = {
           student_id: studentId,
-          level: edu.level?.trim() || "Bachelor's",
-          degree: (edu.degree || edu.qualification)?.trim() || "",
-          department: edu.department?.trim() || "",
-          university: edu.university?.trim() || "",
-          year_of_passing: (edu.yearOfPassing || edu.year_of_passing)?.toString().trim() || "",
-          cgpa: edu.cgpa?.toString().trim() || "",
-          status: edu.status?.trim() || "ongoing",
-          approval_status: edu.approval_status || 'pending',
-          enabled: typeof edu.enabled === 'boolean' ? edu.enabled : true,
+          level: ((edu as Record<string, unknown>).level as string | undefined)?.trim() || "Bachelor's",
+          degree: (((edu as Record<string, unknown>).degree || (edu as Record<string, unknown>).qualification) as string | undefined)?.trim() || "",
+          department: ((edu as Record<string, unknown>).department as string | undefined)?.trim() || "",
+          university: ((edu as Record<string, unknown>).university as string | undefined)?.trim() || "",
+          year_of_passing: (((edu as Record<string, unknown>).yearOfPassing || (edu as Record<string, unknown>).year_of_passing) as string | number | undefined)?.toString().trim() || "",
+          cgpa: ((edu as Record<string, unknown>).cgpa as string | number | undefined)?.toString().trim() || "",
+          status: ((edu as Record<string, unknown>).status as string | undefined)?.trim() || "ongoing",
+          approval_status: (edu as Record<string, unknown>).approval_status || 'pending',
+          enabled: typeof (edu as Record<string, unknown>).enabled === 'boolean' ? (edu as Record<string, unknown>).enabled : true,
           updated_at: nowIso,
         };
 
         // Preserve existing ID if valid UUID
-        const rawId = typeof edu.id === 'string' ? edu.id.trim() : null;
+        const rawId = typeof (edu as Record<string, unknown>).id === 'string' ? ((edu as Record<string, unknown>).id as string).trim() : null;
         if (rawId && rawId.length === 36 && rawId.includes('-')) {
           record.id = rawId;
         } else {
@@ -1703,7 +1690,7 @@ export async function updateEducationByEmail(email: string, educationData: any[]
 /**
  * Update certificates by email
  */
-export async function updateCertificatesByEmail(email: string, certificatesData: any[] = []): Promise<ServiceResponse> {
+export async function updateCertificatesByEmail(email: string, certificatesData: CertificateUpdateData[] = []): Promise<ServiceResponse> {
   try {
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
@@ -1727,29 +1714,29 @@ export async function updateCertificatesByEmail(email: string, certificatesData:
 
     // Format certificates data
     const formatted = (certificatesData || [])
-      .filter((cert: any) => cert && typeof cert.title === 'string' && cert.title.trim().length > 0)
-      .map((cert: any) => {
-        const record: any = {
+      .filter((cert: CertificateUpdateData) => cert && typeof cert.title === 'string' && cert.title.trim().length > 0)
+      .map((cert: CertificateUpdateData) => {
+        const record: Record<string, unknown> = {
           student_id: studentId,
           title: cert.title.trim(),
-          issuer: cert.issuer?.trim() || '',
-          issued_on: cert.issuedOn || cert.issued_on || null,
-          expiry_date: cert.expiryDate || cert.expiry_date || null,
-          level: cert.level?.trim() || '',
-          description: cert.description?.trim() || '',
-          credential_id: cert.credentialId?.trim() || cert.credential_id?.trim() || '',
-          link: cert.link?.trim() || cert.documentLink?.trim() || '',
-          category: cert.category?.trim() || '',
-          platform: cert.platform?.trim() || '',
-          instructor: cert.instructor?.trim() || '',
-          status: cert.status || 'active',
-          approval_status: cert.approval_status || 'pending',
-          enabled: cert.enabled !== undefined ? cert.enabled : true,
+          issuer: ((cert as Record<string, unknown>).issuer as string | undefined)?.trim() || '',
+          issued_on: (cert as Record<string, unknown>).issuedOn || (cert as Record<string, unknown>).issued_on || null,
+          expiry_date: (cert as Record<string, unknown>).expiryDate || (cert as Record<string, unknown>).expiry_date || null,
+          level: ((cert as Record<string, unknown>).level as string | undefined)?.trim() || '',
+          description: ((cert as Record<string, unknown>).description as string | undefined)?.trim() || '',
+          credential_id: (((cert as Record<string, unknown>).credentialId || (cert as Record<string, unknown>).credential_id) as string | undefined)?.trim() || '',
+          link: (((cert as Record<string, unknown>).link || (cert as Record<string, unknown>).documentLink) as string | undefined)?.trim() || '',
+          category: ((cert as Record<string, unknown>).category as string | undefined)?.trim() || '',
+          platform: ((cert as Record<string, unknown>).platform as string | undefined)?.trim() || '',
+          instructor: ((cert as Record<string, unknown>).instructor as string | undefined)?.trim() || '',
+          status: (cert as Record<string, unknown>).status || 'active',
+          approval_status: (cert as Record<string, unknown>).approval_status || 'pending',
+          enabled: (cert as Record<string, unknown>).enabled !== undefined ? (cert as Record<string, unknown>).enabled : true,
           updated_at: nowIso,
         };
 
         // Preserve existing ID if valid UUID
-        const rawId = typeof cert.id === 'string' ? cert.id.trim() : null;
+        const rawId = typeof (cert as Record<string, unknown>).id === 'string' ? ((cert as Record<string, unknown>).id as string).trim() : null;
         if (rawId && rawId.length === 36) {
           record.id = rawId;
         } else {
@@ -1800,7 +1787,7 @@ export async function updateCertificatesByEmail(email: string, certificatesData:
 /**
  * Update skills by email - handles both technical and soft skills
  */
-export async function updateSkillsByEmail(email: string, skillsData: any[] = []): Promise<ServiceResponse> {
+export async function updateSkillsByEmail(email: string, skillsData: SkillUpdateData[] = []): Promise<ServiceResponse> {
   try {
     // Separate skills by type
     const technicalSkills = skillsData.filter(skill => skill.type === 'technical');
@@ -1832,7 +1819,7 @@ export async function updateSkillsByEmail(email: string, skillsData: any[] = [])
 /**
  * Update projects by email
  */
-export async function updateProjectsByEmail(email: string, projectsData: any[] = []): Promise<ServiceResponse> {
+export async function updateProjectsByEmail(email: string, projectsData: ProjectUpdateData[] = []): Promise<ServiceResponse> {
   try {
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
@@ -1856,31 +1843,31 @@ export async function updateProjectsByEmail(email: string, projectsData: any[] =
 
     // Format projects data
     const formatted = (projectsData || [])
-      .filter((project: any) => project && typeof project.title === 'string' && project.title.trim().length > 0)
-      .map((project: any) => {
-        const record: any = {
+      .filter((project: ProjectUpdateData) => project && typeof project.title === 'string' && project.title.trim().length > 0)
+      .map((project: ProjectUpdateData) => {
+        const record: Record<string, unknown> = {
           student_id: studentId,
           title: project.title.trim(),
-          description: project.description?.trim() || '',
-          role: project.role?.trim() || '',
-          status: project.status || 'ongoing',
-          start_date: project.start_date || project.startDate || null,
-          end_date: project.end_date || project.endDate || null,
-          duration: project.duration?.trim() || '',
-          organization: project.organization?.trim() || '',
-          tech_stack: project.tech_stack || project.tech || project.technologies || [],
-          demo_link: project.demo_link || project.link || project.demoUrl || '',
-          github_link: project.github_link || project.github || project.githubUrl || '',
-          certificate_url: project.certificate_url || '',
-          video_url: project.video_url || '',
-          ppt_url: project.ppt_url || '',
-          approval_status: project.approval_status || 'pending',
-          enabled: project.enabled !== undefined ? project.enabled : true,
+          description: ((project as Record<string, unknown>).description as string | undefined)?.trim() || '',
+          role: ((project as Record<string, unknown>).role as string | undefined)?.trim() || '',
+          status: (project as Record<string, unknown>).status || 'ongoing',
+          start_date: (project as Record<string, unknown>).start_date || (project as Record<string, unknown>).startDate || null,
+          end_date: (project as Record<string, unknown>).end_date || (project as Record<string, unknown>).endDate || null,
+          duration: ((project as Record<string, unknown>).duration as string | undefined)?.trim() || '',
+          organization: ((project as Record<string, unknown>).organization as string | undefined)?.trim() || '',
+          tech_stack: (project as Record<string, unknown>).tech_stack || (project as Record<string, unknown>).tech || (project as Record<string, unknown>).technologies || [],
+          demo_link: (project as Record<string, unknown>).demo_link || (project as Record<string, unknown>).link || (project as Record<string, unknown>).demoUrl || '',
+          github_link: (project as Record<string, unknown>).github_link || (project as Record<string, unknown>).github || (project as Record<string, unknown>).githubUrl || '',
+          certificate_url: (project as Record<string, unknown>).certificate_url || '',
+          video_url: (project as Record<string, unknown>).video_url || '',
+          ppt_url: (project as Record<string, unknown>).ppt_url || '',
+          approval_status: (project as Record<string, unknown>).approval_status || 'pending',
+          enabled: (project as Record<string, unknown>).enabled !== undefined ? (project as Record<string, unknown>).enabled : true,
           updated_at: nowIso,
         };
 
         // Preserve existing ID if valid UUID
-        const rawId = typeof project.id === 'string' ? project.id.trim() : null;
+        const rawId = typeof (project as Record<string, unknown>).id === 'string' ? ((project as Record<string, unknown>).id as string).trim() : null;
         if (rawId && rawId.length === 36) {
           record.id = rawId;
         } else {
@@ -1931,20 +1918,20 @@ export async function updateProjectsByEmail(email: string, projectsData: any[] =
 /**
  * Update a single training record by ID
  */
-export async function updateSingleTrainingById(trainingId: string, updateData: any): Promise<ServiceResponse> {
+export async function updateSingleTrainingById(trainingId: string, updateData: TrainingUpdateDataFull): Promise<ServiceResponse> {
   try {
     const nowIso = new Date().toISOString();
     const updateRecord = {
-      title: updateData.course?.trim() || updateData.title?.trim(),
-      organization: updateData.provider?.trim() || updateData.organization?.trim() || null,
-      start_date: updateData.startDate || updateData.start_date || null,
-      end_date: updateData.endDate || updateData.end_date || null,
-      duration: updateData.duration?.trim() || null,
-      description: updateData.description?.trim() || null,
-      status: updateData.status || 'ongoing',
-      completed_modules: parseInt(updateData.completedModules) || 0,
-      total_modules: parseInt(updateData.totalModules) || 0,
-      hours_spent: parseInt(updateData.hoursSpent) || 0,
+      title: ((updateData as Record<string, unknown>).course as string | undefined)?.trim() || ((updateData as Record<string, unknown>).title as string | undefined)?.trim(),
+      organization: ((updateData as Record<string, unknown>).provider as string | undefined)?.trim() || ((updateData as Record<string, unknown>).organization as string | undefined)?.trim() || null,
+      start_date: (updateData as Record<string, unknown>).startDate || (updateData as Record<string, unknown>).start_date || null,
+      end_date: (updateData as Record<string, unknown>).endDate || (updateData as Record<string, unknown>).end_date || null,
+      duration: ((updateData as Record<string, unknown>).duration as string | undefined)?.trim() || null,
+      description: ((updateData as Record<string, unknown>).description as string | undefined)?.trim() || null,
+      status: (updateData as Record<string, unknown>).status || 'ongoing',
+      completed_modules: parseInt(((updateData as Record<string, unknown>).completedModules || (updateData as Record<string, unknown>).completed_modules) as string) || 0,
+      total_modules: parseInt(((updateData as Record<string, unknown>).totalModules || (updateData as Record<string, unknown>).total_modules) as string) || 0,
+      hours_spent: parseInt(((updateData as Record<string, unknown>).hoursSpent || (updateData as Record<string, unknown>).hours_spent) as string) || 0,
       updated_at: nowIso,
     };
 
