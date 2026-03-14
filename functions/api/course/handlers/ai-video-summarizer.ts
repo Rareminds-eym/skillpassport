@@ -15,6 +15,7 @@
 import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
 import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import { jsonResponse } from '../../../../src/functions-lib/response';
+import { authenticateUser } from '../../shared/auth';
 import { transcribeVideo } from '../utils/transcription';
 import { 
   generateVideoSummary, 
@@ -28,15 +29,6 @@ import { videoSummarizer } from '../../../../src/validation/schemas/course/ai-tu
 import { getLogger } from '../../../../src/config/logging.js';
 
 const logger = getLogger('ai-video-summarizer');
-
-interface VideoSummarizerRequestBody {
-  videoUrl?: string;
-  lessonId?: string;
-  courseId?: string;
-  language?: string;
-  enableQuiz?: boolean;
-  enableFlashcards?: boolean;
-}
 
 /**
  * POST /api/course/ai-video-summarizer
@@ -64,6 +56,12 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
   try {
     const { request, env, waitUntil } = context;
 
+    // Authenticate user (required)
+    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
+    if (!auth) {
+      return jsonResponse({ error: 'Authentication required' }, 401);
+    }
+
     // Validate request body using Zod
     const validation = await validateRequest(request, {
       body: videoSummarizer
@@ -75,20 +73,20 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
 
     const { 
       videoUrl, 
-      lessonId, 
+      lessonId,
+      courseId,
+      language = 'en',
       options = {}
     } = validation.data.body;
 
     const {
-      language = 'en',
-      extractKeyPoints = true,
       generateQuestions: enableQuiz = true
     } = options;
 
     // For backward compatibility, assume flashcards are enabled
     const enableFlashcards = true;
 
-    // Create Supabase admin client (no auth required for this endpoint)
+    // Create Supabase admin client for database operations
     const supabase = createSupabaseAdminClient(env);
 
     // Check cache for existing completed summary
@@ -127,7 +125,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
       .insert({
         video_url: videoUrl,
         lesson_id: lessonId || null,
-        course_id: null, // Remove courseId since it's not in the new schema
+        course_id: courseId || null,
         language,
         processing_status: 'processing'
       })
