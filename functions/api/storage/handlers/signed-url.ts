@@ -7,8 +7,9 @@
  */
 
 import { R2Client } from '../utils/r2-client';
+import type { PagesEnv } from '../../../../src/functions-lib/types';
 
-type PagesFunction = (context: { request: Request; env: any }) => Promise<Response> | Response;
+type PagesFunction = (context: { request: Request; env: PagesEnv }) => Promise<Response> | Response;
 
 interface SignedUrlRequestBody {
   url?: string;
@@ -41,7 +42,7 @@ export const handleSignedUrl: PagesFunction = async ({ request, env }) => {
 
     // Extract file key from URL if not provided directly
     if (!fileKey && fileUrl) {
-      fileKey = R2Client.extractKeyFromUrl(fileUrl);
+      fileKey = R2Client.extractKeyFromUrl(fileUrl) || undefined;
     }
 
     if (!fileKey) {

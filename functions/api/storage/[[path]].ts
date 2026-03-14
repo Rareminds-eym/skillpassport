@@ -20,7 +20,7 @@
  * - GET /files/:courseId/:lessonId - List files in lesson
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
+import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
 import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
 import { authenticateUser, AuthResult } from '../shared/auth';
 import { createAuthenticationError } from './utils/error-handling';
@@ -52,11 +52,11 @@ function isPublicEndpoint(path: string): boolean {
 // Extended context type with authentication
 export interface AuthenticatedContext {
   request: Request;
-  env: any;
-  params?: Record<string, string>;
-  waitUntil?: (promise: Promise<any>) => void;
-  next?: () => Promise<Response>;
-  data?: Record<string, any>;
+  env: PagesEnv;
+  params: Record<string, string>;
+  waitUntil: (promise: Promise<unknown>) => void;
+  next: () => Promise<Response>;
+  data: Record<string, unknown>;
   user?: AuthResult['user'];
   supabase?: AuthResult['supabase'];
   supabaseAdmin?: AuthResult['supabaseAdmin'];
@@ -75,7 +75,14 @@ export const onRequest: PagesFunction = async (context) => {
 
   try {
     // Create authenticated context
-    let authenticatedContext: AuthenticatedContext = { ...context };
+    let authenticatedContext: AuthenticatedContext = {
+      request: context.request,
+      env: context.env,
+      params: context.params || {},
+      waitUntil: context.waitUntil || (() => {}),
+      next: context.next || (() => Promise.resolve(new Response())),
+      data: context.data || {}
+    };
 
     // Check if endpoint requires authentication
     if (!isPublicEndpoint(path)) {
@@ -132,53 +139,53 @@ export const onRequest: PagesFunction = async (context) => {
       return handleListFiles({
         ...authenticatedContext,
         params: { courseId, lessonId },
-      } as any);
+      });
     }
 
     // Route to handlers based on path
     switch (path) {
       case '/upload':
-        return handleUpload(authenticatedContext as any);
+        return handleUpload(authenticatedContext);
 
       case '/delete':
-        return handleDelete(authenticatedContext as any);
+        return handleDelete(authenticatedContext);
 
       case '/presigned':
-        return handlePresigned(authenticatedContext as any);
+        return handlePresigned(authenticatedContext);
 
       case '/confirm':
-        return handleConfirm(authenticatedContext as any);
+        return handleConfirm(authenticatedContext);
 
       case '/get-url':
       case '/get-file-url':
-        return handleGetFileUrl(authenticatedContext as any);
+        return handleGetFileUrl(authenticatedContext);
 
       case '/document-access':
-        return handleDocumentAccess(authenticatedContext as any);
+        return handleDocumentAccess(authenticatedContext);
 
       case '/signed-url':
-        return handleSignedUrl(authenticatedContext as any);
+        return handleSignedUrl(authenticatedContext);
 
       case '/signed-urls':
-        return handleSignedUrls(authenticatedContext as any);
+        return handleSignedUrls(authenticatedContext);
 
       case '/upload-payment-receipt':
-        return handleUploadPaymentReceipt(authenticatedContext as any);
+        return handleUploadPaymentReceipt(authenticatedContext);
 
       case '/payment-receipt/presigned':
-        return handleGetPaymentReceiptPresigned(authenticatedContext as any);
+        return handleGetPaymentReceiptPresigned(authenticatedContext);
 
       case '/payment-receipt':
-        return handleGetPaymentReceipt(authenticatedContext as any);
+        return handleGetPaymentReceipt(authenticatedContext);
 
       case '/course-certificate':
-        return handleCourseCertificate(authenticatedContext as any);
+        return handleCourseCertificate(authenticatedContext);
 
       case '/extract-content':
-        return handleExtractContent(authenticatedContext as any);
+        return handleExtractContent(authenticatedContext);
 
       case '/get-authenticated-url':
-        return handleGetAuthenticatedUrl(context);
+        return handleGetAuthenticatedUrl(authenticatedContext);
 
       case '/media-proxy':
         return handleMediaProxy(context);

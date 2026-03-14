@@ -27,8 +27,8 @@ export const handleListFiles: PagesFunction = async ({ request, env, params }) =
 
   try {
     // Extract params from context (Pages Functions provides params from [[path]])
-    const courseId = (params as any)?.courseId;
-    const lessonId = (params as any)?.lessonId;
+    const courseId = params?.courseId;
+    const lessonId = params?.lessonId;
 
     // Validate parameters
     if (!courseId || !lessonId) {

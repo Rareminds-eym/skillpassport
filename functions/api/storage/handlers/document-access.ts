@@ -10,6 +10,7 @@
 
 import { R2Client } from '../utils/r2-client';
 import type { AuthenticatedContext } from '../[[path]]';
+import type { PagesEnv } from '../../../../src/functions-lib/types';
 import {
   extractUserIdFromPath,
   validatePaymentReceiptOwnership,
@@ -22,7 +23,48 @@ import {
   logErrorSafely,
 } from '../utils/error-handling';
 
-type PagesFunction = (context: { request: Request; env: any }) => Promise<Response> | Response;
+type PagesFunction = (context: { request: Request; env: PagesEnv }) => Promise<Response> | Response;
+
+/**
+ * Check if a document is publicly accessible
+ */
+function checkIfPublicDocument(fileKey: string): boolean {
+  // Define patterns for public documents
+  const publicPatterns = [
+    /^public\//,
+    /^assets\//,
+    /^static\//,
+    /\.pdf$/i,
+    /\.jpg$/i,
+    /\.jpeg$/i,
+    /\.png$/i,
+    /\.gif$/i
+  ];
+  
+  return publicPatterns.some(pattern => pattern.test(fileKey));
+}
+
+/**
+ * Validate document ownership
+ */
+function validateDocumentOwnership(fileKey: string, userId: string): { isOwner: boolean; reason?: string } {
+  // Simple ownership check - documents in user's folder
+  if (fileKey.includes(`/${userId}/`) || fileKey.startsWith(`${userId}/`)) {
+    return { isOwner: true };
+  }
+  
+  // Check for payment receipts
+  if (fileKey.startsWith('payment_pdf/')) {
+    return validatePaymentReceiptOwnership(fileKey, userId);
+  }
+  
+  // Check for uploads
+  if (fileKey.startsWith('uploads/')) {
+    return validateUploadOwnership(fileKey, userId);
+  }
+  
+  return { isOwner: false, reason: 'Document does not belong to user' };
+}
 
 /**
  * Proxy document from R2 storage (LEGACY - NO AUTH)

@@ -12,22 +12,19 @@
 import { authenticateUser } from '../../shared/auth';
 import { checkCourseEnrollment, checkRateLimit } from '../utils/course-authorization';
 import { extractFileKey, generateMediaToken } from '../utils/token-crypto';
+import { validateRequest } from '../../../../src/validation/middleware/functions.js';
+import { getAuthenticatedUrl } from '../../../../src/validation/schemas/storage/media.js';
+import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
+import { getLogger } from '../../../../src/config/logging.js';
 
-type PagesFunction = (context: { request: Request; env: any }) => Promise<Response> | Response;
-
-interface RequestBody {
-  fileUrl?: string;
-  fileKey?: string;
-  courseId: string;
-  lessonId?: string;
-  fingerprint?: string;
-  sessionId?: string;
-}
+const logger = getLogger('get-authenticated-url');
 
 /**
  * Generate authenticated URL with session cookie for media access
  */
-export const handleGetAuthenticatedUrl: PagesFunction = async ({ request, env }) => {
+export const handleGetAuthenticatedUrl: PagesFunction<PagesEnv> = async (context) => {
+  const { request, env } = context;
+
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
@@ -36,8 +33,25 @@ export const handleGetAuthenticatedUrl: PagesFunction = async ({ request, env })
   }
 
   try {
+    // Validate request body using Zod
+    const validation = await validateRequest(request, {
+      body: getAuthenticatedUrl
+    });
+
+    if (!validation.success) {
+      return validation.response;
+    }
+
+    const { fileUrl, fileKey: providedKey, courseId, lessonId, fingerprint, sessionId } = validation.data.body as {
+      fileUrl?: string;
+      fileKey?: string;
+      courseId: string;
+      lessonId?: string;
+      fingerprint?: string;
+      sessionId?: string;
+    };
     // Authenticate user
-    const authResult = await authenticateUser(request, env);
+    const authResult = await authenticateUser(request, env as unknown as Record<string, string>);
     if (!authResult) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized - Please log in' }),
@@ -69,20 +83,7 @@ export const handleGetAuthenticatedUrl: PagesFunction = async ({ request, env })
       );
     }
 
-    // Parse request body
-    const body = (await request.json()) as RequestBody;
-    const { fileUrl, fileKey: providedKey, courseId, lessonId, fingerprint, sessionId } = body;
-
-    if (!courseId) {
-      return new Response(
-        JSON.stringify({ error: 'Course ID is required' }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
+    // Extract file key from URL if not provided directly
     let fileKey: string | undefined = providedKey;
     if (!fileKey && fileUrl) {
       const extracted = extractFileKey(fileUrl);
@@ -114,7 +115,7 @@ export const handleGetAuthenticatedUrl: PagesFunction = async ({ request, env })
     // Generate authenticated token with fingerprint
     const signingSecret = env.SIGNING_SECRET;
     if (!signingSecret) {
-      console.error('[GetAuthUrl] SIGNING_SECRET not configured');
+      logger.error('SIGNING_SECRET not configured');
       return new Response(
         JSON.stringify({ error: 'Server configuration error' }),
         {
@@ -158,7 +159,7 @@ export const handleGetAuthenticatedUrl: PagesFunction = async ({ request, env })
       }
     );
   } catch (error) {
-    console.error('[GetAuthUrl] Error:', error);
+    logger.error('GetAuthUrl Error', error as Error);
     return new Response(
       JSON.stringify({
         error: 'Failed to generate authenticated URL',

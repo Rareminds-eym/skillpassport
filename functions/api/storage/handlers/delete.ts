@@ -20,6 +20,9 @@ import type { PagesFunction } from '../../../../src/functions-lib/types';
 import { jsonResponse } from '../../../../src/functions-lib';
 import { R2Client } from '../utils/r2-client';
 import type { AuthenticatedContext } from '../[[path]]';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { validateRequest } from '../../../../src/validation/middleware/functions.js';
+import { deleteFile } from '../../../../src/validation/schemas/storage/media.js';
 import {
   validateCertificateOwnership,
   validatePaymentReceiptOwnership,
@@ -39,7 +42,7 @@ import {
 async function validateOwnership(
   fileKey: string,
   userId: string,
-  supabaseAdmin: any
+  supabaseAdmin: SupabaseClient
 ): Promise<OwnershipValidationResult> {
   // Check for certificate ownership
   if (fileKey.startsWith('certificates/')) {
@@ -85,16 +88,19 @@ export const handleDelete: PagesFunction = async (context: AuthenticatedContext)
   }
 
   try {
-    // Parse request body
-    const body = await request.json() as { url?: string; key?: string };
-    const { url, key } = body;
+    // Validate request body using Zod
+    const validation = await validateRequest(request, {
+      body: deleteFile
+    });
 
-    // Validate that at least one parameter is provided
-    if (!url && !key) {
-      return jsonResponse({ 
-        error: 'Either url or key is required' 
-      }, 400);
+    if (!validation.success) {
+      return validation.response;
     }
+
+    const { url, key } = validation.data.body as {
+      url?: string;
+      key?: string;
+    };
 
     // Determine the file key
     let fileKey = key;
@@ -120,6 +126,12 @@ export const handleDelete: PagesFunction = async (context: AuthenticatedContext)
     console.log('🗑️  Deleting file:', { originalUrl: url, fileKey, userId: user.id });
 
     // Validate ownership
+    if (!supabaseAdmin) {
+      return jsonResponse({ 
+        error: 'Database connection not available' 
+      }, 500);
+    }
+    
     const ownership = await validateOwnership(fileKey, user.id, supabaseAdmin);
     if (!ownership.isOwner) {
       // Determine the specific reason for authorization failure

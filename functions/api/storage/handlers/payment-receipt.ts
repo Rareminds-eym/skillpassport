@@ -7,6 +7,7 @@
  */
 
 import type { PagesFunction } from '../../../../src/functions-lib/types';
+import type { AuthenticatedContext } from '../[[path]]';
 import { jsonResponse } from '../../../../src/functions-lib';
 import { corsHeaders } from '../../../../src/functions-lib/cors';
 import { R2Client } from '../utils/r2-client';
@@ -166,7 +167,7 @@ function extractPaymentIdFromKey(fileKey: string): string | null {
  * Get payment receipt file
  */
 export const handleGetPaymentReceipt: PagesFunction = async (context) => {
-  const { request, env, user, supabaseAdmin } = context as any;
+  const { request, env, user, supabaseAdmin } = context as AuthenticatedContext;
 
   if (request.method !== 'GET') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
@@ -209,6 +210,13 @@ export const handleGetPaymentReceipt: PagesFunction = async (context) => {
     }
 
     console.log('[GetPaymentReceipt] Extracted payment ID:', paymentId);
+
+    // Check if supabaseAdmin is available
+    if (!supabaseAdmin) {
+      return jsonResponse({ 
+        error: 'Database connection not available' 
+      }, 500);
+    }
 
     // Query database to get payment owner using the receipt field
     const { data: payment, error: dbError } = await supabaseAdmin
@@ -287,7 +295,7 @@ export const handleGetPaymentReceipt: PagesFunction = async (context) => {
  * Allows temporary access without JWT authentication
  */
 export const handleGetPaymentReceiptPresigned: PagesFunction = async (context) => {
-  const { request, env, user, supabaseAdmin } = context as any;
+  const { request, env, user, supabaseAdmin } = context as AuthenticatedContext;
 
   if (request.method !== 'GET') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
@@ -330,6 +338,13 @@ export const handleGetPaymentReceiptPresigned: PagesFunction = async (context) =
     }
 
     console.log('[GetPaymentReceiptPresigned] Extracted payment ID:', paymentId);
+
+    // Check if supabaseAdmin is available
+    if (!supabaseAdmin) {
+      return jsonResponse({ 
+        error: 'Database connection not available' 
+      }, 500);
+    }
 
     // Query database to get payment owner using the razorpay_payment_id field
     const { data: payment, error: dbError } = await supabaseAdmin

@@ -6,11 +6,20 @@
  */
 
 import { SupabaseClient } from '@supabase/supabase-js';
+import { getLogger } from '../../../../src/config/logging.js';
+
+const logger = getLogger('course-authorization');
 
 export interface AuthorizationResult {
   authorized: boolean;
   error?: string;
-  enrollment?: any;
+  enrollment?: {
+    id: string;
+    student_id: string;
+    course_id: string;
+    status: string;
+    enrolled_at: string;
+  };
 }
 
 /**
@@ -31,7 +40,7 @@ export async function checkCourseEnrollment(
       .maybeSingle();
 
     if (error) {
-      console.error('[Authorization] Enrollment check error:', error);
+      logger.error('Enrollment check error', error);
       return { authorized: false, error: 'Failed to verify enrollment' };
     }
 
@@ -41,7 +50,7 @@ export async function checkCourseEnrollment(
 
     return { authorized: true, enrollment };
   } catch (error) {
-    console.error('[Authorization] Exception:', error);
+    logger.error('Authorization Exception', error as Error);
     return { authorized: false, error: 'Authorization check failed' };
   }
 }
@@ -81,7 +90,7 @@ export async function checkLessonAccess(
 
     return { authorized: true, enrollment: enrollmentCheck.enrollment };
   } catch (error) {
-    console.error('[Authorization] Lesson access check error:', error);
+    logger.error('Lesson access check error', error as Error);
     return { authorized: false, error: 'Access check failed' };
   }
 }

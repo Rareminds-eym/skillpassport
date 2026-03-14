@@ -12,8 +12,11 @@ import { validateMediaToken } from '../utils/token-crypto';
 import { R2Client } from '../utils/r2-client';
 import { validateDeviceFingerprint, validateReferer } from '../utils/fingerprint-validator';
 import { generateDeviceMismatchPage, generateTokenExpiredPage, generateUnauthorizedPage } from '../utils/error-pages';
+import { validateRequest } from '../../../../src/validation/middleware/functions.js';
+import { mediaProxy } from '../../../../src/validation/schemas/storage/media.js';
+import type { PagesEnv } from '../../../../src/functions-lib/types';
 
-type PagesFunction = (context: { request: Request; env: any }) => Promise<Response> | Response;
+type PagesFunction = (context: { request: Request; env: PagesEnv }) => Promise<Response> | Response;
 
 /**
  * Proxy authenticated media from R2 storage using HttpOnly cookies
@@ -27,18 +30,16 @@ export const handleMediaProxy: PagesFunction = async ({ request, env }) => {
   }
 
   try {
-    const url = new URL(request.url);
-    const token = url.searchParams.get('token');
+    // Validate query parameters using Zod
+    const validation = await validateRequest(request, {
+      query: mediaProxy
+    });
 
-    if (!token) {
-      return new Response(
-        JSON.stringify({ error: 'Authentication token required' }),
-        {
-          status: 401,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+    if (!validation.success) {
+      return validation.response;
     }
+
+    const { token } = validation.data.query as { token: string };
 
     // Validate token
     const signingSecret = env.SIGNING_SECRET;
@@ -53,10 +54,10 @@ export const handleMediaProxy: PagesFunction = async ({ request, env }) => {
       );
     }
 
-    const validation = await validateMediaToken(token, signingSecret);
-    if (!validation.valid || !validation.payload) {
+    const tokenValidation = await validateMediaToken(token, signingSecret);
+    if (!tokenValidation.valid || !tokenValidation.payload) {
       return new Response(
-        JSON.stringify({ error: validation.error || 'Invalid or expired session' }),
+        JSON.stringify({ error: tokenValidation.error || 'Invalid or expired session' }),
         {
           status: 401,
           headers: { 'Content-Type': 'application/json' },
@@ -64,9 +65,10 @@ export const handleMediaProxy: PagesFunction = async ({ request, env }) => {
       );
     }
 
-    const { userId, courseId, lessonId, fileKey, fingerprint, userAgent: tokenUserAgent, sessionId: tokenSessionId } = validation.payload;
+    const { userId, courseId, lessonId, fileKey, fingerprint, userAgent: tokenUserAgent, sessionId: tokenSessionId } = tokenValidation.payload;
 
     // Fingerprint and User-Agent validation
+    const url = new URL(request.url);
     const requestFingerprint = url.searchParams.get('fp');
     const requestUserAgent = request.headers.get('User-Agent') || '';
 
