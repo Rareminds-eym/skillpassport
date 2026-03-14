@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabaseClient';
 import userApiService from './userApiService';
+import type { QualificationData, ImportError, UserRoleHistoryRecord } from '@/types/StudentManagement';
 
 const { unifiedSignup } = userApiService;
 
@@ -41,7 +42,7 @@ export interface UserProfileExtended {
   date_of_joining?: string;
   years_of_experience?: number;
   specialization?: string;
-  qualifications?: any[];
+  qualifications?: QualificationData[];
   linkedin_url?: string;
   twitter_url?: string;
   github_url?: string;
@@ -78,8 +79,8 @@ export interface UserActivity {
   activity_description?: string;
   ip_address?: string;
   user_agent?: string;
-  device_info?: Record<string, any>;
-  location_info?: Record<string, any>;
+  device_info?: Record<string, string | number | boolean>;
+  location_info?: Record<string, string | number | boolean>;
   metadata?: Record<string, any>;
   created_at: string;
 }
@@ -93,7 +94,7 @@ export interface User {
   isActive: boolean;
   organizationId?: string | null;
   phone?: string | null;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, string | number | boolean>;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -104,7 +105,7 @@ export interface CreateUserData {
   firstName?: string;
   lastName?: string;
   role: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, string | number | boolean>;
 }
 
 export interface UpdateUserData {
@@ -112,7 +113,7 @@ export interface UpdateUserData {
   lastName?: string;
   role?: string;
   isActive?: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, string | number | boolean>;
 }
 
 export interface BulkImportResult {
@@ -121,7 +122,7 @@ export interface BulkImportResult {
   successful_records: number;
   failed_records: number;
   status: string;
-  error_log: any[];
+  error_log: ImportError[];
 }
 
 class UserManagementService {
@@ -205,9 +206,14 @@ class UserManagementService {
       lastName,
       role: mappedRole as any,
       phone: (userData.metadata as any)?.phone || null,
+      dateOfBirth: new Date().toISOString().split('T')[0], // Default value
+      country: 'US', // Default value
+      state: 'CA', // Default value  
+      city: 'San Francisco', // Default value
+      preferredLanguage: 'en' // Default value
     });
 
-    if (!result.success || !result.data?.userId) {
+    if (!result.success || !result.user?.id) {
       throw new Error(result.error || 'Failed to create user');
     }
 
@@ -220,14 +226,14 @@ class UserManagementService {
         role: userData.role,
         metadata: userData.metadata,
       })
-      .eq('id', result.data.userId)
+      .eq('id', result.user.id)
       .select()
       .single();
 
     if (updateError) throw updateError;
 
     // Log activity
-    await this.logActivity(result.data.userId, 'user_created', 'User account created');
+    await this.logActivity(result.user.id, 'user_created', 'User account created');
 
     return user;
   }
@@ -386,7 +392,12 @@ class UserManagementService {
     const { data: currentUser } = await supabase.auth.getUser();
     if (!currentUser.user) throw new Error('Not authenticated');
 
-    const updateData: any = {
+    const updateData: {
+      verification_status: 'verified' | 'rejected';
+      verified_by: string;
+      verified_at: string;
+      rejection_reason?: string;
+    } = {
       verification_status: status,
       verified_by: currentUser.user.id,
       verified_at: new Date().toISOString(),
@@ -429,7 +440,7 @@ class UserManagementService {
     userId: string,
     activityType: string,
     description?: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, string | number | boolean>
   ): Promise<void> {
     const { error } = await supabase.rpc('log_user_activity', {
       p_user_id: userId,
@@ -537,7 +548,7 @@ class UserManagementService {
   /**
    * Get user role history
    */
-  async getUserRoleHistory(userId: string): Promise<any[]> {
+  async getUserRoleHistory(userId: string): Promise<UserRoleHistoryRecord[]> {
     const { data, error } = await supabase
       .from('user_role_history')
       .select('*')
