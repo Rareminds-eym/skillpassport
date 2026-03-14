@@ -29,7 +29,7 @@
     "pages:build": "npm run build && npm run pages:dev",
     "workers:email": "cd cloudflare-workers/email-api && wrangler dev --port=9001 --inspector-port=9229",
     "workers:embedding": "cd cloudflare-workers/embedding-api && wrangler dev --port=9002 --inspector-port=9230",
-    "workers:payments": "cd cloudflare-workers/payments-api && wrangler dev --port=9003 --inspector-port=9232",
+    "workers:payments": "cd cloudflare-workers/razorpay-api && wrangler dev --port=9003 --inspector-port=9232",
     "workers:all": "npm run workers:dev",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",

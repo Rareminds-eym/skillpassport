@@ -16,6 +16,9 @@ const PAYMENTS_API_URL =
   import.meta.env.VITE_PAYMENTS_API_URL ||
   'https://payments-api.dark-mode-d021.workers.dev';
 
+// New functions-based endpoints (business logic layer)
+const PAYMENTS_FUNCTIONS_URL = '/api/payments';
+
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1500;
 
@@ -76,7 +79,7 @@ export function useSubscriptionPlansData(options = {}) {
         // Fetch ALL features — no artificial limit
       });
 
-      const url = `${PAYMENTS_API_URL}/subscription-plans?${params}`;
+      const url = `${PAYMENTS_FUNCTIONS_URL}/plans?${params}`;
       console.log('[useSubscriptionPlansData] Fetching from:', url);
 
       try {
@@ -168,7 +171,7 @@ export function useSubscriptionPlan(planCode) {
 
       try {
         const response = await fetch(
-          `${PAYMENTS_API_URL}/subscription-plan?planCode=${encodeURIComponent(planCode)}`
+          `${PAYMENTS_FUNCTIONS_URL}/plan?planCode=${encodeURIComponent(planCode)}`
         );
 
         if (!response.ok) {
@@ -223,7 +226,7 @@ export function useSubscriptionFeaturesComparison() {
 
       try {
         const response = await fetch(
-          `${PAYMENTS_API_URL}/subscription-features`
+          `${PAYMENTS_FUNCTIONS_URL}/features`
         );
 
         if (!response.ok) {

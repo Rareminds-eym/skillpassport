@@ -18,17 +18,20 @@
  */
 
 const WORKER_URL = import.meta.env.VITE_PAYMENTS_API_URL || 'https://payments-api.dark-mode-d021.workers.dev';
+const WORKER_API_KEY = import.meta.env.VITE_PAYMENTS_API_KEY || '';
 
-if (!import.meta.env.VITE_PAYMENTS_API_URL) {
-  console.warn('⚠️ VITE_PAYMENTS_API_URL not configured. Using default production URL.');
-}
+// All subscription routes go through the Pages Functions layer (/api/payments/*)
+// This avoids exposing the worker API key in the browser
+const PAYMENTS_BASE = '/api/payments';
 
-const getBaseUrl = () => {
-  if (!WORKER_URL) {
-    throw new Error('VITE_PAYMENTS_API_URL environment variable is required');
-  }
-  return WORKER_URL;
-};
+// Normalize error from both old { error: "string" } and new { error: { message } } formats
+const parseErrorMessage = (err, fallback) =>
+  err?.error?.message
+  || (typeof err?.error === 'string' ? err.error : null)
+  || err?.message
+  || fallback;
+
+const getBaseUrl = () => PAYMENTS_BASE;
 
 const getAuthHeaders = (token) => {
   const headers = { 'Content-Type': 'application/json' };
@@ -60,10 +63,11 @@ export async function createOrder({ amount, currency = 'INR', planId, planName, 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
     console.error('[createOrder] API Error:', error);
-    // Include razorpay error details if available
-    const errorMessage = error.razorpay_error
-      ? `${error.error}: ${error.razorpay_error}`
-      : (error.error || 'Failed to create order');
+    // Handle both old flat format { error: "string" } and new nested format { error: { message } }
+    const errorMessage = error?.error?.message
+      || (typeof error?.error === 'string' ? error.error : null)
+      || error?.message
+      || 'Failed to create order';
     throw new Error(errorMessage);
   }
 
@@ -95,7 +99,7 @@ export async function createEventOrder({ amount, currency = 'INR', registrationI
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to create event order');
+    throw new Error(parseErrorMessage(error, 'Failed to create event order'));
   }
 
   return response.json();
@@ -148,7 +152,7 @@ export async function verifyPayment({ razorpay_order_id, razorpay_payment_id, ra
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Payment verification failed');
+    throw new Error(parseErrorMessage(error, 'Payment verification failed'));
   }
 
   return response.json();
@@ -169,7 +173,7 @@ export async function getSubscription(token) {
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to get subscription');
+    throw new Error(parseErrorMessage(error, 'Failed to get subscription'));
   }
 
   return response.json();
@@ -207,7 +211,7 @@ export async function checkSubscriptionAccess(token) {
     }
 
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to check subscription access');
+    throw new Error(parseErrorMessage(error, 'Failed to check subscription access'));
   }
 
   return response.json();
@@ -230,7 +234,7 @@ export async function cancelSubscription(subscriptionId, cancelAtCycleEnd = fals
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to cancel subscription');
+    throw new Error(parseErrorMessage(error, 'Failed to cancel subscription'));
   }
 
   return response.json();
@@ -253,7 +257,7 @@ export async function deactivateSubscription(subscriptionId, cancellationReason 
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to deactivate subscription');
+    throw new Error(parseErrorMessage(error, 'Failed to deactivate subscription'));
   }
 
   return response.json();
@@ -276,7 +280,7 @@ export async function pauseSubscription(subscriptionId, pauseMonths = 1, token) 
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to pause subscription');
+    throw new Error(parseErrorMessage(error, 'Failed to pause subscription'));
   }
 
   return response.json();

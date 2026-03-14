@@ -229,7 +229,9 @@ export const initiateRazorpayPayment = async ({ plan, userDetails, isUpgrade }) 
     const origin = window.location.origin;
     const failureUrl = new URL('/subscription/payment/failure', origin);
     failureUrl.searchParams.set('error_code', 'INITIALIZATION_ERROR');
-    failureUrl.searchParams.set('error_description', error.message || 'Failed to initialize payment');
+    failureUrl.searchParams.set('error_description', 
+      typeof error === 'string' ? error : (error?.message || error?.description || 'Failed to initialize payment')
+    );
     window.location.href = failureUrl.toString();
   }
 };

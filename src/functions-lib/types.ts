@@ -17,7 +17,11 @@ export interface PagesEnv {
   CLAUDE_API_KEY?: string;
   VITE_CLAUDE_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
-  OPENROUTER_API_KEY?: string;
+
+  // Razorpay worker (server-to-server from Pages Functions)
+  RAZORPAY_WORKER_URL?: string;
+  RAZORPAY_WORKER_API_KEY?: string;
+  CRON_SECRET?: string;
 
   // Other service keys
   RAZORPAY_KEY_ID?: string;

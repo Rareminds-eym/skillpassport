@@ -2,6 +2,9 @@ import { supabase } from '../lib/supabaseClient';
 
 const PAYMENTS_API_URL = import.meta.env.VITE_PAYMENTS_API_URL || 'https://payments-api.dark-mode-d021.workers.dev';
 
+// Business logic endpoints go through the functions layer
+const PAYMENTS_FUNCTIONS_URL = '/api/payments';
+
 /**
  * Helper function to make fetch requests with retry logic
  * @param {string} url - URL to fetch
@@ -65,9 +68,9 @@ export const addOnPaymentService = {
         return { success: false, error: 'User not authenticated' };
       }
 
-      console.log('[AddOnPayment] Calling API:', `${PAYMENTS_API_URL}/create-addon-order`);
+      console.log('[AddOnPayment] Calling API:', `${PAYMENTS_FUNCTIONS_URL}/create-addon-order`);
 
-      const response = await fetchWithRetry(`${PAYMENTS_API_URL}/create-addon-order`, {
+      const response = await fetchWithRetry(`${PAYMENTS_FUNCTIONS_URL}/create-addon-order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -123,7 +126,7 @@ export const addOnPaymentService = {
         return { success: false, error: 'User not authenticated' };
       }
 
-      const response = await fetch(`${PAYMENTS_API_URL}/create-bundle-order`, {
+      const response = await fetch(`${PAYMENTS_FUNCTIONS_URL}/create-bundle-order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -211,7 +214,7 @@ export const addOnPaymentService = {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-        const response = await fetch(`${PAYMENTS_API_URL}/verify-addon-payment`, {
+        const response = await fetch(`${PAYMENTS_FUNCTIONS_URL}/verify-addon-payment`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -290,7 +293,7 @@ export const addOnPaymentService = {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-        const response = await fetch(`${PAYMENTS_API_URL}/verify-bundle-payment`, {
+        const response = await fetch(`${PAYMENTS_FUNCTIONS_URL}/verify-bundle-payment`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
