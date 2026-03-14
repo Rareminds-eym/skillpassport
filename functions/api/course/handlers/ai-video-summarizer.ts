@@ -23,6 +23,11 @@ import {
   generateFlashcards 
 } from '../utils/video-processing';
 import { generateSRT, generateVTT } from '../utils/subtitle-generation';
+import { validateRequest } from '../../../../src/validation/middleware/functions.js';
+import { videoSummarizer } from '../../../../src/validation/schemas/course/ai-tutor.js';
+import { getLogger } from '../../../../src/config/logging.js';
+
+const logger = getLogger('ai-video-summarizer');
 
 interface VideoSummarizerRequestBody {
   videoUrl?: string;
@@ -59,27 +64,29 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
   try {
     const { request, env, waitUntil } = context;
 
-    // Parse request body
-    let body: VideoSummarizerRequestBody;
-    try {
-      body = await request.json() as VideoSummarizerRequestBody;
-    } catch (error) {
-      return jsonResponse({ error: 'Invalid JSON in request body' }, 400);
+    // Validate request body using Zod
+    const validation = await validateRequest(request, {
+      body: videoSummarizer
+    });
+
+    if (!validation.success) {
+      return validation.response;
     }
 
     const { 
       videoUrl, 
       lessonId, 
-      courseId, 
-      language = 'en',
-      enableQuiz = true,
-      enableFlashcards = true 
-    } = body;
+      options = {}
+    } = validation.data.body;
 
-    // Validate required fields
-    if (!videoUrl) {
-      return jsonResponse({ error: 'Video URL is required' }, 400);
-    }
+    const {
+      language = 'en',
+      extractKeyPoints = true,
+      generateQuestions: enableQuiz = true
+    } = options;
+
+    // For backward compatibility, assume flashcards are enabled
+    const enableFlashcards = true;
 
     // Create Supabase admin client (no auth required for this endpoint)
     const supabase = createSupabaseAdminClient(env);
@@ -120,7 +127,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
       .insert({
         video_url: videoUrl,
         lesson_id: lessonId || null,
-        course_id: courseId || null,
+        course_id: null, // Remove courseId since it's not in the new schema
         language,
         processing_status: 'processing'
       })
@@ -128,7 +135,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
       .single();
 
     if (insertError) {
-      console.error('Failed to create processing record:', insertError);
+      logger.error('Failed to create processing record', insertError);
       return jsonResponse(
         { error: `Failed to create record: ${insertError.message}` }, 
         500
@@ -140,7 +147,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
     // Start background processing
     waitUntil((async () => {
       try {
-        console.log(`Starting video processing for record ${recordId}`);
+        logger.info(`Starting video processing for record ${recordId}`);
 
         // Step 1: Transcribe video
         const { 
@@ -152,26 +159,26 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
           deepgramSummary 
         } = await transcribeVideo(env as unknown as Record<string, any>, videoUrl, language);
 
-        console.log(`Transcription complete: ${segments.length} segments, ${duration}s duration`);
+        logger.info(`Transcription complete: ${segments.length} segments, ${duration}s duration`);
 
         // Step 2: Generate AI summary first
         const summaryResult = await generateVideoSummary(env as unknown as Record<string, any>, transcript, segments);
         const { summary, keyPoints, chapters, topics } = summaryResult;
 
-        console.log(`AI summary complete: ${keyPoints.length} key points, ${chapters.length} chapters`);
+        logger.info(`AI summary complete: ${keyPoints.length} key points, ${chapters.length} chapters`);
 
         // Step 3: Generate quiz and flashcards using the summary data
         const [notableQuotes, quizQuestions, flashcards] = await Promise.all([
           extractNotableQuotes(env as unknown as Record<string, any>, segments),
           enableQuiz 
-            ? generateQuizQuestions(env as unknown as Record<string, any>, transcript, summary, keyPoints).catch(err => { console.error('Quiz generation failed:', err); return []; })
+            ? generateQuizQuestions(env as unknown as Record<string, any>, transcript, summary, keyPoints).catch(err => { logger.error('Quiz generation failed', err); return []; })
             : Promise.resolve([]),
           enableFlashcards 
-            ? generateFlashcards(env as unknown as Record<string, any>, transcript, keyPoints, topics).catch(err => { console.error('Flashcards generation failed:', err); return []; })
+            ? generateFlashcards(env as unknown as Record<string, any>, transcript, keyPoints, topics).catch(err => { logger.error('Flashcards generation failed', err); return []; })
             : Promise.resolve([])
         ]);
 
-        console.log(`Quiz and flashcards complete: ${quizQuestions.length} questions, ${flashcards.length} cards`);
+        logger.info(`Quiz and flashcards complete: ${quizQuestions.length} questions, ${flashcards.length} cards`);
 
         // Step 3: Generate subtitle formats
         const srtContent = generateSRT(segments);
@@ -203,15 +210,15 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
           .eq('id', recordId);
 
         if (updateError) {
-          console.error('Failed to save results:', updateError);
+          logger.error('Failed to save results', updateError);
           throw updateError;
         }
 
-        console.log(`Video processing complete for record ${recordId}`);
+        logger.info(`Video processing complete for record ${recordId}`);
 
       } catch (processingError) {
         const errorMessage = (processingError as Error).message;
-        console.error(`Video processing failed for record ${recordId}:`, errorMessage);
+        logger.error(`Video processing failed for record ${recordId}`, processingError as Error);
         
         // Update record with error status
         await supabase
@@ -237,7 +244,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
     );
 
   } catch (error) {
-    console.error('AI video summarizer error:', error);
+    logger.error('AI video summarizer error', error as Error);
     return jsonResponse(
       { error: 'Internal server error' },
       500

@@ -11,6 +11,11 @@
 import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
 import { authenticateUser } from '../../shared/auth';
 import { jsonResponse } from '../../../../src/functions-lib/response';
+import { validateRequest } from '../../../../src/validation/middleware/functions.js';
+import { tutorProgressQuery, tutorProgressUpdate } from '../../../../src/validation/schemas/course/ai-tutor.js';
+import { getLogger } from '../../../../src/config/logging.js';
+
+const logger = getLogger('ai-tutor-progress');
 
 interface UpdateProgressRequestBody {
   courseId?: string;
@@ -48,13 +53,16 @@ export const onRequestGet: PagesFunction<PagesEnv> = async (context) => {
     const { user, supabase } = auth;
     const studentId = user.id;
 
-    // Parse query parameters
-    const url = new URL(request.url);
-    const courseId = url.searchParams.get('courseId');
+    // Validate query parameters using Zod
+    const validation = await validateRequest(request, {
+      query: tutorProgressQuery
+    });
 
-    if (!courseId) {
-      return jsonResponse({ error: 'Missing courseId parameter' }, 400);
+    if (!validation.success) {
+      return validation.response;
     }
+
+    const { courseId } = validation.data.query;
 
     // Fetch student progress for the course
     const { data: progress, error: progressError } = await supabase
@@ -64,7 +72,7 @@ export const onRequestGet: PagesFunction<PagesEnv> = async (context) => {
       .eq('course_id', courseId);
 
     if (progressError) {
-      console.error('Failed to fetch progress:', progressError);
+      logger.error('Failed to fetch progress', progressError);
       return jsonResponse({ error: 'Failed to fetch progress' }, 500);
     }
 
@@ -94,7 +102,7 @@ export const onRequestGet: PagesFunction<PagesEnv> = async (context) => {
       progress: progress || []
     });
   } catch (error) {
-    console.error('AI tutor progress GET error:', error);
+    logger.error('AI tutor progress GET error', error as Error);
     return jsonResponse(
       { error: 'Internal server error' },
       500
@@ -129,31 +137,16 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
     const { user, supabase } = auth;
     const studentId = user.id;
 
-    // Parse request body
-    let body: UpdateProgressRequestBody;
-    try {
-      body = await request.json() as UpdateProgressRequestBody;
-    } catch (error) {
-      return jsonResponse({ error: 'Invalid JSON in request body' }, 400);
+    // Validate request body using Zod
+    const validation = await validateRequest(request, {
+      body: tutorProgressUpdate
+    });
+
+    if (!validation.success) {
+      return validation.response;
     }
 
-    const { courseId, lessonId, status } = body;
-
-    // Validate required fields
-    if (!courseId || !lessonId || !status) {
-      return jsonResponse(
-        { error: 'Missing required fields: courseId, lessonId, status' },
-        400
-      );
-    }
-
-    // Validate status value
-    if (!['not_started', 'in_progress', 'completed'].includes(status)) {
-      return jsonResponse(
-        { error: 'Invalid status. Must be: not_started, in_progress, or completed' },
-        400
-      );
-    }
+    const { courseId, lessonId, status, timeSpent } = validation.data.body;
 
     // Prepare update data
     const now = new Date().toISOString();
@@ -179,13 +172,13 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
       .single();
 
     if (upsertError) {
-      console.error('Failed to update progress:', upsertError);
+      logger.error('Failed to update progress', upsertError);
       return jsonResponse({ error: 'Failed to update progress' }, 500);
     }
 
     return jsonResponse({ success: true, progress: result });
   } catch (error) {
-    console.error('AI tutor progress POST error:', error);
+    logger.error('AI tutor progress POST error', error as Error);
     return jsonResponse(
       { error: 'Internal server error' },
       500

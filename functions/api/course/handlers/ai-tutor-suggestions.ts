@@ -15,6 +15,11 @@ import { createSupabaseClient } from '../../../../src/functions-lib/supabase';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
 import { callOpenRouterWithRetry, getAPIKeys } from '../../shared/ai-config';
+import { validateRequest } from '../../../../src/validation/middleware/functions.js';
+import { tutorSuggestions } from '../../../../src/validation/schemas/course/ai-tutor.js';
+import { getLogger } from '../../../../src/config/logging.js';
+
+const logger = getLogger('ai-tutor-suggestions');
 
 /**
  * Default questions to use when AI is unavailable or fails
@@ -63,21 +68,17 @@ export const handleAiTutorSuggestions: PagesFunction<PagesEnv> = async (context)
   }
 
   try {
+    // Validate request body using Zod
+    const validation = await validateRequest(request, {
+      body: tutorSuggestions
+    });
+
+    if (!validation.success) {
+      return validation.response;
+    }
+
+    const { lessonId } = validation.data.body;
     const supabase = createSupabaseClient(env);
-    
-    // Parse request body
-    let body: any;
-    try {
-      body = await request.json();
-    } catch {
-      return jsonResponse({ error: 'Invalid JSON body' }, 400);
-    }
-
-    const { lessonId } = body;
-
-    if (!lessonId) {
-      return jsonResponse({ error: 'Missing required field: lessonId' }, 400);
-    }
 
     // Fetch lesson with module info
     const { data: lesson, error: lessonError } = await supabase
@@ -87,13 +88,13 @@ export const handleAiTutorSuggestions: PagesFunction<PagesEnv> = async (context)
       .maybeSingle();
 
     if (lessonError) {
-      console.error('❌ Lesson fetch error:', lessonError);
+      logger.error('Lesson fetch error', lessonError);
       return jsonResponse({ error: 'Database error fetching lesson' }, 500);
     }
 
     if (!lesson) {
       // Graceful degradation: return default questions if lesson not found
-      console.warn(`⚠️ Lesson not found: ${lessonId}, returning default questions`);
+      logger.warn(`Lesson not found: ${lessonId}, returning default questions`);
       return jsonResponse({
         questions: [
           "What are the key concepts in this lesson?",
@@ -117,7 +118,7 @@ export const handleAiTutorSuggestions: PagesFunction<PagesEnv> = async (context)
     // Check if AI is configured
     const { openRouter: openRouterKey } = getAPIKeys(env);
     if (!openRouterKey) {
-      console.log('⚠️ OpenRouter API key not configured, returning default questions');
+      logger.info('OpenRouter API key not configured, returning default questions');
       return jsonResponse({
         questions: getDefaultQuestions(lesson.title),
         lessonId,
@@ -146,7 +147,7 @@ Return ONLY a JSON array of question strings, like:
     // Call AI with retry and fallback
     let questions: string[] = [];
     try {
-      console.log(`🤖 Generating suggestions for lesson: ${lesson.title}`);
+      logger.info(`Generating suggestions for lesson: ${lesson.title}`);
       
       const aiResponse = await callOpenRouterWithRetry(openRouterKey, [
         { role: 'user', content: prompt }
@@ -163,13 +164,13 @@ Return ONLY a JSON array of question strings, like:
 
       // Validate we got at least 3 questions
       if (questions.length < 3) {
-        console.warn('⚠️ AI returned fewer than 3 questions, using defaults');
+        logger.warn('AI returned fewer than 3 questions, using defaults');
         questions = getDefaultQuestions(lesson.title);
       }
 
-      console.log(`✅ Generated ${questions.length} suggestions`);
+      logger.info(`Generated ${questions.length} suggestions`);
     } catch (error: any) {
-      console.error('❌ AI generation error:', error.message);
+      logger.error('AI generation error', error);
       // Graceful degradation: return default questions on AI error
       questions = getDefaultQuestions(lesson.title);
     }
@@ -181,7 +182,7 @@ Return ONLY a JSON array of question strings, like:
     });
 
   } catch (error: any) {
-    console.error('❌ AI Tutor Suggestions error:', error);
+    logger.error('AI Tutor Suggestions error', error);
     // Final fallback: return generic default questions
     return jsonResponse({
       questions: [

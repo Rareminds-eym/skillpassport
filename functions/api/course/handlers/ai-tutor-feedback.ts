@@ -11,6 +11,11 @@ import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/type
 import { authenticateUser } from '../../shared/auth';
 import { createSupabaseClient } from '../../../../src/functions-lib/supabase';
 import { jsonResponse } from '../../../../src/functions-lib/response';
+import { validateRequest } from '../../../../src/validation/middleware/functions.js';
+import { tutorFeedback } from '../../../../src/validation/schemas/course/ai-tutor.js';
+import { getLogger } from '../../../../src/config/logging.js';
+
+const logger = getLogger('ai-tutor-feedback');
 
 interface FeedbackRequestBody {
   conversationId?: string;
@@ -47,31 +52,16 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
     const { user, supabase } = auth;
     const studentId = user.id;
 
-    // Parse request body
-    let body: FeedbackRequestBody;
-    try {
-      body = await request.json() as FeedbackRequestBody;
-    } catch (error) {
-      return jsonResponse({ error: 'Invalid JSON in request body' }, 400);
+    // Validate request body using Zod
+    const validation = await validateRequest(request, {
+      body: tutorFeedback
+    });
+
+    if (!validation.success) {
+      return validation.response;
     }
 
-    const { conversationId, messageIndex, rating, feedbackText } = body;
-
-    // Validate required fields
-    if (!conversationId || messageIndex === undefined || rating === undefined) {
-      return jsonResponse(
-        { error: 'Missing required fields: conversationId, messageIndex, rating' },
-        400
-      );
-    }
-
-    // Validate rating value
-    if (rating !== 1 && rating !== -1) {
-      return jsonResponse(
-        { error: 'Invalid rating. Must be 1 (thumbs up) or -1 (thumbs down)' },
-        400
-      );
-    }
+    const { conversationId, messageIndex, rating, feedbackText } = validation.data.body;
 
     // Verify conversation ownership
     const { data: conversation, error: convError } = await supabase
@@ -107,7 +97,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
         .eq('id', existingFeedback.id);
 
       if (updateError) {
-        console.error('Failed to update feedback:', updateError);
+        logger.error('Failed to update feedback', updateError);
         return jsonResponse({ error: 'Failed to update feedback' }, 500);
       }
 
@@ -128,7 +118,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
       });
 
     if (insertError) {
-      console.error('Failed to submit feedback:', insertError);
+      logger.error('Failed to submit feedback', insertError);
       return jsonResponse({ error: 'Failed to submit feedback' }, 500);
     }
 
@@ -137,7 +127,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
       200
     );
   } catch (error) {
-    console.error('AI tutor feedback error:', error);
+    logger.error('AI tutor feedback error', error as Error);
     return jsonResponse(
       { error: 'Internal server error' },
       500
