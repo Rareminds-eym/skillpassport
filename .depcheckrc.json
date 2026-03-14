@@ -10,7 +10,12 @@
         "cloudflare-workers",
         "scripts",
         "tests",
-        "public"
+        "public",
+        ".kiro",
+        ".bolt",
+        ".claude",
+        ".emergent",
+        ".zenflow"
     ],
     "ignorePatterns": [
         "**/*.d.ts",

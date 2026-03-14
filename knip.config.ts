@@ -10,6 +10,12 @@ const config: KnipConfig = {
         'docs/**',
         '.wrangler/**',
         '.venv/**',
+        'public/**',
+        '.kiro/**',
+        '.bolt/**',
+        '.claude/**',
+        '.emergent/**',
+        '.zenflow/**',
         // Scripts and one-off files
         'scripts/**',
         'sync-program-field-everywhere.js',

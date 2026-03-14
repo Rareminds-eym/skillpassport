@@ -14,6 +14,8 @@
     "build:staging": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build --mode staging",
     "build:production": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build",
     "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
     "preview": "vite preview",
     "preview:staging": "vite preview",
     "preview:production": "vite preview",
@@ -168,11 +170,16 @@
     "*.{js,jsx,ts,tsx}": [
       "eslint --fix",
       "prettier --write",
-      "cspell --no-progress"
+      "cspell --no-progress",
+      "tsc-files --noEmit",
+      "vitest run --passWithNoTests"
     ],
     "*.{json,md,css,html}": [
       "prettier --write",
       "cspell --no-progress"
+    ],
+    "*": [
+      "secretlint"
     ]
   },
   "devDependencies": {

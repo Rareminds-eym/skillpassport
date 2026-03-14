@@ -83,3 +83,4 @@ cloudflare-workers/storage-api
 cloudflare-workers/streak-api
 
 .agents/
+REPORTS/

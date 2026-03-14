@@ -6,3 +6,8 @@ docs/
 package-lock.json
 *.lock
 public/
+.kiro/
+.bolt/
+.claude/
+.emergent/
+.zenflow/

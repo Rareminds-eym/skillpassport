@@ -1,5 +1,13 @@
-#!/usr/bin/env bash
+# 1. Run checks on changed (staged) files (Lint, Format, Spell, Typecheck, Related Tests)
+# We use || true to keep it non-blocking.
+npx lint-staged || true
 
-# Run the unified codebase health report
-# This is non-blocking but guarantees the developer sees all issues.
-bash scripts/run-all-checks.sh
+# 2. Run Global Diagnostics (Non-blocking)
+echo "🔍 Running Knip (Dead Code)..."
+npx knip --reporter compact || echo "⚠️ Warning: Knip found issues."
+
+echo "🔍 Running Madge (Circular Dependencies)..."
+npx madge --circular --extensions ts,tsx,js,jsx src/ || echo "⚠️ Warning: Madge found issues."
+
+echo "🔍 Running Depcheck (Unused Packages)..."
+npx depcheck --config .depcheckrc.json || echo "⚠️ Warning: Depcheck found issues."
