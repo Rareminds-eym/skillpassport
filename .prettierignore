@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.wrangler/
+.venv/
+docs/
+package-lock.json
+*.lock
+public/

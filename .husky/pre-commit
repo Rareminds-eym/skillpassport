@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+# Run the unified codebase health report
+# This is non-blocking but guarantees the developer sees all issues.
+bash scripts/run-all-checks.sh

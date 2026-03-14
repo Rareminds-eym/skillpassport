@@ -24,6 +24,10 @@
     "test:e2e:slow": "SLOW_MO=100 bash tests/e2e/run-tests.sh",
     "test:e2e:debug": "HEADLESS=false SLOW_MO=500 bash tests/e2e/run-tests.sh",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "knip": "knip --reporter compact",
+    "madge": "madge --circular --extensions ts,tsx,js,jsx src/",
+    "depcheck": "depcheck --config .depcheckrc.json",
+    "audit": "npm run knip && npm run madge && npm run depcheck",
     "workers:dev": "concurrently -n \"email,embed,pay\" -c \"blue,green,yellow\" \"npm run workers:email\" \"npm run workers:embedding\" \"npm run workers:payments\"",
     "pages:dev": "wrangler pages dev dist --compatibility-date=2024-01-01 --port=8788",
     "pages:build": "npm run build && npm run pages:dev",
@@ -39,7 +43,7 @@
     "dev:all": "npm run cleanup && npm run build && concurrently -n \"frontend,pages,workers,supabase\" -c \"cyan,magenta,yellow,green\" \"npm run dev\" \"npm run pages:dev\" \"npm run workers:dev\" \"npm run supabase:start\"",
     "dev:fast": "bash scripts/start-docker.sh && npm run cleanup && concurrently -n \"supabase,build,frontend,pages,workers\" -c \"green,white,cyan,magenta,yellow\" \"npm run supabase:start\" \"npm run build\" \"npm run dev\" \"sleep 15 && npm run pages:dev\" \"npm run workers:dev\"",
     "dev:auto": "bash scripts/start-docker.sh && npm run dev:fast",
-    "start:full": "npm run dev:all",  
+    "start:full": "npm run dev:all",
     "env:validate": "node scripts/validate-env.js validate",
     "env:validate:all": "node scripts/validate-env.js validate:all",
     "env:validate:local": "node scripts/validate-env.js local",
@@ -47,7 +51,8 @@
     "env:validate:staging": "node scripts/validate-env.js staging",
     "env:validate:production": "node scripts/validate-env.js production",
     "env:check": "node scripts/validate-env.js check",
-    "env:diff": "node scripts/validate-env.js diff"
+    "env:diff": "node scripts/validate-env.js diff",
+    "prepare": "husky"
   },
   "scripts-info": {
     "ENVIRONMENT_SETUP": "See .env.schema and .env.example for complete variable documentation",
@@ -63,7 +68,6 @@
       "env:check": "See which variables are set",
       "env:diff": "Compare two environments (usage: npm run env:diff development production)"
     }
-    
   },
   "dependencies": {
     "@casl/ability": "^6.8.0",
@@ -160,9 +164,23 @@
     "xlsx": "^0.18.5",
     "zustand": "^5.0.8"
   },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write",
+      "cspell --no-progress"
+    ],
+    "*.{json,md,css,html}": [
+      "prettier --write",
+      "cspell --no-progress"
+    ]
+  },
   "devDependencies": {
+    "@commitlint/cli": "^20.4.4",
+    "@commitlint/config-conventional": "^20.4.4",
     "@eslint/js": "^9.9.1",
     "@locator/babel-jsx": "^0.5.1",
+    "@secretlint/secretlint-rule-preset-recommend": "^11.3.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
@@ -178,18 +196,27 @@
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.18",
     "concurrently": "^9.2.1",
+    "cspell": "^9.7.0",
+    "depcheck": "^1.4.7",
     "eslint": "^9.9.1",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.11",
     "fast-check": "^4.3.0",
     "globals": "^15.9.0",
+    "husky": "^9.1.7",
     "jest": "^30.2.0",
     "jsdom": "^27.2.0",
+    "knip": "^5.86.0",
+    "lint-staged": "^16.3.3",
+    "madge": "^8.0.0",
     "postcss": "^8.4.35",
+    "prettier": "^3.8.1",
     "puppeteer": "^24.37.1",
+    "secretlint": "^11.3.1",
     "tailwindcss": "^3.4.1",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
+    "tsc-files": "^1.1.4",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.3.0",
     "vite": "^5.4.2",

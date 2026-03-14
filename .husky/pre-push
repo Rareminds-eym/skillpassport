@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+# 1. Enforce Branch Naming Convention
+local_branch_name="$(git rev-parse --abbrev-ref HEAD)"
+
+valid_branch_regex="^(main|master|dev|staging|(feat|bugfix|hotfix|chore|docs|refactor)\/[a-zA-Z0-9\-]+)$"
+
+if [[ ! $local_branch_name =~ $valid_branch_regex ]]; then
+    echo "❌ Error: Invalid branch name: $local_branch_name"
+    echo "Branch names must adhere to the standard:"
+    echo "  - main | master | dev | staging"
+    echo "  - Type prefix followed by description (e.g., feat/add-login, bugfix/fix-header)"
+    echo "  - Valid types: feat, bugfix, hotfix, chore, docs, refactor"
+    exit 1
+fi
+
+echo "✅ Branch name check passed."
+
+# No further codebase checks here — they are run unconditionally on every commit.
+
+exit 0
