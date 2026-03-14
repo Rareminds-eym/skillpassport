@@ -56,7 +56,7 @@ export const admissionService = {
         father_name: data.fatherName,
         father_occupation: data.fatherOccupation,
         father_phone: data.fatherPhone,
-        father_email: data.email, // Use email field instead of fatherEmail
+        father_email: data.fatherEmail,
         mother_name: data.motherName,
         mother_occupation: data.motherOccupation,
         mother_phone: data.motherPhone,

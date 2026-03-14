@@ -15,9 +15,11 @@ export interface AdmissionApplication {
   fatherName: string;
   fatherOccupation: string;
   fatherPhone: string;
+  fatherEmail?: string;
   motherName: string;
   motherOccupation: string;
   motherPhone: string;
+  motherEmail?: string;
   guardianName?: string;
   guardianRelation?: string;
   guardianPhone?: string;
