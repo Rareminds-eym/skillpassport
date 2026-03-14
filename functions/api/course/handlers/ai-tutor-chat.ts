@@ -22,6 +22,11 @@ import {
   getConversationPhase, 
   getPhaseParameters 
 } from '../utils/conversation-phases';
+import { validateRequest } from '../../../../src/validation/middleware/functions.js';
+import { tutorChat } from '../../../../src/validation/schemas/course/ai-tutor.js';
+import { getLogger } from '../../../../src/config/logging.js';
+
+const logger = getLogger('ai-tutor-chat');
 
 // ==================== TYPES ====================
 
@@ -56,19 +61,16 @@ export const handleAiTutorChat: PagesFunction<PagesEnv> = async (context) => {
   // Use admin client for database writes
   const supabaseAdmin = createSupabaseAdminClient(env);
 
-  // Parse request body
-  let body: any;
-  try {
-    body = await request.json();
-  } catch {
-    return jsonResponse({ error: 'Invalid JSON body' }, 400);
+  // Validate request body using Zod
+  const validation = await validateRequest(request, {
+    body: tutorChat
+  });
+
+  if (!validation.success) {
+    return validation.response;
   }
 
-  const { conversationId, courseId, lessonId, message } = body;
-
-  if (!courseId || !message) {
-    return jsonResponse({ error: 'Missing required fields: courseId and message' }, 400);
-  }
+  const { conversationId, courseId, lessonId, message, context: chatContext } = validation.data.body;
 
   // Check if AI is configured
   const { openRouter: openRouterKey } = getAPIKeys(env);
@@ -99,7 +101,7 @@ export const handleAiTutorChat: PagesFunction<PagesEnv> = async (context) => {
     const conversationPhase = getConversationPhase(messageCount);
     const phaseParams = getPhaseParameters(conversationPhase);
 
-    console.log(`💬 AI Tutor Chat: phase=${conversationPhase}, messageCount=${messageCount}`);
+    logger.info(`AI Tutor Chat: phase=${conversationPhase}, messageCount=${messageCount}`);
 
     // Build course context and system prompt
     const courseContext = await buildCourseContext(supabase, courseId, lessonId || null, studentId);
@@ -152,7 +154,7 @@ export const handleAiTutorChat: PagesFunction<PagesEnv> = async (context) => {
 
           if (!response.ok) {
             const errorText = await response.text();
-            console.error('❌ OpenRouter error:', response.status, errorText);
+            logger.error('OpenRouter error', new Error(`${response.status}: ${errorText}`));
             controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'AI service error' })}\n\n`));
             controller.close();
             return;
@@ -228,7 +230,7 @@ export const handleAiTutorChat: PagesFunction<PagesEnv> = async (context) => {
               .eq('id', currentConversationId)
               .eq('student_id', studentId);
             
-            console.log(`✅ Updated conversation: ${currentConversationId}`);
+            logger.info(`Updated conversation: ${currentConversationId}`);
           } else {
             // Create new conversation with generated title
             let title = message.slice(0, 50);
@@ -261,7 +263,7 @@ export const handleAiTutorChat: PagesFunction<PagesEnv> = async (context) => {
                 }
               }
             } catch (error) {
-              console.warn('⚠️ Title generation failed, using default:', error);
+              logger.warn('Title generation failed, using default', error as Error);
             }
 
             const { data: newConv } = await supabaseAdmin
@@ -278,7 +280,7 @@ export const handleAiTutorChat: PagesFunction<PagesEnv> = async (context) => {
 
             if (newConv) {
               currentConversationId = newConv.id;
-              console.log(`✅ Created new conversation: ${currentConversationId}`);
+              logger.info(`Created new conversation: ${currentConversationId}`);
             }
           }
 
@@ -288,11 +290,11 @@ export const handleAiTutorChat: PagesFunction<PagesEnv> = async (context) => {
             messageId: assistantMessage.id
           })}\n\n`));
           
-          console.log(`✅ Streaming complete: ${fullResponse.length} chars`);
+          logger.info(`Streaming complete: ${fullResponse.length} chars`);
           controller.close();
 
         } catch (error: any) {
-          console.error('❌ Streaming error:', error);
+          logger.error('Streaming error', error);
           controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ 
             error: error.message || 'Stream processing error' 
           })}\n\n`));
@@ -312,7 +314,7 @@ export const handleAiTutorChat: PagesFunction<PagesEnv> = async (context) => {
     });
 
   } catch (error: any) {
-    console.error('❌ AI Tutor Chat error:', error);
+    logger.error('AI Tutor Chat error', error);
     return jsonResponse({ error: error.message || 'Internal server error' }, 500);
   }
 };

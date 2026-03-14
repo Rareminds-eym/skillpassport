@@ -23,11 +23,21 @@ const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
 
 // Get minimum log level from environment
 const MIN_LOG_LEVEL: LogLevel = (() => {
-  const envLevel = import.meta.env.VITE_LOG_LEVEL as LogLevel | undefined;
-  if (envLevel && ['debug', 'info', 'warn', 'error'].includes(envLevel)) {
-    return envLevel;
+  // Check if we're in a browser/Vite environment
+  try {
+    if (typeof globalThis !== 'undefined' && 'import' in globalThis) {
+      const envLevel = import.meta.env?.VITE_LOG_LEVEL as LogLevel | undefined;
+      if (envLevel && ['debug', 'info', 'warn', 'error'].includes(envLevel)) {
+        return envLevel;
+      }
+      return import.meta.env?.PROD ? 'info' : 'debug';
+    }
+  } catch {
+    // Fallback for environments where import.meta is not available
   }
-  return import.meta.env.PROD ? 'info' : 'debug';
+  
+  // Fallback for Workers environment - default to 'info'
+  return 'info';
 })();
 
 // ============================================================================
@@ -133,8 +143,13 @@ class Logger {
     }
 
     // Send to log aggregation service in production
-    if (import.meta.env.PROD) {
-      this.sendToAggregator(entry);
+    try {
+      const isProduction = import.meta.env?.PROD;
+      if (isProduction) {
+        this.sendToAggregator(entry);
+      }
+    } catch {
+      // Skip aggregation in environments where import.meta is not available
     }
   }
 

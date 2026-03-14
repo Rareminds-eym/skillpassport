@@ -39,7 +39,7 @@
     "dev:all": "npm run cleanup && npm run build && concurrently -n \"frontend,pages,workers,supabase\" -c \"cyan,magenta,yellow,green\" \"npm run dev\" \"npm run pages:dev\" \"npm run workers:dev\" \"npm run supabase:start\"",
     "dev:fast": "bash scripts/start-docker.sh && npm run cleanup && concurrently -n \"supabase,build,frontend,pages,workers\" -c \"green,white,cyan,magenta,yellow\" \"npm run supabase:start\" \"npm run build\" \"npm run dev\" \"sleep 15 && npm run pages:dev\" \"npm run workers:dev\"",
     "dev:auto": "bash scripts/start-docker.sh && npm run dev:fast",
-    "start:full": "npm run dev:all",  
+    "start:full": "npm run dev:all",
     "env:validate": "node scripts/validate-env.js validate",
     "env:validate:all": "node scripts/validate-env.js validate:all",
     "env:validate:local": "node scripts/validate-env.js local",
@@ -63,7 +63,6 @@
       "env:check": "See which variables are set",
       "env:diff": "Compare two environments (usage: npm run env:diff development production)"
     }
-    
   },
   "dependencies": {
     "@casl/ability": "^6.8.0",
@@ -158,6 +157,7 @@
     "uuid": "^13.0.0",
     "worker-mailer": "^1.2.1",
     "xlsx": "^0.18.5",
+    "zod": "^4.3.6",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
