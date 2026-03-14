@@ -8,6 +8,8 @@
 import type { PagesFunction } from '../../../../src/functions-lib/types';
 import { jsonResponse } from '../../../../src/functions-lib';
 import { R2Client } from '../utils/r2-client';
+import type { AuthenticatedContext } from '../[[path]]';
+import { checkCourseEnrollment } from '../utils/course-authorization';
 
 interface FileInfo {
   key: string;
@@ -20,9 +22,16 @@ interface FileInfo {
  * List all files in a course lesson
  * Files are stored with prefix: courses/{courseId}/lessons/{lessonId}/
  */
-export const handleListFiles: PagesFunction = async ({ request, env, params }) => {
+export const handleListFiles: PagesFunction = async (context: AuthenticatedContext) => {
+  const { request, env, params, user, supabase } = context;
+
   if (request.method !== 'GET') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
+  }
+
+  // Add null checks for authentication
+  if (!user || !supabase) {
+    return jsonResponse({ error: 'Authentication required' }, 401);
   }
 
   try {
@@ -33,6 +42,14 @@ export const handleListFiles: PagesFunction = async ({ request, env, params }) =
     // Validate parameters
     if (!courseId || !lessonId) {
       return jsonResponse({ error: 'courseId and lessonId are required' }, 400);
+    }
+
+    // Check course enrollment
+    const authCheck = await checkCourseEnrollment(supabase, user.id, courseId);
+    if (!authCheck.authorized) {
+      return jsonResponse({ 
+        error: authCheck.error || 'Access denied: Not enrolled in this course' 
+      }, 403);
     }
 
     console.log(`[ListFiles] Listing files for course: ${courseId}, lesson: ${lessonId}`);
