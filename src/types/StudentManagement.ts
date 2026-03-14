@@ -179,91 +179,7 @@ export interface AttendanceAlert {
 }
 
 // Report Data Types
-<<<<<<< HEAD
 export type ReportData = Record<string, unknown>;
-=======
-export interface AttendanceReportData {
-  totalDays: number;
-  presentDays: number;
-  absentDays: number;
-  lateCount: number;
-  excusedCount: number;
-  attendancePercentage: number;
-  monthlyBreakdown: {
-    month: string;
-    present: number;
-    absent: number;
-    late: number;
-  }[];
-  alertsGenerated: number;
-}
-
-export interface AcademicReportData {
-  subjects: {
-    name: string;
-    marks: number;
-    totalMarks: number;
-    grade: string;
-    percentage: number;
-  }[];
-  overallPercentage: number;
-  overallGrade: string;
-  rank?: number;
-  totalStudents?: number;
-  remarks?: string;
-}
-
-export interface BehavioralReportData {
-  disciplinaryActions: {
-    date: string;
-    type: string;
-    description: string;
-    actionTaken: string;
-  }[];
-  positiveRecognitions: {
-    date: string;
-    type: string;
-    description: string;
-  }[];
-  overallBehaviorRating: 'excellent' | 'good' | 'satisfactory' | 'needs_improvement';
-  teacherComments: string[];
-}
-
-export interface SkillAssessmentReportData {
-  assessments: {
-    skillName: string;
-    level: 'beginner' | 'intermediate' | 'advanced' | 'expert';
-    score: number;
-    maxScore: number;
-    assessmentDate: string;
-  }[];
-  overallSkillLevel: string;
-  recommendedSkills: string[];
-  improvementAreas: string[];
-}
-
-export interface CareerReadinessReportData {
-  riasecScores: {
-    realistic: number;
-    investigative: number;
-    artistic: number;
-    social: number;
-    enterprising: number;
-    conventional: number;
-  };
-  recommendedCareers: string[];
-  skillGaps: string[];
-  readinessScore: number;
-  nextSteps: string[];
-}
-
-export type ReportData = 
-  | AttendanceReportData 
-  | AcademicReportData 
-  | BehavioralReportData 
-  | SkillAssessmentReportData 
-  | CareerReadinessReportData;
->>>>>>> 5b9a9e2db8574367504ba4213ea59f2f2a8c76ec
 
 export interface StudentReport {
   id: string;
@@ -289,34 +205,9 @@ export interface ValidationError {
   field: string;
   message: string;
 }
+
 // Additional interfaces for services and utils
 
-<<<<<<< HEAD
-=======
-export interface TeacherProfile {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  employee_id?: string;
-  department?: string;
-  designation?: string;
-  years_of_experience?: number;
-  specialization?: string;
-  qualifications: QualificationData[];
-  subject_expertise: SubjectExpertise[];
-  subjects_handled?: string[];
-  linkedin_url?: string;
-  twitter_url?: string;
-  onboarding_status: 'pending' | 'documents_uploaded' | 'verified' | 'active' | 'inactive';
-  verification_status?: string;
-  degree_certificate_url?: string;
-  id_proof_url?: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
->>>>>>> 5b9a9e2db8574367504ba4213ea59f2f2a8c76ec
 export interface QualificationData {
   degree: string;
   institution: string;
@@ -347,25 +238,6 @@ export interface ImportError {
   data?: Record<string, string | number | boolean>;
 }
 
-<<<<<<< HEAD
-=======
-export interface EnrolledStudentView {
-  id: string;
-  name: string;
-  email: string;
-  enrollment_number: string;
-  class: string;
-  section: string;
-  roll_number: string;
-  admission_date: string;
-  status: 'active' | 'inactive' | 'transferred' | 'graduated';
-  parent_name?: string;
-  parent_phone?: string;
-  created_at: string;
-  updated_at: string;
-}
-
->>>>>>> 5b9a9e2db8574367504ba4213ea59f2f2a8c76ec
 export interface NotificationData {
   id: string;
   title: string;
@@ -384,108 +256,11 @@ export interface NotificationMetadata {
   category?: string;
 }
 
-<<<<<<< HEAD
-=======
-export interface ExportData {
-  students: StudentExportData[];
-  skills: SkillExportData[];
-  projects: ProjectExportData[];
-  certificates: CertificateExportData[];
-  experience: ExperienceExportData[];
-  trainings: TrainingExportData[];
-}
-
-export interface StudentExportData {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  university?: string;
-  department?: string;
-  cgpa?: string;
-  year_of_passing?: string;
-  created_at: string;
-}
-
-export interface SkillExportData {
-  student_id: string;
-  student_name: string;
-  skill_name: string;
-  skill_type: 'technical' | 'soft';
-  proficiency_level: string;
-  rating: number;
-}
-
-export interface ProjectExportData {
-  student_id: string;
-  student_name: string;
-  project_title: string;
-  description?: string;
-  technologies: string;
-  role?: string;
-  start_date?: string;
-  end_date?: string;
-  demo_url?: string;
-  github_url?: string;
-}
-
-export interface CertificateExportData {
-  student_id: string;
-  student_name: string;
-  certificate_title: string;
-  issuer: string;
-  issued_date?: string;
-  expiry_date?: string;
-  credential_id?: string;
-  verification_url?: string;
-}
-
-export interface ExperienceExportData {
-  student_id: string;
-  student_name: string;
-  company: string;
-  role: string;
-  start_date?: string;
-  end_date?: string;
-  duration?: string;
-  description?: string;
-}
-
-export interface TrainingExportData {
-  student_id: string;
-  student_name: string;
-  training_title: string;
-  provider: string;
-  start_date?: string;
-  end_date?: string;
-  duration?: string;
-  completion_status: string;
-  certificate_url?: string;
-}
-
-export interface VideoSummaryData {
-  id: string;
-  title: string;
-  description?: string;
-  video_url: string;
-  summary?: string;
-  key_points?: string[];
-  duration?: number;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  created_at: string;
-  updated_at: string;
-}
-
->>>>>>> 5b9a9e2db8574367504ba4213ea59f2f2a8c76ec
 export interface MessageData {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
-<<<<<<< HEAD
   created_at: string;
-=======
-  timestamp: string;
->>>>>>> 5b9a9e2db8574367504ba4213ea59f2f2a8c76ec
   metadata?: MessageMetadata;
 }
 
@@ -504,79 +279,6 @@ export interface ConversationData {
   status: 'active' | 'archived';
 }
 
-<<<<<<< HEAD
-=======
-// Store interfaces
-export interface AssessmentState {
-  current_question_index: number;
-  section_timings: SectionTimings;
-  answers: Record<string, string | number | boolean>;
-  metadata: AssessmentMetadata;
-}
-
-export interface SectionTimings {
-  [sectionName: string]: {
-    startTime: number;
-    endTime?: number;
-    timeSpent: number;
-  };
-}
-
-export interface AssessmentMetadata {
-  test_id: string;
-  student_id: string;
-  start_time: string;
-  total_questions: number;
-}
-
-export interface PromotionalData {
-  id: string;
-  title: string;
-  description: string;
-  image_url?: string;
-  start_date?: string;
-  end_date?: string;
-  is_active: boolean;
-  target_audience?: string[];
-  metadata?: Record<string, string | number | boolean>;
-}
-
-export interface TestQuestion {
-  id: string;
-  text: string;
-  options?: string[];
-  correct_answer?: string;
-  question_type: 'multiple_choice' | 'text' | 'boolean';
-  metadata?: Record<string, string | number | boolean>;
-}
-
-export interface SubscriptionFeature {
-  id: string;
-  name: string;
-  description: string;
-  enabled: boolean;
-  limit?: number;
-}
-
-export interface SubscriptionData {
-  id: string;
-  user_id: string;
-  plan_id: string;
-  status: 'active' | 'cancelled' | 'expired' | 'grace_period';
-  start_date: string;
-  end_date?: string;
-  trial_end?: string;
-  cancelledAt?: string;
-  cancellationReason?: string;
-  features: SubscriptionFeature[];
-  billing_cycle: 'monthly' | 'yearly';
-  amount: number;
-  currency: string;
-  userRole?: string;
-  metadata?: Record<string, string | number | boolean>;
-}
-
->>>>>>> 5b9a9e2db8574367504ba4213ea59f2f2a8c76ec
 export interface OrganizationData {
   id: string;
   name: string;
@@ -603,26 +305,5 @@ export interface UserRoleHistoryRecord {
   changed_by: string;
   reason?: string;
   assigned_at: string;
-<<<<<<< HEAD
-=======
 }
-
-// Additional interfaces for Student Management UI components
-export interface FilterSectionProps {
-  title: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-}
-
-export interface FilterCounts {
-  [key: string]: number;
-}
-
-export interface StudentCardProps {
-  student: StudentProfile;
-  onViewProfile: (student: StudentProfile) => void;
-  onAddNote: (student: StudentProfile) => void;
-  onViewCareerPath: (student: StudentProfile) => void;
-  loadingAssessmentForStudent: string | null;
->>>>>>> 5b9a9e2db8574367504ba4213ea59f2f2a8c76ec
-}
+ //save
