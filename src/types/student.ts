@@ -185,16 +185,20 @@ export interface UserRecord {
 export interface EducationRecord {
   id: string;
   student_id: string;
-  degree: string;
-  university: string;
+  level?: string;
+  degree?: string;
   department?: string;
+  university?: string;
   year_of_passing?: string;
   cgpa?: string;
-  level: string;
-  status: string;
-  approval_status?: string;
-  created_at?: string;
-  updated_at?: string;
+  status?: string;
+  approval_status: string;
+  created_at: string;
+  updated_at: string;
+  enabled: boolean;
+  pending_edit_data?: any;
+  has_pending_edit: boolean;
+  verified_data?: any;
 }
 
 export interface TrainingRecord {
@@ -207,14 +211,25 @@ export interface TrainingRecord {
   duration?: string;
   description?: string;
   status: string;
-  completed_modules?: number;
-  total_modules?: number;
-  hours_spent?: number;
+  completed_modules: number;
+  total_modules: number;
+  hours_spent: number;
   course_id?: string;
-  source?: string;
-  approval_status?: string;
-  created_at?: string;
-  updated_at?: string;
+  source: string;
+  approval_status: string;
+  approval_authority: string;
+  approved_by?: string;
+  approved_at?: string;
+  approval_notes?: string;
+  rejected_by?: string;
+  rejected_at?: string;
+  created_at: string;
+  updated_at: string;
+  embedding?: any;
+  has_pending_edit: boolean;
+  verified_data?: any;
+  pending_edit_data?: any;
+  enabled: boolean;
 }
 
 export interface ExperienceRecord {
@@ -231,6 +246,9 @@ export interface ExperienceRecord {
   enabled?: boolean;
   created_at?: string;
   updated_at?: string;
+  has_pending_edit: boolean;
+  verified_data?: any;
+  pending_edit_data?: any;
 }
 
 export interface ProjectRecord {
@@ -253,6 +271,7 @@ export interface ProjectRecord {
   certificate_url?: string;
   video_url?: string;
   ppt_url?: string;
+  status?: string;
 }
 
 export interface CertificateRecord {
@@ -274,6 +293,9 @@ export interface CertificateRecord {
   enabled?: boolean;
   created_at?: string;
   updated_at?: string;
+  has_pending_edit: boolean;
+  verified_data?: any;
+  pending_edit_data?: any;
 }
 
 export interface SkillRecord {
@@ -379,7 +401,7 @@ export interface AptitudeAssessmentResult extends BaseAssessmentResult {
   type: 'aptitude';
   test_phase?: string;
   category?: string;
-}
+} //save
 
 export type AssessmentResult = 
   | IAAssessmentResult 
@@ -411,7 +433,7 @@ export interface ProfileObject {
 
 // Update interfaces that support both frontend (camelCase) and database (snake_case) field names
 export interface EducationUpdateData {
-  id?: string;
+
   degree?: string;
   university?: string;
   department?: string;
@@ -423,10 +445,12 @@ export interface EducationUpdateData {
 }
 
 export interface TrainingUpdateDataFull {
-  id?: string;
+
   title?: string;
   course?: string;
   provider?: string;
+  organization?: string;
+  duration?: string;
   startDate?: string;
   start_date?: string;
   endDate?: string;
@@ -444,7 +468,7 @@ export interface TrainingUpdateDataFull {
 }
 
 export interface ExperienceUpdateData {
-  id?: string;
+
   role?: string;
   organization?: string;
   start_date?: string;
@@ -453,7 +477,7 @@ export interface ExperienceUpdateData {
 }
 
 export interface ProjectUpdateData {
-  id?: string;
+
   title?: string;
   description?: string;
   role?: string;
@@ -481,7 +505,7 @@ export interface ProjectUpdateData {
 }
 
 export interface CertificateUpdateData {
-  id?: string;
+ 
   title?: string;
   issuer?: string;
   credentialId?: string;
@@ -499,7 +523,7 @@ export interface CertificateUpdateData {
 }
 
 export interface SkillUpdateData {
-  id?: string;
+  
   name?: string;
   type?: 'technical' | 'soft';
   level?: string | number;

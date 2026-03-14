@@ -11,23 +11,31 @@ import {
   StudentUpdateData,
   TrainingUpdateDataFull,
   UserCreateData,
-  TrainingData,
   SkillData,
   SkillUpdateData,
-  ExperienceData,
   ExperienceUpdateData,
-  EducationData,
   EducationUpdateData,
-  CertificateData,
   CertificateUpdateData,
-  ProjectData,
   ProjectUpdateData,
   SkillRecord,
+  StudentRecordInput,
+  ProfileInput,
+  TransformedProfile,
+  SkillInput,
+  NormalizedSkill,
   EducationRecord,
   TrainingRecord,
   CertificateRecord,
   ExperienceRecord,
-  ProjectRecord
+  ProjectRecord,
+  DatabaseUpdateData,
+  StudentRecord,
+  TrainingCreateData,
+  SkillCreateData,
+  ExperienceCreateData,
+  EducationCreateData,
+  CertificateCreateData,
+  ProjectCreateData,
 } from '../types/student';
 
 const logger = getLogger('student-service');
@@ -54,7 +62,8 @@ const generateUuid = (): string => {
  */
 function formatPhoneNumber(number?: string, dialCode: number = 91): string {
   if (!number) return '';
-  return `+${dialCode} ${number}`;
+  const code = typeof dialCode === 'number' ? dialCode : 91;
+  return `+${code} ${number}`;
 }
 
 /**
@@ -115,9 +124,10 @@ export const createUserRecord = async (userId: string, userData: UserCreateData)
 
     logger.info('User record created successfully', { userId });
     return { success: true, data: data, error: null };
-  } catch (error: any) {
-    logger.error('Unexpected error creating user record', error, { userId });
-    return { success: false, data: null, error: error.message };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    logger.error('Unexpected error creating user record', error instanceof Error ? error : new Error(String(error)), { userId });
+    return { success: false, data: null, error: errorMessage };
   }
 };
 
@@ -173,9 +183,10 @@ export const createStudent = async (studentData: StudentData, userId: string): P
 
     logger.info('Student record created successfully', { studentId: data.id });
     return { success: true, data: data, error: null };
-  } catch (error: any) {
-    logger.error('Unexpected error creating student', error, { userId, email: studentData.email });
-    return { success: false, data: null, error: error.message };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    logger.error('Unexpected error creating student', error instanceof Error ? error : new Error(String(error)), { userId, email: studentData.email });
+    return { success: false, data: null, error: errorMessage };
   }
 };
 
@@ -201,9 +212,10 @@ export const updateStudent = async (studentId: string, updates: StudentUpdateDat
     }
 
     return { success: true, data: data, error: null };
-  } catch (error: any) {
-    logger.error('Unexpected error updating student', error, { studentId });
-    return { success: false, data: null, error: error.message };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    logger.error('Unexpected error updating student', error instanceof Error ? error : new Error(String(error)), { studentId });
+    return { success: false, data: null, error: errorMessage };
   }
 };
 
@@ -231,9 +243,10 @@ export const softDeleteStudent = async (studentId: string, educatorId: string): 
 
     logger.info('Student soft deleted successfully', { studentId: data.id });
     return { success: true, data: data, error: null };
-  } catch (error: any) {
-    logger.error('Unexpected error soft deleting student', error, { studentId });
-    return { success: false, data: null, error: error.message };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    logger.error('Unexpected error soft deleting student', error instanceof Error ? error : new Error(String(error)), { studentId });
+    return { success: false, data: null, error: errorMessage };
   }
 };
 
@@ -242,7 +255,7 @@ export const softDeleteStudent = async (studentId: string, educatorId: string): 
 /**
  * Transform profile data to consistent format
  */
-function transformProfileData(profile: Record<string, unknown> | null, email: string, studentRecord: Record<string, unknown> | null = null): Record<string, unknown> | null {
+function transformProfileData(profile: ProfileInput | null, email: string, studentRecord: StudentRecordInput | null = null): TransformedProfile | null {
   if (!profile && !studentRecord) {
     return null;
   }
@@ -250,15 +263,15 @@ function transformProfileData(profile: Record<string, unknown> | null, email: st
   const data = studentRecord || {};
   const profileData = profile || {};
 
-  const age = data.age || profileData.age || calculateAge(data.date_of_birth || data.dateOfBirth || profileData.date_of_birth || profileData.dateOfBirth);
+  const age = data.age || profileData.age || calculateAge((data.date_of_birth || data.dateOfBirth || profileData.date_of_birth || profileData.dateOfBirth) as string);
   const registrationNumber = data.registration_number || profileData.registration_number || profileData.registrationNumber;
   const passportId = registrationNumber ? `SP-${registrationNumber}` : 'SP-0000';
 
   const phone = formatPhoneNumber(
-    data.contact_number || data.contactNumber || profileData.contact_number || profileData.phone,
+    (data.contact_number || data.contactNumber || profileData.contact_number || profileData.phone) as string,
     data.contact_dial_code || profileData.contact_number_dial_code
   );
-  const alternatePhone = formatPhoneNumber(data.alternate_number || profileData.alternate_number || profileData.alternatePhone);
+  const alternatePhone = formatPhoneNumber((data.alternate_number || profileData.alternate_number || profileData.alternatePhone) as string);
 
   return {
     profile: {
@@ -267,7 +280,7 @@ function transformProfileData(profile: Record<string, unknown> | null, email: st
       passportId: passportId,
       department: data.branch_field || profileData.branch_field || profileData.department || '',
       university: data.university || profileData.university || '',
-      photo: generateAvatar(data.name || profileData.name),
+      photo: generateAvatar((data.name || profileData.name) as string),
       verified: true,
       employabilityScore: 75,
       cgpa: 'N/A',
@@ -275,10 +288,10 @@ function transformProfileData(profile: Record<string, unknown> | null, email: st
       phone: phone,
       alternatePhone: alternatePhone,
       age: age,
-      dateOfBirth: data.date_of_birth || data.dateOfBirth || profileData.date_of_birth || profileData.dateOfBirth,
+      dateOfBirth: data.date_of_birth || data.dateOfBirth || profileData.date_of_birth || profileData.dateOfBirth || '',
       district: data.district_name || profileData.district_name || profileData.district || '',
       college: data.college_school_name || profileData.college_school_name || profileData.college || '',
-      registrationNumber: registrationNumber,
+      registrationNumber: registrationNumber || '',
       classYear: data.class_year || profileData.classYear || '',
       github_link: data.github_link || profileData.github_link || '',
       portfolio_link: data.portfolio_link || profileData.portfolio_link || '',
@@ -289,7 +302,13 @@ function transformProfileData(profile: Record<string, unknown> | null, email: st
       other_social_links: data.other_social_links || profileData.other_social_links || [],
     },
     education: profileData.education || [],
-    training: profileData.training || (data.course_name || profileData.course ? [{ course: data.course_name || profileData.course }] : []),
+    training: profileData.training || (data.course_name || profileData.course ? [{ 
+      course: data.course_name || profileData.course || '',
+      provider: '',
+      startDate: '',
+      endDate: '',
+      status: 'ongoing' as const
+    }] : []),
     experience: profileData.experience || [],
     technicalSkills: profileData.technicalSkills || [],
     softSkills: profileData.softSkills || [],
@@ -314,6 +333,7 @@ function transformProfileData(profile: Record<string, unknown> | null, email: st
     opportunities: []
   };
 }
+
 
 /**
  * Fetch student data by email from Supabase
@@ -490,6 +510,9 @@ export const getStudentByEmail = async (email: string): Promise<ServiceResponse>
 
     // Transform profile data to consistent format
     const transformedProfile = transformProfileData(profileData, email, data);
+    if (!transformedProfile) {
+      return { success: false, data: null, error: 'Failed to transform profile data' };
+    }
 
     // Extract skill_passports data (if exists)
     const passport = data.skill_passports || {};
@@ -569,8 +592,8 @@ export const getStudentByEmail = async (email: string): Promise<ServiceResponse>
 
     // Fetch training certificates and skills
     const trainingIds = approvedTrainings.map((t: TrainingRecord) => t.id).filter(Boolean);
-    let trainingCertificates: Array<Record<string, unknown>> = [];
-    let trainingSkills: Array<Record<string, unknown>> = [];
+    let trainingCertificates: CertificateRecord[] = [];
+    let trainingSkills: SkillRecord[] = [];
 
     if (trainingIds.length > 0) {
       const { data: certData } = await supabase
@@ -798,9 +821,10 @@ export const getStudentByEmail = async (email: string): Promise<ServiceResponse>
     };
 
     return { success: true, data: mergedData, error: null };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ getStudentByEmail exception:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 };
 
@@ -890,9 +914,10 @@ export const getStudentById = async (studentId: string): Promise<ServiceResponse
     // Use the same data processing logic as getStudentByEmail
     const email = data.email;
     return await getStudentByEmail(email);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ getStudentById exception:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 };
 
@@ -917,9 +942,10 @@ export async function findStudentByEmail(email: string): Promise<ServiceResponse
     }
 
     return { success: true, data: studentRecord, error: null };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ findStudentByEmail exception:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 }
 
@@ -937,7 +963,7 @@ export async function updateStudentByEmail(email: string, updates: StudentUpdate
     const studentRecord = findResult.data;
 
     // Map updates to correct column names
-    const columnUpdates: Record<string, unknown> = {};
+    const columnUpdates: DatabaseUpdateData = {};
     
     const fieldMapping: Record<string, string> = {
       'name': 'name',
@@ -1006,14 +1032,15 @@ export async function updateStudentByEmail(email: string, updates: StudentUpdate
       'current_backlogs': 'current_backlogs'
     };
 
-    Object.keys(updates).forEach(key => {
+    Object.keys(updates || {}).forEach(key => {
       const columnName = fieldMapping[key] || key;
       
-      if (key === 'profile' && typeof updates[key] === 'object') {
-        Object.keys(updates[key]).forEach(profileKey => {
+      if (key === 'profile' && typeof updates[key] === 'object' && updates[key] !== null) {
+        const profileUpdates = updates[key] as DatabaseUpdateData;
+        Object.keys(profileUpdates).forEach(profileKey => {
           const profileColumnName = fieldMapping[profileKey] || profileKey;
-          if (updates[key][profileKey] !== undefined) {
-            columnUpdates[profileColumnName] = updates[key][profileKey];
+          if (profileUpdates[profileKey] !== undefined) {
+            columnUpdates[profileColumnName] = profileUpdates[profileKey];
           }
         });
       } else if (updates[key] !== undefined) {
@@ -1046,7 +1073,7 @@ export async function updateStudentByEmail(email: string, updates: StudentUpdate
     const { data, error } = await supabase
       .from('students')
       .update(columnUpdates)
-      .eq('id', studentRecord.id)
+      .eq('id', (studentRecord as StudentRecord).id)
       .select()
       .single();
 
@@ -1063,9 +1090,10 @@ export async function updateStudentByEmail(email: string, updates: StudentUpdate
       error: null
     };
 
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ Unexpected error in updateStudentByEmail:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 }
 // ==================== UPDATE FUNCTIONS FOR SPECIFIC DATA TYPES ====================
@@ -1080,7 +1108,7 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
       return findResult;
     }
 
-    const studentRecord = findResult.data;
+    const studentRecord = findResult.data as StudentRecord;
     const studentId = studentRecord.id;
 
     // Get existing training records
@@ -1103,7 +1131,8 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
       .map((train: TrainingUpdateDataFull) => {
         const titleValue = train.course || train.title || '';
         
-        const record: Record<string, unknown> = {
+        const record: TrainingCreateData = {
+          id: generateUuid(),
           student_id: studentId,
           title: titleValue.trim(),
           organization: train.provider?.trim() || train.organization?.trim() || null,
@@ -1115,6 +1144,7 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
           completed_modules: parseInt(String(train.completedModules || train.completed_modules)) || 0,
           total_modules: parseInt(String(train.totalModules || train.total_modules)) || 0,
           hours_spent: parseInt(String(train.hoursSpent || train.hours_spent)) || 0,
+          approval_status: 'pending',
           updated_at: nowIso,
         };
 
@@ -1234,7 +1264,7 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
           const { data: existingSkills } = await supabase
             .from('skills')
             .select('id, name, type')
-            .eq('training_id', trainingId);
+            .eq('training_id', trainingId) as { data: SkillRecord[] | null };
 
           const existingSkillsMap = new Map(
             (existingSkills || []).map((s: SkillRecord) => [`${s.name.toLowerCase().trim()}_${s.type}`, s])
@@ -1249,22 +1279,23 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
               };
             } else if (typeof skill === 'string') {
               return {
-                name: (skill as unknown as string).trim(),
-                type: 'technical' // Only default to technical for plain strings
+                name: skill.trim(),
+                type: 'technical' as const
               };
             }
             return null;
-          }).filter(skill => skill !== null);
+          }).filter(skill => skill !== null && skill.name);
 
           // Find skills to add
           const skillsToAdd = skillsToProcess.filter(skill => {
+            if (!skill) return false;
             const key = `${skill.name.toLowerCase()}_${skill.type}`;
             return !existingSkillsMap.has(key);
           });
 
           // Find skills to remove
           const currentSkillKeys = new Set(
-            skillsToProcess.map(skill => `${skill.name.toLowerCase()}_${skill.type}`)
+            skillsToProcess.filter(skill => skill !== null).map(skill => `${skill!.name.toLowerCase()}_${skill!.type}`)
           );
           const skillIdsToDelete = (existingSkills || [])
             .filter(s => !currentSkillKeys.has(`${s.name.toLowerCase().trim()}_${s.type}`))
@@ -1280,12 +1311,12 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
 
           // Add new skills
           if (skillsToAdd.length > 0) {
-            const skillRecords = skillsToAdd.map((skill: Record<string, unknown>) => ({
+            const skillRecords = skillsToAdd.filter(skill => skill !== null).map((skill) => ({
               id: generateUuid(),
               student_id: studentId,
               training_id: trainingId,
-              name: skill.name,
-              type: skill.type,
+              name: skill!.name,
+              type: skill!.type,
               level: 3,
               created_at: nowIso,
               updated_at: nowIso,
@@ -1310,9 +1341,10 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
     }
 
     return await getStudentByEmail(email);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ updateTrainingByEmail exception:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 }
 
@@ -1326,7 +1358,7 @@ export async function updateTechnicalSkillsByEmail(email: string, skillsData: Sk
       return findResult;
     }
 
-    const studentRecord = findResult.data;
+    const studentRecord = findResult.data as StudentRecord;
     const studentId = studentRecord.id;
 
     // Get existing technical skills only
@@ -1344,23 +1376,23 @@ export async function updateTechnicalSkillsByEmail(email: string, skillsData: Sk
 
     // Format technical skills data
     const formatted = (skillsData || [])
-      .filter((skill: SkillUpdateData) => skill && typeof skill.name === 'string' && skill.name.trim().length > 0)
+      .filter((skill: SkillUpdateData) => skill && skill.name && typeof skill.name === 'string' && skill.name.trim().length > 0)
       .map((skill: SkillUpdateData) => {
-        const record: Record<string, unknown> = {
+        const record: SkillCreateData = {
           student_id: studentId,
-          name: skill.name.trim(),
+          name: skill.name!.trim(),
           type: 'technical',
-          level: (skill as Record<string, unknown>).level || (skill as Record<string, unknown>).rating || 3,
-          proficiency_level: (skill as Record<string, unknown>).proficiency_level || 'Intermediate',
-          description: ((skill as Record<string, unknown>).description as string | undefined)?.trim() || '',
-          verified: (skill as Record<string, unknown>).verified || false,
-          enabled: (skill as Record<string, unknown>).enabled !== undefined ? (skill as Record<string, unknown>).enabled : true,
-          approval_status: (skill as Record<string, unknown>).approval_status || 'pending',
+          level: Number(skill.level || skill.rating || 3),
+          proficiency_level: skill.proficiency_level || 'Intermediate',
+          description: skill.description?.trim() || '',
+          verified: skill.verified || false,
+          enabled: skill.enabled !== undefined ? skill.enabled : true,
+          approval_status: skill.approval_status || 'pending',
           updated_at: nowIso,
         };
 
-        // Preserve existing ID if valid UUID
-        const rawId = typeof (skill as Record<string, unknown>).id === 'string' ? ((skill as Record<string, unknown>).id as string).trim() : null;
+        // Preserve existing ID if valid UUID (technical skills)
+        const rawId = typeof skill.id === 'string' ? skill.id.trim() : null;
         if (rawId && rawId.length === 36) {
           record.id = rawId;
         } else {
@@ -1402,9 +1434,10 @@ export async function updateTechnicalSkillsByEmail(email: string, skillsData: Sk
     }
 
     return await getStudentByEmail(email);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ updateTechnicalSkillsByEmail exception:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 }
 
@@ -1418,7 +1451,7 @@ export async function updateSoftSkillsByEmail(email: string, skillsData: SkillUp
       return findResult;
     }
 
-    const studentRecord = findResult.data;
+    const studentRecord = findResult.data as StudentRecord;
     const studentId = studentRecord.id;
 
     // Get existing soft skills only
@@ -1436,23 +1469,23 @@ export async function updateSoftSkillsByEmail(email: string, skillsData: SkillUp
 
     // Format soft skills data
     const formatted = (skillsData || [])
-      .filter((skill: SkillUpdateData) => skill && typeof skill.name === 'string' && skill.name.trim().length > 0)
+      .filter((skill: SkillUpdateData) => skill && skill.name && typeof skill.name === 'string' && skill.name.trim().length > 0)
       .map((skill: SkillUpdateData) => {
-        const record: Record<string, unknown> = {
+        const record: SkillCreateData = {
           student_id: studentId,
-          name: skill.name.trim(),
+          name: skill.name!.trim(),
           type: 'soft',
-          level: (skill as Record<string, unknown>).level || (skill as Record<string, unknown>).rating || 3,
-          proficiency_level: (skill as Record<string, unknown>).proficiency_level || 'Intermediate',
-          description: ((skill as Record<string, unknown>).description as string | undefined)?.trim() || '',
-          verified: (skill as Record<string, unknown>).verified || false,
-          enabled: (skill as Record<string, unknown>).enabled !== undefined ? (skill as Record<string, unknown>).enabled : true,
-          approval_status: (skill as Record<string, unknown>).approval_status || 'pending',
+          level: Number(skill.level || skill.rating || 3),
+          proficiency_level: skill.proficiency_level || 'Intermediate',
+          description: skill.description?.trim() || '',
+          verified: skill.verified || false,
+          enabled: skill.enabled !== undefined ? skill.enabled : true,
+          approval_status: skill.approval_status || 'pending',
           updated_at: nowIso,
         };
 
-        // Preserve existing ID if valid UUID
-        const rawId = typeof (skill as Record<string, unknown>).id === 'string' ? ((skill as Record<string, unknown>).id as string).trim() : null;
+        // Preserve existing ID if valid UUID (soft skills)
+        const rawId = typeof skill.id === 'string' ? skill.id.trim() : null;
         if (rawId && rawId.length === 36) {
           record.id = rawId;
         } else {
@@ -1494,9 +1527,10 @@ export async function updateSoftSkillsByEmail(email: string, skillsData: SkillUp
     }
 
     return await getStudentByEmail(email);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ updateSoftSkillsByEmail exception:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 }
 
@@ -1510,7 +1544,7 @@ export async function updateExperienceByEmail(email: string, experienceData: Exp
       return findResult;
     }
 
-    const studentRecord = findResult.data;
+    const studentRecord = findResult.data as StudentRecord;
     const studentId = studentRecord.id;
 
     // Get existing experience records
@@ -1527,24 +1561,24 @@ export async function updateExperienceByEmail(email: string, experienceData: Exp
 
     // Format experience data
     const formatted = (experienceData || [])
-      .filter((exp: ExperienceUpdateData) => exp && typeof exp.organization === 'string' && exp.organization.trim().length > 0)
+      .filter((exp: ExperienceUpdateData) => exp && exp.organization && typeof exp.organization === 'string' && exp.organization.trim().length > 0)
       .map((exp: ExperienceUpdateData) => {
-        const record: Record<string, unknown> = {
+        const record: ExperienceCreateData = {
           student_id: studentId,
-          organization: exp.organization.trim(),
-          role: ((exp as Record<string, unknown>).role as string | undefined)?.trim() || '',
-          start_date: (exp as Record<string, unknown>).start_date || null,
-          end_date: (exp as Record<string, unknown>).end_date || null,
-          duration: ((exp as Record<string, unknown>).duration as string | undefined)?.trim() || '',
-          description: ((exp as Record<string, unknown>).description as string | undefined)?.trim() || '',
-          verified: (exp as Record<string, unknown>).verified || false,
-          approval_status: (exp as Record<string, unknown>).approval_status || 'pending',
-          enabled: (exp as Record<string, unknown>).enabled !== undefined ? (exp as Record<string, unknown>).enabled : true,
+          organization: exp.organization?.trim() || '',
+          role: exp.role?.trim() || '',
+          start_date: exp.start_date || null,
+          end_date: exp.end_date || null,
+          duration: exp.duration?.trim() || '',
+          description: exp.description?.trim() || '',
+          verified: exp.verified || false,
+          approval_status: exp.approval_status || 'pending',
+          enabled: exp.enabled !== undefined ? exp.enabled : true,
           updated_at: nowIso,
         };
 
         // Preserve existing ID if valid UUID
-        const rawId = typeof (exp as Record<string, unknown>).id === 'string' ? ((exp as Record<string, unknown>).id as string).trim() : null;
+        const rawId = typeof exp.id === 'string' ? exp.id.trim() : null;
         if (rawId && rawId.length === 36) {
           record.id = rawId;
         } else {
@@ -1586,9 +1620,10 @@ export async function updateExperienceByEmail(email: string, experienceData: Exp
     }
 
     return await getStudentByEmail(email);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ updateExperienceByEmail exception:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 }
 
@@ -1602,7 +1637,7 @@ export async function updateEducationByEmail(email: string, educationData: Educa
       return findResult;
     }
 
-    const studentRecord = findResult.data;
+    const studentRecord = findResult.data as StudentRecord;
     const studentId = studentRecord.id;
 
     // Get existing education records
@@ -1620,26 +1655,27 @@ export async function updateEducationByEmail(email: string, educationData: Educa
     // Format education data
     const formatted = (educationData || [])
       .filter((edu: EducationUpdateData) => {
-        const degreeField = edu.degree || (edu as Record<string, unknown>).qualification;
+        const degreeField = edu.degree || edu.qualification;
         return edu && typeof degreeField === 'string' && (degreeField as string).trim().length > 0;
       })
       .map((edu: EducationUpdateData) => {
-        const record: Record<string, unknown> = {
+        const record: EducationCreateData = {
           student_id: studentId,
-          level: ((edu as Record<string, unknown>).level as string | undefined)?.trim() || "Bachelor's",
-          degree: (((edu as Record<string, unknown>).degree || (edu as Record<string, unknown>).qualification) as string | undefined)?.trim() || "",
-          department: ((edu as Record<string, unknown>).department as string | undefined)?.trim() || "",
-          university: ((edu as Record<string, unknown>).university as string | undefined)?.trim() || "",
-          year_of_passing: (((edu as Record<string, unknown>).yearOfPassing || (edu as Record<string, unknown>).year_of_passing) as string | number | undefined)?.toString().trim() || "",
-          cgpa: ((edu as Record<string, unknown>).cgpa as string | number | undefined)?.toString().trim() || "",
-          status: ((edu as Record<string, unknown>).status as string | undefined)?.trim() || "ongoing",
-          approval_status: (edu as Record<string, unknown>).approval_status || 'pending',
-          enabled: typeof (edu as Record<string, unknown>).enabled === 'boolean' ? (edu as Record<string, unknown>).enabled : true,
+          level: edu.level?.trim() || "Bachelor's",
+          degree: (edu.degree || edu.qualification)?.trim() || "",
+          department: edu.department?.trim() || "",
+          university: edu.university?.trim() || "",
+          year_of_passing: (edu.yearOfPassing || edu.year_of_passing)?.toString().trim() || "",
+          cgpa: edu.cgpa?.toString().trim() || "",
+          status: edu.status?.trim() || "ongoing",
+          approval_status: edu.approval_status || 'pending',
+          enabled: typeof edu.enabled === 'boolean' ? edu.enabled : true,
+          has_pending_edit: false,
           updated_at: nowIso,
         };
 
         // Preserve existing ID if valid UUID
-        const rawId = typeof (edu as Record<string, unknown>).id === 'string' ? ((edu as Record<string, unknown>).id as string).trim() : null;
+        const rawId = typeof edu.id === 'string' ? edu.id.trim() : null;
         if (rawId && rawId.length === 36 && rawId.includes('-')) {
           record.id = rawId;
         } else {
@@ -1681,9 +1717,10 @@ export async function updateEducationByEmail(email: string, educationData: Educa
     }
 
     return await getStudentByEmail(email);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ updateEducationByEmail exception:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 }
 
@@ -1697,7 +1734,7 @@ export async function updateCertificatesByEmail(email: string, certificatesData:
       return findResult;
     }
 
-    const studentRecord = findResult.data;
+    const studentRecord = findResult.data as StudentRecord;
     const studentId = studentRecord.id;
 
     // Get existing certificates
@@ -1714,29 +1751,29 @@ export async function updateCertificatesByEmail(email: string, certificatesData:
 
     // Format certificates data
     const formatted = (certificatesData || [])
-      .filter((cert: CertificateUpdateData) => cert && typeof cert.title === 'string' && cert.title.trim().length > 0)
+      .filter((cert: CertificateUpdateData) => cert && cert.title && typeof cert.title === 'string' && cert.title.trim().length > 0)
       .map((cert: CertificateUpdateData) => {
-        const record: Record<string, unknown> = {
+        const record: CertificateCreateData = {
           student_id: studentId,
-          title: cert.title.trim(),
-          issuer: ((cert as Record<string, unknown>).issuer as string | undefined)?.trim() || '',
-          issued_on: (cert as Record<string, unknown>).issuedOn || (cert as Record<string, unknown>).issued_on || null,
-          expiry_date: (cert as Record<string, unknown>).expiryDate || (cert as Record<string, unknown>).expiry_date || null,
-          level: ((cert as Record<string, unknown>).level as string | undefined)?.trim() || '',
-          description: ((cert as Record<string, unknown>).description as string | undefined)?.trim() || '',
-          credential_id: (((cert as Record<string, unknown>).credentialId || (cert as Record<string, unknown>).credential_id) as string | undefined)?.trim() || '',
-          link: (((cert as Record<string, unknown>).link || (cert as Record<string, unknown>).documentLink) as string | undefined)?.trim() || '',
-          category: ((cert as Record<string, unknown>).category as string | undefined)?.trim() || '',
-          platform: ((cert as Record<string, unknown>).platform as string | undefined)?.trim() || '',
-          instructor: ((cert as Record<string, unknown>).instructor as string | undefined)?.trim() || '',
-          status: (cert as Record<string, unknown>).status || 'active',
-          approval_status: (cert as Record<string, unknown>).approval_status || 'pending',
-          enabled: (cert as Record<string, unknown>).enabled !== undefined ? (cert as Record<string, unknown>).enabled : true,
+          title: cert.title?.trim() || '',
+          issuer: cert.issuer?.trim() || '',
+          issued_on: cert.issuedOn || cert.issued_on || null,
+          expiry_date: cert.expiryDate || cert.expiry_date || null,
+          level: cert.level?.trim() || '',
+          description: cert.description?.trim() || '',
+          credential_id: (cert.credentialId || cert.credential_id)?.trim() || '',
+          link: (cert.link || cert.documentLink)?.trim() || '',
+          category: cert.category?.trim() || '',
+          platform: cert.platform?.trim() || '',
+          instructor: cert.instructor?.trim() || '',
+          status: cert.status || 'active',
+          approval_status: cert.approval_status || 'pending',
+          enabled: cert.enabled !== undefined ? cert.enabled : true,
           updated_at: nowIso,
         };
 
         // Preserve existing ID if valid UUID
-        const rawId = typeof (cert as Record<string, unknown>).id === 'string' ? ((cert as Record<string, unknown>).id as string).trim() : null;
+        const rawId = typeof cert.id === 'string' ? cert.id.trim() : null;
         if (rawId && rawId.length === 36) {
           record.id = rawId;
         } else {
@@ -1778,9 +1815,10 @@ export async function updateCertificatesByEmail(email: string, certificatesData:
     }
 
     return await getStudentByEmail(email);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ updateCertificatesByEmail exception:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 }
 
@@ -1810,9 +1848,10 @@ export async function updateSkillsByEmail(email: string, skillsData: SkillUpdate
     }
 
     return await getStudentByEmail(email);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ updateSkillsByEmail exception:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 }
 
@@ -1826,7 +1865,7 @@ export async function updateProjectsByEmail(email: string, projectsData: Project
       return findResult;
     }
 
-    const studentRecord = findResult.data;
+    const studentRecord = findResult.data as StudentRecord;
     const studentId = studentRecord.id;
 
     // Get existing projects
@@ -1843,31 +1882,31 @@ export async function updateProjectsByEmail(email: string, projectsData: Project
 
     // Format projects data
     const formatted = (projectsData || [])
-      .filter((project: ProjectUpdateData) => project && typeof project.title === 'string' && project.title.trim().length > 0)
+      .filter((project: ProjectUpdateData) => project && project.title && typeof project.title === 'string' && project.title.trim().length > 0)
       .map((project: ProjectUpdateData) => {
-        const record: Record<string, unknown> = {
+        const record: ProjectCreateData = {
           student_id: studentId,
-          title: project.title.trim(),
-          description: ((project as Record<string, unknown>).description as string | undefined)?.trim() || '',
-          role: ((project as Record<string, unknown>).role as string | undefined)?.trim() || '',
-          status: (project as Record<string, unknown>).status || 'ongoing',
-          start_date: (project as Record<string, unknown>).start_date || (project as Record<string, unknown>).startDate || null,
-          end_date: (project as Record<string, unknown>).end_date || (project as Record<string, unknown>).endDate || null,
-          duration: ((project as Record<string, unknown>).duration as string | undefined)?.trim() || '',
-          organization: ((project as Record<string, unknown>).organization as string | undefined)?.trim() || '',
-          tech_stack: (project as Record<string, unknown>).tech_stack || (project as Record<string, unknown>).tech || (project as Record<string, unknown>).technologies || [],
-          demo_link: (project as Record<string, unknown>).demo_link || (project as Record<string, unknown>).link || (project as Record<string, unknown>).demoUrl || '',
-          github_link: (project as Record<string, unknown>).github_link || (project as Record<string, unknown>).github || (project as Record<string, unknown>).githubUrl || '',
-          certificate_url: (project as Record<string, unknown>).certificate_url || '',
-          video_url: (project as Record<string, unknown>).video_url || '',
-          ppt_url: (project as Record<string, unknown>).ppt_url || '',
-          approval_status: (project as Record<string, unknown>).approval_status || 'pending',
-          enabled: (project as Record<string, unknown>).enabled !== undefined ? (project as Record<string, unknown>).enabled : true,
+          title: project.title?.trim() || '',
+          description: project.description?.trim() || '',
+          role: project.role?.trim() || '',
+          status: project.status || 'ongoing',
+          start_date: project.start_date || project.startDate || null,
+          end_date: project.end_date || project.endDate || null,
+          duration: project.duration?.trim() || '',
+          organization: project.organization?.trim() || '',
+          tech_stack: project.tech_stack || project.tech || project.technologies || [],
+          demo_link: project.demo_link || project.link || project.demoUrl || '',
+          github_link: project.github_link || project.github || project.githubUrl || '',
+          certificate_url: project.certificate_url || '',
+          video_url: project.video_url || '',
+          ppt_url: project.ppt_url || '',
+          approval_status: project.approval_status || 'pending',
+          enabled: project.enabled !== undefined ? project.enabled : true,
           updated_at: nowIso,
         };
 
         // Preserve existing ID if valid UUID
-        const rawId = typeof (project as Record<string, unknown>).id === 'string' ? ((project as Record<string, unknown>).id as string).trim() : null;
+        const rawId = typeof project.id === 'string' ? project.id.trim() : null;
         if (rawId && rawId.length === 36) {
           record.id = rawId;
         } else {
@@ -1909,9 +1948,10 @@ export async function updateProjectsByEmail(email: string, projectsData: Project
     }
 
     return await getStudentByEmail(email);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ updateProjectsByEmail exception:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 }
 
@@ -1922,16 +1962,16 @@ export async function updateSingleTrainingById(trainingId: string, updateData: T
   try {
     const nowIso = new Date().toISOString();
     const updateRecord = {
-      title: ((updateData as Record<string, unknown>).course as string | undefined)?.trim() || ((updateData as Record<string, unknown>).title as string | undefined)?.trim(),
-      organization: ((updateData as Record<string, unknown>).provider as string | undefined)?.trim() || ((updateData as Record<string, unknown>).organization as string | undefined)?.trim() || null,
-      start_date: (updateData as Record<string, unknown>).startDate || (updateData as Record<string, unknown>).start_date || null,
-      end_date: (updateData as Record<string, unknown>).endDate || (updateData as Record<string, unknown>).end_date || null,
-      duration: ((updateData as Record<string, unknown>).duration as string | undefined)?.trim() || null,
-      description: ((updateData as Record<string, unknown>).description as string | undefined)?.trim() || null,
-      status: (updateData as Record<string, unknown>).status || 'ongoing',
-      completed_modules: parseInt(((updateData as Record<string, unknown>).completedModules || (updateData as Record<string, unknown>).completed_modules) as string) || 0,
-      total_modules: parseInt(((updateData as Record<string, unknown>).totalModules || (updateData as Record<string, unknown>).total_modules) as string) || 0,
-      hours_spent: parseInt(((updateData as Record<string, unknown>).hoursSpent || (updateData as Record<string, unknown>).hours_spent) as string) || 0,
+      title: updateData.course?.trim() || updateData.title?.trim(),
+      organization: updateData.provider?.trim() || updateData.organization?.trim() || null,
+      start_date: updateData.startDate || updateData.start_date || null,
+      end_date: updateData.endDate || updateData.end_date || null,
+      duration: updateData.duration?.trim() || null,
+      description: updateData.description?.trim() || null,
+      status: updateData.status || 'ongoing',
+      completed_modules: parseInt(String(updateData.completedModules || updateData.completed_modules)) || 0,
+      total_modules: parseInt(String(updateData.totalModules || updateData.total_modules)) || 0,
+      hours_spent: parseInt(String(updateData.hoursSpent || updateData.hours_spent)) || 0,
       updated_at: nowIso,
     };
 
@@ -1959,12 +1999,17 @@ export async function updateSingleTrainingById(trainingId: string, updateData: T
         .eq('training_id', trainingId);
 
       // Normalize skills to objects with full data
-      const normalizedSkills = skills.map((skill: any) => {
+      const normalizedSkills = skills.map((skill: SkillData | SkillInput | string): NormalizedSkill | null => {
         if (typeof skill === 'object' && skill && skill.name) {
+          // Handle SkillData type with string level
+          const level = typeof skill.level === 'string' ? 
+            ({ 'Beginner': 1, 'Intermediate': 2, 'Advanced': 3, 'Expert': 4 }[skill.level] || 3) :
+            (skill.level || 3);
+          
           return {
             name: skill.name.trim(),
             type: skill.type || 'technical',
-            level: skill.level || 3,
+            level: level,
             description: skill.description || ''
           };
         } else if (typeof skill === 'string') {
@@ -1976,7 +2021,7 @@ export async function updateSingleTrainingById(trainingId: string, updateData: T
           };
         }
         return null;
-      }).filter((skill): skill is NonNullable<typeof skill> => skill !== null);
+      }).filter((skill): skill is NormalizedSkill => skill !== null && !!skill.name);
 
       // Create a map of existing skills by name+type for comparison
       const existingSkillsMap = new Map(
@@ -2046,8 +2091,9 @@ export async function updateSingleTrainingById(trainingId: string, updateData: T
     }
 
     return { success: true, data: updatedTraining, error: null };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ Error updating single training:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 }
