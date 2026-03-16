@@ -6,7 +6,79 @@
  * - Contextual metadata
  * - Log aggregation support
  * - Performance tracking
+ * - Cross-environment compatibility (Vite, Node, Cloudflare Workers)
  */
+
+// ============================================================================
+// ENVIRONMENT DETECTION
+// ============================================================================
+
+interface EnvironmentConfig {
+  logLevel: LogLevel;
+  isProduction: boolean;
+  runtime: 'vite' | 'node' | 'worker' | 'unknown';
+}
+
+/**
+ * Centralized environment detection with fallbacks
+ */
+function detectEnvironment(): EnvironmentConfig {
+  // Default fallback configuration
+  const defaultConfig: EnvironmentConfig = {
+    logLevel: 'info' as LogLevel,
+    isProduction: false,
+    runtime: 'unknown'
+  };
+
+  try {
+    // Check for Vite environment (browser/dev)
+    if (typeof globalThis !== 'undefined' && 'import' in globalThis && typeof import.meta !== 'undefined') {
+      const env = import.meta.env;
+      if (env) {
+        return {
+          logLevel: (env.VITE_LOG_LEVEL as LogLevel) || (env.PROD ? 'info' : 'debug'),
+          isProduction: Boolean(env.PROD),
+          runtime: 'vite'
+        };
+      }
+    }
+  } catch {
+    // Continue to next detection method
+  }
+
+  try {
+    // Check for Node.js environment
+    if (typeof process !== 'undefined' && process.env) {
+      return {
+        logLevel: (process.env.LOG_LEVEL as LogLevel) || (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
+        isProduction: process.env.NODE_ENV === 'production',
+        runtime: 'node'
+      };
+    }
+  } catch {
+    // Continue to next detection method
+  }
+
+  try {
+    // Check for Cloudflare Workers environment
+    if (typeof globalThis !== 'undefined' && 'caches' in globalThis && 'fetch' in globalThis) {
+      // In Workers, we can't easily detect production vs development
+      // Default to info level for Workers
+      return {
+        logLevel: 'info' as LogLevel,
+        isProduction: true, // Assume production for Workers
+        runtime: 'worker'
+      };
+    }
+  } catch {
+    // Continue to fallback
+  }
+
+  return defaultConfig;
+}
+
+// Initialize environment configuration once
+const ENV_CONFIG = detectEnvironment();
 
 // ============================================================================
 // LOG LEVELS
@@ -22,23 +94,7 @@ const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
 };
 
 // Get minimum log level from environment
-const MIN_LOG_LEVEL: LogLevel = (() => {
-  // Check if we're in a browser/Vite environment
-  try {
-    if (typeof globalThis !== 'undefined' && 'import' in globalThis) {
-      const envLevel = import.meta.env?.VITE_LOG_LEVEL as LogLevel | undefined;
-      if (envLevel && ['debug', 'info', 'warn', 'error'].includes(envLevel)) {
-        return envLevel;
-      }
-      return import.meta.env?.PROD ? 'info' : 'debug';
-    }
-  } catch {
-    // Fallback for environments where import.meta is not available
-  }
-  
-  // Fallback for Workers environment - default to 'info'
-  return 'info';
-})();
+const MIN_LOG_LEVEL: LogLevel = ENV_CONFIG.logLevel;
 
 // ============================================================================
 // LOG ENTRY STRUCTURE
@@ -143,13 +199,8 @@ class Logger {
     }
 
     // Send to log aggregation service in production
-    try {
-      const isProduction = import.meta.env?.PROD;
-      if (isProduction) {
-        this.sendToAggregator(entry);
-      }
-    } catch {
-      // Skip aggregation in environments where import.meta is not available
+    if (ENV_CONFIG.isProduction) {
+      this.sendToAggregator(entry);
     }
   }
 
@@ -231,6 +282,13 @@ class Logger {
 // ============================================================================
 
 const loggers: Map<string, Logger> = new Map();
+
+/**
+ * Get environment configuration
+ */
+export function getEnvironmentConfig(): EnvironmentConfig {
+  return ENV_CONFIG;
+}
 
 /**
  * Get or create a logger for a category

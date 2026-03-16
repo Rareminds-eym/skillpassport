@@ -18,7 +18,7 @@ export const CourseSchemas = {
     currency: z.string().length(3).default('USD'),
     tags: CommonSchemas.stringArray.optional(),
     prerequisites: CommonSchemas.stringArray.optional(),
-    learning_outcomes: CommonSchemas.stringArray,
+    learning_outcomes: CommonSchemas.stringArray.min(1), // Ensure at least one learning outcome
     thumbnail_url: CommonSchemas.url.optional(),
     is_published: CommonSchemas.boolean.default(false),
     metadata: CommonSchemas.metadata
@@ -51,7 +51,13 @@ export const CourseSchemas = {
     min_price: z.coerce.number().min(0).optional(),
     max_price: z.coerce.number().min(0).optional(),
     ...CommonSchemas.searchQuery.shape
-  }),
+  }).refine(
+    (data) => !data.min_price || !data.max_price || data.min_price <= data.max_price,
+    {
+      message: "Minimum price cannot be greater than maximum price",
+      path: ["min_price"]
+    }
+  ),
   
   // Module management
   createModule: z.object({
@@ -87,9 +93,18 @@ export const CourseSchemas = {
       title: CommonSchemas.shortText,
       url: CommonSchemas.url,
       type: z.enum(['pdf', 'video', 'link', 'document'])
-    })).optional(),
+    })).max(50).optional(), // Limit resources array to prevent oversized payloads
     is_published: CommonSchemas.boolean.default(false),
     metadata: CommonSchemas.metadata
+  }).superRefine((data, ctx) => {
+    // Conditional validation: video lessons must have video_url
+    if (data.lesson_type === 'video' && !data.video_url) {
+      ctx.addIssue({
+        code: 'custom',
+        message: "Video lessons must have a video URL",
+        path: ["video_url"]
+      });
+    }
   }),
   
   updateLesson: z.object({
@@ -104,9 +119,18 @@ export const CourseSchemas = {
       title: CommonSchemas.shortText,
       url: CommonSchemas.url,
       type: z.enum(['pdf', 'video', 'link', 'document'])
-    })).optional(),
+    })).max(50).optional(), // Limit resources array to prevent oversized payloads
     is_published: CommonSchemas.boolean.optional(),
     metadata: CommonSchemas.metadata
+  }).superRefine((data, ctx) => {
+    // Conditional validation: video lessons must have video_url
+    if (data.lesson_type === 'video' && !data.video_url) {
+      ctx.addIssue({
+        code: 'custom',
+        message: "Video lessons must have a video URL",
+        path: ["video_url"]
+      });
+    }
   }),
   
   // Course enrollment
@@ -130,7 +154,7 @@ export const CourseSchemas = {
   // Course rating and review
   rateCourse: z.object({
     course_id: CommonSchemas.id,
-    rating: z.number().min(1).max(5),
+    rating: z.number().int().min(1).max(5), // Ensure integer rating
     review: CommonSchemas.mediumText.optional(),
     is_anonymous: CommonSchemas.boolean.default(false)
   }),

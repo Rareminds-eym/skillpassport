@@ -26,7 +26,23 @@ export const AiTutorSchemas = {
       lessonContent: CommonSchemas.longText.optional(),
       studentProgress: z.number().min(0).max(100).optional()
     }).optional()
-  }),
+  }).refine(
+    (data) => {
+      // If context is provided, ensure it has meaningful content
+      if (data.context) {
+        const hasMessages = data.context.previousMessages && data.context.previousMessages.length > 0;
+        const hasLessonContent = data.context.lessonContent && data.context.lessonContent.trim().length > 0;
+        const hasProgress = data.context.studentProgress !== undefined;
+        
+        return hasMessages || hasLessonContent || hasProgress;
+      }
+      return true; // Context is optional, so no context is valid
+    },
+    {
+      message: "When context is provided, it must contain at least one meaningful element (previousMessages, lessonContent, or studentProgress)",
+      path: ["context"]
+    }
+  ),
   
   // AI Tutor Feedback
   tutorFeedback: z.object({

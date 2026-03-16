@@ -43,18 +43,82 @@ export async function validateRequest(
     if (options.body && (request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH')) {
       const contentType = request.headers.get('content-type');
       
-      if (contentType?.includes('application/json')) {
+      if (!contentType) {
+        // No content type specified - try to parse as JSON for backward compatibility
+        try {
+          const body = await request.json();
+          validatedData.body = options.body.parse(body);
+        } catch {
+          return {
+            success: false,
+            response: new Response(JSON.stringify({
+              success: false,
+              error: 'MISSING_CONTENT_TYPE',
+              message: 'Content-Type header is required for request body'
+            }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' }
+            })
+          };
+        }
+      } else if (contentType.includes('application/json')) {
         const body = await request.json();
         validatedData.body = options.body.parse(body);
-      } else if (contentType?.includes('application/x-www-form-urlencoded')) {
+      } else if (contentType.includes('application/x-www-form-urlencoded')) {
         const formData = await request.formData();
         const body = Object.fromEntries(formData.entries());
         validatedData.body = options.body.parse(body);
+      } else if (contentType.includes('multipart/form-data')) {
+        // Handle multipart/form-data for file uploads
+        const formData = await request.formData();
+        const body: Record<string, any> = {};
+        
+        for (const [key, value] of formData.entries()) {
+          if (value instanceof File) {
+            // Handle file uploads
+            body[key] = {
+              filename: value.name,
+              mimetype: value.type,
+              size: value.size,
+              data: value // Keep File object for further processing
+            };
+          } else {
+            body[key] = value;
+          }
+        }
+        
+        validatedData.body = options.body.parse(body);
+      } else {
+        // Explicitly reject unsupported content types
+        return {
+          success: false,
+          response: new Response(JSON.stringify({
+            success: false,
+            error: 'UNSUPPORTED_CONTENT_TYPE',
+            message: `Content type '${contentType}' is not supported. Supported types: application/json, application/x-www-form-urlencoded, multipart/form-data`
+          }), {
+            status: 415,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        };
       }
     }
     
-    // Validate path parameters (if provided in context)
-    if (options.params && context?.params) {
+    // Validate path parameters
+    if (options.params) {
+      if (!context?.params) {
+        return {
+          success: false,
+          response: new Response(JSON.stringify({
+            success: false,
+            error: 'MISSING_PATH_PARAMS',
+            message: 'Path parameters validation was requested but no parameters were provided by the framework'
+          }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        };
+      }
       validatedData.params = options.params.parse(context.params);
     }
     

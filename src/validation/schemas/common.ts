@@ -14,6 +14,7 @@ export const CommonSchemas = {
   
   // Date and time
   dateString: z.string().datetime(),
+  dateTime: z.string().datetime(),
   dateOnly: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
   
   // Pagination
@@ -41,15 +42,15 @@ export const CommonSchemas = {
   boolean: z.coerce.boolean(),
   
   // Arrays
-  stringArray: z.array(z.string()),
-  numberArray: z.array(z.number()),
+  stringArray: z.array(z.string()).max(1000),
+  numberArray: z.array(z.number()).max(1000),
   
   // File upload
   fileUpload: z.object({
     filename: z.string().min(1).max(255),
     mimetype: z.string().min(1).max(100),
     size: z.number().int().positive().max(50 * 1024 * 1024), // 50MB max
-    data: z.any().optional() // Use z.any() instead of Buffer for Workers compatibility
+    data: z.unknown().optional() // Use z.unknown() for better type safety
   }),
   
   // Search and filtering
@@ -77,6 +78,7 @@ export const {
   phoneNumber,
   url,
   dateString,
+  dateTime,
   dateOnly,
   paginationQuery,
   id,
