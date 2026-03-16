@@ -12,23 +12,13 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { jsonResponse } from '../../../../src/functions-lib';
+import { callRazorpayWorker } from '../services/razorpay-client';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function getSupabaseAdmin(env: any): SupabaseClient {
   const url = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
   return createClient(url, env.SUPABASE_SERVICE_ROLE_KEY);
-}
-
-async function callRazorpayWorker(path: string, body: object, env: any): Promise<{ ok: boolean; data: any }> {
-  const workerUrl = env.RAZORPAY_WORKER_URL || 'http://localhost:9003';
-  const apiKey = env.RAZORPAY_WORKER_API_KEY;
-  const res = await fetch(`${workerUrl}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
-    body: JSON.stringify(body),
-  });
-  return { ok: res.ok, data: await res.json() };
 }
 
 function calculateEndDate(billingCycle: string, from?: Date): string {

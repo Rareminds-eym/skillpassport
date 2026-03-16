@@ -12,21 +12,7 @@
 
 import { SupabaseClient } from '@supabase/supabase-js';
 import { jsonResponse } from '../../../../src/functions-lib';
-
-// Call razorpay-api worker (server-to-server) for all Razorpay operations
-async function callRazorpayWorker(path: string, body: object, env: any): Promise<any> {
-  const workerUrl = env.RAZORPAY_WORKER_URL || 'http://localhost:8788';
-  const apiKey = env.RAZORPAY_WORKER_API_KEY;
-  const res = await fetch(`${workerUrl}${path}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-API-Key': apiKey,
-    },
-    body: JSON.stringify(body),
-  });
-  return { ok: res.ok, status: res.status, data: await res.json() };
-}
+import { callRazorpayWorker } from '../services/razorpay-client';
 
 // ── Catalog ──────────────────────────────────────────────────────────────────
 
