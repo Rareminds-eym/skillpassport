@@ -160,6 +160,7 @@ const ProfileItemModal = ({
   // Skills management functions
   const addSkill = () => {
     setShowDemoModal(true);
+    return;
     const skillName = formData.newSkillName?.trim();
     if (!skillName) {
       toast.error("Please enter a skill name.");
@@ -287,7 +288,7 @@ const ProfileItemModal = ({
 
   const handleSave = async () => {
     setShowDemoModal(true);
-    if (!validateForm()) return;
+    return;
 
     setIsSaving(true);
     const processedData = processFormData();
