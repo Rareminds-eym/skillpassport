@@ -5,6 +5,25 @@
  * @module features/assessment/types
  */
 
+// Import shared types from main assessment types
+import type {
+  GradeLevel,
+  AttemptStatus,
+  SectionTimings,
+  AssessmentResponses,
+  CategoryMapping,
+  QuestionType,
+  AnswerValue,
+  Question,
+  ResponseScaleOption,
+  AssessmentSection,
+  SJTAnswer,
+  Answers,
+  StreamCategory,
+  StreamOption,
+  CategoryOption
+} from '../../../types/assessment';
+
 // =============================================================================
 // RE-EXPORT ADAPTIVE APTITUDE TYPES
 // =============================================================================
@@ -33,17 +52,28 @@ export {
   TEST_PHASES_ORDER,
 } from '../../../types/adaptiveAptitude';
 
+// Re-export imported types
+export type { 
+  GradeLevel, 
+  AttemptStatus, 
+  SectionTimings, 
+  AssessmentResponses, 
+  CategoryMapping,
+  QuestionType,
+  AnswerValue,
+  Question,
+  ResponseScaleOption,
+  AssessmentSection,
+  SJTAnswer,
+  Answers,
+  StreamCategory,
+  StreamOption,
+  CategoryOption
+};
+
 // ============================================
 // Grade Level Types
 // ============================================
-
-export type GradeLevel =
-  | 'middle'           // Grades 6-8
-  | 'highschool'       // Grades 9-10
-  | 'higher_secondary' // Grades 11-12
-  | 'after10'          // After 10th grade
-  | 'after12'          // After 12th grade
-  | 'college';         // UG/PG students
 
 export interface GradeRange {
   min: number;
@@ -54,97 +84,29 @@ export interface GradeRange {
 // Stream & Category Types
 // ============================================
 
-export type StreamCategory = 'science' | 'commerce' | 'arts';
-
-export interface StreamOption {
-  id: string;
-  label: string;
-  riasec?: string[];
-  aptitudeStrengths?: string[];
-  description?: string; // Optional description for after10 streams
-}
-
-export interface CategoryOption {
-  id: StreamCategory;
-  label: string;
-  description: string;
-  icon?: React.ReactNode;
-}
+// StreamCategory, StreamOption, CategoryOption are imported from main assessment.ts
 
 // ============================================
 // Question Types
 // ============================================
 
-export type QuestionType =
-  | 'mcq'           // Multiple choice
-  | 'likert'        // Rating scale
-  | 'sjt'           // Situational judgment
-  | 'multiselect'   // Multiple selection
-  | 'text';         // Free text
-
-export interface Question {
-  id: string | number;
-  text: string;
-  type?: QuestionType;
-  partType?: 'sjt';
-  options?: string[];
-  optionLabels?: string[];
-  correct?: string;
-  maxSelections?: number;
-  subtag?: string;
-}
-
-export interface ResponseScaleOption {
-  value: number;
-  label: string;
-}
+// QuestionType, Question, ResponseScaleOption are imported from main assessment.ts
 
 // ============================================
 // Section Types
 // ============================================
 
-export interface AssessmentSection {
-  id: string;
-  title: string;
-  description: string;
-  color: string;
-  icon?: React.ReactNode;
-  questions: Question[];
-  instruction?: string;
-  responseScale?: ResponseScaleOption[];
-  isTimed?: boolean;
-  timeLimit?: number;
-  isAptitude?: boolean;
-  isAdaptive?: boolean;
-  individualTimeLimit?: number;
-  individualQuestionCount?: number;
-}
+// AssessmentSection is imported from main assessment.ts
 
 // ============================================
 // Answer Types
 // ============================================
 
-export interface SJTAnswer {
-  best: string;
-  worst: string;
-}
-
-export type AnswerValue =
-  | number
-  | string
-  | string[]
-  | SJTAnswer
-  | undefined;
-
-export interface Answers {
-  [questionId: string]: AnswerValue;
-}
+// SJTAnswer, AnswerValue, Answers are imported from main assessment.ts
 
 // ============================================
 // Assessment Attempt Types
 // ============================================
-
-export type AttemptStatus = 'in_progress' | 'completed' | 'abandoned';
 
 export interface AssessmentAttempt {
   id: string;
@@ -159,10 +121,6 @@ export interface AssessmentAttempt {
   completed_at?: string;
   adaptive_aptitude_session_id?: string;
   restoredResponses?: Answers;
-}
-
-export interface SectionTimings {
-  [sectionId: string]: number;
 }
 
 // ============================================
