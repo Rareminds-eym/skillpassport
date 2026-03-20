@@ -22,7 +22,7 @@ import {
   Bell,
   FileText
 } from 'lucide-react';
-import { useAuth } from '@/features/auth';
+
 import { useStudentProfile } from '@/features/student-profile';
 import AppliedJobsService from '../../services/appliedJobsService';
 import { studentPipelineService } from '@/features/student-profile/api';

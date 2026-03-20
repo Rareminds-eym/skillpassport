@@ -23,8 +23,6 @@ import {
   updateCourse
 } from '../../services/educator/coursesService';
 import toast from 'react-hot-toast';
-// @ts-ignore - AuthContext is a .jsx file
-import { useAuth } from '@/features/auth';
 import { supabase } from '../../lib/supabaseClient';
 import { View } from 'lucide-react';
 import { getLogger } from '../../config/logging';

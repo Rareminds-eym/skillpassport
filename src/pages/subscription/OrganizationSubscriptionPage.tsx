@@ -16,9 +16,10 @@ import {
   OrganizationSubscriptionDashboard,
   PoolAssignmentsModal
 } from '@/features/subscription/ui/organization';
-import type { PoolFormData, PoolUpdateData } from '@/features/subscription/ui/organization';
+import type { PoolFormData } from '@/features/subscription/ui/organization/CreatePoolModal';
+import type { PoolUpdateData } from '@/features/subscription/ui/organization/EditPoolModal';
 import { useOrganizationSubscription } from '@/features/subscription/model';
-import { useAuth } from '@/features/auth';
+import { useUser } from '@/stores';
 import { supabase } from '../../lib/supabaseClient';
 
 interface OrganizationDetails {

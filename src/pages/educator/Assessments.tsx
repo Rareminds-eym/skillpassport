@@ -26,6 +26,7 @@ import { useEducatorSchool } from '../../hooks/useEducatorSchool';
 import { supabase } from '../../lib/supabaseClient';
 import { getPagesApiUrl } from '../../utils/pagesUrl';
 import { getLogger } from '../../config/logging';
+import { useUser } from '@/stores';
 
 const logger = getLogger('EducatorAssessments');
 import { getPagesApiUrl } from '../../utils/pagesUrl';

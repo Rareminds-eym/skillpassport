@@ -42,7 +42,6 @@ import {
 } from './ProfileEditModals';
 import { useStudentDataByEmail } from '@/hooks/useStudentDataByEmail';
 import { useStudentCertificates } from '@/hooks/useStudentCertificates';
-import { useAuth } from '@/context/AuthContext';
 import { useStudentRealtimeActivities } from '@/hooks/useStudentRealtimeActivities';
 console.log('🔍 [Dashboard] useStudentDataByEmail imported:', useStudentDataByEmail);
 console.log('🔍 [Dashboard] typeof useStudentDataByEmail:', typeof useStudentDataByEmail);

@@ -14,7 +14,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { extractPaymentParams, logFailedTransaction } from '@/features/subscription/api';
-import { useAuth } from '@/features/auth';
+import { useUserRole } from '@/stores';
 
 // Issue Card Component
 const IssueCard = ({ icon: Icon, title, description, index }) => (
@@ -32,7 +32,7 @@ const IssueCard = ({ icon: Icon, title, description, index }) => (
 function PaymentFailure() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { role } = useAuth();
+  const { role } = useUserRole();
   const [retryAttempts, setRetryAttempts] = useState(0);
   const [showSupportModal, setShowSupportModal] = useState(false);
 

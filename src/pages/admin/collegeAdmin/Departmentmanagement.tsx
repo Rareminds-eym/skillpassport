@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useAuth } from '@/features/auth';
+import { useUser } from '@/stores';
 import { departmentService, DepartmentWithStats, Faculty } from '@/services/college/departmentService';
 import {
     AcademicCapIcon,

@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/shared/lib/hooks';
 import { supabase } from '@/shared/api';
-import { useAuth } from '@/features/auth';
+import { useUser } from '@/stores';
 import { CollegeAdminNotificationService } from '@/services/collegeAdminNotificationService';
 import TrainingDetailsModal from '@/components/admin/schoolAdmin/TrainingDetailsModal';
 import ExperienceDetailsModal from '@/components/admin/schoolAdmin/ExperienceDetailsModal';

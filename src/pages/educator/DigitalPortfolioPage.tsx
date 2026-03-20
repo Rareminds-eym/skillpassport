@@ -21,7 +21,6 @@ import { useEducatorSchool } from '../../hooks/useEducatorSchool';
 import { useSearch } from '../../stores';
 import SearchBar from '../../components/common/SearchBar';
 import Pagination from '../../components/educator/Pagination';
-import { useAuth } from '@/features/auth';
 import { usePermission } from '../../hooks/usePermissions';
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {

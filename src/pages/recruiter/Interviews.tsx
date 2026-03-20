@@ -22,7 +22,7 @@ import {
 import { supabase } from '../../lib/supabaseClient';
 import { createInterview, sendReminder } from '../../services/interviewService';
 import { createNotification } from "../../services/notificationService.ts"; // ✅ Import notification service
-import { useAuth } from "@/features/auth"; // ✅ Import auth context
+import { useUser } from '@/stores';
 
 // Define TypeScript interfaces
 interface Scorecard {

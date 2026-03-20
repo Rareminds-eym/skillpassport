@@ -12,7 +12,7 @@ import {
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import educatorIllustration from "/login/yyu.png";
-import { useAuth } from "@/features/auth/model";
+import { useAuthActions } from "@/stores";
 import { supabase } from "@/shared/api";
 import { FeatureCard } from "@/shared/ui";
 
@@ -24,7 +24,7 @@ export default function LoginEducator() {
   const [error, setError] = useState("");
 
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login } = useAuthActions();
 
 
   const handleSubmit = async (e: React.FormEvent) => {

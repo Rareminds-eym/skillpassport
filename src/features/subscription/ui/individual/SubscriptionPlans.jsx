@@ -5,7 +5,7 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import AddOnMarketplace from '@/components/Subscription/AddOnMarketplace';
 import { OrganizationPurchasePanel } from '@/components/Subscription/Organization';
 import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
-import { useAuth } from '@/features/auth';
+import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/stores';
 import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parseStudentType } from '@/utils/getEntityContent';
 import { calculateDaysRemaining, isActiveOrPaused } from '@/features/subscription/lib';
 
@@ -622,7 +622,10 @@ function SubscriptionPlans() {
   }, [setSearchParams]);
 
   // Use new authentication hook
-  const { isAuthenticated, user, loading: authLoading, role: userRole } = useAuth();
+  const isAuthenticated = useIsAuthenticated();
+  const user = useUser();
+  const authLoading = useAuthLoading();
+  const { role: userRole } = useUserRole();
 
   // Debug logging for redirect loop investigation
   const DEBUG = import.meta.env.DEV || localStorage.getItem('DEBUG_SUBSCRIPTION') === 'true';

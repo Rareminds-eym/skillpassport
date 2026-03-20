@@ -1,4 +1,4 @@
-import { useAuth } from "@/features/auth";
+import { useUser } from '@/stores';
 import { reportsService } from "@/services/college/reportsService";
 import { ApexOptions } from "apexcharts";
 import jsPDF from 'jspdf';

@@ -12,6 +12,11 @@ import {
   MessageCircle as MessageCircleIcon
 } from 'lucide-react';
 import { useStudentProfile, useStudentActivity, useStudentMessages } from '@/features/student-profile';
+import { useStudentDataByEmail } from '@/hooks/useStudentDataByEmail';
+import { useStudentMessageNotifications } from '@/hooks/useStudentMessageNotifications';
+import { useStudentUnreadCount } from '@/hooks/useStudentMessages';
+import { useStudentRealtimeActivities } from '@/hooks/useStudentRealtimeActivities';
+import { useUser, useTheme } from '@/stores';
 import { useAIJobMatching } from '../../hooks/useAIJobMatching';
 import SuggestedNextSteps from '../../components/Students/components/SuggestedNextSteps';
 import RecentUpdatesCard from '../../components/Students/components/RecentUpdatesCard';
@@ -21,7 +26,7 @@ import {
 import { showProfileUpdateToast, showProfileErrorToast, PROFILE_UPDATE_MESSAGES } from '../../utils/profileToast';
 
 const MySkills = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const { theme } = useTheme();
   const userEmail = user?.email;
   const { studentData, updateTechnicalSkills, updateSoftSkills } = useStudentDataByEmail(userEmail, false);

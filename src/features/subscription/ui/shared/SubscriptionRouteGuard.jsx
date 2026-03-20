@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/features/auth';
+import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/stores';
 import { useSubscriptionQuery } from '@/features/subscription/model';
 import { isActiveOrPaused, isManageable } from '@/features/subscription/lib';
 
@@ -51,7 +51,9 @@ function getUserTypeFromPath(pathname) {
 const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading: authLoading, role } = useAuth();
+  const user = useUser();
+  const authLoading = useAuthLoading();
+  const { role } = useUserRole();
   const { subscriptionData, loading: subscriptionLoading } = useSubscriptionQuery();
   const [redirecting, setRedirecting] = useState(false);
   const managePath = useMemo(() => getManagePath(role), [role]);
