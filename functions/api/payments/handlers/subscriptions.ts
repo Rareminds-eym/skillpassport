@@ -112,7 +112,7 @@ export async function handleCreateOrder(body: any, userId: string, env: any): Pr
     amount: order.amount,
     currency: order.currency,
     receipt: order.receipt,
-    key: rzpData.key_id,
+    key: env.RAZORPAY_KEY_ID,
   });
 }
 
