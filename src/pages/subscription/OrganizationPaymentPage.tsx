@@ -22,7 +22,7 @@ import {
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/features/auth';
+import { useUser } from '@/stores';
 import { initiateOrganizationPayment, OrganizationPurchaseData } from '../../services/organization/organizationPaymentService';
 
 interface OrganizationConfig {

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '@/features/auth';
+import { useUser } from '@/stores';
 import MessageService from '../services/messageService';
 import { UICandidate } from './useStudents';
 

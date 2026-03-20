@@ -11,9 +11,35 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  test: {
+    globals: true,
+    environment: 'node',
+    setupFiles: [],
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/cypress/**',
+      '**/.{idea,git,cache,output,temp}/**',
+      '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*'
+    ],
+  },
   optimizeDeps: {
     exclude: ['lucide-react'],
-    include: ['react', 'react-dom', 'react-router-dom', 'react/jsx-runtime'],
+    include: [
+      'react',
+      'react-dom',
+      'react/jsx-runtime',
+      'react-router-dom',
+      'framer-motion',
+      'react-icons/ri',
+      'react-icons/fa',
+      'react-icons/md',
+      'react-icons/io',
+      'react-icons/ai',
+      'react-icons/bs',
+      'react-icons/hi',
+      'react-icons/fi',
+    ],
   },
   build: {
     // Reduce memory usage during build
@@ -25,6 +51,7 @@ export default defineConfig({
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
+        // Let Vite handle chunk splitting automatically to avoid circular dependency issues
         manualChunks: undefined,
       },
     },

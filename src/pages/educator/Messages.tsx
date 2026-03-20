@@ -28,7 +28,6 @@ import { useCollegeLecturerMessages } from '../../hooks/useCollegeLecturerMessag
 import { useCollegeEducatorAdminConversationsForEducator } from '../../hooks/useCollegeEducatorAdminConversations.js';
 import { useCollegeEducatorAdminMessagesForEducator } from '../../hooks/useCollegeEducatorAdminMessages.js';
 import { formatDistanceToNow } from 'date-fns';
-import { useAuth } from '@/features/auth';
 import { useGlobalPresence } from '../../stores/globalPresenceStore.js';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
 import { useTypingIndicator } from '@/features/messaging';

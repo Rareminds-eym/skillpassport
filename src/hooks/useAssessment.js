@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAuth } from '@/features/auth';
+import { useUser } from '@/stores';
 import { supabase } from '../lib/supabaseClient';
 import * as assessmentService from '../services/assessmentService';
 

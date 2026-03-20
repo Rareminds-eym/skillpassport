@@ -23,7 +23,7 @@ import { BriefcaseIcon as BriefcaseSolidIcon } from '@heroicons/react/24/solid';
 import React, { useEffect, useState } from 'react';
 import AdvancedRequisitionFilters from '../../components/Recruiter/components/AdvancedRequisitionFilters';
 import RequisitionImport from '../../components/Recruiter/RequisitionImport';
-import { useAuth } from '@/features/auth';
+import { useUser } from '@/stores';
 import { supabase } from '../../lib/supabaseClient';
 import { RequisitionFilters } from '../../types/recruiter';
 import { getLogger } from '../../config/logging';

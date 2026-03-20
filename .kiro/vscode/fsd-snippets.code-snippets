@@ -1,0 +1,240 @@
+{
+  "FSD Entity Model Types": {
+    "prefix": "fsd-entity-types",
+    "body": [
+      "export interface ${1:EntityName} {",
+      "  id: string;",
+      "  createdAt: string;",
+      "  updatedAt: string;",
+      "  $0",
+      "}",
+      "",
+      "export interface Create${1:EntityName}Data {",
+      "  // Add creation data properties",
+      "}",
+      "",
+      "export interface Update${1:EntityName}Data {",
+      "  // Add update data properties",
+      "}"
+    ],
+    "description": "Create FSD entity type definitions"
+  },
+  "FSD Entity Validation": {
+    "prefix": "fsd-entity-validation",
+    "body": [
+      "import type { ${1:EntityName} } from './types';",
+      "",
+      "export function validate${1:EntityName}(data: unknown): data is ${1:EntityName} {",
+      "  if (!data || typeof data !== 'object') return false;",
+      "  const entity = data as Record<string, unknown>;",
+      "  return (",
+      "    typeof entity.id === 'string' &&",
+      "    typeof entity.createdAt === 'string' &&",
+      "    typeof entity.updatedAt === 'string'",
+      "    $0",
+      "  );",
+      "}"
+    ],
+    "description": "Create FSD entity validation function"
+  },
+  "FSD Entity Utils": {
+    "prefix": "fsd-entity-utils",
+    "body": [
+      "import type { ${1:EntityName} } from './types';",
+      "",
+      "export function get${1:EntityName}DisplayName(entity: ${1:EntityName}): string {",
+      "  return entity.id;",
+      "}",
+      "",
+      "export function isSame${1:EntityName}(a: ${1:EntityName}, b: ${1:EntityName}): boolean {",
+      "  return a.id === b.id;",
+      "}",
+      "",
+      "export function filter${1:EntityName}sById(entities: ${1:EntityName}[], ids: string[]): ${1:EntityName}[] {",
+      "  return entities.filter(entity => ids.includes(entity.id));",
+      "}",
+      "$0"
+    ],
+    "description": "Create FSD entity utility functions"
+  },
+  "FSD Entity API Queries": {
+    "prefix": "fsd-entity-queries",
+    "body": [
+      "import type { ${1:EntityName} } from '../model';",
+      "",
+      "export async function get${1:EntityName}s(): Promise<${1:EntityName}[]> {",
+      "  // TODO: Implement API call",
+      "  throw new Error('get${1:EntityName}s not implemented');",
+      "}",
+      "",
+      "export async function get${1:EntityName}(id: string): Promise<${1:EntityName}> {",
+      "  // TODO: Implement API call",
+      "  throw new Error('get${1:EntityName} not implemented');",
+      "}",
+      "$0"
+    ],
+    "description": "Create FSD entity API query functions"
+  },
+  "FSD Entity API Mutations": {
+    "prefix": "fsd-entity-mutations",
+    "body": [
+      "import type { ${1:EntityName}, Create${1:EntityName}Data, Update${1:EntityName}Data } from '../model';",
+      "",
+      "export async function create${1:EntityName}(data: Create${1:EntityName}Data): Promise<${1:EntityName}> {",
+      "  // TODO: Implement API call",
+      "  throw new Error('create${1:EntityName} not implemented');",
+      "}",
+      "",
+      "export async function update${1:EntityName}(id: string, data: Update${1:EntityName}Data): Promise<${1:EntityName}> {",
+      "  // TODO: Implement API call",
+      "  throw new Error('update${1:EntityName} not implemented');",
+      "}",
+      "",
+      "export async function delete${1:EntityName}(id: string): Promise<void> {",
+      "  // TODO: Implement API call",
+      "  throw new Error('delete${1:EntityName} not implemented');",
+      "}",
+      "$0"
+    ],
+    "description": "Create FSD entity API mutation functions"
+  },
+  "FSD Entity Card Component": {
+    "prefix": "fsd-entity-card",
+    "body": [
+      "import type { ${1:EntityName} } from '../model';",
+      "",
+      "export interface ${1:EntityName}CardProps {",
+      "  entity: ${1:EntityName};",
+      "  onClick?: (entity: ${1:EntityName}) => void;",
+      "}",
+      "",
+      "export function ${1:EntityName}Card({ entity, onClick }: ${1:EntityName}CardProps) {",
+      "  return (",
+      "    <div ",
+      "      className=\"p-4 border rounded-lg cursor-pointer hover:shadow-md transition-shadow\"",
+      "      onClick={() => onClick?.(entity)}",
+      "    >",
+      "      <h3 className=\"font-semibold\">{entity.id}</h3>",
+      "      $0",
+      "    </div>",
+      "  );",
+      "}"
+    ],
+    "description": "Create FSD entity card component"
+  },
+  "FSD Entity Public API": {
+    "prefix": "fsd-entity-index",
+    "body": [
+      "/**",
+      " * ${1:EntityName} Entity - Public API",
+      " * Central export point for all ${2:entityName} entity functionality",
+      " */",
+      "",
+      "// Model exports",
+      "export type {",
+      "  ${1:EntityName},",
+      "  Create${1:EntityName}Data,",
+      "  Update${1:EntityName}Data,",
+      "} from './model';",
+      "",
+      "export {",
+      "  validate${1:EntityName},",
+      "  get${1:EntityName}DisplayName,",
+      "  isSame${1:EntityName},",
+      "} from './model';",
+      "",
+      "// API exports",
+      "export {",
+      "  get${1:EntityName}s,",
+      "  get${1:EntityName},",
+      "  create${1:EntityName},",
+      "  update${1:EntityName},",
+      "  delete${1:EntityName},",
+      "} from './api';",
+      "",
+      "// UI exports",
+      "export { ${1:EntityName}Card } from './ui';",
+      "$0"
+    ],
+    "description": "Create FSD entity public API index"
+  },
+  "FSD Widget Component": {
+    "prefix": "fsd-widget",
+    "body": [
+      "import type { ${1:WidgetName}Props } from '../model';",
+      "",
+      "/**",
+      " * ${1:WidgetName} Widget",
+      " * ",
+      " * Complex composite UI component that combines multiple features/entities",
+      " * ",
+      " * Dependencies:",
+      " * - Entities: ${2:list entities}",
+      " * - Features: ${3:list features}",
+      " * - Shared: ${4:list shared components}",
+      " */",
+      "export function ${1:WidgetName}({ className }: ${1:WidgetName}Props) {",
+      "  return (",
+      "    <div className={className}>",
+      "      <h2>${1:WidgetName}</h2>",
+      "      $0",
+      "    </div>",
+      "  );",
+      "}"
+    ],
+    "description": "Create FSD widget component"
+  },
+  "FSD Widget Types": {
+    "prefix": "fsd-widget-types",
+    "body": [
+      "export interface ${1:WidgetName}Props {",
+      "  className?: string;",
+      "  $0",
+      "}",
+      "",
+      "export interface ${1:WidgetName}State {",
+      "  isLoading: boolean;",
+      "}"
+    ],
+    "description": "Create FSD widget type definitions"
+  },
+  "FSD Widget Store": {
+    "prefix": "fsd-widget-store",
+    "body": [
+      "import { create } from 'zustand';",
+      "import type { ${1:WidgetName}State } from './types';",
+      "",
+      "interface ${1:WidgetName}Store extends ${1:WidgetName}State {",
+      "  setLoading: (isLoading: boolean) => void;",
+      "  $0",
+      "}",
+      "",
+      "export const use${1:WidgetName}Store = create<${1:WidgetName}Store>((set) => ({",
+      "  isLoading: false,",
+      "  setLoading: (isLoading) => set({ isLoading }),",
+      "}));"
+    ],
+    "description": "Create FSD widget Zustand store"
+  },
+  "FSD Import Entity": {
+    "prefix": "import-entity",
+    "body": [
+      "import { ${2:EntityName}, get${2:EntityName}s } from '@/entities/${1:entity-name}';"
+    ],
+    "description": "Import from FSD entity"
+  },
+  "FSD Import Widget": {
+    "prefix": "import-widget",
+    "body": [
+      "import { ${2:WidgetName} } from '@/widgets/${1:widget-name}';"
+    ],
+    "description": "Import from FSD widget"
+  },
+  "FSD Import Feature": {
+    "prefix": "import-feature",
+    "body": [
+      "import { ${2:FeatureName} } from '@/features/${1:feature-name}';"
+    ],
+    "description": "Import from FSD feature"
+  }
+}

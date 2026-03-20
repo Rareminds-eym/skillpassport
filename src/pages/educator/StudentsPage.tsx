@@ -13,7 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useStudents, UICandidate } from '../../hooks/useStudents';
 import { useEducatorSchool } from '../../hooks/useEducatorSchool';
-import { useSearch } from '../../stores';
+import { useSearch, useUser } from '../../stores';
 import SearchBar from '../../components/common/SearchBar';
 import Pagination from '../../components/educator/Pagination';
 import AddStudentModal from '../../components/educator/modals/Addstudentmodal';
@@ -22,7 +22,6 @@ import DeleteStudentModal from '../../components/educator/modals/DeleteStudentMo
 import BulkDeleteStudentsModal from '../../components/educator/modals/BulkDeleteStudentsModal';
 import { UserPlusIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/features/auth';
 
 const FilterSection = ({ title, children, defaultOpen = false }: {
   title: string;

@@ -14,7 +14,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { extractPaymentParams, logFailedTransaction } from '@/features/subscription/api';
-import { useAuth } from '@/features/auth';
+import { useUserRole } from '@/stores';
 
 // Issue Card Component
 const IssueCard = ({ icon: Icon, title, description, index }) => (

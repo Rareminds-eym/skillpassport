@@ -1,12 +1,16 @@
 // Re-export adaptive aptitude types
 export * from './adaptiveAptitude';
 
-export interface User {
-  id: string;
-  nmId: string;
-  email: string;
-  teamname: string;
-}
+// Re-export User entity types for backward compatibility
+export type { User, UserRole } from '@/entities/user';
+
+// Legacy User interface - deprecated, use @/entities/user instead
+// export interface User {
+//   id: string;
+//   nmId: string;
+//   email: string;
+//   teamname: string;
+// }
 
 export interface AuthContextType {
   user: User | null;
@@ -22,6 +26,9 @@ export interface AuthContextType {
   setIsAuthenticated: (auth: boolean) => void;
 }
 
+// Re-export Course entity types for backward compatibility
+export type { Course } from '@/entities/course';
+
 export interface Question {
   id: number;
   text: string;
@@ -31,13 +38,14 @@ export interface Question {
   marks?: number;
 }
 
-export interface Course {
-  id: string;
-  title: string;
-  description: string;
-  icon: React.ElementType;
-  courseId: number;
-}
+// Legacy Course interface - deprecated, use @/entities/course instead
+// export interface Course {
+//   id: string;
+//   title: string;
+//   description: string;
+//   icon: React.ElementType;
+//   courseId: number;
+// }
 
 export interface TestAnswer {
   questionId: number;

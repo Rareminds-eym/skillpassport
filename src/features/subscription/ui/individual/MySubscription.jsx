@@ -25,7 +25,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { SubscriptionDashboard } from '@/components/Subscription/SubscriptionDashboard';
 import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
-import { useAuth } from '@/features/auth';
+import { useUser, useUserRole, useAuthLoading } from '@/stores';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getUserSubscriptions } from '@/features/subscription/api';
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '@/services/paymentsApiService';
@@ -80,7 +80,9 @@ function MySubscription() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { user, role, loading: authLoading } = useAuth();
+  const user = useUser();
+  const { role } = useUserRole();
+  const authLoading = useAuthLoading();
   const { subscriptionData, loading: subscriptionLoading, refreshSubscription } = useSubscriptionQuery();
 
   // Get settings, dashboard paths, and user type from current URL (more reliable than role)

@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/features/auth/model/AuthContext';
+import { useUser } from '@/stores';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getActiveSubscription } from '../api/subscriptionService';
 import paymentsApiService from '@/services/paymentsApiService';
@@ -48,7 +48,7 @@ const formatSubscriptionData = (data) => {
 };
 
 export const useSubscription = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const [subscriptionData, setSubscriptionData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
