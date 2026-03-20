@@ -3,9 +3,10 @@ import globals from 'globals';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
+import fsdRules from './.kiro/eslint/fsd-rules.js';
 
 export default tseslint.config(
-  { ignores: ['dist'] },
+  { ignores: ['dist', '.kiro/templates/**'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
@@ -24,5 +25,7 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
     },
-  }
+  },
+  // FSD Architecture compliance rules
+  fsdRules
 );

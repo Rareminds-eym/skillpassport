@@ -4,7 +4,8 @@ import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AddOnMarketplace, OrganizationPurchasePanel } from '@/features/subscription/ui';
 import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
-import { useAuth } from '@/features/auth';
+import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/stores';
+import { useSubscriptionAccess } from '@/stores/subscriptionStore';
 
 import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parseStudentType } from '../../utils/getEntityContent';
 import { calculateDaysRemaining, isActiveOrPaused } from '../../utils/subscriptionHelpers';
@@ -621,7 +622,7 @@ function SubscriptionPlans() {
     });
   }, [setSearchParams]);
 
-  // Use Zustand auth hooks
+  // Use auth context
   const isAuthenticated = useIsAuthenticated();
   const user = useUser();
   const authLoading = useAuthLoading();

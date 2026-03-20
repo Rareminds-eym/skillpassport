@@ -1,0 +1,9 @@
+{
+  "name": "migration-scripts",
+  "version": "1.0.0",
+  "scripts": {
+    "analyze": "tsx analyze-deprecated.ts",
+    "cleanup:components": "tsx cleanup-components.ts",
+    "cleanup:all": "tsx cleanup-all-deprecated.ts"
+  }
+}

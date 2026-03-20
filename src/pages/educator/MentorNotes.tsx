@@ -24,8 +24,6 @@ import { supabase } from "../../lib/supabaseClient";
 import {
     saveMentorNote,
 } from "../../services/educator/mentorNotes";
-// @ts-ignore
-import { useAuth } from "@/features/auth";
 
 interface MentorNote {
   id: string;

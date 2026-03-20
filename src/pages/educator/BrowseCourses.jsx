@@ -15,6 +15,9 @@ import {
 import { supabase } from '../../lib/supabaseClient';
 import { motion } from 'framer-motion';
 import CourseDetailModal from '@/features/courses/ui/CourseDetailModal';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('BrowseCourses');
 
 const BrowseCourses = () => {
   const navigate = useNavigate();

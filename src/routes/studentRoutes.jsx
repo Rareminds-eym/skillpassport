@@ -3,16 +3,16 @@ import { Navigate, Route } from "react-router-dom";
 import SubscriptionProtectedRoute from "../components/Subscription/SubscriptionProtectedRoute";
 import StudentLayout from "../layouts/StudentLayout";
 
-// Digital Passport imports
-import HomePage from '../pages/digital-pp/HomePage';
-import DigitalPassportPage from '../pages/digital-pp/PassportPage';
-import DigitalPortfolioPage from '../pages/digital-pp/PortfolioPage';
-import DigitalVideoPortfolioPage from '../pages/digital-pp/VideoPortfolioPage';
-import DigitalExportSettings from '../pages/digital-pp/settings/ExportSettings';
-import DigitalLayoutSettings from '../pages/digital-pp/settings/LayoutSettings';
-import DigitalProfileSettings from '../pages/digital-pp/settings/ProfileSettings';
-import DigitalSharingSettings from '../pages/digital-pp/settings/SharingSettings';
-import DigitalThemeSettings from '../pages/digital-pp/settings/ThemeSettings';
+// Digital Passport imports - lazy loaded
+const HomePage = lazy(() => import('../pages/digital-pp/HomePage'));
+const DigitalPassportPage = lazy(() => import('../pages/digital-pp/PassportPage'));
+const DigitalPortfolioPage = lazy(() => import('../pages/digital-pp/PortfolioPage'));
+const DigitalVideoPortfolioPage = lazy(() => import('../pages/digital-pp/VideoPortfolioPage'));
+const DigitalExportSettings = lazy(() => import('../pages/digital-pp/settings/ExportSettings'));
+const DigitalLayoutSettings = lazy(() => import('../pages/digital-pp/settings/LayoutSettings'));
+const DigitalProfileSettings = lazy(() => import('../pages/digital-pp/settings/ProfileSettings'));
+const DigitalSharingSettings = lazy(() => import('../pages/digital-pp/settings/SharingSettings'));
+const DigitalThemeSettings = lazy(() => import('../pages/digital-pp/settings/ThemeSettings'));
 
 const STUDENT_ROLES = ["student", "school_student", "college_student", "learner"];
 

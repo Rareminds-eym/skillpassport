@@ -25,7 +25,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { SubscriptionDashboard } from '@/features/subscription/ui/individual';
 import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
-import { useAuth } from '@/features/auth';
+import { useUser } from '@/stores';
 import { supabase } from '../../lib/supabaseClient';
 import { getUserSubscriptions } from '@/features/subscription/api';
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '../../services/paymentsApiService';

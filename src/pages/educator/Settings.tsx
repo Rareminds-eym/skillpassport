@@ -22,8 +22,6 @@ import {
     UserIcon
 } from '@heroicons/react/24/outline';
 import React, { useState, useRef, useEffect } from 'react';
-// @ts-ignore - JSX file without declaration
-import { useAuth } from '@/features/auth';
 import { supabase } from '../../lib/supabaseClient';
 import { validateFile, uploadFile, getDocumentUrl } from '../../services/fileUploadService';
 import { storageService } from '../../services/storageService';

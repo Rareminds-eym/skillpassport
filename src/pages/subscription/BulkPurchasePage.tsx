@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import BulkPurchaseWizard, { PurchaseData } from '@/features/subscription/ui/organization/BulkPurchaseWizard';
-import { useAuth } from '@/features/auth';
+import { useUser } from '@/stores';
 import { supabase } from '../../lib/supabaseClient';
 import { organizationMemberService } from '../../services/organization/organizationMemberService';
 import { useSubscriptionPlansData } from '@/features/subscription/model';

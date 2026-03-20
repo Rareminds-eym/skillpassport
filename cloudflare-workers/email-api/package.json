@@ -12,6 +12,6 @@
     "worker-mailer": "^1.2.1"
   },
   "devDependencies": {
-    "wrangler": "^3.0.0"
+    "wrangler": "^3.114.16"
   }
 }

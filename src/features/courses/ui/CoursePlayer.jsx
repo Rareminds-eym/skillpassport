@@ -19,7 +19,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { AITutorPanel, VideoLearningPanel } from '@/components/ai-tutor';
 import RestoreProgressModal from './RestoreProgressModal';
 import { Badge, Button, Card, CardContent } from '@/shared/ui';
-import { useAuth } from '@/context/AuthContext';
+import { useUser, useUserRole } from '@/stores/authStore';
 import { useSessionRestore } from '@/hooks/useSessionRestore';
 import { supabase } from '@/shared/api/supabaseClient';
 import { generateCourseCertificate } from '@/services/certificateService';
@@ -31,11 +31,12 @@ import { getAuthenticatedMediaUrl, needsAuthentication } from '@/services/authen
 const CoursePlayer = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const user = useUser();
+  const { role } = useUserRole();
 
   // Get the correct back navigation path based on user role
   const getBackPath = () => {
-    switch (user?.role) {
+    switch (role) {
       case 'educator':
         return '/educator/browse-courses';
       case 'student':
