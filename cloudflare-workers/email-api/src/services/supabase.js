@@ -5,8 +5,8 @@
 import { createClient } from '@supabase/supabase-js';
 
 export function createSupabaseClient(env) {
-  const supabaseUrl = env.VITE_SUPABASE_URL;
-  const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
+  const supabaseKey = env.SUPABASE_SERVICE_KEY || env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
     return null;

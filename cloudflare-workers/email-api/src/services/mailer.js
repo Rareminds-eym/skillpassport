@@ -6,7 +6,7 @@ import { WorkerMailer } from 'worker-mailer';
 import { buildSmtpConfig, getFromAddress } from '../config/smtp.js';
 
 export async function sendEmail(env, emailData) {
-  const { to, subject, html, text, from, fromName } = emailData;
+  const { to, subject, html, text, from, fromName, attachments } = emailData;
 
   const smtpConfig = buildSmtpConfig(env);
   const fromAddress = getFromAddress(env, from, fromName);
@@ -14,14 +14,25 @@ export async function sendEmail(env, emailData) {
 
   console.log(`Sending email to: ${recipients.join(', ')}`);
   console.log(`From: ${fromAddress.name} <${fromAddress.email}>`);
+  
+  if (attachments && attachments.length > 0) {
+    console.log(`With ${attachments.length} attachment(s)`);
+  }
 
-  await WorkerMailer.send(smtpConfig, {
+  const emailPayload = {
     from: fromAddress,
     to: recipients,
     subject: subject,
     text: text || 'Please view this email in an HTML-capable email client.',
     html: html,
-  });
+  };
+
+  // Add attachments if provided
+  if (attachments && attachments.length > 0) {
+    emailPayload.attachments = attachments;
+  }
+
+  await WorkerMailer.send(smtpConfig, emailPayload);
 
   console.log('Email sent successfully');
 

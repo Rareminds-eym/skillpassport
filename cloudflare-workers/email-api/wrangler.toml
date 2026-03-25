@@ -17,6 +17,10 @@ SMTP_HOST = "email-smtp.ap-south-1.amazonaws.com"
 SMTP_PORT = "587"
 LAUNCH_DATE = "2026-02-02"
 MAX_EMAIL_RETRIES = "3"
+APP_URL = "http://localhost:9001"
+
+[env.production.vars]
+APP_URL = "https://email-api.rareminds.workers.dev"
 
 # Add these secrets using: wrangler secret put SECRET_NAME
 # SMTP_USER = "your-smtp-username"
