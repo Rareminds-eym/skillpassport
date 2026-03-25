@@ -44,8 +44,8 @@ import { Sparkles } from '@/components/ui/sparkles';
 // Fixed registration fee
 const REGISTRATION_FEE = 499;
 
-// Email API URL - Use the email-api worker with SMTP secrets configured
-const EMAIL_API_URL = 'https://email-api.dark-mode-d021.workers.dev';
+// Email API URL - Use relative path to go through Pages Functions
+const EMAIL_API_URL = '/api/email';
 
 // Generate 6-digit OTP
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
