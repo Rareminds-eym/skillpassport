@@ -9,6 +9,10 @@ import { APP_URL } from '../config/constants.js';
  */
 export function generateUserConfirmationHtml(data) {
   const { name, email, phone, amount, orderId, campaign } = data;
+  
+  // Use localhost in development, production URL otherwise
+  // This will be passed from the handler that has access to env
+  const emailApiUrl = data.emailApiUrl || 'https://email-api.dark-mode-d021.workers.dev';
 
   return `
 <!DOCTYPE html>
@@ -52,7 +56,7 @@ export function generateUserConfirmationHtml(data) {
               
               <div style="margin-top:24px;padding:20px;background:#eff6ff;border-radius:12px;text-align:center;border:2px solid #3b82f6;">
                 <p style="margin:0 0 16px;color:#1e40af;font-size:15px;font-weight:600;">📄 Download Your Receipt</p>
-                <a href="https://email-api.dark-mode-d021.workers.dev/download-receipt/${orderId}" style="display:inline-block;background:#1e40af;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:14px;font-weight:600;margin-bottom:8px;">Download PDF Receipt</a>
+                <a href="${emailApiUrl}/download-receipt/${orderId}" style="display:inline-block;background:#1e40af;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:14px;font-weight:600;margin-bottom:8px;">Download PDF Receipt</a>
                 <p style="margin:8px 0 0;color:#6b7280;font-size:12px;">Click the button above to download your payment receipt</p>
               </div>
               
