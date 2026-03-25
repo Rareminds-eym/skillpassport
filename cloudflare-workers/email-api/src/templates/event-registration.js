@@ -2,17 +2,11 @@
  * Event registration confirmation email templates
  */
 
-import { APP_URL } from '../config/constants.js';
-
 /**
  * Generate user confirmation email HTML
  */
 export function generateUserConfirmationHtml(data) {
-  const { name, email, phone, amount, orderId, campaign } = data;
-  
-  // Use localhost in development, production URL otherwise
-  // This will be passed from the handler that has access to env
-  const emailApiUrl = data.emailApiUrl || 'https://email-api.dark-mode-d021.workers.dev';
+  const { name, email, phone, amount, orderId, campaign, emailApiUrl } = data;
 
   return `
 <!DOCTYPE html>

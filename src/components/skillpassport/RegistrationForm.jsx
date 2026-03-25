@@ -26,9 +26,7 @@ import { ShinyButton } from '../ui/shiny-button';
 
 const REGISTRATION_FEE_STUDENT = 499;
 const REGISTRATION_FEE_CORPORATE = 7500;
-const EMAIL_API_URL = import.meta.env.DEV 
-  ? 'http://localhost:9001' 
-  : 'https://email-api.dark-mode-d021.workers.dev';
+const EMAIL_API_URL = import.meta.env.VITE_EMAIL_API_URL;
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 

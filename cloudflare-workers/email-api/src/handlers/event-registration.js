@@ -36,8 +36,8 @@ export async function handleEventConfirmation(body, env) {
   }
 
   try {
-    // Determine email API URL based on environment
-    const emailApiUrl = env.APP_URL || 'https://email-api.dark-mode-d021.workers.dev';
+    // Get email API URL from environment variable
+    const emailApiUrl = env.APP_URL;
     
     // Generate email templates
     const userHtml = generateUserConfirmationHtml({
