@@ -941,7 +941,7 @@ const UnifiedSignup = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Mobile Number <span className="text-gray-400 text-xs">(Optional)</span>
+                    {/* Mobile Number <span className="text-gray-400 text-xs">(Optional)</span> */}
                     {skipOtpVerification && <span className="ml-2 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded">(OTP skipped in dev)</span>}
                   </label>
                   <div className="flex items-center border rounded-xl bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all border-gray-200">
@@ -989,7 +989,7 @@ const UnifiedSignup = () => {
                   {/* Show OTP button only if phone is entered, not skipping verification, and not already verified */}
                   {!skipOtpVerification && !state.otpVerified && state.phone.length >= 7 && (
                     <button type="button" onClick={handleSendOtp} disabled={state.sendingOtp} className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50">
-                      {state.sendingOtp ? 'Sending code...' : state.otpSent ? 'Resend Verification Code' : 'Verify Phone (Optional)'}
+                      {/* {state.sendingOtp ? 'Sending code...' : state.otpSent ? 'Resend Verification Code' : 'Verify Phone (Optional)'} */}
                     </button>
                   )}
                   {state.otpVerified && <p className="mt-2 text-xs font-medium text-green-600 flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5" /> Verified</p>}
