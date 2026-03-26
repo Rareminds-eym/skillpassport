@@ -4,14 +4,17 @@ import {
   ArrowRight,
   Award,
   CheckCircle,
+  CheckCircle2,
   ChevronDown,
   Clock,
   Eye, EyeOff,
   Globe,
   Loader2,
+  Mail,
   Share2,
   TrendingUp
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 // @ts-ignore - JS module without types
@@ -25,6 +28,8 @@ import {
 import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
 // @ts-ignore - JS module without types
 import DatePicker from '../../components/Subscription/shared/DatePicker';
+// @ts-ignore - JS module without types
+import OTPInput from '../../components/OTPInput';
 import { supabase } from '../../lib/supabaseClient';
 
 type UserRole = 'school_student' | 'college_student' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
@@ -48,16 +53,38 @@ interface SignupState {
   otp: string;
   otpSent: boolean;
   otpVerified: boolean;
+  emailOtp: string;
+  emailOtpSent: boolean;
+  emailOtpVerified: boolean;
+  generatedEmailOTP: string;
   showPassword: boolean;
   showConfirmPassword: boolean;
   loading: boolean;
   sendingOtp: boolean;
   verifyingOtp: boolean;
+  sendingEmailOtp: boolean;
+  verifyingEmailOtp: boolean;
   error: string;
+  emailOtpError: string;
   roleDropdownOpen: boolean;
 }
 
 const ALL_COUNTRIES = Country.getAllCountries();
+
+const EMAIL_API_URL = import.meta.env.VITE_EMAIL_API_URL;
+
+const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+const sendOTPEmail = async (email: string, otp: string, name: string) => {
+  const response = await fetch(`${EMAIL_API_URL}/event-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, otp, name }),
+  });
+
+  if (!response.ok) throw new Error('Failed to send verification email');
+  return true;
+};
 
 // Country codes for phone numbers with flags - comprehensive list
 const COUNTRY_CODES = [
@@ -257,8 +284,11 @@ const UnifiedSignup = () => {
     password: '', confirmPassword: '', selectedRole: null,
     country: 'IN', state: '', city: '', preferredLanguage: 'en', referralCode: '',
     agreeToTerms: false, otp: '', otpSent: false, otpVerified: false,
+    emailOtp: '', emailOtpSent: false, emailOtpVerified: false, generatedEmailOTP: '',
     showPassword: false, showConfirmPassword: false,
-    loading: false, sendingOtp: false, verifyingOtp: false, error: '', roleDropdownOpen: false
+    loading: false, sendingOtp: false, verifyingOtp: false, 
+    sendingEmailOtp: false, verifyingEmailOtp: false,
+    error: '', emailOtpError: '', roleDropdownOpen: false
   });
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -319,6 +349,21 @@ const UnifiedSignup = () => {
     if (type === 'checkbox') processedValue = (e.target as HTMLInputElement).checked;
     if (name === 'phone') processedValue = value.replace(/\D/g, '').slice(0, 15);
     if (name === 'otp') processedValue = value.replace(/\D/g, '').slice(0, 6);
+    if (name === 'emailOtp') processedValue = value.replace(/\D/g, '').slice(0, 6);
+
+    // Reset email verification when email changes
+    if (name === 'email') {
+      setState(prev => ({ 
+        ...prev, 
+        [name]: processedValue, 
+        error: '',
+        emailOtpVerified: false,
+        emailOtpSent: false,
+        emailOtp: '',
+        emailOtpError: ''
+      }));
+      return;
+    }
 
     setState(prev => ({ ...prev, [name]: processedValue, error: '' }));
   };
@@ -353,6 +398,29 @@ const UnifiedSignup = () => {
     }
   };
 
+  const handleSendEmailOtp = async () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!state.email?.trim() || !emailRegex.test(state.email)) {
+      setState(prev => ({ ...prev, error: 'Please enter a valid email address' }));
+      return;
+    }
+
+    setState(prev => ({ ...prev, sendingEmailOtp: true, emailOtpError: '' }));
+
+    try {
+      const otp = generateOTP();
+      setState(prev => ({ ...prev, generatedEmailOTP: otp }));
+      await sendOTPEmail(state.email.trim(), otp, state.firstName.trim() || 'User');
+      setState(prev => ({ ...prev, emailOtpSent: true, sendingEmailOtp: false }));
+    } catch (error) {
+      setState(prev => ({ 
+        ...prev, 
+        emailOtpError: 'Failed to send verification code. Please try again.',
+        sendingEmailOtp: false 
+      }));
+    }
+  };
+
   // Check if OTP verification should be skipped (for localhost/development and production)
   const skipOtpVerification =
     import.meta.env.VITE_SKIP_OTP_VERIFICATION === 'true' ||
@@ -366,6 +434,7 @@ const UnifiedSignup = () => {
     if (!state.lastName.trim()) { setState(prev => ({ ...prev, error: 'Please enter your last name' })); return false; }
     if (!state.dateOfBirth) { setState(prev => ({ ...prev, error: 'Please enter your date of birth' })); return false; }
     if (!state.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.email)) { setState(prev => ({ ...prev, error: 'Please enter a valid email' })); return false; }
+    if (!state.emailOtpVerified) { setState(prev => ({ ...prev, error: 'Please verify your email address' })); return false; }
     // Phone number is optional, but if provided, validate format
     if (state.phone && (state.phone.length < 7 || state.phone.length > 15)) { setState(prev => ({ ...prev, error: 'Please enter a valid phone number (7-15 digits)' })); return false; }
     // OTP verification is optional - only validate if OTP was sent but not verified
@@ -769,7 +838,105 @@ const UnifiedSignup = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address <span className="text-red-500">*</span></label>
-                  <input type="email" name="email" value={state.email} onChange={handleInputChange} placeholder="john@example.com" className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none" />
+                  <div className="relative">
+                    <div className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 ${state.emailOtpVerified ? 'text-emerald-600' : 'text-gray-400'} transition-colors`}>
+                      <Mail className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </div>
+                    <input 
+                      type="email" 
+                      name="email" 
+                      value={state.email} 
+                      onChange={handleInputChange} 
+                      placeholder="john@example.com" 
+                      disabled={state.emailOtpVerified}
+                      className={`block w-full pl-10 sm:pl-11 md:pl-12 ${!state.emailOtpVerified ? 'pr-24 sm:pr-32' : 'pr-3 sm:pr-4'} py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none ${
+                        state.emailOtpVerified
+                          ? 'border-emerald-400 bg-emerald-50/30 cursor-not-allowed text-gray-500'
+                          : 'border-gray-200 bg-gray-50 focus:bg-white'
+                      }`}
+                    />
+                    {!state.emailOtpVerified && (
+                      <div className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2">
+                        <button
+                          type="button"
+                          onClick={handleSendEmailOtp}
+                          disabled={state.sendingEmailOtp || !state.email}
+                          className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
+                        >
+                          {state.sendingEmailOtp ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              <span className="hidden sm:inline">Sending...</span>
+                              <span className="sm:hidden">...</span>
+                            </>
+                          ) : state.emailOtpSent ? (
+                            'Resend'
+                          ) : (
+                            'Verify'
+                          )}
+                        </button>
+                      </div>
+                    )}
+                    {state.emailOtpVerified && (
+                      <div className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                      </div>
+                    )}
+                  </div>
+
+                  <AnimatePresence>
+                    {state.emailOtpSent && !state.emailOtpVerified && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-2 sm:mt-3 overflow-hidden"
+                      >
+                        <div className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl border-2 border-blue-100 shadow-lg">
+                          <OTPInput
+                            length={6}
+                            email={state.email}
+                            expirySeconds={600}
+                            onComplete={(code) => {
+                              setState(prev => ({ ...prev, emailOtp: code }));
+                              setTimeout(() => {
+                                if (code === state.generatedEmailOTP) {
+                                  setState(prev => ({ 
+                                    ...prev, 
+                                    emailOtpVerified: true, 
+                                    emailOtpSent: false, 
+                                    emailOtpError: '' 
+                                  }));
+                                } else {
+                                  setState(prev => ({ 
+                                    ...prev, 
+                                    emailOtpError: 'Invalid verification code. Please try again.' 
+                                  }));
+                                }
+                              }, 500);
+                            }}
+                            onResend={handleSendEmailOtp}
+                            error={state.emailOtpError}
+                            isVerifying={state.verifyingEmailOtp}
+                            isSuccess={state.emailOtpVerified}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <AnimatePresence>
+                    {state.emailOtpVerified && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-2 flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span className="text-xs sm:text-sm font-semibold">Email verified successfully</span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 <div>
