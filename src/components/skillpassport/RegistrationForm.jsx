@@ -23,6 +23,7 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import OTPInput from '../OTPInput';
 import paymentsApiService from '../../services/paymentsApiService';
 import { ShinyButton } from '../ui/shiny-button';
+import { sendPhoneOTP, validatePhoneOTP } from '../../services/otpService';
 
 const REGISTRATION_FEE_STUDENT = 499;
 const REGISTRATION_FEE_CORPORATE = 7500;
@@ -40,7 +41,7 @@ const loadRazorpay = () => new Promise((resolve, reject) => {
   document.body.appendChild(script);
 });
 
-const validateForm = (form, emailVerified, consentGiven) => {
+const validateForm = (form, emailVerified, phoneVerified, consentGiven) => {
   const errors = {};
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const phoneRegex = /^\d{10}$/;
@@ -56,6 +57,9 @@ const validateForm = (form, emailVerified, consentGiven) => {
   }
   if (!form.phone?.trim() || !phoneRegex.test(form.phone.replace(/\D/g, ''))) {
     errors.phone = 'Please enter a valid 10-digit phone number';
+  }
+  if (!phoneVerified) {
+    errors.phone = 'Please verify your phone number';
   }
   if (!consentGiven) {
     errors.consent = 'Please agree to the terms and payment consent';
@@ -263,6 +267,16 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
   const [verifyingOTP, setVerifyingOTP] = useState(false);
   const [otpError, setOtpError] = useState('');
 
+  // Phone OTP states
+  const [phoneOtpSent, setPhoneOtpSent] = useState(false);
+  const [phoneOtpValue, setPhoneOtpValue] = useState('');
+  const [phoneVerificationId, setPhoneVerificationId] = useState('');
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [sendingPhoneOTP, setSendingPhoneOTP] = useState(false);
+  const [verifyingPhoneOTP, setVerifyingPhoneOTP] = useState(false);
+  const [phoneOtpError, setPhoneOtpError] = useState('');
+  const [phoneOtpTimeout, setPhoneOtpTimeout] = useState(60);
+
   const [consentGiven, setConsentGiven] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [hasReadTerms, setHasReadTerms] = useState(false);
@@ -291,6 +305,15 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
       setOtpValue('');
       setOtpError('');
     }
+
+    if (field === 'phone') {
+      setPhoneVerified(false);
+      setPhoneOtpSent(false);
+      setPhoneOtpValue('');
+      setPhoneOtpError('');
+      setPhoneVerificationId('');
+      setPhoneOtpTimeout(60);
+    }
   }, [errors]);
 
   const handleSendOTP = async () => {
@@ -315,8 +338,34 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
     }
   };
 
+  const handleSendPhoneOTP = async () => {
+    const phoneRegex = /^\d{10}$/;
+    const cleanPhone = form.phone.replace(/\D/g, '');
+    
+    if (!cleanPhone || !phoneRegex.test(cleanPhone)) {
+      setErrors(prev => ({ ...prev, phone: 'Please enter a valid 10-digit phone number' }));
+      return;
+    }
+
+    setSendingPhoneOTP(true);
+    setPhoneOtpError('');
+
+    try {
+      const result = await sendPhoneOTP(cleanPhone);
+      setPhoneVerificationId(result.verificationId);
+      // Parse timeout from API response (comes as string "60.0")
+      const timeoutSeconds = parseInt(result.timeout) || 60;
+      setPhoneOtpTimeout(timeoutSeconds);
+      setPhoneOtpSent(true);
+    } catch (error) {
+      setPhoneOtpError(error.message || 'Failed to send OTP. Please try again.');
+    } finally {
+      setSendingPhoneOTP(false);
+    }
+  };
+
   const handlePayment = async () => {
-    const validationErrors = validateForm(form, emailVerified, consentGiven);
+    const validationErrors = validateForm(form, emailVerified, phoneVerified, consentGiven);
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
@@ -629,15 +678,103 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
               </AnimatePresence>
             </div>
 
-            <InputField
-              label="Phone Number"
-              icon={Phone}
-              type="tel"
-              value={form.phone}
-              onChange={(e) => updateField('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
-              placeholder="10-digit mobile number"
-              error={errors.phone}
-            />
+            <div>
+              <InputField
+                label="Phone Number"
+                icon={Phone}
+                type="tel"
+                value={form.phone}
+                onChange={(e) => updateField('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                placeholder="10-digit mobile number"
+                error={errors.phone}
+                verified={phoneVerified}
+                disabled={phoneVerified}
+                rightElement={
+                  !phoneVerified && (
+                    <button
+                      type="button"
+                      onClick={handleSendPhoneOTP}
+                      disabled={sendingPhoneOTP || !form.phone || form.phone.length !== 10}
+                      className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
+                    >
+                      {sendingPhoneOTP ? (
+                        <>
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <span className="hidden sm:inline">Sending...</span>
+                          <span className="sm:hidden">...</span>
+                        </>
+                      ) : phoneOtpSent ? (
+                        'Resend'
+                      ) : (
+                        'Verify'
+                      )}
+                    </button>
+                  )
+                }
+              />
+
+              <AnimatePresence>
+                {phoneOtpSent && !phoneVerified && (
+                  <motion.div
+                    key={phoneVerificationId}
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-2 sm:mt-3 overflow-hidden"
+                  >
+                    <div className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl border-2 border-blue-100 shadow-lg">
+                      <OTPInput
+                        length={4}
+                        email={form.phone}
+                        expirySeconds={phoneOtpTimeout}
+                        onComplete={async (code) => {
+                          setPhoneOtpValue(code);
+                          setVerifyingPhoneOTP(true);
+                          setPhoneOtpError('');
+                          
+                          try {
+                            const result = await validatePhoneOTP(
+                              form.phone.replace(/\D/g, ''),
+                              phoneVerificationId,
+                              code
+                            );
+                            
+                            if (result.verified) {
+                              setPhoneVerified(true);
+                              setPhoneOtpSent(false);
+                              setPhoneOtpError('');
+                            } else {
+                              setPhoneOtpError('Invalid OTP. Please try again.');
+                            }
+                          } catch (error) {
+                            setPhoneOtpError(error.message || 'Invalid OTP. Please try again.');
+                          } finally {
+                            setVerifyingPhoneOTP(false);
+                          }
+                        }}
+                        onResend={handleSendPhoneOTP}
+                        error={phoneOtpError}
+                        isVerifying={verifyingPhoneOTP}
+                        isSuccess={phoneVerified}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <AnimatePresence>
+                {phoneVerified && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-2 flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span className="text-xs sm:text-sm font-semibold">Phone verified successfully</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
           <motion.div

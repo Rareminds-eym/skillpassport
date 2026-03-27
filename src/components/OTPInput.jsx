@@ -31,6 +31,12 @@ const OTPInput = ({
   const [canResend, setCanResend] = useState(false);
   const inputRefs = useRef([]);
 
+  // Reset timer when expirySeconds changes (new OTP sent)
+  useEffect(() => {
+    setTimeLeft(expirySeconds);
+    setCanResend(false);
+  }, [expirySeconds]);
+
   // Countdown timer
   useEffect(() => {
     if (timeLeft <= 0) {
