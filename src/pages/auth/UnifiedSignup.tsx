@@ -3,7 +3,6 @@ import {
   AlertCircle,
   ArrowRight,
   Award,
-  CheckCircle,
   CheckCircle2,
   ChevronDown,
   Clock,
@@ -25,7 +24,7 @@ import {
   FULL_REGISTRATION_START_DATE
 } from '../../config/registrationConfig';
 // @ts-ignore - JS module without types
-import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
+import { sendPhoneOTP, validatePhoneOTP } from '../../services/otpService';
 // @ts-ignore - JS module without types
 import DatePicker from '../../components/Subscription/shared/DatePicker';
 // @ts-ignore - JS module without types
@@ -57,6 +56,14 @@ interface SignupState {
   emailOtpSent: boolean;
   emailOtpVerified: boolean;
   generatedEmailOTP: string;
+  phoneOtpSent: boolean;
+  phoneOtpValue: string;
+  phoneVerificationId: string;
+  phoneVerified: boolean;
+  sendingPhoneOTP: boolean;
+  verifyingPhoneOTP: boolean;
+  phoneOtpError: string;
+  phoneOtpTimeout: number;
   showPassword: boolean;
   showConfirmPassword: boolean;
   loading: boolean;
@@ -285,6 +292,8 @@ const UnifiedSignup = () => {
     country: 'IN', state: '', city: '', preferredLanguage: 'en', referralCode: '',
     agreeToTerms: false, otp: '', otpSent: false, otpVerified: false,
     emailOtp: '', emailOtpSent: false, emailOtpVerified: false, generatedEmailOTP: '',
+    phoneOtpSent: false, phoneOtpValue: '', phoneVerificationId: '', phoneVerified: false,
+    sendingPhoneOTP: false, verifyingPhoneOTP: false, phoneOtpError: '', phoneOtpTimeout: 60,
     showPassword: false, showConfirmPassword: false,
     loading: false, sendingOtp: false, verifyingOtp: false, 
     sendingEmailOtp: false, verifyingEmailOtp: false,
@@ -355,7 +364,7 @@ const UnifiedSignup = () => {
     if (name === 'email') {
       setState(prev => ({ 
         ...prev, 
-        [name]: processedValue, 
+        email: value as string,
         error: '',
         emailOtpVerified: false,
         emailOtpSent: false,
@@ -365,37 +374,23 @@ const UnifiedSignup = () => {
       return;
     }
 
+    // Reset phone verification when phone changes
+    if (name === 'phone') {
+      setState(prev => ({ 
+        ...prev, 
+        phone: processedValue as string,
+        error: '',
+        phoneVerified: false,
+        phoneOtpSent: false,
+        phoneOtpValue: '',
+        phoneOtpError: '',
+        phoneVerificationId: '',
+        phoneOtpTimeout: 60
+      }));
+      return;
+    }
+
     setState(prev => ({ ...prev, [name]: processedValue, error: '' }));
-  };
-
-  const handleSendOtp = async () => {
-    if (!state.phone || state.phone.length < 7 || state.phone.length > 15) {
-      setState(prev => ({ ...prev, error: 'Please enter a valid phone number (7-15 digits)' }));
-      return;
-    }
-    setState(prev => ({ ...prev, sendingOtp: true, error: '' }));
-    try {
-      const result = await sendOtp(state.phone);
-      if (result.success) setState(prev => ({ ...prev, otpSent: true, sendingOtp: false }));
-      else setState(prev => ({ ...prev, error: result.error || 'Failed to send OTP', sendingOtp: false }));
-    } catch {
-      setState(prev => ({ ...prev, error: 'Failed to send OTP. Please try again.', sendingOtp: false }));
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    if (!state.otp || state.otp.length !== 6) {
-      setState(prev => ({ ...prev, error: 'Please enter a valid 6-digit OTP' }));
-      return;
-    }
-    setState(prev => ({ ...prev, verifyingOtp: true, error: '' }));
-    try {
-      const result = await verifyOtpApi(state.phone, state.otp);
-      if (result.success) setState(prev => ({ ...prev, otpVerified: true, verifyingOtp: false }));
-      else setState(prev => ({ ...prev, error: result.error || 'Invalid OTP', verifyingOtp: false }));
-    } catch {
-      setState(prev => ({ ...prev, error: 'Failed to verify OTP. Please try again.', verifyingOtp: false }));
-    }
   };
 
   const handleSendEmailOtp = async () => {
@@ -421,6 +416,35 @@ const UnifiedSignup = () => {
     }
   };
 
+  const handleSendPhoneOTP = async () => {
+    const phoneRegex = /^\d{10}$/;
+    const cleanPhone = state.phone.replace(/\D/g, '');
+    
+    if (!cleanPhone || !phoneRegex.test(cleanPhone)) {
+      setState(prev => ({ ...prev, error: 'Please enter a valid 10-digit phone number' }));
+      return;
+    }
+
+    setState(prev => ({ ...prev, sendingPhoneOTP: true, phoneOtpError: '' }));
+
+    try {
+      const result = await sendPhoneOTP(cleanPhone);
+      setState(prev => ({ 
+        ...prev, 
+        phoneVerificationId: result.verificationId,
+        phoneOtpTimeout: parseInt(result.timeout) || 60,
+        phoneOtpSent: true,
+        sendingPhoneOTP: false
+      }));
+    } catch (error: any) {
+      setState(prev => ({ 
+        ...prev, 
+        phoneOtpError: error.message || 'Failed to send OTP. Please try again.',
+        sendingPhoneOTP: false
+      }));
+    }
+  };
+
   // Check if OTP verification should be skipped (for localhost/development and production)
   const skipOtpVerification =
     import.meta.env.VITE_SKIP_OTP_VERIFICATION === 'true' ||
@@ -435,9 +459,11 @@ const UnifiedSignup = () => {
     if (!state.dateOfBirth) { setState(prev => ({ ...prev, error: 'Please enter your date of birth' })); return false; }
     if (!state.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.email)) { setState(prev => ({ ...prev, error: 'Please enter a valid email' })); return false; }
     if (!state.emailOtpVerified) { setState(prev => ({ ...prev, error: 'Please verify your email address' })); return false; }
-    // Phone number is optional, but if provided, validate format
+    // Phone number is optional, but if provided, validate format and verification
     if (state.phone && (state.phone.length < 7 || state.phone.length > 15)) { setState(prev => ({ ...prev, error: 'Please enter a valid phone number (7-15 digits)' })); return false; }
-    // OTP verification is optional - only validate if OTP was sent but not verified
+    // Phone OTP verification - only validate if phone OTP was sent but not verified
+    if (state.phoneOtpSent && !state.phoneVerified && !skipOtpVerification) { setState(prev => ({ ...prev, error: 'Please complete phone verification or clear the OTP field' })); return false; }
+    // Legacy OTP verification is optional - only validate if OTP was sent but not verified
     if (state.otpSent && !state.otpVerified && !skipOtpVerification) { setState(prev => ({ ...prev, error: 'Please complete phone verification or clear the OTP field' })); return false; }
     if (!state.password || state.password.length < 8) { setState(prev => ({ ...prev, error: 'Password must be at least 8 characters' })); return false; }
     if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(state.password)) { setState(prev => ({ ...prev, error: 'Password must contain uppercase, lowercase, and number' })); return false; }
@@ -519,7 +545,7 @@ const UnifiedSignup = () => {
       // CRITICAL FIX: Auto-login after successful signup
       // This establishes a Supabase session so the user is authenticated
       console.log('🔐 Auto-logging in after signup...');
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email: state.email,
         password: state.password,
       });
@@ -832,6 +858,8 @@ const UnifiedSignup = () => {
                     value={state.dateOfBirth}
                     onChange={handleInputChange}
                     placeholder="Select date"
+                    error={null}
+                    minDate={null}
                     maxDate={new Date().toISOString().split('T')[0]}
                   />
                 </div>
@@ -897,7 +925,7 @@ const UnifiedSignup = () => {
                             length={6}
                             email={state.email}
                             expirySeconds={600}
-                            onComplete={(code) => {
+                            onComplete={(code: string) => {
                               setState(prev => ({ ...prev, emailOtp: code }));
                               setTimeout(() => {
                                 if (code === state.generatedEmailOTP) {
@@ -941,16 +969,23 @@ const UnifiedSignup = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    {/* Mobile Number <span className="text-gray-400 text-xs">(Optional)</span> */}
+                    Mobile Number <span className="text-gray-400 text-xs">(Optional)</span>
                     {skipOtpVerification && <span className="ml-2 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded">(OTP skipped in dev)</span>}
                   </label>
-                  <div className="flex items-center border rounded-xl bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all border-gray-200">
+                  <div className={`flex items-center border-2 rounded-xl transition-all ${
+                    state.phoneVerified
+                      ? 'border-emerald-400 bg-emerald-50/30'
+                      : 'border-gray-200 bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500'
+                  }`}>
                     {/* Custom Country Code Dropdown */}
                     <div className="relative" ref={countryCodeRef}>
                       <button
                         type="button"
                         onClick={() => setCountryCodeDropdownOpen(!countryCodeDropdownOpen)}
-                        className="flex items-center gap-2 h-full pl-4 pr-3 py-3 bg-transparent text-sm font-medium text-gray-700 outline-none cursor-pointer hover:bg-gray-100 rounded-l-xl transition-colors"
+                        disabled={state.phoneVerified}
+                        className={`flex items-center gap-2 h-full pl-4 pr-3 py-3 bg-transparent text-sm font-medium text-gray-700 outline-none rounded-l-xl transition-colors ${
+                          state.phoneVerified ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-gray-100'
+                        }`}
                       >
                         <span className="text-xl">{selectedCountry.flag}</span>
                         <span className="text-gray-700">{selectedCountry.dialCode}</span>
@@ -983,37 +1018,119 @@ const UnifiedSignup = () => {
                     <div className="h-6 w-px bg-gray-300"></div>
 
                     <div className="relative flex-1">
-                      <input type="tel" name="phone" value={state.phone} onChange={handleInputChange} placeholder="Phone number" className="block w-full px-3 py-3 bg-transparent border-none outline-none text-gray-900 placeholder-gray-400" />
+                      <input 
+                        type="tel" 
+                        name="phone" 
+                        value={state.phone} 
+                        onChange={handleInputChange} 
+                        placeholder="Phone number" 
+                        disabled={state.phoneVerified}
+                        className={`block w-full px-3 py-3 bg-transparent border-none outline-none text-gray-900 placeholder-gray-400 ${
+                          state.phoneVerified ? 'cursor-not-allowed' : ''
+                        }`}
+                      />
                     </div>
-                  </div>
-                  {/* Show OTP button only if phone is entered, not skipping verification, and not already verified */}
-                  {!skipOtpVerification && !state.otpVerified && state.phone.length >= 7 && (
-                    <button type="button" onClick={handleSendOtp} disabled={state.sendingOtp} className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50">
-                      {/* {state.sendingOtp ? 'Sending code...' : state.otpSent ? 'Resend Verification Code' : 'Verify Phone (Optional)'} */}
-                    </button>
-                  )}
-                  {state.otpVerified && <p className="mt-2 text-xs font-medium text-green-600 flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5" /> Verified</p>}
-                </div>
 
-                {/* Show OTP input only if not skipping verification */}
-                {!skipOtpVerification && state.otpSent && !state.otpVerified && (
-                  <div className="animate-in fade-in slide-in-from-top-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Verification Code</label>
-                    <div className="flex gap-3">
-                      <input type="text" name="otp" value={state.otp} onChange={handleInputChange} placeholder="123456" maxLength={6} className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-center tracking-[0.5em] font-mono text-lg transition-all outline-none" />
-                      <button type="button" onClick={handleVerifyOtp} disabled={state.verifyingOtp || state.otp.length !== 6} className="px-6 py-3 bg-gray-900 text-white font-medium rounded-xl hover:bg-gray-800 disabled:opacity-50 transition-colors">
-                        {state.verifyingOtp ? '...' : 'Verify'}
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setState(prev => ({ ...prev, otpSent: false, otp: '' }))}
-                      className="mt-2 text-sm text-gray-500 hover:text-gray-700"
-                    >
-                      Skip verification
-                    </button>
+                    {!state.phoneVerified && state.phone.length >= 10 && (
+                      <div className="pr-2">
+                        <button
+                          type="button"
+                          onClick={handleSendPhoneOTP}
+                          disabled={state.sendingPhoneOTP || !state.phone}
+                          className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
+                        >
+                          {state.sendingPhoneOTP ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              <span className="hidden sm:inline">Sending...</span>
+                              <span className="sm:hidden">...</span>
+                            </>
+                          ) : state.phoneOtpSent ? (
+                            'Resend'
+                          ) : (
+                            'Verify'
+                          )}
+                        </button>
+                      </div>
+                    )}
+
+                    {state.phoneVerified && (
+                      <div className="pr-3 sm:pr-4">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                      </div>
+                    )}
                   </div>
-                )}
+
+                  <AnimatePresence>
+                    {state.phoneOtpSent && !state.phoneVerified && (
+                      <motion.div
+                        key={state.phoneVerificationId}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-2 sm:mt-3 overflow-hidden"
+                      >
+                        <div className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl border-2 border-blue-100 shadow-lg">
+                          <OTPInput
+                            length={4}
+                            email={state.phone}
+                            expirySeconds={state.phoneOtpTimeout}
+                            onComplete={async (code: string) => {
+                              setState(prev => ({ ...prev, phoneOtpValue: code, verifyingPhoneOTP: true, phoneOtpError: '' }));
+                              
+                              try {
+                                const result = await validatePhoneOTP(
+                                  state.phone.replace(/\D/g, ''),
+                                  state.phoneVerificationId,
+                                  code
+                                );
+                                
+                                if (result.verified) {
+                                  setState(prev => ({ 
+                                    ...prev, 
+                                    phoneVerified: true, 
+                                    phoneOtpSent: false, 
+                                    phoneOtpError: '',
+                                    verifyingPhoneOTP: false
+                                  }));
+                                } else {
+                                  setState(prev => ({ 
+                                    ...prev, 
+                                    phoneOtpError: 'Invalid OTP. Please try again.',
+                                    verifyingPhoneOTP: false
+                                  }));
+                                }
+                              } catch (error: any) {
+                                setState(prev => ({ 
+                                  ...prev, 
+                                  phoneOtpError: error.message || 'Invalid OTP. Please try again.',
+                                  verifyingPhoneOTP: false
+                                }));
+                              }
+                            }}
+                            onResend={handleSendPhoneOTP}
+                            error={state.phoneOtpError}
+                            isVerifying={state.verifyingPhoneOTP}
+                            isSuccess={state.phoneVerified}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <AnimatePresence>
+                    {state.phoneVerified && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-2 flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span className="text-xs sm:text-sm font-semibold">Phone verified successfully</span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
 
                 <div className="space-y-4">
                   <div>
