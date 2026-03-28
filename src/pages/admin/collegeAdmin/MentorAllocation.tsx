@@ -14,22 +14,24 @@ import {
   ClockIcon,
 } from "@heroicons/react/24/outline";
 import toast from 'react-hot-toast';
-import { supabase } from "../../../lib/supabaseClient";
-import { useUser } from "../../../stores";
-import { getLogger } from "../../../config/logging";
-import { useMentorAllocation } from "../../../hooks/useMentorAllocation";
-import { findAllocationId, updateMentorAllocation } from "../../../services/mentorAllocationService";
-import SearchBar from "../../../components/common/SearchBar";
-import KPICard from "../../../components/admin/KPICard";
-import Pagination from "../../../components/admin/Pagination";
-import StudentSelectionModal from "../../../components/admin/collegeAdmin/StudentSelectionModal";
-import MentorSelectionModal from "../../../components/admin/collegeAdmin/MentorSelectionModal";
-import AllocationConfigurationModal from "../../../components/admin/collegeAdmin/AllocationConfigurationModal";
-import InterventionModal from "../../../components/admin/collegeAdmin/InterventionModal";
-import InterventionFeedbackModal from "../../../components/admin/collegeAdmin/InterventionFeedbackModal";
-import MentorDetailsDrawer from "../../../components/admin/collegeAdmin/MentorDetailsModal";
-import ReassignModal from "../../../components/admin/collegeAdmin/ReassignModal";
-import MentorCapacityModal from "../../../components/admin/collegeAdmin/MentorCapacityModal";
+import { supabase } from '@/shared/api/supabaseClient';
+import { useUser } from "@/stores";
+import { getLogger } from '@/shared/config/logging';
+import { useMentorAllocation } from '@/shared/lib/hooks';
+import { findAllocationId, updateMentorAllocation } from "@/features/college-admin";
+import { SearchBar } from '@/shared/ui';
+import KPICard from '@/shared/ui/KPICard';
+import { Pagination } from '@/shared/ui';
+import {
+  StudentSelectionModal,
+  MentorSelectionModal,
+  AllocationConfigurationModal,
+  InterventionModal,
+  InterventionFeedbackModal,
+  MentorDetailsModal as MentorDetailsDrawer,
+  ReassignModal,
+  MentorCapacityModal
+} from '@/features/college-admin';
 
 // Legacy interfaces for compatibility with existing modals
 interface LegacyStudent {

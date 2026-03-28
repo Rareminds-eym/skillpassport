@@ -10,8 +10,10 @@ import {
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import toast from 'react-hot-toast';
-import { useUserRole } from "../../../../hooks/useUserRole";
-import { supabase } from "../../../../lib/supabaseClient";
+import { useUserRole } from "@/entities/user";
+import { supabase } from '@/shared/api/supabaseClient';
+import { timetableSlotsService } from "@/features/school-admin";
+import { authSessionService } from '@/features/auth';
 
 interface Teacher {
   id: string;
@@ -125,7 +127,7 @@ const TimetableAllocationPage: React.FC = () => {
     try {
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = await authSessionService.getUser();
       if (!user) return;
 
       const { data: userData } = await supabase
@@ -264,21 +266,25 @@ const TimetableAllocationPage: React.FC = () => {
   const loadTeacherWorkload = async () => {
     if (!selectedTeacher) return;
 
-    const { data } = await supabase.rpc("calculate_teacher_workload", {
-      p_teacher_id: selectedTeacher,
-      p_timetable_id: timetableId,
-    });
+    try {
+      const workloadData = await timetableSlotsService.calculateTeacherWorkload(
+        selectedTeacher,
+        timetableId
+      );
 
-    if (data && data.length > 0) setWorkload(data[0]);
+      if (workloadData) setWorkload(workloadData);
 
-    const { data: conflictData } = await supabase
-      .from("timetable_conflicts")
-      .select("*")
-      .eq("timetable_id", timetableId)
-      .eq("teacher_id", selectedTeacher)
-      .eq("resolved", false);
+      const { data: conflictData } = await supabase
+        .from("timetable_conflicts")
+        .select("*")
+        .eq("timetable_id", timetableId)
+        .eq("teacher_id", selectedTeacher)
+        .eq("resolved", false);
 
-    if (conflictData) setConflicts(conflictData);
+      if (conflictData) setConflicts(conflictData);
+    } catch (error) {
+      console.error('Error loading teacher workload:', error);
+    }
   };
 
   const getSlotForCell = (dayIndex: number, periodNum: number) => {
@@ -306,7 +312,7 @@ const TimetableAllocationPage: React.FC = () => {
     setLoading(true);
     try {
       const times = periodTimes[addingSlot.period];
-      const { error } = await supabase.from("timetable_slots").insert({
+      await timetableSlotsService.createSlot({
         timetable_id: timetableId,
         educator_id: selectedTeacher,
         class_id: selectedClass,
@@ -317,8 +323,6 @@ const TimetableAllocationPage: React.FC = () => {
         subject_name: newSubject.trim(),
         room_number: newRoom.trim(),
       });
-
-      if (error) throw error;
 
       await loadSlots();
       await loadTeacherWorkload();

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Sparkles, Save, Send, AlertTriangle, Building2, Filter } from "lucide-react";
-import { supabase } from "../../../../lib/supabaseClient";
+import { supabase } from '@/shared/api/supabaseClient';
 
 interface Department {
   id: string;

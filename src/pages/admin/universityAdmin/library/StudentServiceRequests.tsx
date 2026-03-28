@@ -21,7 +21,7 @@ import {
   AlertTriangle,
   FileText,
 } from 'lucide-react';
-import KPICard from '../../../../components/admin/KPICard';
+import KPICard from '@/shared/ui/KPICard';
 
 const StudentServiceRequests = () => {
   const [activeTab, setActiveTab] = useState('all');

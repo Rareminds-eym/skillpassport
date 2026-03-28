@@ -7,9 +7,8 @@ import {
   ArrowDownTrayIcon,
   EyeIcon,
   XMarkIcon,
-  MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
-import SearchBar from "../../../components/common/SearchBar";
+import { SearchBar } from '@/shared/ui';
 
 interface Student {
   id: number;

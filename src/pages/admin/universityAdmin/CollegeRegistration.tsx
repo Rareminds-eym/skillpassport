@@ -12,11 +12,11 @@ import {
     XMarkIcon
 } from '@heroicons/react/24/outline';
 import { useEffect, useMemo, useState } from 'react';
-import Pagination from '../../../components/admin/Pagination';
-import SearchBar from '../../../components/common/SearchBar';
-import { useUser } from '../../../stores';
-import { supabase } from '../../../lib/supabaseClient';
-import { getLogger } from '../../../config/logging';
+import { Pagination } from '@/shared/ui';
+import { SearchBar } from '@/shared/ui';
+import { useUser } from '@/stores';
+import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('university-admin-college-registration');
 
@@ -28,7 +28,7 @@ import {
     removeCollegeFromUniversity,
     checkCollegeCodeUnique,
     getUniversityCollegeStats
-} from '../../../services/universityCollegeService';
+} from '@/features/university-ai';
 
 const AddCollegeModal = ({ isOpen, onClose, onSuccess, universityId }) => {
   const [availableColleges, setAvailableColleges] = useState([]);

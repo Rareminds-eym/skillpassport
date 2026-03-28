@@ -12,7 +12,7 @@ import {
   DataFlowPattern,
   PropDrillingAnalysis,
   ContextUsagePattern
-} from '../types/widget-migration'
+} from '@/shared/types/widget-migration'
 
 export class CompositionAnalyzer {
   private projectRoot: string

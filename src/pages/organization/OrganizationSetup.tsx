@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import React, { useState } from 'react';
 import { useUser } from '@/stores';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 
 interface OrganizationFormData {
   name: string;

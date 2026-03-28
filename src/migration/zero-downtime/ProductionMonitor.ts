@@ -2,7 +2,7 @@
  * Production metrics monitoring and stability verification
  */
 
-import { PerformanceMetric } from '../types/zero-downtime'
+import { PerformanceMetric } from '@/shared/types/zero-downtime'
 
 export interface ProductionMetrics {
   responseTime: number

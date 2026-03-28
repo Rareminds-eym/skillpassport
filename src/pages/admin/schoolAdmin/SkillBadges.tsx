@@ -2,9 +2,10 @@
 import jsPDF from 'jspdf';
 import { AlertCircle, Award, Download, Eye, FileText, Grid3X3, List, Loader2, Medal, Search, Trophy, X } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import KPICard from '../../../components/admin/KPICard';
-import { supabase } from '../../../lib/supabaseClient';
-import { getLogger } from '../../../config/logging';
+import KPICard from '@/shared/ui/KPICard';
+import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+import { authSessionService } from '@/features/auth';
 
 const logger = getLogger('school-admin-skill-badges');
 
@@ -80,7 +81,7 @@ const CompetitionResults = () => {
       
       // If not found in localStorage, try Supabase Auth (for educators/teachers)
       if (!schoolId) {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await authSessionService.getUser();
         
         if (user) {
           logger.info('Checking Supabase auth user', { email: user.email });

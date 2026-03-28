@@ -3,7 +3,7 @@
  * Matches courses to specific skill gaps using direct and semantic matching.
  */
 
-import { cosineSimilarity } from '@/utils/vectorUtils';
+import { cosineSimilarity } from '@/shared/lib/vectorUtils';
 import { generateSkillEmbedding } from './embeddingService';
 import { fetchCoursesWithEmbeddings, fetchCoursesBySkillName } from './courseRepository';
 import { calculateRelevanceScore, generateWhyThisCourse } from './utils';

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TypeScriptConfigUpdater } from '../TypeScriptConfigUpdater';
 import { MigrationLogger } from '../../logging/MigrationLogger';
-import { PathMapping } from '../../types/import-path';
+import { PathMapping } from '@/shared/types/import-path';
 import * as fs from 'fs';
 
 vi.mock('fs');

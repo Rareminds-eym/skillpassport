@@ -23,17 +23,17 @@ import {
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { MessageService, Conversation } from '@/features/messaging';
-import { useEducatorMessages } from '../../hooks/useEducatorMessages.js';
-import { useEducatorAdminMessages } from '../../hooks/useEducatorAdminMessages.js';
+import { useEducatorMessages } from '@/features/educator';
+import { useEducatorAdminMessages } from '@/features/educator';
 import { formatDistanceToNow } from 'date-fns';
-import { useGlobalPresence } from '../../stores/globalPresenceStore.js';
-import { useRealtimePresence } from '../../hooks/useRealtimePresence';
+import { useGlobalPresence } from '@/stores';
+import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/features/messaging';
-import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
+import { useNotificationBroadcast } from '@/features/broadcast/model/useNotificationBroadcast';
 import { DeleteConversationModal,  } from '@/features/messaging';
-import { supabase } from '../../lib/supabaseClient';
-import NewStudentConversationModal from '../../components/messaging/NewStudentConversationModalEducator.jsx';
-import NewEducatorAdminConversationModal from '../../components/messaging/NewEducatorAdminConversationModal';
+import { supabase } from '@/shared/api/supabaseClient';
+import { NewStudentConversationModal } from '@/features/messaging';
+import { NewEducatorAdminConversationModal } from '@/features/messaging';
 const Communication = () => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();

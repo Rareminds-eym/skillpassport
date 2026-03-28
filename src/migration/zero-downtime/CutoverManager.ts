@@ -2,7 +2,7 @@
  * Manages gradual cutover from old to new structure
  */
 
-import { CutoverPlan, CutoverPhase, SuccessCriteria, ValidationCheck, CutoverResult, PhaseResult } from '../types/zero-downtime'
+import { CutoverPlan, CutoverPhase, SuccessCriteria, ValidationCheck, CutoverResult, PhaseResult } from '@/shared/types/zero-downtime'
 import { FeatureFlagManager } from './FeatureFlagManager'
 import { HealthMonitor } from './HealthMonitor'
 

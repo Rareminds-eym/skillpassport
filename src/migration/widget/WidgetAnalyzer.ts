@@ -13,7 +13,7 @@ import {
   CompositionAnalysis,
   WidgetComplexityAssessment,
   StateManagementType
-} from '../types/widget-migration'
+} from '@/shared/types/widget-migration'
 
 export class WidgetAnalyzer {
   private projectRoot: string

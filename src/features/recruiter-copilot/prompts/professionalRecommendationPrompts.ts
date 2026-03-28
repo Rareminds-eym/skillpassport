@@ -1,4 +1,4 @@
-import { EnrichedCandidate } from '../services/advancedCandidateScoring';
+import { EnrichedCandidate } from '@/shared/api/advancedCandidateScoring';
 
 /**
  * Professional AI Prompt Templates

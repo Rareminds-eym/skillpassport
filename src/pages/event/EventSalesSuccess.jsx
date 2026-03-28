@@ -6,8 +6,8 @@
 import { ArrowLeft, ArrowRight, Check, CheckCircle, Copy, Eye, EyeOff, Key, Mail, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import Header from '../../layouts/Header';
-import { supabase } from '../../lib/supabaseClient';
+import Header from '@/app/layouts/Header';
+import { supabase } from '@/shared/api/supabaseClient';
 
 export default function EventSalesSuccess() {
   const navigate = useNavigate();

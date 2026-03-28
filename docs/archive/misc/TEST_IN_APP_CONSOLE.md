@@ -21,7 +21,7 @@ Just paste this in your app's console and it will test everything automatically.
   
   try {
     // Get token from Supabase
-    const { supabase } = await import('/src/lib/supabaseClient.js');
+    const { supabase } = await import('/src/shared/api/supabaseClient.js');
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
     

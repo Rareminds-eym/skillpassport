@@ -7,7 +7,7 @@ import {
   ImportStatement,
   ImportViolation,
   PathPattern
-} from '../types/import-path';
+} from '@/shared/types/import-path';
 
 export class ImportPathAnalyzer {
   private logger: MigrationLogger;

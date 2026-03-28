@@ -1,11 +1,11 @@
 import { Palette, Save } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ThemeToggle from '../../../components/digital-pp/ThemeToggle';
-import { usePortfolio } from '../../../stores';
-import { useTheme } from '../../../stores';
-import type { AnimationType } from '../../../types/student';
-import { showProfileUpdateToast } from '../../../utils/profileToast';
+import { ThemeToggle } from '@/features/digital-portfolio';
+import { usePortfolio } from '@/stores';
+import { useTheme } from '@/stores';
+import type { AnimationType } from '@/shared/types/student';
+import { showProfileUpdateToast } from '@/features/student-profile';
 
 const ThemeSettings: React.FC = () => {
   const navigate = useNavigate();

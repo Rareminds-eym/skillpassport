@@ -7,8 +7,8 @@ import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subsc
 import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/stores';
 import { useSubscriptionAccess } from '@/stores/subscriptionStore';
 
-import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parseStudentType } from '../../utils/getEntityContent';
-import { calculateDaysRemaining, isActiveOrPaused } from '../../utils/subscriptionHelpers';
+import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parseStudentType } from "@/shared/lib/getEntityContent";
+import { calculateDaysRemaining, isActiveOrPaused } from "@/features/subscription/lib/subscriptionHelpers";
 
 /**
  * Get the subscription manage path based on user role

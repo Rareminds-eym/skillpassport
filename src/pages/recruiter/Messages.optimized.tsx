@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { getLogger } from '../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('RecruiterMessages');
 import { 
@@ -21,9 +21,9 @@ import { MessageService, Conversation } from '@/features/messaging';
 import { useMessages } from '@/features/messaging';
 import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '@/stores';
-import { useGlobalPresence } from '../../context/GlobalPresenceContext';
+import { useGlobalPresence } from '@/stores';
 import { useTypingIndicator } from '@/features/messaging';
-import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
+import { useNotificationBroadcast } from '@/features/broadcast/model/useNotificationBroadcast';
 
 // Constants
 const AVATAR_BG_COLOR = '3B82F6';

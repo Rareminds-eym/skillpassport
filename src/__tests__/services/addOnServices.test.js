@@ -27,7 +27,7 @@ const mockSupabaseChain = () => {
   return chain;
 };
 
-vi.mock('../../lib/supabaseClient', () => ({
+vi.mock('@/shared/api/supabaseClient', () => ({
   supabase: {
     from: vi.fn(() => mockSupabaseChain()),
     auth: {
@@ -38,11 +38,11 @@ vi.mock('../../lib/supabaseClient', () => ({
 }));
 
 // Import services after mocking
-import { supabase } from '../../lib/supabaseClient';
-import addOnCatalogService from '../../services/addOnCatalogService';
-import addOnPaymentService from '../../services/addOnPaymentService';
-import entitlementService from '../../services/entitlementService';
-import migrationService from '../../services/migrationService';
+import { supabase } from '@/shared/api/supabaseClient';
+import addOnCatalogService from '@/shared/api/addOnCatalogService';
+import addOnPaymentService from '@/shared/api/addOnPaymentService';
+import entitlementService from '@/features/subscription/api/entitlementService';
+import migrationService from '@/shared/api/migrationService';
 
 describe('AddOnCatalogService', () => {
   beforeEach(() => {

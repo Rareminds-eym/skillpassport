@@ -1,4 +1,4 @@
-import { Proposal, StudentProfile } from '../../types/project';
+import { Proposal, StudentProfile } from '@/shared/types/project';
 
 export const mockStudents: StudentProfile[] = [
   {

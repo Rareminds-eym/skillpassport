@@ -15,7 +15,7 @@ import {
   CircularReference,
   InvalidRelationship,
   RelationshipType
-} from '../types/entity-migration'
+} from '@/shared/types/entity-migration'
 
 export class RelationshipAnalyzer implements IRelationshipAnalyzer {
   /**

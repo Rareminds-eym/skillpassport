@@ -12,18 +12,15 @@ import {
   MessageCircle as MessageCircleIcon
 } from 'lucide-react';
 import { useStudentProfile, useStudentActivity, useStudentMessages } from '@/features/student-profile';
-import { useStudentDataByEmail } from '@/hooks/useStudentDataByEmail';
-import { useStudentMessageNotifications } from '@/hooks/useStudentMessageNotifications';
-import { useStudentUnreadCount } from '@/hooks/useStudentMessages';
-import { useStudentRealtimeActivities } from '@/hooks/useStudentRealtimeActivities';
+import { useStudentDataByEmail, useStudentMessageNotifications, useStudentUnreadCount } from '@/entities/student';
+import { useStudentRealtimeActivities } from '@/shared/lib/hooks';
 import { useUser, useTheme } from '@/stores';
-import { useAIJobMatching } from '../../hooks/useAIJobMatching';
-import SuggestedNextSteps from '../../components/Students/components/SuggestedNextSteps';
-import RecentUpdatesCard from '../../components/Students/components/RecentUpdatesCard';
+import { useAIJobMatching } from '@/features/opportunities';
+import { SuggestedNextSteps, RecentUpdatesCard } from '@/widgets/student-dashboard';
 import {
   suggestions as mockSuggestions
-} from '../../components/Students/data/mockData';
-import { showProfileUpdateToast, showProfileErrorToast, PROFILE_UPDATE_MESSAGES } from '../../utils/profileToast';
+} from "@/shared/lib/test/mockData";
+import { showProfileUpdateToast, showProfileErrorToast, PROFILE_UPDATE_MESSAGES } from '@/features/student-profile';
 
 const MySkills = () => {
   const user = useUser();

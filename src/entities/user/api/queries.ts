@@ -86,6 +86,13 @@ export const getUserDocuments = async (userId: string): Promise<UserDocument[]> 
 
   if (error) throw error;
   return data || [];
+};
+
+// ============================================================================
+// User Activity Log Queries
+// ============================================================================
+
+export const getUserActivityLog = async (userId: string, limit: number = 50): Promise<any[]> => {
   const { data, error } = await supabase
     .from('user_activity_log')
     .select('*')
@@ -146,4 +153,11 @@ export const getUserRoleHistory = async (userId: string): Promise<any[]> => {
 
 export const getBulkImportStatus = async (importId: string): Promise<any> => {
   const { data, error } = await supabase
-    .from('user_bulk_imports')
+    .from('user_bulk_imports')
+    .select('*')
+    .eq('id', importId)
+    .single();
+
+  if (error) throw error;
+  return data;
+};

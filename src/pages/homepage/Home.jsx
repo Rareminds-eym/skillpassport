@@ -10,9 +10,9 @@ import {
   HowItWorks,
   ProductWalkthrough,
   AssessmentPromotionalModal,
-} from '../../components/Homepage';
-import { useAssessmentPromotional } from '../../stores';
-import SEOHead from '../../components/SEO/SEOHead';
+} from '@/pages/homepage';
+import { useAssessmentPromotional } from '@/stores';
+import SEOHead from '@/shared/ui/SEOHead';
 
 const Home = () => {
   const { 

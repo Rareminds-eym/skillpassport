@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { supabase } from "../../../../../lib/supabaseClient";
+import { supabase } from '@/shared/api/supabaseClient';
 import { Student } from "../types";
 
 export const useStudentSearch = (collegeId: string | null, excludeIds: Set<string>) => {

@@ -7,14 +7,14 @@ import {
   getCollegeSwapRequestsWithDetails,
   getCollegeSwapStatistics,
   adminApproveSwapRequest,
-} from '../../../../services/classSwapService';
+} from '@/features/college-admin';
 import type { 
   ClassSwapRequestWithDetails, 
   SwapStatistics,
   SwapRequestStatus 
 } from '../../../../types/classSwap';
-import { useUser } from "../../../../stores";
-import { supabase } from "../../../../lib/supabaseClient";
+import { useUser } from "@/stores";
+import { supabase } from '@/shared/api/supabaseClient';
 
 interface SwapRequestsManagementProps {
   collegeId: string | null;

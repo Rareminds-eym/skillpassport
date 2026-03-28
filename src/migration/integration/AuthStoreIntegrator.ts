@@ -32,7 +32,7 @@ export class AuthStoreIntegrator {
     const functionName = authFunction.name;
     const functionNameLower = functionName.toLowerCase();
 
-    let code = `import { useAuthActions, useUser, useSession, useIsAuthenticated } from '../../stores/authStore';\n\n`;
+    let code = `import { useAuthActions, useUser, useSession, useIsAuthenticated } from '@/stores/authStore';\n\n`;
 
     // Generate function based on auth operation type
     if (functionNameLower.includes('signin') || functionNameLower.includes('login')) {
@@ -448,8 +448,8 @@ export const use${authFunction.name.charAt(0).toUpperCase() + authFunction.name.
     let code = `// Enhanced authentication API with Zustand store integration
 // This file replaces legacy context patterns with store-based state management
 
-import { useAuthActions, useUser, useSession, useIsAuthenticated, useAuthStore } from '../../stores/authStore';
-import * as originalAuthService from '../../services/authService';
+import { useAuthActions, useUser, useSession, useIsAuthenticated, useAuthStore } from '@/stores/authStore';
+import * as originalAuthService from '@/features/auth';
 
 `;
 

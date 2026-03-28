@@ -7,7 +7,7 @@
 import { ServiceDirectoryScanner } from '../analysis/ServiceDirectoryScanner';
 import { SharedUtilityMigrator } from '../engine/SharedUtilityMigrator';
 import { MigrationLogger } from '../logging/MigrationLogger';
-import { createMigrationConfig } from '../config/defaultConfig';
+import { createMigrationConfig } from "@/shared/config/defaultConfig";
 
 async function migrateSharedUtilities() {
   const config = createMigrationConfig({

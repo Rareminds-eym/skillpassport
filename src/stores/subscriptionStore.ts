@@ -1,10 +1,10 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { getActiveSubscription } from '../services/Subscriptions/subscriptionService';
-import addOnPaymentService from '../services/addOnPaymentService';
-import { supabase } from '../lib/supabaseClient';
-import { entitlementService } from '../services/entitlementService';
-import { clearFeatureAccessCache } from '../hooks/useFeatureGate';
+import { getActiveSubscription } from '@/features/subscription/api';
+import addOnPaymentService from '@/features/subscription/api/addOnPaymentService';
+import { supabase } from '@/shared/api/supabaseClient';
+import { entitlementService } from '@/features/subscription';
+import { clearFeatureAccessCache } from '@/features/subscription/';
 
 // ============================================================================
 // Types

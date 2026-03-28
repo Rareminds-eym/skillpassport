@@ -1,6 +1,6 @@
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
-import { LibraryBookIssue } from "../../../../../services/libraryService";
+import { LibraryBookIssue } from '@/features/library';
 
 interface HistoryTabProps {
   borrowHistory: LibraryBookIssue[];

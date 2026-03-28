@@ -1,6 +1,6 @@
-import { getOpenAIClient, DEFAULT_MODEL } from '../services/openAIClient';
-import { fetchStudentProfile, fetchOpportunities } from '../services/profileService';
-import { extractInDemandSkills } from '../utils/contextBuilder';
+import { getOpenAIClient, DEFAULT_MODEL } from '@/features/career-assistant/services/openAIClient';
+import { fetchStudentProfile, fetchOpportunities } from '@/features/career-assistant/services/profileService';
+import { extractInDemandSkills } from "@/features/career-assistant/utils/contextBuilder";
 import { 
   createLearningPathPrompt, 
   LEARNING_PATH_SYSTEM_PROMPT, 

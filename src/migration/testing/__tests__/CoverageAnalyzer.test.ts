@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest'
 import { CoverageAnalyzer } from '../CoverageAnalyzer'
-import type { CoverageReport, FileCoverage } from '../../types/test-coverage'
+import type { CoverageReport, FileCoverage } from '@/shared/types/test-coverage'
 
 describe('CoverageAnalyzer', () => {
   let analyzer: CoverageAnalyzer

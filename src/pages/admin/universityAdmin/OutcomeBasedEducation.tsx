@@ -22,7 +22,7 @@ import {
   Briefcase,
   GraduationCap,
 } from "lucide-react";
-import KPICard from "../../../components/admin/KPICard";
+import KPICard from '@/shared/ui/KPICard';
 
 // TypeScript Interfaces
 interface ProgramOutcome {

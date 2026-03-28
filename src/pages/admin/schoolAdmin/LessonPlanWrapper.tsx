@@ -1,6 +1,6 @@
 import React from "react";
 import LessonPlan from "./LessonPlan";
-import { useLessonPlans, useSubjectsAndClasses } from "../../../hooks/useLessonPlans";
+import { useLessonPlans, useSubjectsAndClasses } from '@/shared/lib/hooks';
 
 /**
  * Wrapper component that connects the LessonPlan UI to the backend

@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { supabase } from "../../../../../lib/supabaseClient";
+import { supabase } from '@/shared/api/supabaseClient';
 import toast from "react-hot-toast";
 import { StudentLedger, FeePayment, StudentFeeSummary, PaymentStatus } from "../types";
-import { getLogger } from "../../../../../config/logging";
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('school-admin-fee-tracking');
 

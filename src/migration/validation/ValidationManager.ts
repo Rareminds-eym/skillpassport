@@ -14,7 +14,7 @@ import {
   MigrationConfig,
   Integration,
   ImportUpdate
-} from '../types/index.js'
+} from '@/shared/types/index.js'
 import { MigrationLogger } from '../logging/MigrationLogger.js'
 
 export class ValidationManager {

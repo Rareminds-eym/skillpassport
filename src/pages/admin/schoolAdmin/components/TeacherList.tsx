@@ -1,9 +1,9 @@
 import { CheckCircle, Clock, Eye, Filter, Grid3X3, List, Mail, Phone, Search, UserCheck, Users, XCircle } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import KPICard from "../../../../components/admin/KPICard";
-import DocumentViewerModal from "../../../../components/admin/modals/DocumentViewerModal";
-import { useUser } from "../../../../stores";
-import { supabase } from "../../../../lib/supabaseClient";
+import KPICard from '@/shared/ui/KPICard';
+import DocumentViewerModal from '@/shared/ui/admin/modals/DocumentViewerModal';
+import { useUser } from "@/stores";
+import { supabase } from '@/shared/api/supabaseClient';
 
 interface Teacher {
   id: string;

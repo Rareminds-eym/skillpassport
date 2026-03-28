@@ -105,7 +105,7 @@ import { Button, Card } from '@/shared/ui';
 
 ### 2. API Clients (`shared/api/`)
 
-**Source**: `src/lib/supabaseClient.ts`  
+**Source**: `src/shared/api/supabaseClient.ts`  
 **Destination**: `src/shared/api/supabaseClient.ts`
 
 #### Migrated Files (1)
@@ -117,7 +117,7 @@ import { Button, Card } from '@/shared/ui';
 **Import Transformation**:
 ```typescript
 // Before
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 
 // After
 import { supabase } from '@/shared/api';
@@ -282,7 +282,7 @@ These will be migrated in their respective feature phases.
 | Old Pattern | New Pattern | Files Affected |
 |-------------|-------------|----------------|
 | `@/components/ui/*` | `@/shared/ui` | 80+ |
-| `@/lib/supabaseClient` | `@/shared/api` | 50+ |
+| `@/shared/api/supabaseClient` | `@/shared/api` | 50+ |
 | `@/config/*` | `@/shared/config` | 30+ |
 | `@/utils/*` (selected) | `@/shared/lib/utils` | 20+ |
 | `@/hooks/*` (selected) | `@/shared/lib/hooks` | 15+ |
@@ -304,8 +304,8 @@ import { Button, Card, CardContent, CardHeader, Badge } from '@/shared/ui';
 #### API Client
 ```typescript
 // Before
-import { supabase } from '@/lib/supabaseClient';
-import { supabaseAdmin } from '@/lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
+import { supabaseAdmin } from '@/shared/api/supabaseClient';
 
 // After
 import { supabase, supabaseAdmin } from '@/shared/api';
@@ -443,7 +443,7 @@ All planned files were successfully migrated. No files encountered migration iss
 
 ✅ All original files remain in their locations:
 - `src/components/ui/*` - Still exists
-- `src/lib/supabaseClient.ts` - Still exists
+- `src/shared/api/supabaseClient.ts` - Still exists
 - `src/config/*` - Still exists
 - `src/utils/*` - Still exists
 - `src/hooks/*` - Still exists

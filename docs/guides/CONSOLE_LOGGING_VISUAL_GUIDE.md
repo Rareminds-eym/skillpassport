@@ -222,7 +222,7 @@ console.log('Metadata:', result._metadata);
 ```javascript
 // Check if you're logged in
 (async function() {
-  const { supabase } = await import('/src/lib/supabaseClient.js');
+  const { supabase } = await import('/src/shared/api/supabaseClient.js');
   const { data: { session } } = await supabase.auth.getSession();
   if (session) {
     console.log('✅ Logged in as:', session.user.email);

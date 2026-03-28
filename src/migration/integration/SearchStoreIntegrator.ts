@@ -32,7 +32,7 @@ export class SearchStoreIntegrator {
     const functionName = searchFunction.name;
     const functionNameLower = functionName.toLowerCase();
 
-    let code = `import { useSearchActions, useSearchStore, useSearch } from '../../stores/searchStore';\n\n`;
+    let code = `import { useSearchActions, useSearchStore, useSearch } from '@/stores/searchStore';\n\n`;
 
     // Generate function based on search operation type
     if (functionNameLower.includes('search') && !functionNameLower.includes('history')) {
@@ -358,9 +358,9 @@ export const use${searchFunction.name.charAt(0).toUpperCase() + searchFunction.n
     let code = `// Enhanced search API with Zustand store integration
 // This file connects search operations with useSearchActions and useSearchStore
 
-import { useSearchActions, useSearchStore, useSearch } from '../../stores/searchStore';
-import * as originalSearchService from '../../services/searchService';
-import * as originalSearchHistoryService from '../../services/searchHistoryService';
+import { useSearchActions, useSearchStore, useSearch } from '@/stores/searchStore';
+import * as originalSearchService from '@/shared/api/searchService';
+import * as originalSearchHistoryService from '@/features/opportunities';
 
 `;
 

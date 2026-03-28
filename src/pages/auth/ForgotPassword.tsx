@@ -1,7 +1,7 @@
 import { AlertCircle, ArrowLeft, Check, KeyRound, Mail } from 'lucide-react';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import userApiService from '../../services/userApiService';
+import userApiService from '@/entities/user';
 
 export default function ForgotPassword() {
   const navigate = useNavigate();

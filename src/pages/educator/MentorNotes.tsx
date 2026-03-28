@@ -10,20 +10,20 @@ import {
     X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { getLogger } from "../../config/logging";
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('MentorNotes');
 
 // @ts-ignore
-import { FeatureGate } from "@/features/subscription/ui/shared";
+import { FeatureGate } from "@/features/subscription";
 import ConfirmationModal from '@/shared/ui/ConfirmationModal';
 import NotificationModal from '@/shared/ui/NotificationModal';
-import { useEducatorSchool } from "../../hooks/useEducatorSchool";
-import { useStudents } from "../../hooks/useStudents";
-import { supabase } from "../../lib/supabaseClient";
-import {
-    saveMentorNote,
-} from "../../services/educator/mentorNotes";
+import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
+import { useStudents } from '@/entities/student';
+import { supabase } from '@/shared/api/supabaseClient';
+import { saveMentorNote } from '@/features/educator-copilot';
+import { mentorNotesService } from "@/features/counselling";
+import { authSessionService } from '@/features/auth';
 
 interface MentorNote {
   id: string;
@@ -276,7 +276,7 @@ const MentorNotesContent = () => {
       }
 
       // Get the current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       if (!user) {
         showNotification("Error", "User not authenticated!", "error");
         return;
@@ -366,8 +366,7 @@ const MentorNotesContent = () => {
   };
 
   const deleteMentorNote = async (id: string) => {
-    const { data, error } = await supabase.from("mentor_notes").delete().eq("id", id);
-    if (error) throw error;
+    const data = await mentorNotesService.deleteMentorNote(id);
     return data;
   };
 

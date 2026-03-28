@@ -11,7 +11,7 @@ import {
   MigrationPhase, 
   MigrationSummary,
   MigrationConfig 
-} from '../types/index.js'
+} from '@/shared/types/index.js'
 
 export class MigrationLogger {
   private log: MigrationLog

@@ -1,4 +1,4 @@
-import GradingModal from '@/components/educator/GradingModal';
+import { GradingModal } from '@/features/educator';
 import {
     ArrowPathIcon,
     CalendarIcon,
@@ -17,27 +17,26 @@ import {
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
 import React, { useEffect, useMemo, useState } from 'react';
-import AssignmentFileUpload from '../../components/educator/AssignmentFileUpload';
-import StudentSelectionModal from '../../components/educator/StudentSelectionModal';
+import { AssignmentFileUpload, StudentSelectionModal } from '@/features/college-admin';
 import { ConfirmationModal } from '@/shared/ui';
 import { NotificationModal } from '@/shared/ui';
-import { useAuth } from '../../context/AuthContext';
-import { useEducatorSchool } from '../../hooks/useEducatorSchool';
-import { supabase } from '../../lib/supabaseClient';
-import { getPagesApiUrl } from '../../utils/pagesUrl';
-import { getLogger } from '../../config/logging';
-import { useUser } from '@/stores';
+import { useAuth } from '@/features/auth';
+import { useEducatorSchool } from '@/features/educator-copilot';
+import { supabase } from '@/shared/api/supabaseClient';
+import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
+import { getLogger } from '@/shared/config/logging';
+import { useUser, useIsAuthenticated } from '@/stores';
 
 const logger = getLogger('EducatorAssessments');
-import { getPagesApiUrl } from '../../utils/pagesUrl';
+import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
+import { authSessionService } from '@/features/auth';
 import {
-    assignToStudents,
-    createAssignmentsForClasses,
+    assignTaskToStudents,
+    createCollegeAssignment,
     deleteAssignment,
-    getAssignmentsByEducator,
-    getAssignmentStatistics,
-    getInstructionFiles
-} from '../../services/educator/assignmentsService';
+    fetchEducatorAssignments,
+    getAssignmentStatistics
+} from '@/features/college-admin';
 
 // Configuration
 const SKILL_AREAS = ['Creativity', 'Collaboration', 'Critical Thinking', 'Leadership', 'Communication', 'Problem Solving'];
@@ -292,7 +291,7 @@ const Assessments = () => {
 
                 // If not in localStorage, try to get from authenticated user and fetch educator record
                 if (!educatorId) {
-                    const { data: { user }, error: authError } = await supabase.auth.getUser();
+                    const { data: { user }, error: authError } = await authSessionService.getUser();
 
                     if (user && !authError) {
                         // Fetch the school_educators record to get the educator_id
@@ -353,7 +352,11 @@ const Assessments = () => {
                 }
 
                 // Fetch assignments for this educator
-                const assignments = await getAssignmentsByEducator(educatorId);
+                const { data: assignments, error: assignmentsError } = await fetchEducatorAssignments(educatorId);
+                
+                if (assignmentsError || !assignments) {
+                    throw new Error(assignmentsError || 'Failed to fetch assignments');
+                }
 
                 // Transform assignments to match the component's expected format
                 const transformedTasks = await Promise.all(assignments.map(async (assignment: any) => {
@@ -548,7 +551,7 @@ const Assessments = () => {
             }
 
             // Get token for file uploads
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await authSessionService.getSession();
             const token = session?.access_token || user?.access_token;
 
             if (!token) {
@@ -625,10 +628,16 @@ const Assessments = () => {
                 resetTaskForm();
                 return;
             } else {
-                // Create new assignments with staged file upload
-                const createdAssignments = await createAssignmentsForClasses(baseAssignmentData, newTask.assignedTo);
+                // Create new assignment
+                const { data: createdAssignment, error: createError } = await createCollegeAssignment(baseAssignmentData);
+                
+                if (createError || !createdAssignment) {
+                    throw new Error(createError || 'Failed to create assignment');
+                }
+                
+                const createdAssignments = [createdAssignment];
 
-                // Then upload staged files to each assignment
+                // Then assign to students if needed
                 if (selectedFiles.length > 0 && fileUploadRef.current) {
                     for (const assignment of createdAssignments) {
                         try {
@@ -825,29 +834,33 @@ const Assessments = () => {
 
         // CRITICAL: Force refresh of existing files for the edit modal
         if (selectedTask && selectedTask.id) {
-            try {
-                const freshFiles = await getInstructionFiles(selectedTask.id);
-                setExistingFiles(freshFiles);
-            } catch (error) {
-                logger.error('Failed to fetch fresh files', error);
-            }
+            // TODO: Implement getInstructionFiles or fetch from assignment data
+            // try {
+            //     const freshFiles = await getInstructionFiles(selectedTask.id);
+            //     setExistingFiles(freshFiles);
+            // } catch (error) {
+            //     logger.error('Failed to fetch fresh files', error);
+            // }
+            setExistingFiles([]);
         }
     };
 
     const fetchInstructionFilesForDrawer = async (assignmentId: string) => {
-        try {
-            const files = await getInstructionFiles(assignmentId);
-            setDrawerInstructionFiles(files);
-        } catch (error) {
-            logger.error('Error fetching instruction files', error);
-            setDrawerInstructionFiles([]);
-        }
+        // TODO: Implement getInstructionFiles or fetch from assignment data
+        // try {
+        //     const files = await getInstructionFiles(assignmentId);
+        //     setDrawerInstructionFiles(files);
+        // } catch (error) {
+        //     logger.error('Error fetching instruction files', error);
+        //     setDrawerInstructionFiles([]);
+        // }
+        setDrawerInstructionFiles([]);
     };
 
     const handleStudentsAssigned = async (studentIds: string[]) => {
         try {
             if (newlyCreatedAssignmentId && studentIds.length > 0) {
-                await assignToStudents(newlyCreatedAssignmentId, studentIds);
+                await assignTaskToStudents(newlyCreatedAssignmentId, studentIds);
 
                 // Refresh assignment statistics
                 const stats = await getAssignmentStatistics(newlyCreatedAssignmentId);

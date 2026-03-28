@@ -23,14 +23,15 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { SubscriptionDashboard } from '@/features/subscription/ui/individual';
+import { SubscriptionDashboard } from '@/features/subscription';
 import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
 import { useUser } from '@/stores';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 import { getUserSubscriptions } from '@/features/subscription/api';
-import { deactivateSubscription, pauseSubscription, resumeSubscription } from '../../services/paymentsApiService';
-import { calculateDaysRemaining, calculateProgressPercentage, formatDate as formatDateUtil, getSubscriptionStatusChecks } from '../../utils/subscriptionHelpers';
-import { useUsageStatistics } from '../../hooks/useUsageStatistics';
+import { deactivateSubscription, pauseSubscription, resumeSubscription } from '@/features/subscription';
+import { calculateDaysRemaining, calculateProgressPercentage, formatDate as formatDateUtil, getSubscriptionStatusChecks } from "@/features/subscription/lib/subscriptionHelpers";
+import { useUsageStatistics } from '@/shared/lib/hooks';
+import { authSessionService } from '@/features/auth';
 
 /**
  * Get the settings path based on current URL path (more reliable than role)
@@ -182,7 +183,7 @@ function MySubscription() {
 
     try {
       // Get auth token
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await authSessionService.getSession();
       const token = session?.access_token;
 
       // Call Worker via paymentsApiService
@@ -221,7 +222,7 @@ function MySubscription() {
 
     try {
       // Get auth token
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await authSessionService.getSession();
       const token = session?.access_token;
 
       const result = await pauseSubscription(
@@ -256,7 +257,7 @@ function MySubscription() {
 
     try {
       // Get auth token
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await authSessionService.getSession();
       const token = session?.access_token;
 
       const result = await resumeSubscription(subscriptionData.id, token);

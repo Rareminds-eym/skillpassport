@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 
 // Types
 export interface PromotionalEvent {

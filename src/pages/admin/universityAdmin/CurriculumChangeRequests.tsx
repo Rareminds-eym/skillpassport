@@ -8,8 +8,8 @@ import {
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
-import { curriculumChangeRequestService } from '../../../services/curriculumChangeRequestService';
-import { getLogger } from '../../../config/logging';
+import { curriculumChangeRequestService } from '@/features/college-admin';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('university-admin-curriculum-change-requests');
 

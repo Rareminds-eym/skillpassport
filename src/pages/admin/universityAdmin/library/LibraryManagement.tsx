@@ -16,8 +16,8 @@ import {
   Search,
   Book,
 } from 'lucide-react';
-import { libraryService, LibraryBook, LibraryBookIssue, LibraryStats } from '../../../../services/libraryService';
-import KPICard from '../../../../components/admin/KPICard';
+import { libraryService, LibraryBook, LibraryBookIssue, LibraryStats } from '@/features/library';
+import KPICard from '@/shared/ui/KPICard';
 
 const LibraryManagement = () => {
   const [activeTab, setActiveTab] = useState('overview');

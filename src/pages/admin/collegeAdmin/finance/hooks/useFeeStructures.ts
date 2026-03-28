@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { supabase } from "../../../../../lib/supabaseClient";
+import { supabase } from '@/shared/api/supabaseClient';
 import { FeeStructure } from "../types";
 
 export const useFeeStructures = (collegeId: string | null) => {

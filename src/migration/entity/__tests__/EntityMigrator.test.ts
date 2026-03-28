@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { EntityMigrator } from '../EntityMigrator'
-import { EntityDefinition, EntityType } from '../../types/entity-migration'
+import { EntityDefinition, EntityType } from '@/shared/types/entity-migration'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 

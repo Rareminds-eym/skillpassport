@@ -24,7 +24,7 @@ import {
   Settings,
   X,
 } from "lucide-react";
-import KPICard from "../../../components/admin/KPICard";
+import KPICard from '@/shared/ui/KPICard';
 
 // TypeScript Interfaces
 interface District {

@@ -54,8 +54,33 @@ export {
   SubscriptionPrefetch,
   SubscriptionRouteGuard,
   PaymentSuccess,
-  PaymentFailure
+  PaymentFailure,
+  SubscriptionSettingsSection
 } from './ui/shared';
+
+// DatePicker (default export)
+export { default as DatePicker } from './ui/shared/DatePicker';
+
+// Root UI Components (legacy exports for backward compatibility)
+export { default as AddOnCardRoot } from './ui/AddOnCard';
+export { default as AddOnCheckoutRoot } from './ui/AddOnCheckout';
+export { default as AddOnCheckout } from './ui/AddOnCheckout';
+export { default as AddOnMarketplaceRoot } from './ui/AddOnMarketplace';
+export { default as BundleCardRoot } from './ui/BundleCard';
+export { default as FeatureGateRoot } from './ui/FeatureGate';
+export { default as ReceiptCardRoot } from './ui/ReceiptCard';
+export { default as SubscriptionBannerRoot } from './ui/SubscriptionBanner';
+export { default as SubscriptionDashboardRoot } from './ui/SubscriptionDashboard';
+export { default as SubscriptionDetailsRoot } from './ui/SubscriptionDetails';
+export { default as SubscriptionGateRoot } from './ui/SubscriptionGate';
+export { default as SubscriptionPurchaseHeader } from './ui/SubscriptionPurchaseHeader';
+export { default as SubscriptionRouteGuardRoot } from './ui/SubscriptionRouteGuard';
+export { default as SubscriptionSettingsSectionRoot } from './ui/SubscriptionSettingsSection';
+export { default as SubscriptionStatusWidgetRoot } from './ui/SubscriptionStatusWidget';
+export { default as SuccessHeader } from './ui/SuccessHeader';
+export { default as TransactionGridRoot } from './ui/TransactionGrid';
+export { default as TransactionListRoot } from './ui/TransactionList';
+export { default as UpgradePromptRoot } from './ui/UpgradePrompt';
 
 // State Management (Hooks)
 export {
@@ -63,7 +88,9 @@ export {
   useOrganizationSubscription,
   usePaymentVerification,
   useSubscriptionPlansData,
-  useSubscriptionQuery
+  useSubscriptionQuery,
+  useFeatureGate,
+  clearFeatureAccessCache
 } from './model';
 
 // API Services
@@ -97,6 +124,8 @@ export {
   getPoolAssignments
 } from './api/licensePoolService';
 
+export { default as entitlementService, EntitlementService } from './api/entitlementService';
+
 // Utilities
 export {
   isActiveOrPaused,
@@ -123,3 +152,14 @@ export type {
   OrganizationSubscription,
   PaymentTransaction
 } from './model/types';
+
+// API & Data Access
+export * from './api';
+export { capitalizeFirstLetter } from './lib/signupValidation';
+export { getInitialFormData } from './lib/signupValidation';
+export { formatOtp } from './lib/signupValidation';
+export { validateSignupFields } from './lib/signupValidation';
+export { formatPhoneNumber } from './lib/signupValidation';
+export { default as paymentsApiService } from './api/paymentsApiService';
+export type { SignupFormFields } from './ui/shared/SignupFormFields';
+export type { DatePicker } from './ui/shared/DatePicker';

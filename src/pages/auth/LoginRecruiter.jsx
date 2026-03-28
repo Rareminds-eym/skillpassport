@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import loginIllustration from "../../assets/images/auth/Recruiter-illustration.png";
-import { useAuthActions } from "../../stores";
+import { useAuthActions } from "@/stores";
 
 import {
     AlertCircle,
@@ -14,7 +14,7 @@ import {
     Mail,
     Zap,
 } from "lucide-react";
-import { loginRecruiter } from "../../services/recruiterProfile";
+import { loginRecruiter } from "@/features/recruiter-copilot";
 import FeatureCard from "./components/ui/FeatureCard";
 
 export default function LoginRecruiter() {

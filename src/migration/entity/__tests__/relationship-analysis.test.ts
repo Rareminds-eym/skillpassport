@@ -8,7 +8,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest'
 import { RelationshipAnalyzer } from '../RelationshipAnalyzer'
-import type { EntityDefinition, EntityRelationship } from '../../types/entity-migration'
+import type { EntityDefinition, EntityRelationship } from '@/shared/types/entity-migration'
 
 describe('RelationshipAnalyzer', () => {
   let analyzer: RelationshipAnalyzer

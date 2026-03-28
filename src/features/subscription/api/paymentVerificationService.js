@@ -12,7 +12,7 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
-import paymentsApiService from '@/services/paymentsApiService';
+import { paymentsApiService } from '@/features/subscription';
 
 // Cache for verification results (5 minutes TTL)
 const verificationCache = new Map();

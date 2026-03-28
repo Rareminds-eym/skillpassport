@@ -4,6 +4,7 @@
  */
 
 // Model exports
+export { useCoursePerformance } from './model/useCoursePerformance';
 export type {
   Course,
   CourseModule,

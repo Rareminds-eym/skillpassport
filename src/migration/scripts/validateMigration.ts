@@ -2,7 +2,7 @@
 
 import { createValidationRunner } from '../validation/ValidationRunner'
 import { createMigrationLogger } from '../logging/MigrationLogger'
-import { defaultConfig } from '../config/defaultConfig'
+import { defaultConfig } from "@/shared/config/defaultConfig"
 import { MigrationConfig } from '../types'
 
 /**

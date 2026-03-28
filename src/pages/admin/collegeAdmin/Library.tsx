@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import toast from 'react-hot-toast';
-import { supabase } from "../../../lib/supabaseClient";
-import { LibraryBook, LibraryBookIssue, libraryService, LibrarySetting, LibraryStats, OverdueBook } from "../../../services/libraryService";
-import { getLogger } from "../../../config/logging";
+import { supabase } from '@/shared/api/supabaseClient';
+import { LibraryBook, LibraryBookIssue, libraryService, LibrarySetting, LibraryStats, OverdueBook } from "@/features/college-admin";
+import { getLogger } from '@/shared/config/logging';
+import { authSessionService } from '@/features/auth';
 import { 
   LibraryHeader, 
   LibraryStatsCards, 
@@ -274,7 +275,7 @@ export default function LibraryModule() {
       }
       
       if (!schoolId && !collegeId) {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await authSessionService.getUser();
         
         if (user) {
           userId = user.id;

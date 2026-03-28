@@ -101,10 +101,10 @@ const user = useUser();
 ```javascript
 // Before
 import { useAuth } from '@/context/AuthContext';
-import { useUser } from '../../../stores';
+import { useUser } from '@/stores';
 
 // After
-import { useUser } from '../../../stores';
+import { useUser } from '@/stores';
 ```
 
 ## Data Models

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Search, Eye, CheckCircle, Clock, XCircle, FileText } from "lucide-react";
-import { supabase } from "../../../../lib/supabaseClient";
-import { useUser } from "../../../../stores";
-import FacultyDocumentViewerModal from "../../../../components/admin/modals/FacultyDocumentViewerModal";
+import { supabase } from '@/shared/api/supabaseClient';
+import { useUser } from "@/stores";
+import FacultyDocumentViewerModal from '@/shared/ui/admin/modals/FacultyDocumentViewerModal';
 
 interface Faculty {
   id: string;

@@ -13,9 +13,9 @@ import {
   User,
 } from "lucide-react";
 import toast from 'react-hot-toast';
-import { companyService } from '@/services/companyService';
-import type { Company, CompanyFormData } from '@/services/companyService';
-import CompanyStatusModal from '@/components/modals/CompanyStatusModal';
+import { companyService } from '@/features/recruiter-copilot';
+import type { Company, CompanyFormData } from '@/features/recruiter-copilot';
+import { CompanyStatusModal } from '@/features/admin/ui/modals/CompanyStatusModal';
 
 interface CompanyRegistrationProps {
   onStatsUpdate?: () => void;

@@ -11,7 +11,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@/stores';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getActiveSubscription } from '../api/subscriptionService';
-import paymentsApiService from '@/services/paymentsApiService';
+import { paymentsApiService } from '@/features/subscription';
 
 /**
  * Format subscription data for UI

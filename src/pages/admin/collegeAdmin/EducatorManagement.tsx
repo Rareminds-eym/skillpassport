@@ -13,7 +13,7 @@ import {
   BriefcaseIcon,
   DocumentTextIcon,
 } from "@heroicons/react/24/outline";
-import FacultyDocumentViewerModal from "../../../components/admin/modals/FacultyDocumentViewerModal";
+import FacultyDocumentViewerModal from '@/shared/ui/admin/modals/FacultyDocumentViewerModal';
 
 interface Educator {
   id: string;

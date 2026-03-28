@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Search, TrendingUp, DollarSign, Building, AlertCircle, CheckCircle } from "lucide-react";
-import { DepartmentBudget, BudgetCategory } from "../hooks/useDepartmentBudgets";
+import { DepartmentBudget, BudgetCategory } from '@/shared/lib/hooks/useDepartmentBudgets';
 
 interface Props {
   budgets: DepartmentBudget[];

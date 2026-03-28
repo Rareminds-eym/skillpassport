@@ -201,7 +201,7 @@ import { Course } from '@/entities/course/model/types';`;
   describe('convertAllRelativeToAbsolute', () => {
     it('should convert all relative imports', async () => {
       const mockFileContent = `import { User } from './user';
-import { helper } from '../utils/helper';`;
+import { helper } from "@/shared/lib/helper";`;
       const mockConfig = {
         compilerOptions: {
           baseUrl: '.',

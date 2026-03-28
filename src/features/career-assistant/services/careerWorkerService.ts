@@ -3,8 +3,8 @@
  * Calls the Cloudflare Worker for career AI processing
  */
 
-import { supabase } from '../../../lib/supabaseClient';
-import careerApiService from '../../../services/careerApiService';
+import { supabase } from '@/shared/api/supabaseClient';
+import { careerApiService } from '@/features/counselling';
 
 export interface CareerChatResult {
   success: boolean;

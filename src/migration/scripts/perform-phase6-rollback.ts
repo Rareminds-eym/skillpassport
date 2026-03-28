@@ -9,9 +9,9 @@
 
 import { program } from 'commander'
 import { Phase6RollbackSystem } from '../rollback/Phase6RollbackSystem.js'
-import { MigrationConfig } from '../types/index.js'
+import { MigrationConfig } from '@/shared/types/index.js'
 import { MigrationLogger } from '../logging/MigrationLogger.js'
-import { defaultConfig } from '../config/defaultConfig.js'
+import { defaultConfig } from "@/shared/config/defaultConfig.js"
 
 interface RollbackOptions {
   migrationId: string

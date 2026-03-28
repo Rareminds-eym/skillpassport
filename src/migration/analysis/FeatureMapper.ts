@@ -14,7 +14,7 @@ import {
   FeatureMapping, 
   FeatureType,
   StoreIntegration 
-} from '../types/index.js'
+} from '@/shared/types/index.js'
 
 export interface FeatureMappingRule {
   feature: FeatureType

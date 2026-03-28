@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { X, CheckCircle, Clock } from "lucide-react";
 import { StudentFeeSummary, FeePayment, PaymentStatus } from "../types";
-import { supabase } from "../../../../../lib/supabaseClient";
+import { supabase } from "@/shared/api/supabaseClient";
 
 interface Props {
   isOpen: boolean;

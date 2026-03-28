@@ -57,7 +57,7 @@ After running the fix:
 1. **Check Pipeline Data**:
    ```javascript
    // Run in browser console
-   import { supabase } from './src/lib/supabaseClient.js';
+   import { supabase } from './src/shared/api/supabaseClient.js';
    
    const { data } = await supabase
      .from('pipeline_candidates')

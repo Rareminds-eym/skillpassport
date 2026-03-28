@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Plus, ArrowDown, Square } from 'lucide-react';
-import { recruiterIntelligenceEngine } from '../services/recruiterIntelligenceEngine';
-import { recruiterWelcomeConfig, recruiterChatConfig } from '../config/recruiterConfig';
-import { useUser } from '../../../stores';
+import { recruiterIntelligenceEngine } from '@/features/recruiter-copilot/services/recruiterIntelligenceEngine';
+import { recruiterWelcomeConfig, recruiterChatConfig } from "@/features/recruiter-copilot/config/recruiterConfig";
+import { useUser } from '@/stores';
 import { CandidateInsightCard } from './RecruiterCards';
 
 interface Message {

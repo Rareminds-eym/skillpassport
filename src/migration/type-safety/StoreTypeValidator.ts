@@ -19,7 +19,7 @@ import {
   StoreTypeSummary,
   TypeQuality,
   ErrorSeverity
-} from '../types/type-safety'
+} from '@/shared/types/type-safety'
 
 export class StoreTypeValidator {
   private projectRoot: string

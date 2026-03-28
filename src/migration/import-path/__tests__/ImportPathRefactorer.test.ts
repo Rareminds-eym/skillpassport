@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ImportPathRefactorer } from '../ImportPathRefactorer';
 import { MigrationLogger } from '../../logging/MigrationLogger';
-import { ImportViolation } from '../../types/import-path';
+import { ImportViolation } from '@/shared/types/import-path';
 import * as fs from 'fs';
 
 vi.mock('fs');
@@ -163,7 +163,7 @@ import { Course } from '@/entities/course/model/types';
   describe('convertRelativeToAbsolute', () => {
     it('should convert relative imports to absolute', async () => {
       const mockFileContent = `import { User } from './user';
-import { helper } from '../utils/helper';
+import { helper } from "@/shared/lib/helper";
 `;
       
       vi.mocked(fs.readFileSync).mockReturnValue(mockFileContent);

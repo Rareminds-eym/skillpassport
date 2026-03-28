@@ -16,7 +16,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/features/auth/model/useAuth";
+import { useAuth } from "@/features/auth";
 import { useStudentProfile } from '@/features/student-profile';
 
 /**

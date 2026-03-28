@@ -234,7 +234,7 @@ Example update for `organizationSubscriptionService.ts`:
 
 ```typescript
 import { PAYMENTS_API_URL } from '@/config/api';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 
 // Helper to get auth token
 async function getAuthToken(): Promise<string> {

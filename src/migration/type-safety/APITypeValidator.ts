@@ -16,7 +16,7 @@ import {
   APITypeSummary,
   TypeQuality,
   ErrorSeverity
-} from '../types/type-safety'
+} from '@/shared/types/type-safety'
 
 export class APITypeValidator {
   private projectRoot: string

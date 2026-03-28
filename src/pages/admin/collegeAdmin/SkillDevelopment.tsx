@@ -35,7 +35,7 @@ import {
   ThumbsDown,
   Archive,
 } from "lucide-react";
-import { getLogger } from "../../../config/logging";
+import { getLogger } from '@/shared/config/logging';
 
 interface SkillCourse {
   id: string;

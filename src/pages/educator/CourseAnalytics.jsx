@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { getLogger } from '../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('CourseAnalytics');
 
@@ -16,8 +16,8 @@ import {
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/ui';
-import { supabase } from '../../lib/supabaseClient';
-import { enrollmentService as courseEnrollmentService } from '@/features/courses/api/enrollmentService';
+import { supabase } from '@/shared/api/supabaseClient';
+import { enrollmentService as courseEnrollmentService } from '@/features/courses';
 
 const CourseAnalytics = () => {
   const { courseId } = useParams();

@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import AIPersonaLayout from '../../components/digital-pp/portfolio/layouts/AIPersonaLayout';
-import CompactResumeDashboard from '../../components/digital-pp/portfolio/layouts/CompactResumeDashboard';
-import CreativeLayout from '../../components/digital-pp/portfolio/layouts/CreativeLayout';
-import InfographicDashboard from '../../components/digital-pp/portfolio/layouts/InfographicDashboard';
-import JourneyMapLayout from '../../components/digital-pp/portfolio/layouts/JourneyMapLayout';
-import ModernLayout from '../../components/digital-pp/portfolio/layouts/ModernLayout';
-import SplitScreenLayout from '../../components/digital-pp/portfolio/layouts/SplitScreenLayout';
-import { usePortfolio } from '../../stores';
-import { exportAsHTML, exportAsPDF } from '../../utils/exportppUtils';
+import {
+  AIPersonaLayout,
+  CompactResumeDashboard,
+  CreativeLayout,
+  InfographicDashboard,
+  JourneyMapLayout,
+  ModernLayout,
+  SplitScreenLayout
+} from '@/features/digital-portfolio';
+import { usePortfolio } from '@/stores';
+import { exportAsHTML, exportAsPDF } from '@/features/digital-portfolio';
 
 const PortfolioPage: React.FC = () => {
   const navigate = useNavigate();

@@ -14,18 +14,18 @@ import { RocketLaunchIcon } from '@heroicons/react/24/solid';
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 // @ts-ignore - FeatureGate is a JSX component
-import { FeatureGate } from '@/features/subscription/ui/shared';
+import { FeatureGate } from '@/features/subscription';
 
 // Import components
-import ProjectList from '../../components/Recruiter/Projects/ProjectList';
-import Breadcrumb from '../../components/Recruiter/Projects/navigation/Breadcrumb';
-import QuickActionsMenu from '../../components/Recruiter/Projects/navigation/QuickActionsMenu';
-import TabNavigation, { MobileTabNavigation, ProjectTab } from '../../components/Recruiter/Projects/navigation/TabNavigation';
+import { ProjectList } from '@/features/recruiter';
+import { Breadcrumb } from '@/features/recruiter';
+import QuickActionsMenu from '@/features/recruiter/ui/projects/navigation/QuickActionsMenu';
+import TabNavigation, { MobileTabNavigation, ProjectTab } from '@/features/recruiter/ui/projects/navigation/TabNavigation';
 
 // Import mock data
-import { getActiveContracts } from '../../data/mock/mockContracts';
-import { getProjectStats, mockProjects } from '../../data/mock/mockProjects';
-import { mockProposals } from '../../data/mock/mockProposals';
+import { getActiveContracts } from '@/data/mock/mockContracts';
+import { getProjectStats, mockProjects } from '@/data/mock/mockProjects';
+import { mockProposals } from '@/data/mock/mockProposals';
 
 interface StatsCardProps {
   title: string;

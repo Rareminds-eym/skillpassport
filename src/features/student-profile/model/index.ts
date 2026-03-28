@@ -11,6 +11,7 @@ export { useStudentPortfolio } from './useStudentPortfolio';
 export { useStudentActivity } from './useStudentActivity';
 export { useStudentMessages } from './useStudentMessages';
 export { useStudentSettings } from './useStudentSettings';
+export { useProfileCompletion } from './useProfileCompletion';
 
 // Types
 export type {

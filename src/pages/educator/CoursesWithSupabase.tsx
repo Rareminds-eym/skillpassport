@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { getLogger } from '../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('CoursesWithSupabase');
 
@@ -22,19 +22,20 @@ import {
   AcademicCapIcon,
   ArrowPathIcon
 } from '@heroicons/react/24/outline';
-import { Course } from '../../types/educator/course';
-import { SKILL_CATEGORIES, CLASSES } from '../../data/educator/mockCourses';
-import CourseCard from '@/features/courses/ui/CourseCard';
-import CourseFilters from '@/features/courses/ui/CourseFilters';
-import CreateCourseModal from '@/features/courses/ui/CreateCourseModal';
-import CourseDetailDrawer from '@/features/courses/ui/CourseDetailDrawer';
-import { supabase } from '../../lib/supabaseClient';
+import { Course } from '@/shared/types/educator/course';
+import { SKILL_CATEGORIES, CLASSES } from '@/data/educator/mockCourses';
+import { CourseCard } from '@/features/courses';
+import { CourseFilters } from '@/features/courses';
+import { CreateCourseModal } from '@/features/courses';
+import { CourseDetailDrawer } from '@/features/courses';
+import { supabase } from '@/shared/api/supabaseClient';
+import { authSessionService } from '@/features/auth';
 import {
   getCoursesByEducator,
   createCourse,
   updateCourse,
   deleteCourse
-} from '../../services/educator/coursesService';
+} from '@/features/courses';
 
 const CoursesWithSupabase: React.FC = () => {
   // State
@@ -69,7 +70,7 @@ const CoursesWithSupabase: React.FC = () => {
       setError(null);
 
       // Get current user
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const { data: { user }, error: authError } = await authSessionService.getUser();
 
       if (authError || !user) {
         // Development mode fallback

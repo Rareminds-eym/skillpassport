@@ -95,7 +95,7 @@ export { Modal } from './modal';
 
 **Purpose**: Core API clients for database and external service access
 
-**Source**: `src/lib/supabaseClient.ts`
+**Source**: `src/shared/api/supabaseClient.ts`
 
 **Structure**:
 ```
@@ -336,8 +336,8 @@ import { Card } from '@/shared/ui';
 #### API Clients
 ```typescript
 // Before
-import { supabase } from '@/lib/supabaseClient';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
+import { supabase } from '../shared/api/supabaseClient';
 
 // After
 import { supabase } from '@/shared/api';
@@ -382,7 +382,7 @@ import { useResponsive } from '@/shared/lib/hooks';
 The migration system must handle various import patterns:
 
 1. **Absolute imports with @/ alias**: `@/components/ui/button`
-2. **Relative imports**: `../components/ui/button`, `../../lib/supabaseClient`
+2. **Relative imports**: `../components/ui/button`, `@/shared/api/supabaseClient`
 3. **Direct file imports**: `@/components/ui/button.tsx`
 4. **Index imports**: `@/components/ui` (if index exists)
 
@@ -416,7 +416,7 @@ mkdir -p src/shared/types
 - Verify no internal import issues within UI components
 
 **Step 3: Copy API Client**
-- Copy `src/lib/supabaseClient.ts` to `src/shared/api/supabaseClient.ts`
+- Copy `src/shared/api/supabaseClient.ts` to `src/shared/api/supabaseClient.ts`
 - Create `src/shared/api/index.ts` with exports
 - Verify environment variables are accessible
 
@@ -782,7 +782,7 @@ describe('Feature: fsd-phase-1-foundation, Property 3: Import Path Transformatio
           importPath: fc.constantFrom(
             '@/components/ui/button',
             '../components/ui/card',
-            '@/lib/supabaseClient',
+            '@/shared/api/supabaseClient',
             '@/config/alerts',
             '@/utils/cn',
             '@/hooks/use-toast'

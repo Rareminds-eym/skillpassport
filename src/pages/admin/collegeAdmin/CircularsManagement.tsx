@@ -19,10 +19,11 @@ import {
   DocumentIcon,
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
-import { circularsService, Circular, CreateCircularData, CircularsFilters } from "../../../services/circularsService";
-import { uploadFile, validateFile, getDocumentUrl, deleteFile } from "../../../services/fileUploadService";
-import { ConfirmModal } from "../../../components/shared/ConfirmModal";
-import { getLogger } from "../../../config/logging";
+import { circularsService, Circular, CreateCircularData, CircularsFilters } from "@/features/college-admin";
+import { uploadFile, validateFile, getDocumentUrl } from '@/shared/api';
+import { deleteFile } from '@/shared/api/storageApiService';
+import { ConfirmModal } from '@/shared/ui';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('college-admin-circulars');
 

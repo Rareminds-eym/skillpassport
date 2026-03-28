@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import RealtimeService, { TypingIndicator } from '../../../services/realtimeService';
+import RealtimeService, { TypingIndicator } from '@/shared/api/realtimeService';
 
 interface UseTypingIndicatorProps {
   conversationId: string;

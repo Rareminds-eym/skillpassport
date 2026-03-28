@@ -1,5 +1,5 @@
 import { NavigateFunction } from 'react-router-dom';
-import { UserRole } from '@/features/auth/api/unifiedAuthService';
+import { UserRole } from '@/features/auth';
 
 /**
  * Role-based routing configuration

@@ -32,7 +32,7 @@ import { useUser, useUserRole } from '@/stores';
 import { useSubscriptionContext } from '@/stores';
 import { usePaymentVerificationFromURL, useSubscriptionQuery } from '@/features/subscription/model';
 import { downloadReceipt, generateReceiptBase64 } from '@/features/subscription/lib';
-import { getPaymentReceiptUrl, uploadPaymentReceipt } from '@/services/storageApiService';
+import { getPaymentReceiptUrl, uploadPaymentReceipt } from '@/shared/api/storageApiService';
 import { clearPendingUserData } from '@/features/auth/lib';
 
 // ============================================================================

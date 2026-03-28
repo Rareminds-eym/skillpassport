@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "../../../../../../lib/supabaseClient";
+import { supabase } from '@/shared/api/supabaseClient';
 import { Faculty, CollegeClass, ScheduleSlot, Break, TimePeriod, Substitution, Department } from "../types";
 import { DEFAULT_PERIODS } from "../constants";
 

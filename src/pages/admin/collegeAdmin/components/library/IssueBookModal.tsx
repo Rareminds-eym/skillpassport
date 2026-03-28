@@ -1,5 +1,5 @@
 import { BookOpenIcon, UsersIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { LibraryBook, LibraryBookIssue } from "../../../../../services/libraryService";
+import { LibraryBook, LibraryBookIssue } from '@/features/library';
 import { StudentSearch } from "./StudentSearch";
 
 interface IssueBookModalProps {

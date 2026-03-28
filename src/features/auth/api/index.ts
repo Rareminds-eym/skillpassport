@@ -57,3 +57,12 @@ export { loginRecruiter } from './recruiterAuthService';
 
 // USER API SERVICE (Default export for backward compatibility)
 export { default } from './userApiService';
+export * from './adminAuthService';
+export * from './authService';
+export * from './otpService';
+export * from './passwordResetService';
+export * from './studentAuthService';
+export * from './unifiedAuthService';
+
+// AUTH SESSION SERVICE (Session and user management)
+export * from './authSessionService';

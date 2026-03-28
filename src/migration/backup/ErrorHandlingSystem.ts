@@ -8,7 +8,7 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import { MigrationLogger } from '../logging/MigrationLogger.js'
-import { RollbackData, MigrationConfig } from '../types/index.js'
+import { RollbackData, MigrationConfig } from '@/shared/types/index.js'
 
 export interface ErrorContext {
   operation: string

@@ -1,8 +1,8 @@
 import { ArrowLeft, Award, Target } from 'lucide-react';
 import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { supabase } from '../../utils/supabase';
-import { getLogger } from '../../config/logging';
+import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('AssessmentResults');
 

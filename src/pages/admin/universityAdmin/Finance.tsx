@@ -22,7 +22,7 @@ import {
   Receipt,
   PieChart
 } from 'lucide-react';
-import FeeStructureModal from '../../../components/admin/universityAdmin/FeeStructureModal';
+import FeeStructureModal from '@/shared/ui/admin/universityAdmin/FeeStructureModal';
 
 interface FeeStructure {
   id: string;

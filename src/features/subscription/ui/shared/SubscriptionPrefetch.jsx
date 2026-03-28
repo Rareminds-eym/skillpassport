@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@/stores';
 import { prefetchSubscriptionData } from '@/features/subscription/model';
-import { queryLogger } from '@/utils/queryLogger';
+import { queryLogger } from '@/shared/lib/debug/queryLogger';
 
 /**
  * Subscription Prefetch Component

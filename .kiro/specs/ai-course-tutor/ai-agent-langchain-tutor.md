@@ -70,7 +70,7 @@ The agent needs tools to take actions. Here are the tools for our Course Tutor A
 // src/services/agent/tools/index.ts
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
-import { supabase } from "../../../lib/supabaseClient";
+import { supabase } from "@/shared/api/supabaseClient";
 
 // ============================================
 // TOOL 1: Search Course Content

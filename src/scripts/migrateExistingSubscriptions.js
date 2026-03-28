@@ -7,8 +7,8 @@
  * @requirement Task 8.1 - Create migration script for existing users
  */
 
-import { supabase } from '../lib/supabaseClient';
-import migrationService from '../services/migrationService';
+import { supabase } from '../shared/api/supabaseClient.ts';
+import migrationService from '../shared/api/migrationService.ts';
 
 /**
  * Migration configuration

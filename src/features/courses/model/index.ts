@@ -31,3 +31,6 @@ export {
 
 // Course performance analytics
 export { useCoursePerformance } from './useCoursePerformance';
+
+// Lesson plans
+export { useLessonPlans } from './useLessonPlans';

@@ -7,7 +7,7 @@
 
 import { promises as fs } from 'fs'
 import path from 'path'
-import { ServiceFile, ExportDeclaration } from '../types/index.js'
+import { ServiceFile, ExportDeclaration } from '@/shared/types/index.js'
 
 export class ServiceDirectoryScanner {
   private servicesPath: string

@@ -3,7 +3,7 @@ import {
   TrendingUp, Users, BookOpen, FileText, Award, 
   Calendar, Clock, Target, BarChart3 
 } from 'lucide-react';
-import { getTeachers, getTeacherPerformance } from '../../../../services/teacherService';
+import { getTeachers, getTeacherPerformance } from '@/entities/teacher';
 
 interface TeacherMetrics {
   teacher_id: string;

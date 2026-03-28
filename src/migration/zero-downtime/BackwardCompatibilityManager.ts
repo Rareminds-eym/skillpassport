@@ -4,7 +4,7 @@
 
 import * as fs from 'fs'
 import * as path from 'path'
-import { BackwardCompatibilityConfig, ReExportConfig } from '../types/zero-downtime'
+import { BackwardCompatibilityConfig, ReExportConfig } from '@/shared/types/zero-downtime'
 
 export class BackwardCompatibilityManager {
   private reExports: ReExportConfig[] = []

@@ -5,7 +5,7 @@ import type {
   AttendanceRecord,
   StudentReport,
   ValidationError
-} from '@/types/StudentManagement';
+} from '@/features/school-admin';
 import { validateFileSize } from '@/shared/lib/utils';
 import { getFileSizeLimit } from '@/shared/config';
 

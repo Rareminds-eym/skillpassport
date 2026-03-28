@@ -1,5 +1,5 @@
 import { Battery, FlaskRound, Leaf, Apple, Shield } from 'lucide-react';
-import { Course } from '../types';
+import { Course } from '@/shared/types';
 
 export const courses: Course[] = [
   {

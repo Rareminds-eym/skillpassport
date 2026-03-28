@@ -20,12 +20,13 @@ import {
   getTimeUntilFullRegOpens,
   isFullRegistrationOpen,
   FULL_REGISTRATION_START_DATE
-} from '../../config/registrationConfig';
+} from "@/shared/config/registrationConfig";
 // @ts-ignore - JS module without types
 import { sendOtp, verifyOtp as verifyOtpApi } from '@/features/auth/api';
 // @ts-ignore - JS module without types
-import DatePicker from '@/features/subscription/ui/shared/DatePicker';
-import { supabase } from '../../lib/supabaseClient';
+import { DatePicker } from '@/features/subscription';
+import { supabase } from '@/shared/api/supabaseClient';
+import { authSessionService } from '@/features/auth';
 
 type UserRole = 'school_student' | 'college_student' | 'learner' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
 
@@ -415,7 +416,7 @@ const UnifiedSignup = () => {
     try {
       // Use the Pages Function API for signup with proper rollback support
       // This ensures no orphaned auth users are created
-      const { getPagesApiUrl } = await import('../../utils/pagesUrl');
+      const { getPagesApiUrl } = await import('@/shared/lib/pagesUrl');
       const USER_API_URL = getPagesApiUrl('user');
 
       const response = await fetch(`${USER_API_URL}/signup`, {
@@ -450,7 +451,7 @@ const UnifiedSignup = () => {
       // CRITICAL FIX: Auto-login after successful signup
       // This establishes a Supabase session so the user is authenticated
       console.log('🔐 Auto-logging in after signup...');
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await authSessionService.signInWithPassword({
         email: state.email,
         password: state.password,
       });

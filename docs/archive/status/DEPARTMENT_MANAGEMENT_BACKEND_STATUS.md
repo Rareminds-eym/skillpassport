@@ -9,7 +9,7 @@ The Department Management frontend is **properly connected** to the Supabase bac
 ### 1. Service Layer (✅ Complete)
 **File:** `src/services/college/departmentService.ts`
 
-- ✅ Uses Supabase client from `../../lib/supabaseClient`
+- ✅ Uses Supabase client from `@/shared/api/supabaseClient`
 - ✅ All CRUD operations implemented:
   - `getDepartments(collegeId)` - Fetches departments with stats
   - `getDepartment(id)` - Fetches single department

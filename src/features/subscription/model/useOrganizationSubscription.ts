@@ -8,25 +8,25 @@
 import {
     licenseManagementService,
     type LicensePool,
-} from '@/services/organization/licenseManagementService';
+} from '@/entities/organization';
 import {
     memberInvitationService,
     type OrganizationInvitation,
-} from '@/services/organization/memberInvitationService';
+} from '@/entities/organization';
 import {
     organizationBillingService,
     type BillingDashboard,
-} from '@/services/organization/organizationBillingService';
+} from '@/entities/organization';
 import {
     organizationMemberService,
     type OrganizationMember,
-} from '@/services/organization/organizationMemberService';
+} from '@/entities/organization';
 import {
     calculateBulkPricing,
     organizationSubscriptionService,
     type OrganizationSubscription,
     type PricingBreakdown,
-} from '@/services/organization/organizationSubscriptionService';
+} from '@/entities/organization';
 import { useCallback, useEffect, useState } from 'react';
 // @ts-ignore - useUser is from Zustand store
 import { useUser } from '@/stores';
@@ -198,4 +198,4 @@ export function useOrganizationSubscription(
 export default useOrganizationSubscription;
 
 // Re-export types for convenience
-export type { OrganizationMember } from '@/services/organization/organizationMemberService';
+export type { OrganizationMember } from '@/entities/organization';

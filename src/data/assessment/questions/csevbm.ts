@@ -1,4 +1,4 @@
-import { Question } from '../../types';
+import { Question } from '@/shared/types';
 
 export const csevbmQuestions: Question[] = [
   {

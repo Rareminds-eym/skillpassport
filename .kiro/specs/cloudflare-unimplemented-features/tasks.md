@@ -734,7 +734,7 @@ This implementation plan covers completing 52 unimplemented endpoints across 6 A
 
 - [x] 71. Clean up old client-side Supabase calls
   - Review `src/services/adaptiveAptitudeService.ts` and remove all direct Supabase imports
-  - Remove `import { supabase } from '../lib/supabaseClient'` (no longer needed)
+  - Remove `import { supabase } from '../shared/api/supabaseClient'` (no longer needed)
   - Verify all functions now call the API wrapper instead of Supabase directly
   - Remove any unused helper functions that were moved to the API
   - Keep only the wrapper functions that call the API

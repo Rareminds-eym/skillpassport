@@ -24,7 +24,7 @@ import {
   InsightCard as InsightCardType,
   ActionButton as ActionButtonType,
   InteractiveCard
-} from '../types/interactive';
+} from '@/shared/types/interactive';
 
 // ============================================================================
 // ACTION BUTTON COMPONENT

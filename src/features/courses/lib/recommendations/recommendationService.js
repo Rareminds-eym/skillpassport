@@ -5,7 +5,7 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
-import { cosineSimilarity } from '@/utils/vectorUtils';
+import { cosineSimilarity } from '@/shared/lib/vectorUtils';
 import { buildProfileText } from './profileBuilder';
 import { generateEmbedding } from './embeddingService';
 import { generateProfileAndSkillEmbeddings } from './embeddingBatch';

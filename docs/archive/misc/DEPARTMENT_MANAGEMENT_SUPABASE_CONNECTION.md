@@ -8,7 +8,7 @@ The Department Management UI has been successfully connected to the Supabase `de
 
 ### 1. Import Path Correction
 **Issue**: Import path `@/lib/supabase` was not resolving
-**Solution**: Updated to use relative path `../../lib/supabaseClient`
+**Solution**: Updated to use relative path `@/shared/api/supabaseClient`
 
 ### 2. Type Definitions
 **Issue**: Database types from `@/types/supabase` didn't exist

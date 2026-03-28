@@ -1,5 +1,5 @@
 import { Search, MoreVertical } from 'lucide-react';
-import Button from '../../components/Button';
+import { Button } from '@/shared/ui';
 
 const ManageUsers = () => {
   const users = [

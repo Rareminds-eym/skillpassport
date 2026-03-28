@@ -1,6 +1,6 @@
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
-import { validateISBN, formatISBN } from "../../../../../utils/isbnValidator";
+import { validateISBN, formatISBN } from '@/shared/lib/utils';
 
 interface AddBookModalProps {
   isOpen: boolean;

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { supabase } from "../../../../../lib/supabaseClient";
+import { supabase } from '@/shared/api/supabaseClient';
 import { FeePayment, PaymentStatus, StudentFeeSummary, StudentLedger } from "../types";
+import { getExpenditureSummary } from "@/features/college-admin";
 
 export const useFeeTracking = () => {
   const [ledgers, setLedgers] = useState<StudentLedger[]>([]);
@@ -66,29 +67,19 @@ export const useFeeTracking = () => {
     try {
       console.log('🚀 [Fee Tracking] Loading stats from database function for college:', collegeId);
       
-      const { data, error } = await supabase.rpc('get_expenditure_summary', {
-        p_college_id: collegeId
+      const stats = await getExpenditureSummary(collegeId);
+      
+      console.log('✅ [Fee Tracking] Loaded stats from database:', stats);
+      setDbStats({
+        totalDue: Number(stats.total_due_amount) || 0,
+        totalCollected: Number(stats.total_paid_amount) || 0,
+        totalPending: Number(stats.total_balance) || 0,
+        totalStudents: Number(stats.total_students) || 0,
+        paidCount: Number(stats.paid_students) || 0,
+        partialCount: 0, // Will be calculated from ledgers
+        pendingCount: Number(stats.pending_students) || 0,
+        overdueCount: Number(stats.overdue_students) || 0,
       });
-
-      if (error) {
-        console.warn('Database function failed, will use calculated stats:', error);
-        return;
-      }
-
-      if (data && data.length > 0) {
-        const stats = data[0];
-        console.log('✅ [Fee Tracking] Loaded stats from database:', stats);
-        setDbStats({
-          totalDue: Number(stats.total_due_amount) || 0,
-          totalCollected: Number(stats.total_paid_amount) || 0,
-          totalPending: Number(stats.total_balance) || 0,
-          totalStudents: Number(stats.total_students) || 0,
-          paidCount: Number(stats.paid_students) || 0,
-          partialCount: 0, // Will be calculated from ledgers
-          pendingCount: Number(stats.pending_students) || 0,
-          overdueCount: Number(stats.overdue_students) || 0,
-        });
-      }
     } catch (err) {
       console.error("Failed to load stats from database:", err);
     }

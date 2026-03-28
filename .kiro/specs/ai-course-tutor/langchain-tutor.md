@@ -59,7 +59,7 @@ npm install @langchain/textsplitters
 ```typescript
 // src/services/langchain/courseDocumentLoader.ts
 import { Document } from "@langchain/core/documents";
-import { supabase } from "../../lib/supabaseClient";
+import { supabase } from "@/shared/api/supabaseClient";
 
 interface CourseContent {
   courseId: string;
@@ -1367,7 +1367,7 @@ The previous sections describe a **RAG Chatbot**. Here's how to make it a **Comp
 // src/services/langchain/agentTools.ts
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
-import { supabase } from "../../lib/supabaseClient";
+import { supabase } from "@/shared/api/supabaseClient";
 
 // Tool 1: Search Course Content
 const searchCourseContent = tool(

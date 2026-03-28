@@ -37,7 +37,7 @@ The `curriculumService.ts` had an incorrect import path:
 import { supabase } from '../supabaseClient';
 
 // After:
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../shared/api/supabaseClient';
 ```
 
 ## Status

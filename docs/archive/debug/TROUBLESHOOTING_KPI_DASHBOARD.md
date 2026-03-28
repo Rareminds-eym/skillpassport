@@ -107,7 +107,7 @@ VALUES (gen_random_uuid(), 'test-school-1', 'Mid-term', CURRENT_DATE + 7);
 
 3. Test connection:
    ```typescript
-   import { supabase } from './lib/supabaseClient';
+   import { supabase } from './shared/api/supabaseClient';
    
    const testConnection = async () => {
      const { data, error } = await supabase.from('students').select('count');

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { CutoverManager } from '../CutoverManager'
 import { FeatureFlagManager } from '../FeatureFlagManager'
 import { HealthMonitor } from '../HealthMonitor'
-import { CutoverPlan } from '../../types/zero-downtime'
+import { CutoverPlan } from '@/shared/types/zero-downtime'
 
 describe('CutoverManager', () => {
   let cutoverManager: CutoverManager

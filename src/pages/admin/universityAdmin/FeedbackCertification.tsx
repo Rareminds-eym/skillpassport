@@ -17,7 +17,7 @@ import {
   PrinterIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
-import { getLogger } from '../../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('university-admin-feedback-certification');
 

@@ -17,7 +17,7 @@
 Replace the entire file content with this corrected version:
 
 ```javascript
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from "../shared/api/supabaseClient";
 
 // ✅ Get educator by email from school_educators table
 export async function getEducatorByEmail(email) {
@@ -280,7 +280,7 @@ LIMIT 1;
 
 Verify your Supabase client is correctly configured:
 
-**File**: `src/lib/supabaseClient.ts`
+**File**: `src/shared/api/supabaseClient.ts`
 
 ```typescript
 import { createClient } from '@supabase/supabase-js'
@@ -357,6 +357,6 @@ SELECT
 ## Related Files
 
 - `src/pages/educator/Profile.tsx` - Profile component
-- `src/lib/supabaseClient.ts` - Supabase client config
+- `src/shared/api/supabaseClient.ts` - Supabase client config
 - `database/migrations/003_school_educators.sql` - Table schema
 - `VERIFY_EDUCATOR_DATA.sql` - Verification queries

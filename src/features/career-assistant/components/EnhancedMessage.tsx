@@ -6,12 +6,12 @@ import { useNavigate } from 'react-router-dom';
 import { X, Star } from 'lucide-react';
 import { InteractiveCardRenderer } from './InteractiveCards';
 import { VisualizationContainer } from './Visualizations';
-import { formatMessageTime } from '../utils/dateUtils';
+import { formatMessageTime } from "@/features/career-assistant/utils/dateUtils.ts";
 import {
   EnhancedAIResponse,
   ActionButton,
   SuggestedAction
-} from '../types/interactive';
+} from '@/features/career-assistant/types/interactive';
 
 interface EnhancedMessageProps {
   response: EnhancedAIResponse;

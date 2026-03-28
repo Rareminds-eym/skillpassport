@@ -1,4 +1,4 @@
-import { Question } from '../types';
+import { Question } from '@/shared/types';
 
 // Questions for each course
 const QuizQuestions: Record<string, Question[]> = {

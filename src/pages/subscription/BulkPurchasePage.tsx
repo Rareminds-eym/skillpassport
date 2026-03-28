@@ -8,10 +8,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import BulkPurchaseWizard, { PurchaseData } from '@/features/subscription/ui/organization/BulkPurchaseWizard';
-import { useUser } from '@/stores';
-import { supabase } from '../../lib/supabaseClient';
-import { organizationMemberService } from '../../services/organization/organizationMemberService';
+import { BulkPurchaseWizard, PurchaseData } from '@/features/subscription';
+import { useUser, useIsAuthenticated } from '@/stores';
+import { supabase } from '@/shared/api/supabaseClient';
+import { organizationMemberService } from '@/entities/organization';
 import { useSubscriptionPlansData } from '@/features/subscription/model';
 
 function BulkPurchasePage() {

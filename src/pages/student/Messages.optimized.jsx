@@ -12,10 +12,10 @@ import {
   Loader2
 } from 'lucide-react';
 import { useStudentProfile, useStudentMessages } from '@/features/student-profile';
-import { useGlobalPresence } from '../../context/GlobalPresenceContext';
+import { useGlobalPresence } from '@/stores';
 import { useTypingIndicator } from '@/features/messaging';
-import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
-import { getLogger } from '../../config/logging';
+import { useNotificationBroadcast } from '@/features/broadcast/model/useNotificationBroadcast';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('MessagesOptimized');
 

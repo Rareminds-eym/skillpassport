@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest'
 import { QualityGateValidator } from '../QualityGateValidator'
-import type { TestCoverageAnalysis, QualityGate } from '../../types/test-coverage'
+import type { TestCoverageAnalysis, QualityGate } from '@/shared/types/test-coverage'
 
 describe('QualityGateValidator', () => {
   let validator: QualityGateValidator

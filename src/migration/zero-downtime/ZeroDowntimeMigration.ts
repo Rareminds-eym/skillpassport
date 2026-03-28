@@ -7,7 +7,7 @@ import {
   ZeroDowntimeResult,
   MigrationMonitoring,
   PerformanceMetric
-} from '../types/zero-downtime'
+} from '@/shared/types/zero-downtime'
 import { FeatureFlagManager } from './FeatureFlagManager'
 import { BackwardCompatibilityManager } from './BackwardCompatibilityManager'
 import { HealthMonitor } from './HealthMonitor'

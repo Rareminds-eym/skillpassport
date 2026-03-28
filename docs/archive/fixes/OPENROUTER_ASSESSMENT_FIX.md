@@ -46,7 +46,7 @@ const callClaudeAssessment = async (prompt) => {
 ```javascript
 const callOpenRouterAssessment = async (assessmentData) => {
   const API_URL = import.meta.env.VITE_CAREER_API_URL;
-  const { data: { session } } = await import('../lib/supabaseClient').then(m => m.supabase.auth.getSession());
+  const { data: { session } } = await import('../shared/api/supabaseClient').then(m => m.supabase.auth.getSession());
   const token = session?.access_token;
   
   const response = await fetch(`${API_URL}/analyze-assessment`, {

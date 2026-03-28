@@ -1,7 +1,8 @@
 import { useState, useCallback } from "react";
-import { supabase } from "../../../../../lib/supabaseClient";
+import { supabase } from '@/shared/api/supabaseClient';
 import toast from "react-hot-toast";
 import { EventRegistration, CollegeEvent } from "../types";
+import { collegeEventRegistrationsService } from "@/features/college-admin";
 
 export const useRegistrations = (onCountsChange: () => void) => {
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
@@ -42,8 +43,7 @@ export const useRegistrations = (onCountsChange: () => void) => {
 
   const addRegistration = async (eventId: string, studentId: string) => {
     try {
-      const { error } = await supabase.from("college_event_registrations").insert({ event_id: eventId, student_id: studentId });
-      if (error) throw error;
+      await collegeEventRegistrationsService.createRegistration(eventId, studentId);
       toast.success("Registered");
       loadRegistrations(eventId);
       onCountsChange();
@@ -55,8 +55,7 @@ export const useRegistrations = (onCountsChange: () => void) => {
 
   const removeRegistration = async (regId: string, _eventId: string) => {
     try {
-      const { error } = await supabase.from("college_event_registrations").delete().eq("id", regId);
-      if (error) throw error;
+      await collegeEventRegistrationsService.deleteRegistration(regId);
       setRegistrations((prev) => prev.filter((r) => r.id !== regId));
       onCountsChange();
       toast.success("Removed");
@@ -70,8 +69,7 @@ export const useRegistrations = (onCountsChange: () => void) => {
 
   const markAttendance = async (regId: string, attended: boolean) => {
     try {
-      const { error } = await supabase.from("college_event_registrations").update({ attended }).eq("id", regId);
-      if (error) throw error;
+      await collegeEventRegistrationsService.updateAttendance(regId, attended);
       setRegistrations((prev) => prev.map((r) => (r.id === regId ? { ...r, attended } : r)));
       toast.success(attended ? "Marked attended" : "Unmarked");
     } catch { toast.error("Failed"); }

@@ -25,7 +25,7 @@ import {
   UserX,
   Clock,
 } from 'lucide-react';
-import KPICard from '../../../../components/admin/KPICard';
+import KPICard from '@/shared/ui/KPICard';
 
 interface Employee {
   id: string;

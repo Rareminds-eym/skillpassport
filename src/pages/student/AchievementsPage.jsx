@@ -2,9 +2,8 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/shared/ui';
-import AchievementsExpanded from '../../components/Students/components/AchievementsExpanded';
-import SkillTrackerExpanded from '../../components/Students/components/SkillTrackerExpanded';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/Students/components/ui/tabs';
+import { AchievementsExpanded, SkillTrackerExpanded } from '@/widgets/student-dashboard';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui';
 
 const AchievementsPage = () => {
   const navigate = useNavigate();

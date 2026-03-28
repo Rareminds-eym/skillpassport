@@ -63,9 +63,9 @@ describe('CodebaseScanner', () => {
 
       // Mock file content with import statements
       mockFs.readFile.mockResolvedValue(`
-        import { authService } from '../services/authService';
-        import userService from '../services/userService';
-        import * as apiUtils from '../services/apiUtils';
+        import { authService } from '@/shared/api/authService';
+        import userService from '@/shared/api/userService';
+        import * as apiUtils from '@/shared/api/apiUtils';
         
         export function useAuth() {
           return authService.login();
@@ -138,7 +138,7 @@ describe('CodebaseScanner', () => {
       });
 
       mockFs.readFile.mockResolvedValue(`
-        import { authService, otherService } from '../services/auth';
+        import { authService, otherService } from '@/shared/api/auth';
       `);
 
       const result = await scanner.scanForImportReferences(migratedFunctions);
@@ -166,8 +166,8 @@ describe('CodebaseScanner', () => {
       });
 
       mockFs.readFile.mockResolvedValue(`
-        import { authService } from '../services/authService';
-        import { userService } from '../services/userService';
+        import { authService } from '@/shared/api/authService';
+        import { userService } from '@/shared/api/userService';
       `);
 
       const serviceFiles = ['/test/project/services/authService.ts'];

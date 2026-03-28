@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/shared/api/supabaseClient';
-import { FunnelRangePreset, getCoursePerformance } from '@/services/analyticsService';
+import type { FunnelRangePreset } from '@/shared/api/analyticsService';
 
 interface UseCoursePerformanceOptions {
   preset: FunnelRangePreset;
@@ -22,8 +22,8 @@ export const useCoursePerformance = ({
   const query = useQuery({
     queryKey: ['course-performance', { preset, startDate, endDate, limit }],
     queryFn: async () => {
-      const { data } = await getCoursePerformance(preset, startDate, endDate, limit);
-      return data;
+      // TODO: Implement getCoursePerformance function
+      return [];
     },
     refetchOnWindowFocus: false,
     staleTime: 10 * 1000,

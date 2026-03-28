@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { buildRecruiterSystemPrompt, buildIntentClassificationPrompt, buildGeneralResponsePrompt } from '../prompts/intelligentPrompt';
-import { buildRecruiterContext } from '../utils/contextBuilder';
+import { buildRecruiterContext } from "@/features/recruiter-copilot/utils/contextBuilder";
 import { RecruiterAIResponse, RecruiterIntent } from '../types';
 import { recruiterInsights } from './recruiterInsights';
 import { talentAnalytics } from './talentAnalytics';
@@ -8,7 +8,7 @@ import { queryParser } from './queryParser';
 import { semanticSearch } from './semanticSearch';
 import { dataHealthCheck } from '../utils/dataHealthCheck';
 import { advancedIntentClassifier } from './advancedIntentClassifier';
-import { supabase } from '../../../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 
 // Initialize OpenRouter client
 let openai: OpenAI | null = null;

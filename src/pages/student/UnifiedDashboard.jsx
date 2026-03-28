@@ -43,7 +43,7 @@ import {
   experienceData,
   technicalSkills,
   softSkills,
-} from "../../components/Students/data/mockData";
+} from "@/shared/lib/test/mockData";
 import {
   EducationEditModal,
   TrainingEditModal,
@@ -51,7 +51,7 @@ import {
   SkillsEditModal,
   ProjectsEditModal,
   CertificatesEditModal,
-} from "../../components/Students/components/ProfileEditModals";
+} from '@/features/student-profile';
 import { useStudentProfile, useStudentPortfolio, useStudentActivity, useStudentMessages } from "@/features/student-profile";
 
 const UnifiedDashboard = () => {

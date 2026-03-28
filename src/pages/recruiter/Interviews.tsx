@@ -19,9 +19,9 @@ import {
   EnvelopeIcon,
   MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
-import { supabase } from '../../lib/supabaseClient';
-import { createInterview, sendReminder } from '../../services/interviewService';
-import { createNotification } from "../../services/notificationService.ts"; // ✅ Import notification service
+import { supabase } from '@/shared/api/supabaseClient';
+import { createInterview, sendReminder } from '@/features/opportunities';
+import { createNotification } from '@/shared/api'; // ✅ Import notification service
 import { useUser } from '@/stores';
 
 // Define TypeScript interfaces

@@ -4,3 +4,4 @@ export { default as useOrganizationSubscription } from './useOrganizationSubscri
 export { default as usePaymentVerification, usePaymentVerificationFromURL } from './usePaymentVerification';
 export { default as useSubscriptionPlansData } from './useSubscriptionPlansData';
 export { useSubscriptionQuery, prefetchSubscriptionData, useSubscriptionCache } from './useSubscriptionQuery';
+export { useFeatureGate, clearFeatureAccessCache } from './useFeatureGate';

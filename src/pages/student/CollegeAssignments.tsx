@@ -18,7 +18,7 @@ import {
   Filter,
   Search
 } from 'lucide-react';
-import { useUser } from '../../stores';
+import { useUser } from '@/stores';
 
 // Mock data for UI preview
 const MOCK_ASSIGNMENTS = [

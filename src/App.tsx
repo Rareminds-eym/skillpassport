@@ -1,9 +1,9 @@
 import { Toaster as HotToaster } from 'react-hot-toast';
 import { BrowserRouter } from 'react-router-dom';
 import { useEffect } from 'react';
-import TourWrapper from './components/Tours/TourWrapper';
-import TokenRefreshErrorNotification from './components/TokenRefreshErrorNotification';
-import AppRoutes from './routes/AppRoutes';
+import { TourWrapper } from './app/providers/tour-wrapper';
+import { TokenRefreshErrorNotification } from './app/providers/token-refresh-notification';
+import AppRoutes from './app/routes/AppRoutes';
 
 // Zustand stores - state management migrated from Context
 import { initializeStores, useUser } from './stores';

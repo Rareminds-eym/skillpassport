@@ -14,7 +14,7 @@ import type {
   TestCoverageAnalysis,
   UntestedCode,
   CoverageThreshold,
-} from '../types/test-coverage'
+} from '@/shared/types/test-coverage'
 
 export class CoverageAnalyzer {
   private srcDir: string

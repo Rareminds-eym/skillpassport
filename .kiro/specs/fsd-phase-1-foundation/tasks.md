@@ -106,7 +106,7 @@ This plan implements Phase 1 of the Feature-Sliced Design (FSD) migration by cre
     - _Requirements: 8.1, 8.7_
   
   - [x] 9.3 Update API client imports to shared/api
-    - Transform imports from @/lib/supabaseClient to @/shared/api
+    - Transform imports from @/shared/api/supabaseClient to @/shared/api
     - _Requirements: 8.2, 8.7_
   
   - [x] 9.4 Update config imports to shared/config

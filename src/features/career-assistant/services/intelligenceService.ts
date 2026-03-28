@@ -3,7 +3,7 @@
  * Provides advanced analytics, career readiness scoring, and intelligent insights
  */
 
-import { supabase } from '../../../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 import { StudentProfile } from '../types';
 
 export interface CareerReadinessScore {

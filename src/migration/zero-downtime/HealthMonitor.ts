@@ -2,7 +2,7 @@
  * Application health monitoring during migration
  */
 
-import { ApplicationHealth, HealthMetric, ErrorMetric } from '../types/zero-downtime'
+import { ApplicationHealth, HealthMetric, ErrorMetric } from '@/shared/types/zero-downtime'
 
 export class HealthMonitor {
   private metrics: Map<string, HealthMetric> = new Map()

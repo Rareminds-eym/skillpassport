@@ -9,9 +9,9 @@ import {
   ChevronDownIcon,
   TableCellsIcon,
 } from '@heroicons/react/24/outline';
-import { useStudents } from '../../../hooks/useAdminStudents';
-import SearchBar from '../../../components/common/SearchBar';
-import Pagination from '../../../components/admin/Pagination';
+import { useStudents } from '@/entities/student';
+import { SearchBar } from '@/shared/ui';
+import { Pagination } from '@/shared/ui';
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);

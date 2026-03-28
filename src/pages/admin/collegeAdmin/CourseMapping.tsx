@@ -19,9 +19,9 @@ import {
     ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 import toast from 'react-hot-toast';
-import SearchBar from "../../../components/common/SearchBar";
-import KPICard from "../../../components/admin/KPICard";
-import Pagination from "../../../components/admin/Pagination";
+import { SearchBar } from '@/shared/ui';
+import KPICard from '@/shared/ui/KPICard';
+import { Pagination } from '@/shared/ui';
 import { ConfirmationModal } from '@/shared/ui';
 import {
     getDepartments,
@@ -41,7 +41,7 @@ import {
     type Course,
     type Faculty,
     type CourseMapping,
-} from "../../../services/college/courseMappingService";
+} from '@/features/college-admin';
 
 interface CourseMappingFormData {
     courseId?: string;

@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState, useRef } from 'react';
 import toast from 'react-hot-toast';
-import { FeatureGate } from '../../../components/Subscription/FeatureGate';
+import { FeatureGate } from '@/features/subscription';
 import { ConfirmationModal } from '@/shared/ui';
 
 // Import the college-adapted curriculum builder UI
-import CollegeCurriculumBuilderUI from '../../../components/admin/collegeAdmin/CollegeCurriculumBuilderUI';
-import { curriculumService, type CurriculumUnit, type CurriculumOutcome } from '../../../services/college/curriculumService';
-import { curriculumApprovalService } from '../../../services/curriculumApprovalService';
-import { supabase } from '../../../lib/supabaseClient';
+import { CollegeCurriculumBuilderUI } from '@/features/college-admin';
+import { curriculumService, type CurriculumUnit, type CurriculumOutcome } from '@/features/college-admin';
+import { curriculumApprovalService } from '@/features/college-admin';
+import { supabase } from '@/shared/api/supabaseClient';
 
 /**
  * CollegeCurriculumBuilder - Curriculum management for college admins
@@ -872,7 +872,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         };
 
         // Use the same export service as school curriculum builder
-        const { exportCurriculum } = await import('@/services/curriculumExportService');
+        const { exportCurriculum } = await import('@/features/college-admin');
         exportCurriculum('pdf', exportData);
 
         // Dismiss loading and show success

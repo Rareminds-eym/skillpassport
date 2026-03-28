@@ -1,7 +1,7 @@
 import { AlertCircle, BookOpen, CheckCircle, Clock, Edit, Eye, Plus, Trash2, XCircle } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabaseClient";
+import { useLessonPlans } from "@/features/courses";
 
 interface LessonPlan {
   id: string;
@@ -18,59 +18,7 @@ interface LessonPlan {
 
 const LessonPlansList: React.FC = () => {
   const navigate = useNavigate();
-  const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<string>("all");
-
-  useEffect(() => {
-    loadLessonPlans();
-  }, []);
-
-  const loadLessonPlans = async () => {
-    setLoading(true);
-    try {
-      // Get current teacher from AuthContext
-      const userEmail = localStorage.getItem('userEmail');
-      
-      const { data: teacherData } = await supabase
-        .from("school_educators")
-        .select("id")
-        .eq("email", userEmail)
-        .maybeSingle();
-
-      if (!teacherData) {
-        throw new Error("Teacher not found");
-      }
-
-      const { data, error } = await supabase
-        .from("lesson_plans")
-        .select("*")
-        .eq("teacher_id", teacherData.id)
-        .order("date", { ascending: false });
-
-      if (error) throw error;
-
-      setLessonPlans(data || []);
-    } catch (error: any) {
-      console.error("Error loading lesson plans:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const deleteLessonPlan = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this lesson plan?")) return;
-
-    try {
-      const { error } = await supabase.from("lesson_plans").delete().eq("id", id);
-
-      if (error) throw error;
-
-      setLessonPlans(lessonPlans.filter((lp) => lp.id !== id));
-    } catch (error: any) {
-      alert("Error deleting lesson plan: " + error.message);
-    }
-  };
+  const { lessonPlans, loading, filter, setFilter, deleteLessonPlan, filteredPlans } = useLessonPlans();
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { color: string; icon: any; label: string }> = {
@@ -97,11 +45,6 @@ const LessonPlansList: React.FC = () => {
       </span>
     );
   };
-
-  const filteredPlans = lessonPlans.filter((lp) => {
-    if (filter === "all") return true;
-    return lp.status === filter;
-  });
 
   if (loading) {
     return (

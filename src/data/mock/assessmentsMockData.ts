@@ -1,4 +1,4 @@
-import type { Assessment, ExamSlot } from '../../types/college';
+import type { Assessment, ExamSlot } from '@/shared/types/college';
 
 // Mock Assessments Data
 export const mockAssessments: Assessment[] = [

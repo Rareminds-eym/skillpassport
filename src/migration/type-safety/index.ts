@@ -10,4 +10,4 @@ export { EntityInterfaceValidator } from './EntityInterfaceValidator'
 export { APITypeValidator } from './APITypeValidator'
 export { StoreTypeValidator } from './StoreTypeValidator'
 
-export * from '../types/type-safety'
+export * from '@/shared/types/type-safety'

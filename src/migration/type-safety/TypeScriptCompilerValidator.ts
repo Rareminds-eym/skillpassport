@@ -14,7 +14,7 @@ import {
   TypeScriptWarning,
   ErrorCategory,
   ErrorSeverity
-} from '../types/type-safety'
+} from '@/shared/types/type-safety'
 
 export class TypeScriptCompilerValidator {
   private projectRoot: string

@@ -31,7 +31,7 @@ import {
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSubscriptionContext } from '@/stores';
-import entitlementService from '@/services/entitlementService';
+import { entitlementService } from '@/features/subscription';
 
 /**
  * Get the base path for subscription routes based on current location

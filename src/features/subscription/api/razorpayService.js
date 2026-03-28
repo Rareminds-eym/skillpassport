@@ -15,7 +15,7 @@
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { getRazorpayKeyId, getRazorpayKeyMode } from '@/shared/config/payment';
-import paymentsApiService from '@/services/paymentsApiService';
+import { paymentsApiService } from '@/features/subscription';
 
 /**
  * Load Razorpay checkout script dynamically

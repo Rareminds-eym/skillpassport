@@ -25,16 +25,19 @@ import {
   VideoCameraIcon,
   PhotoIcon,
 } from "@heroicons/react/24/outline";
-import SearchBar from "../../../components/common/SearchBar";
+import { SearchBar } from '@/shared/ui';
 import { FileTextIcon } from "lucide-react";
 import toast from 'react-hot-toast';
-import { useCurriculum } from "../../../hooks/useLessonPlans";
-import type { LessonPlan as LessonPlanType } from "../../../services/lessonPlansService";
-import { getSubjects, getClasses, getAcademicYears, getCurrentAcademicYear } from "../../../services/curriculumService";
-import { supabase } from "../../../lib/supabaseClient";
-import { uploadFile, validateFile, deleteFile } from "../../../services/fileUploadService";
-import { getPagesApiUrl } from "../../../utils/pagesUrl";
-import { getLogger } from '../../../config/logging';
+import { useCurriculum } from '@/shared/lib/hooks';
+import type { LessonPlan as LessonPlanType } from "@/features/educator-copilot";
+import { getSubjects, getClasses } from "@/features/educator-copilot";
+import { curriculumService } from "@/features/college-admin";
+import { supabase } from '@/shared/api/supabaseClient';
+import { uploadFile, validateFile } from '@/shared/api';
+import { deleteFile } from '@/shared/api/storageApiService';
+import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
+import { getLogger } from '@/shared/config/logging';
+import { authSessionService } from '@/features/auth';
 
 const logger = getLogger('school-admin-lesson-plan');
 
@@ -760,8 +763,8 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
         const [subjectsData, classesData, yearsData, currentYear] = await Promise.all([
           getSubjects(),
           getClasses(),
-          getAcademicYears(),
-          getCurrentAcademicYear(),
+          Promise.resolve(curriculumService.getAcademicYears()),
+          Promise.resolve(curriculumService.getAcademicYears()[0] || null), // Use first year as current
         ]);
         
         setSubjects(subjectsData);
@@ -1110,7 +1113,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
         let currentSchoolId = schoolId;
         if (!currentSchoolId) {
           // Fetch school_id from current educator
-          const { data: { user } } = await supabase.auth.getUser();
+          const { data: { user } } = await authSessionService.getUser();
           if (user) {
             const { data: educatorData } = await supabase
               .from('school_educators')
@@ -1280,7 +1283,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     // If academic year is not set, try to get the current academic year as default
     let academicYear = plan.academicYear || "";
     if (!academicYear) {
-      const currentYear = await getCurrentAcademicYear();
+      const currentYear = curriculumService.getAcademicYears()[0] || null;
       academicYear = currentYear || "";
     }
     
@@ -1370,7 +1373,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
               onClick={async () => {
                 resetForm();
                 // Set current academic year as default for new lesson plans
-                const currentYear = await getCurrentAcademicYear();
+                const currentYear = curriculumService.getAcademicYears()[0] || null;
                 if (currentYear) {
                   setFormData(prev => ({ ...prev, academicYear: currentYear }));
                 }

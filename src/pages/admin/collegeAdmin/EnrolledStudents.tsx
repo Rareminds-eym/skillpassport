@@ -9,14 +9,14 @@ import {
   ArrowPathIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { supabase } from "../../../lib/supabaseClient";
+import { supabase } from '@/shared/api/supabaseClient';
 import { studentEnrollmentService, type EnrolledStudentView } from "@/features/student-profile/api";
 // @ts-ignore - AuthContext is a JS file
-import { useAuth } from "../../../context/AuthContext";
+import { useAuth } from '@/features/auth';
 import toast from "react-hot-toast";
-import Pagination from "../../../components/admin/Pagination";
-import SearchBar from "../../../components/common/SearchBar";
-import { getLogger } from "../../../config/logging";
+import { Pagination } from '@/shared/ui';
+import { SearchBar } from '@/shared/ui';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('college-admin-enrolled-students');
 

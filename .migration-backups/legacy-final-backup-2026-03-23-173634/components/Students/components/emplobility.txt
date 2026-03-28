@@ -1,0 +1,118 @@
+🎯 Purpose of the Employability Score
+The Employability Score quantifies how ready a student is for the future world of work — combining academic, behavioral, digital, and social dimensions.
+It should:
+Help schools identify students needing intervention.
+Give employers or higher-ed institutions a measurable indicator of soft + hard skills.
+Encourage students to build balanced skills across academics, communication, and attitude.
+
+🧩 Core Formula (Weighted Model)
+Category
+Description
+Weight (%)
+Foundational Skills
+Communication, Comprehension, Critical Thinking, Quantitative Skills
+30%
+21st Century Competencies
+Collaboration, Creativity, Problem Solving, Leadership, Adaptability
+25%
+Digital Readiness
+Digital Literacy, Online Etiquette, Tech Tools Usage
+15%
+Behavior & Professional Attitude
+Punctuality, Discipline, Accountability, Empathy
+15%
+Career Readiness Evidence
+Project Submissions, Internships, Hackathons, Verified Achievements
+15%
+Total
+
+
+100%
+
+
+📊 Scoring Logic
+Each skill area already has a Teacher Rating (1–5) and Evidence Verification (Yes/No) in the Skill Passport.
+You can convert this into a normalized score:
+For each skill:
+Skill Score = (Teacher Rating / 5) × Evidence Weight
+Then aggregate across all skill categories with weights:
+Employability Score (0–100) =
+(Σ Category Average × Category Weight) + (Bonus Points)
+Bonus Points (max +5)
++2 if all skill evidences verified
++1 if participated in Hackathon / Internship
++2 if Certified in any Skill Passport Course
+So, a final scale looks like:
+Range
+Level
+Label on Dashboard
+85–100
+Excellent
+🌟 Industry Ready
+70–84
+Good
+🚀 Emerging Talent
+50–69
+Moderate
+🌱 Developing
+<50
+Needs Support
+🔧 Guided Path
+
+
+🧮 Example Calculation
+Category
+Score (out of 100)
+Weight
+Weighted
+Foundational
+80
+30%
+24
+21st Century
+75
+25%
+18.75
+Digital
+65
+15%
+9.75
+Behavior
+90
+15%
+13.5
+Career Evidence
+70
+15%
+10.5
+Total (before bonus)
+
+
+
+
+76.5
+Bonus
+
+
+
+
++3
+Final Employability Score
+
+
+
+
+79.5 (Good / Emerging Talent)
+
+
+💻 How It Should Appear in the Product
+Student View:
+Circular gauge: Employability Score – 79.5 / 100
+Below it: “Focus area – Digital Skills”
+Teacher/Admin View:
+Filter students by score band (Top 10%, Below 50%)
+Analytics: “% of students employable by grade or campus”
+Reports:
+Include percentile rank (vs school average)
+Include radar chart of category breakdown
+

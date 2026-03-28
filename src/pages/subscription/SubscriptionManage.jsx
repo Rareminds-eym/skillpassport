@@ -1,4 +1,4 @@
-import { SubscriptionRouteGuard } from '@/features/subscription/ui/shared';
+import { SubscriptionRouteGuard } from '@/features/subscription';
 import MySubscription from './MySubscription';
 
 /**

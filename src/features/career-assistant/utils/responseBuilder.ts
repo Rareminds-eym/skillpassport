@@ -16,7 +16,7 @@ import {
   JobMatchResponseData,
   SkillGapResponseData,
   ProfileAnalysisData
-} from '../types/interactive';
+} from '@/shared/types/interactive';
 
 /**
  * Build job match response with interactive job cards

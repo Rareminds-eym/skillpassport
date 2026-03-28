@@ -15,7 +15,7 @@ import {
   TypeInterface,
   EntityIndicator,
   EntityType
-} from '../types/entity-migration'
+} from '@/shared/types/entity-migration'
 
 export class EntityScanner implements IEntityScanner {
   private srcPath: string

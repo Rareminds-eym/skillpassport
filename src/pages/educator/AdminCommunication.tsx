@@ -20,13 +20,13 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import toast from 'react-hot-toast';
 import { useLocation } from 'react-router-dom';
 import { DeleteConversationModal } from '@/features/messaging';
-import { useAuth } from '../../context/AuthContext.jsx';
-import { useGlobalPresence } from '../../context/GlobalPresenceContext';
-import { useEducatorAdminMessages } from '../../hooks/useEducatorAdminMessages.js';
-import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
-import { useRealtimePresence } from '../../hooks/useRealtimePresence';
+import { useAuth } from '@/features/auth';
+import { useGlobalPresence } from '@/stores';
+import { useEducatorAdminMessages } from '@/features/educator';
+import { useNotificationBroadcast } from '@/features/broadcast/model/useNotificationBroadcast';
+import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/features/messaging';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 import { MessageService, Conversation } from '@/features/messaging';
 
 const AdminCommunication = () => {

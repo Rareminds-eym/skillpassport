@@ -16,6 +16,18 @@
 
 export { StudentProfileDrawer } from './ui';
 export { AdmissionNoteModal, SchoolAdmissionNoteModal, MessageModal, ExportModal } from './ui/modals';
+export { default as ProfileHeroEdit } from '@/widgets/student-dashboard/ui/ProfileHeroEdit';
+export {
+  CertificatesEditModal,
+  EducationEditModal,
+  TrainingEditModal,
+  ExperienceEditModal,
+  ProjectsEditModal,
+  SkillsEditModal
+} from '@/widgets/student-dashboard/ui/modals';
+
+// Default export for Header component
+export { default as Header } from '@/widgets/student-dashboard/ui/Header';
 
 // ============================================================================
 // State Management (Domain Hooks)
@@ -27,7 +39,8 @@ export {
   useStudentPortfolio,
   useStudentActivity,
   useStudentMessages,
-  useStudentSettings
+  useStudentSettings,
+  useProfileCompletion
 } from './model';
 
 // ============================================================================
@@ -76,3 +89,13 @@ export type {
   Badge,
   RecentUpdate
 } from './model';
+
+// API & Data Access
+export * from './api';
+export { showProfileErrorToast } from './lib/profileToast';
+export { showProfileUpdateToast } from './lib/profileToast';
+export { PROFILE_UPDATE_MESSAGES } from './lib/profileToast';
+export type { AchievementsExpanded } from './ui/AchievementsExpanded';
+export type { SkillTrackerExpanded } from './ui/SkillTrackerExpanded';
+export type { StudentPublicViewer } from './ui/StudentPublicViewer';
+export type { ProfileValidationService } from './api/profileValidationService';

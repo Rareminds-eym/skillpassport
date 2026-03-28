@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { buildEducatorSystemPrompt, buildIntentClassificationPrompt } from '../prompts/intelligentPrompt';
-import { buildEducatorContext } from '../utils/contextBuilder';
+import { buildEducatorContext } from "@/features/educator-copilot/utils/contextBuilder";
 import { EducatorAIResponse, EducatorIntent } from '../types';
 import { educatorInsights } from './educatorInsights';
 import { dataFetcherService } from './dataFetcherService';

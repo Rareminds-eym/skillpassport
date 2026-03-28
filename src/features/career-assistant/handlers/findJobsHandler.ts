@@ -1,10 +1,10 @@
-import { getOpenAIClient, DEFAULT_MODEL } from '../services/openAIClient';
-import { fetchStudentProfile, fetchOpportunities } from '../services/profileService';
-import { buildStudentContext, buildOpportunitiesContext } from '../utils/contextBuilder';
+import { getOpenAIClient, DEFAULT_MODEL } from '@/features/career-assistant/services/openAIClient';
+import { fetchStudentProfile, fetchOpportunities } from '@/features/career-assistant/services/profileService';
+import { buildStudentContext, buildOpportunitiesContext } from "@/features/career-assistant/utils/contextBuilder";
 import { createJobMatchingPrompt, JOB_MATCHING_SYSTEM_PROMPT } from '../prompts/jobMatchingPrompt';
 import { AIResponse, JobMatch, StudentProfile, StudentContext } from '../types';
-import { buildJobMatchResponse } from '../utils/responseBuilder';
-import { EnhancedAIResponse } from '../types/interactive';
+import { buildJobMatchResponse } from "@/shared/lib/responseBuilder";
+import { EnhancedAIResponse } from '@/shared/types/interactive';
 
 /**
  * Find Jobs Handler

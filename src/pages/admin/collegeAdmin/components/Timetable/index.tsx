@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { supabase } from "../../../../../lib/supabaseClient";
+import { supabase } from "@/shared/api/supabaseClient";
+import { 
+  collegeTimetableSlotsService, 
+  collegeBreaksService, 
+  collegeTimetablesService 
+} from "@/features/college-admin";
 
 // Types
 import { CollegeClass, ScheduleSlot, Break, TimePeriod, SlotFormData, BreakFormData, SelectedCell } from "./types";
@@ -189,9 +194,9 @@ const CalendarTimetable: React.FC<CalendarTimetableProps> = ({ collegeId }) => {
       };
 
       if (editingSlot?.id) {
-        await supabase.from("college_timetable_slots").update(slotData).eq("id", editingSlot.id);
+        await collegeTimetableSlotsService.updateSlot(editingSlot.id, slotData);
       } else {
-        await supabase.from("college_timetable_slots").insert(slotData);
+        await collegeTimetableSlotsService.createSlot(slotData);
       }
 
       await loadSlots();
@@ -211,7 +216,7 @@ const CalendarTimetable: React.FC<CalendarTimetableProps> = ({ collegeId }) => {
 
     setLoading(true);
     try {
-      await supabase.from("college_timetable_slots").delete().eq("id", editingSlot.id);
+      await collegeTimetableSlotsService.deleteSlot(editingSlot.id);
       await loadSlots();
       setShowAddSlotModal(false);
       setEditingSlot(null);
@@ -276,7 +281,7 @@ const CalendarTimetable: React.FC<CalendarTimetableProps> = ({ collegeId }) => {
           })
           .eq("id", editingBreakId);
       } else {
-        await supabase.from("college_breaks").insert({
+        await collegeBreaksService.createBreak({
           college_id: collegeId,
           timetable_id: timetableId,
           ...breakForm,
@@ -302,7 +307,7 @@ const CalendarTimetable: React.FC<CalendarTimetableProps> = ({ collegeId }) => {
 
   const handleDeleteBreak = async (breakId: string) => {
     if (!confirm("Delete this break/holiday?")) return;
-    await supabase.from("college_breaks").delete().eq("id", breakId);
+    await collegeBreaksService.deleteBreak(breakId);
     await loadBreaks();
   };
 
@@ -317,7 +322,7 @@ const CalendarTimetable: React.FC<CalendarTimetableProps> = ({ collegeId }) => {
 
     setLoading(true);
     try {
-      await supabase.from("college_timetables").update({ status: "published" }).eq("id", timetableId);
+      await collegeTimetablesService.publishTimetable(timetableId);
       setPublishStatus("published");
     } catch (error: any) {
       alert(error.message);

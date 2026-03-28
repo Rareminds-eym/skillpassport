@@ -34,4 +34,4 @@ export type {
   EntityRelationship,
   RelationshipGraph,
   RelationshipValidation
-} from '../types/entity-migration'
+} from '@/shared/types/entity-migration'

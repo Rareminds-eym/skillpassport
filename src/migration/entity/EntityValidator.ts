@@ -12,7 +12,7 @@ import {
   ValidationCheck,
   ValidationError,
   ValidationSummary
-} from '../types/entity-migration'
+} from '@/shared/types/entity-migration'
 
 export class EntityValidator {
   private projectRoot: string

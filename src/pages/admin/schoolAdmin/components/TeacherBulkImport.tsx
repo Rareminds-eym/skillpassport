@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Upload, Download, FileText, CheckCircle, AlertCircle, X } from 'lucide-react';
 import Papa from 'papaparse';
 import toast from 'react-hot-toast';
-import { bulkImportTeachers } from '../../../../services/teacherService';
+import { bulkImportTeachers } from '@/entities/teacher';
 
 interface ImportRow {
   first_name: string;

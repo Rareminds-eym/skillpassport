@@ -1,8 +1,8 @@
 import { ChatBubbleLeftRightIcon, DocumentTextIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
-import { supabase } from '../../../../lib/supabaseClient';
-import MessageService from '../../../../services/messageService';
+import { supabase } from '@/shared/api/supabaseClient';
+import { MessageService } from '@/shared/api/messageService';
 import { Student } from '../types';
 
 interface AdmissionNoteModalProps {

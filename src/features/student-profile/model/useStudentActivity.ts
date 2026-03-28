@@ -13,7 +13,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
 // TODO: Uncomment when functions are added to studentProfileService
-// import { getStudentRecentUpdatesByEmail, formatRecentUpdate } from '../api/studentProfileService';
+// import { getStudentRecentUpdatesByEmail, formatRecentUpdate } from '@/features/student-profile/api';
 
 export interface UseStudentActivityOptions {
   studentId?: string | null;

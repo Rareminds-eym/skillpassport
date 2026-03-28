@@ -1,9 +1,10 @@
 import { AlertTriangle, Edit2, Filter, Grid3X3, List, Save, Search, Send, Sparkles, Trash2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import toast from 'react-hot-toast';
-import { supabase } from "../../../../lib/supabaseClient";
-import { getAllTimetableConflicts, validateTimetableSlot, ValidationConflict } from "../../../../utils/timetableValidation";
-import { getLogger } from "../../../../config/logging";
+import { supabase } from '@/shared/api/supabaseClient';
+import { getAllTimetableConflicts, validateTimetableSlot, ValidationConflict } from "@/features/courses/lib/timetableValidation";
+import { getLogger } from '@/shared/config/logging';
+import { authSessionService } from '@/features/auth';
 
 const logger = getLogger('school-admin-timetable-builder');
 
@@ -114,7 +115,7 @@ const TimetableBuilderEnhanced: React.FC = () => {
 
   const getSchoolId = async (): Promise<string | null> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       if (!user) {
         logger.error('No user found');
         return null;

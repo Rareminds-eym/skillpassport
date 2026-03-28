@@ -4,7 +4,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { TestRunner } from '../TestRunner'
-import type { TestExecutionConfig } from '../../types/test-coverage'
+import type { TestExecutionConfig } from '@/shared/types/test-coverage'
 
 describe('TestRunner', () => {
   let testRunner: TestRunner

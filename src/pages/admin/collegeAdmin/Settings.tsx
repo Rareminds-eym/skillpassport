@@ -14,9 +14,9 @@ import {
     ExclamationTriangleIcon
 } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
-import { SubscriptionSettingsSection } from "../../../components/Subscription/SubscriptionSettingsSection";
+import { SubscriptionSettingsSection } from '@/features/subscription';
 import { ClipboardDocumentListIcon } from "@heroicons/react/24/solid";
-import { getLogger } from "../../../config/logging";
+import { getLogger } from '@/shared/config/logging';
 import { 
   getRolesWithPermissions, 
   getAvailableModules, 
@@ -30,8 +30,8 @@ import {
   type Permission,
   type ModuleAccess,
   type ScopeRule
-} from "../../../services/settingsService";
-import { useUser, useIsAuthenticated, useUserRole } from "../../../stores";
+} from '@/shared/api';
+import { useUser, useIsAuthenticated, useUserRole } from "@/stores";
 import toast from 'react-hot-toast';
 
 /* ==============================
@@ -39,7 +39,7 @@ import toast from 'react-hot-toast';
    ============================== */
 
 // Re-export types from service for backward compatibility
-export type { Role, ModuleAccess, ScopeRule } from "../../../services/settingsService";
+export type { Role, ModuleAccess, ScopeRule } from '@/shared/api';
 
 /* ==============================
    MODAL WRAPPER

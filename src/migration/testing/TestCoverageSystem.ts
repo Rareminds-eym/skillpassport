@@ -12,7 +12,7 @@ import type {
   TestExecutionResult,
   TestCoverageAnalysis,
   CoverageThreshold,
-} from '../types/test-coverage'
+} from '@/shared/types/test-coverage'
 
 export class TestCoverageSystem {
   private testRunner: TestRunner

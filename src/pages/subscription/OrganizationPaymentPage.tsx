@@ -23,7 +23,8 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from '@/stores';
-import { initiateOrganizationPayment, OrganizationPurchaseData } from '../../services/organization/organizationPaymentService';
+import { OrganizationPurchaseData } from '@/features/subscription';
+import { initiateOrganizationPayment } from '@/entities/organization/api/organizationPaymentService';
 
 interface OrganizationConfig {
   organizationType: 'school' | 'college' | 'university';

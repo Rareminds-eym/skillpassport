@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { BookOpen, CheckCircle, XCircle, Eye, MessageSquare, Clock } from "lucide-react";
 import toast from 'react-hot-toast';
-import { getLogger } from '../../../config/logging';
-import { supabase } from "../../../lib/supabaseClient";
+import { getLogger } from '@/shared/config/logging';
+import { supabase } from '@/shared/api/supabaseClient';
+import { authSessionService } from '@/features/auth';
 
 interface LessonPlan {
   id: string;
@@ -67,7 +68,7 @@ const LessonPlanApprovals: React.FC = () => {
   const handleApprove = async (planId: string) => {
     setActionLoading(true);
     try {
-      const { data: userData } = await supabase.auth.getUser();
+      const { data: userData } = await authSessionService.getUser();
 
       const { error } = await supabase
         .from("lesson_plans")
@@ -100,7 +101,7 @@ const LessonPlanApprovals: React.FC = () => {
 
     setActionLoading(true);
     try {
-      const { data: userData } = await supabase.auth.getUser();
+      const { data: userData } = await authSessionService.getUser();
 
       const { error } = await supabase
         .from("lesson_plans")
@@ -133,7 +134,7 @@ const LessonPlanApprovals: React.FC = () => {
 
     setActionLoading(true);
     try {
-      const { data: userData } = await supabase.auth.getUser();
+      const { data: userData } = await authSessionService.getUser();
 
       const { error } = await supabase
         .from("lesson_plans")

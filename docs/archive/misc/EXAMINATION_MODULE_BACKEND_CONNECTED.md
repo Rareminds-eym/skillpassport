@@ -115,7 +115,7 @@ React Query Hooks (useQuery, useMutation)
     ↓
 Service Layer (examinationService.ts, assessmentService.ts, etc.)
     ↓
-Supabase Client (@/lib/supabaseClient)
+Supabase Client (@/shared/api/supabaseClient)
     ↓
 Supabase Database (PostgreSQL)
 ```

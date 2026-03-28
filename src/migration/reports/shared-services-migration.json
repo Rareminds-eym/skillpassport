@@ -1,0 +1,29 @@
+{
+  "migrated": [
+    "addOnAnalyticsService",
+    "addOnCatalogService",
+    "addOnPaymentService",
+    "adminNotificationService",
+    "alertsService",
+    "analyticsService",
+    "authenticatedMediaService",
+    "dashboardService",
+    "fileService",
+    "fileUploadService",
+    "migrationNotificationService",
+    "migrationService",
+    "notificationService",
+    "optimizedQueryService",
+    "realtimeService",
+    "recentUpdatesService",
+    "settingsService",
+    "skillsAnalyticsService",
+    "storageApiService",
+    "storageService",
+    "streakApiService",
+    "studentNotificationService",
+    "usageStatisticsService"
+  ],
+  "skipped": [],
+  "errors": []
+}

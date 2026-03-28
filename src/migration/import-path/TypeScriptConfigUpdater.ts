@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { MigrationLogger } from '../logging/MigrationLogger';
-import { TypeScriptConfigUpdate, PathMapping } from '../types/import-path';
+import { TypeScriptConfigUpdate, PathMapping } from '@/shared/types/import-path';
 
 export class TypeScriptConfigUpdater {
   private logger: MigrationLogger;

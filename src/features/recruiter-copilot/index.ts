@@ -14,3 +14,11 @@ export {
 export { dataHealthCheck } from './utils/dataHealthCheck';
 export { advancedIntentClassifier } from './services/advancedIntentClassifier';
 export * from './types';
+
+// Default export for Header component (using educator Header)
+export { default as Header } from '@/features/educator/ui/Header';
+
+// API & Data Access
+export * from './api';
+export { companyService } from './api/companyService';
+export { recruiterInsights } from './services/recruiterInsights';

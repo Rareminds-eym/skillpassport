@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, Minus, LucideIcon } from 'lucide-react';
-import { ProgressBar, ScoreDisplay, VisualizationData } from '../types/interactive';
+import { ProgressBar, ScoreDisplay, VisualizationData } from '@/shared/types/interactive';
 import * as Icons from 'lucide-react';
 
 // ============================================================================

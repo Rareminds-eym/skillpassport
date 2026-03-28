@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Users, Calendar, MapPin, Clock, Award, Star, Target, BookOpen, Activity } from 'lucide-react';
-import { supabase } from '../../../../lib/supabaseClient';
-import { isCollegeStudent as checkIsCollegeStudent, isSchoolStudent as checkIsSchoolStudent } from '../../../../utils/studentType';
+import { supabase } from '@/shared/api/supabaseClient';
+import { isCollegeStudent as checkIsCollegeStudent, isSchoolStudent as checkIsSchoolStudent } from '@/entities/student/lib/studentType';
 
 interface Club {
   club_id: string;

@@ -22,7 +22,7 @@ import {
 import { Course, CourseModule, Lesson, Resource } from '@/shared/types';
 import AddLessonModal from './AddLessonModal';
 import ResourceUploadComponent from './ResourceUploadComponent';
-import { addResource, deleteResource, addLesson, updateLesson, deleteLesson as deleteLessonFromDB } from '@/services/educator/coursesService';
+import { addResource, deleteResource, addLesson, updateLesson, deleteLesson as deleteLessonFromDB } from '@/features/educator-copilot';
 import toast from 'react-hot-toast';
 
 interface CourseDetailDrawerProps {

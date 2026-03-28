@@ -8,9 +8,9 @@ import {
     Users
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { useUser } from "../../../../stores";
-import { supabase } from "../../../../lib/supabaseClient";
-import { getFacultyStatistics } from '../../../../services/facultyService';
+import { useUser } from "@/stores";
+import { supabase } from '@/shared/api/supabaseClient';
+import { getFacultyStatistics } from '@/features/college-admin/api/facultyService';
 import FacultyLeaveManagement from '../FacultyLeaveManagement';
 import CalendarTimetable from './CalendarTimetable';
 import FacultyBulkImport from './FacultyBulkImport';

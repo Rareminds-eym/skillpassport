@@ -1,0 +1,40 @@
+{
+  "filesUpdated": [
+    "src\\stores\\subscriptionStore.ts",
+    "src\\scripts\\migrateExistingSubscriptions.js",
+    "src\\hooks\\useUsageStatistics.js",
+    "src\\hooks\\useTypingIndicator.ts",
+    "src\\hooks\\useRealtimePresence.ts",
+    "src\\hooks\\useRealtimeActivities.ts",
+    "src\\hooks\\useOffers.ts",
+    "src\\hooks\\useNotificationBroadcast.tsx",
+    "src\\hooks\\useFeatureGate.js",
+    "src\\hooks\\useBroadcast.ts",
+    "src\\hooks\\useAddOnTracking.js",
+    "src\\hooks\\useAddOnCatalog.js",
+    "src\\features\\student-profile\\api\\studentDocumentService.ts",
+    "src\\features\\courses\\ui\\CoursePlayer.jsx",
+    "src\\features\\college-admin\\ui\\CollegeLessonPlanUI.tsx",
+    "src\\features\\subscription\\ui\\shared\\PaymentSuccess.jsx",
+    "src\\features\\subscription\\ui\\shared\\FeatureGate.jsx",
+    "src\\features\\subscription\\ui\\individual\\UpgradePrompt.jsx",
+    "src\\features\\subscription\\ui\\individual\\BundleCard.jsx",
+    "src\\features\\subscription\\ui\\individual\\AddOnMarketplace.jsx",
+    "src\\features\\subscription\\ui\\individual\\AddOnCheckout.jsx"
+  ],
+  "totalReplacements": 22,
+  "replacementsByService": {
+    "addOnPaymentService": 5,
+    "migrationService": 1,
+    "usageStatisticsService": 1,
+    "realtimeService": 4,
+    "dashboardService": 1,
+    "notificationService": 1,
+    "addOnCatalogService": 3,
+    "addOnAnalyticsService": 1,
+    "fileUploadService": 2,
+    "authenticatedMediaService": 1,
+    "fileService": 1,
+    "storageApiService": 1
+  }
+}

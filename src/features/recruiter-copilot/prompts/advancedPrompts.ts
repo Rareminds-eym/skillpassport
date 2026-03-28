@@ -1,5 +1,5 @@
 import { RecruiterContext } from '../types';
-import { ParsedRecruiterQuery } from '../services/queryParser';
+import { ParsedRecruiterQuery } from '@/shared/api/queryParser';
 
 /**
  * Advanced Prompt Engineering for Recruiter AI

@@ -1,4 +1,12 @@
-import { supabase } from '../../../../../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
+import { 
+  getExpenditureSummary, 
+  getDepartmentExpenditure, 
+  getProgramExpenditure,
+  ExpenditureSummary,
+  DepartmentExpenditure,
+  ProgramExpenditure
+} from '@/features/college-admin';
 
 export interface StudentFeeLedgerDetailed {
   id: string;
@@ -51,40 +59,6 @@ export interface StudentFeeLedgerDetailed {
   status_description: string;
   days_overdue: number;
   payment_percentage: number;
-}
-
-export interface ExpenditureSummary {
-  total_due_amount: number;
-  total_paid_amount: number;
-  total_balance: number;
-  total_students: number;
-  overdue_students: number;
-  paid_students: number;
-  pending_students: number;
-  collection_percentage: number;
-}
-
-export interface DepartmentExpenditure {
-  department_id: string;
-  department_name: string;
-  department_code?: string;
-  total_due_amount: number;
-  total_paid_amount: number;
-  total_balance: number;
-  student_count: number;
-  collection_percentage: number;
-}
-
-export interface ProgramExpenditure {
-  program_id: string;
-  program_name: string;
-  program_code?: string;
-  department_name: string;
-  total_due_amount: number;
-  total_paid_amount: number;
-  total_balance: number;
-  student_count: number;
-  collection_percentage: number;
 }
 
 export interface ExpenditureFilters {
@@ -222,12 +196,7 @@ class ExpenditureService {
   async getExpenditureSummary(): Promise<ExpenditureSummary> {
     try {
       const collegeId = await this.getCurrentCollegeId();
-      
-      const { data, error } = await supabase
-        .rpc('get_expenditure_summary', { p_college_id: collegeId });
-      
-      if (error) throw error;
-      return data[0] as ExpenditureSummary;
+      return await getExpenditureSummary(collegeId);
     } catch (error) {
       // Return mock data if function doesn't exist
       return {
@@ -247,10 +216,7 @@ class ExpenditureService {
   async getDepartmentExpenditure(): Promise<DepartmentExpenditure[]> {
     try {
       const collegeId = await this.getCurrentCollegeId();
-      const { data, error } = await supabase
-        .rpc('get_department_expenditure', { p_college_id: collegeId });
-      if (error) throw error;
-      return data as DepartmentExpenditure[];
+      return await getDepartmentExpenditure(collegeId);
     } catch (error) {
       // Return mock data if function doesn't exist
       return [
@@ -292,10 +258,7 @@ class ExpenditureService {
   async getProgramExpenditure(): Promise<ProgramExpenditure[]> {
     try {
       const collegeID = await this.getCurrentCollegeId();
-      const { data, error } = await supabase
-        .rpc('get_program_expenditure', { p_college_id: collegeID });
-      if (error) throw error;
-      return data as ProgramExpenditure[];
+      return await getProgramExpenditure(collegeID);
     } catch (error) {
       // Return mock data if function doesn't exist
       return [

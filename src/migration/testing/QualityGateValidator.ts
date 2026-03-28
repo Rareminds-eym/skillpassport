@@ -7,7 +7,7 @@ import type {
   QualityGate,
   CoverageThreshold,
   TestCoverageAnalysis,
-} from '../types/test-coverage'
+} from '@/shared/types/test-coverage'
 
 export class QualityGateValidator {
   private thresholds: CoverageThreshold

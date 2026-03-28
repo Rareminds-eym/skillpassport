@@ -1,6 +1,6 @@
 import { AlertCircle, FileText, IndianRupee, TrendingUp } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { supabase } from "../../../../lib/supabaseClient";
+import { supabase } from '@/shared/api/supabaseClient';
 import { DepartmentBudgetsTab } from "./components/DepartmentBudgetsTab";
 import { ExpenditureReportsTab } from "./components/ExpenditureReportsTab";
 import { FeeStructureFormModal } from "./components/FeeStructureFormModal";
@@ -13,6 +13,7 @@ import { useFeeStructures } from "./hooks/useFeeStructures";
 import { useFeeTracking } from "./hooks/useFeeTracking";
 import { usePrograms } from "./hooks/usePrograms";
 import { FeeStructure, StudentFeeSummary } from "./types";
+import { authSessionService } from '@/features/auth';
 
 const tabs = [
   { id: "fees", label: "Fee Structure Setup" },
@@ -55,7 +56,7 @@ const FinanceModule: React.FC = () => {
         }
         
         // If not found in localStorage, try Supabase Auth
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await authSessionService.getUser();
         if (user) {
           console.log('🔍 Checking Supabase auth user:', user.email);
           

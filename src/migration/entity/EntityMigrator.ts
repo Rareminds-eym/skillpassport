@@ -19,7 +19,7 @@ import {
   MigrationError,
   BackwardCompatibilityInfo,
   ImportPathUpdate
-} from '../types/entity-migration'
+} from '@/shared/types/entity-migration'
 
 export class EntityMigrator implements IEntityMigrator {
   private projectRoot: string

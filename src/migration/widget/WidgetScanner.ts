@@ -10,7 +10,7 @@ import * as path from 'path'
 import {
   WidgetCandidate,
   WidgetIndicator
-} from '../types/widget-migration'
+} from '@/shared/types/widget-migration'
 
 export class WidgetScanner {
   private projectRoot: string

@@ -11,7 +11,7 @@ import {
   RollbackData, 
   MigrationConfig,
   MigrationResult 
-} from '../types/index.js'
+} from '@/shared/types/index.js'
 import { MigrationLogger } from '../logging/MigrationLogger.js'
 import { BackupManager } from './BackupManager.js'
 import { ErrorHandlingSystem, ErrorContext } from './ErrorHandlingSystem.js'

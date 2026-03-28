@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { getLogger } from '../../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 
 // Import the college lesson plan UI
-import CollegeLessonPlanUI from '../../../components/admin/collegeAdmin/CollegeLessonPlanUI';
-import { lessonPlanService, type CollegeLessonPlan } from '../../../services/college/lessonPlanService';
+import { CollegeLessonPlanUI } from '@/features/college-admin';
+import { lessonPlanService, type CollegeLessonPlan } from '@/features/college-admin';
 
 /**
  * CollegeLessonPlanManagement - Lesson plan management for college faculty

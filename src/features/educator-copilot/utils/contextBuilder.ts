@@ -1,6 +1,6 @@
 import { EducatorContext } from '../types';
-import { EducatorWithSchool } from '../types/database';
-import { supabase } from '../../../lib/supabaseClient';
+import { EducatorWithSchool } from '@/shared/types/database';
+import { supabase } from '@/shared/api/supabaseClient';
 
 /**
  * Build educator context for AI prompts

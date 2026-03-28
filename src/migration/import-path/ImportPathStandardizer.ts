@@ -4,7 +4,7 @@ import { MigrationLogger } from '../logging/MigrationLogger';
 import { ImportPathAnalyzer } from './ImportPathAnalyzer';
 import { ImportPathRefactorer } from './ImportPathRefactorer';
 import { TypeScriptConfigUpdater } from './TypeScriptConfigUpdater';
-import { ImportPathStandardizationResult } from '../types/import-path';
+import { ImportPathStandardizationResult } from '@/shared/types/import-path';
 
 export class ImportPathStandardizer {
   private analyzer: ImportPathAnalyzer;

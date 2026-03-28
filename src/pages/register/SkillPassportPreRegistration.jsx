@@ -1,14 +1,6 @@
-import Footer from '../../components/Footer';
-import Header from '../../layouts/Header';
-import HeroSection from '../../components/skillpassport/HeroSection';
-import WhatIsSection from '../../components/skillpassport/WhatIsSection';
-import WhoIsThisForSection from '../../components/skillpassport/WhoIsThisForSection';
-import EarlyAccessSection from '../../components/skillpassport/EarlyAccessSection';
-import RegistrationForm from '../../components/skillpassport/RegistrationForm';
-import TimelineSection from '../../components/TimelineSection';
-import WhatYouGetSection from '../../components/skillpassport/WhatYouGetSection';
-import AboutRaremindsSection from '../../components/skillpassport/AboutRaremindsSection';
-import NeedHelpSection from '../../components/skillpassport/NeedHelpSection';
+import { Footer } from '@/shared/ui';
+import Header from '@/app/layouts/Header';
+import { HeroSection, WhatIsSection, WhoIsThisForSection, RegistrationForm, TimelineSection, WhatYouGetSection, AboutRaremindsSection, NeedHelpSection } from '@/shared/ui/marketing';
 import { useLocation } from 'react-router-dom';
 
 export default function SkillPassportPreRegistration() {

@@ -16,7 +16,7 @@ import {
   InterfaceIssue,
   EntityInterfaceSummary,
   ErrorSeverity
-} from '../types/type-safety'
+} from '@/shared/types/type-safety'
 
 export class EntityInterfaceValidator {
   private projectRoot: string

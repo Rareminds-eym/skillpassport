@@ -7,4 +7,4 @@
  * @see src/features/assessment/assessment-result/AssessmentResult.jsx
  */
 
-export { default } from '../../features/assessment/assessment-result/AssessmentResult';
+export { default } from '../../features/assessment/ui/AssessmentResult';

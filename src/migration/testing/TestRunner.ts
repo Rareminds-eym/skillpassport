@@ -11,7 +11,7 @@ import type {
   TestExecutionResult,
   TestFailure,
   TestRunnerConfig,
-} from '../types/test-coverage'
+} from '@/shared/types/test-coverage'
 
 export class TestRunner {
   private config: TestRunnerConfig

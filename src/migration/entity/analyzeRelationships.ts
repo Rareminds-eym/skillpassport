@@ -8,7 +8,7 @@
  */
 
 import { RelationshipAnalyzer } from './RelationshipAnalyzer'
-import type { RelationshipGraph } from '../types/entity-migration'
+import type { RelationshipGraph } from '@/shared/types/entity-migration'
 
 /**
  * Analyze all entity relationships and generate diagram

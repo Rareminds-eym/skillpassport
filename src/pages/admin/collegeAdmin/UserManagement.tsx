@@ -7,14 +7,15 @@ import {
   KeyIcon,
   ArrowUpTrayIcon,
 } from "@heroicons/react/24/outline";
-import { getLogger } from "../../../config/logging";
-import { useUsers } from "../../../hooks/college/useUsers";
-import { departmentService } from "../../../services/college";
-import { supabase } from "../../../lib/supabaseClient";
+import { getLogger } from '@/shared/config/logging';
+import { useUsers } from '@/entities/user';
+import { departmentService } from '@/features/college-admin';
+import { supabase } from '@/shared/api/supabaseClient';
 
 import UserFormModal from "./components/UserFormModal";
-import { ConfirmModal } from "../../../components/shared/ConfirmModal";
-import type { User } from "../../../types/college";
+import { ConfirmModal } from '@/shared/ui';
+import type { User } from '@/shared/types/college';
+import { authSessionService } from '@/features/auth';
 
 const UserManagement: React.FC = () => {
   const logger = getLogger('college-admin-user-management');
@@ -99,7 +100,7 @@ const UserManagement: React.FC = () => {
     const fetchDepartments = async () => {
       try {
         // Get college ID from current user
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        const { data: { user: currentUser } } = await authSessionService.getUser();
         
         if (!currentUser?.email) {
           logger.error('No user logged in');

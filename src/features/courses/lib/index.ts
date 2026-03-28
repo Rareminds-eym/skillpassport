@@ -11,5 +11,11 @@ export {
   getCoursesForMultipleSkillGaps
 } from './recommendations';
 
+// Export timetable transformations
+export * from './timetableTransformations';
+
+// Export lesson plan transformations
+export * from './lessonPlanTransformations';
+
 // Export courseValidation utilities (to be added when needed)
 // export * from './courseValidation';

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getLogger } from '../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('RecruiterOverview');
 import {
@@ -15,10 +15,10 @@ import {
   ChevronDownIcon,
   ChevronUpIcon
 } from '@heroicons/react/24/outline';
-import { getDashboardData } from '../../services/dashboardService';
-import ActivityFeed from '../../components/ActivityFeed';
-import { useRealtimeActivities } from '../../hooks/useRealtimeActivities';
-import { trackSearchUsage } from '../../services/savedSearchesService';
+import { getDashboardData } from '@/shared/api';
+import { ActivityFeed } from '@/shared/ui';
+import { useRealtimeActivities } from '@/shared/lib/hooks';
+import { trackSearchUsage } from '@/features/opportunities';
 
 const KpiCard = ({ title, value, icon: Icon, trend, color = 'primary' }) => {
   const colorClasses = {

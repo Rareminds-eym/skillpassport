@@ -4,7 +4,7 @@
  */
 
 import { APIAnalyzer } from '../APIAnalyzer.js'
-import { APIFunction, ServiceFile } from '../../types/index.js'
+import { APIFunction, ServiceFile } from '@/shared/types/index.js'
 
 describe('API Classification and Mapping Integration', () => {
   let analyzer: APIAnalyzer

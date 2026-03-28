@@ -1,6 +1,6 @@
 import { CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
-import { supabase } from "../../../../lib/supabaseClient";
+import { supabase } from '@/shared/api/supabaseClient';
 import { AnalyticsTab } from "./components/AnalyticsTab";
 import { CalendarTab } from "./components/CalendarTab";
 import { ConfirmModal } from "./components/ConfirmModal";
@@ -14,6 +14,7 @@ import { useEventAnalytics } from "./hooks/useEventAnalytics";
 import { useEvents } from "./hooks/useEvents";
 import { useRegistrations } from "./hooks/useRegistrations";
 import { CollegeEvent } from "./types";
+import { authSessionService } from '@/features/auth';
 
 const tabs = [
   { id: "events", label: "Event Scheduling", icon: CalendarIcon },
@@ -49,7 +50,7 @@ const EventManagement: React.FC = () => {
   useEffect(() => {
     const fetchCollegeId = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await authSessionService.getUser();
         if (user) {
           // First check organizations table for college admin
           const { data: org } = await supabase.from("organizations").select("id").eq("organization_type", "college").or(`admin_id.eq.${user.id},email.eq.${user.email}`).maybeSingle();

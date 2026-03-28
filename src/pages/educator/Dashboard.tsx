@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactApexChart from 'react-apexcharts';
-import { getLogger } from '../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('Dashboard');
 
@@ -22,15 +22,16 @@ import {
   FireIcon,
   BookOpenIcon,
 } from '@heroicons/react/24/outline';
-import KPICard from '../../components/educator/KPICard';
+import KPICard from '@/shared/ui/KPICard';
 import { 
   dashboardApi, 
   DashboardKPIs, 
   RecentActivity, 
   SkillAnalytics, 
   Announcement 
-} from '../../services/educator/dashboardApi';
-import { supabase } from '../../lib/supabaseClient';
+} from '@/features/educator-copilot/api/dashboardApi';
+import { supabase } from '@/shared/api/supabaseClient';
+import { authSessionService } from '@/features/auth';
 // import './Dashboard.css';
 
 const Dashboard = () => {
@@ -52,7 +53,7 @@ const Dashboard = () => {
     let mounted = true;
 
     // Listen for auth changes first
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = authSessionService.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
       if (event === 'TOKEN_REFRESHED') {
@@ -75,7 +76,7 @@ const Dashboard = () => {
     // Check current session immediately
     const checkCurrentSession = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data: { session }, error } = await authSessionService.getSession();
         
         if (!mounted) return;
 
@@ -126,7 +127,7 @@ const Dashboard = () => {
     if (loadingRef.current) return;
     
     // Check session state again before loading data
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await authSessionService.getSession();
     if (!session?.user) {
       setError('Please log in to view the dashboard');
       setLoading(false);

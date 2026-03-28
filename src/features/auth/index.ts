@@ -82,3 +82,7 @@ export type { AuthState as State, AuthContextType as Context } from './model';
  * import { TokenMonitor, validateEmail } from '@/features/auth/lib';
  * ```
  */
+
+// API & Data Access
+export * from './api';
+export { authSessionService } from './api/authSessionService';

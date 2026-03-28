@@ -12,8 +12,8 @@ import {
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useUser } from "@/stores";
-import { supabase } from "../../lib/supabaseClient";
-import { getLogger } from "../../config/logging";
+import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('RecruiterProfile');
 

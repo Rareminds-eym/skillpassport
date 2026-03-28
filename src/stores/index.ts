@@ -160,7 +160,7 @@ export {
 export {
   useCounsellingStore,
   type CounsellingStore
-} from './counsellingStore';
+} from '@/features/counselling';
 
 export {
   useMessageStore,

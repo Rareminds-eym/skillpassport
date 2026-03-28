@@ -24,7 +24,6 @@ export type {
 export {
   isValidOrganizationType,
   validateOrganization,
-  isValidEmail,
   isValidPhone,
   isValidWebsite,
   validateSeatCount,

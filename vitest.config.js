@@ -9,6 +9,12 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.js',
     testTimeout: 120000, // 120 seconds for E2E tests
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/.migration-backups/**',
+      '**/backup-*/**'
+    ]
   },
   resolve: {
     alias: {

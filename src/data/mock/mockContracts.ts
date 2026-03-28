@@ -1,4 +1,4 @@
-import { ProjectContract, ContractMilestone } from '../../types/project';
+import { ProjectContract, ContractMilestone } from '@/shared/types/project';
 import { mockStudents } from './mockProposals';
 import { mockProjects } from './mockProjects';
 

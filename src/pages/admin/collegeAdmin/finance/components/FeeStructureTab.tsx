@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Plus, Search, Pencil, Trash2, Copy, ToggleLeft, ToggleRight, IndianRupee, ChevronDown, ChevronUp, Eye, FileDown } from "lucide-react";
 import { FeeStructure } from "../types";
 import { FeeStructureViewModal } from "./FeeStructureViewModal";
-import { exportFeeStructurePDF } from "../utils/exportFeeStructurePDF";
+import { exportFeeStructurePDF } from '../utils/exportFeeStructurePDF';
 
 interface Props {
   feeStructures: FeeStructure[];

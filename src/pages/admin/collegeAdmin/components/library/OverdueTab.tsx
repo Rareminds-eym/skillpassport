@@ -1,6 +1,6 @@
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
-import { OverdueBook } from "../../../../../services/libraryService";
+import { OverdueBook } from '@/features/library';
 
 interface OverdueTabProps {
   overdueBooks: OverdueBook[];

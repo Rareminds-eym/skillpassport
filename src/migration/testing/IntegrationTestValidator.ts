@@ -9,7 +9,7 @@ import type {
   E2ETestResult,
   ScenarioResult,
   StepResult,
-} from '../types/test-coverage'
+} from '@/shared/types/test-coverage'
 
 export class IntegrationTestValidator {
   /**

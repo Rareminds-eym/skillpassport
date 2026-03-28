@@ -12,9 +12,9 @@ import {
   ChevronRight,
   ArrowDownAZ
 } from 'lucide-react';
-import { supabase } from '../../../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 import { motion } from 'framer-motion';
-import CourseDetailModal from '@/features/courses/ui/CourseDetailModal';
+import { CourseDetailModal } from '@/features/courses';
 
 const BrowseCourses = () => {
   const navigate = useNavigate();

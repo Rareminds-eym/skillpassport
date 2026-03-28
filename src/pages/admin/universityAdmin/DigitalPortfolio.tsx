@@ -10,9 +10,10 @@ import {
 } from '@heroicons/react/24/outline';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import SearchBar from '../../../components/common/SearchBar';
-import { supabase } from '../../../lib/supabaseClient';
-import { getLogger } from '../../../config/logging';
+import { SearchBar } from '@/shared/ui';
+import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+import { authSessionService } from '@/features/auth';
 
 const logger = getLogger('university-admin-digital-portfolio');
 
@@ -224,7 +225,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
       
       // If not in localStorage, check Supabase auth
       if (!universityId) {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await authSessionService.getUser();
         if (user) {
           const { data: dbUser } = await supabase
             .from('users')
@@ -280,7 +281,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
       }
       
       if (!universityId) {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await authSessionService.getUser();
         if (user) {
           const { data: dbUser } = await supabase
             .from('users')

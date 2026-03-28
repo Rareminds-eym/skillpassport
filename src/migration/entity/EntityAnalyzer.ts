@@ -9,7 +9,7 @@ import {
   EntityDefinition,
   EntityAnalysis,
   SourceLocation
-} from '../types/entity-migration'
+} from '@/shared/types/entity-migration'
 import { EntityScanner } from './EntityScanner'
 import { RelationshipAnalyzer } from './RelationshipAnalyzer'
 

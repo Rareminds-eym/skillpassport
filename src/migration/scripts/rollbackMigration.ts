@@ -10,10 +10,10 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import { program } from 'commander'
-import { MigrationConfig, RollbackData } from '../types/index.js'
+import { MigrationConfig, RollbackData } from '@/shared/types/index.js'
 import { MigrationLogger } from '../logging/MigrationLogger.js'
 import { BackupOrchestrator } from '../backup/BackupOrchestrator.js'
-import { defaultConfig } from '../config/defaultConfig.js'
+import { defaultConfig } from "@/shared/config/defaultConfig.js"
 
 interface RollbackOptions {
   migrationId?: string

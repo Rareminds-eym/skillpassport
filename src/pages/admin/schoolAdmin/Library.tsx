@@ -8,9 +8,10 @@ import {
 } from '@heroicons/react/24/outline';
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { useStudents } from '../../../hooks/useAdminStudents';
-import { supabase } from '../../../lib/supabaseClient';
-import { getLogger } from '../../../config/logging';
+import { useStudents } from '@/entities/student';
+import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+import { authSessionService } from '@/features/auth';
 
 const logger = getLogger('school-admin-library');
 
@@ -141,7 +142,7 @@ export default function LibraryModule() {
         }
 
         // Then try Supabase auth
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await authSessionService.getUser();
         if (user) {
           // Check school_educators table first - use maybeSingle() to avoid 406 error
           const { data: educator } = await supabase

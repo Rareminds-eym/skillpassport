@@ -12,7 +12,7 @@
  */
 
 import { TypeSafetyValidator } from '../type-safety'
-import { TypeSafetyConfig } from '../types/type-safety'
+import { TypeSafetyConfig } from '@/shared/types/type-safety'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 

@@ -21,22 +21,22 @@ import {
   PanelLeftClose,
   PanelLeft
 } from 'lucide-react';
-import { streamCareerChat } from '../services/careerWorkerService';
-import { useUser } from '../../../stores';
-import { useCareerConversations, ConversationMessage } from '../hooks/useCareerConversations';
-import { useAIFeedback, AIFeedback } from '../hooks/useAIFeedback';
+import { streamCareerChat } from '@/features/career-assistant/services/careerWorkerService';
+import { useUser } from '@/stores';
+import { useCareerConversations, ConversationMessage } from '@/features/career-assistant/hooks/useCareerConversations';
+import { useAIFeedback, AIFeedback } from '@/features/career-assistant/hooks/useAIFeedback';
 import { ConversationSidebar } from './ConversationSidebar';
 import { EnhancedMessage, SimpleMessage } from './EnhancedMessage';
-import CareerAIToolsGrid from '../../../components/shared/CareerAIToolsGrid';
+import CareerAIToolsGrid from '@/shared/ui/CareerAIToolsGrid';
 
 // Import optimized hooks
-import { useOptimizedMessages, Message } from '../hooks/useOptimizedMessages';
-import { useSmartScroll } from '../hooks/useSmartScroll';
-import { useConversationSwitcher } from '../hooks/useConversationSwitcher';
-import { VirtualMessage } from '../hooks/useVirtualMessage';
+import { useOptimizedMessages, Message } from '@/features/career-assistant/hooks/useOptimizedMessages';
+import { useSmartScroll } from '@/features/career-assistant/hooks/useSmartScroll';
+import { useConversationSwitcher } from '@/features/career-assistant/hooks/useConversationSwitcher';
+import { VirtualMessage } from '@/features/career-assistant/hooks/useVirtualMessage';
 
 // Import Context Provider
-import { useCareerAssistant } from '../../../stores';
+import { useCareerAssistant } from '@/stores';
 
 // Import constants
 import {

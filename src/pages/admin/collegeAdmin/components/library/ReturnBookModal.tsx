@@ -1,5 +1,5 @@
 import { BookOpenIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { LibraryBookIssue } from "../../../../../services/libraryService";
+import { LibraryBookIssue } from '@/features/library';
 
 interface ReturnBookModalProps {
   isOpen: boolean;

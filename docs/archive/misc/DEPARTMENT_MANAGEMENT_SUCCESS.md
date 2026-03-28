@@ -8,7 +8,7 @@ The Department Management frontend is now **fully connected** to the backend and
 
 ### 1. Missing Supabase Import
 **Problem:** `supabase is not defined`
-**Fix:** Added `import { supabase } from '../../../lib/supabaseClient';`
+**Fix:** Added `import { supabase } from '@/shared/api/supabaseClient';`
 
 ### 2. College ID Query
 **Problem:** `collegeId` was undefined

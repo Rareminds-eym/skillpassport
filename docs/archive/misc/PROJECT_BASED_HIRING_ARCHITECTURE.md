@@ -560,7 +560,7 @@ export interface QA {
 **File:** `src/services/projectService.ts`
 
 ```typescript
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../shared/api/supabaseClient';
 import { Project, ProjectFilters } from '../types/project';
 
 export const projectService = {
@@ -652,7 +652,7 @@ export const projectService = {
 **File:** `src/services/proposalService.ts`
 
 ```typescript
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../shared/api/supabaseClient';
 import { Proposal } from '../types/project';
 
 export const proposalService = {

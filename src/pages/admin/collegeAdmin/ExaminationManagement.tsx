@@ -20,13 +20,13 @@ import {
 } from "lucide-react";
 import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { examinationService } from "../../../services/college";
-import { assessmentService } from "../../../services/college/assessmentService";
-import { markEntryService } from "../../../services/college/markEntryService";
-import { transcriptService } from "../../../services/college/transcriptService";
-import { departmentService } from "../../../services/college/departmentService";
-import { supabase } from "../../../lib/supabaseClient";
-import { getLogger } from "../../../config/logging";
+import { examinationService } from '@/features/college-admin';
+import { assessmentService } from '@/features/assessment';
+import { markEntryService } from '@/features/college-admin';
+import { transcriptService } from '@/features/college-admin';
+import { departmentService } from '@/entities/department';
+import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('college-admin-examination-management');
 import AssessmentFormModal from "./components/AssessmentFormModal";
@@ -35,7 +35,8 @@ import MarkEntryGrid from "./components/MarkEntryGrid";
 import ModerationPanel from "./components/ModerationPanel";
 import InvigilatorAssignment from "./components/InvigilatorAssignment";
 import TranscriptForm from "./components/TranscriptForm";
-import type { Assessment, ExamSlot, MarkEntry, Transcript } from "../../../types/college";
+import type { Assessment, ExamSlot, MarkEntry, Transcript } from '@/shared/types/college';
+import { authSessionService } from '@/features/auth';
 
 const ExaminationManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -60,7 +61,7 @@ const ExaminationManagement: React.FC = () => {
 
   useEffect(() => {
     const fetchUserCollege = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       if (user) {
         const { data: userData } = await supabase
           .from('users')
@@ -475,7 +476,7 @@ const ExaminationManagement: React.FC = () => {
 
   const handleModerate = async (entryId: string, newMarks: number, reason: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       
       const { error } = await supabase
         .from('mark_entries')
@@ -514,7 +515,7 @@ const ExaminationManagement: React.FC = () => {
 
   const handleAssignInvigilator = async (slotId: string, facultyId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       
       await examinationService.assignInvigilator({
         exam_timetable_id: slotId,

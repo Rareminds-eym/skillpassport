@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
 import { useUser } from '@/stores';
 import { getActiveSubscription } from '@/features/subscription/api';
-import { queryLogger } from '@/utils/queryLogger';
+import { queryLogger } from '@/shared/lib/debug/queryLogger';
 import { isActiveOrPaused } from '@/features/subscription/lib';
 
 /**

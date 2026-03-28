@@ -1,4 +1,4 @@
-import { getFileSizeLimit, type UploadContext } from '../../config/fileSizeLimits';
+import { getFileSizeLimit, type UploadContext } from "@/shared/config/fileSizeLimits";
 
 export interface FileValidationResult {
   valid: boolean;

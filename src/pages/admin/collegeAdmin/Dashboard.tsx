@@ -18,11 +18,11 @@ import {
   AlertCircle,
   Loader2,
 } from "lucide-react";
-import KPICard from "../../../components/admin/KPICard";
+import KPICard from '@/shared/ui/KPICard';
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../../../lib/supabaseClient";
-import { useUser } from "../../../stores";
-import { getLogger } from "../../../config/logging";
+import { supabase } from '@/shared/api/supabaseClient';
+import { useUser } from "@/stores";
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('college-admin-dashboard');
 

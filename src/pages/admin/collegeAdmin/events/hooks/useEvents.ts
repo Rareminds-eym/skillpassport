@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { supabase } from "../../../../../lib/supabaseClient";
+import { supabase } from '@/shared/api/supabaseClient';
 import { CollegeEvent } from "../types";
+import { collegeEventsService, organizationsService } from "@/features/college-admin";
 
 export const useEvents = (collegeId: string | null) => {
   const [events, setEvents] = useState<CollegeEvent[]>([]);
@@ -13,10 +14,7 @@ export const useEvents = (collegeId: string | null) => {
   const loadEvents = useCallback(async () => {
     try {
       setLoading(true);
-      let query = supabase.from("college_events").select("*").order("start_date", { ascending: true });
-      if (collegeId) query = query.eq("college_id", collegeId);
-      const { data, error } = await query;
-      if (error) throw error;
+      const data = await collegeEventsService.getCollegeEvents(collegeId || undefined);
       setEvents(data || []);
     } catch { toast.error("Failed to load events"); }
     finally { setLoading(false); }
@@ -96,18 +94,16 @@ export const useEvents = (collegeId: string | null) => {
       // Get college_id from organizations table if not already set
       let eventCollegeId = collegeId;
       if (!eventCollegeId && user) {
-        const { data: org } = await supabase.from("organizations").select("id").eq("organization_type", "college").or(`admin_id.eq.${user.id},email.eq.${user.email}`).maybeSingle();
+        const org = await organizationsService.getCollegeOrganization(user.id, user.email || '');
         if (org?.id) eventCollegeId = org.id;
       }
       
       if (existingEvent) {
-        const { error } = await supabase.from("college_events").update({ ...data, college_id: eventCollegeId, updated_at: new Date().toISOString() }).eq("id", existingEvent.id);
-        if (error) throw error;
+        await collegeEventsService.updateCollegeEvent(existingEvent.id, { ...data, college_id: eventCollegeId, updated_at: new Date().toISOString() });
         toast.success("Event updated");
       } else {
         if (!eventCollegeId) { toast.error("College not found"); return false; }
-        const { error } = await supabase.from("college_events").insert({ ...data, college_id: eventCollegeId, created_by: user?.id });
-        if (error) throw error;
+        await collegeEventsService.createCollegeEvent(data, eventCollegeId, user?.id);
         toast.success("Event created");
       }
       loadEvents();
@@ -118,8 +114,7 @@ export const useEvents = (collegeId: string | null) => {
 
   const deleteEvent = async (id: string) => {
     try {
-      const { error } = await supabase.from("college_events").delete().eq("id", id);
-      if (error) throw error;
+      await collegeEventsService.deleteCollegeEvent(id);
       setEvents((prev) => prev.filter((e) => e.id !== id));
       toast.success("Event deleted");
       return true;
@@ -131,8 +126,7 @@ export const useEvents = (collegeId: string | null) => {
 
   const publishEvent = async (id: string) => {
     try {
-      const { error } = await supabase.from("college_events").update({ status: "published" }).eq("id", id);
-      if (error) throw error;
+      await collegeEventsService.publishCollegeEvent(id);
       setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, status: "published" as const } : e)));
       toast.success("Published");
     } catch { toast.error("Failed"); }
@@ -140,8 +134,7 @@ export const useEvents = (collegeId: string | null) => {
 
   const cancelEvent = async (id: string) => {
     try {
-      const { error } = await supabase.from("college_events").update({ status: "cancelled" }).eq("id", id);
-      if (error) throw error;
+      await collegeEventsService.cancelCollegeEvent(id);
       setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, status: "cancelled" as const } : e)));
       toast.success("Cancelled");
       return true;
@@ -167,13 +160,12 @@ export const useEvents = (collegeId: string | null) => {
       newEnd.setDate(newEnd.getDate() + daysDiff);
       newEnd.setHours(endDate.getHours(), endDate.getMinutes());
 
-      const { error } = await supabase.from("college_events").update({
-        start_date: newStart.toISOString(),
-        end_date: newEnd.toISOString(),
-        updated_at: new Date().toISOString(),
-      }).eq("id", draggedEvent.id);
+      await collegeEventsService.rescheduleCollegeEvent(
+        draggedEvent.id,
+        newStart.toISOString(),
+        newEnd.toISOString()
+      );
       
-      if (error) throw error;
       toast.success("Event rescheduled");
       loadEvents();
     } catch { toast.error("Failed to reschedule"); }

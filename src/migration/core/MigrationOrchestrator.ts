@@ -15,7 +15,7 @@ import {
   RollbackData,
   ChangeRecord,
   MigrationStatus
-} from '../types/index.js'
+} from '@/shared/types/index.js'
 import { MigrationLogger, generateMigrationId } from '../logging/MigrationLogger.js'
 import { BackupOrchestrator } from '../backup/BackupOrchestrator.js'
 import { ValidationManager } from '../validation/ValidationManager.js'

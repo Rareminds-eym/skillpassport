@@ -14,7 +14,7 @@ import * as crypto from 'crypto'
 import { 
   RollbackData, 
   MigrationConfig 
-} from '../types/index.js'
+} from '@/shared/types/index.js'
 import { MigrationLogger } from '../logging/MigrationLogger.js'
 import { BackupOrchestrator } from '../backup/BackupOrchestrator.js'
 import { RollbackSystem, RollbackOptions, RollbackResult } from '../backup/RollbackSystem.js'

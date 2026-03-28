@@ -22,4 +22,4 @@ export type {
   DataFlowPattern,
   PropDrillingAnalysis,
   ContextUsagePattern
-} from '../types/widget-migration'
+} from '@/shared/types/widget-migration'

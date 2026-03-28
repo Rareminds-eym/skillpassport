@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from "react";
-import { getLogger } from '../../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 import {
   PlusCircleIcon,
   CheckCircleIcon,
@@ -14,21 +14,21 @@ import {
   ArrowDownTrayIcon,
   EyeIcon,
 } from "@heroicons/react/24/outline";
-import SearchBar from "../../../components/common/SearchBar";
+import { SearchBar } from '@/shared/ui';
 import toast from 'react-hot-toast';
-import { useExams, UIExam, UIStudentMark } from "../../../hooks/useExams";
-import { useUser } from "../../../stores";
-import { supabase } from "../../../lib/supabaseClient";
+import { useExams, UIExam, UIStudentMark } from '@/features/exams';
+import { useUser } from "@/stores";
+import { supabase } from '@/shared/api/supabaseClient';
 
 // Import components
-import StatsCard from "../../../components/exams/StatsCard";
-import TypeBadge from "../../../components/exams/TypeBadge";
-import ModalWrapper from "../../../components/exams/ModalWrapper";
-import ExamCard from "../../../components/exams/ExamCard";
-import CreateExamForm from "../../../components/exams/CreateExamForm";
-import ExamWorkflowManager from "../../../components/exams/ExamWorkflowManager";
-import PerformanceTrends from "../../../components/exams/PerformanceTrends";
-import { EXAM_STATUSES } from "../../../components/exams/types";
+import StatsCard from '@/shared/ui/exams/StatsCard';
+import TypeBadge from '@/shared/ui/exams/TypeBadge';
+import ModalWrapper from '@/shared/ui/exams/ModalWrapper';
+import ExamCard from '@/shared/ui/exams/ExamCard';
+import CreateExamForm from '@/shared/ui/exams/CreateExamForm';
+import ExamWorkflowManager from '@/shared/ui/exams/ExamWorkflowManager';
+import PerformanceTrends from '@/shared/ui/exams/PerformanceTrends';
+import { EXAM_STATUSES } from '@/shared/ui/exams/types';
 
 // Types
 type StudentMark = UIStudentMark;

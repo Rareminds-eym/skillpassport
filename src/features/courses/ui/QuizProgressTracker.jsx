@@ -11,7 +11,7 @@ import {
     X
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { courseProgressService as progressService } from '@/features/courses/api/courseProgressService';
+import { courseProgressService as progressService } from '@/features/courses';
 
 /**
  * Quiz Progress Tracker Component

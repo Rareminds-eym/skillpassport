@@ -1,6 +1,6 @@
 import React from 'react';
 import { PlusIcon } from "@heroicons/react/24/outline";
-import { LibraryBook } from '../../../../../services/libraryService';
+import { LibraryBook } from '@/features/library';
 
 interface DashboardTabProps {
   books: LibraryBook[];

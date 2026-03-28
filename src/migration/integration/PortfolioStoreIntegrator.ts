@@ -32,7 +32,7 @@ export class PortfolioStoreIntegrator {
     const functionName = portfolioFunction.name;
     const functionNameLower = functionName.toLowerCase();
 
-    let code = `import { usePortfolioActions, usePortfolioStore, usePortfolio } from '../../stores/portfolioStore';\n\n`;
+    let code = `import { usePortfolioActions, usePortfolioStore, usePortfolio } from '@/stores/portfolioStore';\n\n`;
 
     // Generate function based on portfolio operation type
     if (functionNameLower.includes('student') && functionNameLower.includes('portfolio')) {
@@ -294,8 +294,8 @@ export const use${portfolioFunction.name.charAt(0).toUpperCase() + portfolioFunc
     let code = `// Enhanced portfolio API with Zustand store integration
 // This file connects portfolio operations with usePortfolioActions
 
-import { usePortfolioActions, usePortfolioStore, usePortfolio } from '../../stores/portfolioStore';
-import * as originalPortfolioService from '../../services/portfolioService';
+import { usePortfolioActions, usePortfolioStore, usePortfolio } from '@/stores/portfolioStore';
+import * as originalPortfolioService from '@/features/digital-portfolio';
 
 `;
 

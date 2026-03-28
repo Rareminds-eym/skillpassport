@@ -20,27 +20,25 @@ import {
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
-import { DeleteConversationModal, ConversationModal } from '@/features/messaging';
-import NewEducatorConversationModal from '@/features/messaging/ui/NewEducatorConversationModal';
-import NewAdminConversationModal from '@/features/messaging/ui/NewAdminConversationModal';
-import NewCollegeAdminConversationModal from '@/features/messaging/ui/NewCollegeAdminConversationModal';
-import { useAuth } from '@/features/auth/model/useAuth';
+import { DeleteConversationModal, ConversationModal, NewEducatorAdminConversationModal, NewSchoolAdminEducatorConversationModal } from '@/features/messaging';
+import { NewCollegeAdminConversationModal } from '@/features/college-admin';
+import { useAuth } from '@/features/auth';
 import { useUser } from '@/stores';
-import { isLearner } from '../../utils/studentType';
-import { useGlobalPresence } from '../../stores/globalPresenceStore';
-import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
-import { useRealtimePresence } from '../../hooks/useRealtimePresence';
+import { isLearner } from '@/entities/student/lib/studentType';
+import { useGlobalPresence } from '@/stores/globalPresenceStore';
+import { useNotificationBroadcast } from '@/features/broadcast/model/useNotificationBroadcast';
+import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useStudentProfile, useStudentMessages } from '@/features/student-profile';
-import { useStudentDataByEmail } from '@/hooks/useStudentDataByEmail';
-import { useStudentConversations } from '../../hooks/useStudentMessages';
-import { getLogger } from '../../config/logging';
+import { useStudentDataByEmail } from '@/entities/student';
+import { useStudentConversations } from '@/entities/student';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('Messages');
-import { useStudentEducatorConversations, useStudentEducatorMessages } from '../../hooks/useStudentEducatorMessages';
-import { useStudentAdminConversations, useCreateStudentAdminConversation, useStudentAdminMessages } from '../../hooks/useStudentAdminMessages';
-import { useStudentCollegeAdminConversations, useCreateStudentCollegeAdminConversation, useStudentCollegeAdminMessages } from '../../hooks/useStudentCollegeAdminMessages';
+import { useStudentEducatorConversations, useStudentEducatorMessages } from '@/entities/student';
+import { useStudentAdminConversations, useCreateStudentAdminConversation, useStudentAdminMessages } from '@/entities/student';
+import { useStudentCollegeAdminConversations, useCreateStudentCollegeAdminConversation, useStudentCollegeAdminMessages } from '@/entities/student';
 import { useTypingIndicator } from '@/features/messaging';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 import { MessageService } from '@/features/messaging';
 
 const Messages = () => {

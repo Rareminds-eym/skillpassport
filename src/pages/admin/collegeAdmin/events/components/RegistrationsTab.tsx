@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { ArrowDownTrayIcon, UserPlusIcon, TrashIcon, CheckCircleIcon, XMarkIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { CollegeEvent, EventRegistration } from "../types";
 import { formatDate, formatDateTime, getEventTypeColor, getEventTypeIcon } from "../helpers";
-import { useStudentSearch } from "../hooks/useStudentSearch";
+import { useStudentSearch } from '../hooks/useStudentSearch';
 
 interface Props {
   events: CollegeEvent[];

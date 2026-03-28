@@ -14,7 +14,7 @@ import {
   ClockIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
-import { getLogger } from '../../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('university-admin-centralized-results');
 
@@ -24,8 +24,8 @@ import {
   QuickStatsCard, 
   ResultsSummary,
   ExportOptionsModal
-} from '../../../components/admin/universityAdmin/ResultsComponents';
-import ResultsAnalytics from '../../../components/admin/universityAdmin/ResultsAnalytics';
+} from '@/shared/ui/admin/universityAdmin/ResultsComponents';
+import ResultsAnalytics from '@/shared/ui/admin/universityAdmin/ResultsAnalytics';
 
 interface Student {
   id: string;

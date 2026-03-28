@@ -3,8 +3,8 @@ import {
   FileText, CheckCircle, XCircle, Eye, Download, 
   AlertCircle, Clock, User, Mail, Phone 
 } from 'lucide-react';
-import { getTeachers, updateTeacherStatus } from '../../../../services/teacherService';
-import { useUserRole } from '../../../../hooks/useUserRole';
+import { getTeachers, updateTeacherStatus } from '@/entities/teacher';
+import { useUserRole } from "@/entities/user";
 
 interface PendingTeacher {
   id: string;

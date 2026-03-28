@@ -1,4 +1,4 @@
-import { FeatureGate } from '../../components/Subscription/FeatureGate';
+import { FeatureGate } from '@/features/subscription';
 import EducatorCopilot from '../../features/educator-copilot/components/EducatorCopilot';
 
 /**

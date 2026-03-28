@@ -106,3 +106,11 @@ export {
 // Note: Types are currently defined inline in services and components.
 // When types are extracted to a dedicated types file, export them here:
 // export type { Course, Lesson, Enrollment, Progress } from './model/types';
+
+// API & Data Access
+export * from './api';
+export { courseDetailsService } from './api/courseDetailsService';
+export { default as progressSyncManager } from './api/progressSyncManager';
+export { default as courseProgressService } from './api/courseProgressService';
+export { matchCoursesForRole } from './api/roleBasedMatcher';
+export { useLessonPlans } from './model/index';

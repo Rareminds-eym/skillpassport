@@ -12,10 +12,10 @@ import {
     User
 } from "lucide-react"
 import React, { useEffect, useId, useState } from "react"
-import { SubscriptionSettingsSection } from "@/components/Subscription/SubscriptionSettingsSection"
+import { SubscriptionSettingsSection } from "@/features/subscription"
 import { useAuth } from "@/features/auth"
-import { supabase } from "../../lib/supabaseClient"
-import { getLogger } from "../../config/logging"
+import { supabase } from '@/shared/api/supabaseClient'
+import { getLogger } from '@/shared/config/logging'
 
 const logger = getLogger('RecruiterSettings');
 

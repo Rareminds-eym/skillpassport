@@ -1,7 +1,7 @@
 import React from "react";
 import { X, FileDown, Calendar, Tag, Users, Percent, IndianRupee } from "lucide-react";
 import { FeeStructure } from "../types";
-import { exportFeeStructurePDF } from "../utils/exportFeeStructurePDF";
+import { exportFeeStructurePDF } from '../utils/exportFeeStructurePDF';
 
 interface Props {
   isOpen: boolean;

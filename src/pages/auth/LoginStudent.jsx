@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import studentIllustration from "../../assets/images/auth/Student-illustration.jpg";
-import { useAuthActions } from "../../stores";
+import { useAuthActions } from "@/stores";
 
 // Lucide icons
 import {

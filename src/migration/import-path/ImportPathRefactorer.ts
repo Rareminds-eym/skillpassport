@@ -7,7 +7,7 @@ import {
   ImportViolation,
   RefactoringResult,
   RefactoringChange
-} from '../types/import-path';
+} from '@/shared/types/import-path';
 
 export class ImportPathRefactorer {
   private logger: MigrationLogger;

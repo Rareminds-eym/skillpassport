@@ -1,6 +1,6 @@
 import React from "react";
 import { ChartBarIcon, UsersIcon, CalendarDaysIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
-import { EventAnalytics } from "../hooks/useEventAnalytics";
+import { EventAnalytics } from '@/shared/lib/hooks/useEventAnalytics';
 
 interface Props {
   analytics: EventAnalytics;

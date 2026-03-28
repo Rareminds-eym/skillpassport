@@ -20,7 +20,7 @@ import {
   TypeSafetyRecommendation,
   TypeSafetyConfig,
   DEFAULT_TYPE_SAFETY_CONFIG
-} from '../types/type-safety'
+} from '@/shared/types/type-safety'
 
 export class TypeSafetyValidator implements ITypeSafetyValidator {
   private projectRoot: string

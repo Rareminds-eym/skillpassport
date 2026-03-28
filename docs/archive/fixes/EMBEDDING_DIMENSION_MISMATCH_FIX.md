@@ -81,7 +81,7 @@ Expected: All should be **1536** dimensions
 Create `regenerate-course-embeddings.js`:
 
 ```javascript
-import { supabase } from './src/lib/supabaseClient.js';
+import { supabase } from './src/shared/api/supabaseClient.js';
 
 const CAREER_API_URL = 'https://career-api.dark-mode-d021.workers.dev';
 

@@ -7,184 +7,30 @@ import {
     Target,
     TrendingUp
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactApexChart from 'react-apexcharts';
-import { supabase } from '../../lib/supabaseClient';
-import { getLogger } from '../../config/logging';
-
-const logger = getLogger('Analytics');
+import { useStudentAnalytics } from '@/features/analytics';
+import {
+  calculateStatusPercentages,
+  calculateJobTypeRadarSeries,
+  processSkillsForChart,
+  getTopLocations,
+} from '@/features/analytics/lib';
 
 const Analytics = () => {
   const navigate = useNavigate();
-  const [applications, setApplications] = useState([]);
-  const [skillsData, setSkillsData] = useState([]);
-  const [loading, setLoading] = useState(true);
   const userEmail = localStorage.getItem('userEmail');
 
-  useEffect(() => {
-    fetchApplicationData();
-    fetchSkillsData(); // Fetch skills independently
-  }, []);
-
-  const fetchApplicationData = async () => {
-    try {
-      setLoading(true);
-      
-      
-      // Get student ID from email
-      const { data: student, error: studentError } = await supabase
-        .from('students')
-        .select('id')
-        .eq('email', userEmail)
-        .maybeSingle();
-
-      if (studentError) {
-        logger.error('Error fetching student', studentError);
-        return;
-      }
-      
-
-      // Fetch applied jobs with opportunity details
-      const { data: appliedJobs, error: jobsError } = await supabase
-        .from('applied_jobs')
-        .select(`
-          *,
-          opportunities!fk_applied_jobs_opportunity (
-            id,
-            job_title,
-            title,
-            company_name,
-            employment_type,
-            location,
-            salary_range_min,
-            salary_range_max,
-            mode
-          )
-        `)
-        .eq('student_id', student.id)
-        .order('applied_at', { ascending: false });
-
-      if (jobsError) {
-        logger.error('Error fetching applications', jobsError);
-        return;
-      }
-      
-
-      setApplications(appliedJobs || []);
-    } catch (error) {
-      logger.error('Error in fetchApplicationData', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchSkillsData = async () => {
-    try {
-      
-      const { data, error } = await supabase.rpc('analyze_skills_demand');
-      
-      if (error) {
-        logger.error('Error fetching skills data', error);
-        return;
-      }
-      
-      
-      if (data && Array.isArray(data) && data.length > 0) {
-        setSkillsData(data);
-      } else {
-      }
-    } catch (error) {
-      logger.error('Exception in fetchSkillsData', error);
-    }
-  };
-
-  // Calculate analytics data
-  const analytics = useMemo(() => {
-    if (!applications.length) {
-      return {
-        totalApplications: 0,
-        statusCounts: {},
-        applicationsByMonth: {},
-        jobTypeDistribution: {},
-        locationDistribution: {},
-        responseRate: 0,
-        averageResponseTime: 0,
-        skillsMatch: {}
-      };
-    }
-
-    // Status distribution
-    const statusCounts = applications.reduce((acc, app) => {
-      acc[app.application_status] = (acc[app.application_status] || 0) + 1;
-      return acc;
-    }, {});
-
-    // Applications by month
-    const applicationsByMonth = applications.reduce((acc, app) => {
-      const month = new Date(app.applied_at).toLocaleString('default', { month: 'short', year: 'numeric' });
-      acc[month] = (acc[month] || 0) + 1;
-      return acc;
-    }, {});
-
-    // Job type distribution (employment_type)
-    const jobTypeDistribution = applications.reduce((acc, app) => {
-      const jobType = app.opportunities?.employment_type || app.opportunities?.mode || 'Unknown';
-      acc[jobType] = (acc[jobType] || 0) + 1;
-      return acc;
-    }, {});
-
-    // Location distribution
-    const locationDistribution = applications.reduce((acc, app) => {
-      const location = app.opportunities?.location || 'Unknown';
-      acc[location] = (acc[location] || 0) + 1;
-      return acc;
-    }, {});
-
-    // Response rate
-    const respondedApps = applications.filter(app => app.responded_at).length;
-    const responseRate = applications.length > 0 ? (respondedApps / applications.length) * 100 : 0;
-
-    // Average response time (in days)
-    const responseTimes = applications
-      .filter(app => app.responded_at)
-      .map(app => {
-        const applied = new Date(app.applied_at);
-        const responded = new Date(app.responded_at);
-        return (responded - applied) / (1000 * 60 * 60 * 24);
-      });
-    const averageResponseTime = responseTimes.length > 0 
-      ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length 
-      : 0;
-
-    // Skills match analysis - using skillsData from state
-    const skillsMatch = {};
-
-    return {
-      totalApplications: applications.length,
-      statusCounts,
-      applicationsByMonth,
-      jobTypeDistribution,
-      locationDistribution,
-      responseRate: Math.round(responseRate),
-      averageResponseTime: Math.round(averageResponseTime * 10) / 10,
-      skillsMatch
-    };
-  }, [applications]);
+  const {
+    applications,
+    skillsData,
+    loading,
+    analytics,
+  } = useStudentAnalytics({ userEmail });
 
   // Process skills data separately (not dependent on applications)
-  const skillsMatch = useMemo(() => {
-    if (skillsData.length > 0) {
-      const result = skillsData.slice(0, 5).reduce((acc, item) => {
-        // Capitalize first letter for better display
-        const displayName = item.skill.charAt(0).toUpperCase() + item.skill.slice(1);
-        acc[displayName] = parseInt(item.total_mentions);
-        return acc;
-      }, {});
-      return result;
-    }
-    return {};
-  }, [skillsData]);
+  const skillsMatch = useMemo(() => processSkillsForChart(skillsData, 5), [skillsData]);
 
   // Applications Status - Radial Chart
   const statusRadialChartOptions = {
@@ -245,12 +91,10 @@ const Analytics = () => {
     }
   };
 
-  const statusRadialChartSeries = [
-    ((analytics.statusCounts['accepted'] || 0) / analytics.totalApplications * 100) || 0,
-    ((analytics.statusCounts['under_review'] || 0) / analytics.totalApplications * 100) || 0,
-    ((analytics.statusCounts['applied'] || analytics.statusCounts['pending'] || 0) / analytics.totalApplications * 100) || 0,
-    ((analytics.statusCounts['rejected'] || 0) / analytics.totalApplications * 100) || 0
-  ];
+  const statusRadialChartSeries = calculateStatusPercentages(
+    analytics.statusCounts,
+    analytics.totalApplications
+  );
 
   // Applications Timeline - Column Chart
   const timelineColumnChartOptions = {
@@ -374,32 +218,14 @@ const Analytics = () => {
     }
   };
 
-  const jobTypeRadarChartSeries = [
-    {
-      name: 'Total Applied',
-      data: Object.values(analytics.jobTypeDistribution)
-    },
-    {
-      name: 'Accepted',
-      data: Object.keys(analytics.jobTypeDistribution).map(type => {
-        return applications.filter(app => 
-          (app.opportunities?.employment_type === type || app.opportunities?.mode === type) && 
-          app.application_status === 'accepted'
-        ).length;
-      })
-    },
-    {
-      name: 'In Progress',
-      data: Object.keys(analytics.jobTypeDistribution).map(type => {
-        return applications.filter(app => 
-          (app.opportunities?.employment_type === type || app.opportunities?.mode === type) && 
-          ['applied', 'under_review', 'interview_scheduled'].includes(app.application_status)
-        ).length;
-      })
-    }
-  ];
+  const jobTypeRadarChartSeries = calculateJobTypeRadarSeries(
+    applications,
+    analytics.jobTypeDistribution
+  );
 
   // Location Distribution - Radial Chart
+  const topLocations = getTopLocations(analytics.locationDistribution, 5);
+  
   const locationRadialChartOptions = {
     chart: {
       type: 'radialBar',
@@ -446,10 +272,10 @@ const Analytics = () => {
       }
     },
     colors: ['#06b6d4', '#ec4899', '#f97316', '#84cc16', '#a855f7'],
-    labels: Object.keys(analytics.locationDistribution).slice(0, 5),
+    labels: topLocations.labels,
   };
 
-  const locationRadialChartSeries = Object.values(analytics.locationDistribution).slice(0, 5);
+  const locationRadialChartSeries = topLocations.values;
 
   // Skills Match - Column Chart (using skillsMatch from state)
   const skillsColumnChartOptions = {

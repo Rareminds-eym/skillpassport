@@ -276,7 +276,7 @@ src/services/organization/
 - React (for frontend integration)
 
 ### Internal Dependencies
-- `@/lib/supabaseClient` - Supabase client instance
+- `@/shared/api/supabaseClient` - Supabase client instance
 - Database schema from Phase 1
 - Existing subscription infrastructure
 

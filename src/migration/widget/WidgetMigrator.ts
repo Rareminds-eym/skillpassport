@@ -18,7 +18,7 @@ import {
   MigrationError,
   BackwardCompatibilityInfo,
   ImportPathUpdate
-} from '../types/widget-migration'
+} from '@/shared/types/widget-migration'
 
 export class WidgetMigrator implements IWidgetMigrator {
   private projectRoot: string

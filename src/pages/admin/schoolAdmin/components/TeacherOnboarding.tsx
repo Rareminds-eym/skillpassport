@@ -1,12 +1,12 @@
 import { AlertCircle, CheckCircle, FileText, Shield, Upload, X } from "lucide-react";
 import React, { useState } from "react";
-import RoleDebugger from "../../../../components/debug/RoleDebugger";
-import { useUserRole } from "../../../../hooks/useUserRole";
-import { supabase } from "../../../../lib/supabaseClient";
-import storageService from "../../../../services/storageService";
-// @ts-ignore - userApiService is a .js file
-import { createTeacher } from "../../../../services/userApiService";
-import { validateDocument } from "../../../../utils/teacherValidation";
+import RoleDebugger from '@/shared/ui/debug/RoleDebugger';
+import { useUserRole } from "@/entities/user";
+import { supabase } from '@/shared/api/supabaseClient';
+import { storageService } from '@/shared/api';
+import { createTeacher } from '@/features/educator-copilot';
+import { validateDocument } from "@/entities/user/lib/teacherValidation";
+import { authSessionService } from '@/features/auth';
 
 interface SubjectExpertise {
   name: string;
@@ -438,7 +438,7 @@ const TeacherOnboardingPage: React.FC = () => {
       // If not found in school_educators, check organizations table
       if (!schoolId) {
         console.log("Not found in school_educators, checking organizations table...");
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await authSessionService.getUser();
         const { data: schoolData } = await supabase
           .from("organizations")
           .select("id")
@@ -460,7 +460,7 @@ const TeacherOnboardingPage: React.FC = () => {
       console.log("Using school_id:", schoolId);
 
       // Get auth token for worker API
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await authSessionService.getSession();
       if (!session?.access_token) {
         throw new Error("Not authenticated. Please log in again.");
       }

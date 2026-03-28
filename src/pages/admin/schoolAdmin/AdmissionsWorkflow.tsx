@@ -4,7 +4,7 @@ import {
   FileText, Search, Filter, Download 
 } from 'lucide-react';
 import { admissionService } from '@/features/student-profile/api';
-import type { AdmissionApplication } from '@/types/StudentManagement';
+import type { AdmissionApplication } from '@/features/school-admin';
 
 const AdmissionsWorkflow: React.FC = () => {
   const [applications, setApplications] = useState<AdmissionApplication[]>([]);

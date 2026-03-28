@@ -9,10 +9,10 @@ import {
   MoreHorizontal,
   Clock
 } from 'lucide-react';
-import { Conversation } from '../hooks/useCareerConversations';
-import { VirtualMessage } from '../hooks/useVirtualMessage';
-import { useCareerAssistant } from '../../../stores';
-import { formatConversationDate, getConversationGroup } from '../utils/dateUtils';
+import { Conversation } from "@/features/career-assistant/hooks/useCareerConversations";
+import { VirtualMessage } from '@/features/career-assistant/hooks/useVirtualMessage';
+import { useCareerAssistant } from '@/stores';
+import { formatConversationDate, getConversationGroup } from "@/features/career-assistant/utils/dateUtils.ts";
 import { LoadingSpinner } from './LoadingSpinner';
 import {
   INITIAL_VISIBLE_CONVERSATIONS,

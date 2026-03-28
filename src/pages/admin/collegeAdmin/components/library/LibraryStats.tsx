@@ -1,5 +1,5 @@
 import { BookOpen } from "lucide-react";
-import { LibraryStats as LibraryStatsType } from "../../../../services/libraryService";
+import { LibraryStats as LibraryStatsType } from '@/features/library';
 
 interface LibraryStatsProps {
   stats: LibraryStatsType | null;

@@ -11,7 +11,7 @@ import {
   APIFunction, 
   FeatureMapping, 
   DependencyGraph
-} from '../types/index.js'
+} from '@/shared/types/index.js'
 import { ServiceDirectoryScanner } from './ServiceDirectoryScanner.js'
 import { APIFunctionExtractor } from './APIFunctionExtractor.js'
 import { FeatureMapper } from './FeatureMapper.js'

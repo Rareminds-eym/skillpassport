@@ -20,10 +20,9 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon
 } from '@heroicons/react/24/outline';
-import { useOffers, Offer } from '../../hooks/useOffers.ts';
-import OfferAdvancedFilters, { OfferFilters, OfferSortOptions } from '../../components/Recruiter/filters/OfferAdvancedFilters';
-import OfferSortButton from '../../components/Recruiter/filters/OfferSortButton';
-import { getLogger } from '../../config/logging';
+import { useOffers, Offer } from '@/shared/lib/hooks';
+import { OfferAdvancedFilters, OfferFilters, OfferSortOptions, OfferSortButton } from '@/features/recruiter';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('OffersDecisions');
 

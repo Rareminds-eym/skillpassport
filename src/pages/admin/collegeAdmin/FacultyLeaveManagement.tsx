@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { supabase } from '../../../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 import {
   Calendar,
   Clock,
@@ -20,7 +20,12 @@ import {
   Edit,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getLogger } from '../../../config/logging';
+import { getLogger } from '@/shared/config/logging';
+import { 
+  collegeFacultyLeavesService, 
+  collegeFacultySubstitutionsService,
+  collegeLecturersService 
+} from '@/features/college-admin';
 
 const logger = getLogger('college-admin-faculty-leave-management');
 
@@ -417,7 +422,7 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
     }
 
     if (substitutionEntries.length > 0) {
-      await supabase.from('college_faculty_substitutions').insert(substitutionEntries);
+      await collegeFacultySubstitutionsService.createSubstitutions(substitutionEntries);
     }
   };
 
@@ -1285,7 +1290,7 @@ const AddLeaveModal: React.FC<{
 
     setSaving(true);
     try {
-      const { error } = await supabase.from('college_faculty_leaves').insert({
+      await collegeFacultyLeavesService.createLeave({
         college_id: collegeId,
         faculty_id: form.faculty_id,
         leave_type_id: form.leave_type_id,
@@ -1296,7 +1301,6 @@ const AddLeaveModal: React.FC<{
         status: 'pending',
       });
 
-      if (error) throw error;
       onSave();
     } catch (error: any) {
       toast.error(error.message);
@@ -1669,7 +1673,7 @@ const AddLecturerModal: React.FC<{
 
     setSaving(true);
     try {
-      const { error } = await supabase.from('college_lecturers').insert({
+      await collegeLecturersService.createLecturer({
         collegeId: collegeId,
         first_name: form.first_name,
         last_name: form.last_name,
@@ -1681,8 +1685,6 @@ const AddLecturerModal: React.FC<{
         accountStatus: 'active',
       });
 
-      if (error) throw error;
-      
       // Leave balances are automatically created by the database trigger
       onSave();
     } catch (error: any) {

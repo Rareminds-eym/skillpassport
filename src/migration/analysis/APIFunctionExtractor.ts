@@ -6,7 +6,7 @@
  */
 
 import { promises as fs } from 'fs'
-import { ServiceFile, APIFunction, FunctionParameter, StoreIntegration } from '../types/index.js'
+import { ServiceFile, APIFunction, FunctionParameter, StoreIntegration } from '@/shared/types/index.js'
 
 export class APIFunctionExtractor {
   private storePatterns: Map<string, string[]>

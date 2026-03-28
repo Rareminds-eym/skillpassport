@@ -24,11 +24,12 @@ import {
 import React, { useEffect, useMemo, useState } from "react";
 import ReactApexChart from "react-apexcharts";
 import toast from 'react-hot-toast';
-import { getLogger } from '../../../config/logging';
-import KPICard from "../../../components/admin/KPICard";
-import Pagination from "../../../components/admin/Pagination";
-import SearchBar from "../../../components/common/SearchBar";
-import { supabase } from "../../../lib/supabaseClient";
+import { getLogger } from '@/shared/config/logging';
+import KPICard from '@/shared/ui/KPICard';
+import { Pagination } from '@/shared/ui';
+import { SearchBar } from '@/shared/ui';
+import { supabase } from '@/shared/api/supabaseClient';
+import { authSessionService } from '@/features/auth';
 
 // ==================== TYPES ====================
 interface AttendanceRecord {
@@ -216,7 +217,7 @@ const AttendanceReports: React.FC = () => {
 
         // If not found in localStorage, try Supabase Auth (for educators/teachers)
         if (!currentSchoolId) {
-          const { data: { user } } = await supabase.auth.getUser();
+          const { data: { user } } = await authSessionService.getUser();
           
           if (user) {
             // Check school_educators table - use maybeSingle() to avoid 406 error

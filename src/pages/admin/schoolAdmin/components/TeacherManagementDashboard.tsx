@@ -6,10 +6,10 @@ import {
     Users
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { useUser } from "../../../../stores";
-import { useUserRole } from "../../../../hooks/useUserRole";
-import { supabase } from "../../../../lib/supabaseClient";
-import { getTeacherStatistics } from '../../../../services/teacherService';
+import { useUser } from "@/stores";
+import { useUserRole } from "@/entities/user";
+import { supabase } from '@/shared/api/supabaseClient';
+import { getTeacherStatistics } from '@/entities/teacher';
 import TeacherBulkImport from './TeacherBulkImport';
 import TeacherList from './TeacherList';
 import TeacherOnboarding from './TeacherOnboarding';

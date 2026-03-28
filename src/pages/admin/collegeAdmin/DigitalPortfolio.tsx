@@ -9,11 +9,11 @@ import {
 } from '@heroicons/react/24/outline';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Pagination from '../../../components/admin/Pagination';
-import SearchBar from '../../../components/common/SearchBar';
-import { useUser } from '../../../stores';
-import { supabase } from '../../../lib/supabaseClient';
-import { getLogger } from '../../../config/logging';
+import { Pagination } from '@/shared/ui';
+import { SearchBar } from '@/shared/ui';
+import { useUser } from '@/stores';
+import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('college-admin-digital-portfolio');
 

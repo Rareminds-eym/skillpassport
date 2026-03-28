@@ -357,7 +357,7 @@ UI Updates
 You'll need to implement file upload to Supabase Storage:
 
 ```typescript
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from "../shared/api/supabaseClient";
 
 async function uploadFile(file: File, lessonPlanId: string) {
   const filePath = `lesson-plans/${lessonPlanId}/${file.name}`;

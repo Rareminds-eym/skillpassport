@@ -12,7 +12,7 @@ import {
   DependencyEdge,
   CircularDependency,
   FeatureMapping
-} from '../types/index.js'
+} from '@/shared/types/index.js'
 
 export interface CrossFeatureDependency {
   functionName: string

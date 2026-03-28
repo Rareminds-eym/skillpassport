@@ -12,9 +12,10 @@ import {
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import educatorIllustration from "../../../public/login/yyu.png";
-import { useAuthActions } from "../../stores";
-import { supabase } from "../../lib/supabaseClient";
+import { useAuthActions } from "@/stores";
+import { supabase } from '@/shared/api/supabaseClient';
 import FeatureCard from "./components/ui/FeatureCard";
+import { authSessionService } from '@/features/auth';
 
 export default function LoginEducator() {
   const [email, setEmail] = useState("");
@@ -47,7 +48,7 @@ export default function LoginEducator() {
       }
 
       // Sign in with Supabase
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      const { data: authData, error: authError } = await authSessionService.signInWithPassword({
         email,
         password,
       });

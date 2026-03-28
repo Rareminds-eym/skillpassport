@@ -2,7 +2,7 @@
  * Feature flag manager for incremental migration rollout
  */
 
-import { MigrationFeatureFlag } from '../types/zero-downtime'
+import { MigrationFeatureFlag } from '@/shared/types/zero-downtime'
 
 export class FeatureFlagManager {
   private flags: Map<string, MigrationFeatureFlag> = new Map()

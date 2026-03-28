@@ -16,17 +16,29 @@ import {
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import SwapRequestModal from "../../components/teacher/SwapRequestModal";
-import { supabase } from "../../lib/supabaseClient";
-import { usePermission } from "../../hooks/usePermissions";
+import { SwapRequestModal } from '@/features/college-admin';
+import { supabase } from '@/shared/api/supabaseClient';
+import { usePermission } from '@/shared/lib/hooks';
 import {
     createSwapRequest,
     getAvailableSlotsForSwap,
     getPendingSwapCount,
     getSwapRequests,
-} from "../../services/classSwapService";
-import type { ClassSwapRequest, CreateSwapRequestPayload, SlotInfo } from "../../types/classSwap";
+} from "@/features/college-admin";
+import type { ClassSwapRequest, CreateSwapRequestPayload, SlotInfo } from '@/shared/types/classSwap';
 import SwapRequestsDashboard from "./SwapRequestsDashboard";
+import { authSessionService } from '@/features/auth';
+import {
+  getWeekDates,
+  formatDate,
+  isHoliday,
+  getBreakInfo,
+  getSlotColor,
+  transformSlotsWithClassNames,
+  transformSchoolSlots,
+  extractClassIds,
+  transformClassesForDisplay,
+} from '@/features/courses/lib';
 
 // Types
 interface DepartmentInfo {
@@ -123,47 +135,6 @@ const getWeekStart = (date: Date = new Date()) => {
   return new Date(d.setDate(diff));
 };
 
-const getWeekDates = (weekStart: Date) => {
-  return DAYS.map((_, index) => {
-    const date = new Date(weekStart);
-    date.setDate(date.getDate() + index);
-    return date;
-  });
-};
-
-const formatDate = (date: Date) => {
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-};
-
-const isHoliday = (date: Date, breaks: Break[]) => {
-  const dateStr = date.toISOString().split("T")[0];
-  return breaks.some(
-    (b) =>
-      (b.break_type === "holiday" || b.break_type === "event" || b.break_type === "exam") &&
-      b.start_date &&
-      b.end_date &&
-      dateStr >= b.start_date &&
-      dateStr <= b.end_date
-  );
-};
-
-const getBreakInfo = (date: Date, breaks: Break[]) => {
-  const dateStr = date.toISOString().split("T")[0];
-  return breaks.find(
-    (b) =>
-      (b.break_type === "holiday" || b.break_type === "event" || b.break_type === "exam") &&
-      b.start_date &&
-      b.end_date &&
-      dateStr >= b.start_date &&
-      dateStr <= b.end_date
-  );
-};
-
-const getSlotColor = (subjectName: string) => {
-  const hash = subjectName.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return SLOT_COLORS[hash % SLOT_COLORS.length];
-};
-
 const MyTimetable: React.FC = () => {
   const navigate = useNavigate()
   const user = useUser()
@@ -254,7 +225,7 @@ const MyTimetable: React.FC = () => {
 
   const loadEducatorData = async () => {
     try {
-      const { data: userData } = await supabase.auth.getUser();
+      const { data: userData } = await authSessionService.getUser();
       if (!userData?.user?.id) {
         throw new Error("User not authenticated");
       }
@@ -356,7 +327,7 @@ const MyTimetable: React.FC = () => {
         .eq("faculty_id", lecturerId);
 
       if (assignments && assignments.length > 0) {
-        const classIds = assignments.map(a => a.class_id);
+        const classIds = extractClassIds(assignments);
         
         // Then get class details
         const { data: classData } = await supabase
@@ -365,10 +336,9 @@ const MyTimetable: React.FC = () => {
           .in("id", classIds);
 
         if (classData) {
-          // Set class names for display
-          setAssignedClasses(classData.map(c => c.name));
-          // Set full class objects for dropdown
-          setClasses(classData);
+          const { names, classes } = transformClassesForDisplay(classData);
+          setAssignedClasses(names);
+          setClasses(classes);
         }
       }
     } catch (error) {
@@ -465,11 +435,7 @@ const MyTimetable: React.FC = () => {
 
         if (error) throw error;
 
-        const transformedSlots = (data || []).map((slot: any) => ({
-          ...slot,
-          class_name: slot.college_classes?.name || "N/A",
-        }));
-
+        const transformedSlots = transformSlotsWithClassNames(data || [], 'college_classes');
         setSlots(transformedSlots);
       } else {
         // Load school timetable slots
@@ -486,14 +452,7 @@ const MyTimetable: React.FC = () => {
 
         if (error) throw error;
 
-        const transformedSlots = (data || []).map((slot: any) => ({
-          ...slot,
-          class_name: slot.school_classes?.name || 
-            (slot.school_classes?.grade && slot.school_classes?.section 
-              ? `${slot.school_classes.grade}-${slot.school_classes.section}` 
-              : "N/A"),
-        }));
-
+        const transformedSlots = transformSchoolSlots(data || []);
         setSlots(transformedSlots);
       }
     } catch (error) {

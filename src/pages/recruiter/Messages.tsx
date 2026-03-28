@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { getLogger } from '../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('RecruiterMessages');
 import { 
@@ -23,10 +23,10 @@ import { MessageService, Conversation } from '@/features/messaging';
 import { useMessages } from '@/features/messaging';
 import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '@/stores';
-import { useGlobalPresence } from '../../context/GlobalPresenceContext';
-import { useRealtimePresence } from '../../hooks/useRealtimePresence';
+import { useGlobalPresence } from '@/stores';
+import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/features/messaging';
-import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
+import { useNotificationBroadcast } from '@/features/broadcast/model/useNotificationBroadcast';
 import { DeleteConversationModal } from '@/features/messaging';
 
 const Messages = () => {

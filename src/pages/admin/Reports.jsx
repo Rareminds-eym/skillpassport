@@ -1,5 +1,5 @@
 import { Download, Calendar } from 'lucide-react';
-import Button from '../../components/Button';
+import { Button } from '@/shared/ui';
 
 const Reports = () => {
   const reports = [

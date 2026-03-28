@@ -1,178 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { RefreshCw, Search, Filter, TrendingUp, Clock, CheckCircle, XCircle } from 'lucide-react';
-import { supabase } from '../../lib/supabaseClient';
-import SwapRequestCard from '../../components/teacher/SwapRequestCard';
-import {
-  getSwapRequests,
-  getSwapRequestDetails,
-  respondToSwapRequest,
-  cancelSwapRequest,
-  getSwapStatistics,
-} from '../../services/classSwapService';
-import type { ClassSwapRequestWithDetails, SwapStatistics } from '../../types/classSwap';
-
-type TabType = 'received' | 'sent' | 'history';
+import React from 'react';
+import { RefreshCw, Search, TrendingUp, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { SwapRequestCard } from '@/features/college-admin';
+import { useSwapRequests } from '@/features/college-admin';
 
 const SwapRequestsDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('received');
-  const [requests, setRequests] = useState<ClassSwapRequestWithDetails[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [educatorId, setEducatorId] = useState<string>('');
-  const [isCollegeEducator, setIsCollegeEducator] = useState<boolean>(false);
-  const [statistics, setStatistics] = useState<SwapStatistics | null>(null);
-
-  useEffect(() => {
-    loadEducatorData();
-  }, []);
-
-  useEffect(() => {
-    if (educatorId) {
-      loadRequests();
-      loadStatistics();
-    }
-  }, [educatorId, activeTab]);
-
-  const loadEducatorData = async () => {
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData?.user?.id) return;
-
-      const userId = userData.user.id;
-      const userRole = userData.user.user_metadata?.user_role || userData.user.user_metadata?.role;
-
-      if (userRole === 'college_educator') {
-        const { data: collegeLecturerData } = await supabase
-          .from('college_lecturers')
-          .select('id')
-          .eq('user_id', userId)
-          .single();
-
-        if (collegeLecturerData) {
-          setEducatorId(collegeLecturerData.id);
-          setIsCollegeEducator(true);
-          return;
-        }
-      }
-
-      const { data: educatorData } = await supabase
-        .from('school_educators')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
-
-      if (educatorData) {
-        setEducatorId(educatorData.id);
-        setIsCollegeEducator(false);
-      }
-    } catch (error) {
-      console.error('Error loading educator data:', error);
-    }
-  };
-
-  const loadRequests = async () => {
-    setLoading(true);
-    try {
-      const { data } = await getSwapRequests(educatorId);
-      
-      if (data) {
-        // Load detailed information for each request
-        const detailedRequests = await Promise.all(
-          data.map(async (req) => {
-            const { data: detailed } = await getSwapRequestDetails(req.id, isCollegeEducator);
-            return detailed || req;
-          })
-        );
-
-        // Filter based on active tab
-        let filtered = detailedRequests;
-        if (activeTab === 'received') {
-          filtered = detailedRequests.filter(r => r.target_faculty_id === educatorId && r.status === 'pending');
-        } else if (activeTab === 'sent') {
-          filtered = detailedRequests.filter(r => r.requester_faculty_id === educatorId);
-        } else {
-          filtered = detailedRequests.filter(r => r.status !== 'pending');
-        }
-
-        setRequests(filtered as ClassSwapRequestWithDetails[]);
-      }
-    } catch (error) {
-      console.error('Error loading requests:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadStatistics = async () => {
-    try {
-      const stats = await getSwapStatistics(educatorId);
-      setStatistics(stats);
-    } catch (error) {
-      console.error('Error loading statistics:', error);
-    }
-  };
-
-  const handleAccept = async (requestId: string) => {
-    try {
-      const { error } = await respondToSwapRequest(requestId, {
-        status: 'accepted',
-        response_message: 'Request accepted',
-      });
-
-      if (error) throw error;
-
-      alert('Swap request accepted! Waiting for admin approval.');
-      loadRequests();
-      loadStatistics();
-    } catch (error) {
-      alert('Failed to accept request. Please try again.');
-    }
-  };
-
-  const handleReject = async (requestId: string, reason?: string) => {
-    try {
-      const { error } = await respondToSwapRequest(requestId, {
-        status: 'rejected',
-        response_message: reason || 'Request rejected',
-      });
-
-      if (error) throw error;
-
-      alert('Swap request rejected.');
-      loadRequests();
-      loadStatistics();
-    } catch (error) {
-      alert('Failed to reject request. Please try again.');
-    }
-  };
-
-  const handleCancel = async (requestId: string) => {
-    try {
-      const { error } = await cancelSwapRequest(requestId);
-
-      if (error) throw error;
-
-      alert('Swap request cancelled.');
-      loadRequests();
-      loadStatistics();
-    } catch (error) {
-      alert('Failed to cancel request. Please try again.');
-    }
-  };
-
-  const filteredRequests = requests.filter(req => {
-    if (!searchQuery.trim()) return true;
-    
-    const query = searchQuery.toLowerCase();
-    return (
-      req.requester_slot?.subject_name.toLowerCase().includes(query) ||
-      req.target_slot?.subject_name.toLowerCase().includes(query) ||
-      req.requester_faculty?.first_name.toLowerCase().includes(query) ||
-      req.requester_faculty?.last_name.toLowerCase().includes(query) ||
-      req.target_faculty?.first_name.toLowerCase().includes(query) ||
-      req.target_faculty?.last_name.toLowerCase().includes(query)
-    );
-  });
+  const {
+    activeTab,
+    loading,
+    searchQuery,
+    statistics,
+    filteredRequests,
+    setActiveTab,
+    setSearchQuery,
+    loadRequests,
+    handleAccept,
+    handleReject,
+    handleCancel,
+  } = useSwapRequests();
 
   return (
     <div className="min-h-screen bg-gray-50">

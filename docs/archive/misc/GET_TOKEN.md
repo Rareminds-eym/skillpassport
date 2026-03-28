@@ -111,7 +111,7 @@ If you can't get the token, you can test directly in your app:
 ```javascript
 // Test deterministic results directly
 (async function() {
-  const { supabase } = await import('/src/lib/supabaseClient.js');
+  const { supabase } = await import('/src/shared/api/supabaseClient.js');
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
   

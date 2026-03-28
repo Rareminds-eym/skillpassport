@@ -4,7 +4,7 @@
  * Provides sensible defaults for the FSD Phase 5 migration system
  */
 
-import { MigrationConfig } from '../types/index.js'
+import { MigrationConfig } from '@/shared/types/index.js'
 
 export const defaultMigrationConfig: MigrationConfig = {
   // Execution options

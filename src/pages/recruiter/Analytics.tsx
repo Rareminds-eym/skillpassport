@@ -5,7 +5,6 @@ import {
   CheckCircleIcon,
   ClockIcon,
   StarIcon,
-  ChevronDownIcon,
   ArrowUpIcon,
   ArrowDownIcon,
   MapPinIcon,
@@ -17,35 +16,30 @@ import {
   ArrowDownTrayIcon,
   UserGroupIcon
 } from '@heroicons/react/24/outline';
-import { candidates } from '../../data/sampleData';
 import {
   SkeletonCard,
-  SkeletonChart,
-  EmptyState,
   ExportButton,
   InfoIcon,
   DrillDownModal,
   SectionHeaderWithActions
-} from '../../components/Recruiter/components/AnalyticsComponents';
-import { TrendLineChart, AreaChart, ColumnChart, BarChart, ProgressRing, Sparkline as AdvancedSparkline } from '../../components/Recruiter/components/AdvancedCharts';
-import { exportSectionToCSV, exportComprehensiveAnalytics } from '../../utils/exportUtils';
-import { getDataForPeriod, getPeriodDisplayName } from '../../utils/mockDataGenerator';
+} from '@/features/recruiter/ui/AnalyticsComponents';
+import { TrendLineChart, AreaChart, ColumnChart, BarChart, ProgressRing, Sparkline as AdvancedSparkline } from '@/features/recruiter/ui/AdvancedCharts';
+import { exportSectionToCSV, exportComprehensiveAnalytics } from '@/shared/lib/exportUtils';
+import { getDataForPeriod, getPeriodDisplayName } from '@/shared/lib/mockDataGenerator';
 
 // Phase 1: Import new components
-import AdvancedFilters from '../../components/Recruiter/components/AdvancedFilters';
-import DateRangePicker from '../../components/Recruiter/components/DateRangePicker';
-import ChartDownloadButton from '../../components/ChartDownloadButton';
-import { AnalyticsFilters } from '../../types/recruiter';
+import AdvancedFilters from '@/features/recruiter/ui/AdvancedFilters';
+import DateRangePicker from '@/features/recruiter/ui/DateRangePicker';
+import ChartDownloadButton from '@/shared/ui/ChartDownloadButton';
+import { AnalyticsFilters } from '@/shared/types/recruiter';
 
 // React Query Hooks
-import { useRecruitmentFunnel } from '../../hooks/useRecruitmentFunnel';
-import { useAnalyticsKPIs } from '../../hooks/useAnalyticsKPIs';
-import { useCoursePerformance } from '../../hooks/useCoursePerformance';
-import { useDiversityData } from '../../hooks/useDiversityData';
-import { useSpeedAnalytics } from '../../hooks/useSpeedAnalytics';
-import { useQualityMetrics } from '../../hooks/useQualityMetrics';
-import DiversityExportModal from '../../components/Recruiter/modals/DiversityExportModal';
-import type { FunnelRangePreset } from '../../services/analyticsService';
+import { useRecruitmentFunnel } from '@/entities/user';
+import { useAnalyticsKPIs, useSpeedAnalytics } from '@/features/analytics';
+import { useCoursePerformance } from '@/features/courses';
+import { useDiversityData, useQualityMetrics } from '@/features/educator';
+import { DiversityExportModal } from '@/features/recruiter-pipeline';
+import type { FunnelRangePreset } from '@/features/educator-copilot';
 
 // Enhanced KPI Card with trend indicator
 interface KpiCardProps {

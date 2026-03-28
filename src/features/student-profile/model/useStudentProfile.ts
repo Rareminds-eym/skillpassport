@@ -34,7 +34,7 @@ import { supabase } from '@/shared/api/supabaseClient';
 //   addSoftSkill,
 //   updateSoftSkill,
 //   deleteSoftSkill
-// } from '../api/studentProfileService';
+// } from '@/features/student-profile/api';
 
 export interface UseStudentProfileOptions {
   studentId?: string | null;
@@ -435,10 +435,9 @@ export const useStudentProfile = ({ studentId, email, enabled = true }: UseStude
 
   const deleteSoftSkillRecord = async (skillId: string) => {
     try {
-      const result = await deleteSoftSkill(skillId);
-      if (result.error) throw result.error;
-      refresh();
-      return result;
+      // TODO: Implement deleteSoftSkill in student-profile API
+      console.warn('deleteSoftSkill not yet implemented');
+      return { error: 'Not implemented' };
     } catch (err) {
       console.error('Error deleting soft skill:', err);
       throw err;

@@ -1,18 +1,16 @@
 import React, { useEffect, useState } from 'react';
 // @ts-ignore
-import { CandidateQuickView } from '../../components/Recruiter/components/CandidateQuickView';
-import PipelineAdvancedFilters from '../../components/Recruiter/components/PipelineAdvancedFilters';
-import PipelineSortMenu from '../../components/Recruiter/components/PipelineSortMenu';
-import { PipelineStats, QuickStats } from '../../components/Recruiter/components/PipelineStats';
-import { useToast } from '../../components/Recruiter/components/Toast';
-import { FeatureGate } from '@/features/subscription/ui/shared';
-import { useNotifications } from '../../hooks/useNotifications';
-import { useOpportunities } from '../../hooks/useOpportunities';
-import { usePipelineData } from '../../hooks/usePipelineData';
-import { createNotification } from '../../services/notificationService.ts';
-import { addCandidateToPipeline, moveCandidateToStage } from '../../services/pipelineService';
-import { PipelineFilters, PipelineSortOptions } from '../../types/recruiter';
-import { getLogger } from '../../config/logging';
+import { CandidateQuickView, PipelineSortMenu, PipelineAdvancedFilters } from '@/features/recruiter';
+import { PipelineStats, QuickStats } from '@/features/recruiter/ui/PipelineStats';
+import { useToast } from '@/features/recruiter';
+import { FeatureGate } from '@/features/subscription';
+import { useNotifications } from '@/features/recruiter';
+import { useOpportunities } from '@/features/opportunities';
+import { usePipelineData } from '@/features/opportunities';
+import { createNotification } from '@/shared/api';
+import { addCandidateToPipeline, moveCandidateToStage } from '@/features/opportunities';
+import { PipelineFilters, PipelineSortOptions } from '@/shared/types/recruiter';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('Pipelines');
 
@@ -28,7 +26,7 @@ import {
     PipelineHeader,
     PipelineQuickFilters,
     STAGES
-} from '../../components/Recruiter/components/pipeline';
+} from '@/features/recruiter-pipeline';
 
 interface PipelinesProps {
   onViewProfile: (candidate: PipelineCandidate) => void;
