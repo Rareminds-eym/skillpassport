@@ -1,0 +1,1 @@
+export { EducatorDashboardWidget } from './ui';
