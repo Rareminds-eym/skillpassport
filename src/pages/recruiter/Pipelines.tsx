@@ -11,6 +11,8 @@ import { createNotification } from '@/shared/api';
 import { addCandidateToPipeline, moveCandidateToStage } from '@/features/opportunities';
 import { PipelineFilters, PipelineSortOptions } from '@/shared/types/recruiter';
 import { getLogger } from '@/shared/config/logging';
+import { toast } from 'react-hot-toast'
+
 
 const logger = getLogger('Pipelines');
 
@@ -27,6 +29,9 @@ import {
     PipelineQuickFilters,
     STAGES
 } from '@/features/recruiter-pipeline';
+
+
+
 
 interface PipelinesProps {
   onViewProfile: (candidate: PipelineCandidate) => void;

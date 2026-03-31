@@ -16,6 +16,8 @@ import { SubscriptionSettingsSection } from "@/features/subscription"
 import { useAuth } from "@/features/auth"
 import { supabase } from '@/shared/api/supabaseClient'
 import { getLogger } from '@/shared/config/logging'
+import { useUser } from '@/stores'
+
 
 const logger = getLogger('RecruiterSettings');
 
