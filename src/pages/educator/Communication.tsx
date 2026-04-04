@@ -22,11 +22,11 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { MessageService, Conversation } from '@/features/messaging';
+import { MessageService, Conversation, NewStudentConversationModalEducator } from '@/features/messaging';
 import { useEducatorMessages } from '@/features/educator';
 import { useEducatorAdminMessages } from '@/features/educator';
 import { formatDistanceToNow } from 'date-fns';
-import { useGlobalPresence } from '@/stores';
+import { useGlobalPresence, useUser } from '@/stores';
 import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/features/messaging';
 import { useNotificationBroadcast } from '@/features/broadcast';
@@ -34,6 +34,8 @@ import { DeleteConversationModal,  } from '@/features/messaging';
 import { supabase } from '@/shared/api/supabaseClient';
 import { NewStudentConversationModal } from '@/features/messaging';
 import { NewEducatorAdminConversationModal } from '@/features/messaging';
+import { logger } from '@sentry/react';
+
 const Communication = () => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();

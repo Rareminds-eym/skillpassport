@@ -28,12 +28,15 @@ import { useCollegeLecturerMessages } from '@/features/messaging';
 import { useCollegeEducatorAdminConversationsForEducator } from '@/features/educator';
 import { useCollegeEducatorAdminMessagesForEducator } from '@/features/educator';
 import { formatDistanceToNow } from 'date-fns';
-import { useGlobalPresence } from '@/stores';
+import { useGlobalPresence, useUser } from '@/stores';
 import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/features/messaging';
 import { useNotificationBroadcast } from '@/features/broadcast';
 import { DeleteConversationModal, ConversationModal } from '@/features/messaging';
 import { supabase } from '@/shared/api/supabaseClient';
+import NewCollegeEducatorAdminConversationModal from '@/features/messaging/ui/NewCollegeEducatorAdminConversationModal';
+import NewCollegeLecturerConversationModal from '@/features/messaging/ui/NewCollegeLecturerConversationModal';
+import { logger } from '@sentry/react';
 
 const CollegeLecturerMessages = () => {
   const location = useLocation();

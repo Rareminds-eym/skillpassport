@@ -18,7 +18,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useStudents } from '@/entities/student';
 import { useEducatorSchool } from '@/features/educator';
-import { useSearch } from '@/stores';
+import { useSearch, useUser, useIsAuthenticated } from '@/stores';
 import { SearchBar } from '@/shared/ui';
 import { Pagination } from '@/shared/ui';
 import { usePermission } from '@/shared/lib/hooks';
@@ -761,7 +761,7 @@ const DigitalPortfolioPage = () => {
               </div>
             ) : error ? (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-800">Error loading portfolios: {error}</p>
+                <p className="text-red-800">Error loading portfolios: {typeof error === 'string' ? error : 'Failed to load portfolios'}</p>
               </div>
             ) : paginatedStudents.length === 0 ? (
               <div className="text-center py-12">
@@ -860,7 +860,7 @@ const DigitalPortfolioPage = () => {
                                     key={index}
                                     className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"
                                   >
-                                    {skill}
+                                    {typeof skill === 'string' ? skill : skill?.name || skill?.skill_name || ''}
                                   </span>
                                 ))}
                                 {student.skills && student.skills.length > 3 && (

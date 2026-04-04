@@ -51,32 +51,39 @@ const Dashboard = () => {
 
   useEffect(() => {
     let mounted = true;
+    let authSubscription: { unsubscribe: () => void } | null = null;
 
     // Listen for auth changes first
-    const { data: { subscription } } = authSessionService.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
+    const setupAuthListener = async () => {
+      const subscription = authSessionService.onAuthStateChange(async (event, session) => {
+        if (!mounted) return;
 
-      if (event === 'TOKEN_REFRESHED') {
-        logger.info('Token auto-refreshed by Supabase');
-      }
+        if (event === 'TOKEN_REFRESHED') {
+          logger.info('Token auto-refreshed by Supabase');
+        }
 
-      if (session?.user) {
-        logger.info('Auth state change - user authenticated');
-        setIsAuthenticated(true);
-        setError(null);
-        loadDashboardData();
-      } else {
-        logger.warn('Auth state change - no user');
-        setIsAuthenticated(false);
-        setLoading(false);
-        setError('Please log in to view the dashboard');
-      }
-    });
+        if (session?.user) {
+          logger.info('Auth state change - user authenticated');
+          setIsAuthenticated(true);
+          setError(null);
+          loadDashboardData();
+        } else {
+          logger.warn('Auth state change - no user');
+          setIsAuthenticated(false);
+          setLoading(false);
+          setError('Please log in to view the dashboard');
+        }
+      });
+      
+      authSubscription = subscription || null;
+    };
+
+    setupAuthListener();
 
     // Check current session immediately
     const checkCurrentSession = async () => {
       try {
-        const { data: { session }, error } = await authSessionService.getSession();
+        const { session, error } = await authSessionService.getSession();
 
         if (!mounted) return;
 
@@ -118,7 +125,9 @@ const Dashboard = () => {
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
+      if (authSubscription) {
+        authSubscription.unsubscribe();
+      }
     };
   }, []); // Empty dependency array to run only once
 
@@ -127,7 +136,7 @@ const Dashboard = () => {
     if (loadingRef.current) return;
 
     // Check session state again before loading data
-    const { data: { session } } = await authSessionService.getSession();
+    const { session } = await authSessionService.getSession();
     if (!session?.user) {
       setError('Please log in to view the dashboard');
       setLoading(false);

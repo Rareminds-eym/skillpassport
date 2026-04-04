@@ -888,6 +888,7 @@ const StudentsPage = () => {
         onClose={() => setShowAddStudentModal(false)}
         onSuccess={() => {
           setShowAddStudentModal(false);
+          refetch();
         }}
       />
 

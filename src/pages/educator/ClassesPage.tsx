@@ -21,7 +21,7 @@ import { useClasses } from '@/features/college-admin'
 import { useEducatorId } from '@/features/educator'
 import { useEducatorSchool } from '@/features/educator'
 import toast from "react-hot-toast"
-import { ManageStudentsModal } from '@/features/college-admin'
+import { ManageStudentsModal } from '@/features/educator'
 import { Pagination } from '@/shared/ui'
 import { useAuth } from "@/features/auth"
 import { useUser, useIsAuthenticated } from "@/stores"

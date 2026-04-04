@@ -380,17 +380,20 @@ const SubscriptionProtectedRoute = ({
     }
   }, [location.pathname, isAuthenticated, role, authLoading, user?.id, allowedRoles, requireSubscription]);
 
+  const subscriptionContext = useSubscriptionContext();
+  
+  // Add safety checks for undefined context
   const {
-    hasAccess,
-    accessReason,
-    isLoading: subscriptionLoading,
-    showWarning,
-    warningType,
-    warningMessage,
-    error: subscriptionError,
-    isRefetching,
-    refreshAccess,
-  } = useSubscriptionContext();
+    hasAccess = false,
+    accessReason = 'no_subscription',
+    isLoading: subscriptionLoading = true,
+    showWarning = false,
+    warningType = null,
+    warningMessage = null,
+    error: subscriptionError = null,
+    isRefetching = false,
+    refreshAccess = async () => {},
+  } = subscriptionContext || {};
 
   // DEBUG: Log subscription context values on every render
   console.log('🛡️ [SubscriptionProtectedRoute] Render. Context values:', {

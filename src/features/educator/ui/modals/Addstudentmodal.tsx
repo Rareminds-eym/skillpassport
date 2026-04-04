@@ -76,8 +76,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       if (userStr) {
         const userData = JSON.parse(userStr);
         const role = userData.role || '';
-        // School admins and college admins should always be able to add students
-        if (role === 'school_admin' || role === 'college_admin' || role === 'university_admin') {
+        // School admins, college admins, and educators should always be able to add students
+        if (role === 'school_admin' || role === 'college_admin' || role === 'university_admin' || role === 'educator' || role === 'school_educator' || role === 'college_educator') {
           setIsAdmin(true);
         }
       }

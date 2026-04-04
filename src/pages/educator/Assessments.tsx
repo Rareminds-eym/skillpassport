@@ -28,7 +28,6 @@ import { getLogger } from '@/shared/config/logging';
 import { useUser, useIsAuthenticated } from '@/stores';
 
 const logger = getLogger('EducatorAssessments');
-import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
 import { authSessionService } from '@/features/auth';
 import {
     assignTaskToStudents,
@@ -291,7 +290,7 @@ const Assessments = () => {
 
                 // If not in localStorage, try to get from authenticated user and fetch educator record
                 if (!educatorId) {
-                    const { data: { user }, error: authError } = await authSessionService.getUser();
+                    const { user, error: authError } = await authSessionService.getUser();
 
                     if (user && !authError) {
                         // Fetch the school_educators record to get the educator_id
@@ -551,7 +550,7 @@ const Assessments = () => {
             }
 
             // Get token for file uploads
-            const { data: { session } } = await authSessionService.getSession();
+            const { session } = await authSessionService.getSession();
             const token = session?.access_token || user?.access_token;
 
             if (!token) {
@@ -569,7 +568,7 @@ const Assessments = () => {
                 educator_name: educatorName,
                 total_points: newTask.totalPoints,
                 assignment_type: newTask.assignmentType,
-                skill_outcomes: newTask.skillTags, // Keep as array
+                skill_outcomes: newTask.skillTags,
                 document_pdf: newTask.documentPdf || null,
                 due_date: newTask.deadline,
                 available_from: newTask.availableFrom || new Date().toISOString(),
@@ -629,7 +628,7 @@ const Assessments = () => {
                 return;
             } else {
                 // Create new assignment
-                const { data: createdAssignment, error: createError } = await createCollegeAssignment(baseAssignmentData);
+                const { data: createdAssignment, error: createError } = await createCollegeAssignment(baseAssignmentData, (user as any)?.id || educatorId);
                 
                 if (createError || !createdAssignment) {
                     throw new Error(createError || 'Failed to create assignment');
