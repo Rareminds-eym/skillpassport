@@ -21,7 +21,7 @@ export type {
   UserEntitlement,
   SubscriptionStats,
   SubscriptionFilters
-} from './types';
+} from '@/shared/types';
 
 // Validation exports
 export {

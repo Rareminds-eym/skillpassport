@@ -5,7 +5,7 @@ import type {
   CounsellingMessage, 
   CounsellingTopicType,
   StudentContext 
-} from './types';
+} from '@/features/student-profile/model';
 import { counsellingService } from '../api';
 
 export interface UseCounsellingChatOptions {

@@ -1,4 +1,4 @@
-import { AttendanceRecord, AttendanceSession } from '@/features/college-admin/model/attendance-types';
+import { AttendanceRecord, AttendanceSession } from '@/features/college-admin';
 import { Student } from '@/entities/student/model/types';
 import { BuildingOfficeIcon, ChartBarIcon, ChartPieIcon, ClipboardDocumentCheckIcon, DocumentArrowDownIcon, ExclamationCircleIcon, TableCellsIcon, UserGroupIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { CalendarIcon, CheckCircleIcon, ClockIcon, ShieldCheckIcon, SparklesIcon, XCircleIcon } from 'lucide-react';

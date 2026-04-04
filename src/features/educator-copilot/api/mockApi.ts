@@ -1,7 +1,7 @@
-import { mockStudents, Student } from "@/data/educator/mockStudents";
-import { mockActivities, Activity } from "@/data/educator/mockActivities";
-import { mockMediaAssets, MediaAsset } from "@/data/educator/mockMedia";
-import { mockClasses, Class } from "@/data/educator/mockClasses";
+import { mockStudents, Student } from '@/features/educator';
+import { mockActivities, Activity } from '@/features/educator';
+import { mockMediaAssets, MediaAsset } from '@/features/educator';
+import { mockClasses, Class } from '@/features/educator';
 import { mockApiCall } from '@/shared/lib/hooks';
 
 /**

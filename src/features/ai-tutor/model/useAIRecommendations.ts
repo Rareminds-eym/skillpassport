@@ -10,11 +10,11 @@ import AIRecommendationService from '@/features/ai-tutor/api/aiRecommendationSer
  * @param {number} options.limit - Number of recommendations to fetch (default: 20)
  * @returns {Object} Hook state with recommendations, loading, error, and actions
  */
-export const useAIRecommendations = ({ 
-  studentId, 
-  enabled = true, 
+export const useAIRecommendations = ({
+  studentId,
+  enabled = true,
   autoFetch = true,
-  limit = 20 
+  limit = 20
 } = {}) => {
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -37,7 +37,7 @@ export const useAIRecommendations = ({
       setError(null);
 
       const result = await AIRecommendationService.getRecommendations(
-        studentId, 
+        studentId,
         forceRefresh
       );
 
@@ -68,11 +68,11 @@ export const useAIRecommendations = ({
    */
   const trackView = useCallback(async (opportunityId) => {
     if (!studentId) return;
-    
+
     try {
       await AIRecommendationService.trackInteraction(
-        studentId, 
-        opportunityId, 
+        studentId,
+        opportunityId,
         'view'
       );
     } catch (err) {
@@ -85,11 +85,11 @@ export const useAIRecommendations = ({
    */
   const trackSave = useCallback(async (opportunityId) => {
     if (!studentId) return;
-    
+
     try {
       await AIRecommendationService.trackInteraction(
-        studentId, 
-        opportunityId, 
+        studentId,
+        opportunityId,
         'save'
       );
     } catch (err) {
@@ -102,11 +102,11 @@ export const useAIRecommendations = ({
    */
   const trackApply = useCallback(async (opportunityId) => {
     if (!studentId) return;
-    
+
     try {
       await AIRecommendationService.trackInteraction(
-        studentId, 
-        opportunityId, 
+        studentId,
+        opportunityId,
         'apply'
       );
       // Invalidate cache after apply
@@ -121,7 +121,7 @@ export const useAIRecommendations = ({
    */
   const dismissOpportunity = useCallback(async (opportunityId) => {
     if (!studentId) return;
-    
+
     try {
       await AIRecommendationService.dismissOpportunity(studentId, opportunityId);
       // Remove from current recommendations
@@ -144,12 +144,12 @@ export const useAIRecommendations = ({
    */
   const generateStudentEmbedding = useCallback(async () => {
     if (!studentId) return;
-    
+
     try {
       setLoading(true);
-      
+
       const result = await AIRecommendationService.generateStudentEmbedding(studentId);
-      
+
       if (result.success) {
         // Fetch fresh recommendations after generating embedding
         await fetchRecommendations(true);

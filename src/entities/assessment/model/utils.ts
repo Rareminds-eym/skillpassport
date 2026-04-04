@@ -11,7 +11,7 @@ import { getTopAptitudes } from './utils';
   AptitudeScores,
   CareerCluster,
   AssessmentAttempt
-} from './types';
+} from '@/shared/types';
 
 // ============================================================================
 // Grade Level Utilities

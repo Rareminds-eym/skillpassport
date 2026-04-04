@@ -1,3 +1,12 @@
+// TODO: Dependency Injection Required
+// This hook imports API functions from @/features/student-profile/api
+// Options to fix:
+// 1. Move these API functions to @/entities/student/api (if they're entity-level operations)
+// 2. Pass the API functions as parameters to this hook
+// 3. Create a service interface in entities and inject the implementation
+//
+// For now, this import is flagged for refactoring.
+
 import { useState, useEffect, useCallback } from 'react';
 import {
   getCompleteStudentData,
@@ -16,7 +25,7 @@ import {
   deleteTechnicalSkill,
   addSoftSkill,
   updateSoftSkill
-} from '@/features/student-profile/api';
+} from '@/entities/student/api';
 
 /**
  * Custom hook to manage student data from Supabase (ADAPTED for existing schema)
@@ -290,33 +299,33 @@ export const useStudentDataAdapted = (userId, useMockData = false) => {
     studentData,
     loading,
     error,
-    
+
     // Refresh function
     refresh,
-    
+
     // Profile operations
     updateProfile,
-    
+
     // Education operations
     addEducation: addEducationRecord,
     updateEducation: updateEducationRecord,
     deleteEducation: deleteEducationRecord,
-    
+
     // Training operations
     addTraining: addTrainingRecord,
     updateTraining: updateTrainingRecord,
     deleteTraining: deleteTrainingRecord,
-    
+
     // Experience operations
     addExperience: addExperienceRecord,
     updateExperience: updateExperienceRecord,
     deleteExperience: deleteExperienceRecord,
-    
+
     // Technical skills operations
     addTechnicalSkill: addTechnicalSkillRecord,
     updateTechnicalSkill: updateTechnicalSkillRecord,
     deleteTechnicalSkill: deleteTechnicalSkillRecord,
-    
+
     // Soft skills operations
     addSoftSkill: addSoftSkillRecord,
     updateSoftSkill: updateSoftSkillRecord,

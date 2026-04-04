@@ -1926,9 +1926,7 @@ const EmployabilitySkillsSection = ({ employability }) => {
               return (
                 <div key={skill} style={printStyles.card}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b' }}>
-                      {skill}
-                    </div>
+                    <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b' }}>{typeof skill === "string" ? skill : skill?.name || JSON.stringify(skill)}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <span style={{ fontSize: '9px', color: '#6b7280' }}>
                         {normalizedScore.toFixed(2)}/5

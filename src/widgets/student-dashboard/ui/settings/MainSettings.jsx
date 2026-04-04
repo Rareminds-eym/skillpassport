@@ -36,7 +36,7 @@ import { useStudentMessageNotifications } from '@/entities/student';
 import { useStudentUnreadCount } from "@/entities/student";
 import { useStudentRealtimeActivities } from "@/shared/lib/hooks";
 import ResumeParser from "../ResumeParser";
-import { mergeResumeData } from '@/features/digital-portfolio/api/resumeParserService';
+import { mergeResumeData } from '@/features/digital-portfolio';
 import { safeSave } from '@/shared/lib/settingsErrorHandler';
 
 // Import tab components

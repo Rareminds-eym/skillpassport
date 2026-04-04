@@ -24,7 +24,7 @@ export type {
   ProjectAnalytics,
   QA,
   StudentProject
-} from './types';
+} from '@/shared/types';
 
 // Validation exports
 export {

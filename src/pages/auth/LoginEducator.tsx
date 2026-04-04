@@ -1,20 +1,20 @@
 import { motion } from "framer-motion";
 import {
-    AlertCircle,
-    BookOpen,
-    Eye,
-    EyeOff,
-    Lock,
-    Mail,
-    Star,
-    Users,
+  AlertCircle,
+  BookOpen,
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  Star,
+  Users,
 } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import educatorIllustration from "../../../public/login/yyu.png";
 import { useAuthActions } from "@/stores";
 import { supabase } from '@/shared/api/supabaseClient';
-import FeatureCard from "./components/ui/FeatureCard";
+import FeatureCard from "@/features/auth/ui/FeatureCard";
 import { authSessionService } from '@/features/auth';
 
 export default function LoginEducator() {
@@ -99,8 +99,8 @@ export default function LoginEducator() {
         full_name: educatorData?.first_name && educatorData?.last_name
           ? `${educatorData.first_name} ${educatorData.last_name}`
           : collegeEducatorData?.metadata?.first_name && collegeEducatorData?.metadata?.last_name
-          ? `${collegeEducatorData.metadata.first_name} ${collegeEducatorData.metadata.last_name}`
-          : educatorData?.first_name || collegeEducatorData?.metadata?.first_name || authData.user.email?.split("@")[0] || "Educator",
+            ? `${collegeEducatorData.metadata.first_name} ${collegeEducatorData.metadata.last_name}`
+            : educatorData?.first_name || collegeEducatorData?.metadata?.first_name || authData.user.email?.split("@")[0] || "Educator",
         educator_id: educatorData?.id || collegeEducatorData?.id,
         school_id: educatorData?.school_id,
         college_id: collegeEducatorData?.collegeId,

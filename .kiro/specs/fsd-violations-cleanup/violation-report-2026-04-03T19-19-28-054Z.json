@@ -1,0 +1,556 @@
+{
+  "importViolations": {
+    "entitiesToFeatures": [],
+    "sharedToFeatures": [
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\shared\\lib\\hooks\\useLessonPlans.ts",
+        "line": 2,
+        "importStatement": "import {\r\n  getLessonPlans,\r\n  createLessonPlan,\r\n  updateLessonPlan,\r\n  deleteLessonPlan,\r\n  submitLessonPlan,\r\n  getCurriculums,\r\n  getChapters,\r\n  getLearningOutcomes,\r\n  getSubjects,\r\n  getClasses,\r\n  LessonPlan,\r\n  LessonPlanFormData,\r\n} from \"@/features/educator-copilot\";",
+        "violationType": "shared-to-features",
+        "suggestedFix": "Move types to @/shared/types/ or refactor to accept as parameters"
+      }
+    ],
+    "lowerToPages": [],
+    "relativeImports": [
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\auth\\LoginEducator.tsx",
+        "line": 14,
+        "importStatement": "import educatorIllustration from \"../../../public/login/yyu.png\";",
+        "violationType": "relative-import",
+        "suggestedFix": "Convert to absolute import using @/ alias"
+      }
+    ],
+    "internalAPIBypass": [
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\app\\guards\\OrganizationGuard.tsx",
+        "line": 4,
+        "importStatement": "import OrganizationSetup from '@/features/onboarding/ui/OrganizationSetup';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/onboarding"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\ai-tutor\\model\\useAIRecommendations.ts",
+        "line": 2,
+        "importStatement": "import AIRecommendationService from '@/features/ai-tutor/api/aiRecommendationService';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/ai-tutor"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\analytics\\model\\useRealtimeActivities.ts",
+        "line": 4,
+        "importStatement": "import { getRecentActivity } from '@/features/analytics/api/dashboardService';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/analytics"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\assessment\\ui\\AssessmentTestPage.tsx",
+        "line": 40,
+        "importStatement": "import {\r\n  getSectionsForGrade,\r\n  type GradeLevel,\r\n  RESPONSE_SCALES\r\n} from \"@/features/assessment/lib/config/sections\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/assessment"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\assessment\\ui\\AssessmentTestPage.tsx",
+        "line": 75,
+        "importStatement": "import {\r\n  riasecQuestions,\r\n  bigFiveQuestions,\r\n  workValuesQuestions,\r\n  employabilityQuestions,\r\n  // Middle School questions\r\n  interestExplorerQuestions,\r\n  strengthsCharacterQuestions,\r\n  learningPreferencesQuestions,\r\n  // High School questions\r\n  highSchoolInterestQuestions,\r\n  highSchoolStrengthsQuestions,\r\n  highSchoolLearningQuestions,\r\n  highSchoolAptitudeQuestions,\r\n} from '@/features/assessment/model/questions';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/assessment"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\assessment\\ui\\screens\\SectionCompleteScreen.tsx",
+        "line": 14,
+        "importStatement": "import { formatElapsedTime } from '@/features/assessment/lib/timeUtils';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/assessment"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\assessment\\ui\\screens\\SectionIntroScreen.tsx",
+        "line": 14,
+        "importStatement": "import type { GradeLevel } from '@/features/assessment/model/types';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/assessment"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\assessment\\ui\\shared\\DetailedAssessmentBreakdown.jsx",
+        "line": 7,
+        "importStatement": "import { printStyles } from '@/features/assessment/lib/printStyles';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/assessment"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\assessment\\ui\\shared\\DetailedAssessmentBreakdown.jsx",
+        "line": 8,
+        "importStatement": "import { getScoreStyle } from '@/features/assessment/lib/printUtils';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/assessment"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\college-admin\\ui\\components\\FacultyManagementDashboard.tsx",
+        "line": 14,
+        "importStatement": "import FacultyLeaveManagement from '@/features/college-admin/ui/FacultyLeaveManagement';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/college-admin"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\college-admin\\ui\\components\\Timetable\\components\\modals\\BreakModal.tsx",
+        "line": 3,
+        "importStatement": "import { Break, BreakFormData } from \"@/features/college-admin/ui/components/Timetable/types\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/college-admin"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\college-admin\\ui\\components\\Timetable\\components\\modals\\ExportModal.tsx",
+        "line": 5,
+        "importStatement": "import { Faculty, CollegeClass, ScheduleSlot, TimePeriod, Break } from \"@/features/college-admin/ui/components/Timetable/types\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/college-admin"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\college-admin\\ui\\components\\Timetable\\components\\modals\\ExportModal.tsx",
+        "line": 6,
+        "importStatement": "import { DAYS } from \"@/features/college-admin/ui/components/Timetable/constants\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/college-admin"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\college-admin\\ui\\components\\Timetable\\components\\modals\\ExportModal.tsx",
+        "line": 7,
+        "importStatement": "import { formatDate, isHoliday, getHolidayName } from \"@/features/college-admin/ui/components/Timetable/utils\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/college-admin"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\college-admin\\ui\\components\\Timetable\\components\\modals\\PeriodsModal.tsx",
+        "line": 3,
+        "importStatement": "import { TimePeriod } from \"@/features/college-admin/ui/components/Timetable/types\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/college-admin"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\college-admin\\ui\\components\\Timetable\\components\\modals\\SlotModal.tsx",
+        "line": 3,
+        "importStatement": "import { Faculty, CollegeClass, ScheduleSlot, TimePeriod, SlotFormData } from \"@/features/college-admin/ui/components/Timetable/types\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/college-admin"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\college-admin\\ui\\components\\Timetable\\components\\modals\\SlotModal.tsx",
+        "line": 4,
+        "importStatement": "import { DAYS } from \"@/features/college-admin/ui/components/Timetable/constants\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/college-admin"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\college-admin\\ui\\components\\Timetable\\components\\modals\\SlotModal.tsx",
+        "line": 5,
+        "importStatement": "import { formatDate, getSubjectsForFaculty, getClassName } from \"@/features/college-admin/ui/components/Timetable/utils\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/college-admin"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\educator-copilot\\api\\educatorProfile.ts",
+        "line": 2,
+        "importStatement": "import {\r\n  AUTH_ERROR_CODES,\r\n  validateCredentials,\r\n  validateEmail,\r\n  mapSupabaseError,\r\n  handleAuthError,\r\n  logAuthEvent,\r\n  withRetry,\r\n  withTimeout,\r\n  buildErrorResponse,\r\n  generateCorrelationId,\r\n} from \"@/features/auth/lib/authErrorHandler\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/auth"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\myclass\\ui\\CollegeMyClass.tsx",
+        "line": 8,
+        "importStatement": "import OverviewTab, { AssignmentStats, AdditionalInfo } from '@/features/myclass/ui/tabs/OverviewTab';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/myclass"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\myclass\\ui\\CollegeMyClass.tsx",
+        "line": 9,
+        "importStatement": "import ClassmatesTab, { Classmate } from '@/features/myclass/ui/tabs/ClassmatesTab';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/myclass"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\recruiter\\model\\useOffers.ts",
+        "line": 6,
+        "importStatement": "import { createNotification } from '@/features/notifications/api/notificationService';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/notifications"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\recruiter\\ui\\filters\\AdvancedShortlistFilters.tsx",
+        "line": 11,
+        "importStatement": "import { fetchShortlistTags, fetchShortlistCreators } from '@/features/recruiter/api/filterService';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/recruiter"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\recruiter\\ui\\filters\\PipelineAdvancedFilters.tsx",
+        "line": 17,
+        "importStatement": "import { STAGES, SKILLS, DEPARTMENTS, LOCATIONS, SOURCES, NEXT_ACTION_TYPES } from '@/features/recruiter/model/constants';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/recruiter"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\subscription\\ui\\FeatureGate.jsx",
+        "line": 10,
+        "importStatement": "import addOnPaymentService from '@/features/subscription/api/addOnPaymentService';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/subscription"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\subscription\\ui\\UpgradePrompt.jsx",
+        "line": 20,
+        "importStatement": "import addOnPaymentService from '@/features/subscription/api/addOnPaymentService';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/subscription"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\admin\\collegeAdmin\\ExaminationManagement.tsx",
+        "line": 32,
+        "importStatement": "import AssessmentFormModal from \"@/features/college-admin/ui/components/AssessmentFormModal\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/college-admin"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\admin\\collegeAdmin\\ExaminationManagement.tsx",
+        "line": 33,
+        "importStatement": "import TimetableScheduler from \"@/features/college-admin/ui/components/TimetableScheduler\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/college-admin"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\admin\\collegeAdmin\\ExaminationManagement.tsx",
+        "line": 34,
+        "importStatement": "import MarkEntryGrid from \"@/features/college-admin/ui/components/MarkEntryGrid\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/college-admin"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\admin\\collegeAdmin\\ExaminationManagement.tsx",
+        "line": 35,
+        "importStatement": "import ModerationPanel from \"@/features/college-admin/ui/components/ModerationPanel\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/college-admin"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\admin\\collegeAdmin\\ExaminationManagement.tsx",
+        "line": 36,
+        "importStatement": "import InvigilatorAssignment from \"@/features/college-admin/ui/components/InvigilatorAssignment\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/college-admin"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\admin\\collegeAdmin\\ExaminationManagement.tsx",
+        "line": 37,
+        "importStatement": "import TranscriptForm from \"@/features/college-admin/ui/components/TranscriptForm\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/college-admin"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\admin\\collegeAdmin\\FacultyManagement.tsx",
+        "line": 2,
+        "importStatement": "import FacultyManagementDashboard from \"@/features/college-admin/ui/components/FacultyManagementDashboard\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/college-admin"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\admin\\collegeAdmin\\Library.tsx",
+        "line": 7,
+        "importStatement": "import {\n  LibraryHeader,\n  LibraryStatsCards,\n  LibraryTabs,\n  DashboardTab,\n  AddBookModal,\n  IssueBookModal,\n  ReturnBookModal,\n  DetailsTab,\n  HistoryTab,\n  OverdueTab,\n} from \"@/features/college-admin/ui/components/library\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/college-admin"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\admin\\collegeAdmin\\UserManagement.tsx",
+        "line": 15,
+        "importStatement": "import UserFormModal from \"@/features/college-admin/ui/components/UserFormModal\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/college-admin"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\admin\\schoolAdmin\\TeacherManagement.tsx",
+        "line": 2,
+        "importStatement": "import TeacherManagementDashboard from \"@/features/school-admin/ui/components/TeacherManagementDashboard\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/school-admin"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\auth\\LoginEducator.tsx",
+        "line": 17,
+        "importStatement": "import FeatureCard from \"@/features/auth/ui/FeatureCard\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/auth"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\auth\\LoginRecruiter.jsx",
+        "line": 18,
+        "importStatement": "import FeatureCard from \"@/features/auth/ui/FeatureCard\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/auth"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\auth\\LoginStudent.jsx",
+        "line": 20,
+        "importStatement": "import FeatureCard from \"@/features/auth/ui/FeatureCard\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/auth"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\educator\\EducatorAI.tsx",
+        "line": 2,
+        "importStatement": "import EducatorCopilot from '@/features/educator-copilot/ui/EducatorCopilot';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/educator-copilot"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\recruiter\\RecruiterAI.tsx",
+        "line": 2,
+        "importStatement": "import RecruiterCopilot from '@/features/recruiter-copilot/ui/RecruiterCopilot';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/recruiter-copilot"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\student\\AssessmentStart.jsx",
+        "line": 6,
+        "importStatement": "import { checkAssessmentStatus } from '@/features/assessment/api/externalAssessmentService';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/assessment"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\student\\AssessmentTest.jsx",
+        "line": 51,
+        "importStatement": "import { analyzeAssessmentWithGemini } from '@/features/assessment/api/geminiAssessmentService';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/assessment"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\student\\CareerAI.tsx",
+        "line": 2,
+        "importStatement": "import CareerAssistant from '@/features/career-assistant/ui/CareerAssistant';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/career-assistant"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\student\\DynamicAssessment.jsx",
+        "line": 27,
+        "importStatement": "import { generateAssessment, getCachedAssessment, cacheAssessment } from '@/features/assessment/api/assessmentGenerationService';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/assessment"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\student\\DynamicAssessment.jsx",
+        "line": 28,
+        "importStatement": "import {\r\n  createAssessmentAttempt,\r\n  updateAssessmentProgress,\r\n  completeAssessment,\r\n  checkAssessmentStatus\r\n} from '@/features/assessment/api/externalAssessmentService';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/assessment"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\student\\MyClass.tsx",
+        "line": 5,
+        "importStatement": "import { useStudentProfile } from '@/features/student-profile/model/useStudentProfile';",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/student-profile"
+      },
+      {
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\widgets\\student-dashboard\\ui\\ModernLearningCard.jsx",
+        "line": 26,
+        "importStatement": "import { checkAssessmentStatus } from \"@/features/assessment/api/externalAssessmentService\";",
+        "violationType": "internal-api-bypass",
+        "suggestedFix": "Import from feature index: @/features/assessment"
+      }
+    ],
+    "entitiesToStores": []
+  },
+  "structuralViolations": {
+    "nonFSDDirectories": [
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\assets",
+        "violationType": "non-fsd-directory",
+        "description": "Directory 'assets' is not a valid FSD layer",
+        "suggestedFix": "Move to appropriate FSD layer or relocate outside src/"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\data",
+        "violationType": "non-fsd-directory",
+        "description": "Directory 'data' is not a valid FSD layer",
+        "suggestedFix": "Move to appropriate FSD layer or relocate outside src/"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\functions-lib",
+        "violationType": "non-fsd-directory",
+        "description": "Directory 'functions-lib' is not a valid FSD layer",
+        "suggestedFix": "Move to appropriate FSD layer or relocate outside src/"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\migration",
+        "violationType": "non-fsd-directory",
+        "description": "Directory 'migration' is not a valid FSD layer",
+        "suggestedFix": "Move to appropriate FSD layer or relocate outside src/"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\scripts",
+        "violationType": "non-fsd-directory",
+        "description": "Directory 'scripts' is not a valid FSD layer",
+        "suggestedFix": "Move to appropriate FSD layer or relocate outside src/"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\stores",
+        "violationType": "non-fsd-directory",
+        "description": "Directory 'stores' is not a valid FSD layer",
+        "suggestedFix": "Move to appropriate FSD layer or relocate outside src/"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\styles",
+        "violationType": "non-fsd-directory",
+        "description": "Directory 'styles' is not a valid FSD layer",
+        "suggestedFix": "Move to appropriate FSD layer or relocate outside src/"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\test",
+        "violationType": "non-fsd-directory",
+        "description": "Directory 'test' is not a valid FSD layer",
+        "suggestedFix": "Move to appropriate FSD layer or relocate outside src/"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\__tests__",
+        "violationType": "non-fsd-directory",
+        "description": "Directory '__tests__' is not a valid FSD layer",
+        "suggestedFix": "Move to appropriate FSD layer or relocate outside src/"
+      }
+    ],
+    "duplicateFeatures": [],
+    "incompleteFeatures": [
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\features\\university-admin",
+        "violationType": "incomplete-feature",
+        "description": "Feature 'university-admin' has only ui segment(s)",
+        "suggestedFix": "Add missing segments or merge with complete implementation"
+      }
+    ],
+    "nonStandardSegments": [],
+    "domainSpecificInShared": [
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\shared\\lib\\hooks\\useStudentRealtimeActivities.ts",
+        "violationType": "domain-specific-in-shared",
+        "description": "'useStudentRealtimeActivities.ts' appears to be domain-specific",
+        "suggestedFix": "Move to appropriate feature or entity"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\shared\\types\\educator",
+        "violationType": "domain-specific-in-shared",
+        "description": "'educator' appears to be domain-specific",
+        "suggestedFix": "Move to appropriate feature or entity"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\shared\\types\\recruiter.ts",
+        "violationType": "domain-specific-in-shared",
+        "description": "'recruiter.ts' appears to be domain-specific",
+        "suggestedFix": "Move to appropriate feature or entity"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\shared\\types\\recruiter.tsx",
+        "violationType": "domain-specific-in-shared",
+        "description": "'recruiter.tsx' appears to be domain-specific",
+        "suggestedFix": "Move to appropriate feature or entity"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\shared\\types\\student.ts",
+        "violationType": "domain-specific-in-shared",
+        "description": "'student.ts' appears to be domain-specific",
+        "suggestedFix": "Move to appropriate feature or entity"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\shared\\ui\\FloatingEducatorAIButton.tsx",
+        "violationType": "domain-specific-in-shared",
+        "description": "'FloatingEducatorAIButton.tsx' appears to be domain-specific",
+        "suggestedFix": "Move to appropriate feature or entity"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\shared\\ui\\FloatingRecruiterAIButton.tsx",
+        "violationType": "domain-specific-in-shared",
+        "description": "'FloatingRecruiterAIButton.tsx' appears to be domain-specific",
+        "suggestedFix": "Move to appropriate feature or entity"
+      }
+    ],
+    "heavyComponentsInPages": [
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\admin\\collegeAdmin\\components",
+        "violationType": "heavy-components-in-pages",
+        "description": "Pages contain 'components/' directory with business logic",
+        "suggestedFix": "Extract to features or widgets"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\admin\\collegeAdmin\\components\\Timetable\\components",
+        "violationType": "heavy-components-in-pages",
+        "description": "Pages contain 'components/' directory with business logic",
+        "suggestedFix": "Extract to features or widgets"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\admin\\collegeAdmin\\events\\components",
+        "violationType": "heavy-components-in-pages",
+        "description": "Pages contain 'components/' directory with business logic",
+        "suggestedFix": "Extract to features or widgets"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\admin\\collegeAdmin\\finance",
+        "violationType": "heavy-components-in-pages",
+        "description": "Pages contain 'finance/' directory with business logic",
+        "suggestedFix": "Extract to features or widgets"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\admin\\collegeAdmin\\finance\\components",
+        "violationType": "heavy-components-in-pages",
+        "description": "Pages contain 'components/' directory with business logic",
+        "suggestedFix": "Extract to features or widgets"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\admin\\schoolAdmin\\components",
+        "violationType": "heavy-components-in-pages",
+        "description": "Pages contain 'components/' directory with business logic",
+        "suggestedFix": "Extract to features or widgets"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\admin\\schoolAdmin\\finance",
+        "violationType": "heavy-components-in-pages",
+        "description": "Pages contain 'finance/' directory with business logic",
+        "suggestedFix": "Extract to features or widgets"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\admin\\schoolAdmin\\finance\\components",
+        "violationType": "heavy-components-in-pages",
+        "description": "Pages contain 'components/' directory with business logic",
+        "suggestedFix": "Extract to features or widgets"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\auth\\components",
+        "violationType": "heavy-components-in-pages",
+        "description": "Pages contain 'components/' directory with business logic",
+        "suggestedFix": "Extract to features or widgets"
+      },
+      {
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\event\\components",
+        "violationType": "heavy-components-in-pages",
+        "description": "Pages contain 'components/' directory with business logic",
+        "suggestedFix": "Extract to features or widgets"
+      }
+    ],
+    "buildArtifacts": []
+  },
+  "summary": {
+    "totalViolations": 77,
+    "violationsByCategory": {
+      "entitiesToFeatures": 0,
+      "sharedToFeatures": 1,
+      "lowerToPages": 0,
+      "relativeImports": 1,
+      "internalAPIBypass": 48,
+      "entitiesToStores": 0,
+      "nonFSDDirectories": 9,
+      "duplicateFeatures": 0,
+      "incompleteFeatures": 1,
+      "nonStandardSegments": 0,
+      "domainSpecificInShared": 7,
+      "heavyComponentsInPages": 10,
+      "buildArtifacts": 0
+    }
+  }
+}

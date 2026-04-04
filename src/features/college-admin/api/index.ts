@@ -12,14 +12,10 @@ export { markEntryService } from './markEntryService';
 export { transcriptService } from './transcriptService';
 export { feeManagementService } from './feeManagementService';
 export { budgetManagementService } from './budgetManagementService';
-
-// NEW: Examination, Finance & Library Services
-export * as examinationService from './examinationService';
-export * as libraryService from './libraryService';
-export * as financeService from './financeService';
+export { examinationService } from './examinationService';
 
 // Reports & Analytics Service
-export { reportsService } from './reportsService';
+export { default as reportsService } from './reportsService';
 
 // Re-export types
 export type * from '@/shared/types/college';

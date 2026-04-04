@@ -1,5 +1,5 @@
 import { FeatureGate } from '@/features/subscription';
-import EducatorCopilot from '../../features/educator-copilot/components/EducatorCopilot';
+import EducatorCopilot from '@/features/educator-copilot/ui/EducatorCopilot';
 
 /**
  * Teaching Intelligence Page

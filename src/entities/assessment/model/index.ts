@@ -39,7 +39,7 @@ export type {
   StudentInfo,
   SubjectMark,
   AssessmentResult
-} from './types';
+} from '@/shared/types';
 
 // Validation exports
 export {

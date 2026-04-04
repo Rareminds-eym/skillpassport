@@ -1,14 +1,19 @@
 /**
  * Hook to fetch authenticated student data from Supabase
  * Uses the current authenticated user from Supabase Auth
+ * 
+ * @param user - The authenticated user object (pass from store/context)
  */
 
 import { useEffect, useState } from 'react';
-import { useUser } from '@/stores';
 import { supabase } from '@/shared/api/supabaseClient';
 
-export const useAuthenticatedStudent = () => {
-  const user = useUser();
+interface User {
+  id: string;
+  email?: string;
+}
+
+export const useAuthenticatedStudent = (user: User | null) => {
   const [studentData, setStudentData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

@@ -9,7 +9,7 @@ import {
 } from '@heroicons/react/24/outline';
 import React, { useEffect, useMemo, useState } from 'react';
 import { SearchBar } from '@/shared/ui';
-import { AssessmentReportDrawer } from '@/shared/ui';
+import { AssessmentReportDrawer } from '@/features/assessment';
 import { useUser } from '@/stores';
 import { supabase } from '@/shared/api/supabaseClient';
 import { formatStreamId } from '@/shared/lib/utils/formatters';

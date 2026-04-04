@@ -9,7 +9,7 @@ import type {
   ConversationType,
   ConversationStatus,
   SendMessageRequest
-} from './types';
+} from '@/shared/types';
 
 // ============================================================================
 // User Type Validation

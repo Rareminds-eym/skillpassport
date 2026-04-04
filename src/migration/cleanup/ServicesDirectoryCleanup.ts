@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import { MigrationLogger } from '../logging/MigrationLogger';
-import { ServiceFile, CleanupResult, CleanupConfig } from '../types';
+import { ServiceFile, CleanupResult, CleanupConfig } from '@/features/student-profile/model';
 import { DeprecationNoticeGenerator } from './DeprecationNoticeGenerator';
 
 /**

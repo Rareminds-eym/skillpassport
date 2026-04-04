@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { getClassTimetable } from '@/shared/api/studentClassService';
-import { SchoolTimetableSlot } from '@/features/myclass/ui/tabs/TimetableViewTab';
+import { getClassTimetable } from '@/features/myclass';
+import { SchoolTimetableSlot } from '@/features/myclass';
 
 interface UseTimetableDataReturn {
   timetable: SchoolTimetableSlot[];

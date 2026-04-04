@@ -22,7 +22,7 @@ export type {
   AvailableCourse,
   FileUpload,
   CourseFilters,
-} from './types';
+} from '@/shared/types';
 
 // Validation
 export {

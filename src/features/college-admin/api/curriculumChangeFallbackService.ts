@@ -4,7 +4,7 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
-import { AdminNotificationService } from '@/shared/api/adminNotificationService';
+import { AdminNotificationService } from '@/features/admin';
 
 export class CurriculumChangeFallbackService {
   /**

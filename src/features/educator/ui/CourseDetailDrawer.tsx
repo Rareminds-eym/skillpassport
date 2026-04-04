@@ -19,10 +19,10 @@ import {
   PhotoIcon,
   LinkIcon
 } from '@heroicons/react/24/outline';
-import { Course, Lesson, Resource } from '@/features/courses/model/course-types.ts';
+import { Course, Lesson, Resource } from '@/features/courses';
 import AddLessonModal from './AddLessonModal';
 import ResourceUploadComponent from './ResourceUploadComponent';
-import { addResource, deleteResource, addLesson, updateLesson, deleteLesson as deleteLessonFromDB } from '@/shared/api/educator/coursesService';
+import { addResource, deleteResource, addLesson, updateLesson, deleteLesson } from '@/features/educator';
 import toast from 'react-hot-toast';
 
 interface CourseDetailDrawerProps {

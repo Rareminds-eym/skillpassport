@@ -2,4 +2,4 @@
  * Message Modal Model - Public API
  */
 
-export type { MessageModalProps } from './types'
+export type { MessageModalProps } from '@/features/student-profile/model'

@@ -15,7 +15,7 @@ import {
 import toast from 'react-hot-toast';
 import { companyService } from '@/features/recruiter-copilot';
 import type { Company, CompanyFormData } from '@/features/recruiter-copilot';
-import { CompanyStatusModal } from '@/features/admin/ui/modals/CompanyStatusModal';
+import { CompanyStatusModal } from '@/features/admin';
 
 interface CompanyRegistrationProps {
   onStatsUpdate?: () => void;

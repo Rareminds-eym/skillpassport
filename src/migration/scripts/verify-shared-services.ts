@@ -1,5 +1,5 @@
 // Quick verification that shared services are accessible through public API
-import * as sharedApi from '../../shared/api/index.js';
+import * as sharedApi from '@/shared/api/index.js';
 
 const EXPECTED_SERVICES = [
   'addOnAnalyticsService',

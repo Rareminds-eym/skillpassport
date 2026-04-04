@@ -20,13 +20,13 @@ import {
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
-import { DeleteConversationModal, ConversationModal, NewEducatorAdminConversationModal, NewSchoolAdminEducatorConversationModal } from '@/features/messaging';
+import { DeleteConversationModal, ConversationModal, NewEducatorConversationModal, NewAdminConversationModal, NewEducatorAdminConversationModal, NewSchoolAdminEducatorConversationModal } from '@/features/messaging';
 import { NewCollegeAdminConversationModal } from '@/features/college-admin';
 import { useAuth } from '@/features/auth';
 import { useUser } from '@/stores';
 import { isLearner } from '@/entities/student/lib/studentType';
-import { useGlobalPresence } from '@/stores/globalPresenceStore';
-import { useNotificationBroadcast } from '@/features/broadcast/model/useNotificationBroadcast';
+import { useGlobalPresence } from '@/shared/model/globalPresenceStore';
+import { useNotificationBroadcast } from '@/features/broadcast';
 import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useStudentProfile, useStudentMessages } from '@/features/student-profile';
 import { useStudentDataByEmail } from '@/entities/student';

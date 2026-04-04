@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
-import { useUser, useUserRole as useUserRoleFromStore } from '@/stores';
 
 export type UserRole = 'school_admin' | 'principal' | 'it_admin' | 'class_teacher' | 'subject_teacher';
 
@@ -10,6 +9,11 @@ export interface RolePermissions {
   add_teacher: PermissionLevel;
   assign_classes: PermissionLevel;
   timetable_editing: PermissionLevel;
+}
+
+interface User {
+  id: string;
+  email?: string;
 }
 
 const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
@@ -40,9 +44,13 @@ const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
   },
 };
 
-export const useUserRole = () => {
-  const authUser = useUser();
-  const { role: authRole } = useUserRoleFromStore();
+/**
+ * Hook to get user role and permissions
+ * 
+ * @param authUser - The authenticated user object (pass from store/context)
+ * @param authRole - The user's role from auth context (pass from store/context)
+ */
+export const useUserRole = (authUser: User | null, authRole?: string) => {
   const [role, setRole] = useState<UserRole>('subject_teacher');
   const [loading, setLoading] = useState(true);
   const [permissions, setPermissions] = useState<RolePermissions>(

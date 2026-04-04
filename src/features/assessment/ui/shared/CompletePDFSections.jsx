@@ -3,7 +3,7 @@
  * Sections for: career_fit, skill_gap, roadmap, courses, profile_snapshot, timing_analysis, final_note
  */
 
-import { printStyles } from '@/features/assessment/lib/printStyles';
+import { printStyles } from '@/features/assessment';
 
 /**
  * Complete Career Fit Section
@@ -82,9 +82,7 @@ export const CompleteCareerFitSection = ({ careerFit }) => {
                           color: '#4338ca',
                           borderRadius: '3px'
                         }}
-                      >
-                        {skill}
-                      </span>
+                      >{typeof skill === "string" ? skill : skill?.name || JSON.stringify(skill)}</span>
                     ))}
                   </div>
                 </div>
@@ -185,9 +183,7 @@ export const CompleteCareerFitSection = ({ careerFit }) => {
                           color: '#92400e',
                           borderRadius: '3px'
                         }}
-                      >
-                        {skill}
-                      </span>
+                      >{typeof skill === "string" ? skill : skill?.name || JSON.stringify(skill)}</span>
                     ))}
                   </div>
                 </div>
@@ -609,9 +605,7 @@ export const CompleteCourseRecommendationsSection = ({
                   color: '#334155',
                   borderRadius: '3px'
                 }}
-              >
-                {skill}
-              </span>
+              >{typeof skill === "string" ? skill : skill?.name || JSON.stringify(skill)}</span>
             ))}
           </div>
         </div>

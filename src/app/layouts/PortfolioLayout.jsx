@@ -1,14 +1,15 @@
 import { Outlet } from 'react-router-dom';
 import Header from './Header';
-import { PromotionalBanner, AssessmentPromotionalBanner } from '@/pages/homepage';
+import PromotionalBanner from '@/shared/ui/marketing/PromotionalBanner';
+import AssessmentPromotionalBanner from '@/shared/ui/marketing/AssessmentPromotionalBanner';
 import { useUserRole } from '@/entities/user';
 import { useCurrentPromotional, useAssessmentPromotional } from '@/shared/lib/hooks';
 import { useAuth } from '@/features/auth';
 
 const PortfolioLayout = () => {
   const { event, showBanner, dismissBanner, getTimeRemaining } = useCurrentPromotional();
-  const { 
-    showBanner: showAssessmentBanner, 
+  const {
+    showBanner: showAssessmentBanner,
     dismissBanner: dismissAssessmentBanner,
     getTimeRemaining: getAssessmentTimeRemaining
   } = useAssessmentPromotional();

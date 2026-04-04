@@ -18,6 +18,7 @@ import { parseAsLocalDate, isOverdue } from '../lib/dateHelpers';
 import { getStatusBadge } from '../lib/assignmentHelpers';
 import SchoolClassHeader, { SchoolClassInfo } from './SchoolClassHeader';
 // Import shared components
+import { NotificationModal } from '@/shared/ui';
 import OverviewTab, { AssignmentStats, TimetableSlot } from './tabs/OverviewTab';
 import ClassmatesTab from './tabs/ClassmatesTab';
 import AssignmentsTab from './tabs/AssignmentsTab';
@@ -53,7 +54,7 @@ import {
   updateAssignmentStatus,
   submitAssignmentWithStagedFiles,
   getAssignmentWithFiles
-} from '@/features/educator-copilot';
+} from '@/features/educator';
 import {
   getGroupedStudentExams,
   getStudentResults,

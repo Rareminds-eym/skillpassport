@@ -25,7 +25,7 @@ import { useGlobalPresence } from '@/stores';
 import { useCollegeAdminMessages } from '@/features/messaging';
 import { useCollegeEducatorAdminConversationsForAdmin } from '@/features/educator';
 import { useCollegeEducatorAdminMessagesForAdmin } from '@/features/educator';
-import { useNotificationBroadcast } from '@/features/broadcast/model/useNotificationBroadcast';
+import { useNotificationBroadcast } from '@/features/broadcast';
 import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/shared/lib/hooks';
 import { supabase } from '@/shared/api/supabaseClient';

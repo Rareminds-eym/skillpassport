@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { assessmentService, timetableService } from '@/shared/api/college';
+import { assessmentService, timetableService } from '@/features/college-admin';
 import type { Assessment, ExamSlot } from '@/shared/types/college';
 
 interface UseAssessmentsOptions {

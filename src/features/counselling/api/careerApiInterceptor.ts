@@ -6,9 +6,9 @@
  * Coordinator to handle token expiry proactively.
  */
 
-import { TokenMonitor, getGlobalTokenMonitor } from "@/features/auth/lib/tokenMonitor";
-import { RefreshCoordinator, getGlobalRefreshCoordinator, RefreshResult } from "@/features/auth/lib/refreshCoordinator";
-import { getGlobalTokenRefreshErrorHandler } from "@/features/auth/lib/tokenRefreshErrorHandler";
+import { TokenMonitor, getGlobalTokenMonitor } from '@/features/auth';
+import { RefreshCoordinator, getGlobalRefreshCoordinator, RefreshResult } from '@/features/auth';
+import { getGlobalTokenRefreshErrorHandler } from '@/features/auth/lib/tokenRefreshErrorHandler';
 import { supabase } from '@/shared/api/supabaseClient';
 
 export interface InterceptorConfig {
@@ -40,10 +40,17 @@ export class CareerApiInterceptor {
   private config: Required<InterceptorConfig>;
   private tokenMonitor: TokenMonitor;
   private refreshCoordinator: RefreshCoordinator;
-  private errorHandler = getGlobalTokenRefreshErrorHandler();
+  private _errorHandler: ReturnType<typeof getGlobalTokenRefreshErrorHandler> | null = null;
   private requestQueue: QueuedRequest[] = [];
   private isProcessingQueue: boolean = false;
   private requestIdCounter: number = 0;
+
+  private get errorHandler() {
+    if (!this._errorHandler) {
+      this._errorHandler = getGlobalTokenRefreshErrorHandler();
+    }
+    return this._errorHandler;
+  }
 
   constructor(
     tokenMonitor?: TokenMonitor,
@@ -147,7 +154,7 @@ export class CareerApiInterceptor {
           return retryResponse;
         } else {
           console.warn('[CareerApiInterceptor] Token refresh failed after 401:', refreshResult.error);
-          
+
           // Log the final failure
           this.errorHandler.logFailure(
             refreshResult.error,
@@ -155,7 +162,7 @@ export class CareerApiInterceptor {
             refreshResult.retryable,
             'Token refresh failed after 401 response'
           );
-          
+
           // Return original 401 response
           return response;
         }
@@ -176,7 +183,7 @@ export class CareerApiInterceptor {
   private queueRequest(config: RequestConfig): Promise<RequestConfig> {
     return new Promise((resolve, reject) => {
       const requestId = `req_${++this.requestIdCounter}`;
-      
+
       this.requestQueue.push({
         requestId,
         config,
@@ -247,7 +254,7 @@ export class CareerApiInterceptor {
     // Check if refresh is already in progress
     if (this.refreshCoordinator.isRefreshInProgress()) {
       console.log('[CareerApiInterceptor] Refresh already in progress, waiting...');
-      
+
       // Wait for existing refresh with timeout
       return this.waitWithTimeout(
         this.refreshCoordinator.waitForRefresh(),
@@ -257,7 +264,7 @@ export class CareerApiInterceptor {
 
     // Initiate new refresh
     console.log('[CareerApiInterceptor] Initiating token refresh...');
-    
+
     return this.waitWithTimeout(
       this.refreshCoordinator.refreshToken(),
       this.config.maxWaitTimeMs

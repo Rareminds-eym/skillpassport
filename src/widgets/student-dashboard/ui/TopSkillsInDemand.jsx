@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Badge } from '@/shared/ui/badge';
 import { Award, TrendingUp, Briefcase, RefreshCw } from 'lucide-react';
-import SkillsAnalyticsService from '@/shared/api/skillsAnalyticsService';
+import { SkillsAnalyticsService } from '@/features/analytics';
 
 /**
  * Top Skills in Demand Component

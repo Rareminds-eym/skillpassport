@@ -10,7 +10,7 @@ import { ArrowLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from '@/shared/ui';
 import { Label } from '@/shared/ui';
-import { STREAMS_BY_CATEGORY, STREAM_CATEGORIES, AFTER10_STREAMS_BY_CATEGORY } from '../config/config';
+import { STREAMS_BY_CATEGORY, STREAM_CATEGORIES, AFTER10_STREAMS_BY_CATEGORY } from '../lib/config/config';
 
 /**
  * @typedef {Object} StreamSelectionScreenProps

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { XMarkIcon, UserPlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { ProgramSection, ProgramStudent, getStudentsByProgramSection, getAvailableStudentsForProgram, addStudentToProgram, removeStudentFromProgram } from '@/features/college-admin'
-import { useEducatorSchool } from '@/features/educator-copilot'
+import { useEducatorSchool } from '@/features/educator'
 import { usePermission } from '@/shared/lib/hooks'
 import toast from 'react-hot-toast'
 
@@ -19,11 +19,11 @@ const ManageProgramStudentsModal: React.FC<ManageProgramStudentsModalProps> = ({
   onStudentsUpdated
 }) => {
   const { college } = useEducatorSchool()
-  
+
   // Permission controls for Classroom Management module
   const canCreate = usePermission("Classroom Management", "create")
   const canEdit = usePermission("Classroom Management", "edit")
-  
+
   const [students, setStudents] = useState<ProgramStudent[]>([])
   const [availableStudents, setAvailableStudents] = useState<ProgramStudent[]>([])
   const [loading, setLoading] = useState(false)
@@ -81,7 +81,7 @@ const ManageProgramStudentsModal: React.FC<ManageProgramStudentsModalProps> = ({
         programSection.semester,
         programSection.section
       )
-      
+
       if (error) {
         toast.error(error)
       } else {
@@ -101,7 +101,7 @@ const ManageProgramStudentsModal: React.FC<ManageProgramStudentsModalProps> = ({
   const handleRemoveStudent = async (studentId: string) => {
     try {
       const { error } = await removeStudentFromProgram(studentId)
-      
+
       if (error) {
         toast.error(error)
       } else {
@@ -169,7 +169,7 @@ const ManageProgramStudentsModal: React.FC<ManageProgramStudentsModalProps> = ({
                         programSectionId: programSection?.id,
                         timestamp: new Date().toISOString()
                       });
-//                      alert('✅ Permission Test: Add student to program allowed for College Educator');
+                      //                      alert('✅ Permission Test: Add student to program allowed for College Educator');
                       handleAddStudent();
                     }}
                     disabled={!selectedStudentId || addingStudent}
@@ -209,7 +209,7 @@ const ManageProgramStudentsModal: React.FC<ManageProgramStudentsModalProps> = ({
               <h3 className="text-sm font-medium text-gray-900 mb-3">
                 Current Students ({students.length})
               </h3>
-              
+
               {loading ? (
                 <div className="text-center py-8 text-sm text-gray-500">
                   Loading students...

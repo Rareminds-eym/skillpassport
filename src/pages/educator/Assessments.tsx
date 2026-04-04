@@ -21,7 +21,7 @@ import { AssignmentFileUpload, StudentSelectionModal } from '@/features/college-
 import { ConfirmationModal } from '@/shared/ui';
 import { NotificationModal } from '@/shared/ui';
 import { useAuth } from '@/features/auth';
-import { useEducatorSchool } from '@/features/educator-copilot';
+import { useEducatorSchool } from '@/features/educator';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
 import { getLogger } from '@/shared/config/logging';

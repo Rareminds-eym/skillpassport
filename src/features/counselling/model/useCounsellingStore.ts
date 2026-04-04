@@ -6,7 +6,7 @@ import type {
   CounsellingSession, 
   CounsellingMessage,
   CounsellingTopicType 
-} from './types';
+} from '@/features/student-profile/model';
 
 export interface CounsellingStore {
   sessions: CounsellingSession[];

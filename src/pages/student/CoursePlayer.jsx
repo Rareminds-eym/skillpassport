@@ -25,7 +25,7 @@ import { supabase } from '@/shared/api/supabaseClient';
 import { generateCourseCertificate } from '@/features/digital-portfolio';
 import { enrollmentService as courseEnrollmentService } from '@/features/courses/api';
 import { courseProgressService } from '@/features/courses';
-import { fileService } from '@/shared/api';
+import { fileService } from '@/features/courses';
 import { getAuthenticatedMediaUrl, needsAuthentication } from '@/shared/api';
 
 const CoursePlayer = () => {

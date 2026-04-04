@@ -645,7 +645,7 @@ export default function ClubsActivitiesPage() {
                 status: status
             }));
 
-            await clubsService.markAttendance(
+            await clubsService.markClubAttendance(
                 attendanceModal.club?.club_id,
                 attendanceDate,
                 attendanceTopic,

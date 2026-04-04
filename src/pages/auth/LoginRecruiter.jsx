@@ -1,21 +1,21 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import loginIllustration from "../../assets/images/auth/Recruiter-illustration.png";
+import loginIllustration from "@/assets/images/auth/Recruiter-illustration.png";
 import { useAuthActions } from "@/stores";
 
 import {
-    AlertCircle,
-    BarChart3,
-    CheckCircle,
-    Eye,
-    EyeOff,
-    Lock,
-    Mail,
-    Zap,
+  AlertCircle,
+  BarChart3,
+  CheckCircle,
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  Zap,
 } from "lucide-react";
 import { loginRecruiter } from "@/features/recruiter-copilot";
-import FeatureCard from "./components/ui/FeatureCard";
+import FeatureCard from "@/features/auth/ui/FeatureCard";
 
 export default function LoginRecruiter() {
   const [email, setEmail] = useState("");
@@ -76,9 +76,8 @@ export default function LoginRecruiter() {
       <div className="space-y-2">
         <label
           htmlFor="email"
-          className={`block text-sm font-medium ${
-            isLg ? "text-gray-800 lg:text-gray-700" : "text-white/90"
-          }`}
+          className={`block text-sm font-medium ${isLg ? "text-gray-800 lg:text-gray-700" : "text-white/90"
+            }`}
         >
           Email ID
         </label>
@@ -91,11 +90,10 @@ export default function LoginRecruiter() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter email ID"
             autoComplete="username"
-            className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-[#5378f1] focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/70 lg:placeholder:text-gray-400 ${
-              isLg
+            className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-[#5378f1] focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/70 lg:placeholder:text-gray-400 ${isLg
                 ? "bg-white/90"
                 : "bg-white/20 border-2 border-white/15 backdrop-blur-sm"
-            }`}
+              }`}
           />
           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 lg:text-gray-400" />
         </div>
@@ -105,9 +103,8 @@ export default function LoginRecruiter() {
       <div className="space-y-2">
         <label
           htmlFor="password"
-          className={`block text-sm font-medium ${
-            isLg ? "text-gray-800 lg:text-gray-700" : "text-white/90"
-          }`}
+          className={`block text-sm font-medium ${isLg ? "text-gray-800 lg:text-gray-700" : "text-white/90"
+            }`}
         >
           Password
         </label>
@@ -120,11 +117,10 @@ export default function LoginRecruiter() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter your password"
             autoComplete="current-password"
-            className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-[#5378f1] focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/80 lg:placeholder:text-gray-400 ${
-              isLg
+            className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-[#5378f1] focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/80 lg:placeholder:text-gray-400 ${isLg
                 ? "bg-white/90"
                 : "bg-white/20 border-2 border-white/15 backdrop-blur-sm"
-            }`}
+              }`}
           />
           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 lg:text-gray-400" />
           <button
@@ -203,7 +199,7 @@ export default function LoginRecruiter() {
               Hire Smarter. Trust Skills, Not Just Resumes.
             </h2>
             <p className="mt-4 max-w-xl text-[#edf2f9]">
-Access Verified Skill Passports Of Students Across India & Beyond.
+              Access Verified Skill Passports Of Students Across India & Beyond.
             </p>
           </div>
 

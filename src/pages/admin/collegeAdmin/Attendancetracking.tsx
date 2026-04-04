@@ -35,7 +35,7 @@ import {
 } from "@heroicons/react/24/outline";
 import React, { useEffect, useMemo, useState } from "react";
 import ReactApexChart from "react-apexcharts";
-import KPICard from '@/shared/ui/KPICard';
+import { KPICard } from '@/features/analytics';
 import { Pagination } from '@/shared/ui';
 import { SearchBar } from '@/shared/ui';
 import { authSessionService } from '@/features/auth';

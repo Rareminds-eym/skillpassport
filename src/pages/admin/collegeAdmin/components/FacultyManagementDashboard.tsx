@@ -10,7 +10,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import { useUser } from "@/stores";
 import { supabase } from '@/shared/api/supabaseClient';
-import { getFacultyStatistics } from '@/features/college-admin/api/facultyService';
+import { getFacultyStatistics } from '@/features/college-admin';
 import FacultyLeaveManagement from '../FacultyLeaveManagement';
 import CalendarTimetable from './CalendarTimetable';
 import FacultyBulkImport from './FacultyBulkImport';

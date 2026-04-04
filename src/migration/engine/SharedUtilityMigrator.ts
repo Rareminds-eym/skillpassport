@@ -12,7 +12,7 @@ import {
   MigrationConfig, 
   MigrationResult,
   ServiceFile
-} from '../types';
+} from '@/features/student-profile/model';
 import { MigrationLogger } from '../logging/MigrationLogger';
 
 export class SharedUtilityMigrator {

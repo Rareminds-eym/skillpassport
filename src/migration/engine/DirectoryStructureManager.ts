@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import { FeatureMapping, MigrationConfig, MigrationLogger } from '../types';
+import { FeatureMapping, MigrationConfig, MigrationLogger } from '@/features/student-profile/model';
 
 /**
  * Manages the creation and organization of feature API directory structures
@@ -91,7 +91,7 @@ export * from './apiUtils';
 export * from './constants';
 
 // Common types
-export type * from './types';
+export type * from '@/features/student-profile/model';
 `;
 
     await fs.writeFile(indexPath, content, 'utf8');

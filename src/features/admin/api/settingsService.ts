@@ -1,42 +1,6 @@
 import { supabase } from '@/shared/api/supabaseClient';
-
-export interface Module {
-  id: string;
-  module_name: string;
-  description: string;
-  is_active: boolean;
-}
-
-export interface Permission {
-  id: string;
-  permission_name: string;
-  description: string;
-}
-
-export interface RolePermission {
-  role_type: string;
-  module_id: string;
-  permission_id: string;
-  module_name: string;
-  permission_name: string;
-}
-
-export interface Role {
-  id: string;
-  roleName: string;
-  moduleAccess: ModuleAccess[];
-  scopeRules: ScopeRule[];
-}
-
-export interface ModuleAccess {
-  module: string;
-  permissions: string[];
-}
-
-export interface ScopeRule {
-  type: "department" | "program";
-  values: string[];
-}
+import type { Module, Permission, RolePermission, Role, ModuleAccess, ScopeRule } from '../model/types';
+import { formatRoleName } from '../lib/formatters';
 
 /**
  * Fetch all available modules
@@ -257,20 +221,6 @@ export const saveRolePermissions = async (
   } catch (error) {
     console.error('Error saving role permissions:', error);
     return false;
-  }
-};
-
-/**
- * Format role type for display
- */
-const formatRoleName = (roleType: string): string => {
-  switch (roleType) {
-    case 'college_admin':
-      return 'Dean (College Admin)';
-    case 'college_educator':
-      return 'Faculty (College Educator)';
-    default:
-      return roleType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   }
 };
 

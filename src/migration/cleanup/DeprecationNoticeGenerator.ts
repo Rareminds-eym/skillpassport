@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import { MigrationLogger } from '../logging/MigrationLogger';
-import { ServiceFile } from '../types';
+import { ServiceFile } from '@/features/student-profile/model';
 
 /**
  * Generates deprecation notices for legacy service files

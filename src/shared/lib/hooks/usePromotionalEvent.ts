@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/shared/api/supabaseClient';
-import { isJwtExpiryError } from "@/features/auth/lib/authErrorHandler";
+import { isJwtExpiryError } from '@/shared/lib/utils/authUtils';
 
 /**
  * Hook for fetching active promotional event
@@ -11,7 +11,7 @@ export const usePromotionalEvent = () => {
     queryKey: ['promotional-event', 'active'],
     queryFn: async () => {
       const now = new Date().toISOString();
-      
+
       const { data, error } = await supabase
         .from('promotional_events')
         .select('*')

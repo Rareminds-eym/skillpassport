@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from '@/stores';
 import { useStudentDataByEmail } from '@/entities/student';
-import { checkAssessmentStatus } from '../../features/assessment/api/externalAssessmentService';
+import { checkAssessmentStatus } from '@/features/assessment/api/externalAssessmentService';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('AssessmentStart');

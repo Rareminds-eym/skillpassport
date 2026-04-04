@@ -1,15 +1,27 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useUser } from '@/stores';
-import { MessageService } from '@/features/messaging';
 import { UICandidate } from './useStudents';
+
+interface User {
+  id: string;
+  email?: string;
+}
+
+interface MessageServiceType {
+  getUserConversations: (userId: string, userType: string, archived: boolean) => Promise<any[]>;
+}
 
 /**
  * Hook to get students from educator conversations
  * This provides the same UICandidate format as useStudents but from conversation data
+ * 
+ * @param user - The authenticated user object (pass from store/context)
+ * @param messageService - The message service instance (pass from @/features/messaging)
  */
-export function useConversationStudents() {
-  const user = useUser();
+export function useConversationStudents(
+  user: User | null,
+  messageService: MessageServiceType
+) {
   const educatorId = user?.id;
 
   // Fetch active conversations with comprehensive student data
@@ -17,7 +29,7 @@ export function useConversationStudents() {
     queryKey: ['educator-conversations', educatorId, 'active'],
     queryFn: async () => {
       if (!educatorId) return [];
-      const allConversations = await MessageService.getUserConversations(educatorId, 'educator', false);
+      const allConversations = await messageService.getUserConversations(educatorId, 'educator', false);
       return allConversations.filter(conv => conv.conversation_type === 'student_educator');
     },
     enabled: !!educatorId,
@@ -33,8 +45,8 @@ export function useConversationStudents() {
     queryKey: ['educator-conversations', educatorId, 'archived'],
     queryFn: async () => {
       if (!educatorId) return [];
-      const allConversations = await MessageService.getUserConversations(educatorId, 'educator', true);
-      return allConversations.filter(conv => 
+      const allConversations = await messageService.getUserConversations(educatorId, 'educator', true);
+      return allConversations.filter(conv =>
         conv.conversation_type === 'student_educator' && conv.status === 'archived'
       );
     },
@@ -53,7 +65,7 @@ export function useConversationStudents() {
   }, [activeConversations, archivedConversations]);
 
   // Calculate stats
-  const stats = useMemo(() => ({ 
+  const stats = useMemo(() => ({
     count: students.length,
     activeConversations: activeConversations.length,
     archivedConversations: archivedConversations.length

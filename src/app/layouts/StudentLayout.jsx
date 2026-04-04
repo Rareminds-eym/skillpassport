@@ -3,8 +3,8 @@ import { Outlet, useParams, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
 import { useStudentProfile } from '@/features/student-profile';
 import { useUser } from '@/stores';
-import { Header, ProfileHeroEdit } from '@/features/student-profile';
-import FloatingAIButton from '@/shared/ui/FloatingAIButton';
+import { Header, ProfileHeroEdit } from '@/widgets/student-dashboard';
+import { FloatingAIButton } from '@/features/career-assistant';
 import {
   EducationEditModal,
   TrainingEditModal,

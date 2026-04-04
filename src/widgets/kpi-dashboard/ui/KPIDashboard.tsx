@@ -16,7 +16,7 @@ import {
 import { useEffect, useState } from 'react'
 import { supabase } from '@/shared/api/supabaseClient'
 import { FeatureGate } from '@/features/subscription'
-import { KPICard } from '@/shared/ui'
+import { KPICard } from '@/features/analytics'
 import type { KPIDashboardProps, KPIData } from '..'
 
 const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({ 

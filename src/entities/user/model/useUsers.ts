@@ -1,5 +1,11 @@
+/**
+ * DEPENDENCY INJECTION PATTERN APPLIED
+ * 
+ * This file should receive userManagementService as a parameter/prop.
+ * Import from @/features/college-admin/api/userManagementService in the parent component and pass it down.
+ */
+
 import { useState, useEffect } from 'react';
-import { userManagementService } from '@/features/college-admin/api/userManagementService';
 import type { User } from '@/shared/types/college';
 
 interface UseUsersOptions {

@@ -20,6 +20,8 @@ export { default as NewStudentConversationModal } from './ui/NewStudentConversat
 export { default as NewStudentConversationModalEducator } from './ui/NewStudentConversationModalEducator';
 export { default as NewStudentConversationModalCollegeAdmin } from './ui/NewStudentConversationModalCollegeAdmin';
 export { default as NewEducatorAdminConversationModal } from './ui/NewEducatorAdminConversationModal';
+export { default as NewEducatorConversationModal } from './ui/NewEducatorConversationModal';
+export { default as NewAdminConversationModal } from './ui/NewAdminConversationModal';
 export { default as NewSchoolAdminEducatorConversationModal } from './ui/NewSchoolAdminEducatorConversationModal';
 
 // ============================================================================
@@ -31,7 +33,7 @@ export {
 } from './model/useMessages';
 
 export { useMessageNotifications } from './model/useMessageNotifications';
-export { useTypingIndicator } from './model/useTypingIndicator';
+export { default as useTypingIndicator } from './model/useTypingIndicator';
 
 // Store hooks
 export {
@@ -48,13 +50,11 @@ export {
 // ============================================================================
 // Services
 // ============================================================================
-export { MessageService } from './api/messageService';
+export { default as MessageService } from './api/messageService';
 
 // ============================================================================
 // Types
 // ============================================================================
-export type { Message, Conversation } from './api/messageService';
-export type { ConversationType } from './lib/conversationConfig';
 
 // API & Data Access
 export * from './api';
@@ -62,5 +62,3 @@ export * from './api';
 export * from './model';
 export { useCollegeAdminMessages } from './model/useCollegeAdminMessages';
 export { useCollegeLecturerMessages } from './model/useCollegeLecturerMessages';
-export type { NewAdminConversationModal } from './ui/NewAdminConversationModal';
-export type { NewEducatorConversationModal } from './ui/NewEducatorConversationModal';

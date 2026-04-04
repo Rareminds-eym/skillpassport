@@ -9,7 +9,7 @@ import {
   MigrationConfig,
   ScanResult,
   ImportReference
-} from '../types';
+} from '@/features/student-profile/model';
 import { MigrationLogger } from '../logging/MigrationLogger';
 import { DirectoryStructureManager } from './DirectoryStructureManager';
 import { APIFunctionMigrator } from './APIFunctionMigrator';

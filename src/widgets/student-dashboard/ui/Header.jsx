@@ -18,7 +18,7 @@ import {
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useUser, useAuthActions } from "@/stores";
-import { useNotifications } from '@/features/recruiter';
+import { useNotifications } from '@/features/notifications';
 import { useStudentDataByEmail } from '@/entities/student';
 import { isLearner } from '@/entities/student/lib/studentType';
 import DigitalPortfolioSideDrawer from "./DigitalPortfolioSideDrawer";
@@ -45,16 +45,16 @@ const Header = ({ activeTab, setActiveTab }) => {
   // Fetch student data to check school/college association
   const { studentData, loading: studentDataLoading } = useStudentDataByEmail(userEmail);
   const isPartOfSchoolOrCollege = !studentDataLoading && (studentData?.school_id || studentData?.university_college_id) && !isLearner(studentData);
-  
-  
-  
+
+
+
 
 
   // Close modals when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (notificationRef.current && !notificationRef.current.contains(event.target) &&
-          profileRef.current && !profileRef.current.contains(event.target)) {
+        profileRef.current && !profileRef.current.contains(event.target)) {
         setActiveModal(null);
       }
     };
@@ -125,7 +125,7 @@ const Header = ({ activeTab, setActiveTab }) => {
     <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
       <div className="w-full">
         <div className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 md:px-6 lg:px-8">
-          
+
           {/* Left: Logo */}
           <div className="flex items-center flex-shrink-0">
             <img
@@ -140,11 +140,10 @@ const Header = ({ activeTab, setActiveTab }) => {
             {/* Dashboard */}
             <button
               onClick={handleDashboard}
-              className={`flex items-center px-2 xl:px-3 py-2 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 whitespace-nowrap ${
-                activeTab === "dashboard"
+              className={`flex items-center px-2 xl:px-3 py-2 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 whitespace-nowrap ${activeTab === "dashboard"
                   ? "bg-blue-50 text-blue-700"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              }`}
+                }`}
             >
               <HomeIcon className="h-3 xl:h-4 w-3 xl:w-4 mr-1 xl:mr-2" />
               <span>Dashboard</span>
@@ -154,11 +153,10 @@ const Header = ({ activeTab, setActiveTab }) => {
             <button
               data-tour="my-learning-nav"
               onClick={() => handleNavigation({ id: "training", path: "/student/my-learning" })}
-              className={`flex items-center px-2 xl:px-3 py-2 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 whitespace-nowrap ${
-                activeTab === "training"
+              className={`flex items-center px-2 xl:px-3 py-2 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 whitespace-nowrap ${activeTab === "training"
                   ? "bg-blue-50 text-blue-700"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              }`}
+                }`}
             >
               <AcademicCapIcon className="h-3 xl:h-4 w-3 xl:w-4 mr-1 xl:mr-2" />
               <span>My Learning</span>
@@ -168,11 +166,10 @@ const Header = ({ activeTab, setActiveTab }) => {
             <button
               data-tour="courses-nav"
               onClick={() => handleNavigation({ id: "courses", path: "/student/courses" })}
-              className={`flex items-center px-2 xl:px-3 py-2 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 whitespace-nowrap ${
-                activeTab === "courses"
+              className={`flex items-center px-2 xl:px-3 py-2 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 whitespace-nowrap ${activeTab === "courses"
                   ? "bg-blue-50 text-blue-700"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              }`}
+                }`}
             >
               <BookOpenIcon className="h-3 xl:h-4 w-3 xl:w-4 mr-1 xl:mr-2" />
               <span>Courses</span>
@@ -182,11 +179,10 @@ const Header = ({ activeTab, setActiveTab }) => {
             <button
               data-tour="digital-portfolio-nav"
               onClick={() => handleNavigation({ id: "digital-portfolio", path: "/student/digital-portfolio" })}
-              className={`flex items-center px-2 xl:px-3 py-2 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 whitespace-nowrap ${
-                activeTab === "digital-portfolio" || location.pathname.startsWith('/student/digital-portfolio')
+              className={`flex items-center px-2 xl:px-3 py-2 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 whitespace-nowrap ${activeTab === "digital-portfolio" || location.pathname.startsWith('/student/digital-portfolio')
                   ? "bg-blue-50 text-blue-700"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              }`}
+                }`}
             >
               <BriefcaseIcon className="h-3 xl:h-4 w-3 xl:w-4 mr-1 xl:mr-2" />
               <span>Digital Portfolio</span>
@@ -196,11 +192,10 @@ const Header = ({ activeTab, setActiveTab }) => {
             <button
               data-tour="opportunities-nav"
               onClick={() => handleNavigation({ id: "opportunities", path: "/student/opportunities" })}
-              className={`flex items-center px-2 xl:px-3 py-2 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 whitespace-nowrap ${
-                activeTab === "opportunities"
+              className={`flex items-center px-2 xl:px-3 py-2 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 whitespace-nowrap ${activeTab === "opportunities"
                   ? "bg-blue-50 text-blue-700"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              }`}
+                }`}
             >
               <RocketLaunchIcon className="h-3 xl:h-4 w-3 xl:w-4 mr-1 xl:mr-2" />
               <span>Opportunities</span>
@@ -210,11 +205,10 @@ const Header = ({ activeTab, setActiveTab }) => {
             <button
               data-tour="career-ai-nav"
               onClick={() => handleNavigation({ id: "career-ai", path: "/student/career-ai" })}
-              className={`flex items-center px-2 xl:px-3 py-2 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 whitespace-nowrap ${
-                activeTab === "career-ai"
+              className={`flex items-center px-2 xl:px-3 py-2 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 whitespace-nowrap ${activeTab === "career-ai"
                   ? "bg-blue-50 text-blue-700"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              }`}
+                }`}
             >
               <span>Career AI</span>
             </button>
@@ -223,11 +217,10 @@ const Header = ({ activeTab, setActiveTab }) => {
             {isPartOfSchoolOrCollege && (
               <button
                 onClick={() => handleNavigation({ id: "assignments", path: "/student/my-class" })}
-                className={`flex items-center px-2 xl:px-3 py-2 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 whitespace-nowrap ${
-                  activeTab === "assignments"
+                className={`flex items-center px-2 xl:px-3 py-2 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 whitespace-nowrap ${activeTab === "assignments"
                     ? "bg-blue-50 text-blue-700"
                     : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                }`}
+                  }`}
               >
                 <ClipboardDocumentListIcon className="h-3 xl:h-4 w-3 xl:w-4 mr-1 xl:mr-2" />
                 <span>My Class</span>
@@ -237,11 +230,10 @@ const Header = ({ activeTab, setActiveTab }) => {
             {/* Messages */}
             <button
               onClick={() => handleNavigation({ id: "messages", path: "/student/messages" })}
-              className={`flex items-center px-2 xl:px-3 py-2 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 whitespace-nowrap ${
-                activeTab === "messages"
+              className={`flex items-center px-2 xl:px-3 py-2 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 whitespace-nowrap ${activeTab === "messages"
                   ? "bg-blue-50 text-blue-700"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              }`}
+                }`}
             >
               <EnvelopeIcon className="h-3 xl:h-4 w-3 xl:w-4 mr-1 xl:mr-2" />
               <span>Messages</span>
@@ -249,8 +241,8 @@ const Header = ({ activeTab, setActiveTab }) => {
           </nav>
 
           {/* Right: Actions */}
-                 <div className="flex items-center space-x-1 lg:space-x-2 flex-shrink-0">
-            
+          <div className="flex items-center space-x-1 lg:space-x-2 flex-shrink-0">
+
             {/* Digital Portfolio Menu Button - Only show on portfolio page */}
             {/* {location.pathname === '/student/digital-portfolio/portfolio' && (
               <button
@@ -261,7 +253,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                 <Cog6ToothIcon className="w-5 h-5 md:w-6 md:h-6" />
               </button>
             )} */}
-            
+
             {/* Notifications */}
             <div className="relative" ref={notificationRef}>
               <button
@@ -275,7 +267,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                   </span>
                 )}
               </button>
-              
+
               {activeModal === 'notifications' && (
                 <div className="absolute right-0 mt-2 z-50">
                   <NotificationPanel
@@ -289,13 +281,13 @@ const Header = ({ activeTab, setActiveTab }) => {
 
             {/* Profile Dropdown */}
             <div className="relative" ref={profileRef}>
-              <button 
+              <button
                 onClick={toggleProfile}
                 className="flex items-center justify-center w-8 h-8 md:w-9 md:h-9 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all duration-200"
               >
                 <UserCircleIcon className="w-5 h-5 md:w-6 md:h-6" />
               </button>
-              
+
               {activeModal === 'profile' && (
                 <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 shadow-xl rounded-lg z-50">
                   <div className="py-1">
@@ -366,15 +358,14 @@ const Header = ({ activeTab, setActiveTab }) => {
         {mobileMenuOpen && (
           <div className="lg:hidden border-t border-gray-200">
             <div className="px-3 sm:px-4 py-3 sm:py-4 space-y-1 sm:space-y-2">
-              
+
               {/* Dashboard - Mobile */}
               <button
                 onClick={handleDashboard}
-                className={`w-full flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-md text-sm sm:text-base font-medium transition-colors ${
-                  activeTab === "dashboard"
+                className={`w-full flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-md text-sm sm:text-base font-medium transition-colors ${activeTab === "dashboard"
                     ? "bg-blue-50 text-blue-700"
                     : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                }`}
+                  }`}
               >
                 <HomeIcon className="h-4 sm:h-5 w-4 sm:w-5 mr-3" />
                 Dashboard
@@ -383,18 +374,17 @@ const Header = ({ activeTab, setActiveTab }) => {
               {/* All Navigation Items - Mobile */}
               {navigationItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = activeTab === item.id || 
+                const isActive = activeTab === item.id ||
                   (item.id === "digital-portfolio" && location.pathname.startsWith('/student/digital-portfolio'));
-                
+
                 return (
                   <button
                     key={item.id}
                     onClick={() => handleNavigation(item)}
-                    className={`w-full flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-md text-sm sm:text-base font-medium transition-colors ${
-                      isActive
+                    className={`w-full flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-md text-sm sm:text-base font-medium transition-colors ${isActive
                         ? "bg-blue-50 text-blue-700"
                         : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                    }`}
+                      }`}
                   >
                     {Icon ? <Icon className="h-4 sm:h-5 w-4 sm:w-5 mr-3" /> : <div className="w-4 sm:w-5 h-4 sm:h-5 mr-3" />}
                     {item.label}
@@ -405,7 +395,7 @@ const Header = ({ activeTab, setActiveTab }) => {
           </div>
         )}
       </div>
-      
+
       {/* Digital Portfolio Side Drawer - Only shown on portfolio page */}
       {location.pathname === '/student/digital-portfolio/portfolio' && (
         <DigitalPortfolioSideDrawer

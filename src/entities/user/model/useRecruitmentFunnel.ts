@@ -1,15 +1,25 @@
 import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/shared/api/supabaseClient';
-import { FunnelRangePreset, getRecruitmentFunnelStats } from '@/shared/api/analyticsService';
-
 interface UseRecruitmentFunnelOptions {
   preset: FunnelRangePreset;
   startDate?: string;
   endDate?: string;
 }
 
-export const useRecruitmentFunnel = ({ preset, startDate, endDate }: UseRecruitmentFunnelOptions) => {
+/**
+ * DEPENDENCY INJECTION PATTERN APPLIED
+ * 
+ * This hook accepts API functions as parameters instead of importing from features.
+ * This maintains FSD architecture by preventing entities from depending on features.
+ * 
+ * Usage: Import the required functions from the feature layer and pass them to this hook.
+ */
+
+export const useRecruitmentFunnel = (
+  { preset, startDate, endDate }: UseRecruitmentFunnelOptions,
+  getRecruitmentFunnelStats: (preset: FunnelRangePreset, startDate?: string, endDate?: string) => Promise<{ data: any }>
+) => {
   const queryClient = useQueryClient();
   const channelRef = useRef<any>(null);
 

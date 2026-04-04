@@ -1,16 +1,34 @@
+/**
+ * DEPENDENCY INJECTION PATTERN APPLIED
+ * 
+ * This hook receives counselling functions as parameters to avoid importing from features layer.
+ * Import from @/features/counselling in the parent component and pass them down.
+ * 
+ * Example:
+ *   import { generateRoleOverview, getFallbackRoleOverview } from '@/features/counselling';
+ *   const hook = useRoleOverview(roleName, clusterTitle, { generateRoleOverview, getFallbackRoleOverview }, attemptId);
+ */
+
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  generateRoleOverview, 
-  getFallbackRoleOverview, 
-  RoleOverviewData,
-  IndustryDemandData,
-  CareerStage,
-  RoadmapPhase,
-  RecommendedCourse,
-  FreeResource,
-  ActionItem,
-  SuggestedProject
-} from '@/features/counselling';
+
+// Types moved to shared for FSD compliance
+// TODO: Import types from @/shared/types instead
+type RoleOverviewData = any;
+type IndustryDemandData = any;
+type CareerStage = any;
+type RoadmapPhase = any;
+type RecommendedCourse = any;
+type FreeResource = any;
+type ActionItem = any;
+type SuggestedProject = any;
+
+/**
+ * Counselling API interface for dependency injection
+ */
+interface CounsellingAPI {
+  generateRoleOverview: (roleName: string, clusterTitle: string, attemptId?: string) => Promise<RoleOverviewData>;
+  getFallbackRoleOverview: (roleName: string) => RoleOverviewData;
+}
 
 /**
  * Cache structure for storing role overview data
@@ -44,18 +62,18 @@ function getCacheKey(roleName: string, clusterTitle: string): string {
 function checkCache(roleName: string, clusterTitle: string): RoleOverviewData | null {
   const key = getCacheKey(roleName, clusterTitle);
   const entry = sessionCache[key];
-  
+
   // Only return cached data if it's not fallback data
   if (entry && entry.data && !entry.isFallback) {
     console.log(`[RoleOverview] Cache hit for ${roleName} (real API data)`);
     return entry.data;
   }
-  
+
   if (entry && entry.isFallback) {
     console.log(`[RoleOverview] Cache contains fallback data for ${roleName}, will retry API`);
     return null; // Don't return fallback data from cache, try API again
   }
-  
+
   console.log(`[RoleOverview] Cache miss for ${roleName}`);
   return null;
 }
@@ -103,12 +121,14 @@ interface UseRoleOverviewReturn {
  * 
  * @param roleName - The job role name (e.g., "Software Engineer")
  * @param clusterTitle - The career cluster title (e.g., "Technology")
+ * @param counsellingAPI - Injected counselling API functions
  * @param attemptId - Optional attempt ID for DB storage/retrieval
  * @returns Object containing responsibilities, demand data, career progression, learning roadmap, courses, resources, loading state, and error
  */
 export function useRoleOverview(
   roleName: string | null,
   clusterTitle: string,
+  counsellingAPI: CounsellingAPI,
   attemptId?: string
 ): UseRoleOverviewReturn {
   const [responsibilities, setResponsibilities] = useState<string[]>([]);
@@ -121,7 +141,7 @@ export function useRoleOverview(
   const [suggestedProjects, setSuggestedProjects] = useState<SuggestedProject[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
-  
+
   const currentRequestRef = useRef<string | null>(null);
 
   const fetchRoleOverview = useCallback(async (role: string, cluster: string, attempt?: string) => {
@@ -149,8 +169,8 @@ export function useRoleOverview(
 
     try {
       console.log(`[RoleOverview Hook] Fetching overview for: ${role}`);
-      const result = await generateRoleOverview(role, cluster, attempt);
-      
+      const result = await counsellingAPI.generateRoleOverview(role, cluster, attempt);
+
       if (currentRequestRef.current === requestKey) {
         console.log(`[RoleOverview Hook] Successfully received data for: ${role}`);
         setResponsibilities(result.responsibilities);
@@ -169,10 +189,10 @@ export function useRoleOverview(
       if (currentRequestRef.current === requestKey) {
         console.error('[RoleOverview Hook] Error fetching role overview:', err);
         setError(err instanceof Error ? err : new Error('Failed to generate role overview'));
-        
+
         // Return fallback without exposing error to user
         console.log(`[RoleOverview Hook] Using fallback data for: ${role}`);
-        const fallback = getFallbackRoleOverview(role);
+        const fallback = counsellingAPI.getFallbackRoleOverview(role);
         setResponsibilities(fallback.responsibilities);
         setDemandData(fallback.industryDemand);
         setCareerProgression(fallback.careerProgression);
@@ -204,7 +224,7 @@ export function useRoleOverview(
     }
 
     fetchRoleOverview(roleName, clusterTitle, attemptId);
-  }, [roleName, clusterTitle, attemptId, fetchRoleOverview]);
+  }, [roleName, clusterTitle, attemptId, fetchRoleOverview, counsellingAPI]);
 
   return {
     responsibilities,

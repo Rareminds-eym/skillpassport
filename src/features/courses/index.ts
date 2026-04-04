@@ -10,11 +10,11 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Primary UI components
-export { 
+export {
   CourseCard,
   CourseDetailDrawer,
   CoursePlayer,
-  CreateCourseModal 
+  CreateCourseModal
 } from './ui';
 
 // Additional UI components (available but not primary exports)
@@ -34,29 +34,29 @@ export {
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Course list and filtering
-export { 
-  useCourses, 
-  useCourse, 
-  useCourseModules, 
-  useCourseFilterOptions 
+export {
+  useCourses,
+  useCourse,
+  useCourseModules,
+  useCourseFilterOptions
 } from './model';
 
 // Course enrollment
-export { 
-  useCourseEnrollment, 
-  useStudentEnrollments, 
-  useCourseEnrollments, 
-  useEducatorEnrollmentStats 
+export {
+  useCourseEnrollment,
+  useStudentEnrollments,
+  useCourseEnrollments,
+  useEducatorEnrollmentStats
 } from './model';
 
 // Course progress tracking
-export { 
-  useVideoProgress, 
-  useRestorePoint, 
-  useLessonProgress, 
-  useQuizProgress, 
-  useCourseProgressSummary, 
-  useAllCoursesProgress 
+export {
+  useVideoProgress,
+  useRestorePoint,
+  useLessonProgress,
+  useQuizProgress,
+  useCourseProgressSummary,
+  useAllCoursesProgress
 } from './model';
 
 // Course performance analytics
@@ -66,14 +66,14 @@ export { useCoursePerformance } from './model';
 // API SERVICES
 // ═══════════════════════════════════════════════════════════════════════════
 
-export { courseService, enrollmentService, progressService } from './api';
+export { courseService, enrollmentService, fileService } from './api';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // UTILITIES & RECOMMENDATIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Course recommendations (primary export)
-export { 
+export {
   getRecommendedCourses,
   getRecommendedCoursesByType,
   getCoursesForSkillGap,
@@ -114,3 +114,15 @@ export { default as progressSyncManager } from './api/progressSyncManager';
 export { default as courseProgressService } from './api/courseProgressService';
 export { matchCoursesForRole } from './api/roleBasedMatcher';
 export { useLessonPlans } from './model/index';
+
+export { ValidationConflict } from './lib/timetableValidation';
+
+export { default as Resource } from './ui/ResourceUploadComponent';
+
+export { validateTimetableSlot } from './lib/timetableValidation';
+
+export { Lesson } from './model/course-types';
+
+export { getAllTimetableConflicts } from './lib/timetableValidation';
+
+export { default as Course } from './ui/CourseCard';

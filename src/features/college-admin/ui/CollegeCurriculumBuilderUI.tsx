@@ -19,7 +19,7 @@ import {
 } from "@heroicons/react/24/outline";
 import SearchBar from '@/shared/ui/SearchBar';
 import { Pagination } from '@/shared/ui';
-import KPICard from '@/shared/ui/KPICard';
+import { KPICard } from '@/features/analytics';
 import toast from "react-hot-toast";
 import { curriculumApprovalService } from '@/features/college-admin';
 import { curriculumChangeRequestService } from '@/features/college-admin';

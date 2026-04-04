@@ -1,5 +1,5 @@
 // Student model exports
-export * from './types';
+export * from '@/shared/types';
 export { useStudentTrainings } from './useStudentTrainings';
 export { useStudentSkills } from './useStudentSkills';
 export { useStudentSettings } from './useStudentSettings';

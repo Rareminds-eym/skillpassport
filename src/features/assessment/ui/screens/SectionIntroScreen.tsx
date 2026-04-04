@@ -11,7 +11,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { ChevronRight, Sparkles, Code, Zap, CheckCircle2 } from 'lucide-react';
 import { Button } from "@/shared/ui/button";
-import type { GradeLevel } from '../../model/types';
+import type { GradeLevel } from '@/features/assessment/model/types';
 
 interface SectionIntroScreenProps {
   title: string;

@@ -15,8 +15,8 @@ import {
   ChevronDownIcon,
   ChevronUpIcon
 } from '@heroicons/react/24/outline';
-import { getDashboardData } from '@/shared/api';
-import { ActivityFeed } from '@/shared/ui';
+import { getDashboardData } from '@/features/analytics';
+import { ActivityFeed } from '@/features/recruiter';
 import { useRealtimeActivities } from '@/shared/lib/hooks';
 import { trackSearchUsage } from '@/features/opportunities';
 

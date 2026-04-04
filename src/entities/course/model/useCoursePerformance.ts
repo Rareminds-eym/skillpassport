@@ -1,20 +1,27 @@
+/**
+ * Hook for course performance data.
+ * Uses dependency injection - pass getCoursePerformance from the appropriate feature.
+ */
+
 import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/shared/api/supabaseClient';
-import { FunnelRangePreset, getCoursePerformance } from '@/features/educator-copilot';
+import type { FunnelRangePreset } from '@/shared/types';
 
 interface UseCoursePerformanceOptions {
   preset: FunnelRangePreset;
   startDate?: string;
   endDate?: string;
   limit?: number;
+  getCoursePerformance: (preset: FunnelRangePreset, startDate?: string, endDate?: string, limit?: number) => Promise<{ data: any }>;
 }
 
-export const useCoursePerformance = ({ 
-  preset, 
-  startDate, 
+export const useCoursePerformance = ({
+  preset,
+  startDate,
   endDate,
-  limit = 4 
+  limit = 4,
+  getCoursePerformance
 }: UseCoursePerformanceOptions) => {
   const queryClient = useQueryClient();
   const channelRef = useRef<any>(null);

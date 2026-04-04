@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
-import { WelcomeConfig, QuickActionChip } from '../types';
+import type { WelcomeConfig, QuickActionChip } from '../types';
 
 interface WelcomeScreenProps {
   config: WelcomeConfig;

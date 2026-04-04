@@ -17,9 +17,9 @@ interface UseDiversityDataOptions {
  * Uses a shared WebSocket channel to reduce the number of active subscriptions
  * Provides better performance and reduced network overhead
  */
-export const useDiversityData = ({ 
-  preset, 
-  startDate, 
+export const useDiversityData = ({
+  preset,
+  startDate,
   endDate,
   geoLimit = 4,
   collegesLimit = 4,
@@ -31,11 +31,11 @@ export const useDiversityData = ({
   // Memoized invalidation callback
   const invalidateQueries = useCallback(() => {
     // Invalidate both queries at once
-    queryClient.invalidateQueries({ 
+    queryClient.invalidateQueries({
       queryKey: ['geographic-distribution'],
       refetchType: 'active'
     });
-    queryClient.invalidateQueries({ 
+    queryClient.invalidateQueries({
       queryKey: ['top-hiring-colleges'],
       refetchType: 'active'
     });
@@ -87,7 +87,7 @@ export const useDiversityData = ({
 
     // Use a stable channel name shared between both datasets
     const channelName = 'diversity-data-realtime';
-    
+
     // Check if channel already exists
     const existingChannel = supabase.getChannels().find(ch => ch.topic === channelName);
     if (existingChannel) {
@@ -97,12 +97,12 @@ export const useDiversityData = ({
 
     // Single subscription for both geographic and colleges data
     const channel = supabase.channel(channelName)
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'pipeline_candidates' }, 
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'pipeline_candidates' },
         invalidateQueries
       )
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'students' }, 
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'students' },
         invalidateQueries
       );
 

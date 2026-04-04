@@ -7,7 +7,7 @@ import type {
   CertificateStatus,
   CertificateType,
   CertificateIssuanceRequest
-} from './types';
+} from '@/shared/types';
 
 // ============================================================================
 // Certificate Status Validation

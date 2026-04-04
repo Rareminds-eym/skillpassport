@@ -3,9 +3,6 @@
  * Central export point for all user entity functionality
  */
 
-// Re-export useUser from stores for convenience
-export { useUser } from '@/stores/authStore';
-
 // Model exports
 export { useUserRole } from './model/useUserRole';
 export { useRoleResponsibilities } from './model/useRoleResponsibilities';

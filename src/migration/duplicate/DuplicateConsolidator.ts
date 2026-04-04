@@ -13,7 +13,7 @@ import type {
   ConsolidationResult,
   ConsolidationReport,
   ImportPathUpdate,
-} from './types';
+} from '@/features/student-profile/model';
 
 export class DuplicateConsolidator {
   private scanner: DuplicateScanner;

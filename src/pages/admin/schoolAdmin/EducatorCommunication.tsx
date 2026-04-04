@@ -29,7 +29,7 @@ import { useUser } from '@/stores';
 import { useGlobalPresence } from '@/stores';
 import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/shared/lib/hooks';
-import { useNotificationBroadcast } from '@/features/broadcast/model/useNotificationBroadcast';
+import { useNotificationBroadcast } from '@/features/broadcast';
 import { DeleteConversationModal } from '@/features/messaging';
 import { getLogger } from '@/shared/config/logging';
 import { authSessionService } from '@/features/auth';

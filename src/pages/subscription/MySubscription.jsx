@@ -29,7 +29,7 @@ import { useUser } from '@/stores';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getUserSubscriptions } from '@/features/subscription/api';
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '@/features/subscription';
-import { calculateDaysRemaining, calculateProgressPercentage, formatDate as formatDateUtil, getSubscriptionStatusChecks } from "@/features/subscription/lib/subscriptionHelpers";
+import { calculateDaysRemaining, calculateProgressPercentage, formatDate, getSubscriptionStatusChecks } from '@/features/subscription';
 import { useUsageStatistics } from '@/shared/lib/hooks';
 import { authSessionService } from '@/features/auth';
 

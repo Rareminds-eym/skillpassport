@@ -7,7 +7,7 @@
  * @module utils/studentType
  */
 
-import { getGradeLevelFromGrade } from '@/features/assessment';
+import { getGradeLevelFromGrade } from '@/shared/lib/utils/gradeUtils';
 
 /**
  * Education levels in the system

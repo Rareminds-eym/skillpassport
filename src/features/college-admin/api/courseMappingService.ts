@@ -230,7 +230,7 @@ export async function updateCourse(courseId: string, updates: Partial<Course>): 
 /**
  * Get all departments for the current user's college
  */
-export async function getDepartments(): Promise<Department[]> {
+export async function getCourseMappingDepartments(): Promise<Department[]> {
   // Get current user's college ID
   const collegeId = await getCurrentUserCollegeId();
   if (!collegeId) {
@@ -251,7 +251,7 @@ export async function getDepartments(): Promise<Department[]> {
 /**
  * Get programs for a department
  */
-export async function getPrograms(departmentId?: string): Promise<Program[]> {
+export async function getCourseMappingPrograms(departmentId?: string): Promise<Program[]> {
   let query = supabase
     .from('programs')
     .select('id, name, code, department_id, degree_level')
@@ -270,7 +270,7 @@ export async function getPrograms(departmentId?: string): Promise<Program[]> {
 /**
  * Get faculty members with workload info (optimized with batch processing)
  */
-export async function getFaculty(departmentId?: string): Promise<Faculty[]> {
+export async function getCourseMappingFaculty(departmentId?: string): Promise<Faculty[]> {
   const collegeId = await getCurrentUserCollegeId();
   if (!collegeId) {
     throw new Error('Unable to determine user college');

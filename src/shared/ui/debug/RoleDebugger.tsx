@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from "@/shared/api/supabaseClient";
 import { useUserRole } from '@/entities/user';
-import { useUser } from '@/stores';
+import { useUser, useUserRole as useUserRoleFromStore } from '@/stores';
 
 const RoleDebugger: React.FC = () => {
   const authUser = useUser();
-  const { role: authRole } = useUserRole();
+  const { role: authRole } = useUserRoleFromStore();
   const [userInfo, setUserInfo] = useState<any>(null);
   const [teacherData, setTeacherData] = useState<any>(null);
   const [educatorData, setEducatorData] = useState<any>(null);
-  const { role, permissions, loading } = useUserRole();
+  const { role, permissions, loading } = useUserRole(authUser, authRole);
 
   useEffect(() => {
     fetchDebugInfo();
@@ -20,11 +20,11 @@ const RoleDebugger: React.FC = () => {
       // Check session first
       const { data: { session } } = await supabase.auth.getSession();
       console.log('Session exists:', !!session);
-      
+
       const { data: { user }, error } = await supabase.auth.getUser();
       console.log('User fetch error:', error);
       console.log('User exists:', !!user);
-      
+
       setUserInfo(user || { error: error?.message || 'No user found' });
 
       if (user) {
@@ -54,10 +54,10 @@ const RoleDebugger: React.FC = () => {
   return (
     <div className="fixed bottom-4 right-4 bg-white border-2 border-gray-300 rounded-lg shadow-lg p-4 max-w-md z-50">
       <h3 className="font-bold text-lg mb-2">🔍 Role Debugger</h3>
-      
+
       <div className="space-y-2 text-sm max-h-96 overflow-y-auto">
         <div className="bg-blue-50 p-2 rounded">
-          <strong>🎯 Detected Role:</strong> 
+          <strong>🎯 Detected Role:</strong>
           <span className="ml-2 px-2 py-1 bg-indigo-100 text-indigo-800 rounded font-bold">
             {role}
           </span>
@@ -85,7 +85,7 @@ const RoleDebugger: React.FC = () => {
             <div>Email: {userInfo?.email || userInfo?.error || 'N/A'}</div>
             <div>ID: <div className="text-xs text-gray-600 break-all">{userInfo?.id || 'N/A'}</div></div>
             <div>
-              Status: 
+              Status:
               <span className={`ml-2 px-2 py-1 rounded text-xs ${userInfo?.id ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                 {userInfo?.id ? 'Authenticated' : 'Not Authenticated'}
               </span>
@@ -102,7 +102,7 @@ const RoleDebugger: React.FC = () => {
         </div>
 
         <div className="border-t pt-2">
-          <strong>🌐 Current Path:</strong> 
+          <strong>🌐 Current Path:</strong>
           <div className="text-xs text-gray-600 break-all">{window.location.pathname}</div>
         </div>
 

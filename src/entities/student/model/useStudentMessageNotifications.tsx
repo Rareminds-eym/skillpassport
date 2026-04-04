@@ -1,10 +1,13 @@
+// TODO: Dependency Injection Required
+// This hook needs MessageService/Message types passed as parameters
+// Update all call sites to pass these dependencies from @/features/messaging
+
 import React, { useEffect, useRef } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
 import toast from 'react-hot-toast';
 import { MessageSquare, X, User, Briefcase } from 'lucide-react';
-import { Message } from '@/features/messaging';
-import { useMessageStore } from '@/features/messaging';
-
+import { useMessageStore } from '@/features/messaging/model/messageStore';
+import type { Message } from '@/features/messaging/api/messageService';
 interface UseStudentMessageNotificationsProps {
   studentId: string | null;
   enabled?: boolean;
@@ -95,7 +98,7 @@ export const useStudentMessageNotifications = ({
 
           // Increment unread count in store
           incrementUnreadCount();
-          
+
           // Add message to store
           addMessage(message);
 
@@ -122,16 +125,15 @@ export const useStudentMessageNotifications = ({
 const showMessageToast = (message: Message, audio: HTMLAudioElement | null) => {
   const senderType = message.sender_type === 'recruiter' ? 'Recruiter' : 'Student';
   const senderIcon = message.sender_type === 'recruiter' ? Briefcase : User;
-  
+
   toast.custom(
     (t) => (
       <div
-        className={`${
-          t.visible ? 'animate-enter' : 'animate-leave'
-        } max-w-md w-full bg-white shadow-xl rounded-xl pointer-events-auto flex ring-1 ring-black ring-opacity-5 transform transition-all duration-300 hover:scale-105`}
+        className={`${t.visible ? 'animate-enter' : 'animate-leave'
+          } max-w-md w-full bg-white shadow-xl rounded-xl pointer-events-auto flex ring-1 ring-black ring-opacity-5 transform transition-all duration-300 hover:scale-105`}
         style={{
-          animation: t.visible 
-            ? 'slideInRight 0.3s ease-out' 
+          animation: t.visible
+            ? 'slideInRight 0.3s ease-out'
             : 'slideOutRight 0.3s ease-in',
           zIndex: 9999
         }}
@@ -144,22 +146,22 @@ const showMessageToast = (message: Message, audio: HTMLAudioElement | null) => {
                 <MessageSquare className="w-6 h-6 text-white" />
               </div>
             </div>
-            
+
             {/* Content */}
             <div className="ml-3 flex-1">
               <div className="flex items-center gap-2">
-                {React.createElement(senderIcon, { 
-                  className: "w-4 h-4 text-gray-500" 
+                {React.createElement(senderIcon, {
+                  className: "w-4 h-4 text-gray-500"
                 })}
                 <p className="text-sm font-semibold text-gray-900">
                   New Message from {senderType}
                 </p>
               </div>
-              
+
               <p className="mt-1 text-sm text-gray-600 line-clamp-2 leading-relaxed">
                 {message.message_text}
               </p>
-              
+
               {/* Timestamp */}
               <p className="mt-1 text-xs text-gray-400">
                 Just now
@@ -167,7 +169,7 @@ const showMessageToast = (message: Message, audio: HTMLAudioElement | null) => {
             </div>
           </div>
         </div>
-        
+
         {/* Close button */}
         <div className="flex border-l border-gray-100">
           <button

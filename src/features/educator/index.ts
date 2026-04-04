@@ -24,9 +24,10 @@ export { default as ResourceUploadComponent } from './ui/ResourceUploadComponent
 export { default as Sidebar } from './ui/Sidebar';
 export { default as StudentProfileDrawer } from './ui/StudentProfileDrawer';
 export { default as StudentSelectionModal } from './ui/StudentSelectionModal';
+export { default as FloatingEducatorAIButton } from './ui/FloatingEducatorAIButton';
 
 // Modals
-export { default as Addstudentmodal } from './ui/modals/Addstudentmodal';
+export { default as AddStudentModal } from './ui/modals/Addstudentmodal';
 export { default as AddToShortlistModal } from './ui/modals/AddToShortlistModal';
 export { default as BulkDeleteStudentsModal } from './ui/modals/BulkDeleteStudentsModal';
 export { default as CSVImportModal } from './ui/modals/CSVImportModal';
@@ -40,7 +41,7 @@ export { default as SwapRequestCard } from './ui/teacher/SwapRequestCard';
 export { default as SwapRequestModal } from './ui/teacher/SwapRequestModal';
 
 // Hooks
-export * from './model/useEducatorSchool';
+export { useEducatorSchool } from './model/useEducatorSchool';
 export * from './model/useEducatorId';
 export * from './model/useEducatorMessages';
 export * from './model/useEducatorAdminMessages';
@@ -53,3 +54,14 @@ export * from './model/useTopHiringColleges';
 
 // Services
 export * from './api/fileUploadService';
+export { getAssignmentStudents, gradeAssignment } from './api/assignmentsService';
+export { addResource, deleteResource, addLesson, updateLesson, deleteLesson, getAllCourses, getCoursesByEducator, createCourse, updateCourse, deleteCourse } from './api/coursesService';
+export * from './api/mentorNotes';
+export * from './api/dashboardApi';
+
+// Mock data / models
+export { SKILL_CATEGORIES, CLASSES } from './model/mockCourses';
+export { Class, mockClasses } from './model/mockClasses';
+export { Activity, mockActivities } from './model/mockActivities';
+export { mockStudents, Student } from './model/mockStudents';
+export { MediaAsset, mockMediaAssets } from './model/mockMedia';

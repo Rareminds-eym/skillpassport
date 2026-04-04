@@ -7,7 +7,10 @@ import { getPagesApiUrl, getAuthHeaders } from '@/shared/lib/pagesUrl';
 import { getGlobalCareerApiInterceptor } from './careerApiInterceptor';
 
 const API_URL = getPagesApiUrl('career');
-const interceptor = getGlobalCareerApiInterceptor();
+
+function getInterceptor() {
+  return getGlobalCareerApiInterceptor();
+}
 
 interface CareerChatParams {
   conversationId?: string;
@@ -40,7 +43,7 @@ export async function sendCareerChatMessage(
 ): Promise<void> {
   try {
     // Use interceptor to handle token validation and refresh
-    const response = await interceptor.fetch(`${API_URL}/chat`, {
+    const response = await getInterceptor().fetch(`${API_URL}/chat`, {
       method: 'POST',
       headers: getAuthHeaders(token),
       body: JSON.stringify({ conversationId, message, selectedChips }),
@@ -73,15 +76,15 @@ export async function sendCareerChatMessage(
 
       for (const line of lines) {
         if (line.trim() === '') continue; // Skip empty lines
-        
+
         if (line.startsWith('event: ')) {
           continue; // Process next line for data
         }
-        
+
         if (line.startsWith('data: ')) {
           try {
             const data = JSON.parse(line.slice(6));
-            
+
             // Handle different event types based on data structure
             if (data.content) {
               onToken?.(data.content);
@@ -112,7 +115,7 @@ export async function getRecommendations(
   studentId: string,
   { forceRefresh = false, limit = 20 }: RecommendationsParams = {}
 ): Promise<unknown> {
-  const response = await interceptor.fetch(`${API_URL}/recommend-opportunities`, {
+  const response = await getInterceptor().fetch(`${API_URL}/recommend-opportunities`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ studentId, forceRefresh, limit }),
@@ -151,7 +154,7 @@ export async function generateEmbedding({
   id,
   type = 'opportunity'
 }: GenerateEmbeddingParams): Promise<unknown> {
-  const response = await interceptor.fetch(`${API_URL}/generate-embedding`, {
+  const response = await getInterceptor().fetch(`${API_URL}/generate-embedding`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ text, table, id, type }),

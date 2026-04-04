@@ -1,4 +1,4 @@
-import { TourStep } from '../types';
+import { TourStep } from '@/features/student-profile/model';
 
 /**
  * Student Dashboard Tour Configuration - Professional Solution

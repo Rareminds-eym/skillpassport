@@ -1,5 +1,5 @@
 import { supabase } from '@/shared/api/supabaseClient';
-import careerApiService from '@/features/counselling/api/careerApiService';
+import { careerApiService } from '@/features/counselling';
 
 /**
  * AI-Powered Job Recommendation Service

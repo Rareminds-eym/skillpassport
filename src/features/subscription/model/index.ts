@@ -5,3 +5,4 @@ export { default as usePaymentVerification, usePaymentVerificationFromURL } from
 export { default as useSubscriptionPlansData } from './useSubscriptionPlansData';
 export { useSubscriptionQuery, prefetchSubscriptionData, useSubscriptionCache } from './useSubscriptionQuery';
 export { useFeatureGate, clearFeatureAccessCache } from './useFeatureGate';
+export { useAddOnCatalog } from './useAddOnCatalog';

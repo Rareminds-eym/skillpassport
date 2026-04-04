@@ -4,7 +4,7 @@
  */
 
 import { isSameEntity } from '@/shared/lib/comparison';
-import type { Organization, OrganizationType, PricingBreakdown } from './types';
+import type { Organization, OrganizationType, PricingBreakdown } from '@/shared/types';
 
 // ============================================================================
 // Organization Display Utilities

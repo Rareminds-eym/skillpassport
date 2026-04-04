@@ -16,7 +16,7 @@ import { Pagination } from '@/shared/ui';
 import { StudentProfileDrawer, AdmissionNoteModal } from '@/features/student-profile';
 import { AddStudentModal } from '@/features/college-admin';
 import { useStudents } from '@/entities/student';
-import AssessmentReportDrawer from '@/shared/ui/AssessmentReportDrawer';
+import { AssessmentReportDrawer } from '@/features/assessment';
 // @ts-ignore - JS file without types
 import { getLatestResult } from '@/features/assessment';
 

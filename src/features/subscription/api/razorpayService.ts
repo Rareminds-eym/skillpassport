@@ -14,7 +14,7 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
-import paymentsApiService from '../paymentsApiService';
+import paymentsApiService from './paymentsApiService';
 
 /**
  * Load Razorpay checkout script dynamically

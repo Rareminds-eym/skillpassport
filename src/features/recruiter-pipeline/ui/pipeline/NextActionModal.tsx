@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
-import { updateNextAction } from '@/shared/api/pipelineService';
-import { createNotification } from '@/shared/api/notificationService.ts';
-import { NEXT_ACTIONS, PipelineCandidate } from './types';
+import { updateNextAction } from '@/features/recruiter-pipeline';
+import { createNotification } from '@/features/notifications';
+import { PipelineCandidate } from '@/features/student-profile/model';
+import { NEXT_ACTIONS } from './types';
 
 interface NextActionModalProps {
   isOpen: boolean;

@@ -11,9 +11,9 @@ interface UseGeographicDistributionOptions {
   enabled?: boolean;
 }
 
-export const useGeographicDistribution = ({ 
-  preset, 
-  startDate, 
+export const useGeographicDistribution = ({
+  preset,
+  startDate,
   endDate,
   limit = 4,
   enabled = true
@@ -25,7 +25,7 @@ export const useGeographicDistribution = ({
 
   // Memoized invalidation callback to prevent unnecessary re-subscriptions
   const invalidateQuery = useCallback(() => {
-    queryClient.invalidateQueries({ 
+    queryClient.invalidateQueries({
       queryKey: ['geographic-distribution'],
       refetchType: 'active' // Only refetch active queries
     });
@@ -53,7 +53,7 @@ export const useGeographicDistribution = ({
 
     // Use a stable channel name to avoid creating multiple channels
     const channelName = 'geographic-distribution-realtime';
-    
+
     // Check if channel already exists
     const existingChannel = supabase.getChannels().find(ch => ch.topic === channelName);
     if (existingChannel) {
@@ -63,12 +63,12 @@ export const useGeographicDistribution = ({
 
     // Subscribe to pipeline changes for real-time updates via WebSocket
     const channel = supabase.channel(channelName)
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'pipeline_candidates' }, 
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'pipeline_candidates' },
         invalidateQuery
       )
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'students' }, 
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'students' },
         invalidateQuery
       );
 

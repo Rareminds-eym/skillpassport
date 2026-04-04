@@ -19,13 +19,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { AITutorPanel, VideoLearningPanel } from '@/features/ai-tutor';
 import RestoreProgressModal from './RestoreProgressModal';
 import { Badge, Button, Card, CardContent } from '@/shared/ui';
-import { useUser, useUserRole } from '@/stores/authStore';
+import { useUser, useUserRole } from '@/features/auth';
 import { useSessionRestore } from '@/shared/lib/hooks';
 import { supabase } from '@/shared/api/supabaseClient';
 import { generateCourseCertificate } from '@/features/digital-portfolio';
 import { enrollmentService } from '@/features/courses';
 import { courseProgressService as progressService } from '@/features/courses';
-import { fileService } from '@/shared/api/fileService';
+import { fileService } from '@/features/courses';
 import { getAuthenticatedMediaUrl, needsAuthentication } from '@/shared/api/authenticatedMediaService';
 
 const CoursePlayer = () => {

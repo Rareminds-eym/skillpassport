@@ -13,7 +13,7 @@ import {
   Target,
   BookOpen,
 } from "lucide-react";
-import KPICard from '@/shared/ui/KPICard';
+import { KPICard } from '@/features/analytics';
 
 const UniversityDashboard: React.FC = () => {
   // ===== KPI Cards (Real Data from RM Programs Excel) =====

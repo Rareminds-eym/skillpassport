@@ -15,7 +15,7 @@ import {
 import {
   useNotifications,
   NotificationType,
-} from '@/features/recruiter';
+} from '@/features/notifications';
 import { useUser } from "@/stores";
 import { useNavigate } from "react-router-dom";
 

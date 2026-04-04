@@ -6,7 +6,7 @@ import {
   ExclamationTriangleIcon,
   TrashIcon 
 } from '@heroicons/react/24/outline';
-import { uploadInstructionFile, deleteInstructionFile } from '@/features/college-admin/api/assessmentService'
+import { uploadInstructionFile, deleteInstructionFile } from '@/features/college-admin';
 import { useUser } from '@/stores';
 import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
 import { supabase } from '@/shared/api/supabaseClient';

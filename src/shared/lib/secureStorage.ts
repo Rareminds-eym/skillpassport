@@ -54,7 +54,7 @@ const deobfuscate = (data: string, key: string): string => {
 // Try to deobfuscate with current key, handling legacy data gracefully
 const tryDeobfuscate = (data: string): string | null => {
   const key = getOrCreateStableKey();
-  
+
   // First, try to deobfuscate with current key
   const deobfuscated = deobfuscate(data, key);
   if (deobfuscated) {
@@ -65,7 +65,7 @@ const tryDeobfuscate = (data: string): string | null => {
       // Not valid JSON after deobfuscation
     }
   }
-  
+
   // Check if data is already valid JSON (unobfuscated/legacy data)
   try {
     JSON.parse(data);
@@ -73,7 +73,7 @@ const tryDeobfuscate = (data: string): string | null => {
   } catch {
     // Not valid JSON
   }
-  
+
   // Data is corrupted or from old obfuscation key - return null to trigger re-auth
   return null;
 };
@@ -90,7 +90,7 @@ export const secureStorage: Storage = {
   getItem(key: string): string | null {
     const item = localStorage.getItem(key);
     if (item === null) return null;
-    
+
     const result = tryDeobfuscate(item);
     if (result === null) {
       // Data is corrupted - remove it to prevent repeated failures

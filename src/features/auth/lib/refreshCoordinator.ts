@@ -6,7 +6,7 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
-import { getGlobalTokenRefreshErrorHandler } from './tokenRefreshErrorHandler';
+import { getGlobalTokenRefreshErrorHandler, TokenRefreshErrorHandler } from './tokenRefreshErrorHandler';
 
 export interface RefreshCoordinatorConfig {
   /** Maximum number of retry attempts. Default: 3 */
@@ -50,7 +50,14 @@ export class RefreshCoordinator {
   private refreshFunction: RefreshFunction;
   private lastRefreshTime: number = -1;
   private currentAttempt: number = 0;
-  private errorHandler = getGlobalTokenRefreshErrorHandler();
+  private _errorHandler: TokenRefreshErrorHandler | null = null;
+
+  private get errorHandler(): TokenRefreshErrorHandler {
+    if (!this._errorHandler) {
+      this._errorHandler = getGlobalTokenRefreshErrorHandler();
+    }
+    return this._errorHandler;
+  }
 
   constructor(
     refreshFunction?: RefreshFunction,
@@ -83,10 +90,10 @@ export class RefreshCoordinator {
 
     try {
       const result = await this.currentRefreshPromise;
-      
+
       // Process queued requests
       this.processQueue(result);
-      
+
       return result;
     } finally {
       this.isRefreshing = false;
@@ -103,7 +110,7 @@ export class RefreshCoordinator {
 
     for (let attempt = 0; attempt < this.config.maxRetries; attempt++) {
       this.currentAttempt = attempt + 1;
-      
+
       try {
         console.log(
           `[RefreshCoordinator] Refresh attempt ${attempt + 1}/${this.config.maxRetries}`
@@ -111,7 +118,7 @@ export class RefreshCoordinator {
 
         // Execute refresh with timeout
         const result = await this.executeRefreshWithTimeout();
-        
+
         if (result.success) {
           console.log('[RefreshCoordinator] Refresh successful');
           this.lastRefreshTime = Date.now();
@@ -171,14 +178,14 @@ export class RefreshCoordinator {
     console.error(
       `[RefreshCoordinator] Refresh failed after ${this.config.maxRetries} attempts`
     );
-    
+
     this.errorHandler.logFailure(
       lastError,
       this.config.maxRetries,
       retryable,
       'All retry attempts exhausted'
     );
-    
+
     return { success: false, error: lastError, retryable };
   }
 
@@ -208,7 +215,7 @@ export class RefreshCoordinator {
         // Check if there's an error indicating invalid refresh token
         if (response?.error) {
           const error = response.error;
-          
+
           // Categorize error
           if (
             error.message?.includes('refresh') ||

@@ -1,5 +1,5 @@
 import { ValidationManager } from './ValidationManager'
-import { MigrationConfig, MigrationLogger, ValidationResult, Integration, ImportUpdate } from '../types'
+import { MigrationConfig, MigrationLogger, ValidationResult, Integration, ImportUpdate } from '@/features/student-profile/model'
 
 /**
  * High-level validation runner that orchestrates validation workflows

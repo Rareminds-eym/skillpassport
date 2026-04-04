@@ -23,7 +23,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '@/stores';
 import { useGlobalPresence } from '@/stores';
 import { useTypingIndicator } from '@/features/messaging';
-import { useNotificationBroadcast } from '@/features/broadcast/model/useNotificationBroadcast';
+import { useNotificationBroadcast } from '@/features/broadcast';
 
 // Constants
 const AVATAR_BG_COLOR = '3B82F6';

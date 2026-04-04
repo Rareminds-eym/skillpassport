@@ -1,3 +1,1 @@
-export { default as OrganizationSetup } from '@/pages/organization/OrganizationSetup';
-export { default as OrganizationGuard } from './OrganizationGuard';
-
+export { default as OrganizationGuard } from '@/app/guards/OrganizationGuard';

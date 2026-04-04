@@ -5,10 +5,10 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import { AddOnMarketplace, OrganizationPurchasePanel } from '@/features/subscription/ui';
 import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
 import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/stores';
-import { useSubscriptionAccess } from '@/stores/subscriptionStore';
+import { useSubscriptionAccess } from '@/features/subscription';
 
 import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parseStudentType } from "@/shared/lib/getEntityContent";
-import { calculateDaysRemaining, isActiveOrPaused } from "@/features/subscription/lib/subscriptionHelpers";
+import { calculateDaysRemaining, isActiveOrPaused } from '@/features/subscription';
 
 /**
  * Get the subscription manage path based on user role

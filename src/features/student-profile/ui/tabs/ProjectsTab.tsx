@@ -1,7 +1,7 @@
 import React from 'react';
 import { BriefcaseIcon } from '@heroicons/react/24/outline';
-import { Project } from '../types';
-import { ProjectCard } from '../components';
+import { Project } from '@/features/student-profile/model';
+import { ProjectCard } from '..';
 
 interface ProjectsTabProps {
   projects: Project[];

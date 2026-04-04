@@ -20,14 +20,14 @@ import {
 } from "@heroicons/react/24/outline";
 import toast from 'react-hot-toast';
 import { SearchBar } from '@/shared/ui';
-import KPICard from '@/shared/ui/KPICard';
+import { KPICard } from '@/features/analytics';
 import { Pagination } from '@/shared/ui';
 import { ConfirmationModal } from '@/shared/ui';
 import {
-    getDepartments,
-    getPrograms,
+    getCourseMappingDepartments,
+    getCourseMappingPrograms,
     getCourses,
-    getFaculty,
+    getCourseMappingFaculty,
     getCourseMappings,
     mapCourse,
     updateCourseMapping,
@@ -1032,7 +1032,7 @@ const CourseMapping: React.FC = () => {
             setError(null);
 
             const [deptData, coursesData] = await Promise.all([
-                getDepartments(),
+                getCourseMappingDepartments(),
                 getCourses()
             ]);
 
@@ -1052,7 +1052,7 @@ const CourseMapping: React.FC = () => {
 
     const loadPrograms = async () => {
         try {
-            const programData = await getPrograms(selectedDeptId);
+            const programData = await getCourseMappingPrograms(selectedDeptId);
             setPrograms(programData);
             
             // Auto-select first program
@@ -1066,7 +1066,7 @@ const CourseMapping: React.FC = () => {
 
     const loadFaculty = async () => {
         try {
-            const facultyData = await getFaculty(selectedDeptId);
+            const facultyData = await getCourseMappingFaculty(selectedDeptId);
             setFaculties(facultyData);
         } catch (err: any) {
             logger.error('Failed to load faculty:', err as Error);

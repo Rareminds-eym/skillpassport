@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
-import { getTodaySchedule } from '@/shared/api/studentClassService';
-import { getAssignmentStats } from '@/features/educator-copilot/api/assignmentsService';
-import { SchoolTimetableSlot } from '@/features/myclass/ui/tabs/TimetableViewTab';
-import { AssignmentStats } from '@/features/myclass/ui/tabs/OverviewTab';
+import { getTodaySchedule } from '@/features/myclass';
+import { getAssignmentStats } from '@/features/educator-copilot';
+import { SchoolTimetableSlot } from '@/features/myclass';
+import { AssignmentStats } from '@/features/myclass';
 
 interface UseOverviewDataReturn {
   todaySchedule: SchoolTimetableSlot[];

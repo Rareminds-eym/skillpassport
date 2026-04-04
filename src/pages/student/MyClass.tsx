@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/features/auth';
 import { useUser } from '@/stores';
-import { useStudentProfile } from '../../features/student-profile/model/useStudentProfile';
+import { useStudentProfile } from '@/features/student-profile/model/useStudentProfile';
 import { useStudentDataByEmail } from '@/entities/student';
 
 // Import student type detection service

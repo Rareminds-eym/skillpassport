@@ -4,7 +4,7 @@ import {
   Star
 } from 'lucide-react';
 import AssignmentCard, { Assignment } from '../AssignmentCard';
-import Pagination from '@/features/educator/ui/Pagination';
+import { Pagination } from '@/features/educator';
 
 interface AssignmentsTabProps {
   assignments: Assignment[];

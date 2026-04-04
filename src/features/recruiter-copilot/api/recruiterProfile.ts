@@ -1,16 +1,5 @@
 import { supabase } from '@/shared/api/supabaseClient';
-import {
-  AUTH_ERROR_CODES,
-  validateCredentials,
-  validateEmail,
-  mapSupabaseError,
-  handleAuthError,
-  logAuthEvent,
-  withRetry,
-  withTimeout,
-  buildErrorResponse,
-  generateCorrelationId,
-} from "@/features/auth/lib/authErrorHandler";
+import { AUTH_ERROR_CODES, validateCredentials, validateEmail, mapSupabaseError, handleAuthError, logAuthEvent, withRetry, withTimeout, buildErrorResponse, generateCorrelationId,  } from '@/features/auth';
 
 /**
  * Recruiter Profile Service

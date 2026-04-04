@@ -4,11 +4,11 @@ import { motion } from "framer-motion";
 import { AlertCircle, BarChart3, CheckCircle, Zap } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import loginIllustration from "../../../../../assets/images/auth/Recruiter-illustration.png";
-import { SignupFormFields } from "@/features/subscription/ui/shared";
+import loginIllustration from "@/assets/images/auth/Recruiter-illustration.png";
+import { SignupFormFields } from '@/features/subscription';
 import { capitalizeFirstLetter, formatOtp, formatPhoneNumber, getInitialFormData, validateSignupFields } from "@/features/subscription";
 import { supabase } from "@/shared/api/supabaseClient";
-import FeatureCard from "../../ui/FeatureCard";
+import FeatureCard from "@/pages/auth/components/ui/FeatureCard";
 
 export default function SignupRecruiter() {
   const navigate = useNavigate();

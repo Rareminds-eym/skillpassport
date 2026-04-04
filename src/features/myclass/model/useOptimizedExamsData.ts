@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
-import { getGroupedStudentExams, getStudentResults, getStudentResultStats } from '@/shared/api/studentExamService';
-import { SchoolGroupedExam } from '@/features/myclass/ui/tabs/ExamsTab';
-import { SchoolStudentResult, SchoolResultStats } from '@/features/myclass/ui/tabs/ResultsTab';
+import { getGroupedStudentExams, getStudentResults, getStudentResultStats } from '@/features/exams';
+import { SchoolGroupedExam } from '@/features/myclass';
+import { SchoolStudentResult, SchoolResultStats } from '@/features/myclass';
 
 interface UseExamsDataReturn {
   groupedExams: SchoolGroupedExam[];

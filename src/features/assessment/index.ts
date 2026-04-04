@@ -51,7 +51,7 @@ export * from './model/types';
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-export * from './config/config';
+export * from './lib/config/config';
 
 // =============================================================================
 // UTILITIES
@@ -72,7 +72,7 @@ export * from './model';
 // =============================================================================
 // DATA (Question Banks & Scoring)
 // =============================================================================
-export * from './data';
+export * from './model/questions';
 
 // =============================================================================
 // COMPONENTS
@@ -89,15 +89,15 @@ export {
   // Assessment Generation
   generateAssessment,
   validateAssessment,
-  
+
   // Adaptive Engine
   AdaptiveEngine,
-  
+
   // Adaptive Aptitude Service
   initializeTest,
   getNextQuestion,
   submitAnswer,
-  
+
   // External Assessment Service
   checkAssessmentStatus,
   createAssessmentAttempt,
@@ -220,10 +220,10 @@ export {
   HIGHER_SECONDARY_SECTIONS,
   AFTER_10TH_SECTIONS,
   COMPREHENSIVE_SECTIONS,
-} from './config/sections';
+} from './lib/config/sections';
 
-export * from './config/streams';
-export * from './config/assessmentResultConstants';
+export * from './lib/config/streams';
+export * from './lib/config/assessmentResultConstants';
 
 // =============================================================================
 // ASSESSMENT UTILITIES
@@ -237,30 +237,43 @@ export * from './lib/printUtils';
 
 // API & Data Access
 export * from './api';
-export { default as employabilityQuestions } from './data/questions/employabilityQuestions';
-export type { NextQuestionResult } from './api/adaptiveAptitudeApiService';
-export type { SchoolClass } from './api/examsService';
-export { streamKnowledgeQuestions } from './data/questions/streamKnowledgeQuestions';
-export type { MarkEntry } from './api/examsService';
-export type { SchoolEducator } from './api/examsService';
+export { default as employabilityQuestions } from './model/questions/employabilityQuestions';
+export { streamKnowledgeQuestions } from './model/questions/streamKnowledgeQuestions';
 export { validateRiasecScores } from './api/riasecScoreValidator';
-export type { AssessmentType } from './api/examsService';
 export { validateAptitudeScores } from './api/aptitudeScoreValidator';
-export type { Student } from './api/examsService';
-export type { CurriculumSubject } from './api/examsService';
-export type { ExamRoom } from './api/examsService';
-export type { InitializeTestResult } from './api/adaptiveAptitudeApiService';
 export { getInProgressAttempt } from './api/assessmentService';
-export { workValuesQuestions } from './data/questions/index';
+export { workValuesQuestions } from './model/questions/index';
 export { getLatestResult } from './api/assessmentService';
-export type { ExamTimetable } from './api/examsService';
-export { transformAssessmentResults } from './api/assessmentResultTransformer';
-export type { ResumeTestResult } from './api/adaptiveAptitudeApiService';
+export { default as transformAssessmentResults } from './api/assessmentResultTransformer';
 export { addCourseRecommendations } from './api/assessment/courseIntegration';
-export { strengthsRatingScale } from './data/questions/middleSchoolQuestions';
-export { getModuleQuestionIndex } from './data/questions/aptitudeQuestions';
-export { getCurrentEmployabilityModule } from './data/questions/employabilityQuestions';
-export { highSchoolRatingScale } from './data/questions/middleSchoolQuestions';
-export type { EmbeddedAssessment } from './ui/EmbeddedAssessment';
-export { AdaptiveAptitudeService } from './api/adaptiveAptitudeService';
-export type { InitializeTestResult, NextQuestionResult, SubmitAnswerResult } from './api/adaptiveAptitudeService';
+export { strengthsRatingScale } from './model/questions/middleSchoolQuestions';
+export { default as getModuleQuestionIndex } from './model/questions/aptitudeQuestions';
+export { getCurrentEmployabilityModule } from './model/questions/employabilityQuestions';
+export { highSchoolRatingScale } from './model/questions/middleSchoolQuestions';
+export type { default as EmbeddedAssessment } from './ui/EmbeddedAssessment';
+export { default as AdaptiveAptitudeService } from './api/adaptiveAptitudeService';
+export { default as AssessmentReportDrawer } from './ui/AssessmentReportDrawer';
+
+export { TRAIT_NAMES } from './lib/config/assessmentResultConstants';
+
+export { PRINT_STYLES } from './lib/config/assessmentResultConstants';
+
+export { printStyles } from './lib/printStyles';
+
+export { GRADE_LEVELS } from './lib/config/config';
+
+export { PROGRAM_GRADE_MAPPINGS } from './lib/config/config';
+
+export { RIASEC_COLORS } from './lib/config/assessmentResultConstants';
+
+export { RIASEC_NAMES } from './lib/config/assessmentResultConstants';
+
+export { RESPONSE_SCALES } from './lib/config/config';
+
+export { GRADE_RANGES } from './lib/config/config';
+
+export { TRAIT_COLORS } from './lib/config/assessmentResultConstants';
+
+export { default as Question } from './ui/QuestionNavigation';
+
+export { calculateStreamRecommendations } from './lib/streamMatchingEngine';

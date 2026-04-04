@@ -20,7 +20,7 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
-import { checkAuthentication } from '../authService';
+import { checkAuthentication } from '@/features/auth';
 
 /**
  * Get active subscription for authenticated user

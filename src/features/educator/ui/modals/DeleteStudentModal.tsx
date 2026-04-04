@@ -40,7 +40,7 @@ const DeleteStudentModal: React.FC<DeleteStudentModalProps> = ({
     try {
       // Get the current educator's ID and type
       const educatorData = await getCurrentEducator();
-      
+
       if (!educatorData.data) {
         setError('Could not identify the educator. Please try logging in again.');
         setLoading(false);
@@ -52,7 +52,7 @@ const DeleteStudentModal: React.FC<DeleteStudentModalProps> = ({
 
       // Perform soft delete with educator ID and type
       const result = await softDeleteStudent(student?.id, educatorId, educatorType);
-      
+
       if (result.success) {
         onSuccess();
         onClose();
@@ -93,7 +93,7 @@ const DeleteStudentModal: React.FC<DeleteStudentModalProps> = ({
                   <span className="font-medium text-gray-900">{student?.name}</span>?
                 </p>
                 <p className="text-sm text-gray-500 mt-2">
-                  This action will soft delete the student from the system. The record will be marked as deleted 
+                  This action will soft delete the student from the system. The record will be marked as deleted
                   but can be restored later if needed.
                 </p>
               </div>
@@ -153,7 +153,7 @@ const DeleteStudentModal: React.FC<DeleteStudentModalProps> = ({
           {/* Warning Note */}
           <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
             <p className="text-xs text-yellow-800">
-              <strong>Note:</strong> This is a soft delete. The student data will not be permanently removed 
+              <strong>Note:</strong> This is a soft delete. The student data will not be permanently removed
               from the database and can be restored by an administrator if needed.
             </p>
           </div>

@@ -30,7 +30,7 @@ import * as assessmentService from '../api/assessmentService';
 import { normalizeStreamId } from '../api/careerAssessmentAIService';
 
 // Hooks
-import { useAssessmentFlow } from '../model/useAssessmentFlow';
+import { useAssessmentFlow } from '../model/useCareerTestFlow';
 import { useStudentGrade } from '../model/useStudentGrade';
 import { useAIQuestions } from '../model/useAIQuestions';
 import { useAssessmentSubmission } from '../model/useAssessmentSubmission';
@@ -41,7 +41,7 @@ import {
   getSectionsForGrade,
   type GradeLevel,
   RESPONSE_SCALES
-} from "@/features/assessment/config/sections";
+} from "@/features/assessment/lib/config/sections";
 
 // Components
 import { QuestionRenderer } from './questions/QuestionRenderer';
@@ -86,7 +86,7 @@ import {
   highSchoolStrengthsQuestions,
   highSchoolLearningQuestions,
   highSchoolAptitudeQuestions,
-} from '@/features/assessment/data/questions';
+} from '@/features/assessment/model/questions';
 import { supabase } from '@/shared/api';
 
 /**
@@ -145,7 +145,7 @@ const getSectionIconPath = (sectionId: string): string => {
  */
 const getErrorType = (errorMessage: string): ErrorType => {
   const msg = errorMessage.toLowerCase();
-  
+
   if (msg.includes('network') || msg.includes('connection') || msg.includes('offline') || msg.includes('fetch')) {
     return 'network';
   }
@@ -259,7 +259,7 @@ const buildSectionsWithQuestions = (
 const AssessmentTestPage: React.FC = () => {
   const navigate = useNavigate();
   const user = useUser();
-  
+
   // Tour hook - check if tour is running to pause timers
   const { isTourRunning } = useTour();
 
@@ -268,7 +268,7 @@ const AssessmentTestPage: React.FC = () => {
   const shouldShowAllOptions = window.location.hostname === 'skillpassport.pages.dev';
   const shouldFilterByGrade = window.location.hostname === 'localhost' ||
     window.location.hostname === '127.0.0.1' || "dev.skillpassport.pages.dev"
-    window.location.hostname === 'skilldevelopment.rareminds.in';
+  window.location.hostname === 'skilldevelopment.rareminds.in';
 
   // Student grade info
   const {
@@ -324,7 +324,7 @@ const AssessmentTestPage: React.FC = () => {
       if (useDatabase && currentAttempt?.id) {
         // Save all responses including non-UUID questions (RIASEC, BigFive, etc.)
         const progressResult = await dbUpdateProgress(flow.currentSectionIndex, 0, updatedTimings, null, null, flow.answers);
-        
+
         // BLOCKING: Show error if section completion save failed
         if (!progressResult.success) {
           const errorMsg = progressResult.userMessage || 'Failed to save section completion';
@@ -344,7 +344,7 @@ const AssessmentTestPage: React.FC = () => {
         if (isUUID) {
           // UUID questions (AI-generated) go to personal_assessment_responses table
           const saveResult = await dbSaveResponse(sectionId, qId, answer);
-          
+
           // BLOCKING: Show error and prevent continuing if save failed
           if (!saveResult.success) {
             const errorMsg = saveResult.userMessage || 'Failed to save answer';
@@ -364,7 +364,7 @@ const AssessmentTestPage: React.FC = () => {
         // Update progress (current position) after every answer
         // Also save all responses to the all_responses column
         const progressResult = await dbUpdateProgress(flow.currentSectionIndex, flow.currentQuestionIndex, flow.sectionTimings, null, null, updatedAnswers);
-        
+
         // BLOCKING: Show error and prevent continuing if progress update failed
         if (!progressResult.success) {
           const errorMsg = progressResult.userMessage || 'Failed to save progress';
@@ -404,7 +404,7 @@ const AssessmentTestPage: React.FC = () => {
     console.log('🎉 [AssessmentTestPage] Adaptive test completed, results:', testResults);
     flow.setAnswer('adaptive_aptitude_results', testResults);
     flow.setAnswer('adaptive_aptitude_session_id', testResults.sessionId);
-    
+
     // Link the adaptive session to the assessment attempt
     // NOTE: This is now also done in startTest, but keeping it here as a backup
     if (testResults.sessionId && currentAttempt?.id) {
@@ -423,7 +423,7 @@ const AssessmentTestPage: React.FC = () => {
         hasAttemptId: !!currentAttempt?.id
       });
     }
-    
+
     // Always call completeSection to show the section complete screen
     // The auto-submit useEffect will handle submission if it's the last section
     flow.completeSection();
@@ -564,7 +564,7 @@ const AssessmentTestPage: React.FC = () => {
     // This prevents the knowledge section from being created with 0 questions
     const needsAIKnowledge = ['higher_secondary', 'after12', 'college'].includes(flow.gradeLevel);
     const hasAIKnowledge = aiQuestions?.knowledge && aiQuestions.knowledge.length > 0;
-    
+
     // Don't build sections if we need AI knowledge questions but they haven't loaded yet
     if (needsAIKnowledge && !hasAIKnowledge && questionsLoading) {
       console.log('⏳ Waiting for AI knowledge questions to load before building sections');
@@ -633,7 +633,7 @@ const AssessmentTestPage: React.FC = () => {
     // Only skip intro if we have an active adaptive session with a question
     if (targetSection?.isAdaptive) {
       console.log('🔄 [ADAPTIVE RESUME] Restoring adaptive section position');
-      
+
       // CRITICAL FIX: Check if adaptive session exists in the attempt
       // If user completed previous section and moved to adaptive section but never clicked "Start Section",
       // the adaptive_aptitude_session_id will be NULL
@@ -646,7 +646,7 @@ const AssessmentTestPage: React.FC = () => {
         flow.setCurrentScreen('section_intro');
         return;
       }
-      
+
       // Adaptive session exists, check if it was successfully resumed and questions are loaded
       if (adaptiveAptitude.isTestComplete) {
         console.log('✅ [ADAPTIVE RESUME] Test is complete, showing results');
@@ -855,7 +855,7 @@ const AssessmentTestPage: React.FC = () => {
       flow.startSection();
       return;
     }
-    
+
     // CASE 2: Resuming adaptive section - questions just finished loading
     // This handles the case where user returns to continue test and adaptive session is being resumed
     if (
@@ -872,7 +872,7 @@ const AssessmentTestPage: React.FC = () => {
       // The QuestionRenderer will display the adaptive question
       return;
     }
-    
+
     // CASE 3: Safety timeout - If adaptive test is stuck loading for more than 30 seconds, show error
     if (
       currentSection?.isAdaptive &&
@@ -887,7 +887,7 @@ const AssessmentTestPage: React.FC = () => {
           flow.setError('Adaptive test initialization timed out. Please refresh the page and try again.');
         }
       }, 30000); // 30 second timeout
-      
+
       return () => clearTimeout(timeoutId);
     }
   }, [adaptiveAptitude.loading, adaptiveAptitude.currentQuestion, flow.showSectionIntro, flow.currentScreen, flow.currentSectionIndex, flow.currentQuestionIndex, sections, flow]);
@@ -1131,14 +1131,14 @@ const AssessmentTestPage: React.FC = () => {
     // FIX 1: Resume adaptive aptitude session if exists
     if (pendingAttempt.adaptive_aptitude_session_id) {
       console.log('🔄 [ADAPTIVE RESUME] Found adaptive session ID, attempting to resume:', pendingAttempt.adaptive_aptitude_session_id);
-      
+
       // Check if the adaptive session is already completed
       const { data: adaptiveSession } = await supabase
         .from('adaptive_aptitude_sessions')
         .select('status, questions_answered')
         .eq('id', pendingAttempt.adaptive_aptitude_session_id)
         .single();
-      
+
       if (adaptiveSession?.status === 'completed') {
         console.log('✅ [ADAPTIVE RESUME] Adaptive session already completed, skipping resume');
         console.log('✅ [ADAPTIVE RESUME] Will show section complete screen');
@@ -1209,7 +1209,7 @@ const AssessmentTestPage: React.FC = () => {
       // The adaptive hook manages its own question state
       if (targetSection?.isAdaptive) {
         console.log('🔄 [ADAPTIVE RESUME] Detected adaptive section in handleResumeAssessment');
-        
+
         // CRITICAL FIX: Check if adaptive session exists
         // If user completed previous section and moved to adaptive section but never clicked "Start Section",
         // the adaptive_aptitude_session_id will be NULL
@@ -1227,7 +1227,7 @@ const AssessmentTestPage: React.FC = () => {
             .select('status')
             .eq('id', pendingAttempt.adaptive_aptitude_session_id)
             .single();
-          
+
           if (adaptiveSession?.status === 'completed') {
             console.log('✅ [ADAPTIVE RESUME] Adaptive session is completed, showing section complete');
             flow.setCurrentQuestionIndex(0);
@@ -1363,7 +1363,7 @@ const AssessmentTestPage: React.FC = () => {
         // Determine the appropriate stream ID based on grade level
         // Use the stream that was set during grade selection
         let streamId = flow.studentStream;
-        
+
         // Fallback: If no stream selected, use 'college' for college students
         // Note: College students have gradeLevel='after12' but isCollegeStudent=true
         if (!streamId && isCollegeStudent) {
@@ -1371,16 +1371,16 @@ const AssessmentTestPage: React.FC = () => {
         }
         // For after12, after10, middle, highschool: streamId should already be set
 
-        console.log('🎯 [AssessmentTestPage] Creating attempt:', { 
-          streamId, 
-          gradeLevel: flow.gradeLevel, 
+        console.log('🎯 [AssessmentTestPage] Creating attempt:', {
+          streamId,
+          gradeLevel: flow.gradeLevel,
           studentRecordId,
           currentSectionIndex: flow.currentSectionIndex,
-          note: streamId === 'college' ? 'Using college stream (program-based)' : 
-                streamId ? 'Using selected stream' : 
-                'No stream (will be null)'
+          note: streamId === 'college' ? 'Using college stream (program-based)' :
+            streamId ? 'Using selected stream' :
+              'No stream (will be null)'
         });
-        
+
         await dbStartAssessment(streamId, flow.gradeLevel || 'after10');
         console.log('✅ [handleStartSection] Attempt created successfully');
       } catch (err) {
@@ -1418,10 +1418,10 @@ const AssessmentTestPage: React.FC = () => {
       console.log('🚀 [ADAPTIVE] Starting adaptive test...');
       console.log('🚀 [ADAPTIVE] Student ID:', user?.id);
       console.log('🚀 [ADAPTIVE] Current attempt ID:', currentAttempt?.id);
-      
+
       // Initialize adaptive timer based on section config
       setAdaptiveQuestionTimer(currentSection.individualTimeLimit || 60);
-      
+
       // Check if questions are already loaded
       if (adaptiveAptitude.currentQuestion && !adaptiveAptitude.loading) {
         console.log('✅ [ADAPTIVE] Questions already loaded, starting immediately');
@@ -1431,7 +1431,7 @@ const AssessmentTestPage: React.FC = () => {
         console.log('⏳ [ADAPTIVE] Questions not loaded yet, setting pending flag');
         // Set pending flag so useEffect knows to start section when questions load
         adaptiveStartPendingRef.current = true;
-        
+
         // Start the adaptive test (async - questions will load in background)
         try {
           console.log('🚀 [ADAPTIVE] Calling adaptiveAptitude.startTest()...');
@@ -1450,7 +1450,7 @@ const AssessmentTestPage: React.FC = () => {
           flow.setError(`Failed to initialize adaptive test: ${(err as Error)?.message || 'Unknown error'}. Please refresh and try again.`);
           return;
         }
-        
+
         // Don't call flow.startSection() here - the useEffect will do it once questions are ready
       }
       return;
@@ -1812,7 +1812,7 @@ const AssessmentTestPage: React.FC = () => {
     } else {
       flow.setAnswer(qId, value);
       console.log(`📝 [Answer Stored] QuestionID: ${qId}, Answers now:`, Object.keys(flow.answers).length, 'total');
-      
+
       // Log the actual stored value to verify
       setTimeout(() => {
         console.log(`📝 [Answer Verify] Checking if stored - flow.answers[${qId}]:`, flow.answers[qId]);
@@ -1910,21 +1910,21 @@ const AssessmentTestPage: React.FC = () => {
     flow.jumpToSection(sectionIndex);
 
     const targetSection = sections[sectionIndex];
-    
+
     // For adaptive sections, we need to initialize the test first
     if (targetSection?.isAdaptive) {
       console.log(`✅ Test Mode: Skipped to adaptive section ${sectionIndex} (${targetSection.title})`);
       console.log('⏳ Initializing adaptive test...');
-      
+
       // Initialize adaptive timer
       setAdaptiveQuestionTimer(targetSection.individualTimeLimit || 60);
-      
+
       // Set pending flag so useEffect knows to start section when questions load
       adaptiveStartPendingRef.current = true;
-      
+
       // Start the adaptive test (async - questions will load in background)
       adaptiveAptitude.startTest();
-      
+
       // The useEffect will call flow.startSection() once questions are ready
       // Don't call it here or it will cause issues
     } else {
@@ -1932,7 +1932,7 @@ const AssessmentTestPage: React.FC = () => {
       setTimeout(() => {
         flow.startSection();
       }, 100);
-      
+
       console.log(`✅ Test Mode: Skipped to section ${sectionIndex} (${targetSection?.title})`);
     }
   }, [sections, flow, useDatabase, currentAttempt, dbUpdateProgress, dbSaveResponse, adaptiveAptitude, setAdaptiveQuestionTimer]);
@@ -1954,7 +1954,7 @@ const AssessmentTestPage: React.FC = () => {
     console.log('🔍 [MCQ Check] QuestionID from flow:', flow.questionId);
     console.log('🔍 [MCQ Check] QuestionID local:', questionId);
     console.log('🔍 [MCQ Check] Are they equal?:', flow.questionId === questionId);
-    
+
     // Check for adaptive sections
     if (currentSection?.isAdaptive) {
       const isAnswered = adaptiveAptitudeAnswer !== null && adaptiveAptitudeAnswer !== undefined && adaptiveAptitudeAnswer !== '';
@@ -1970,7 +1970,7 @@ const AssessmentTestPage: React.FC = () => {
 
     const answer = flow.answers[questionId];
     console.log('🔍 [Answer Check] QuestionID:', questionId, 'Answer:', answer, 'Type:', typeof answer);
-    
+
     // For MCQ questions (aptitude and knowledge sections), answer must be a non-empty string
     // CRITICAL: Check this BEFORE the general empty check to ensure strict validation
     if (currentSection?.isAptitude || currentSection?.isKnowledge) {
@@ -1983,7 +1983,7 @@ const AssessmentTestPage: React.FC = () => {
       console.log('🔍 [MCQ Check] All answer keys:', Object.keys(flow.answers));
       return isAnswered;
     }
-    
+
     // Check for empty/null/undefined answers for other question types
     if (answer === null || answer === undefined || answer === '') {
       console.log('🔍 [Empty Check] No answer found for questionId:', questionId);
@@ -1996,21 +1996,21 @@ const AssessmentTestPage: React.FC = () => {
       console.log('🔍 [SJT Check] Is answered:', isAnswered);
       return isAnswered;
     }
-    
+
     // For multiselect questions, check if required number of selections made
     if (currentQuestion?.type === 'multiselect') {
       const isAnswered = Array.isArray(answer) && answer.length === currentQuestion.maxSelections;
       console.log('🔍 [Multiselect Check] Is answered:', isAnswered);
       return isAnswered;
     }
-    
+
     // For text questions, check if there's some content (at least 10 characters for meaningful response)
     if (currentQuestion?.type === 'text') {
       const isAnswered = typeof answer === 'string' && answer.trim().length >= 10;
       console.log('🔍 [Text Check] Is answered:', isAnswered);
       return isAnswered;
     }
-    
+
     // For other question types (Likert scales, etc.), ensure answer is not empty
     const isAnswered = answer !== null && answer !== undefined && answer !== '';
     console.log('🔍 [Default Check] Is answered:', isAnswered, 'Answer:', answer);
@@ -2021,7 +2021,7 @@ const AssessmentTestPage: React.FC = () => {
   // For grade levels that require AI knowledge questions, show loading until questions are ready
   const needsAIKnowledge = flow.gradeLevel && ['higher_secondary', 'after12', 'college'].includes(flow.gradeLevel);
   const waitingForAIQuestions = needsAIKnowledge && questionsLoading && assessmentStarted && sections.length === 0;
-  
+
   const showLoading = checkingExistingAttempt || (!assessmentStarted && dbLoading) || waitingForAIQuestions;
 
   // Debug: Log loading states
@@ -2039,8 +2039,8 @@ const AssessmentTestPage: React.FC = () => {
   }
 
   if (showLoading) {
-    const message = waitingForAIQuestions 
-      ? "Generating personalized questions for your stream..." 
+    const message = waitingForAIQuestions
+      ? "Generating personalized questions for your stream..."
       : "Loading assessment...";
     return <LoadingScreen message={message} />;
   }
@@ -2244,9 +2244,9 @@ const AssessmentTestPage: React.FC = () => {
 
                 try {
                   // Only use 'college' stream for actual college students
-                  const streamId = flow.studentStream || 
+                  const streamId = flow.studentStream ||
                     (flow.gradeLevel === 'college' ? 'college' : null);
-                  
+
                   await dbStartAssessment(streamId, flow.gradeLevel || 'after12');
 
                   // Wait a bit for the attempt to be created
@@ -2349,7 +2349,7 @@ const AssessmentTestPage: React.FC = () => {
           {!flow.showSectionIntro && !flow.showSectionComplete && !currentQuestion && !currentSection?.isAdaptive && (
             <LoadingScreen message="Loading question..." />
           )}
-          
+
           {/* Adaptive Section Loading - Show loading when adaptive test is initializing */}
           {!flow.showSectionIntro && !flow.showSectionComplete && currentSection?.isAdaptive && (adaptiveAptitude.loading || !adaptiveAptitude.currentQuestion) && !adaptiveAptitude.error && !adaptiveAptitude.isTestComplete && (
             <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 flex items-center justify-center">
@@ -2369,7 +2369,7 @@ const AssessmentTestPage: React.FC = () => {
               </div>
             </div>
           )}
-          
+
           {/* Adaptive Test Complete - Show section complete if adaptive test finished but flow.showSectionComplete not set yet */}
           {!flow.showSectionIntro && !flow.showSectionComplete && currentSection?.isAdaptive && adaptiveAptitude.isTestComplete && (
             <SectionCompleteScreen
@@ -2381,7 +2381,7 @@ const AssessmentTestPage: React.FC = () => {
               onContinue={handleNextSection}
             />
           )}
-          
+
           {/* Adaptive Section Error - Show error if adaptive test fails to initialize */}
           {!flow.showSectionIntro && !flow.showSectionComplete && currentSection?.isAdaptive && adaptiveAptitude.error && (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
@@ -2495,9 +2495,9 @@ const AssessmentTestPage: React.FC = () => {
                     onPrevious={flow.goToPreviousQuestion}
                     onNext={handleNextQuestion}
                     canGoPrevious={
-                      flow.currentQuestionIndex > 0 && 
-                      !currentSection?.isAdaptive && 
-                      !currentSection?.isAptitude && 
+                      flow.currentQuestionIndex > 0 &&
+                      !currentSection?.isAdaptive &&
+                      !currentSection?.isAptitude &&
                       !currentSection?.isKnowledge
                     }
                     isAnswered={isCurrentAnswered}

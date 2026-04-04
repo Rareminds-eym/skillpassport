@@ -23,7 +23,7 @@ import { DeleteConversationModal } from '@/features/messaging';
 import { useAuth } from '@/features/auth';
 import { useGlobalPresence } from '@/stores';
 import { useEducatorAdminMessages } from '@/features/educator';
-import { useNotificationBroadcast } from '@/features/broadcast/model/useNotificationBroadcast';
+import { useNotificationBroadcast } from '@/features/broadcast';
 import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/features/messaging';
 import { supabase } from '@/shared/api/supabaseClient';

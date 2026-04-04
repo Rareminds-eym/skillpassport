@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getStudentClassInfo } from '@/shared/api/studentClassService';
-import { SchoolClassInfo } from '@/features/myclass/ui/SchoolClassHeader';
+import { getStudentClassInfo } from '@/features/myclass';
+import { SchoolClassInfo } from '@/features/myclass';
 
 interface UseClassInfoReturn {
   classInfo: SchoolClassInfo | null;

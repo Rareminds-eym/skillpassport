@@ -24,7 +24,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/stores';
-import { ACCESS_REASONS, useSubscriptionContext } from '@/stores';
+import { ACCESS_REASONS, useSubscriptionContext, useSubscriptionStore } from '@/stores';
 import Loader from '@/shared/ui/Loader';
 import SubscriptionBanner from './SubscriptionBanner';
 
@@ -101,7 +101,7 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
  */
 async function retryWithBackoff(fn, maxRetries, baseDelayMs, onRetry) {
   let lastError;
-  
+
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       return await fn();
@@ -114,7 +114,7 @@ async function retryWithBackoff(fn, maxRetries, baseDelayMs, onRetry) {
       }
     }
   }
-  
+
   throw lastError;
 }
 
@@ -132,7 +132,7 @@ function usePostPaymentSync(isPostPayment, hasAccess, refreshAccess) {
     attempts: 0,
     error: null,
   });
-  
+
   const syncStartedRef = useRef(false);
   const timeoutRef = useRef(null);
   const mountedRef = useRef(true);
@@ -250,11 +250,13 @@ function useGuardState({
   const computedState = useMemo(() => {
     // Step 1: Auth loading
     if (authLoading) {
+      console.log('🛡️ [Guard] Step 1: authLoading=true → CHECKING_AUTH');
       return GUARD_STATES.CHECKING_AUTH;
     }
 
     // Step 2: Not authenticated
     if (!isAuthenticated) {
+      console.log('🛡️ [Guard] Step 2: isAuthenticated=false → ACCESS_DENIED');
       return GUARD_STATES.ACCESS_DENIED;
     }
 
@@ -263,9 +265,10 @@ function useGuardState({
       // Check if this is an admin role mismatch that should be allowed
       const isAdminRoute = allowedRoles.some(r => r.includes('_admin'));
       const userIsAdmin = role === 'admin' || role?.includes('_admin');
-      
+
       if (!(isAdminRoute && userIsAdmin)) {
         // Not an admin exception, deny access
+        console.log('🛡️ [Guard] Step 3: Role mismatch → ACCESS_DENIED. role=', role, 'allowedRoles=', allowedRoles);
         return GUARD_STATES.ACCESS_DENIED;
       }
       // Admin exception - continue to subscription check
@@ -273,35 +276,46 @@ function useGuardState({
 
     // Step 4: Subscription not required
     if (!requireSubscription) {
+      console.log('🛡️ [Guard] Step 4: requireSubscription=false → ACCESS_GRANTED');
       return GUARD_STATES.ACCESS_GRANTED;
     }
 
     // Step 5: Post-payment sync in progress
     if (isPostPayment && postPaymentSync.isSyncing) {
+      console.log('🛡️ [Guard] Step 5: Post-payment syncing → POST_PAYMENT_SYNC');
       return GUARD_STATES.POST_PAYMENT_SYNC;
     }
 
     // Step 6: Subscription loading or refetching
     if (subscriptionLoading || (!hasAccess && isRefetching)) {
+      console.log('🛡️ [Guard] Step 6: subscriptionLoading=', subscriptionLoading, 'isRefetching=', isRefetching, 'hasAccess=', hasAccess, '→ CHECKING_SUBSCRIPTION');
       return GUARD_STATES.CHECKING_SUBSCRIPTION;
     }
 
     // Step 7: Subscription error (allow with warning)
     if (subscriptionError) {
+      console.log('🛡️ [Guard] Step 7: subscriptionError=', subscriptionError, '→ ERROR');
       return GUARD_STATES.ERROR;
     }
 
     // Step 8: Check access
     if (hasAccess) {
+      console.log('🛡️ [Guard] Step 8: hasAccess=true → ACCESS_GRANTED');
       return GUARD_STATES.ACCESS_GRANTED;
     }
 
     // Step 9: Post-payment sync failed but we should still check access
     if (isPostPayment && postPaymentSync.syncFailed) {
       // Even if sync failed, check if we have access now
+      console.log('🛡️ [Guard] Step 9: Post-payment sync failed, hasAccess=', hasAccess);
       return hasAccess ? GUARD_STATES.ACCESS_GRANTED : GUARD_STATES.ACCESS_DENIED;
     }
 
+    console.log('🛡️ [Guard] Step 10: Fallback → ACCESS_DENIED. Full state:', {
+      authLoading, isAuthenticated, role, allowedRoles, requireSubscription,
+      subscriptionLoading, hasAccess, isRefetching, subscriptionError: subscriptionError?.message,
+      isPostPayment, postPaymentSync
+    });
     return GUARD_STATES.ACCESS_DENIED;
   }, [
     authLoading,
@@ -338,8 +352,8 @@ function useGuardState({
 // MAIN COMPONENT
 // ============================================================================
 
-const SubscriptionProtectedRoute = ({ 
-  children, 
+const SubscriptionProtectedRoute = ({
+  children,
   allowedRoles = [],
   requireSubscription = true,
   subscriptionFallbackPath = '/subscription/plans',
@@ -350,7 +364,7 @@ const SubscriptionProtectedRoute = ({
   const authLoading = useAuthLoading();
   const user = useUser();
   const location = useLocation();
-  
+
   // Debug logging for redirect loop investigation
   useEffect(() => {
     if (DEBUG) {
@@ -365,7 +379,7 @@ const SubscriptionProtectedRoute = ({
       });
     }
   }, [location.pathname, isAuthenticated, role, authLoading, user?.id, allowedRoles, requireSubscription]);
-  
+
   const {
     hasAccess,
     accessReason,
@@ -377,6 +391,20 @@ const SubscriptionProtectedRoute = ({
     isRefetching,
     refreshAccess,
   } = useSubscriptionContext();
+
+  // DEBUG: Log subscription context values on every render
+  console.log('🛡️ [SubscriptionProtectedRoute] Render. Context values:', {
+    authLoading,
+    isAuthenticated,
+    role,
+    userId: user?.id,
+    subscriptionLoading,
+    hasAccess,
+    accessReason,
+    isRefetching,
+    subscriptionError: subscriptionError?.message || null,
+    _storeId: useSubscriptionStore?.getState?.()?._storeId || 'N/A',
+  });
 
   // Detect post-payment navigation
   const isPostPayment = location.state?.fromPayment === true;
@@ -421,6 +449,8 @@ const SubscriptionProtectedRoute = ({
   // RENDER BASED ON STATE
   // ============================================================================
 
+  console.log('🛡️ [SubscriptionProtectedRoute] guardState =', guardState);
+
   // Loading states
   if (
     guardState === GUARD_STATES.INITIALIZING ||
@@ -428,6 +458,7 @@ const SubscriptionProtectedRoute = ({
     guardState === GUARD_STATES.CHECKING_SUBSCRIPTION ||
     guardState === GUARD_STATES.POST_PAYMENT_SYNC
   ) {
+    console.log('🛡️ [SubscriptionProtectedRoute] → Rendering <Loader /> because guardState =', guardState);
     return <Loader />;
   }
 
@@ -436,7 +467,7 @@ const SubscriptionProtectedRoute = ({
     log.error('Subscription check error, allowing access with warning:', subscriptionError);
     return (
       <>
-        <SubscriptionBanner 
+        <SubscriptionBanner
           type="error"
           message="Unable to verify subscription status. Some features may be limited."
         />
@@ -449,8 +480,8 @@ const SubscriptionProtectedRoute = ({
   if (guardState === GUARD_STATES.ACCESS_DENIED) {
     // Not authenticated
     if (!isAuthenticated) {
-      const redirectPath = location.pathname.includes('student') 
-        ? loginFallbackPath 
+      const redirectPath = location.pathname.includes('student')
+        ? loginFallbackPath
         : '/';
       log.info('Not authenticated, redirecting to:', redirectPath);
       return <Navigate to={redirectPath} state={{ from: location }} replace />;
@@ -463,7 +494,7 @@ const SubscriptionProtectedRoute = ({
     const isAdminRoute = allowedRoles.some(r => r.includes('_admin'));
     const userIsAdmin = role === 'admin' || role?.includes('_admin');
     const adminRoleException = isAdminRoute && userIsAdmin;
-    
+
     if (!roleMatches && !adminRoleException) {
       // Role doesn't match and no admin exception applies
       const expectedRole = allowedRoles[0] || 'student';
@@ -483,10 +514,10 @@ const SubscriptionProtectedRoute = ({
 
     log.info('No subscription access, redirecting to:', fallbackUrl, 'Reason:', accessReason, 'Role:', role, 'AdminException:', adminRoleException);
     return (
-      <Navigate 
-        to={fallbackUrl} 
+      <Navigate
+        to={fallbackUrl}
         state={buildRedirectState(message)}
-        replace 
+        replace
       />
     );
   }
@@ -497,7 +528,7 @@ const SubscriptionProtectedRoute = ({
     return (
       <>
         {showWarning && (
-          <SubscriptionBanner 
+          <SubscriptionBanner
             type={warningType}
             message={warningMessage}
           />

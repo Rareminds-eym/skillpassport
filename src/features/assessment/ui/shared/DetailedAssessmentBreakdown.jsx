@@ -4,8 +4,8 @@
  * This section is hidden from screen view and only appears in PDF exports
  */
 
-import { printStyles } from '../../lib/printStyles';
-import { getScoreStyle } from '../../lib/printUtils';
+import { printStyles } from '@/features/assessment/lib/printStyles';
+import { getScoreStyle } from '@/features/assessment/lib/printUtils';
 
 /**
  * Helper function to get color based on percentage (matching print view theme)

@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react';
 import { updateAssignmentStatus, submitAssignmentWithStagedFiles, getAssignmentWithFiles } from '@/features/educator-copilot';
-import { Assignment } from '@/features/myclass/ui/AssignmentCard';
-import { isOverdue } from '@/features/myclass/lib/dateHelpers';
-import { getAuthSession, validateStorageConfig } from '@/features/myclass/lib/supabaseHelpers';
-import { getUploadErrorMessage } from '@/features/myclass/lib/errorHandlers';
+import { Assignment } from '@/features/myclass';
+import { isOverdue } from '@/features/myclass';
+import { getAuthSession, validateStorageConfig } from '@/features/myclass';
+import { getUploadErrorMessage } from '@/features/myclass';
 
 interface UseAssignmentActionsProps {
   studentId: string | undefined;
@@ -125,7 +125,7 @@ export const useAssignmentActions = ({
 
   const loadAssignmentDetails = useCallback(async (assignmentId: string) => {
     if (!studentId) return null;
-    
+
     try {
       return await getAssignmentWithFiles(studentId, assignmentId);
     } catch (error) {

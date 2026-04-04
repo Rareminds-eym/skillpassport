@@ -45,10 +45,10 @@ import {
     riasecQuestions as aiPoweredRiasecQuestions,
     // Work Values
     workValuesQuestions as aiPoweredWorkValuesQuestions,
-} from '../../features/assessment';
+} from '@/features/assessment';
 
 // Import Gemini assessment service
-import { analyzeAssessmentWithGemini } from '../../features/assessment/api/geminiAssessmentService';
+import { analyzeAssessmentWithGemini } from '@/features/assessment/api/geminiAssessmentService';
 
 // Import AI question generation service for Aptitude & Knowledge
 import { loadCareerAssessmentQuestions, STREAM_KNOWLEDGE_PROMPTS, normalizeStreamId } from '@/features/assessment';
@@ -82,7 +82,7 @@ import {
     StreamSelectionScreen,
     ResumePromptScreen,
     RestrictionScreen,
-} from '../../features/assessment';
+} from '@/features/assessment';
 
 const AssessmentTest = () => {
     const navigate = useNavigate();

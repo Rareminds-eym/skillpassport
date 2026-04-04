@@ -1,0 +1,1202 @@
+[
+  {
+    "file": "src\\stores\\subscriptionStore.ts",
+    "oldImport": "../services/entitlementService",
+    "newImport": "@/features/subscription",
+    "line": 6
+  },
+  {
+    "file": "src\\stores\\portfolioStore.ts",
+    "oldImport": "../services/portfolioService",
+    "newImport": "@/features/digital-portfolio",
+    "line": 4
+  },
+  {
+    "file": "src\\hooks\\useVideoSummarizer.ts",
+    "oldImport": "../services/videoSummarizerService",
+    "newImport": "@/features/ai-tutor",
+    "line": 7
+  },
+  {
+    "file": "src\\hooks\\useUnreadMessagesCount.ts",
+    "oldImport": "../services/messageService",
+    "newImport": "@/features/messaging",
+    "line": 3
+  },
+  {
+    "file": "src\\hooks\\useTutorChat.ts",
+    "oldImport": "../services/tutorService",
+    "newImport": "@/features/ai-tutor",
+    "line": 12
+  },
+  {
+    "file": "src\\hooks\\useTopHiringColleges.ts",
+    "oldImport": "../services/analyticsService",
+    "newImport": "@/features/educator-copilot",
+    "line": 4
+  },
+  {
+    "file": "src\\hooks\\useStudents.ts",
+    "oldImport": "../services/programService",
+    "newImport": "@/features/college-admin",
+    "line": 3
+  },
+  {
+    "file": "src\\hooks\\useStudentEducatorMessages.js",
+    "oldImport": "../services/messageService",
+    "newImport": "@/features/messaging",
+    "line": 3
+  },
+  {
+    "file": "src\\hooks\\useStudentCollegeLecturerMessages.js",
+    "oldImport": "../services/messageService",
+    "newImport": "@/features/messaging",
+    "line": 3
+  },
+  {
+    "file": "src\\hooks\\useStudentCollegeAdminMessages.js",
+    "oldImport": "../services/messageService",
+    "newImport": "@/features/messaging",
+    "line": 4
+  },
+  {
+    "file": "src\\hooks\\useStudentAdminMessages.js",
+    "oldImport": "../services/messageService",
+    "newImport": "@/features/messaging",
+    "line": 4
+  },
+  {
+    "file": "src\\hooks\\useSpeedAnalytics.ts",
+    "oldImport": "../services/analyticsService",
+    "newImport": "@/features/educator-copilot",
+    "line": 4
+  },
+  {
+    "file": "src\\hooks\\useRoleResponsibilities.ts",
+    "oldImport": "../services/aiCareerPathService",
+    "newImport": "@/features/counselling",
+    "line": 2
+  },
+  {
+    "file": "src\\hooks\\useRoleOverview.ts",
+    "oldImport": "../services/aiCareerPathService",
+    "newImport": "@/features/counselling",
+    "line": 13
+  },
+  {
+    "file": "src\\hooks\\useRequisitions.js",
+    "oldImport": "../services/pipelineService",
+    "newImport": "@/features/opportunities",
+    "line": 2
+  },
+  {
+    "file": "src\\hooks\\useRecruitmentFunnel.ts",
+    "oldImport": "../services/analyticsService",
+    "newImport": "@/features/educator-copilot",
+    "line": 4
+  },
+  {
+    "file": "src\\hooks\\useQualityMetrics.ts",
+    "oldImport": "../services/analyticsService",
+    "newImport": "@/features/educator-copilot",
+    "line": 2
+  },
+  {
+    "file": "src\\hooks\\useProgramSections.ts",
+    "oldImport": "../services/programService",
+    "newImport": "@/features/college-admin",
+    "line": 9
+  },
+  {
+    "file": "src\\hooks\\useProfileCompletion.js",
+    "oldImport": "../services/profileValidationService",
+    "newImport": "@/features/student-profile",
+    "line": 2
+  },
+  {
+    "file": "src\\hooks\\usePipelineData.ts",
+    "oldImport": "../services/pipelineService",
+    "newImport": "@/features/opportunities",
+    "line": 6
+  },
+  {
+    "file": "src\\hooks\\usePipelineData.ts",
+    "oldImport": "../services/appliedJobsService",
+    "newImport": "@/features/opportunities",
+    "line": 8
+  },
+  {
+    "file": "src\\hooks\\useOpportunities.js",
+    "oldImport": "../services/opportunitiesService",
+    "newImport": "@/features/opportunities",
+    "line": 2
+  },
+  {
+    "file": "src\\hooks\\useOfflineSync.js",
+    "oldImport": "../services/progressSyncManager",
+    "newImport": "@/features/courses",
+    "line": 2
+  },
+  {
+    "file": "src\\hooks\\useMessages.ts",
+    "oldImport": "../services/messageService",
+    "newImport": "@/features/messaging",
+    "line": 2
+  },
+  {
+    "file": "src\\hooks\\useMessageNotifications.tsx",
+    "oldImport": "../services/messageService",
+    "newImport": "@/features/messaging",
+    "line": 5
+  },
+  {
+    "file": "src\\hooks\\useMentorAllocation.ts",
+    "oldImport": "../services/mentorAllocationService",
+    "newImport": "@/features/college-admin",
+    "line": 36
+  },
+  {
+    "file": "src\\hooks\\useLessonPlans.ts",
+    "oldImport": "../services/lessonPlansService",
+    "newImport": "@/features/educator-copilot",
+    "line": 15
+  },
+  {
+    "file": "src\\hooks\\useIndustryDemand.ts",
+    "oldImport": "../services/aiCareerPathService",
+    "newImport": "@/features/counselling",
+    "line": 2
+  },
+  {
+    "file": "src\\hooks\\useGeographicDistribution.ts",
+    "oldImport": "../services/analyticsService",
+    "newImport": "@/features/educator-copilot",
+    "line": 4
+  },
+  {
+    "file": "src\\hooks\\useFeatureGate.js",
+    "oldImport": "../services/entitlementService",
+    "newImport": "@/features/subscription",
+    "line": 11
+  },
+  {
+    "file": "src\\hooks\\useExams.ts",
+    "oldImport": "../services/examsService",
+    "newImport": "@/features/assessment",
+    "line": 3
+  },
+  {
+    "file": "src\\hooks\\useEducatorMessages.js",
+    "oldImport": "../services/messageService",
+    "newImport": "@/features/messaging",
+    "line": 3
+  },
+  {
+    "file": "src\\hooks\\useEducatorAdminMessages.js",
+    "oldImport": "../services/messageService",
+    "newImport": "@/features/messaging",
+    "line": 3
+  },
+  {
+    "file": "src\\hooks\\useDiversityData.ts",
+    "oldImport": "../services/analyticsService",
+    "newImport": "@/features/educator-copilot",
+    "line": 4
+  },
+  {
+    "file": "src\\hooks\\useCurriculum.ts",
+    "oldImport": "../services/curriculumService",
+    "newImport": "@/features/college-admin",
+    "line": 2
+  },
+  {
+    "file": "src\\hooks\\useCoursePerformance.ts",
+    "oldImport": "../services/analyticsService",
+    "newImport": "@/features/educator-copilot",
+    "line": 4
+  },
+  {
+    "file": "src\\hooks\\useConversationStudents.ts",
+    "oldImport": "../services/messageService",
+    "newImport": "@/features/messaging",
+    "line": 4
+  },
+  {
+    "file": "src\\hooks\\useCollegeLecturerMessages.js",
+    "oldImport": "../services/messageService",
+    "newImport": "@/features/messaging",
+    "line": 3
+  },
+  {
+    "file": "src\\hooks\\useCollegeLecturerConversations.js",
+    "oldImport": "../services/messageService",
+    "newImport": "@/features/messaging",
+    "line": 3
+  },
+  {
+    "file": "src\\hooks\\useCollegeEducatorAdminMessages.js",
+    "oldImport": "../services/messageService",
+    "newImport": "@/features/messaging",
+    "line": 3
+  },
+  {
+    "file": "src\\hooks\\useCollegeEducatorAdminConversations.js",
+    "oldImport": "../services/messageService",
+    "newImport": "@/features/messaging",
+    "line": 4
+  },
+  {
+    "file": "src\\hooks\\useCollegeAdminMessages.js",
+    "oldImport": "../services/messageService",
+    "newImport": "@/features/messaging",
+    "line": 4
+  },
+  {
+    "file": "src\\hooks\\useClasses.ts",
+    "oldImport": "../services/classService",
+    "newImport": "@/features/college-admin",
+    "line": 2
+  },
+  {
+    "file": "src\\hooks\\useAnalyticsKPIs.ts",
+    "oldImport": "../services/analyticsService",
+    "newImport": "@/features/educator-copilot",
+    "line": 4
+  },
+  {
+    "file": "src\\hooks\\useAIRecommendations.js",
+    "oldImport": "../services/aiRecommendationService",
+    "newImport": "@/features/ai-tutor",
+    "line": 2
+  },
+  {
+    "file": "src\\hooks\\useAIJobMatching.js",
+    "oldImport": "../services/aiJobMatchingService",
+    "newImport": "@/features/opportunities",
+    "line": 2
+  },
+  {
+    "file": "src\\pages\\register\\SimpleEventRegistration.jsx",
+    "oldImport": "../../services/paymentsApiService",
+    "newImport": "@/features/subscription",
+    "line": 40
+  },
+  {
+    "file": "src\\pages\\register\\InternalTestingRegistration.jsx",
+    "oldImport": "@/services/studentAuthService",
+    "newImport": "@/features/auth",
+    "line": 23
+  },
+  {
+    "file": "src\\pages\\subscription\\MySubscription.jsx",
+    "oldImport": "../../services/paymentsApiService",
+    "newImport": "@/features/subscription",
+    "line": 31
+  },
+  {
+    "file": "src\\pages\\student\\SavedJobs.jsx",
+    "oldImport": "../../services/appliedJobsService",
+    "newImport": "@/features/opportunities",
+    "line": 18
+  },
+  {
+    "file": "src\\pages\\student\\SavedJobs.jsx",
+    "oldImport": "../../services/savedJobsService",
+    "newImport": "@/features/opportunities",
+    "line": 19
+  },
+  {
+    "file": "src\\pages\\student\\Opportunities.jsx",
+    "oldImport": "../../services/appliedJobsService",
+    "newImport": "@/features/opportunities",
+    "line": 45
+  },
+  {
+    "file": "src\\pages\\student\\Opportunities.jsx",
+    "oldImport": "../../services/savedJobsService",
+    "newImport": "@/features/opportunities",
+    "line": 46
+  },
+  {
+    "file": "src\\pages\\student\\Opportunities.jsx",
+    "oldImport": "../../services/factoryVisitsService",
+    "newImport": "@/features/college-admin",
+    "line": 47
+  },
+  {
+    "file": "src\\pages\\student\\MyClass.tsx",
+    "oldImport": "../../services/collegeClassService",
+    "newImport": "@/features/college-admin",
+    "line": 9
+  },
+  {
+    "file": "src\\pages\\student\\Courses.jsx",
+    "oldImport": "../../services/certificateService",
+    "newImport": "@/features/digital-portfolio",
+    "line": 35
+  },
+  {
+    "file": "src\\pages\\student\\CoursePlayer.jsx",
+    "oldImport": "../../services/certificateService",
+    "newImport": "@/features/digital-portfolio",
+    "line": 25
+  },
+  {
+    "file": "src\\pages\\student\\Clubs.jsx",
+    "oldImport": "../../services/clubsService",
+    "newImport": "@/features/college-admin",
+    "line": 15
+  },
+  {
+    "file": "src\\pages\\student\\Clubs.jsx",
+    "oldImport": "../../services/competitionsService",
+    "newImport": "@/features/college-admin",
+    "line": 16
+  },
+  {
+    "file": "src\\pages\\student\\Assignments.jsx",
+    "oldImport": "../../services/assignmentsService",
+    "newImport": "@/features/educator-copilot",
+    "line": 33
+  },
+  {
+    "file": "src\\pages\\student\\Applications.jsx",
+    "oldImport": "../../services/appliedJobsService",
+    "newImport": "@/features/opportunities",
+    "line": 27
+  },
+  {
+    "file": "src\\pages\\recruiter\\TalentPool.tsx",
+    "oldImport": "../../services/interviewService",
+    "newImport": "@/features/opportunities",
+    "line": 24
+  },
+  {
+    "file": "src\\pages\\recruiter\\TalentPool.tsx",
+    "oldImport": "../../services/savedSearchesService",
+    "newImport": "@/features/opportunities",
+    "line": 25
+  },
+  {
+    "file": "src\\pages\\recruiter\\TalentPool.tsx",
+    "oldImport": "../../services/shortlistService",
+    "newImport": "@/features/opportunities",
+    "line": 26
+  },
+  {
+    "file": "src\\pages\\recruiter\\Shortlists.tsx",
+    "oldImport": "../../services/shortlistService",
+    "newImport": "@/features/opportunities",
+    "line": 32
+  },
+  {
+    "file": "src\\pages\\recruiter\\Pipelines.tsx",
+    "oldImport": "../../services/pipelineService",
+    "newImport": "@/features/opportunities",
+    "line": 13
+  },
+  {
+    "file": "src\\pages\\recruiter\\Overview.tsx",
+    "oldImport": "../../services/savedSearchesService",
+    "newImport": "@/features/opportunities",
+    "line": 21
+  },
+  {
+    "file": "src\\pages\\recruiter\\Interviews.tsx",
+    "oldImport": "../../services/interviewService",
+    "newImport": "@/features/opportunities",
+    "line": 23
+  },
+  {
+    "file": "src\\pages\\recruiter\\ApplicantsList.tsx",
+    "oldImport": "../../services/appliedJobsService",
+    "newImport": "@/features/opportunities",
+    "line": 2
+  },
+  {
+    "file": "src\\pages\\recruiter\\ApplicantsList.tsx",
+    "oldImport": "../../services/pipelineService",
+    "newImport": "@/features/opportunities",
+    "line": 3
+  },
+  {
+    "file": "src\\pages\\recruiter\\Analytics.tsx",
+    "oldImport": "../../services/analyticsService",
+    "newImport": "@/features/educator-copilot",
+    "line": 48
+  },
+  {
+    "file": "src\\pages\\teacher\\SwapRequestsDashboard.tsx",
+    "oldImport": "../../services/classSwapService",
+    "newImport": "@/features/college-admin",
+    "line": 11
+  },
+  {
+    "file": "src\\pages\\teacher\\MyTimetable.tsx",
+    "oldImport": "../../services/classSwapService",
+    "newImport": "@/features/college-admin",
+    "line": 27
+  },
+  {
+    "file": "src\\pages\\educator\\SkillCurricular.tsx",
+    "oldImport": "../../services/clubsService",
+    "newImport": "@/features/college-admin",
+    "line": 27
+  },
+  {
+    "file": "src\\pages\\educator\\SkillCurricular.tsx",
+    "oldImport": "../../services/competitionsService",
+    "newImport": "@/features/college-admin",
+    "line": 28
+  },
+  {
+    "file": "src\\pages\\educator\\ProgramSectionsPage.tsx",
+    "oldImport": "../../services/programService",
+    "newImport": "@/features/college-admin",
+    "line": 23
+  },
+  {
+    "file": "src\\pages\\educator\\CollegeSkillTasks.tsx",
+    "oldImport": "../../services/collegeAssignmentService",
+    "newImport": "@/features/college-admin",
+    "line": 17
+  },
+  {
+    "file": "src\\pages\\educator\\ClassesPage.tsx",
+    "oldImport": "../../services/classService",
+    "newImport": "@/features/college-admin",
+    "line": 30
+  },
+  {
+    "file": "src\\pages\\auth\\LoginRecruiter.jsx",
+    "oldImport": "../../services/recruiterProfile",
+    "newImport": "@/features/recruiter-copilot",
+    "line": 17
+  },
+  {
+    "file": "src\\migration\\integration\\SearchStoreIntegrator.ts",
+    "oldImport": "../../services/searchHistoryService",
+    "newImport": "@/features/opportunities",
+    "line": 363
+  },
+  {
+    "file": "src\\migration\\integration\\PortfolioStoreIntegrator.ts",
+    "oldImport": "../../services/portfolioService",
+    "newImport": "@/features/digital-portfolio",
+    "line": 298
+  },
+  {
+    "file": "src\\migration\\integration\\AuthStoreIntegrator.ts",
+    "oldImport": "../../services/authService",
+    "newImport": "@/features/auth",
+    "line": 452
+  },
+  {
+    "file": "src\\components\\Subscription\\SubscriptionDashboard.jsx",
+    "oldImport": "../../services/entitlementService",
+    "newImport": "@/features/subscription",
+    "line": 34
+  },
+  {
+    "file": "src\\components\\Students\\OfferAcceptanceModal.jsx",
+    "oldImport": "../../services/offerManagementService",
+    "newImport": "@/features/opportunities",
+    "line": 3
+  },
+  {
+    "file": "src\\components\\student\\WeeklyLearningTracker.jsx",
+    "oldImport": "../../services/certificateService",
+    "newImport": "@/features/digital-portfolio",
+    "line": 7
+  },
+  {
+    "file": "src\\components\\skillpassport\\RegistrationForm.jsx",
+    "oldImport": "../../services/paymentsApiService",
+    "newImport": "@/features/subscription",
+    "line": 24
+  },
+  {
+    "file": "src\\components\\Myclass\\SchoolMyClass.tsx",
+    "oldImport": "../../services/assignmentsService",
+    "newImport": "@/features/educator-copilot",
+    "line": 57
+  },
+  {
+    "file": "src\\components\\Myclass\\CollegeMyClass.tsx",
+    "oldImport": "../../services/collegeClassService",
+    "newImport": "@/features/college-admin",
+    "line": 22
+  },
+  {
+    "file": "src\\components\\Myclass\\CollegeMyClass.tsx",
+    "oldImport": "../../services/collegeAssignmentService",
+    "newImport": "@/features/college-admin",
+    "line": 32
+  },
+  {
+    "file": "src\\components\\educator\\ManageStudentsModal.tsx",
+    "oldImport": "../../services/classService",
+    "newImport": "@/features/college-admin",
+    "line": 11
+  },
+  {
+    "file": "src\\components\\educator\\ManageProgramStudentsModal.tsx",
+    "oldImport": "../../services/programService",
+    "newImport": "@/features/college-admin",
+    "line": 3
+  },
+  {
+    "file": "src\\components\\educator\\CSVImportPreview.tsx",
+    "oldImport": "../../services/csvImportService",
+    "newImport": "@/features/college-admin",
+    "line": 8
+  },
+  {
+    "file": "src\\components\\educator\\AssignTaskModal.tsx",
+    "oldImport": "../../services/classService",
+    "newImport": "@/features/college-admin",
+    "line": 4
+  },
+  {
+    "file": "src\\pages\\admin\\universityAdmin\\SyllabusApproval.tsx",
+    "oldImport": "../../../services/curriculumApprovalService",
+    "newImport": "@/features/college-admin",
+    "line": 23
+  },
+  {
+    "file": "src\\pages\\admin\\universityAdmin\\SyllabusApproval.tsx",
+    "oldImport": "../../../services/curriculumChangeRequestService",
+    "newImport": "@/features/college-admin",
+    "line": 24
+  },
+  {
+    "file": "src\\pages\\admin\\universityAdmin\\StudentEnrollments.tsx",
+    "oldImport": "@/services/aiCareerPathService",
+    "newImport": "@/features/counselling",
+    "line": 20
+  },
+  {
+    "file": "src\\pages\\admin\\universityAdmin\\CurriculumChangeRequests.tsx",
+    "oldImport": "../../../services/curriculumChangeRequestService",
+    "newImport": "@/features/college-admin",
+    "line": 11
+  },
+  {
+    "file": "src\\pages\\admin\\universityAdmin\\CollegeRegistration.tsx",
+    "oldImport": "../../../services/universityCollegeService",
+    "newImport": "@/features/university-ai",
+    "line": 31
+  },
+  {
+    "file": "src\\pages\\admin\\schoolAdmin\\Verifications.tsx",
+    "oldImport": "../../../services/schoolAdminNotificationService",
+    "newImport": "@/features/school-admin",
+    "line": 35
+  },
+  {
+    "file": "src\\pages\\admin\\schoolAdmin\\StudentCommunication.tsx",
+    "oldImport": "../../../services/messageService",
+    "newImport": "@/features/messaging",
+    "line": 26
+  },
+  {
+    "file": "src\\pages\\admin\\schoolAdmin\\SkillCurricular.tsx",
+    "oldImport": "../../../services/clubsService",
+    "newImport": "@/features/college-admin",
+    "line": 26
+  },
+  {
+    "file": "src\\pages\\admin\\schoolAdmin\\SkillCurricular.tsx",
+    "oldImport": "../../../services/competitionsService",
+    "newImport": "@/features/college-admin",
+    "line": 27
+  },
+  {
+    "file": "src\\pages\\admin\\schoolAdmin\\LessonPlan.tsx",
+    "oldImport": "../../../services/lessonPlansService",
+    "newImport": "@/features/educator-copilot",
+    "line": 32
+  },
+  {
+    "file": "src\\pages\\admin\\schoolAdmin\\LessonPlan.tsx",
+    "oldImport": "../../../services/curriculumService",
+    "newImport": "@/features/college-admin",
+    "line": 33
+  },
+  {
+    "file": "src\\pages\\admin\\schoolAdmin\\EducatorCommunication.tsx",
+    "oldImport": "../../../services/messageService",
+    "newImport": "@/features/messaging",
+    "line": 24
+  },
+  {
+    "file": "src\\pages\\admin\\schoolAdmin\\CurriculumBuilderWrapper.tsx",
+    "oldImport": "../../../services/curriculumService",
+    "newImport": "@/features/college-admin",
+    "line": 6
+  },
+  {
+    "file": "src\\pages\\admin\\schoolAdmin\\CurriculumBuilder.tsx",
+    "oldImport": "@/services/curriculumExportService",
+    "newImport": "@/features/college-admin",
+    "line": 3
+  },
+  {
+    "file": "src\\pages\\admin\\collegeAdmin\\Verifications.jsx",
+    "oldImport": "@/services/collegeAdminNotificationService",
+    "newImport": "@/features/college-admin",
+    "line": 32
+  },
+  {
+    "file": "src\\pages\\admin\\collegeAdmin\\StudentCollegeAdminCommunication.tsx",
+    "oldImport": "../../../services/messageService",
+    "newImport": "@/features/messaging",
+    "line": 39
+  },
+  {
+    "file": "src\\pages\\admin\\collegeAdmin\\ReportsAnalytics.tsx",
+    "oldImport": "@/services/college/reportsService",
+    "newImport": "@/features/college-admin",
+    "line": 2
+  },
+  {
+    "file": "src\\pages\\admin\\collegeAdmin\\MentorAllocation.tsx",
+    "oldImport": "../../../services/mentorAllocationService",
+    "newImport": "@/features/college-admin",
+    "line": 21
+  },
+  {
+    "file": "src\\pages\\admin\\collegeAdmin\\Library.tsx",
+    "oldImport": "../../../services/libraryService",
+    "newImport": "@/features/college-admin",
+    "line": 4
+  },
+  {
+    "file": "src\\pages\\admin\\collegeAdmin\\Departmentmanagement.tsx",
+    "oldImport": "@/services/college/departmentService",
+    "newImport": "@/features/college-admin",
+    "line": 3
+  },
+  {
+    "file": "src\\pages\\admin\\collegeAdmin\\CurriculumBuilder.tsx",
+    "oldImport": "../../../services/curriculumApprovalService",
+    "newImport": "@/features/college-admin",
+    "line": 10
+  },
+  {
+    "file": "src\\pages\\admin\\collegeAdmin\\CircularsManagement.tsx",
+    "oldImport": "../../../services/circularsService",
+    "newImport": "@/features/college-admin",
+    "line": 22
+  },
+  {
+    "file": "src\\pages\\admin\\collegeAdmin\\Attendancetracking.tsx",
+    "oldImport": "@/services/college/curriculumService",
+    "newImport": "@/features/college-admin",
+    "line": 8
+  },
+  {
+    "file": "src\\features\\school-admin\\ui\\TrainingDetailsModal.jsx",
+    "oldImport": "../../../services/schoolAdminNotificationService",
+    "newImport": "@/features/school-admin",
+    "line": 3
+  },
+  {
+    "file": "src\\features\\school-admin\\ui\\TrainingDetailsModal.jsx",
+    "oldImport": "../../../services/collegeAdminNotificationService",
+    "newImport": "@/features/college-admin",
+    "line": 4
+  },
+  {
+    "file": "src\\features\\school-admin\\ui\\ProjectDetailsModal.jsx",
+    "oldImport": "../../../services/schoolAdminNotificationService",
+    "newImport": "@/features/school-admin",
+    "line": 17
+  },
+  {
+    "file": "src\\features\\school-admin\\ui\\PendingTrainings.jsx",
+    "oldImport": "../../../services/schoolAdminNotificationService",
+    "newImport": "@/features/school-admin",
+    "line": 3
+  },
+  {
+    "file": "src\\features\\school-admin\\ui\\NotificationBell.jsx",
+    "oldImport": "../../../services/schoolAdminNotificationService",
+    "newImport": "@/features/school-admin",
+    "line": 3
+  },
+  {
+    "file": "src\\features\\school-admin\\ui\\ExperienceDetailsModal.jsx",
+    "oldImport": "../../../services/schoolAdminNotificationService",
+    "newImport": "@/features/school-admin",
+    "line": 3
+  },
+  {
+    "file": "src\\features\\school-admin\\ui\\ExperienceDetailsModal.jsx",
+    "oldImport": "../../../services/collegeAdminNotificationService",
+    "newImport": "@/features/college-admin",
+    "line": 4
+  },
+  {
+    "file": "src\\features\\subscription\\api\\subscriptionService.js",
+    "oldImport": "@/services/authService",
+    "newImport": "@/features/auth",
+    "line": 23
+  },
+  {
+    "file": "src\\features\\subscription\\api\\razorpayService.js",
+    "oldImport": "@/services/paymentsApiService",
+    "newImport": "@/features/subscription",
+    "line": 18
+  },
+  {
+    "file": "src\\features\\subscription\\api\\paymentVerificationService.js",
+    "oldImport": "@/services/paymentsApiService",
+    "newImport": "@/features/subscription",
+    "line": 15
+  },
+  {
+    "file": "src\\features\\subscription\\model\\useSubscription.js",
+    "oldImport": "@/services/paymentsApiService",
+    "newImport": "@/features/subscription",
+    "line": 14
+  },
+  {
+    "file": "src\\features\\placement\\ui\\PlacementManagement.tsx",
+    "oldImport": "@/services/companyService",
+    "newImport": "@/features/recruiter-copilot",
+    "line": 7
+  },
+  {
+    "file": "src\\features\\placement\\ui\\PlacementManagement.tsx",
+    "oldImport": "@/services/opportunitiesService",
+    "newImport": "@/features/opportunities",
+    "line": 8
+  },
+  {
+    "file": "src\\features\\placement\\ui\\PlacementAnalytics.tsx",
+    "oldImport": "@/services/opportunitiesService",
+    "newImport": "@/features/opportunities",
+    "line": 18
+  },
+  {
+    "file": "src\\features\\placement\\ui\\JobPostings.tsx",
+    "oldImport": "@/services/opportunitiesService",
+    "newImport": "@/features/opportunities",
+    "line": 14
+  },
+  {
+    "file": "src\\features\\placement\\ui\\JobPostings.tsx",
+    "oldImport": "@/services/opportunitiesService",
+    "newImport": "@/features/opportunities",
+    "line": 15
+  },
+  {
+    "file": "src\\features\\placement\\ui\\CompanyRegistration.tsx",
+    "oldImport": "@/services/companyService",
+    "newImport": "@/features/recruiter-copilot",
+    "line": 16
+  },
+  {
+    "file": "src\\features\\placement\\ui\\CompanyRegistration.tsx",
+    "oldImport": "@/services/companyService",
+    "newImport": "@/features/recruiter-copilot",
+    "line": 17
+  },
+  {
+    "file": "src\\features\\placement\\ui\\ApplicationTracking.tsx",
+    "oldImport": "@/services/opportunitiesService",
+    "newImport": "@/features/opportunities",
+    "line": 24
+  },
+  {
+    "file": "src\\features\\placement\\ui\\ApplicationTracking.tsx",
+    "oldImport": "@/services/opportunitiesService",
+    "newImport": "@/features/opportunities",
+    "line": 25
+  },
+  {
+    "file": "src\\features\\placement\\ui\\ApplicationTracking.tsx",
+    "oldImport": "@/services/applicationTrackingService",
+    "newImport": "@/features/opportunities",
+    "line": 26
+  },
+  {
+    "file": "src\\features\\placement\\ui\\ApplicationTracking.tsx",
+    "oldImport": "@/services/applicationTrackingService",
+    "newImport": "@/features/opportunities",
+    "line": 27
+  },
+  {
+    "file": "src\\features\\courses\\ui\\CoursePlayer.jsx",
+    "oldImport": "@/services/certificateService",
+    "newImport": "@/features/digital-portfolio",
+    "line": 25
+  },
+  {
+    "file": "src\\features\\courses\\ui\\CourseDetailDrawer.tsx",
+    "oldImport": "@/services/educator/coursesService",
+    "newImport": "@/features/educator-copilot",
+    "line": 25
+  },
+  {
+    "file": "src\\features\\courses\\model\\useCoursePerformance.ts",
+    "oldImport": "@/services/analyticsService",
+    "newImport": "@/features/educator-copilot",
+    "line": 4
+  },
+  {
+    "file": "src\\features\\college-admin\\ui\\HODAssignmentModal.tsx",
+    "oldImport": "@/services/college/departmentService",
+    "newImport": "@/features/college-admin",
+    "line": 8
+  },
+  {
+    "file": "src\\features\\college-admin\\ui\\FacultyAssignmentModal.tsx",
+    "oldImport": "@/services/college/departmentService",
+    "newImport": "@/features/college-admin",
+    "line": 7
+  },
+  {
+    "file": "src\\features\\college-admin\\ui\\EditDepartmentModal.tsx",
+    "oldImport": "@/services/college/departmentService",
+    "newImport": "@/features/college-admin",
+    "line": 5
+  },
+  {
+    "file": "src\\features\\college-admin\\ui\\DepartmentDetailsDrawer.tsx",
+    "oldImport": "@/services/college/departmentService",
+    "newImport": "@/features/college-admin",
+    "line": 11
+  },
+  {
+    "file": "src\\features\\college-admin\\ui\\CreateCircularModal.tsx",
+    "oldImport": "@/services/circularService",
+    "newImport": "@/features/college-admin",
+    "line": 9
+  },
+  {
+    "file": "src\\features\\college-admin\\ui\\CourseMappingModal.tsx",
+    "oldImport": "@/services/college/departmentService",
+    "newImport": "@/features/college-admin",
+    "line": 7
+  },
+  {
+    "file": "src\\features\\college-admin\\ui\\CollegeLessonPlanUI.tsx",
+    "oldImport": "@/services/college/lessonPlanService",
+    "newImport": "@/features/college-admin",
+    "line": 31
+  },
+  {
+    "file": "src\\features\\college-admin\\ui\\CollegeCurriculumBuilderUI.tsx",
+    "oldImport": "@/services/curriculumApprovalService",
+    "newImport": "@/features/college-admin",
+    "line": 24
+  },
+  {
+    "file": "src\\features\\college-admin\\ui\\CollegeCurriculumBuilderUI.tsx",
+    "oldImport": "@/services/curriculumChangeRequestService",
+    "newImport": "@/features/college-admin",
+    "line": 25
+  },
+  {
+    "file": "src\\features\\college-admin\\ui\\AddDepartmentModal.tsx",
+    "oldImport": "@/services/college/departmentService",
+    "newImport": "@/features/college-admin",
+    "line": 5
+  },
+  {
+    "file": "src\\features\\career-assistant\\services\\careerWorkerService.ts",
+    "oldImport": "../../../services/careerApiService",
+    "newImport": "@/features/counselling",
+    "line": 7
+  },
+  {
+    "file": "src\\features\\auth\\api\\studentAuthService.ts",
+    "oldImport": "../../../services/studentAuthService",
+    "newImport": "@/features/auth",
+    "line": 6
+  },
+  {
+    "file": "src\\features\\auth\\api\\recruiterAuthService.ts",
+    "oldImport": "../../../services/recruiterProfile",
+    "newImport": "@/features/recruiter-copilot",
+    "line": 6
+  },
+  {
+    "file": "src\\features\\assessment\\ui\\CareerTrackModal.jsx",
+    "oldImport": "@/services/courseRecommendation/roleBasedMatcher",
+    "newImport": "@/features/courses",
+    "line": 6
+  },
+  {
+    "file": "src\\features\\assessment\\ui\\AssessmentResult.jsx",
+    "oldImport": "../../../services/programCareerPathsService",
+    "newImport": "@/features/counselling",
+    "line": 56
+  },
+  {
+    "file": "src\\features\\assessment\\model\\useAssessmentResults.js",
+    "oldImport": "@/services/courseRecommendationService",
+    "newImport": "@/features/courses",
+    "line": 5
+  },
+  {
+    "file": "src\\features\\assessment\\model\\useAssessmentResults.js",
+    "oldImport": "@/services/aptitudeScoreValidator",
+    "newImport": "@/features/assessment",
+    "line": 8
+  },
+  {
+    "file": "src\\features\\assessment\\model\\useAssessmentResults.js",
+    "oldImport": "@/services/riasecScoreValidator",
+    "newImport": "@/features/assessment",
+    "line": 9
+  },
+  {
+    "file": "src\\features\\assessment\\model\\useAssessmentResults.js",
+    "oldImport": "@/services/assessmentResultTransformer",
+    "newImport": "@/features/assessment",
+    "line": 11
+  },
+  {
+    "file": "src\\features\\assessment\\api\\adaptiveAptitudeService.ts",
+    "oldImport": "@/services/adaptiveAptitudeApiService",
+    "newImport": "@/features/assessment",
+    "line": 12
+  },
+  {
+    "file": "src\\features\\assessment\\api\\adaptiveAptitudeService.ts",
+    "oldImport": "@/services/adaptiveAptitudeApiService",
+    "newImport": "@/features/assessment",
+    "line": 30
+  },
+  {
+    "file": "src\\features\\ai-tutor\\ui\\VideoSummarizer.tsx",
+    "oldImport": "../../../services/videoSummarizerService",
+    "newImport": "@/features/ai-tutor",
+    "line": 32
+  },
+  {
+    "file": "src\\features\\ai-tutor\\ui\\VideoLearningPanel.tsx",
+    "oldImport": "../../services/videoSummarizerService",
+    "newImport": "@/features/ai-tutor",
+    "line": 35
+  },
+  {
+    "file": "src\\features\\ai-tutor\\ui\\AITutorChat.tsx",
+    "oldImport": "../../services/tutorService",
+    "newImport": "@/features/ai-tutor",
+    "line": 19
+  },
+  {
+    "file": "src\\components\\Students\\components\\StudentPublicViewer.jsx",
+    "oldImport": "../../../services/badgeService",
+    "newImport": "@/features/digital-portfolio",
+    "line": 30
+  },
+  {
+    "file": "src\\components\\Students\\components\\ResumeParserTester.jsx",
+    "oldImport": "../../../services/resumeParserService",
+    "newImport": "@/features/digital-portfolio",
+    "line": 4
+  },
+  {
+    "file": "src\\components\\Students\\components\\ResumeParser.jsx",
+    "oldImport": "../../../services/resumeParserService",
+    "newImport": "@/features/digital-portfolio",
+    "line": 6
+  },
+  {
+    "file": "src\\components\\Students\\components\\ResumeParser.jsx",
+    "oldImport": "../../../services/resumeDataService",
+    "newImport": "@/features/digital-portfolio",
+    "line": 7
+  },
+  {
+    "file": "src\\components\\Students\\components\\ProfileHeroEdit.jsx",
+    "oldImport": "../../../services/badgeService",
+    "newImport": "@/features/digital-portfolio",
+    "line": 35
+  },
+  {
+    "file": "src\\components\\Students\\components\\ProfileEditSection.jsx",
+    "oldImport": "../../../services/resumeParserService",
+    "newImport": "@/features/digital-portfolio",
+    "line": 20
+  },
+  {
+    "file": "src\\components\\Students\\components\\ModernLearningCard.jsx",
+    "oldImport": "../../../services/certificateService",
+    "newImport": "@/features/digital-portfolio",
+    "line": 25
+  },
+  {
+    "file": "src\\components\\Students\\components\\IndustrialVisitsSection.jsx",
+    "oldImport": "../../../services/factoryVisitsService",
+    "newImport": "@/features/college-admin",
+    "line": 7
+  },
+  {
+    "file": "src\\components\\Recruiter\\modals\\ScheduleInterviewModal.tsx",
+    "oldImport": "../../../services/interviewService",
+    "newImport": "@/features/opportunities",
+    "line": 3
+  },
+  {
+    "file": "src\\components\\Recruiter\\modals\\AddToShortlistModal.tsx",
+    "oldImport": "../../../services/shortlistService",
+    "newImport": "@/features/opportunities",
+    "line": 3
+  },
+  {
+    "file": "src\\components\\Myclass\\hooks\\useOverviewData.ts",
+    "oldImport": "../../../services/assignmentsService",
+    "newImport": "@/features/educator-copilot",
+    "line": 3
+  },
+  {
+    "file": "src\\components\\Myclass\\hooks\\useAssignmentsData.ts",
+    "oldImport": "../../../services/assignmentsService",
+    "newImport": "@/features/educator-copilot",
+    "line": 2
+  },
+  {
+    "file": "src\\components\\Myclass\\hooks\\useAssignmentActions.ts",
+    "oldImport": "../../../services/assignmentsService",
+    "newImport": "@/features/educator-copilot",
+    "line": 2
+  },
+  {
+    "file": "src\\components\\Myclass\\common\\CollegeClassHeader.tsx",
+    "oldImport": "../../../services/collegeClassService",
+    "newImport": "@/features/college-admin",
+    "line": 3
+  },
+  {
+    "file": "src\\components\\educator\\modals\\ScheduleInterviewModal.tsx",
+    "oldImport": "../../../services/interviewService",
+    "newImport": "@/features/opportunities",
+    "line": 3
+  },
+  {
+    "file": "src\\components\\educator\\modals\\DeleteStudentModal.tsx",
+    "oldImport": "../../../services/educatorService",
+    "newImport": "@/features/educator-copilot",
+    "line": 4
+  },
+  {
+    "file": "src\\components\\educator\\modals\\CSVImportModal.tsx",
+    "oldImport": "../../../services/csvImportService",
+    "newImport": "@/features/college-admin",
+    "line": 16
+  },
+  {
+    "file": "src\\components\\educator\\modals\\BulkDeleteStudentsModal.tsx",
+    "oldImport": "../../../services/educatorService",
+    "newImport": "@/features/educator-copilot",
+    "line": 4
+  },
+  {
+    "file": "src\\components\\educator\\modals\\AddToShortlistModal.tsx",
+    "oldImport": "../../../services/shortlistService",
+    "newImport": "@/features/opportunities",
+    "line": 3
+  },
+  {
+    "file": "src\\components\\admin\\components\\CareerPathDrawer.tsx",
+    "oldImport": "@/services/aiCareerPathService",
+    "newImport": "@/features/counselling",
+    "line": 15
+  },
+  {
+    "file": "src\\components\\admin\\collegeAdmin\\CreateCircularModal.tsx",
+    "oldImport": "@/services/circularService",
+    "newImport": "@/features/college-admin",
+    "line": 9
+  },
+  {
+    "file": "src\\components\\admin\\collegeAdmin\\CollegeCurriculumBuilderUI.tsx",
+    "oldImport": "../../../services/curriculumApprovalService",
+    "newImport": "@/features/college-admin",
+    "line": 24
+  },
+  {
+    "file": "src\\components\\admin\\collegeAdmin\\CollegeCurriculumBuilderUI.tsx",
+    "oldImport": "../../../services/curriculumChangeRequestService",
+    "newImport": "@/features/college-admin",
+    "line": 25
+  },
+  {
+    "file": "src\\pages\\admin\\collegeAdmin\\placement\\PlacementAnalytics.tsx",
+    "oldImport": "@/services/opportunitiesService",
+    "newImport": "@/features/opportunities",
+    "line": 18
+  },
+  {
+    "file": "src\\pages\\admin\\collegeAdmin\\placement\\JobPostings.tsx",
+    "oldImport": "@/services/opportunitiesService",
+    "newImport": "@/features/opportunities",
+    "line": 14
+  },
+  {
+    "file": "src\\pages\\admin\\collegeAdmin\\placement\\JobPostings.tsx",
+    "oldImport": "@/services/opportunitiesService",
+    "newImport": "@/features/opportunities",
+    "line": 15
+  },
+  {
+    "file": "src\\pages\\admin\\collegeAdmin\\placement\\CompanyRegistration.tsx",
+    "oldImport": "@/services/companyService",
+    "newImport": "@/features/recruiter-copilot",
+    "line": 16
+  },
+  {
+    "file": "src\\pages\\admin\\collegeAdmin\\placement\\CompanyRegistration.tsx",
+    "oldImport": "@/services/companyService",
+    "newImport": "@/features/recruiter-copilot",
+    "line": 17
+  },
+  {
+    "file": "src\\pages\\admin\\collegeAdmin\\placement\\ApplicationTracking.tsx",
+    "oldImport": "@/services/opportunitiesService",
+    "newImport": "@/features/opportunities",
+    "line": 24
+  },
+  {
+    "file": "src\\pages\\admin\\collegeAdmin\\placement\\ApplicationTracking.tsx",
+    "oldImport": "@/services/opportunitiesService",
+    "newImport": "@/features/opportunities",
+    "line": 25
+  },
+  {
+    "file": "src\\pages\\admin\\collegeAdmin\\placement\\ApplicationTracking.tsx",
+    "oldImport": "@/services/applicationTrackingService",
+    "newImport": "@/features/opportunities",
+    "line": 26
+  },
+  {
+    "file": "src\\pages\\admin\\collegeAdmin\\placement\\ApplicationTracking.tsx",
+    "oldImport": "@/services/applicationTrackingService",
+    "newImport": "@/features/opportunities",
+    "line": 27
+  },
+  {
+    "file": "src\\features\\subscription\\ui\\individual\\SubscriptionDashboard.jsx",
+    "oldImport": "@/services/entitlementService",
+    "newImport": "@/features/subscription",
+    "line": 34
+  },
+  {
+    "file": "src\\features\\subscription\\ui\\individual\\MySubscription.jsx",
+    "oldImport": "@/services/paymentsApiService",
+    "newImport": "@/features/subscription",
+    "line": 31
+  },
+  {
+    "file": "src\\features\\assessment\\api\\assessment\\courseIntegration.js",
+    "oldImport": "@/services/courseRecommendationService",
+    "newImport": "@/features/courses",
+    "line": 12
+  }
+]

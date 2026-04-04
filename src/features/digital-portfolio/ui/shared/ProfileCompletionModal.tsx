@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, CheckCircle, AlertCircle, Plus, Trash2, Save } from 'lucide-react';
-import { useTheme } from '@/stores/themeStore';
-import { usePortfolio } from '@/stores/portfolioStore';
+import { useTheme } from '@/shared/model/themeStore';
+import { usePortfolio } from '@/features/digital-portfolio';
 import { supabase } from '@/shared/api/supabaseClient';
 
 export interface ProfileCompletionModalProps {

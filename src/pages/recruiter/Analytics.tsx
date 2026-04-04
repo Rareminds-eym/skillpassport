@@ -22,20 +22,20 @@ import {
   InfoIcon,
   DrillDownModal,
   SectionHeaderWithActions
-} from '@/features/recruiter/ui/AnalyticsComponents';
-import { TrendLineChart, AreaChart, ColumnChart, BarChart, ProgressRing, Sparkline as AdvancedSparkline } from '@/features/recruiter/ui/AdvancedCharts';
+} from '@/features/recruiter';
+import { TrendLineChart, AreaChart, ColumnChart, BarChart, ProgressRing, Sparkline } from '@/features/recruiter';
 import { exportSectionToCSV, exportComprehensiveAnalytics } from '@/shared/lib/exportUtils';
 import { getDataForPeriod, getPeriodDisplayName } from '@/shared/lib/mockDataGenerator';
 
 // Phase 1: Import new components
-import AdvancedFilters from '@/features/recruiter/ui/AdvancedFilters';
-import DateRangePicker from '@/features/recruiter/ui/DateRangePicker';
-import ChartDownloadButton from '@/shared/ui/ChartDownloadButton';
+import { AdvancedFilters } from '@/features/recruiter';
+import { DateRangePicker } from '@/features/recruiter';
+import { ChartDownloadButton } from '@/features/recruiter';
 import { AnalyticsFilters } from '@/shared/types/recruiter';
 
 // React Query Hooks
 import { useRecruitmentFunnel } from '@/entities/user';
-import { useAnalyticsKPIs, useSpeedAnalytics } from '@/features/analytics';
+import { useAnalyticsKPIs, useSpeedAnalytics, getRecruitmentFunnelStats } from '@/features/analytics';
 import { useCoursePerformance } from '@/features/courses';
 import { useDiversityData, useQualityMetrics } from '@/features/educator';
 import { DiversityExportModal } from '@/features/recruiter-pipeline';
@@ -168,7 +168,7 @@ const Analytics: React.FC = () => {
     preset: funnelPreset,
     startDate: filters.dateRange.startDate || undefined,
     endDate: filters.dateRange.endDate || undefined,
-  });
+  }, getRecruitmentFunnelStats);
 
   // Live KPI Metrics from DB
   const { data: kpiMetrics, isLoading: kpiLoading } = useAnalyticsKPIs({
@@ -394,18 +394,18 @@ const Analytics: React.FC = () => {
     // Insight 7: Pipeline Growth
     if (kpiMetrics?.totalCandidatesTrend && kpiMetrics.totalCandidatesTrend > 15) {
       insights.push({
-          type: 'success',
-          text: `Pipeline growing rapidly with ${kpiMetrics.totalCandidatesTrend}% increase in candidates`,
-          priority: 2
+        type: 'success',
+        text: `Pipeline growing rapidly with ${kpiMetrics.totalCandidatesTrend}% increase in candidates`,
+        priority: 2
       });
     }
 
     // Insight 8: Speed Improvement
     if (speedData?.fastestHire && speedData.fastestHire < 15) {
       insights.push({
-          type: 'info',
-          text: `Fastest hire completed in just ${speedData.fastestHire} days - excellent process efficiency`,
-          priority: 3
+        type: 'info',
+        text: `Fastest hire completed in just ${speedData.fastestHire} days - excellent process efficiency`,
+        priority: 3
       });
     }
 

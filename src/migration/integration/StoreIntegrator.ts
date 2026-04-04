@@ -5,7 +5,7 @@ import {
   StoreAction, 
   Integration,
   IntegrationPattern 
-} from '../types';
+} from '@/features/student-profile/model';
 import { StoreIntegrationAnalyzer } from './StoreIntegrationAnalyzer';
 
 /**

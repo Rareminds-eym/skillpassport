@@ -9,4 +9,4 @@ export { PipelineBulkActionsBar } from './PipelineBulkActionsBar';
 export { PipelineQuickFilters } from './PipelineQuickFilters';
 
 // Types
-export * from './types';
+export * from '@/features/student-profile/model';

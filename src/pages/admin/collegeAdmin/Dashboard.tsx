@@ -18,7 +18,7 @@ import {
   AlertCircle,
   Loader2,
 } from "lucide-react";
-import KPICard from '@/shared/ui/KPICard';
+import { KPICard } from '@/features/analytics';
 import { useNavigate } from "react-router-dom";
 import { supabase } from '@/shared/api/supabaseClient';
 import { useUser } from "@/stores";

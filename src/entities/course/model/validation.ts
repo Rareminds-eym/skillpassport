@@ -3,7 +3,7 @@
  * Validation rules and functions for course data
  */
 
-import type { Course, CourseModule, Lesson } from './types';
+import type { Course, CourseModule, Lesson } from '@/shared/types';
 
 // ============================================================================
 // Course Status Validation

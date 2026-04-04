@@ -1,4 +1,4 @@
-import { APIFunction, Integration, MigrationResult } from '../types';
+import { APIFunction, Integration, MigrationResult } from '@/features/student-profile/model';
 import { StoreIntegrationAnalyzer } from './StoreIntegrationAnalyzer';
 import { AuthStoreIntegrator } from './AuthStoreIntegrator';
 import { SubscriptionStoreIntegrator } from './SubscriptionStoreIntegrator';

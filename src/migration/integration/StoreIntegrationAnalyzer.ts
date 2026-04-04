@@ -1,4 +1,4 @@
-import { APIFunction, StoreIntegration, ZustandStore, StoreAction } from '../types';
+import { APIFunction, StoreIntegration, ZustandStore, StoreAction } from '@/features/student-profile/model';
 
 /**
  * Analyzes API functions to determine which Zustand stores they should integrate with

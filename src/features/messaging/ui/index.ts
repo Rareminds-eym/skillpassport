@@ -7,6 +7,7 @@
 export { default as MessageModal } from './MessageModal';
 export { default as ConversationModal } from './ConversationModal';
 export { default as DeleteConversationModal } from './DeleteConversationModal';
+export { default as NewEducatorConversationModal } from './NewEducatorConversationModal';
 
 // Re-export types
 export type { ConversationType } from '../lib/conversationConfig';

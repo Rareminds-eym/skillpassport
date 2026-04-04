@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import { MigrationLogger } from '../logging/MigrationLogger';
-import { CleanupResult, ValidationResult } from '../types';
+import { CleanupResult, ValidationResult } from '@/features/student-profile/model';
 
 /**
  * Validates that services directory cleanup was performed correctly

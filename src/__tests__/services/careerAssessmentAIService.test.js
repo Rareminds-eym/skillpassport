@@ -10,7 +10,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Import the validation functions
-import { validateQuestion, validateQuestionBatch } from '../../features/assessment/api/careerAssessmentAIService';
+import { validateQuestion, validateQuestionBatch } from '@/features/assessment/api/careerAssessmentAIService';
 
 describe('validateQuestion', () => {
   describe('valid questions', () => {

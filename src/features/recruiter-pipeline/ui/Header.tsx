@@ -8,7 +8,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { HeaderProps } from '@/shared/types/recruiter'
 import { useUser, useAuthActions } from '@/stores'
-import { useNotifications } from '@/features/recruiter'
+import { useNotifications } from '@/features/notifications'
 import NotificationPanel from './NotificationPanel'
 
 const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {

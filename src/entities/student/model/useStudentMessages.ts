@@ -1,8 +1,23 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useCallback, useState, useMemo } from 'react';
-import { MessageService, Message } from '@/features/messaging';
-import { useMessageStore } from '@/features/messaging';
 import { supabase } from '@/shared/api/supabaseClient';
+import { useMessageStore } from '@/features/messaging/model/messageStore';
+import MessageService from '@/features/messaging/api/messageService';
+import type { Message } from '@/features/messaging/api/messageService';
+
+/**
+ * DEPENDENCY INJECTION PATTERN APPLIED
+ * 
+ * This hook has been refactored to accept API functions as parameters
+ * instead of directly importing from @/features/student-profile/api.
+ * 
+ * This maintains FSD architecture by preventing entities from depending on features.
+ * 
+ * Usage: Import the API functions from the feature layer and pass them to this hook.
+ * Example:
+ *   import * as studentProfileApi from '@/features/student-profile/api';
+ *   const hook = useStudentData(studentId, studentProfileApi);
+ */
 
 interface UseStudentMessagesOptions {
   studentId: string | null;
@@ -78,12 +93,12 @@ export const useStudentMessages = ({
         },
         (payload) => {
           const newMessage = payload.new as Message;
-          
+
           // Add to zustand store (automatically deduplicates)
           addMessage(newMessage);
-          
+
           // Invalidate query to keep react-query in sync
-          queryClient.invalidateQueries({ 
+          queryClient.invalidateQueries({
             queryKey: ['student-messages', conversationId],
             refetchType: 'none'
           });
@@ -99,7 +114,7 @@ export const useStudentMessages = ({
         },
         (payload) => {
           const updatedMessage = payload.new as Message;
-          
+
           // Update in zustand store
           useMessageStore.getState().updateMessage(updatedMessage.id, updatedMessage);
         }
@@ -131,7 +146,7 @@ export const useStudentMessages = ({
       opportunityId?: number;
     }) => {
       if (!conversationId) throw new Error('No conversation selected');
-      
+
       return await MessageService.sendMessage(
         conversationId,
         senderId,
@@ -166,7 +181,7 @@ export const useStudentMessages = ({
       if (context?.tempId) {
         removeOptimisticMessage(context.tempId);
       }
-      
+
       // Add real message (will deduplicate via realtime)
       addMessage(realMessage);
     },
@@ -193,7 +208,7 @@ export const useStudentMessages = ({
  */
 export const useStudentUnreadCount = (studentId: string | null, enabled = true) => {
   const { setUnreadCount } = useMessageStore();
-  
+
   const { data: unreadCount = 0, isLoading } = useQuery({
     queryKey: ['student-unread-count', studentId || 'none'],
     queryFn: async () => {
@@ -258,7 +273,7 @@ export const useStudentUnreadCount = (studentId: string | null, enabled = true) 
 export const useStudentConversations = (studentId: string | null, enabled = true) => {
   const { setConversations, setIsLoadingConversations } = useMessageStore();
   const queryClient = useQueryClient();
-  
+
   const {
     data: conversations = [],
     isLoading,
@@ -272,8 +287,8 @@ export const useStudentConversations = (studentId: string | null, enabled = true
       try {
         // Only fetch student-recruiter conversations for this hook
         const convs = await MessageService.getUserConversations(
-          studentId, 
-          'student', 
+          studentId,
+          'student',
           false, // includeArchived
           true,  // useCache
           'student_recruiter' // conversationType filter
@@ -290,32 +305,32 @@ export const useStudentConversations = (studentId: string | null, enabled = true
     refetchOnMount: false, // Only fetch if data is stale
     retry: 1 // Only retry once on failure
   });
-  
+
   /**
    * Optimistically clear unread count for a conversation
    * This makes the UI feel instant when marking messages as read
    */
   const clearUnreadCount = useCallback((conversationId: string) => {
-    
+
     // Get current data from React Query cache
     const currentConversations = queryClient.getQueryData<any[]>(
       ['student-conversations', studentId || 'none']
     ) || [];
-    
-    
+
+
     const optimisticConversations = currentConversations.map(conv => {
       if (conv.id === conversationId) {
         return { ...conv, student_unread_count: 0 };
       }
       return conv;
     });
-    
+
     // Update React Query cache immediately
     queryClient.setQueryData(
       ['student-conversations', studentId || 'none'],
       optimisticConversations
     );
-    
+
   }, [studentId, queryClient]);
 
   // Realtime subscription for conversation updates
@@ -335,16 +350,16 @@ export const useStudentConversations = (studentId: string | null, enabled = true
         (payload) => {
           const updatedConv = payload.new as any;
           console.log('🔄 Realtime UPDATE detected:', updatedConv);
-          
+
           // CRITICAL: Ignore updates for conversations that were deleted
           // This prevents re-fetching deleted conversations back into the cache
           if (updatedConv.deleted_by_student || updatedConv.deleted_by_recruiter) {
             console.log('❌ Ignoring UPDATE for deleted conversation:', updatedConv.id);
             return; // Don't refetch
           }
-          
+
           // Invalidate and refetch to get updated data
-          queryClient.invalidateQueries({ 
+          queryClient.invalidateQueries({
             queryKey: ['student-conversations', studentId || 'none'],
             refetchType: 'active' // Only refetch if query is active
           });

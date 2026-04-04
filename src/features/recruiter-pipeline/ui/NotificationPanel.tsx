@@ -13,7 +13,7 @@ import {
 import {
   useNotifications,
   NotificationType,
-} from '@/features/recruiter';
+} from '@/features/notifications';
 import { useUser } from "@/stores";
 
 interface NotificationPanelProps {

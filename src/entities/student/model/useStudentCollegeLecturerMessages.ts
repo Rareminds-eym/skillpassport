@@ -1,7 +1,10 @@
+// TODO: This hook needs MessageService passed as a parameter
+// Example: export function useConversationStudents(messageService: typeof MessageService)
+// Then update all call sites to pass MessageService from @/features/messaging
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
-import { MessageService } from '@/features/messaging';
-
+import MessageService from '@/features/messaging/api/messageService';
 /**
  * Hook for managing student-college lecturer conversations
  */
@@ -21,8 +24,8 @@ export const useStudentCollegeLecturerConversations = (studentId, enabled = true
       if (!studentId) return [];
       // Only fetch student-college lecturer conversations
       return await MessageService.getUserConversations(
-        studentId, 
-        'student', 
+        studentId,
+        'student',
         false, // includeArchived
         true,  // useCache
         'student_college_educator' // conversationType filter
@@ -46,17 +49,17 @@ export const useStudentCollegeLecturerConversations = (studentId, enabled = true
       (conversation) => {
         // Only handle student-college lecturer conversations
         if (conversation.conversation_type !== 'student_college_educator') return;
-        
+
         console.log('🔄 [Student-College-Lecturer] Realtime UPDATE detected:', conversation);
-        
+
         // Ignore updates for conversations that were deleted
         if (conversation.deleted_by_student) {
           console.log('❌ [Student-College-Lecturer] Ignoring UPDATE for deleted conversation:', conversation.id);
           return;
         }
-        
+
         // Invalidate conversation queries
-        queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({
           queryKey: ['student-college-lecturer-conversations', studentId],
           refetchType: 'active'
         });
@@ -72,8 +75,8 @@ export const useStudentCollegeLecturerConversations = (studentId, enabled = true
   const clearUnreadCount = (conversationId) => {
     queryClient.setQueryData(['student-college-lecturer-conversations', studentId || 'none'], (oldData) => {
       if (!oldData) return oldData;
-      return oldData.map(conv => 
-        conv.id === conversationId 
+      return oldData.map(conv =>
+        conv.id === conversationId
           ? { ...conv, student_unread_count: 0 }
           : conv
       );
@@ -95,11 +98,11 @@ export const useStudentCollegeLecturerConversations = (studentId, enabled = true
 /**
  * Hook for managing messages in a student-college lecturer conversation
  */
-export const useStudentCollegeLecturerMessages = ({ 
-  studentId, 
-  conversationId, 
+export const useStudentCollegeLecturerMessages = ({
+  studentId,
+  conversationId,
   enabled = true,
-  enableRealtime = true 
+  enableRealtime = true
 }) => {
   const queryClient = useQueryClient();
 
@@ -130,20 +133,20 @@ export const useStudentCollegeLecturerMessages = ({
       conversationId,
       (newMessage) => {
         console.log('📨 [Student-College-Lecturer] New message received:', newMessage);
-        
+
         // Add message to cache optimistically
         queryClient.setQueryData(['student-college-lecturer-messages', conversationId], (oldMessages) => {
           if (!oldMessages) return [newMessage];
-          
+
           // Check if message already exists (prevent duplicates)
           const exists = oldMessages.some(msg => msg.id === newMessage.id);
           if (exists) return oldMessages;
-          
+
           return [...oldMessages, newMessage];
         });
 
         // Update conversation list with new message preview
-        queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({
           queryKey: ['student-college-lecturer-conversations', studentId],
           refetchType: 'active'
         });
@@ -157,14 +160,14 @@ export const useStudentCollegeLecturerMessages = ({
 
   // Send message mutation
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ 
-      senderId, 
-      senderType, 
-      receiverId, 
-      receiverType, 
-      messageText, 
+    mutationFn: async ({
+      senderId,
+      senderType,
+      receiverId,
+      receiverType,
+      messageText,
       programSectionId,
-      subject 
+      subject
     }) => {
       return await MessageService.sendMessage(
         conversationId,
@@ -221,13 +224,13 @@ export const useStudentCollegeLecturerMessages = ({
       // Replace optimistic message with real one
       queryClient.setQueryData(['student-college-lecturer-messages', conversationId], (old) => {
         if (!old) return [data];
-        return old.map(msg => 
+        return old.map(msg =>
           msg.id === context?.optimisticMessage?.id ? data : msg
         );
       });
 
       // Update conversation list
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: ['student-college-lecturer-conversations', studentId],
         refetchType: 'active'
       });
@@ -251,12 +254,12 @@ export const useCreateStudentCollegeLecturerConversation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ 
-      studentId, 
-      collegeLecturerId, 
+    mutationFn: async ({
+      studentId,
+      collegeLecturerId,
       collegeId,
-      programSectionId, 
-      subject 
+      programSectionId,
+      subject
     }) => {
       return await MessageService.getOrCreateStudentCollegeLecturerConversation(
         studentId,
@@ -268,7 +271,7 @@ export const useCreateStudentCollegeLecturerConversation = () => {
     },
     onSuccess: (data, variables) => {
       // Invalidate conversations list to include new conversation
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: ['student-college-lecturer-conversations', variables.studentId],
         refetchType: 'active'
       });

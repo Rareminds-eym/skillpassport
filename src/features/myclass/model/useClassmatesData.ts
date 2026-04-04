@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { getClassmates } from '@/shared/api/studentClassService';
+import { getClassmates } from '@/features/myclass';
 
 interface SchoolClassmate {
   id: string;

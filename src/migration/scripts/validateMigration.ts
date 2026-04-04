@@ -3,7 +3,7 @@
 import { createValidationRunner } from '../validation/ValidationRunner'
 import { createMigrationLogger } from '../logging/MigrationLogger'
 import { defaultConfig } from "@/shared/config/defaultConfig"
-import { MigrationConfig } from '../types'
+import { MigrationConfig } from '@/features/student-profile/model'
 
 /**
  * CLI script for running migration validation

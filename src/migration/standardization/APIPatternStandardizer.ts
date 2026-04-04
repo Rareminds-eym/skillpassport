@@ -12,7 +12,7 @@ import {
   ErrorHandlingPattern,
   ResponseTypeStandard,
   RequestPatternStandard
-} from '../types';
+} from '@/features/student-profile/model';
 import { MigrationLogger } from '../logging/MigrationLogger';
 import { TypeStandardizer } from './TypeStandardizer';
 

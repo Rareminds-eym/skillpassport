@@ -21,12 +21,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { OTPInput } from '@/shared/ui';
-import paymentsApiService from '@/features/subscription';
-import { ShinyButton } from '../ui/shiny-button';
+import { paymentsApiService } from '@/features/subscription';
+import { ShinyButton } from '@/shared/ui';
 
 const REGISTRATION_FEE_STUDENT = 499;
 const REGISTRATION_FEE_CORPORATE = 7500;
-const EMAIL_API_URL = import.meta.env.DEV 
+const EMAIL_API_URL = import.meta.env.DEV
   ? 'http://localhost:8788/api/email'
   : 'https://skillpassport.rareminds.in/api/email';
 
@@ -228,11 +228,10 @@ const TermsModal = ({ isOpen, onClose, onAccept }) => {
                   }
                 }}
                 disabled={!hasScrolledToBottom}
-                className={`w-full py-3 sm:py-4 text-sm sm:text-base font-bold rounded-xl sm:rounded-2xl transition-all shadow-lg min-h-[44px] ${
-                  hasScrolledToBottom
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-xl cursor-pointer'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
+                className={`w-full py-3 sm:py-4 text-sm sm:text-base font-bold rounded-xl sm:rounded-2xl transition-all shadow-lg min-h-[44px] ${hasScrolledToBottom
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-xl cursor-pointer'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
               >
                 {hasScrolledToBottom ? 'Accept' : 'Scroll to Accept'}
               </button>
@@ -248,7 +247,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
   const location = useLocation();
   const isCorporate = location.pathname.includes('/register/corporate');
   const REGISTRATION_FEE = isCorporate ? REGISTRATION_FEE_CORPORATE : REGISTRATION_FEE_STUDENT;
-  
+
   const [form, setForm] = useState({ name: '', email: '', phone: '' });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -524,8 +523,8 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
             {isCorporate ? 'Corporate Registration' : 'Registration'}
           </h2>
           <p className="text-gray-600 text-sm sm:text-base leading-relaxed max-w-md mx-auto px-4">
-            {isCorporate 
-              ? 'Access skilled talent and hire confidently' 
+            {isCorporate
+              ? 'Access skilled talent and hire confidently'
               : 'Secure your access to Skill Ecosystem today'}
           </p>
         </motion.div>
@@ -650,7 +649,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
           >
             <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-white border border-grey-200 shadow-md hover:shadow-lg transition-all duration-300 group">
               <div className="absolute inset-0 bg-grey-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              
+
               <div className="relative p-4 sm:p-5">
                 <div className="flex items-center gap-2 sm:gap-3 mb-3">
                   <motion.div
@@ -695,11 +694,10 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
             transition={{ delay: 0.4 }}
             className="mt-5 sm:mt-6"
           >
-            <label className={`flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg sm:rounded-xl border border-gray-200 transition-all duration-200 bg-white ${
-              hasReadTerms 
-                ? 'cursor-pointer group hover:border-blue-300 hover:bg-blue-50/30' 
-                : 'cursor-not-allowed'
-            }`}>
+            <label className={`flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg sm:rounded-xl border border-gray-200 transition-all duration-200 bg-white ${hasReadTerms
+              ? 'cursor-pointer group hover:border-blue-300 hover:bg-blue-50/30'
+              : 'cursor-not-allowed'
+              }`}>
               <div className="relative mt-0.5 flex-shrink-0">
                 <input
                   type="checkbox"
@@ -737,7 +735,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                 >
                   {!hasReadTerms && (
                     <motion.span
-                      animate={{ 
+                      animate={{
                         opacity: [1, 0.4, 1],
                         scale: [1, 1.1, 1]
                       }}
@@ -851,9 +849,9 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
         </motion.p>
       </div>
 
-      <TermsModal 
-        isOpen={showTerms} 
-        onClose={() => setShowTerms(false)} 
+      <TermsModal
+        isOpen={showTerms}
+        onClose={() => setShowTerms(false)}
         onAccept={() => {
           setHasReadTerms(true);
           setConsentGiven(true);

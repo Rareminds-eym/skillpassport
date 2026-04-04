@@ -4,7 +4,7 @@ import {
   StandardizationReport,
   StandardizationChange,
   StandardizationError
-} from '../types';
+} from '@/features/student-profile/model';
 import { APIPatternStandardizerImpl } from './APIPatternStandardizer';
 import { PatternValidator } from './PatternValidator';
 import { CodeTransformer } from './CodeTransformer';

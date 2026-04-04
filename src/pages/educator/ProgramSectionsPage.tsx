@@ -16,7 +16,7 @@ const logger = getLogger('ProgramSectionsPage');
 
 import { SearchBar } from '@/shared/ui'
 import { useProgramSections } from '@/shared/lib/hooks'
-import { useEducatorSchool } from '@/features/educator-copilot'
+import { useEducatorSchool } from '@/features/educator'
 import toast from "react-hot-toast"
 import { Pagination } from '@/shared/ui'
 import { useAuth } from "@/features/auth"

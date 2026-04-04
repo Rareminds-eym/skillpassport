@@ -4,7 +4,7 @@ import {
   RefactoringRecommendation,
   CrossFeatureDependencyViolation,
   TightCouplingAnalysis
-} from '../types';
+} from '@/features/student-profile/model';
 import { MigrationLogger } from '../logging/MigrationLogger';
 
 export class ArchitecturalDecisionTracker {

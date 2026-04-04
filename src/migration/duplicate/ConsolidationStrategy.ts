@@ -4,7 +4,7 @@
  */
 
 import * as path from 'path';
-import type { DuplicateGroup, FSDLayerRules } from './types';
+import type { DuplicateGroup, FSDLayerRules } from '@/features/student-profile/model';
 
 export class ConsolidationStrategy {
   private fsdRules: FSDLayerRules = {

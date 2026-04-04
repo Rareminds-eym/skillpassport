@@ -26,7 +26,7 @@ import {
 import { useCallback, useMemo, useState } from 'react';
 import { useSubscriptionContext } from '@/stores';
 import { clearFeatureAccessCache } from '@/features/subscription';
-import addOnPaymentService from '@/shared/api/addOnPaymentService';
+import { addOnPaymentService } from '@/features/subscription';
 import { loadRazorpayScript } from '@/features/subscription/api';
 
 /**

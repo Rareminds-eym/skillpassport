@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
-import { SchoolClub, SchoolAchievement, SchoolCertificate, SchoolActivity } from '@/features/myclass/ui/tabs/CoCurricularsTab';
-import { normalizeRelation } from '@/features/myclass/lib/supabaseHelpers';
-import { formatClubName } from '@/features/myclass/lib/stringHelpers';
+import { SchoolClub, SchoolAchievement, SchoolCertificate, SchoolActivity } from '@/features/myclass';
+import { normalizeRelation } from '@/features/myclass';
+import { formatClubName } from '@/features/myclass';
 
 interface UseCoCurricularsDataReturn {
   clubs: SchoolClub[];

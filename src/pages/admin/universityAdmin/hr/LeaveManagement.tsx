@@ -19,7 +19,7 @@ import {
   Clock,
   CheckCircle,
 } from 'lucide-react';
-import KPICard from '@/shared/ui/KPICard';
+import { KPICard } from '@/features/analytics';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('university-admin-hr-leave-management');

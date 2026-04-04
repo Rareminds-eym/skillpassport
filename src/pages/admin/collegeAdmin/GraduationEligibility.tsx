@@ -23,7 +23,7 @@ import {
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { SearchBar } from '@/shared/ui';
-import KPICard from '@/shared/ui/KPICard';
+import { KPICard } from '@/features/analytics';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('college-admin-graduation-eligibility');

@@ -1,4 +1,4 @@
-import { TourProgress, TourKey } from './types';
+import { TourProgress, TourKey } from '@/features/student-profile/model';
 import { TOUR_STORAGE_KEY } from './constants';
 
 /**

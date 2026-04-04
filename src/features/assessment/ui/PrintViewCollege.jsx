@@ -1047,7 +1047,7 @@ const EmployabilityScoreSection = ({ employability }) => {
               return (
                 <div key={skill} style={printStyles.card}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b' }}>{skill}</div>
+                    <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b' }}>{typeof skill === "string" ? skill : skill?.name || JSON.stringify(skill)}</div>
                     <span style={{ ...printStyles.badge, background: scoreStyle.bg, color: scoreStyle.color, border: `1px solid ${scoreStyle.border}` }}>
                       {percentage}%
                     </span>

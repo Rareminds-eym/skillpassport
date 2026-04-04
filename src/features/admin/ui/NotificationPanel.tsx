@@ -11,7 +11,7 @@ import {
     AcademicCapIcon,
     UserGroupIcon,
 } from '@heroicons/react/24/outline'
-import { useAdminNotifications, AdminNotificationType } from '@/features/notifications/model/useAdminNotifications'
+import { useAdminNotifications, AdminNotificationType } from '@/features/notifications';
 
 interface NotificationPanelProps {
     isOpen: boolean

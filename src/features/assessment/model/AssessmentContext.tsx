@@ -15,7 +15,7 @@ import { useAdaptiveAptitude } from '@/shared/lib/hooks';
 import { useAssessmentFlow, type FlowScreen } from '../model/useAssessmentFlow';
 import { useStudentGrade } from '../model/useStudentGrade';
 import { useAIQuestions } from '../model/useAIQuestions';
-import { getSectionsForGrade } from '../config/sections';
+import { getSectionsForGrade } from '../lib/config/sections';
 import type { GradeLevel } from '../model/types';
 import { getAdaptiveGradeLevel } from '../lib/gradeUtils';
 

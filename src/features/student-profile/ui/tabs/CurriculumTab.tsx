@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { BookOpen, Calendar, Clock, GraduationCap, Target, Users, File, Activity, Lightbulb, FileText, Link2, CheckSquare, BookMarked, ExternalLinkIcon } from 'lucide-react';
-import { CurriculumData, LessonPlan } from '../types';
-import { LessonSection } from '../components';
+import { CurriculumData, LessonPlan } from '@/features/student-profile/model';
+import { LessonSection } from '..';
 
 interface CurriculumTabProps {
   curriculumData: CurriculumData[];

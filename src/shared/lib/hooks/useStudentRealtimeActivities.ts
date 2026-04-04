@@ -6,7 +6,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
-import { getStudentRecentActivity } from '@/features/student-profile/api';
+import { getStudentRecentActivity } from '@/entities/student/api';
 
 /**
  * Helper — format timestamps into "2 min ago" / "Oct 24" etc.
@@ -62,7 +62,7 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
     if (!email) {
       return null;
     }
-    
+
     try {
       setIsResolvingStudent(true);
 
@@ -204,7 +204,7 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
 
       const realtimeActivities = realtimeResult.data || [];
       const recentUpdatesActivities = recentUpdatesResult || [];
-      
+
       // Combine all sources and sort by timestamp
       const combined = [...recentUpdatesActivities, ...realtimeActivities]
         // Remove duplicates based on ID
@@ -223,7 +223,7 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
           ...activity,
           formattedTimestamp: activity.formattedTimestamp || formatTimestamp(activity.timestamp || activity.rawTimestamp || activity.created_at)
         }));
-      
+
       return combined;
     },
     enabled: !!effectiveEmail && !isResolvingStudent && !!studentId, // Only run if email, student ID are available and not resolving
@@ -240,7 +240,7 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
   // 4️⃣ Auto-refresh formatted timestamps every 60s
   useEffect(() => {
     if (!query.data || query.data.length === 0) return;
-    
+
     const interval = setInterval(() => {
       queryClient.setQueryData(
         ['student-activities', studentEmail, studentId, limit],
@@ -253,7 +253,7 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
         }
       );
     }, 60000);
-    
+
     return () => {
       clearInterval(interval);
     };
@@ -265,13 +265,13 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
-    
+
     // Set new timer for 500ms debounce
     debounceTimerRef.current = setTimeout(() => {
       setLastUpdateTime(Date.now());
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: ['student-activities', studentEmail],
-        refetchType: 'active' 
+        refetchType: 'active'
       });
     }, 500);
   }, [queryClient, studentEmail]);
@@ -304,7 +304,7 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
           filter: `student_id=eq.${studentId}`
         },
         {
-          table: 'pipeline_activities', 
+          table: 'pipeline_activities',
           filter: `student_id=eq.${studentId}`
         },
         {
@@ -365,7 +365,7 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
-      
+
       // Unsubscribe from WebSocket
       if (channelRef.current) {
         channelRef.current.unsubscribe();
@@ -393,10 +393,10 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
  */
 export const useRefreshStudentActivities = (studentEmail) => {
   const queryClient = useQueryClient();
-  
+
   return () => {
-    queryClient.invalidateQueries({ 
-      queryKey: ['student-activities', studentEmail] 
+    queryClient.invalidateQueries({
+      queryKey: ['student-activities', studentEmail]
     });
   };
 };

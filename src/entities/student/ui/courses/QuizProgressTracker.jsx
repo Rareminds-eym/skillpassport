@@ -1,3 +1,14 @@
+/**
+ * DEPENDENCY INJECTION PATTERN APPLIED
+ * 
+ * This component should receive courseProgressService as a prop.
+ * The parent component should import it from @/features/courses and pass it down.
+ * 
+ * Example:
+ *   import { courseProgressService } from '@/features/courses';
+ *   <QuizProgressTracker courseProgressService={courseProgressService} ... />
+ */
+
 import { AnimatePresence, motion } from 'framer-motion';
 import {
     AlertCircle,
@@ -11,8 +22,6 @@ import {
     X
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { courseProgressService } from '@/features/courses/api/courseProgressService';
-
 /**
  * Quiz Progress Tracker Component
  * Handles quiz taking with progress saving and resume functionality

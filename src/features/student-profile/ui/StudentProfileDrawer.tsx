@@ -16,13 +16,13 @@ import { useNavigate } from 'react-router-dom';
 import { isCollegeStudent as checkIsCollegeStudent, isSchoolStudent as checkIsSchoolStudent } from '@/entities/student/lib/studentType';
 
 // Types
-import { StudentProfileDrawerProps, TabConfig, ActionConfig } from './types';
+import { StudentProfileDrawerProps, TabConfig, ActionConfig } from '@/features/student-profile/model';
 
 // Hooks
 import { useStudentData, useStudentActions } from './hooks';
 
 // Components
-import { Badge, TabButton } from './components';
+import { Badge, TabButton } from '.';
 
 // Modals
 import {

@@ -8,7 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 import React, { useEffect, useMemo, useState } from 'react';
 
-import { CLASSES, SKILL_CATEGORIES } from '@/data/educator/mockCourses';
+import { CLASSES, SKILL_CATEGORIES } from '@/features/educator';
 import { Course } from '@/shared/types/educator/course';
 
 import { CourseCard } from '@/features/courses';

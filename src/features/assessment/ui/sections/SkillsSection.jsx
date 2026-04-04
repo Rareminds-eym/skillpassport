@@ -83,7 +83,7 @@ const SkillGapCourseCard = ({ course, onClick }) => {
                 <div className="flex flex-wrap gap-1 mb-2">
                     {displaySkills.map((skill, idx) => (
                         <span key={idx} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-sm">
-                            {skill}
+                            {typeof skill === 'string' ? skill : skill?.name || JSON.stringify(skill)}
                         </span>
                     ))}
                 </div>
@@ -171,7 +171,7 @@ const SkillsSection = ({ skillGap, employability, skillGapCourses = {} }) => {
                         {currentStrengths.length > 0 ? currentStrengths.map((skill, idx) => (
                             <div key={idx} className="flex items-center gap-2 p-3 bg-green-50 rounded-lg border border-green-100">
                                 <Check className="w-5 h-5 text-green-600" />
-                                <span className="text-gray-700 text-base">{skill}</span>
+                                <span className="text-gray-700 text-base">{typeof skill === 'string' ? skill : skill?.name || JSON.stringify(skill)}</span>
                             </div>
                         )) : (
                             <p className="text-gray-500 text-sm">No strengths identified yet</p>
@@ -192,7 +192,7 @@ const SkillsSection = ({ skillGap, employability, skillGapCourses = {} }) => {
                     <div className="space-y-2">
                         {strengthAreas.length > 0 ? strengthAreas.map((skill, idx) => (
                             <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                <span className="text-gray-700 text-base">{skill}</span>
+                                <span className="text-gray-700 text-base">{typeof skill === 'string' ? skill : skill?.name || JSON.stringify(skill)}</span>
                                 <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-sm font-medium">Strong</span>
                             </div>
                         )) : (

@@ -2,7 +2,7 @@
 import jsPDF from 'jspdf';
 import { AlertCircle, Award, Download, Eye, FileText, Grid3X3, List, Loader2, Medal, Search, Trophy, X } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import KPICard from '@/shared/ui/KPICard';
+import { KPICard } from '@/features/analytics';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 import { authSessionService } from '@/features/auth';

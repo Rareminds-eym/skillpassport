@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Student } from '@/features/college-admin/model/attendance-types';
+import { Student } from '@/features/college-admin';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { BookOpenIcon, CalendarIcon, ClockIcon } from 'lucide-react';
 

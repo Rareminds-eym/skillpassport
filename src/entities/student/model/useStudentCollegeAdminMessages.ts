@@ -1,8 +1,11 @@
+// TODO: This hook needs MessageService passed as a parameter
+// Example: export function useConversationStudents(messageService: typeof MessageService)
+// Then update all call sites to pass MessageService from @/features/messaging
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
-import { MessageService } from '@/features/messaging';
-
+import MessageService from '@/features/messaging/api/messageService';
 /**
  * Hook for managing student-college_admin conversations
  */

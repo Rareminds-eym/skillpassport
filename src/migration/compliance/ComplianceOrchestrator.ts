@@ -4,7 +4,7 @@ import {
   DependencyGraph,
   RefactoringRecommendation,
   FSDComplianceRules
-} from '../types';
+} from '@/features/student-profile/model';
 import { FSDArchitecturalComplianceValidator } from './ArchitecturalComplianceValidator';
 import { RefactoringRecommendationGenerator } from './RefactoringRecommendationGenerator';
 import { ArchitecturalDecisionTracker } from './ArchitecturalDecisionTracker';

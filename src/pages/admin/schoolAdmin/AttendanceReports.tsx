@@ -25,7 +25,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import ReactApexChart from "react-apexcharts";
 import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
-import KPICard from '@/shared/ui/KPICard';
+import { KPICard } from '@/features/analytics';
 import { Pagination } from '@/shared/ui';
 import { SearchBar } from '@/shared/ui';
 import { supabase } from '@/shared/api/supabaseClient';

@@ -2,7 +2,7 @@ import React from 'react';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { CandidateCard } from './CandidateCard';
 import { PipelineEmptyState } from '../EmptyState';
-import { PipelineCandidate } from './types';
+import { PipelineCandidate } from '@/features/student-profile/model';
 
 interface KanbanColumnProps {
   title: string;

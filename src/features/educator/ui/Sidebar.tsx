@@ -21,7 +21,7 @@ import {
   ClipboardDocumentCheckIcon
   // Icons from Heroicons
 } from "@heroicons/react/24/outline";
-import { useEducatorSchool } from '@/features/educator-copilot';
+import { useEducatorSchool } from '@/features/educator';
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");

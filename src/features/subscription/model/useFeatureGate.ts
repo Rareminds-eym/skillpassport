@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useUser, useUserEntitlements } from '@/stores';
-import addOnCatalogService from '@/shared/api/addOnCatalogService';
+import { addOnCatalogService } from '@/features/subscription';
 import { entitlementService } from '@/features/subscription';
 
 // Cache for feature access checks

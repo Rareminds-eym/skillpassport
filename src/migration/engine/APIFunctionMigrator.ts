@@ -7,7 +7,7 @@ import {
   MigrationLogger, 
   MigrationResult,
   MigrationError 
-} from '../types';
+} from '@/features/student-profile/model';
 
 /**
  * Handles the migration of API functions from services to feature directories

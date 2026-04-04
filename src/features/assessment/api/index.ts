@@ -48,7 +48,7 @@ export { checkAssessmentStatus, createAssessmentAttempt, updateAssessmentProgres
 // =============================================================================
 
 // Adaptive Engine (core adaptive testing logic)
-export { AdaptiveEngine } from './adaptiveEngine';
+export { default as AdaptiveEngine } from './adaptiveEngine';
 export type {
   TierClassificationResult,
   DifficultyAdjustmentResult,

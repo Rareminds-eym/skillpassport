@@ -6,7 +6,7 @@ import {
   ErrorHandlingPattern,
   ResponseTypeStandard,
   RequestPatternStandard
-} from '../types';
+} from '@/features/student-profile/model';
 import { StandardizationConfig } from './StandardizationConfig';
 import { MigrationLogger } from '../logging/MigrationLogger';
 import * as fs from 'fs/promises';

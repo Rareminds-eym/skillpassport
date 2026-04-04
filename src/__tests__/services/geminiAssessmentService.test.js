@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { getSectionPrefix } from '../../features/assessment/api/geminiAssessmentService.js';
+import { getSectionPrefix } from '@/features/assessment/api/geminiAssessmentService.js';
 
 describe('getSectionPrefix - Middle School Prefix Mapping', () => {
   describe('Task 3.1: Middle school prefix mapping', () => {

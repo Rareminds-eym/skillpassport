@@ -11,7 +11,7 @@ const batchFixes: BatchFix[] = [
   // Career assistant imports
   {
     pattern: /from ['"]@\/shared\/api\/careerWorkerService['"]/g,
-    replacement: 'from "@/features/career-assistant/services/careerWorkerService"',
+    replacement: 'from "@/features/career-assistant/api/careerWorkerService"',
     description: 'Fix careerWorkerService imports'
   },
   {
@@ -27,12 +27,12 @@ const batchFixes: BatchFix[] = [
   // Educator copilot imports
   {
     pattern: /from ['"]@\/shared\/api\/educatorIntelligenceEngine['"]/g,
-    replacement: 'from "@/features/educator-copilot/services/educatorIntelligenceEngine"',
+    replacement: 'from "@/features/educator-copilot/api/educatorIntelligenceEngine"',
     description: 'Fix educatorIntelligenceEngine imports'
   },
   {
     pattern: /from ['"]@\/shared\/config\/educatorConfig['"]/g,
-    replacement: 'from "@/features/educator-copilot/config/educatorConfig"',
+    replacement: 'from "@/features/educator-copilot/lib/config/educatorConfig"',
     description: 'Fix educatorConfig imports'
   },
   // File upload service

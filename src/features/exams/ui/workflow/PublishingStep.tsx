@@ -14,7 +14,7 @@ import {
   ShieldCheckIcon,
   CalendarIcon
 } from '@heroicons/react/24/outline';
-import { UIExam } from '@/features/exams';
+import { UIExam } from '@/entities/exam';
 import { WorkflowStage } from '../types';
 
 interface PublishingStepProps {

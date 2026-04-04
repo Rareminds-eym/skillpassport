@@ -5,7 +5,7 @@ import {
   MigrationConfig, 
   MigrationLogger,
   PathChange 
-} from '../types';
+} from '@/features/student-profile/model';
 
 /**
  * Represents an import reference found in the codebase

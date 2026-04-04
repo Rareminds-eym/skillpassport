@@ -23,7 +23,7 @@ import { useUser } from "@/stores";
 import { useStudentDataByEmail } from '@/entities/student';
 import { supabase } from "@/shared/api/supabaseClient";
 import { downloadCertificate, getCertificateProxyUrl } from "@/features/digital-portfolio";
-import { checkAssessmentStatus } from "../../../features/assessment/api/externalAssessmentService";
+import { checkAssessmentStatus } from "@/features/assessment/api/externalAssessmentService";
 
 /**
  * Modern Learning Card Component - Completely Redesigned

@@ -4,7 +4,7 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
-import { AdminNotificationType } from '@/shared/lib/hooks';
+import type { AdminNotificationType } from '../model/types';
 
 export class AdminNotificationService {
   /**

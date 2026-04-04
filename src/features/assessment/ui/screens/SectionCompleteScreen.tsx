@@ -11,7 +11,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, ChevronRight, Clock } from 'lucide-react';
 import { Button } from "@/shared/ui/button";
-import { formatElapsedTime } from '../../lib/timeUtils';
+import { formatElapsedTime } from '@/features/assessment/lib/timeUtils';
 
 interface SectionCompleteScreenProps {
   sectionTitle: string;

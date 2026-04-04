@@ -16,7 +16,6 @@
 
 export { StudentProfileDrawer } from './ui';
 export { AdmissionNoteModal, SchoolAdmissionNoteModal, MessageModal, ExportModal } from './ui/modals';
-export { default as ProfileHeroEdit } from '@/widgets/student-dashboard/ui/ProfileHeroEdit';
 export {
   CertificatesEditModal,
   EducationEditModal,
@@ -27,7 +26,6 @@ export {
 } from '@/widgets/student-dashboard/ui/modals';
 
 // Default export for Header component
-export { default as Header } from '@/widgets/student-dashboard/ui/Header';
 
 // ============================================================================
 // State Management (Domain Hooks)
@@ -62,11 +60,11 @@ export type {
   Project,
   Certificate,
   Course,
-  
+
   // Academic types
   AssessmentResult as AcademicRecord,
   CurriculumData,
-  
+
   // Component props
   StudentProfileDrawerProps
 } from './ui/types';
@@ -76,13 +74,13 @@ export type {
   Education,
   Experience,
   Skill,
-  
+
   // Academic hook types
   ExamResult,
-  
+
   // Portfolio hook types
   Training,
-  
+
   // Activity hook types
   LearningItem,
   Achievement,
@@ -95,7 +93,16 @@ export * from './api';
 export { showProfileErrorToast } from './lib/profileToast';
 export { showProfileUpdateToast } from './lib/profileToast';
 export { PROFILE_UPDATE_MESSAGES } from './lib/profileToast';
-export type { AchievementsExpanded } from './ui/AchievementsExpanded';
-export type { SkillTrackerExpanded } from './ui/SkillTrackerExpanded';
-export type { StudentPublicViewer } from './ui/StudentPublicViewer';
+export type { default as AchievementsExpanded } from './ui/AchievementsExpanded';
+export type { default as SkillTrackerExpanded } from './ui/SkillTrackerExpanded';
+export type { default as StudentPublicViewer } from './ui/StudentPublicViewer';
 export type { ProfileValidationService } from './api/profileValidationService';
+
+export { checkProfileCompleteness } from './lib/profileCompletenessChecker';
+
+export { getPromptDismissed } from './lib/profilePromptPreference';
+
+export { setPromptDismissed } from './lib/profilePromptPreference';
+
+// Hooks
+export { useProfileCompletionPrompt } from './model/useProfileCompletionPrompt';

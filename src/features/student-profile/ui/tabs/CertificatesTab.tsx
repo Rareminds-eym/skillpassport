@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShieldCheckIcon } from '@heroicons/react/24/outline';
-import { Certificate } from '../types';
-import { CertificateCard } from '../components';
+import { Certificate } from '@/features/student-profile/model';
+import { CertificateCard } from '..';
 
 interface CertificatesTabProps {
   certificates: Certificate[];

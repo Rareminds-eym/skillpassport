@@ -9,7 +9,7 @@
 
 import { useCallback, useRef } from 'react';
 import { useAuth } from '@/features/auth';
-import addOnAnalyticsService from '@/shared/api/addOnAnalyticsService';
+import { addOnAnalyticsService } from '@/features/subscription';
 
 /**
  * Hook for tracking add-on related events

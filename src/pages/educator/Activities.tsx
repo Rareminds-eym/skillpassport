@@ -16,7 +16,7 @@ import {
   ClipboardDocumentCheckIcon
 } from '@heroicons/react/24/outline';
 import { createClient } from '@supabase/supabase-js';
-import { useEducatorSchool } from '@/features/educator-copilot';
+import { useEducatorSchool } from '@/features/educator';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';

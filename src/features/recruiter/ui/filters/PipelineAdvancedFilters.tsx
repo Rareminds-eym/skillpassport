@@ -14,40 +14,13 @@ import {
   UserIcon
 } from '@heroicons/react/24/outline';
 import { PipelineFilters } from '@/shared/types/recruiter';
+import { STAGES, SKILLS, DEPARTMENTS, LOCATIONS, SOURCES, NEXT_ACTION_TYPES } from '@/features/recruiter/model/constants';
 
 interface PipelineAdvancedFiltersProps {
   filters: PipelineFilters;
   onFiltersChange: (filters: PipelineFilters) => void;
   onReset: () => void;
 }
-
-// Filter options data
-const STAGES = [
-  { value: 'sourced', label: 'Sourced' },
-  { value: 'screened', label: 'Screened' },
-  { value: 'interview_1', label: 'Interview 1' },
-  { value: 'interview_2', label: 'Interview 2' },
-  { value: 'offer', label: 'Offer' },
-  { value: 'hired', label: 'Hired' }
-];
-
-const SKILLS = ['React', 'Python', 'Node.js', 'Java', 'TypeScript', 'AWS', 'Docker', 'SQL', 'MongoDB', 'Kubernetes'];
-const DEPARTMENTS = ['Engineering', 'Food Safety', 'Manufacturing', 'Quality Assurance', 'IT', 'Operations'];
-const LOCATIONS = ['Chennai', 'Bangalore', 'Coimbatore', 'Pune', 'Mumbai', 'Hyderabad', 'Delhi'];
-const SOURCES = [
-  { value: 'talent_pool', label: 'Talent Pool' },
-  { value: 'direct_application', label: 'Direct Application' },
-  { value: 'referral', label: 'Referral' },
-  { value: 'sourced', label: 'Sourced' }
-];
-
-const NEXT_ACTION_TYPES = [
-  { value: 'send_email', label: 'Send Email' },
-  { value: 'schedule_interview', label: 'Schedule Interview' },
-  { value: 'make_offer', label: 'Make Offer' },
-  { value: 'follow_up', label: 'Follow-up' },
-  { value: 'review_application', label: 'Review Application' }
-];
 
 const RECRUITERS = ['Sarah Johnson', 'Mike Chen', 'Lisa Wang', 'Raj Kumar', 'Emily Brown'];
 

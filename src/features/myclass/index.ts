@@ -19,7 +19,6 @@ export { default as TimetableViewTab } from './ui/tabs/TimetableViewTab';
 // Modals
 export { default as AssignmentDetailsModal } from './ui/modals/AssignmentDetailsModal';
 export { default as AssignmentUploadModal } from './ui/modals/AssignmentUploadModal';
-export { default as SkeletonLoaders } from './ui/modals/SkeletonLoaders';
 export { default as TabNavigation } from './ui/modals/TabNavigation';
 
 // Hooks
@@ -39,3 +38,48 @@ export * from './lib/dateHelpers';
 export * from './lib/errorHandlers';
 export * from './lib/stringHelpers';
 export * from './lib/supabaseHelpers';
+
+export { SchoolTimetableSlot } from './ui/tabs/TimetableViewTab';
+
+export { getTodaySchedule } from './api/studentClassService';
+
+export { formatClubName } from './lib/stringHelpers';
+
+export { isOverdue } from './lib/dateHelpers';
+
+export { SchoolAchievement } from './ui/tabs/CoCurricularsTab';
+
+export { Assignment } from './ui/AssignmentCard';
+
+export { SchoolActivity } from './ui/tabs/CoCurricularsTab';
+
+export { validateStorageConfig } from './lib/supabaseHelpers';
+
+export { getClassTimetable } from './api/studentClassService';
+
+export { AssignmentStats } from './ui/tabs/OverviewTab';
+
+export { SchoolCertificate } from './ui/tabs/CoCurricularsTab';
+
+export { getClassmates } from './api/studentClassService';
+
+export { getAuthSession } from './lib/supabaseHelpers';
+
+export { SchoolStudentResult } from './ui/tabs/ResultsTab';
+
+export { SchoolClassInfo } from './ui/SchoolClassHeader';
+
+export { SchoolResultStats } from './ui/tabs/ResultsTab';
+
+export { SchoolGroupedExam } from './ui/tabs/ExamsTab';
+
+export { SchoolClub } from './ui/tabs/CoCurricularsTab';
+
+export { getStudentClassInfo } from './api/studentClassService';
+
+export { getUploadErrorMessage } from './lib/errorHandlers';
+
+export { normalizeRelation } from './lib/supabaseHelpers';
+
+export type { Classmate } from './ui/tabs/ClassmatesTab';
+export type { AdditionalInfo } from './ui/tabs/OverviewTab';

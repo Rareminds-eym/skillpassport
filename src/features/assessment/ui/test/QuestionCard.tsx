@@ -1,5 +1,5 @@
 import React from 'react';
-import { Question } from '@/features/assessment/model/types';
+import { Question } from '@/features/assessment';
 
 interface QuestionCardProps {
   question: Question;

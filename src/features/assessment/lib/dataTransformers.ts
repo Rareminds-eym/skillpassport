@@ -11,7 +11,7 @@ import type {
   BigFiveScores,
   StreamOption,
 } from '../model/types';
-import { STREAMS_BY_CATEGORY, COURSE_PERSONALITY_MAPPINGS } from '../config/config';
+import { STREAMS_BY_CATEGORY, COURSE_PERSONALITY_MAPPINGS } from '../lib/config/config';
 
 /**
  * Normalize course recommendations from AI response

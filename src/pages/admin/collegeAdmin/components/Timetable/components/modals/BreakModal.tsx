@@ -1,6 +1,6 @@
 import React from "react";
 import { X, Save } from "lucide-react";
-import { Break, BreakFormData } from "../../types";
+import { Break, BreakFormData } from "@/pages/admin/collegeAdmin/components/Timetable/types";
 
 interface BreakModalProps {
   isOpen: boolean;

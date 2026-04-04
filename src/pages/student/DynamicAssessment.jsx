@@ -24,13 +24,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/shared/ui';
-import { generateAssessment, getCachedAssessment, cacheAssessment } from '../../features/assessment/api/assessmentGenerationService';
+import { generateAssessment, getCachedAssessment, cacheAssessment } from '@/features/assessment/api/assessmentGenerationService';
 import {
   createAssessmentAttempt,
   updateAssessmentProgress,
   completeAssessment,
   checkAssessmentStatus
-} from '../../features/assessment/api/externalAssessmentService';
+} from '@/features/assessment/api/externalAssessmentService';
 import { useStudentProfile } from '@/features/student-profile';
 import { useAuth } from '@/features/auth';
 

@@ -7,7 +7,7 @@
  * @module features/assessment/career-test/utils/courseRecommendations
  */
 
-import { STREAMS_BY_CATEGORY } from '../config/config';
+import { STREAMS_BY_CATEGORY } from '../lib/config/config';
 import type { StreamOption } from '../model/types';
 
 interface RIASECScores {

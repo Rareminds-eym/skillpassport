@@ -23,7 +23,7 @@ import {
   Settings,
   AlertCircle,
 } from 'lucide-react';
-import KPICard from '@/shared/ui/KPICard';
+import { KPICard } from '@/features/analytics';
 
 const GraduationIntegration = () => {
   const [activeTab, setActiveTab] = useState('overview');

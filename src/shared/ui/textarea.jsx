@@ -1,6 +1,6 @@
 import * as React from "react"
 
-import { cn } from "../../shared/lib" ;
+import { cn } from "@/shared/lib" ;
 
 const Textarea = React.forwardRef(({ className, ...props }, ref) => {
   return (

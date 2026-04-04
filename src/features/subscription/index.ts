@@ -63,7 +63,6 @@ export { default as DatePicker } from './ui/shared/DatePicker';
 
 // Root UI Components (legacy exports for backward compatibility)
 export { default as AddOnCardRoot } from './ui/AddOnCard';
-export { default as AddOnCheckoutRoot } from './ui/AddOnCheckout';
 export { default as AddOnCheckout } from './ui/AddOnCheckout';
 export { default as AddOnMarketplaceRoot } from './ui/AddOnMarketplace';
 export { default as BundleCardRoot } from './ui/BundleCard';
@@ -142,7 +141,7 @@ export {
   getFeatureAccessLevel
 } from './lib/featureGating';
 
-export { generatePDFReceipt } from './lib/pdfReceiptGenerator';
+export { default as generatePDFReceipt } from './lib/pdfReceiptGenerator';
 
 // Types (re-export from model if needed)
 export type {
@@ -161,5 +160,14 @@ export { formatOtp } from './lib/signupValidation';
 export { validateSignupFields } from './lib/signupValidation';
 export { formatPhoneNumber } from './lib/signupValidation';
 export { default as paymentsApiService } from './api/paymentsApiService';
-export type { SignupFormFields } from './ui/shared/SignupFormFields';
-export type { DatePicker } from './ui/shared/DatePicker';
+export { default as SignupFormFields, ALL_COUNTRIES, LANGUAGES } from './ui/shared/SignupFormFields';
+
+export { default as addOnCatalogService } from './api/addOnCatalogService';
+
+export { useSubscriptionAccess } from './model/subscriptionStore';
+
+export { default as addOnAnalyticsService } from './api/addOnAnalyticsService';
+
+export { formatDate } from './lib/subscriptionHelpers';
+
+export { default as addOnPaymentService } from './api/addOnPaymentService';

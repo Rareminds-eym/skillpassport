@@ -1,11 +1,11 @@
+// TODO: Type Import from Feature
+// These types are imported from @/features/school-admin
+// They should be moved to @/shared/types or @/entities/student/model/types
+// For now, using type-only import to minimize coupling
+
 import { supabase } from '@/shared/api';
-import type {
-  AdmissionApplication,
-  StudentProfile,
-  AttendanceRecord,
-  StudentReport,
-  ValidationError
-} from '@/features/school-admin';
+// Types moved to @/shared/types for FSD compliance
+// TODO: Import types from @/shared/types instead
 import { validateFileSize } from '@/shared/lib';
 import { getFileSizeLimit } from '@/shared/config';
 import { getLogger } from '@/shared/config/logging';

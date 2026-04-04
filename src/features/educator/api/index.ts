@@ -1,2 +1,2 @@
 // Educator API - Public Exports
-export * from './fileUploadService';
+export * from '@/shared/api/fileUploadService';

@@ -23,7 +23,7 @@ import {
   ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import { Course } from '@/shared/types/educator/course';
-import { SKILL_CATEGORIES, CLASSES } from '@/data/educator/mockCourses';
+import { SKILL_CATEGORIES, CLASSES } from '@/features/educator';
 import { CourseCard } from '@/features/courses';
 import { CourseFilters } from '@/features/courses';
 import { CreateCourseModal } from '@/features/courses';

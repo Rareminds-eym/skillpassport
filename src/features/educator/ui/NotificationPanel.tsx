@@ -10,7 +10,7 @@ import {
     UserGroupIcon,
     ShieldCheckIcon,
 } from '@heroicons/react/24/outline'
-import { useNotifications } from '@/features/recruiter'
+import { useNotifications } from '@/features/notifications'
 
 // Mock notification type
 type NotificationType =

@@ -1,4 +1,4 @@
-// Zustand Stores - Barrel Export
+// Zustand Stores - Barrel Export (Re-exports from FSD locations)
 // All stores are self-contained and don't require React providers
 
 // ====================
@@ -9,7 +9,7 @@ export {
   useThemeStore,
   useTheme,
   useIsDark
-} from './themeStore';
+} from '@/shared/model/themeStore';
 
 export {
   useAuthStore,
@@ -22,7 +22,7 @@ export {
   useErrorNotification,
   type User,
   type Session
-} from './authStore';
+} from '@/features/auth/model/authStore';
 
 // ====================
 // Feature Stores
@@ -39,7 +39,7 @@ export {
   useSearchActions,
   type SearchFilters,
   type SearchResult
-} from './searchStore';
+} from '@/shared/model/searchStore';
 
 export {
   usePortfolioStore,
@@ -52,7 +52,7 @@ export {
   useIsViewingOtherStudent,
   type PortfolioSettings,
   type DisplayPreferences
-} from './portfolioStore';
+} from '@/features/digital-portfolio/model/portfolioStore';
 
 export {
   useAssessmentStore,
@@ -70,7 +70,7 @@ export {
   type Answers,
   type SectionTimings,
   type AssessmentAttempt
-} from './assessmentStore';
+} from '@/features/assessment/model/assessmentStore';
 
 export {
   useTourStore,
@@ -85,7 +85,7 @@ export {
   type TourKey,
   type TourProgress,
   type TourState
-} from './tourStore';
+} from '@/shared/model/tourStore';
 
 export {
   useSubscriptionStore,
@@ -102,7 +102,7 @@ export {
   type Subscription,
   type Entitlement,
   type SubscriptionCost
-} from './subscriptionStore';
+} from '@/features/subscription/model/subscriptionStore';
 
 // ====================
 // Additional Feature Stores
@@ -118,7 +118,7 @@ export {
   useUserOnlineStatus,
   usePresenceActions,
   type OnlineUser
-} from './globalPresenceStore';
+} from '@/shared/model/globalPresenceStore';
 
 export {
   useTestStore,
@@ -129,7 +129,7 @@ export {
   useTestProgress,
   useTestActions,
   type Question
-} from './testStore';
+} from '@/features/assessment/model/testStore';
 
 export {
   usePromotionalStore,
@@ -138,7 +138,7 @@ export {
   usePromotionalActions,
   type PromotionalEvent,
   type TimeRemaining
-} from './promotionalStore';
+} from '@/features/promotional/model/promotionalStore';
 
 export {
   useCareerAssistantStore,
@@ -151,7 +151,7 @@ export {
   type Conversation,
   type Message,
   type FeedbackData
-} from './careerAssistantStore';
+} from '@/features/career-assistant/model/careerAssistantStore';
 
 // ====================
 // Existing Stores (already in codebase)
@@ -160,7 +160,7 @@ export {
 export {
   useCounsellingStore,
   type CounsellingStore
-} from '@/features/counselling';
+} from '@/features/counselling/model/counsellingStore';
 
 export {
   useMessageStore,
@@ -172,7 +172,7 @@ export {
   useCurrentConversation,
   useUnreadMessagesCount,
   type MessageState
-} from './useMessageStore';
+} from '@/features/messaging/model/messageStore';
 
 // ====================
 // Store Utilities
@@ -180,12 +180,12 @@ export {
 
 // Helper to reset all stores (useful for logout)
 export const resetAllStores = async () => {
-  const { useAuthStore } = await import('./authStore');
-  const { useSearchStore } = await import('./searchStore');
-  const { usePortfolioStore } = await import('./portfolioStore');
-  const { useTourStore } = await import('./tourStore');
-  const { useAssessmentStore } = await import('./assessmentStore');
-  const { useSubscriptionStore } = await import('./subscriptionStore');
+  const { useAuthStore } = await import('@/features/auth/model/authStore');
+  const { useSearchStore } = await import('@/shared/model/searchStore');
+  const { usePortfolioStore } = await import('@/features/digital-portfolio/model/portfolioStore');
+  const { useTourStore } = await import('@/shared/model/tourStore');
+  const { useAssessmentStore } = await import('@/features/assessment/model/assessmentStore');
+  const { useSubscriptionStore } = await import('@/features/subscription/model/subscriptionStore');
 
   // Reset individual stores
   useAuthStore.getState().logout();
@@ -198,7 +198,7 @@ export const resetAllStores = async () => {
 
 // Initialize all stores on app load
 export const initializeStores = async () => {
-  const { useAuthStore } = await import('./authStore');
+  const { useAuthStore } = await import('@/features/auth/model/authStore');
 
   // Initialize auth first (other stores may depend on it)
   await useAuthStore.getState().initialize();

@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { getStudentById } from '@/features/student-profile/api';
+import { getStudentById } from '@/entities/student/api/studentService';
 
 export const useStudentDataById = (studentId, fallbackToMock = true) => {
   const [studentData, setStudentData] = useState(null);

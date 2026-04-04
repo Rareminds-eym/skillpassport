@@ -7,8 +7,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { useStudents } from '@/entities/student/model/useStudents';
 import toast from 'react-hot-toast';
-import { addCandidateToPipeline } from '@/shared/api/pipelineService';
-import { createNotification } from '@/shared/api/notificationService.ts';
+import { addCandidateToPipeline } from '@/features/recruiter-pipeline';
+import { createNotification } from '@/features/notifications';
 
 interface AddFromTalentPoolModalProps {
   isOpen: boolean;

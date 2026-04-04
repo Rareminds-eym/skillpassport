@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ConsolidationStrategy } from '../ConsolidationStrategy';
-import type { DuplicateGroup } from '../types';
+import type { DuplicateGroup } from '@/features/student-profile/model';
 
 describe('ConsolidationStrategy', () => {
   let strategy: ConsolidationStrategy;

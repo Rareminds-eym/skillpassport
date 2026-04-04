@@ -4,7 +4,7 @@ import {
   ErrorHandlingPattern,
   ResponseTypeStandard,
   RequestPatternStandard
-} from '../types';
+} from '@/features/student-profile/model';
 
 export class StandardizationConfig {
   static getNamingConventions(): NamingConvention[] {

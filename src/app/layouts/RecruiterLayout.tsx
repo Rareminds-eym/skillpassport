@@ -4,7 +4,7 @@ import { useAuth } from '@/features/auth';
 import { GlobalPresenceProvider } from '@/stores';
 import { Header, Sidebar, MobileTabBar, CandidateProfileDrawer } from '@/features/recruiter-pipeline';
 import { useUser } from '@/stores';
-import FloatingRecruiterAIButton from '@/shared/ui/FloatingRecruiterAIButton';
+import { FloatingRecruiterAIButton } from '@/features/recruiter-pipeline';
 import { useResponsive } from '@/shared/lib/hooks';
 import { Candidate } from '@/entities/recruiter';
 import { useUnreadMessagesCount } from '@/features/messaging';

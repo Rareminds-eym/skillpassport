@@ -3,7 +3,7 @@ import {
   CoupledFunctionPair,
   DependencyGraph,
   RefactoringRecommendation
-} from '../types';
+} from '@/features/student-profile/model';
 
 export class TightCouplingAnalyzer {
   analyzeTightCoupling(dependencyGraph: DependencyGraph): TightCouplingAnalysis {

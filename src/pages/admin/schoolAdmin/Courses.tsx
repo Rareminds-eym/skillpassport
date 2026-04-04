@@ -10,7 +10,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 import { Course } from '@/shared/types/educator/course';
-import { SKILL_CATEGORIES, CLASSES } from '@/data/educator/mockCourses';
+import { SKILL_CATEGORIES, CLASSES } from '@/features/educator';
 
 import { CourseCard } from '@/features/courses';
 import { CourseFilters } from '@/features/courses';
@@ -22,7 +22,7 @@ import {
   getAllCourses,
   createCourse,
   updateCourse
-} from '@/features/educator-copilot';
+} from '@/features/educator';
 import toast from 'react-hot-toast'
 import { useUser, useIsAuthenticated } from '@/stores'
 import { supabase } from '@/shared/api/supabaseClient';

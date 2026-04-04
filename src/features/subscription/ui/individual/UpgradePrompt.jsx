@@ -17,7 +17,7 @@ import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSubscriptionContext } from '@/stores';
 import { clearFeatureAccessCache } from '@/features/subscription';
-import addOnPaymentService from '@/features/subscription/api/addOnPaymentService';
+import { addOnPaymentService } from '@/features/subscription';
 import { loadRazorpayScript } from '@/features/subscription/api';
 
 /**

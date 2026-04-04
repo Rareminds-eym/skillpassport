@@ -1462,7 +1462,7 @@ const ClassManagement = () => {
 }
 
 // Import modal components
-import { AssignEducatorModal as AssignEducatorModalComponent, ManageStudentsModal as ManageStudentsModalComponent } from '@/shared/ui/admin/modals/ClassManagementModals'
+import { AssignEducatorModal as AssignEducatorModalComponent, ManageStudentsModal as ManageStudentsModalComponent } from '@/features/college-admin'
 import { Pagination } from '@/shared/ui'
 import { authSessionService } from '@/features/auth';
 

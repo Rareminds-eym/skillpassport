@@ -1,9 +1,9 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import educatorIllustration from "../../../../assets/images/auth/Educator-illustration.jpg";
-import loginIllustration from "../../../../assets/images/auth/Recruiter-illustration.png";
-import studentIllustration from "../../../../assets/images/auth/Student-illustration.jpg";
+import educatorIllustration from "@/assets/images/auth/Educator-illustration.jpg";
+import loginIllustration from "@/assets/images/auth/Recruiter-illustration.png";
+import studentIllustration from "@/assets/images/auth/Student-illustration.jpg";
 
 import {
     Activity,

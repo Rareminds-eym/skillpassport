@@ -1,4 +1,4 @@
-import { TourKey } from './types';
+import { TourKey } from '@/features/student-profile/model';
 
 export const TOUR_KEYS: Record<string, TourKey> = {
   DASHBOARD: 'dashboard',

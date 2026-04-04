@@ -4,10 +4,10 @@ import { useUser } from '@/stores';
 import { useStudentDataByEmail } from '@/entities/student/model/useStudentDataByEmail';
 
 // Import shared components
-import CollegeClassHeader from '@/features/myclass/ui/CollegeClassHeader';
+import { CollegeClassHeader } from '@/features/myclass';
 import OverviewTab, { AssignmentStats, AdditionalInfo } from '@/features/myclass/ui/tabs/OverviewTab';
 import ClassmatesTab, { Classmate } from '@/features/myclass/ui/tabs/ClassmatesTab';
-import AssignmentsTab from '@/features/myclass/ui/tabs/AssignmentsTab';
+import { AssignmentsTab } from '@/features/myclass';
 import StudentAssignmentFileUpload from '@/entities/student/ui/StudentAssignmentFileUpload';
 import NotificationModal from '@/shared/ui/NotificationModal';
 
@@ -30,7 +30,7 @@ import {
 } from '@/features/college-admin';
 
 // Import assignment card interface
-import { Assignment } from '@/features/myclass/ui/AssignmentCard';
+import { Assignment } from '@/features/myclass';
 import { supabase } from '@/shared/api/supabaseClient';
 
 type CollegeTabType = 'overview' | 'classmates' | 'assignments';
@@ -52,7 +52,7 @@ const CollegeMyClass: React.FC = () => {
   // State management
   const [activeTab, setActiveTab] = useState<CollegeTabType>('overview');
   const [loading, setLoading] = useState(true);
-  
+
   // Data state
   const [classInfo, setClassInfo] = useState<CollegeClassInfo | null>(null);
   const [classmates, setClassmates] = useState<CollegeClassmate[]>([]);
@@ -97,7 +97,7 @@ const CollegeMyClass: React.FC = () => {
 
       try {
         setLoading(true);
-        
+
         // Fetch class info first
         const classData = await getCollegeStudentClassInfo(studentId);
         setClassInfo(classData);
@@ -140,10 +140,10 @@ const CollegeMyClass: React.FC = () => {
   const handleStatusChange = async (assignmentId: string, studentAssignmentId: string, newStatus: string) => {
     try {
       const result = await updateCollegeStudentAssignmentStatus(studentAssignmentId, newStatus);
-      
+
       if (result.data) {
         // Update local state
-        setAssignments(prev => prev.map(assignment => 
+        setAssignments(prev => prev.map(assignment =>
           assignment.student_assignment_id === studentAssignmentId
             ? { ...assignment, status: newStatus }
             : assignment
@@ -325,7 +325,7 @@ const CollegeMyClass: React.FC = () => {
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.todo;
-    
+
     return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
         {config.label}
@@ -376,17 +376,17 @@ const CollegeMyClass: React.FC = () => {
       if (assignment.status === 'submitted' || assignment.status === 'graded') {
         return false;
       }
-      
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       // Parse due date as local time (avoiding timezone conversion)
       const dueDateStr = assignment.due_date.replace('Z', '').replace('+00:00', '').replace('T', ' ');
       const dueDate = new Date(dueDateStr);
       dueDate.setHours(0, 0, 0, 0);
-      
+
       const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-      
+
       return dueDate >= today && dueDate <= nextWeek;
     })
     .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
@@ -490,11 +490,10 @@ const CollegeMyClass: React.FC = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as CollegeTabType)}
-                  className={`flex items-center gap-2 px-4 lg:px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                    activeTab === tab.id
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                  className={`flex items-center gap-2 px-4 lg:px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
                 >
                   <tab.icon className="w-4 h-4" />
                   <span className="hidden md:inline">{tab.label}</span>
@@ -749,7 +748,7 @@ const CollegeMyClass: React.FC = () => {
                             <strong>Grade:</strong> {assignmentDetails.grade_received}/{assignmentDetails.total_points} ({assignmentDetails.grade_percentage}%)
                           </p>
                         )}
-                        
+
                         {/* Submitted Files */}
                         {assignmentDetails.submission_files && assignmentDetails.submission_files.length > 0 && (
                           <div className="mt-3">
@@ -777,7 +776,7 @@ const CollegeMyClass: React.FC = () => {
                             </div>
                           </div>
                         )}
-                        
+
                         {assignmentDetails.instructor_feedback && (
                           <div className="mt-3">
                             <p className="text-green-800 font-medium mb-1">Instructor Feedback:</p>

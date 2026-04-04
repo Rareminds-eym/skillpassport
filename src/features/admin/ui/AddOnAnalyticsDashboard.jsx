@@ -17,7 +17,7 @@ import {
     Users
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import addOnAnalyticsService from '@/shared/api/addOnAnalyticsService';
+import { addOnAnalyticsService } from '@/features/subscription';
 
 /**
  * Metric Card Component

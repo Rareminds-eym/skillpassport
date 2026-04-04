@@ -1,4 +1,4 @@
-import { supabase } from '@/shared/api';
+import { supabase } from '@/shared/api/supabaseClient';
 
 // Cache configuration
 const CACHE_DURATION = 30000; // 30 seconds

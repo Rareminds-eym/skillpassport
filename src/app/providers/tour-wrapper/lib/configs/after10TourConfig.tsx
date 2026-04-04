@@ -1,4 +1,4 @@
-import { TourStep } from '../types';
+import { TourStep } from '@/features/student-profile/model';
 
 /**
  * Assessment Result Tour Configuration

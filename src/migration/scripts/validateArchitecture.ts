@@ -3,7 +3,7 @@
 import { ComplianceOrchestrator } from '../compliance/ComplianceOrchestrator';
 import { APIAnalyzer } from '../analysis/APIAnalyzer';
 import { MigrationLogger } from '../logging/MigrationLogger';
-import { FSDComplianceRules } from '../types';
+import { FSDComplianceRules } from '@/features/student-profile/model';
 
 interface ArchitectureValidationOptions {
   featuresOnly?: string[];

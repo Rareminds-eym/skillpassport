@@ -24,8 +24,8 @@ import {
   QuickStatsCard, 
   ResultsSummary,
   ExportOptionsModal
-} from '@/shared/ui/admin/universityAdmin/ResultsComponents';
-import ResultsAnalytics from '@/shared/ui/admin/universityAdmin/ResultsAnalytics';
+} from '@/features/university-admin';
+import { ResultsAnalytics } from '@/features/university-admin';
 
 interface Student {
   id: string;

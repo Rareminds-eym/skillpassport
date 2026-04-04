@@ -4,7 +4,7 @@
  */
 
 import type { GradeLevel, AssessmentSection } from '../model/types';
-import { SECTION_ID_MAPPINGS, SECTION_COLORS } from '../config/config';
+import { SECTION_ID_MAPPINGS, SECTION_COLORS } from '../lib/config/config';
 
 /**
  * Get section ID based on grade level

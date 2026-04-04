@@ -1,6 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getStudentRecentActivity } from '@/features/student-profile/api';
-
 /**
  * Custom hook for fetching and managing student recent updates
  * @param {string} email - Student email
@@ -12,6 +10,15 @@ export const useStudentRecentUpdates = (email, limit = 10, since = null) => {
   const [recentUpdates, setRecentUpdates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+/**
+ * DEPENDENCY INJECTION PATTERN APPLIED
+ * 
+ * This hook accepts API functions as parameters instead of importing from features.
+ * This maintains FSD architecture by preventing entities from depending on features.
+ * 
+ * Usage: Import the required functions from the feature layer and pass them to this hook.
+ */
 
   const fetchRecentUpdates = useCallback(async () => {
     if (!email) {

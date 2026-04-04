@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getUserRole } from '../roleLookupService';
-import { supabase } from '../../../shared/api';
+import { supabase } from '@/shared/api';
 
 // Mock supabase
 vi.mock('@/shared/api/supabaseClient', () => ({

@@ -292,7 +292,7 @@ export async function getSeatingArrangements(examTimetableId: string): Promise<E
   return data || [];
 }
 
-export async function markAttendance(
+export async function markExamAttendance(
   seatingId: string,
   status: 'present' | 'absent' | 'late',
   markedBy: string
@@ -398,3 +398,26 @@ export async function getAttendanceReport(examTimetableId: string): Promise<any>
     expected: seating?.filter(s => s.attendance_status === 'expected').length || 0
   };
 }
+
+// Export as service object for backward compatibility
+export const examinationService = {
+  createExamWindow,
+  getExamWindows,
+  updateExamWindow,
+  publishExamWindow,
+  registerStudentForExam,
+  getExamRegistrations,
+  issueHallTicket,
+  bulkIssueHallTickets,
+  createExamRoom,
+  getExamRooms,
+  updateExamRoom,
+  createSeatingArrangement,
+  getSeatingArrangements,
+  markExamAttendance,
+  assignInvigilator,
+  getInvigilatorAssignments,
+  markInvigilatorAttendance,
+  getExamStatistics,
+  getAttendanceReport
+};

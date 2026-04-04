@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { supabase } from '@/shared/api/supabaseClient';
-import { downloadCertificate, getCertificateProxyUrl } from '@/features/digital-portfolio';
+import { downloadCertificate, getCertificateProxyUrl } from '@/shared/lib/utils/certificateUtils';
 import '@/shared/lib/suppressRechartsWarnings'; // Auto-suppress Recharts warnings
 
 // Compact tooltip for chart
@@ -22,20 +22,20 @@ const CustomTooltip = ({ active, payload, label }) => {
 // Continue Learning Hero Card (Full Width) - Always visible with floating animation
 const ContinueLearningHero = ({ course, onContinue }) => {
   const hasCourse = course && course.completionRate < 100;
-  
+
   return (
     <div className="relative mt-20">
       {/* Floating Book Animation - Top Center Overlap */}
-      <div 
+      <div
         className="absolute left-6 -top-20 z-20"
         style={{
           animation: 'float 3s ease-in-out infinite',
         }}
       >
         <div className="drop-shadow-xl" style={{ width: 128, height: 128 }}>
-          <DotLottieReact 
-            src="https://lottie.host/45abe60c-5bde-4cc9-b112-d35f11a7ffd0/DwMCYzvoQM.lottie" 
-            loop 
+          <DotLottieReact
+            src="https://lottie.host/45abe60c-5bde-4cc9-b112-d35f11a7ffd0/DwMCYzvoQM.lottie"
+            loop
             autoplay
             renderConfig={{
               autoResize: true,
@@ -52,7 +52,7 @@ const ContinueLearningHero = ({ course, onContinue }) => {
           />
         </div>
       </div>
-      
+
       {/* Card */}
       <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 rounded-2xl p-5 text-white shadow-lg">
         {/* Row 1: Title + Button */}
@@ -65,19 +65,19 @@ const ContinueLearningHero = ({ course, onContinue }) => {
               {hasCourse ? 'Continue Learning' : 'Ready to Learn?'}
             </p>
           </div>
-          <button 
+          <button
             onClick={() => hasCourse ? onContinue?.(course.courseId) : onContinue?.()}
             className="px-4 py-2 bg-white text-blue-600 text-sm font-bold rounded-xl hover:bg-blue-50 transition-all flex items-center gap-2 shadow-md"
           >
             {hasCourse ? 'Continue' : 'Browse Courses'} <ArrowRight className="w-4 h-4" />
           </button>
         </div>
-        
+
         {/* Row 2: Course Name */}
         <h3 className="text-xl font-bold truncate mb-3">
           {hasCourse ? course.courseName : 'Start Your Learning Journey'}
         </h3>
-        
+
         {/* Row 3: Progress Bar */}
         {hasCourse ? (
           <div className="flex items-center gap-4">
@@ -90,7 +90,7 @@ const ContinueLearningHero = ({ course, onContinue }) => {
           <p className="text-blue-200 text-sm">Explore courses and begin building new skills today!</p>
         )}
       </div>
-      
+
       {/* CSS Keyframes for floating animation */}
       <style>{`
         @keyframes float {
@@ -116,9 +116,9 @@ const WeeklyOverviewCard = ({ stats, activeDays }) => {
       <div className="flex items-center justify-between mb-auto">
         <div className="flex items-center gap-3">
           <div style={{ width: 64, height: 64, flexShrink: 0 }}>
-            <DotLottieReact 
-              src="https://lottie.host/c64de14f-ce23-41a2-90a6-b64b2d11ea54/nqY24O7vea.lottie" 
-              loop 
+            <DotLottieReact
+              src="https://lottie.host/c64de14f-ce23-41a2-90a6-b64b2d11ea54/nqY24O7vea.lottie"
+              loop
               autoplay
               renderConfig={{
                 autoResize: true,
@@ -142,11 +142,10 @@ const WeeklyOverviewCard = ({ stats, activeDays }) => {
         {/* Week dots */}
         <div className="flex gap-1.5">
           {[...Array(7)].map((_, i) => (
-            <div 
-              key={i} 
-              className={`w-3 h-3 rounded-full transition-all ${
-                i < activeDays ? 'bg-amber-400' : 'bg-gray-200'
-              }`} 
+            <div
+              key={i}
+              className={`w-3 h-3 rounded-full transition-all ${i < activeDays ? 'bg-amber-400' : 'bg-gray-200'
+                }`}
             />
           ))}
         </div>
@@ -173,7 +172,7 @@ const WeeklyOverviewCard = ({ stats, activeDays }) => {
 // Suppress Recharts warnings in development
 const SuppressedResponsiveContainer = ({ children, ...props }) => {
   const originalWarn = console.warn;
-  
+
   useEffect(() => {
     // Temporarily suppress Recharts dimension warnings
     console.warn = (...args) => {
@@ -184,12 +183,12 @@ const SuppressedResponsiveContainer = ({ children, ...props }) => {
       }
       originalWarn.apply(console, args);
     };
-    
+
     return () => {
       console.warn = originalWarn;
     };
   }, []);
-  
+
   return <ResponsiveContainer {...props}>{children}</ResponsiveContainer>;
 };
 
@@ -199,14 +198,14 @@ const DailyChartCard = ({ weekData, derivedStats }) => {
   const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
   const containerRef = useRef(null);
   const mountedRef = useRef(true);
-  
+
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
     };
   }, []);
-  
+
   useEffect(() => {
     // Comprehensive visibility and dimension check
     const checkContainerReadiness = () => {
@@ -217,13 +216,13 @@ const DailyChartCard = ({ weekData, derivedStats }) => {
       const element = containerRef.current;
       const rect = element.getBoundingClientRect();
       const computedStyle = window.getComputedStyle(element);
-      
+
       // Multiple checks for element readiness
       const isVisible = element.offsetParent !== null;
       const hasValidDimensions = rect.width > 0 && rect.height > 0;
       const isNotHidden = computedStyle.display !== 'none' && computedStyle.visibility !== 'hidden';
       const hasMinimumSize = rect.width >= 200 && rect.height >= 120;
-      
+
       console.log('📊 Chart readiness check:', {
         isVisible,
         hasValidDimensions,
@@ -235,7 +234,7 @@ const DailyChartCard = ({ weekData, derivedStats }) => {
         display: computedStyle.display,
         visibility: computedStyle.visibility
       });
-      
+
       if (isVisible && hasValidDimensions && isNotHidden && hasMinimumSize && mountedRef.current) {
         setContainerDimensions({ width: rect.width, height: rect.height });
         // Additional delay to ensure React has finished rendering
@@ -257,7 +256,7 @@ const DailyChartCard = ({ weekData, derivedStats }) => {
       setTimeout(checkContainerReadiness, 500),
       setTimeout(checkContainerReadiness, 1000)
     ];
-    
+
     // ResizeObserver with error handling
     let resizeObserver;
     if (containerRef.current && typeof window !== 'undefined' && window.ResizeObserver) {
@@ -272,7 +271,7 @@ const DailyChartCard = ({ weekData, derivedStats }) => {
         console.warn('ResizeObserver error:', error);
       }
     }
-    
+
     return () => {
       timers.forEach(timer => clearTimeout(timer));
       if (resizeObserver) {
@@ -307,26 +306,26 @@ const DailyChartCard = ({ weekData, derivedStats }) => {
           <span className="text-gray-500">Best: <span className="font-semibold text-blue-600">{derivedStats?.mostProductiveDay || 'N/A'}</span></span>
         </div>
       </div>
-      <div 
+      <div
         ref={containerRef}
         className="h-[120px] w-full"
-        style={{ 
-          minHeight: '120px', 
+        style={{
+          minHeight: '120px',
           minWidth: '200px',
           width: '100%',
           height: '120px'
         }}
       >
         {shouldRenderChart ? (
-          <SuppressedResponsiveContainer 
-            width="100%" 
-            height="100%" 
-            minWidth={200} 
+          <SuppressedResponsiveContainer
+            width="100%"
+            height="100%"
+            minWidth={200}
             minHeight={120}
             aspect={undefined}
           >
-            <BarChart 
-              data={weekData} 
+            <BarChart
+              data={weekData}
               margin={{ top: 5, right: 5, left: -25, bottom: 0 }}
               width={containerDimensions.width}
               height={containerDimensions.height}
@@ -358,14 +357,13 @@ const DailyChartCard = ({ weekData, derivedStats }) => {
 // Compact Achievement Badge
 const AchievementBadge = ({ achievement, isUnlocked }) => {
   const progress = Math.min((achievement.current / achievement.target) * 100, 100);
-  
+
   return (
-    <div 
-      className={`relative flex items-center gap-2 px-3 py-2 rounded-xl border transition-all flex-shrink-0 ${
-        isUnlocked 
-          ? `${achievement.bgColor} ${achievement.borderColor}` 
+    <div
+      className={`relative flex items-center gap-2 px-3 py-2 rounded-xl border transition-all flex-shrink-0 ${isUnlocked
+          ? `${achievement.bgColor} ${achievement.borderColor}`
           : 'bg-gray-50 border-gray-200'
-      }`}
+        }`}
     >
       {/* Icon with integrated progress ring */}
       <div className="relative w-9 h-9 flex-shrink-0">
@@ -374,9 +372,9 @@ const AchievementBadge = ({ achievement, isUnlocked }) => {
           <svg className="absolute inset-0 w-9 h-9 -rotate-90" viewBox="0 0 36 36">
             <circle cx="18" cy="18" r="15" fill="none" stroke="#E5E7EB" strokeWidth="3" />
             {progress > 0 && (
-              <circle 
-                cx="18" cy="18" r="15" fill="none" 
-                stroke={progress >= 75 ? '#F59E0B' : '#3B82F6'} 
+              <circle
+                cx="18" cy="18" r="15" fill="none"
+                stroke={progress >= 75 ? '#F59E0B' : '#3B82F6'}
                 strokeWidth="3"
                 strokeLinecap="round"
                 strokeDasharray={`${(progress / 100) * 94.25} 94.25`}
@@ -385,13 +383,12 @@ const AchievementBadge = ({ achievement, isUnlocked }) => {
           </svg>
         )}
         {/* Icon circle - smaller to show ring */}
-        <div className={`absolute inset-1.5 rounded-full flex items-center justify-center ${
-          isUnlocked ? achievement.iconBg : 'bg-gray-100'
-        }`}>
+        <div className={`absolute inset-1.5 rounded-full flex items-center justify-center ${isUnlocked ? achievement.iconBg : 'bg-gray-100'
+          }`}>
           <achievement.icon className={`w-3.5 h-3.5 ${isUnlocked ? achievement.iconColor : 'text-gray-400'}`} />
         </div>
       </div>
-      
+
       <div className="min-w-0">
         <p className={`text-xs font-semibold truncate ${isUnlocked ? 'text-gray-800' : 'text-gray-500'}`}>
           {achievement.label}
@@ -412,13 +409,13 @@ const CompactAchievementsRow = ({ stats, courseData }) => {
   const [achievementData, setAchievementData] = useState(null);
   const [loading, setLoading] = useState(true);
   const hasFetchedRef = useRef(false);
-  
+
   // Extract primitive values to use as stable dependencies
   const statsCurrentStreak = stats?.currentStreak || 0;
   const statsTotalMinutes = stats?.totalMinutes || 0;
   const statsCompletedLessons = stats?.completedLessons || 0;
-  const completedCoursesCount = useMemo(() => 
-    courseData?.filter(c => c.completionRate === 100).length || 0, 
+  const completedCoursesCount = useMemo(() =>
+    courseData?.filter(c => c.completionRate === 100).length || 0,
     [courseData]
   );
 
@@ -426,7 +423,7 @@ const CompactAchievementsRow = ({ stats, courseData }) => {
     // Only fetch once on mount
     if (hasFetchedRef.current) return;
     hasFetchedRef.current = true;
-    
+
     const fetchAchievementData = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
@@ -500,7 +497,7 @@ const CompactAchievementsRow = ({ stats, courseData }) => {
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm animate-pulse">
         <div className="h-4 bg-gray-200 rounded w-32 mb-3"></div>
         <div className="flex gap-2 overflow-x-auto">
-          {[1,2,3,4].map(i => <div key={i} className="h-12 bg-gray-100 rounded-xl w-28 flex-shrink-0"></div>)}
+          {[1, 2, 3, 4].map(i => <div key={i} className="h-12 bg-gray-100 rounded-xl w-28 flex-shrink-0"></div>)}
         </div>
       </div>
     );
@@ -518,20 +515,20 @@ const CompactAchievementsRow = ({ stats, courseData }) => {
         {/* Progress dots */}
         <div className="flex gap-1">
           {achievements.map((a, i) => (
-            <div 
-              key={i} 
-              className={`w-2 h-2 rounded-full ${a.current >= a.target ? 'bg-amber-400' : 'bg-gray-200'}`} 
+            <div
+              key={i}
+              className={`w-2 h-2 rounded-full ${a.current >= a.target ? 'bg-amber-400' : 'bg-gray-200'}`}
             />
           ))}
         </div>
       </div>
-      
+
       {/* Horizontal scrollable badges */}
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
         {achievements.map((achievement) => (
-          <AchievementBadge 
-            key={achievement.id} 
-            achievement={achievement} 
+          <AchievementBadge
+            key={achievement.id}
+            achievement={achievement}
             isUnlocked={achievement.current >= achievement.target}
           />
         ))}
@@ -545,10 +542,10 @@ const MiniDonutChart = ({ completed, inProgress, notStarted, total }) => {
   const radius = 32;
   const strokeWidth = 8;
   const circumference = 2 * Math.PI * radius;
-  
+
   const completedPct = total > 0 ? (completed / total) * 100 : 0;
   const inProgressPct = total > 0 ? (inProgress / total) * 100 : 0;
-  
+
   const completedDash = (completedPct / 100) * circumference;
   const inProgressDash = (inProgressPct / 100) * circumference;
 
@@ -581,7 +578,7 @@ const CompactCourseCard = ({ course, onClick }) => {
   useEffect(() => {
     const fetchCertificateUrl = async () => {
       if (!isCompleted || !course.courseId) return;
-      
+
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
@@ -623,7 +620,7 @@ const CompactCourseCard = ({ course, onClick }) => {
   const handleDownloadCertificate = async (e) => {
     e.stopPropagation();
     if (!certificateUrl) return;
-    
+
     setIsDownloading(true);
     try {
       await downloadCertificate(certificateUrl, course.courseName);
@@ -635,29 +632,27 @@ const CompactCourseCard = ({ course, onClick }) => {
   };
 
   return (
-    <div 
-      onClick={handleClick} 
-      className={`flex items-center gap-4 p-3 rounded-xl border border-gray-100 transition-all group ${
-        isCompleted 
-          ? 'cursor-default' 
+    <div
+      onClick={handleClick}
+      className={`flex items-center gap-4 p-3 rounded-xl border border-gray-100 transition-all group ${isCompleted
+          ? 'cursor-default'
           : 'hover:border-gray-200 hover:bg-gray-50 cursor-pointer'
-      }`}
+        }`}
     >
       {/* Progress Circle */}
       <div className="relative w-10 h-10 flex-shrink-0">
         <svg className="w-10 h-10 -rotate-90" viewBox="0 0 40 40">
           <circle cx="20" cy="20" r="16" fill="none" stroke="#E5E7EB" strokeWidth="3" />
-          <circle 
-            cx="20" cy="20" r="16" fill="none" 
-            stroke={isCompleted ? '#10B981' : isNotStarted ? '#E5E7EB' : '#3B82F6'} 
+          <circle
+            cx="20" cy="20" r="16" fill="none"
+            stroke={isCompleted ? '#10B981' : isNotStarted ? '#E5E7EB' : '#3B82F6'}
             strokeWidth="3"
             strokeDasharray={`${(course.completionRate / 100) * 100.5} 100.5`}
             strokeLinecap="round"
           />
         </svg>
-        <span className={`absolute inset-0 flex items-center justify-center text-[10px] font-bold ${
-          isCompleted ? 'text-emerald-600' : isNotStarted ? 'text-gray-400' : 'text-blue-600'
-        }`}>
+        <span className={`absolute inset-0 flex items-center justify-center text-[10px] font-bold ${isCompleted ? 'text-emerald-600' : isNotStarted ? 'text-gray-400' : 'text-blue-600'
+          }`}>
           {course.completionRate}%
         </span>
       </div>
@@ -685,11 +680,10 @@ const CompactCourseCard = ({ course, onClick }) => {
           <button
             onClick={handleViewCertificate}
             disabled={!certificateUrl}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
-              certificateUrl
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${certificateUrl
                 ? 'bg-blue-50 text-blue-600 hover:bg-blue-100'
                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            }`}
+              }`}
             title={certificateUrl ? 'View Certificate' : 'Certificate not available'}
           >
             <Eye className="w-3 h-3" />
@@ -697,22 +691,20 @@ const CompactCourseCard = ({ course, onClick }) => {
           <button
             onClick={handleDownloadCertificate}
             disabled={!certificateUrl || isDownloading}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
-              certificateUrl && !isDownloading
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${certificateUrl && !isDownloading
                 ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            }`}
+              }`}
             title={certificateUrl ? 'Download Certificate' : 'Certificate not available'}
           >
             <Download className={`w-3 h-3 ${isDownloading ? 'animate-bounce' : ''}`} />
           </button>
         </div>
       ) : (
-        <button className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-          isNotStarted
+        <button className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${isNotStarted
             ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-        }`}>
+          }`}>
           {isNotStarted ? 'Start' : 'Continue'}
         </button>
       )}
@@ -724,7 +716,7 @@ const CompactCourseCard = ({ course, onClick }) => {
 const CoursesSection = ({ courseData, onCourseClick, completedCount, inProgressCount, notStartedCount }) => {
   const [activeTab, setActiveTab] = useState('inProgress');
   const totalCourses = courseData.length;
-  
+
   const filteredCourses = useMemo(() => {
     switch (activeTab) {
       case 'inProgress': return courseData.filter(c => c.completionRate > 0 && c.completionRate < 100);
@@ -751,12 +743,12 @@ const CoursesSection = ({ courseData, onCourseClick, completedCount, inProgressC
             <h3 className="text-base font-bold text-gray-900">Your Courses</h3>
             <p className="text-xs text-gray-400">Track your learning journey</p>
           </div>
-          
+
           {/* Donut + Legend */}
           <div className="flex items-center gap-4">
-            <MiniDonutChart 
-              completed={completedCount} 
-              inProgress={inProgressCount} 
+            <MiniDonutChart
+              completed={completedCount}
+              inProgress={inProgressCount}
               notStarted={notStartedCount}
               total={totalCourses}
             />
@@ -776,7 +768,7 @@ const CoursesSection = ({ courseData, onCourseClick, completedCount, inProgressC
             </div>
           </div>
         </div>
-        
+
         {/* Tabs */}
         <div className="flex gap-2">
           {tabs.map((tab) => {
@@ -786,19 +778,17 @@ const CoursesSection = ({ courseData, onCourseClick, completedCount, inProgressC
               gray: isActive ? 'bg-gray-200 text-gray-700 border-gray-300' : '',
               green: isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : '',
             };
-            
+
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
-                  isActive ? colorMap[tab.color] : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${isActive ? colorMap[tab.color] : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+                  }`}
               >
                 {tab.label}
-                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                  isActive ? 'bg-white/50' : 'bg-gray-200 text-gray-500'
-                }`}>
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isActive ? 'bg-white/50' : 'bg-gray-200 text-gray-500'
+                  }`}>
                   {tab.count}
                 </span>
               </button>
@@ -812,10 +802,10 @@ const CoursesSection = ({ courseData, onCourseClick, completedCount, inProgressC
         {filteredCourses.length > 0 ? (
           <div className="space-y-2">
             {filteredCourses.map((course) => (
-              <CompactCourseCard 
-                key={course.courseId} 
-                course={course} 
-                onClick={() => onCourseClick(course.courseId)} 
+              <CompactCourseCard
+                key={course.courseId}
+                course={course}
+                onClick={() => onCourseClick(course.courseId)}
               />
             ))}
           </div>
@@ -842,12 +832,12 @@ const WeeklyLearningTracker = () => {
   const [courseData, setCourseData] = useState([]);
   const [stats, setStats] = useState({ totalMinutes: 0, completedLessons: 0, completedModules: 0, completedCourses: 0, currentStreak: 0 });
   const [loading, setLoading] = useState(true);
-  
+
   // Course filter state
   const [selectedCourseId, setSelectedCourseId] = useState(null); // null = "All Courses"
   const [rawProgressData, setRawProgressData] = useState([]); // Store raw data for filtering
   const [rawEnrollments, setRawEnrollments] = useState([]); // Store enrollments for filtering
-  
+
   // Refs to prevent duplicate fetches and track component mount
   const isFetchingRef = useRef(false);
   const isMountedRef = useRef(true);
@@ -871,14 +861,14 @@ const WeeklyLearningTracker = () => {
     isMountedRef.current = true;
     // Initial load - show loading spinner
     fetchWeeklyProgress(true);
-    
+
     // Background refresh every 2 minutes (increased from 60s) - no loading spinner
     const interval = setInterval(() => {
       if (!isFetchingRef.current && isMountedRef.current) {
         fetchWeeklyProgress(false); // Background refresh - no loading spinner
       }
     }, 120000); // 2 minutes
-    
+
     return () => {
       isMountedRef.current = false;
       clearInterval(interval);
@@ -891,9 +881,9 @@ const WeeklyLearningTracker = () => {
       console.log('📊 Weekly progress fetch already in progress, skipping...');
       return;
     }
-    
+
     isFetchingRef.current = true;
-    
+
     try {
       // Only show loading spinner on initial load, not on background refreshes
       if (isInitialLoad) {
@@ -906,7 +896,7 @@ const WeeklyLearningTracker = () => {
       }
 
       const weekDates = getCurrentWeek();
-      
+
       // Fetch all data in parallel with single queries (no N+1)
       const [
         { data: progressData, error: progressError },
@@ -927,7 +917,7 @@ const WeeklyLearningTracker = () => {
 
       // Get all course IDs from enrollments and fetch course titles separately
       const courseIds = (enrollments || []).map(e => e.course_id).filter(Boolean);
-      
+
       // Fetch course titles
       let courseTitles = {};
       if (courseIds.length > 0) {
@@ -935,14 +925,14 @@ const WeeklyLearningTracker = () => {
           .from('courses')
           .select('course_id, title')
           .in('course_id', courseIds);
-        
+
         (coursesData || []).forEach(course => {
           courseTitles[course.course_id] = course.title;
         });
       }
-      
+
       console.log('📊 WeeklyLearningTracker - Course titles:', courseTitles);
-      
+
       // Batch fetch all modules for all courses in one query
       let allModules = [];
       if (courseIds.length > 0) {
@@ -955,7 +945,7 @@ const WeeklyLearningTracker = () => {
 
       // Get all module IDs
       const moduleIds = allModules.map(m => m.module_id);
-      
+
       // Batch fetch lesson counts per module in one query
       let lessonCounts = {};
       if (moduleIds.length > 0) {
@@ -963,7 +953,7 @@ const WeeklyLearningTracker = () => {
           .from('lessons')
           .select('module_id')
           .in('module_id', moduleIds);
-        
+
         // Count lessons per module
         (lessonsData || []).forEach(lesson => {
           lessonCounts[lesson.module_id] = (lessonCounts[lesson.module_id] || 0) + 1;
@@ -973,18 +963,18 @@ const WeeklyLearningTracker = () => {
       // Calculate course progress using the batched data
       const courseProgress = (enrollments || []).map(enrollment => {
         const courseTitle = courseTitles[enrollment.course_id] || enrollment.course_title || 'Untitled Course';
-        
+
         // Get modules for this course
         const courseModules = allModules.filter(m => m.course_id === enrollment.course_id);
-        
+
         // Calculate total lessons for this course
         const totalCount = courseModules.reduce((sum, m) => sum + (lessonCounts[m.module_id] || 0), 0);
-        
+
         // Count completed lessons for this course from progressData
         const completedCount = (progressData || []).filter(
           p => p.course_id === enrollment.course_id && p.status === 'completed'
         ).length;
-        
+
         const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
         return {
@@ -1002,16 +992,16 @@ const WeeklyLearningTracker = () => {
         isFetchingRef.current = false;
         return;
       }
-      
+
       // Store raw data for course filtering
       setRawProgressData(progressData || []);
       setRawEnrollments(enrollments || []);
-      
+
       console.log('📊 WeeklyLearningTracker - Setting courseData:', {
         courseProgressCount: courseProgress.length,
         courses: courseProgress.map(c => ({ id: c.courseId, name: c.courseName, rate: c.completionRate }))
       });
-      
+
       setCourseData(courseProgress.sort((a, b) => b.completionRate - a.completionRate));
 
       const weeklyData = dayNames.map((day, index) => {
@@ -1068,7 +1058,7 @@ const WeeklyLearningTracker = () => {
   // Calculate filtered week data based on selected course
   const filteredWeekData = useMemo(() => {
     if (!selectedCourseId) return weekData;
-    
+
     const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const curr = new Date();
     const weekDates = [];
@@ -1126,7 +1116,7 @@ const WeeklyLearningTracker = () => {
   const derivedStats = useMemo(() => {
     const dataToUse = selectedCourseId ? filteredWeekData : weekData;
     const statsToUse = selectedCourseId ? filteredStats : stats;
-    
+
     const activeDays = dataToUse.filter(d => d.minutes > 0).length;
     const avgMinutes = activeDays > 0 ? Math.round(statsToUse.totalMinutes / activeDays) : 0;
     const mostProductiveDay = dataToUse.reduce((max, d) => d.minutes > max.minutes ? d : max, { day: '-', minutes: 0 });
@@ -1223,8 +1213,8 @@ const WeeklyLearningTracker = () => {
       <CompactAchievementsRow stats={displayStats} courseData={courseData} />
 
       {/* Row 4: Courses Section (Full Width) */}
-      <CoursesSection 
-        courseData={courseData} 
+      <CoursesSection
+        courseData={courseData}
         onCourseClick={handleCourseClick}
         completedCount={completedCount}
         inProgressCount={inProgressCount}

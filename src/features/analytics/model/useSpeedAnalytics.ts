@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/shared/api/supabaseClient';
 // TODO: Fix this import - getSpeedAnalytics function is missing from educator-copilot
 // import { FunnelRangePreset, getSpeedAnalytics } from '@/features/educator-copilot';
-import type { FunnelRangePreset } from '@/features/educator-copilot/api/analyticsService';
+import type { FunnelRangePreset } from '@/features/educator-copilot';
 
 interface UseSpeedAnalyticsOptions {
   preset: FunnelRangePreset;

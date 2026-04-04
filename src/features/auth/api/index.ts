@@ -56,7 +56,7 @@ export { loginStudent } from './studentAuthService';
 export { loginRecruiter } from './recruiterAuthService';
 
 // USER API SERVICE (Default export for backward compatibility)
-export { default } from './userApiService';
+export { default as default } from './userApiService';
 export * from './adminAuthService';
 export * from './authService';
 export * from './otpService';

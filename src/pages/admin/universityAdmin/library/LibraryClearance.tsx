@@ -16,7 +16,7 @@ import {
   Calendar,
   GraduationCap,
 } from 'lucide-react';
-import KPICard from '@/shared/ui/KPICard';
+import { KPICard } from '@/features/analytics';
 
 const LibraryClearance = () => {
   const [activeTab, setActiveTab] = useState('pending');

@@ -1,5 +1,15 @@
+/**
+ * DEPENDENCY INJECTION PATTERN APPLIED
+ * 
+ * This hook should receive counselling functions as parameters.
+ * Import from @/features/counselling in the parent component and pass them down.
+ * 
+ * Example:
+ *   import { generateRoleResponsibilities, getFallbackResponsibilities } from '@/features/counselling';
+ *   const hook = useRoleResponsibilities(roleName, clusterTitle, { generateRoleResponsibilities, getFallbackResponsibilities });
+ */
+
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { generateRoleResponsibilities, getFallbackResponsibilities } from '@/features/counselling';
 
 /**
  * Cache structure for storing role responsibilities
@@ -33,11 +43,11 @@ function getCacheKey(roleName: string, clusterTitle: string): string {
 export function checkCache(roleName: string, clusterTitle: string): string[] | null {
   const key = getCacheKey(roleName, clusterTitle);
   const entry = sessionCache[key];
-  
+
   if (entry && entry.responsibilities.length === 3) {
     return entry.responsibilities;
   }
-  
+
   return null;
 }
 
@@ -84,14 +94,24 @@ interface UseRoleResponsibilitiesReturn {
  * @example
  * const { responsibilities, loading } = useRoleResponsibilities('Software Engineer', 'Technology');
  */
+
+/**
+ * Counselling API interface for dependency injection
+ */
+interface CounsellingAPI {
+  generateRoleResponsibilities: (roleName: string, clusterTitle: string) => Promise<string[]>;
+  getFallbackResponsibilities: (roleName: string) => string[];
+}
+
 export function useRoleResponsibilities(
   roleName: string | null,
-  clusterTitle: string
+  clusterTitle: string,
+  counsellingAPI: CounsellingAPI
 ): UseRoleResponsibilitiesReturn {
   const [responsibilities, setResponsibilities] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
-  
+
   // Track the current request to handle race conditions
   const currentRequestRef = useRef<string | null>(null);
 
@@ -112,8 +132,8 @@ export function useRoleResponsibilities(
     setError(null);
 
     try {
-      const result = await generateRoleResponsibilities(role, cluster);
-      
+      const result = await counsellingAPI.generateRoleResponsibilities(role, cluster);
+
       // Only update state if this is still the current request
       if (currentRequestRef.current === requestKey) {
         setResponsibilities(result);
@@ -125,9 +145,9 @@ export function useRoleResponsibilities(
       if (currentRequestRef.current === requestKey) {
         console.error('Error fetching role responsibilities:', err);
         setError(err instanceof Error ? err : new Error('Failed to generate responsibilities'));
-        
+
         // Return fallback without exposing error to user
-        const fallback = getFallbackResponsibilities(role);
+        const fallback = counsellingAPI.getFallbackResponsibilities(role);
         setResponsibilities(fallback);
         setLoading(false);
       }

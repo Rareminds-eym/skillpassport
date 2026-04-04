@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { getAssignmentsByStudentId } from '@/features/educator-copilot';
-import { Assignment } from '@/features/myclass/ui/AssignmentCard';
+import { Assignment } from '@/features/myclass';
 
 interface UseAssignmentsDataReturn {
   assignments: Assignment[];

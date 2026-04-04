@@ -38,3 +38,4 @@ export type { Student } from './model/types';
 export type { UICandidate } from './model/useAdminStudents';
 export { useStudentCollegeAdminConversations } from './model/useStudentCollegeAdminMessages';
 export { useStudentAdminConversations } from './model/useStudentAdminMessages';
+export { default as StudentProfileDrawer } from './ui/StudentProfileDrawer';

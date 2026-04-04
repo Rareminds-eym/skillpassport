@@ -1,4 +1,4 @@
-import { APIFunction, Integration } from '../types';
+import { APIFunction, Integration } from '@/features/student-profile/model';
 import { StoreIntegrator } from './StoreIntegrator';
 
 /**
@@ -32,7 +32,7 @@ export class SubscriptionStoreIntegrator {
     const functionName = subscriptionFunction.name;
     const functionNameLower = functionName.toLowerCase();
 
-    let code = `import { useSubscriptionStore, useSubscription, useSubscriptionAccess } from '@/stores/subscriptionStore';\n\n`;
+    let code = `import { useSubscriptionStore, useSubscription, useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';\n\n`;
 
     // Generate function based on subscription operation type
     if (functionNameLower.includes('active') && functionNameLower.includes('subscription')) {
@@ -428,7 +428,7 @@ export const use${subscriptionFunction.name.charAt(0).toUpperCase() + subscripti
     let code = `// Enhanced subscription API with Zustand store integration
 // This file connects subscription operations with store state management
 
-import { useSubscriptionStore, useSubscription, useSubscriptionAccess } from '@/stores/subscriptionStore';
+import { useSubscriptionStore, useSubscription, useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
 import * as originalSubscriptionService from '@/shared/api/Subscriptions/subscriptionService';
 
 `;

@@ -7,3 +7,34 @@ export type { Lesson } from './educator/course';
 export type { Question } from './adaptiveAptitude';
 export type { Course } from './educator/course';
 export type { FileUpload } from './educator/course';
+
+// Student-related types (used across entities and features)
+export type {
+    Student,
+    StudentProfile,
+    SocialLink,
+    Skill,
+    TechnicalSkill,
+    Project,
+    Education,
+    Experience,
+    Certification,
+    Language,
+    Achievement,
+    Training,
+    PortfolioLayout,
+    AnimationType,
+    DisplayPreferences,
+    PortfolioSettings,
+    Certificate,
+    CourseExtended,
+    AssessmentResult,
+    CurriculumData,
+    LessonPlan,
+    AdmissionNote,
+    StudentProfileDrawerProps,
+    TabConfig,
+    ActionConfig
+} from './student';
+
+export * from './analytics';

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useUser } from '@/stores';
 import { supabase } from '@/shared/api/supabaseClient';
 
 export type OrganizationType = 'school' | 'college' | 'university';
@@ -26,15 +25,23 @@ interface UseOrganizationCheckResult {
   refetch: () => Promise<void>;
 }
 
+interface User {
+  id: string;
+  email?: string;
+}
+
 /**
  * Hook to check if an admin user has an organization linked to their account.
  * Used to enforce organization creation before accessing the dashboard.
  * 
  * @param organizationType - The type of organization to check ('school', 'college', 'university')
+ * @param user - The authenticated user object (pass from store/context)
  * @returns Object containing organization data, loading state, and whether organization exists
  */
-export function useOrganizationCheck(organizationType: OrganizationType): UseOrganizationCheckResult {
-  const user = useUser();
+export function useOrganizationCheck(
+  organizationType: OrganizationType,
+  user: User | null
+): UseOrganizationCheckResult {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

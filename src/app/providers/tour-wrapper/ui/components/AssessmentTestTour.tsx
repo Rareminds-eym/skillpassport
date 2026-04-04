@@ -1,14 +1,14 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Joyride, { CallBackProps, STATUS } from 'react-joyride';
 import { useTour } from '@/stores';
-import { TOUR_KEYS } from '../../lib/constants';
+import { TOUR_KEYS } from '@/app/providers/tour-wrapper/lib/constants';
 import { waitForElement } from '@/shared/lib/utils';
 import {
   ASSESSMENT_TEST_TOUR_STEPS,
   ASSESSMENT_TEST_TOUR_OPTIONS,
   ASSESSMENT_TEST_TOUR_STYLES,
   ASSESSMENT_TEST_TOUR_LOCALE,
-} from '../../lib/configs';
+} from '@/app/providers/tour-wrapper/lib/configs';
 
 const AssessmentTestTour: React.FC = () => {
   const { startTour, completeTour, skipTour, isEligible, loading } = useTour();

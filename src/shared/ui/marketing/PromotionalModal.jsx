@@ -3,7 +3,7 @@ import Lottie from 'lottie-react';
 import { X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import discountAnimation from '../../assets/HomePage/DiscountIcon.json';
+import discountAnimation from '@/shared/assets/HomePage/DiscountIcon.json';
 
 /**
  * PromotionalModal - Modern promotional modal with starburst badge

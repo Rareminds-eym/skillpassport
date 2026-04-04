@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { getAssignmentStudents, gradeAssignment } from '@/shared/api/educator/assignmentsService';
+import { getAssignmentStudents, gradeAssignment } from '@/features/educator';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
 import {

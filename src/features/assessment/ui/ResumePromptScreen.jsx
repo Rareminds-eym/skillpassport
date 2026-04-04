@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, PlayCircle, RefreshCw, ArrowLeft } from 'lucide-react';
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from '@/shared/ui';
-import { STREAMS_BY_CATEGORY, STREAM_CATEGORIES } from '../config/config';
+import { STREAMS_BY_CATEGORY, STREAM_CATEGORIES } from '../lib/config/config';
 
 /**
  * @typedef {Object} ResumePromptScreenProps

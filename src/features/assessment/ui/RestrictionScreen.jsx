@@ -9,7 +9,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, AlertCircle, Target, ArrowLeft } from 'lucide-react';
 import { Button } from "@/shared/ui/button";
-import { ASSESSMENT_RESTRICTION } from '../config/config';
+import { ASSESSMENT_RESTRICTION } from '../lib/config/config';
 
 /**
  * @typedef {Object} RestrictionScreenProps

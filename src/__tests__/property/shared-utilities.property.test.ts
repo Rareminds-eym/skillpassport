@@ -21,7 +21,7 @@ import {
   createSupabaseAdminClient,
   getAuthToken,
   PagesEnv,
-} from '../../functions-lib';
+} from '@/functions-lib';
 
 describe('Property 3: Shared Module Consistency', () => {
   /**

@@ -1,5 +1,5 @@
 import { supabase } from '@/shared/api/supabaseClient';
-import { createStudentNotification } from '@/shared/api/notificationService';
+import { createStudentNotification } from '@/features/notifications';
 
 /**
  * Service for managing job applications

@@ -451,13 +451,13 @@ const UnifiedSignup = () => {
       // CRITICAL FIX: Auto-login after successful signup
       // This establishes a Supabase session so the user is authenticated
       console.log('🔐 Auto-logging in after signup...');
-      const { data: signInData, error: signInError } = await authSessionService.signInWithPassword({
-        email: state.email,
-        password: state.password,
-      });
+      const { data: signInData, error: signInError } = await authSessionService.signInWithPassword(
+        state.email,
+        state.password
+      );
 
       if (signInError) {
-        console.error('⚠️ Auto-login failed:', signInError.message);
+        console.error('⚠️ Auto-login failed:', (signInError as any)?.message || signInError);
         // Even if auto-login fails, the account was created successfully
         // User can manually log in
       } else {

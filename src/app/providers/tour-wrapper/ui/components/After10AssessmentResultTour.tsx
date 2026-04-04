@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Joyride, { CallBackProps, STATUS } from 'react-joyride';
 import { useTour } from '@/stores';
-import { TOUR_KEYS } from '../../lib/constants';
+import { TOUR_KEYS } from '@/app/providers/tour-wrapper/lib/constants';
 import { waitForElement } from '@/shared/lib/utils';
 import { supabase } from '@/shared/api/supabaseClient';
 import {
@@ -9,7 +9,7 @@ import {
   ASSESSMENT_RESULT_TOUR_OPTIONS,
   ASSESSMENT_RESULT_TOUR_STYLES,
   ASSESSMENT_RESULT_TOUR_LOCALE,
-} from '../../lib/configs/after10TourConfig';
+} from '@/app/providers/tour-wrapper/lib/configs/after10TourConfig';
 
 /**
  * AFTER-10 Assessment Result Tour

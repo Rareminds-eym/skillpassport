@@ -5,7 +5,7 @@ import {
   UpdateResult, 
   ImportUpdate, 
   FailedUpdate
-} from '../types';
+} from '@/features/student-profile/model';
 
 /**
  * Updates import paths throughout the codebase to reference new FSD locations

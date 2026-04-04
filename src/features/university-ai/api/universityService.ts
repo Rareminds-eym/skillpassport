@@ -237,32 +237,6 @@ export const getUniversityCollegeByOwner = async (userId) => {
 };
 
 /**
- * Get all colleges under a university
- * @param {string} universityId - University UUID
- * @returns {Promise<{ success: boolean, data: Array | null, error: string | null }>}
- */
-export const getCollegesByUniversity = async (universityId) => {
-    try {
-        const { data, error } = await supabase
-            .from('university_colleges')
-            .select('id, name, code')
-            .eq('university_id', universityId)
-            .eq('account_status', 'active')
-            .order('name', { ascending: true });
-
-        if (error) {
-            console.error('Error fetching colleges by university:', error);
-            return { success: false, data: null, error: error.message };
-        }
-
-        return { success: true, data: data || [], error: null };
-    } catch (error) {
-        console.error('Unexpected error fetching colleges by university:', error);
-        return { success: false, data: null, error: error.message };
-    }
-};
-
-/**
  * Get all active universities for student registration dropdown from organizations table
  * @returns {Promise<{ success: boolean, data: Array | null, error: string | null }>}
  */

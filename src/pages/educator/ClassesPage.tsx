@@ -19,8 +19,7 @@ import { Link, useNavigate } from "react-router-dom"
 import { SearchBar } from '@/shared/ui'
 import { useClasses } from '@/features/college-admin'
 import { useEducatorId } from '@/features/educator'
-import { useEducatorSchool } from '@/features/educator-copilot'
-// @ts-ignore - AuthContext is a .jsx file
+import { useEducatorSchool } from '@/features/educator'
 import toast from "react-hot-toast"
 import { ManageStudentsModal } from '@/features/college-admin'
 import { Pagination } from '@/shared/ui'

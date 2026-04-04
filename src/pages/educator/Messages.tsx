@@ -31,7 +31,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useGlobalPresence } from '@/stores';
 import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/features/messaging';
-import { useNotificationBroadcast } from '@/features/broadcast/model/useNotificationBroadcast';
+import { useNotificationBroadcast } from '@/features/broadcast';
 import { DeleteConversationModal, ConversationModal } from '@/features/messaging';
 import { supabase } from '@/shared/api/supabaseClient';
 

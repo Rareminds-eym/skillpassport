@@ -10,7 +10,7 @@ import type {
   MemberType,
   OrganizationSubscription,
   OrgSubscriptionPurchaseRequest
-} from './types';
+} from '@/shared/types';
 
 // ============================================================================
 // Subscription Status Validation

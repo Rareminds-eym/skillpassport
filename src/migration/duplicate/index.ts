@@ -17,4 +17,4 @@ export type {
   DuplicateScanResult,
   ConsolidationReport,
   FSDLayerRules,
-} from './types';
+} from '@/features/student-profile/model';

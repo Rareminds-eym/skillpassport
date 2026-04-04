@@ -15,7 +15,7 @@ import {
   CoupledFunctionPair,
   FSDComplianceRules,
   ArchitecturalDecision
-} from '../types';
+} from '@/features/student-profile/model';
 
 export class FSDArchitecturalComplianceValidator implements ArchitecturalComplianceValidator {
   private complianceRules: FSDComplianceRules;

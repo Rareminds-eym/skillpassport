@@ -16,7 +16,7 @@ import {
   ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import { useAnalytics } from '@/features/analytics';
-import { useEducatorSchool } from '@/features/educator-copilot';
+import { useEducatorSchool } from '@/features/educator';
 
 interface StatCardProps {
   title: string;

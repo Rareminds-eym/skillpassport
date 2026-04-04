@@ -31,7 +31,7 @@ import {
   Clock,
   CheckCircle,
 } from 'lucide-react';
-import KPICard from '@/shared/ui/KPICard';
+import { KPICard } from '@/features/analytics';
 
 interface PayrollRecord {
   id: string;

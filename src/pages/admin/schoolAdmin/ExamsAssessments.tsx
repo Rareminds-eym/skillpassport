@@ -21,14 +21,7 @@ import { useUser } from "@/stores";
 import { supabase } from '@/shared/api/supabaseClient';
 
 // Import components
-import StatsCard from '@/shared/ui/exams/StatsCard';
-import TypeBadge from '@/shared/ui/exams/TypeBadge';
-import ModalWrapper from '@/shared/ui/exams/ModalWrapper';
-import ExamCard from '@/shared/ui/exams/ExamCard';
-import CreateExamForm from '@/shared/ui/exams/CreateExamForm';
-import ExamWorkflowManager from '@/shared/ui/exams/ExamWorkflowManager';
-import PerformanceTrends from '@/shared/ui/exams/PerformanceTrends';
-import { EXAM_STATUSES } from '@/shared/ui/exams/types';
+import { StatsCard, TypeBadge, ModalWrapper, ExamCard, CreateExamForm, ExamWorkflowManager, PerformanceTrends, EXAM_STATUSES } from '@/features/exams';
 
 // Types
 type StudentMark = UIStudentMark;

@@ -11,11 +11,11 @@ export { useAssessmentFlow } from './useAssessmentFlow';
 export type { AssessmentFlowState, AssessmentAction } from './useAssessmentFlow';
 
 // Timer management
-export { useAssessmentTimer } from './useAssessmentTimer';
+export { default as useAssessmentTimer } from './useAssessmentTimer';
 export type { UseAssessmentTimerOptions, UseAssessmentTimerReturn } from './useAssessmentTimer';
 
 // Question navigation
-export { useQuestionNavigation } from './useQuestionNavigation';
+export { default as useQuestionNavigation } from './useQuestionNavigation';
 export type { 
   UseQuestionNavigationOptions, 
   UseQuestionNavigationReturn,
@@ -24,18 +24,18 @@ export type {
 } from './useQuestionNavigation';
 
 // Auto-save functionality
-export { useAutoSave } from './useAutoSave';
+export { default as useAutoSave } from './useAutoSave';
 export type { UseAutoSaveOptions, UseAutoSaveReturn, AutoSaveData } from './useAutoSave';
 
 // Tab visibility detection
-export { useTabVisibility } from './useTabVisibility';
+export { default as useTabVisibility } from './useTabVisibility';
 export type { UseTabVisibilityOptions, UseTabVisibilityReturn } from './useTabVisibility';
 
 // Assessment test hooks (from career-test)
-export { useAssessmentSubmission } from './useAssessmentSubmission';
-export { useStudentGrade } from './useStudentGrade';
-export { useAIQuestions } from './useAIQuestions';
-export { useAssessmentProgress } from './useAssessmentProgress';
+export { default as useAssessmentSubmission } from './useAssessmentSubmission';
+export { default as useStudentGrade } from './useStudentGrade';
+export { default as useAIQuestions } from './useAIQuestions';
+export { default as useAssessmentProgress } from './useAssessmentProgress';
 
 // Assessment results hook
 // @ts-expect-error - JS file without type declarations
@@ -47,7 +47,7 @@ export { useAssessmentRecommendations } from './useAssessmentRecommendations';
 
 // Main assessment hook
 // @ts-expect-error - TS file with potential type issues
-export { useAssessment } from './useAssessment';
+export { default as useAssessment } from './useAssessment';
 
 // Assessment context
 export { AssessmentProvider, useAssessmentContext } from './AssessmentContext';

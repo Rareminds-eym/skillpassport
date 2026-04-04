@@ -1,15 +1,13 @@
 // Recruiter Pipeline Feature - Public API
 
 // UI Components
-export { default as ActivityIndicators } from './ui/ActivityIndicators';
-export { default as AdvancedCharts } from './ui/AdvancedCharts';
+export { ActivityIndicators } from './ui/ActivityIndicators';
 export { default as AdvancedFilters } from './ui/AdvancedFilters';
 export { default as AdvancedRequisitionFilters } from './ui/AdvancedRequisitionFilters';
 export { default as AdvancedShortlistFilters } from './ui/AdvancedShortlistFilters';
-export { default as AnalyticsComponents } from './ui/AnalyticsComponents';
 export { default as CandidateProfile } from './ui/CandidateProfile';
 export { default as CandidateProfileDrawer } from './ui/CandidateProfileDrawer';
-export { default as CandidateQuickView } from './ui/CandidateQuickView';
+export { CandidateQuickView } from './ui/CandidateQuickView';
 export { default as DateRangePicker } from './ui/DateRangePicker';
 export { PipelineEmptyState as EmptyState } from './ui/EmptyState';
 export { default as Header } from './ui/Header';
@@ -18,10 +16,8 @@ export { default as MobileTabBar } from './ui/MobileTabBar';
 export { default as NotificationPanel } from './ui/NotificationPanel';
 export { default as PipelineAdvancedFilters } from './ui/PipelineAdvancedFilters';
 export { default as PipelineSortMenu } from './ui/PipelineSortMenu';
-export { default as PipelineStats } from './ui/PipelineStats';
-export { default as ProjectAtoms } from './ui/ProjectAtoms';
+export { PipelineStats } from './ui/PipelineStats';
 export { default as Sidebar } from './ui/Sidebar';
-export { default as Toast } from './ui/Toast';
 
 // Modals
 export { default as AddToShortlistModal } from './ui/modals/AddToShortlistModal';
@@ -41,3 +37,8 @@ export * from './ui/pipeline/types';
 
 // Services
 export * from './api/skillsAnalyticsService';
+export { default as FloatingRecruiterAIButton } from './ui/FloatingRecruiterAIButton';
+
+export { addCandidateToPipeline } from './api/pipelineService';
+
+export { updateNextAction } from './api/pipelineService';

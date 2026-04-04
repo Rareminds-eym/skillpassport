@@ -40,7 +40,7 @@ const BulkDeleteStudentsModal: React.FC<BulkDeleteStudentsModalProps> = ({
     try {
       // Get the current educator's ID and type
       const educatorData = await getCurrentEducator();
-      
+
       if (!educatorData.data) {
         setError('Could not identify the educator. Please try logging in again.');
         setLoading(false);
@@ -55,17 +55,17 @@ const BulkDeleteStudentsModal: React.FC<BulkDeleteStudentsModalProps> = ({
       for (let i = 0; i < students.length; i++) {
         const student = students[i];
         setProgress({ current: i + 1, total: students.length });
-        
+
         const result = await softDeleteStudent(student.id, educatorId, educatorType);
         results.push({ student, result });
-        
+
         // Small delay to avoid overwhelming the database
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       // Check if all deletions were successful
       const failures = results.filter(r => !r.result.success);
-      
+
       if (failures.length > 0) {
         setError(`Failed to delete ${failures.length} out of ${students.length} students`);
       } else {
@@ -107,7 +107,7 @@ const BulkDeleteStudentsModal: React.FC<BulkDeleteStudentsModalProps> = ({
                   <span className="font-bold text-red-600">{students.length}</span> students?
                 </p>
                 <p className="text-sm text-gray-500 mt-2">
-                  This action will soft delete all selected students from the system. 
+                  This action will soft delete all selected students from the system.
                   The records will be marked as deleted but can be restored later if needed.
                 </p>
               </div>
@@ -185,7 +185,7 @@ const BulkDeleteStudentsModal: React.FC<BulkDeleteStudentsModalProps> = ({
           {/* Warning Note */}
           <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
             <p className="text-xs text-yellow-800">
-              <strong>Note:</strong> This is a bulk soft delete operation. The student data will not be 
+              <strong>Note:</strong> This is a bulk soft delete operation. The student data will not be
               permanently removed from the database and can be restored by an administrator if needed.
             </p>
           </div>

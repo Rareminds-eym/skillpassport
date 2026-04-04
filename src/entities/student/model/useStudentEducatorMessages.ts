@@ -1,7 +1,10 @@
+// TODO: Dependency Injection Required
+// This hook needs MessageService/Message types passed as parameters
+// Update all call sites to pass these dependencies from @/features/messaging
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
-import { MessageService } from '@/features/messaging';
-
+import MessageService from '@/features/messaging/api/messageService';
 /**
  * Hook for managing student-educator conversations (both school and college)
  */
@@ -19,18 +22,18 @@ export const useStudentEducatorConversations = (studentId, enabled = true) => {
     queryKey: ['student-educator-conversations', studentId || 'none'],
     queryFn: async () => {
       if (!studentId) return [];
-      
+
       // Fetch both school educator and college lecturer conversations
       const allConversations = await MessageService.getUserConversations(
-        studentId, 
-        'student', 
+        studentId,
+        'student',
         false, // includeArchived
         true,  // useCache
       );
-      
+
       // Filter for both student_educator and student_college_educator conversations
-      return allConversations.filter(conv => 
-        conv.conversation_type === 'student_educator' || 
+      return allConversations.filter(conv =>
+        conv.conversation_type === 'student_educator' ||
         conv.conversation_type === 'student_college_educator'
       );
     },
@@ -51,19 +54,19 @@ export const useStudentEducatorConversations = (studentId, enabled = true) => {
       'student',
       (conversation) => {
         // Handle both student-educator and student-college-educator conversations
-        if (conversation.conversation_type !== 'student_educator' && 
-            conversation.conversation_type !== 'student_college_educator') return;
-        
+        if (conversation.conversation_type !== 'student_educator' &&
+          conversation.conversation_type !== 'student_college_educator') return;
+
         console.log('🔄 [Student-Educator] Realtime UPDATE detected:', conversation);
-        
+
         // Ignore updates for conversations that were deleted
         if (conversation.deleted_by_student) {
           console.log('❌ [Student-Educator] Ignoring UPDATE for deleted conversation:', conversation.id);
           return;
         }
-        
+
         // Invalidate conversation queries
-        queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({
           queryKey: ['student-educator-conversations', studentId],
           refetchType: 'active'
         });
@@ -79,8 +82,8 @@ export const useStudentEducatorConversations = (studentId, enabled = true) => {
   const clearUnreadCount = (conversationId) => {
     queryClient.setQueryData(['student-educator-conversations', studentId || 'none'], (oldData) => {
       if (!oldData) return oldData;
-      return oldData.map(conv => 
-        conv.id === conversationId 
+      return oldData.map(conv =>
+        conv.id === conversationId
           ? { ...conv, student_unread_count: 0 }
           : conv
       );
@@ -102,11 +105,11 @@ export const useStudentEducatorConversations = (studentId, enabled = true) => {
 /**
  * Hook for managing messages in a student-educator conversation
  */
-export const useStudentEducatorMessages = ({ 
-  studentId, 
-  conversationId, 
+export const useStudentEducatorMessages = ({
+  studentId,
+  conversationId,
   enabled = true,
-  enableRealtime = true 
+  enableRealtime = true
 }) => {
   const queryClient = useQueryClient();
 
@@ -137,20 +140,20 @@ export const useStudentEducatorMessages = ({
       conversationId,
       (newMessage) => {
         console.log('📨 [Student-Educator] New message received:', newMessage);
-        
+
         // Add message to cache optimistically
         queryClient.setQueryData(['student-educator-messages', conversationId], (oldMessages) => {
           if (!oldMessages) return [newMessage];
-          
+
           // Check if message already exists (prevent duplicates)
           const exists = oldMessages.some(msg => msg.id === newMessage.id);
           if (exists) return oldMessages;
-          
+
           return [...oldMessages, newMessage];
         });
 
         // Update conversation list with new message preview
-        queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({
           queryKey: ['student-educator-conversations', studentId],
           refetchType: 'active'
         });
@@ -164,14 +167,14 @@ export const useStudentEducatorMessages = ({
 
   // Send message mutation
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ 
-      senderId, 
-      senderType, 
-      receiverId, 
-      receiverType, 
-      messageText, 
+    mutationFn: async ({
+      senderId,
+      senderType,
+      receiverId,
+      receiverType,
+      messageText,
       classId,
-      subject 
+      subject
     }) => {
       return await MessageService.sendMessage(
         conversationId,
@@ -226,13 +229,13 @@ export const useStudentEducatorMessages = ({
       // Replace optimistic message with real one
       queryClient.setQueryData(['student-educator-messages', conversationId], (old) => {
         if (!old) return [data];
-        return old.map(msg => 
+        return old.map(msg =>
           msg.id === context?.optimisticMessage?.id ? data : msg
         );
       });
 
       // Update conversation list
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: ['student-educator-conversations', studentId],
         refetchType: 'active'
       });
@@ -256,11 +259,11 @@ export const useCreateStudentEducatorConversation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ 
-      studentId, 
-      educatorId, 
-      classId, 
-      subject 
+    mutationFn: async ({
+      studentId,
+      educatorId,
+      classId,
+      subject
     }) => {
       return await MessageService.getOrCreateStudentEducatorConversation(
         studentId,
@@ -271,7 +274,7 @@ export const useCreateStudentEducatorConversation = () => {
     },
     onSuccess: (data, variables) => {
       // Invalidate conversations list to include new conversation
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: ['student-educator-conversations', variables.studentId],
         refetchType: 'active'
       });

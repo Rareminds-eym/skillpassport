@@ -12,14 +12,14 @@ import {
   ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 import { useStudents, UICandidate } from '@/entities/student';
-import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
+import { useEducatorSchool } from '@/features/educator';
 import { useSearch, useUser } from '@/stores';
 import SearchBar from '@/shared/ui/SearchBar';
-import Pagination from '@/features/educator/ui/Pagination';
-import AddStudentModal from '@/features/educator/ui/modals/Addstudentmodal';
-import EditStudentModal from '@/features/educator/ui/modals/EditStudentModal';
-import DeleteStudentModal from '@/features/educator/ui/modals/DeleteStudentModal';
-import BulkDeleteStudentsModal from '@/features/educator/ui/modals/BulkDeleteStudentsModal';
+import { Pagination } from '@/features/educator';
+import { AddStudentModal } from '@/features/educator';
+import { EditStudentModal } from '@/features/educator';
+import { DeleteStudentModal } from '@/features/educator';
+import { BulkDeleteStudentsModal } from '@/features/educator';
 import { UserPlusIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 

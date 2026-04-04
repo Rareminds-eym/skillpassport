@@ -13,7 +13,7 @@ import type {
   SectionTimings,
   AssessmentAttempt,
   AnswerValue,
-} from './types';
+} from '@/features/student-profile/model';
 
 // ============================================
 // Initial State

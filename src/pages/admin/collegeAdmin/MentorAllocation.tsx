@@ -20,7 +20,7 @@ import { getLogger } from '@/shared/config/logging';
 import { useMentorAllocation } from '@/shared/lib/hooks';
 import { findAllocationId, updateMentorAllocation } from "@/features/college-admin";
 import { SearchBar } from '@/shared/ui';
-import KPICard from '@/shared/ui/KPICard';
+import { KPICard } from '@/features/analytics';
 import { Pagination } from '@/shared/ui';
 import {
   StudentSelectionModal,

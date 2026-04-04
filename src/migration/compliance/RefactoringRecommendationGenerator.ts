@@ -7,7 +7,7 @@ import {
   CoupledFunctionPair,
   DependencyGraph,
   CircularDependency
-} from '../types';
+} from '@/features/student-profile/model';
 
 export class RefactoringRecommendationGenerator {
   generateRecommendations(

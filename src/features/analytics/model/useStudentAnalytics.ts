@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/shared/api';
-import { analyticsService } from '../api';
+import { SkillsAnalyticsService } from '../api';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('useStudentAnalytics');
@@ -96,7 +96,7 @@ export const useStudentAnalytics = ({ userEmail }: UseStudentAnalyticsProps): Us
 
   const fetchSkillsData = async () => {
     try {
-      const data = await analyticsService.analyzeSkillsDemand();
+      const data = await SkillsAnalyticsService.analyzeSkillsDemand();
       
       if (data && Array.isArray(data) && data.length > 0) {
         setSkillsData(data);

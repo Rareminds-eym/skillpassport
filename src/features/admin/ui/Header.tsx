@@ -9,7 +9,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useUser, useAuthActions } from "@/stores";
 import NotificationPanel from "./NotificationPanel";
-import { useAdminNotifications } from "@/features/notifications/model/useAdminNotifications";
+import { useAdminNotifications } from '@/features/notifications';
 
 interface HeaderProps {
   onMenuToggle: () => void;

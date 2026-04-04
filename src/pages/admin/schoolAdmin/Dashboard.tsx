@@ -8,7 +8,7 @@ import {
 import React, { useEffect, useState } from "react";
 import ReactApexChart from "react-apexcharts";
 import { useNavigate } from "react-router-dom";
-import { KPIDashboard } from '@/shared/ui';
+import { KPIDashboard } from '@/widgets/kpi-dashboard';
 import { useUser } from "@/stores";
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';

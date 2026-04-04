@@ -6,7 +6,7 @@ import {
 } from '@/features/opportunities';
 // @ts-ignore
 import { AppliedJobsService } from '@/features/opportunities';
-import { recruiterInsights } from '@/features/recruiter-copilot/services/recruiterInsights';
+import { recruiterInsights } from '@/features/recruiter-copilot';
 import { PipelineFilters, PipelineSortOptions } from '@/shared/types/recruiter';
 
 export interface PipelineCandidate {

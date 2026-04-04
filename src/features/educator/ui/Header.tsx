@@ -9,7 +9,7 @@ import {
 } from '@heroicons/react/24/outline'
 import NotificationPanel from './NotificationPanel'
 import { supabase } from '@/shared/api/supabaseClient'
-import { useNotifications } from '@/features/recruiter'
+import { useNotifications } from '@/features/notifications'
 
 interface HeaderProps {
   onMenuToggle: () => void

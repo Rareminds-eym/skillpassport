@@ -14,7 +14,7 @@ import {
 import { useStudentProfile, useStudentMessages } from '@/features/student-profile';
 import { useGlobalPresence } from '@/stores';
 import { useTypingIndicator } from '@/features/messaging';
-import { useNotificationBroadcast } from '@/features/broadcast/model/useNotificationBroadcast';
+import { useNotificationBroadcast } from '@/features/broadcast';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('MessagesOptimized');

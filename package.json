@@ -10,7 +10,7 @@
     "dev:staging": "vite --mode staging --port 3000",
     "dev:prod": "vite --port 3000",
     "build": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build",
-    "build:dev": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build --mode development",
+    "build:dev": "node --max-old-space-size=12288 ./node_modules/vite/bin/vite.js build --mode development",
     "build:staging": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build --mode staging",
     "build:production": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build",
     "lint": "eslint .",
@@ -74,7 +74,10 @@
     "test:verify-migration": "npx tsx src/migration/scripts/verify-migration-tests.ts",
     "fsd:create:entity": "bash .kiro/scripts/create-entity.sh",
     "fsd:create:widget": "bash .kiro/scripts/create-widget.sh",
-    "fsd:docs": "echo 'FSD Documentation:' && echo '  Entity API: .kiro/docs/entity-api-reference.md' && echo '  Widget API: .kiro/docs/widget-api-reference.md' && echo '  Quick Reference: .kiro/docs/fsd-quick-reference.md'"
+    "fsd:docs": "echo 'FSD Documentation:' && echo '  Entity API: .kiro/docs/entity-api-reference.md' && echo '  Widget API: .kiro/docs/widget-api-reference.md' && echo '  Quick Reference: .kiro/docs/fsd-quick-reference.md'",
+    "fsd:detect-violations": "npx tsx .kiro/scripts/detect-fsd-violations.ts",
+    "fsd:detect-violations:json": "npx tsx .kiro/scripts/detect-fsd-violations.ts --json",
+    "fsd:detect-violations:ci": "npx tsx .kiro/scripts/detect-fsd-violations.ts --ci"
   },
   "scripts-info": {
     "ENVIRONMENT_SETUP": "See .env.schema and .env.example for complete variable documentation",

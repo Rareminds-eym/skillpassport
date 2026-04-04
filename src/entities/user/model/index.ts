@@ -17,7 +17,7 @@ export type {
   CreateUserData,
   UpdateUserData,
   BulkImportResult,
-} from './types';
+} from '@/shared/types';
 
 // Validation
 export {

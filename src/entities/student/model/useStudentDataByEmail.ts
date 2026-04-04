@@ -1,3 +1,12 @@
+// TODO: Dependency Injection Required
+// This hook imports API functions from @/features/student-profile/api
+// Options to fix:
+// 1. Move these API functions to @/entities/student/api (if they're entity-level operations)
+// 2. Pass the API functions as parameters to this hook
+// 3. Create a service interface in entities and inject the implementation
+//
+// For now, this import is flagged for refactoring.
+
 /**
  * Hook to fetch student data from Supabase JSONB profile by EMAIL
  * 
@@ -6,17 +15,17 @@
 
 import { useEffect, useState } from 'react';
 import {
-    getStudentByEmail,
-    updateCertificatesByEmail,
-    updateEducationByEmail,
-    updateExperienceByEmail,
-    updateProjectsByEmail,
-    updateSingleTrainingById,
-    updateSoftSkillsByEmail,
-    updateStudentByEmail,
-    updateTechnicalSkillsByEmail,
-    updateTrainingByEmail
-} from '@/features/student-profile/api';
+  getStudentByEmail,
+  updateCertificatesByEmail,
+  updateEducationByEmail,
+  updateExperienceByEmail,
+  updateProjectsByEmail,
+  updateSingleTrainingById,
+  updateSoftSkillsByEmail,
+  updateStudentByEmail,
+  updateTechnicalSkillsByEmail,
+  updateTrainingByEmail
+} from '@/entities/student/api';
 // Note: Embedding regeneration is now handled automatically by database triggers
 // No need to call scheduleEmbeddingRegeneration from frontend
 
@@ -129,7 +138,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
   const updateTraining = async (trainingData) => {
     try {
       const result = await updateTrainingByEmail(email, trainingData);
-      
+
       if (result.success) {
         setStudentData(result.data);
         // Embedding regeneration handled by database trigger
@@ -146,7 +155,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
   const updateSingleTraining = async (trainingId, updateData) => {
     try {
       const result = await updateSingleTrainingById(trainingId, updateData);
-      
+
       if (result.success) {
         // Refresh the entire student data to get updated training list
         const refreshResult = await getStudentByEmail(email);

@@ -1,2 +1,6 @@
-export { analyticsService } from './analyticsService';
-export type { SkillDemandData } from './analyticsService';
+// Re-export all analytics functions and types
+export * from './analyticsService';
+export * from './dashboardService';
+export * from './optimizedQueryService';
+export * from './skillsAnalyticsService';
+export * from './usageStatisticsService';

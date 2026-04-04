@@ -1,6 +1,6 @@
 import React from 'react';
 import { Project } from '@/shared/types/project';
-import ProjectCard from '@/features/student-profile/ui/components/ProjectCard';
+import { ProjectCard } from '@/features/student-profile/ui';
 import { EmptyState, LoadingSkeleton } from '@/features/recruiter-pipeline';
 import { RocketLaunchIcon } from '@heroicons/react/24/outline';
 

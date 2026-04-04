@@ -5,7 +5,7 @@
  * @version 2.1.0
  */
 
-import { calculateStreamRecommendations } from '@/features/assessment/lib/streamMatchingEngine';
+import { calculateStreamRecommendations } from '@/features/assessment';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('assessment-data-prep');

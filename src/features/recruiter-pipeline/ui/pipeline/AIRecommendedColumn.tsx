@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SparklesIcon } from '@heroicons/react/24/outline';
-import { AIRecommendations, PipelineCandidate, AIRecommendation } from './types';
+import { AIRecommendations, PipelineCandidate, AIRecommendation } from '@/features/student-profile/model';
 
 const scrollbarStyles = `
   .ai-scrollbar::-webkit-scrollbar {

@@ -3,7 +3,8 @@ export {
   TrainingDetailsModal,
   ExperienceDetailsModal,
   ProjectDetailsModal,
-  PendingTrainings
+  PendingTrainings,
+  DocumentViewerModal
 } from './ui';
 
 // API & Data Access

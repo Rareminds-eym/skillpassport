@@ -1,6 +1,6 @@
 import React from 'react';
 import { Clock, CheckCircle, ArrowRight, ArrowLeft } from 'lucide-react';
-import { Question } from '@/features/assessment/model/types';
+import { Question } from '@/features/assessment';
 
 interface ReviewPageProps {
   questions: Question[];

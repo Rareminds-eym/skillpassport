@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, FlaskConical, BarChart3, BookOpen } from 'lucide-react';
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from '@/shared/ui';
-import { STREAM_CATEGORIES } from '../config/config';
+import { STREAM_CATEGORIES } from '../lib/config/config';
 
 /**
  * @typedef {Object} CategorySelectionScreenProps

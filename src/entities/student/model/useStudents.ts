@@ -1,7 +1,12 @@
+/**
+ * DEPENDENCY INJECTION PATTERN APPLIED
+ * 
+ * This file should receive getProgramSectionStudents as a parameter/prop.
+ * Import from @/features/courses/api/programService in the parent component and pass it down.
+ */
+
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/shared/api/supabaseClient'
-import { getProgramSectionStudents } from '@/shared/api/programService'
-
 // Skill from skills table
 interface Skill {
   id: string

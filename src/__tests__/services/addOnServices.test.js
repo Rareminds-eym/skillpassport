@@ -39,10 +39,10 @@ vi.mock('@/shared/api/supabaseClient', () => ({
 
 // Import services after mocking
 import { supabase } from '@/shared/api/supabaseClient';
-import addOnCatalogService from '@/shared/api/addOnCatalogService';
-import addOnPaymentService from '@/shared/api/addOnPaymentService';
+import addOnCatalogService from '@/features/subscription/api/addOnCatalogService';
+import addOnPaymentService from '@/features/subscription/api/addOnPaymentService';
 import entitlementService from '@/features/subscription/api/entitlementService';
-import migrationService from '@/shared/api/migrationService';
+import migrationService from '@/features/admin/api/migrationService';
 
 describe('AddOnCatalogService', () => {
   beforeEach(() => {

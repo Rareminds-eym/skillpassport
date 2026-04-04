@@ -2,7 +2,7 @@
 
 import { ServicesDirectoryCleanup } from '../cleanup/ServicesDirectoryCleanup';
 import { MigrationLogger } from '../logging/MigrationLogger';
-import { CleanupConfig } from '../types';
+import { CleanupConfig } from '@/features/student-profile/model';
 import * as path from 'path';
 
 /**

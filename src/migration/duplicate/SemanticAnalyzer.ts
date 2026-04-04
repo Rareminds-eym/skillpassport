@@ -4,7 +4,7 @@
  */
 
 import * as ts from 'typescript';
-import type { CodeBlock, SemanticAnalysis } from './types';
+import type { CodeBlock, SemanticAnalysis } from '@/features/student-profile/model';
 
 export class SemanticAnalyzer {
   /**

@@ -1,7 +1,8 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Footer from '@/shared/ui/Footer';
-import { PromotionalBanner, AssessmentPromotionalBanner } from '@/pages/homepage';
+import PromotionalBanner from '@/shared/ui/marketing/PromotionalBanner';
+import AssessmentPromotionalBanner from '@/shared/ui/marketing/AssessmentPromotionalBanner';
 import { useAssessmentPromotional, useCurrentPromotional } from '@/stores';
 import { useIsAuthenticated, useUserRole, useUser, useSubscriptionAccess } from '@/stores';
 import { useAuth } from '@/features/auth';
@@ -9,11 +10,11 @@ import { useSubscriptionQuery } from '@/features/subscription/model';
 import { isActiveOrPaused } from '@/features/subscription';
 
 // Import role-specific headers
-import { Header as StudentHeader } from '@/features/student-profile';
-import { Header as EducatorHeader } from '@/features/college-admin';
+import { Header as StudentHeader } from '@/widgets/student-dashboard';
+import { Header as EducatorHeader } from '@/features/educator';
 import { Header as AdminHeader } from '@/widgets/admin-navigation';
-import { Header as RecruiterHeader } from '@/features/recruiter-copilot';
-import SubscriptionPurchaseHeader from '@/features/subscription/ui/SubscriptionPurchaseHeader';
+import { Header as RecruiterHeader } from '@/features/recruiter-pipeline';
+import { SubscriptionPurchaseHeader } from '@/features/subscription';
 import { useState } from 'react';
 
 const PublicLayoutContent = () => {

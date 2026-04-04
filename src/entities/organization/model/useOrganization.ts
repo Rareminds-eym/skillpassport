@@ -6,14 +6,13 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { useUser } from '@/stores';
 import {
-    getOrganizationByAdminId,
-    getOrganizationById,
-    getOrganizations,
-    Organization,
-    OrganizationFilters,
-    OrganizationType,
+  getOrganizationByAdminId,
+  getOrganizationById,
+  getOrganizations,
+  Organization,
+  OrganizationFilters,
+  OrganizationType,
 } from '@/entities/organization';
 
 interface UseOrganizationResult {
@@ -30,13 +29,21 @@ interface UseOrganizationsResult {
   refetch: () => Promise<void>;
 }
 
+interface User {
+  id: string;
+  email?: string;
+}
+
 /**
  * Hook to get the current user's organization
+ * 
+ * @param user - The authenticated user object (pass from store/context)
+ * @param organizationType - Optional organization type filter
  */
 export function useCurrentOrganization(
+  user: User | null,
   organizationType?: OrganizationType
 ): UseOrganizationResult {
-  const user = useUser();
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

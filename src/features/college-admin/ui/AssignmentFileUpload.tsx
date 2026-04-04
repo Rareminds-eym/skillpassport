@@ -1,13 +1,13 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { 
-  DocumentArrowUpIcon, 
-  XMarkIcon, 
+import {
+  DocumentArrowUpIcon,
+  XMarkIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
-  TrashIcon 
+  TrashIcon
 } from '@heroicons/react/24/outline';
-import { uploadInstructionFile, deleteInstructionFile } from '@/features/educator-copilot/api/assignmentsService';
-import { useUser } from '@/entities/user';
+import { uploadInstructionFile, deleteInstructionFile } from '@/features/educator-copilot';
+import { useUser } from '@/stores';
 import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
 import { supabase } from '@/shared/api/supabase';
 import { ConfirmationModal, NotificationModal } from '@/shared/ui';
@@ -55,7 +55,7 @@ const AssignmentFileUpload = React.forwardRef<
   const [existingFilesList, setExistingFilesList] = useState<any[]>(existingFiles);
   const [dragActive, setDragActive] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(0);
-  
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<any>(null);
   const [showNotification, setShowNotification] = useState(false);
@@ -81,7 +81,7 @@ const AssignmentFileUpload = React.forwardRef<
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFiles(Array.from(e.dataTransfer.files));
     }
@@ -140,7 +140,7 @@ const AssignmentFileUpload = React.forwardRef<
 
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token || user?.access_token;
-    
+
     if (!token) {
       showNotificationModal('error', 'Authentication Error', 'Authentication required to delete files');
       return;
@@ -150,19 +150,19 @@ const AssignmentFileUpload = React.forwardRef<
 
     try {
       await deleteInstructionFile(fileToDelete.attachment_id, token);
-      
+
       setExistingFilesList(prev => {
         const newList = prev.filter(f => f.attachment_id !== fileToDelete.attachment_id);
         setTimeout(() => setForceUpdate(prev => prev + 1), 0);
         return newList;
       });
-      
+
       if (onFileDeleted) {
         onFileDeleted(fileToDelete.attachment_id);
       }
 
       showNotificationModal('success', 'File Deleted', 'File has been successfully deleted.');
-      
+
     } catch (error: any) {
       showNotificationModal('error', 'Delete Failed', error?.message || 'Failed to delete file. Please try again.');
     } finally {
@@ -182,10 +182,10 @@ const AssignmentFileUpload = React.forwardRef<
 
   const uploadStagedFiles = async (newAssignmentId: string) => {
     if (stagedFiles.length === 0) return [];
-    
+
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token || user?.access_token;
-    
+
     if (!token) {
       throw new Error('Authentication required. Please log in again.');
     }
@@ -201,22 +201,22 @@ const AssignmentFileUpload = React.forwardRef<
 
     for (let i = 0; i < filesToUpload.length; i++) {
       const uploadedFile = filesToUpload[i];
-      
+
       try {
-        setUploadedFiles(prev => prev.map(f => 
-          f.file === uploadedFile.file 
+        setUploadedFiles(prev => prev.map(f =>
+          f.file === uploadedFile.file
             ? { ...f, status: 'uploading', progress: 10 }
             : f
         ));
 
         const result = await uploadInstructionFile(
-          newAssignmentId, 
-          uploadedFile.file, 
+          newAssignmentId,
+          uploadedFile.file,
           token
         );
 
-        setUploadedFiles(prev => prev.map(f => 
-          f.file === uploadedFile.file 
+        setUploadedFiles(prev => prev.map(f =>
+          f.file === uploadedFile.file
             ? { ...f, status: 'success', progress: 100, result }
             : f
         ));
@@ -224,18 +224,18 @@ const AssignmentFileUpload = React.forwardRef<
         uploadResults.push(result);
 
       } catch (error: any) {
-        setUploadedFiles(prev => prev.map(f => 
-          f.file === uploadedFile.file 
+        setUploadedFiles(prev => prev.map(f =>
+          f.file === uploadedFile.file
             ? { ...f, status: 'error', progress: 0, error: error?.message || 'Upload failed' }
             : f
         ));
-        
+
         throw error;
       }
     }
 
     setStagedFiles([]);
-    
+
     if (uploadResults.length > 0) {
       onFilesUploaded?.(uploadResults);
     }
@@ -271,11 +271,10 @@ const AssignmentFileUpload = React.forwardRef<
   return (
     <div className={className}>
       <div
-        className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-colors ${
-          dragActive 
-            ? 'border-emerald-500 bg-emerald-50' 
-            : 'border-gray-300 hover:border-emerald-500 hover:bg-emerald-50'
-        }`}
+        className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-colors ${dragActive
+          ? 'border-emerald-500 bg-emerald-50'
+          : 'border-gray-300 hover:border-emerald-500 hover:bg-emerald-50'
+          }`}
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
@@ -292,7 +291,7 @@ const AssignmentFileUpload = React.forwardRef<
         <p className="text-xs text-gray-400">
           {acceptedTypes.join(', ')} • Max {maxFiles} files total • {getFileSizeLimit('assignment').displaySize} each
         </p>
-        
+
         <input
           id="file-upload-input"
           type="file"
@@ -308,14 +307,14 @@ const AssignmentFileUpload = React.forwardRef<
           <h4 className="text-sm font-medium text-gray-900">
             Current Files ({existingFilesList.length})
           </h4>
-          
+
           {existingFilesList.map((file) => (
-            <div 
-              key={`existing-${file.attachment_id}-${forceUpdate}`} 
+            <div
+              key={`existing-${file.attachment_id}-${forceUpdate}`}
               className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200"
             >
               <CheckCircleIcon className="h-5 w-5 text-blue-500" />
-              
+
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">
                   {file.file_name}
@@ -328,8 +327,8 @@ const AssignmentFileUpload = React.forwardRef<
 
               {file.file_url && (
                 <a
-                  href={file.file_url.includes('/document-access') 
-                    ? file.file_url 
+                  href={file.file_url.includes('/document-access')
+                    ? file.file_url
                     : `${getPagesApiUrl('storage')}/document-access?url=${encodeURIComponent(file.file_url)}&mode=inline`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -360,14 +359,14 @@ const AssignmentFileUpload = React.forwardRef<
           <h4 className="text-sm font-medium text-gray-900">
             Files Ready to Upload ({stagedFiles.length})
           </h4>
-          
+
           {stagedFiles.map((file, index) => (
-            <div 
-              key={`staged-${index}`} 
+            <div
+              key={`staged-${index}`}
               className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200"
             >
               <DocumentArrowUpIcon className="h-5 w-5 text-yellow-600" />
-              
+
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">
                   {file.name}
@@ -390,7 +389,7 @@ const AssignmentFileUpload = React.forwardRef<
               </button>
             </div>
           ))}
-          
+
           <div className="text-xs text-yellow-700 bg-yellow-50 p-2 rounded border border-yellow-200">
             <strong>Note:</strong> These files will be uploaded when you {existingFilesList.length > 0 ? 'update' : 'save'} the assignment.
           </div>
@@ -402,14 +401,14 @@ const AssignmentFileUpload = React.forwardRef<
           <h4 className="text-sm font-medium text-gray-900">
             New Files ({uploadedFiles.length}/{maxFiles - existingFilesList.length})
           </h4>
-          
+
           {uploadedFiles.map((uploadedFile, index) => (
-            <div 
-              key={index} 
+            <div
+              key={index}
               className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
             >
               {getStatusIcon(uploadedFile.status)}
-              
+
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">
                   {uploadedFile.file.name}
@@ -426,10 +425,10 @@ const AssignmentFileUpload = React.forwardRef<
                     <span className="text-green-500">• Uploaded successfully</span>
                   )}
                 </div>
-                
+
                 {uploadedFile.status === 'uploading' && (
                   <div className="w-full bg-gray-200 rounded-full h-1 mt-1">
-                    <div 
+                    <div
                       className="bg-blue-500 h-1 rounded-full transition-all duration-300"
                       style={{ width: `${uploadedFile.progress}%` }}
                     />
@@ -451,7 +450,7 @@ const AssignmentFileUpload = React.forwardRef<
           ))}
         </div>
       )}
-      
+
       <ConfirmationModal
         isOpen={showDeleteConfirm}
         onClose={() => {
@@ -466,7 +465,7 @@ const AssignmentFileUpload = React.forwardRef<
         cancelText="Cancel"
         isLoading={isDeleting}
       />
-      
+
       <NotificationModal
         isOpen={showNotification}
         onClose={() => setShowNotification(false)}

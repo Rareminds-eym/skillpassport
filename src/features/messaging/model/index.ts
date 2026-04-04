@@ -1,7 +1,7 @@
 // Hooks
 export { useMessages, useConversation } from './useMessages';
 export { useMessageNotifications } from './useMessageNotifications';
-export { useTypingIndicator } from './useTypingIndicator';
+export { default as useTypingIndicator } from './useTypingIndicator';
 
 // Store
 export {

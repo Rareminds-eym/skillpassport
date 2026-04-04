@@ -84,13 +84,13 @@ export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) 
         // Build comprehensive recommendations
         const processedRecommendations = {
           // Primary recommended track
-          recommendedTrack: skillGap.recommendedTrack || geminiResults.skillGap?.recommendedTrack,
+          recommendedTrack: skillGap?.recommendedTrack || geminiResults?.skillGap?.recommendedTrack || null,
           
           // Learning tracks with topics
-          learningTracks: skillGap.learningTracks || geminiResults.skillGap?.learningTracks || [],
+          learningTracks: skillGap?.learningTracks || geminiResults?.skillGap?.learningTracks || [],
           
           // Courses by type (technical and soft skills) - NEW
-          coursesByType: geminiResults.coursesByType || {
+          coursesByType: geminiResults?.coursesByType || {
             technical: [],
             soft: []
           },
@@ -101,18 +101,18 @@ export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) 
           
           // Priority skills to develop
           prioritySkills: [
-            ...(skillGap.priorityA || geminiResults.skillGap?.priorityA || []),
-            ...(skillGap.priorityB || geminiResults.skillGap?.priorityB || [])
+            ...(skillGap?.priorityA || geminiResults?.skillGap?.priorityA || []),
+            ...(skillGap?.priorityB || geminiResults?.skillGap?.priorityB || [])
           ],
           
           // Current strengths
-          strengths: skillGap.currentStrengths || geminiResults.skillGap?.currentStrengths || [],
+          strengths: skillGap?.currentStrengths || geminiResults?.skillGap?.currentStrengths || [],
           
           // Certifications to pursue
-          certifications: roadmap.exposure?.certifications || geminiResults.roadmap?.exposure?.certifications || [],
+          certifications: roadmap?.exposure?.certifications || geminiResults?.roadmap?.exposure?.certifications || [],
           
           // Projects to build
-          projects: roadmap.projects || geminiResults.roadmap?.projects || [],
+          projects: roadmap?.projects || geminiResults?.roadmap?.projects || [],
           
           // Overall career readiness
           readiness: result.employability_readiness,

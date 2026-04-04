@@ -11,7 +11,7 @@ import { formatBudget } from '..\..\..\shared\lib\format';
   ContractMilestone,
   MilestoneStatus,
   ProjectAnalytics
-} from './types';
+} from '@/shared/types';
 
 // ============================================================================
 // Project Status Utilities

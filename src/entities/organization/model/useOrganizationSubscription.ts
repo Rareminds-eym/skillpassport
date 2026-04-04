@@ -28,8 +28,9 @@ import {
     type PricingBreakdown,
 } from '@/entities/organization';
 import { useCallback, useEffect, useState } from 'react';
-// @ts-ignore - useAuth is a JS file
-import { useAuth } from '@/features/auth';
+// TODO: This hook previously imported useAuth from @/features/auth
+// If authentication context is needed, it should be passed as a parameter
+// or accessed through a shared authentication context provider
 
 interface UseOrganizationSubscriptionOptions {
   organizationId: string;

@@ -18,10 +18,10 @@ const logger = getLogger('MentorNotes');
 import { FeatureGate } from "@/features/subscription";
 import ConfirmationModal from '@/shared/ui/ConfirmationModal';
 import NotificationModal from '@/shared/ui/NotificationModal';
-import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
+import { useEducatorSchool } from '@/features/educator';
 import { useStudents } from '@/entities/student';
 import { supabase } from '@/shared/api/supabaseClient';
-import { saveMentorNote } from '@/features/educator-copilot';
+import { saveMentorNote } from '@/features/educator';
 import { mentorNotesService } from "@/features/counselling";
 import { authSessionService } from '@/features/auth';
 

@@ -10,7 +10,7 @@
 import { StandardizationOrchestrator } from '../standardization/StandardizationOrchestrator';
 import { APIAnalyzer } from '../analysis/APIAnalyzer';
 import { MigrationLogger } from '../logging/MigrationLogger';
-import { MigrationConfig } from '../types';
+import { MigrationConfig } from '@/features/student-profile/model';
 import * as path from 'path';
 
 interface StandardizationOptions {

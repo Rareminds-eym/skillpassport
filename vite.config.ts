@@ -42,16 +42,15 @@ export default defineConfig({
     ],
   },
   build: {
-    // Reduce memory usage during build
-    sourcemap: true,
-    minify: 'esbuild',
-    chunkSizeWarningLimit: 1000,
+    sourcemap: false,
+    minify: false,
+    chunkSizeWarningLimit: 2000,
     rollupOptions: {
+      maxParallelFileOps: 3,
       output: {
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
-        // Let Vite handle chunk splitting automatically to avoid circular dependency issues
         manualChunks: undefined,
       },
     },

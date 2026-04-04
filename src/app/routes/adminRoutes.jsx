@@ -1,7 +1,7 @@
 import { lazy } from "react";
 import { Navigate, Route } from "react-router-dom";
 import { SubscriptionProtectedRoute } from "@/features/subscription";
-import { OrganizationGuard } from "@/shared/lib/guards";
+import { OrganizationGuard } from "@/app/guards";
 import AdminLayout from "../layouts/AdminLayout";
 
 // Role constants

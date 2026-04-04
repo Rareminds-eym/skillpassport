@@ -10,7 +10,7 @@ import type {
   AssessmentSection,
   AnswerValue,
   SJTAnswer
-} from './types';
+} from '@/shared/types';
 
 // ============================================================================
 // Grade Level Validation

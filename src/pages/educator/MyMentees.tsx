@@ -20,7 +20,7 @@ import {
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import { useMentorAllocation } from '@/shared/lib/hooks';
-import KPICard from '@/shared/ui/KPICard';
+import { KPICard } from '@/features/analytics';
 import { MentorResponseModal } from '@/features/college-admin';
 import { Pagination } from '@/shared/ui';
 

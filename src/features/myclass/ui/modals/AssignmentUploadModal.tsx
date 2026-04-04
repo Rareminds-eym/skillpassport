@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { X, Upload, Loader2 } from 'lucide-react';
-import { Assignment } from '@/features/myclass/ui/AssignmentCard';
+import { Assignment } from '@/features/myclass';
 import StudentAssignmentFileUpload from '@/entities/student/ui/StudentAssignmentFileUpload';
 
 interface AssignmentUploadModalProps {

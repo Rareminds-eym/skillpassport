@@ -3,7 +3,6 @@ export { BoltStyleChat } from './bolt-style-chat';
 export { Button, buttonVariants } from './button';
 export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './card';
 export { CareerPathConnector, CareerPathEffect } from './career-path-effect';
-export { default as ChartDownloadButton } from './ChartDownloadButton';
 export { default as ConfirmationModal } from './ConfirmationModal';
 export { FeatureCard } from './FeatureCard';
 export { Label } from './label';
@@ -19,23 +18,15 @@ export { TextGenerateEffect, TextGenerateEffectOnce } from './text-generate-effe
 export { AlertDialog, AlertDialogPortal, AlertDialogOverlay, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from './alert-dialog';
 export { RadioGroup, RadioGroupItem } from './radio-group';
 
-// Additional shared UI components
 export { default as Loader } from './Loader';
 export { default as ScrollToTop } from './ScrollToTop';
 export { default as ProtectedRoute } from './ProtectedRoute';
 export { default as SearchBar } from './SearchBar';
-export { default as ActivityFeed } from './ActivityFeed';
-export { default as AssessmentReportDrawer } from './AssessmentReportDrawer';
 export { default as Footer } from './Footer';
 export { default as ImageUpload } from './ImageUpload';
 export { default as DemoModal } from './DemoModal';
-export { default as FloatingAIButton } from './FloatingAIButton';
-export { default as FloatingEducatorAIButton } from './FloatingEducatorAIButton';
-export { default as FloatingRecruiterAIButton } from './FloatingRecruiterAIButton';
 export { default as CareerAIToolsGrid } from './CareerAIToolsGrid';
 export { ConfirmModal } from './ConfirmModal';
-export { default as KPICard } from './KPICard';
-export { default as KPIDashboard } from './KPIDashboard';
 export { default as OTPInput } from './OTPInput';
 export { default as SEOHead } from './SEOHead';
 

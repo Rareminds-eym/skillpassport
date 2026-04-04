@@ -13,29 +13,21 @@ export { supabase } from './supabaseClient';
 // Common types
 export type * from './types';
 
-// Shared infrastructure services
-export * from './addOnAnalyticsService';
-export * from './addOnCatalogService';
-export * from './addOnPaymentService';
-export * from './adminNotificationService';
-export * from './alertsService';
-export * from './analyticsService';
+// Shared infrastructure services (truly generic, not domain-specific)
 export * from './authenticatedMediaService';
-export * from './dashboardService';
-export * from './fileService';
 // Note: fileUploadService.deleteFile conflicts with storageApiService.deleteFile
 // Import directly from the specific service you need
 export { uploadFile, validateFile, getFileUrl, uploadMultipleFiles, getDocumentUrl } from './fileUploadService';
-export * from './migrationNotificationService';
-export * from './migrationService';
-export * from './notificationService';
-export * from './optimizedQueryService';
 export * from './realtimeService';
-export * from './recentUpdatesService';
 export * from './settingsService';
-export * from './skillsAnalyticsService';
 export * from './storageApiService';
 export * from './storageService';
-export * from './streakApiService';
-export * from './studentNotificationService';
-export * from './usageStatisticsService';
+
+// Domain-specific services have been moved to their respective features:
+// - addOn* services -> @/features/subscription/api/
+// - *Notification* services -> @/features/notifications/api/
+// - analytics* services -> @/features/analytics/api/
+// - dashboard* services -> @/features/analytics/api/
+// - migration* services -> @/features/admin/api/
+// - streak* services -> @/features/student-profile/api/
+// Import them directly from their feature locations

@@ -458,7 +458,7 @@ export async function getClubMembers(clubId: string): Promise<ClubMembership[]> 
 }
 
 // Mark attendance for a club session
-export async function markAttendance(
+export async function markClubAttendance(
     clubId: string,
     sessionDate: string,
     sessionTopic: string,

@@ -6,7 +6,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import type { DuplicateGroup, CodeBlock, DuplicateScanResult } from './types';
+import type { DuplicateGroup, CodeBlock, DuplicateScanResult } from '@/features/student-profile/model';
 
 export class DuplicateScanner {
   private fileCache: Map<string, string> = new Map();
