@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 // @ts-ignore
 import { CandidateQuickView, PipelineSortMenu, PipelineAdvancedFilters } from '@/features/recruiter';
 import { PipelineStats, QuickStats } from '@/features/recruiter';
-import { useToast } from '@/features/recruiter';
 import { FeatureGate } from '@/features/subscription';
 import { useNotifications } from '@/features/notifications';
 import { useOpportunities } from '@/features/opportunities';
