@@ -1,4 +1,4 @@
-import { useAuth } from '@/features/auth';
+import { useUser } from '@/stores';
 import { ChevronDownIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
 import { supabase } from '@/shared/api/supabaseClient';
@@ -66,12 +66,12 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
           .eq('organization_type', 'college')
           .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
           .maybeSingle();
-        
+
         if (!error && data) {
           setCollegeId(data.id);
         }
       };
-      
+
       fetchCollegeId();
     }
   }, [isOpen, user]);
@@ -93,8 +93,8 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
       setIsValidatingCode(true);
       try {
         const validation = await departmentService.validateDepartmentCode(
-          collegeId, 
-          code.trim(), 
+          collegeId,
+          code.trim(),
           department.id
         );
         setCodeValidation(validation);
@@ -122,19 +122,19 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
       setSubmitting(false);
       setCodeValidation(null);
       setIsValidatingCode(false);
-      
+
       // Find and set the selected faculty based on HOD info
       const hodName = department.hod || department.metadata?.hod || "";
       const hodEmail = department.email || department.metadata?.email || "";
-      
+
       if (hodName && hodName !== 'Not Assigned') {
         // Try to find faculty by name or email
-        const faculty = allFaculty.find(f => 
-          f.name === hodName || 
+        const faculty = allFaculty.find(f =>
+          f.name === hodName ||
           f.email === hodEmail ||
           f.id === department.metadata?.hod_id
         );
-        
+
         if (faculty) {
           setSelectedFaculty(faculty);
           setFacultySearchTerm(faculty.name);
@@ -153,7 +153,7 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
         setSelectedFaculty(null);
         setFacultySearchTerm("");
       }
-      
+
       setShowFacultyDropdown(false);
     }
   }, [department, isOpen, allFaculty]);
@@ -226,7 +226,7 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
   const handleFacultyInputChange = (value: string) => {
     setFacultySearchTerm(value);
     setShowFacultyDropdown(true);
-    
+
     // Clear selected faculty if input doesn't match
     if (selectedFaculty && !selectedFaculty.name.toLowerCase().includes(value.toLowerCase())) {
       setSelectedFaculty(null);
@@ -271,13 +271,12 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
                   value={code}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
                   type="text"
-                  className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
-                    codeValidation === null 
+                  className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${codeValidation === null
                       ? 'border-gray-300 focus:ring-indigo-500'
                       : codeValidation.isValid
-                      ? 'border-green-300 focus:ring-green-500'
-                      : 'border-red-300 focus:ring-red-500'
-                  }`}
+                        ? 'border-green-300 focus:ring-green-500'
+                        : 'border-red-300 focus:ring-red-500'
+                    }`}
                   placeholder="CSE"
                   maxLength={10}
                 />
@@ -307,7 +306,7 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
                   disabled={facultyLoading}
                 />
                 <ChevronDownIcon className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                
+
                 {/* Dropdown */}
                 {showFacultyDropdown && !facultyLoading && (
                   <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">

@@ -1,12 +1,10 @@
 /**
- * DEPENDENCY INJECTION PATTERN APPLIED
- * 
- * This file should receive userManagementService as a parameter/prop.
- * Import from @/features/college-admin/api/userManagementService in the parent component and pass it down.
+ * User management hook for college admin
  */
 
 import { useState, useEffect } from 'react';
 import type { User } from '@/shared/types/college';
+import { userManagementService } from '@/entities/user/api/userManagementService';
 
 interface UseUsersOptions {
   role?: string;
@@ -23,10 +21,10 @@ export const useUsers = (options: UseUsersOptions = {}) => {
   const fetchUsers = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await userManagementService.getUsers(options);
-      
+
       if (result.success) {
         setUsers(result.data || []);
       } else {
@@ -37,7 +35,7 @@ export const useUsers = (options: UseUsersOptions = {}) => {
       setError(err.message || 'Failed to fetch users');
       setUsers([]); // Set empty array on exception
     }
-    
+
     setLoading(false);
   };
 
