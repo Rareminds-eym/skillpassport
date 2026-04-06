@@ -59,8 +59,8 @@ export const useCurriculum = (
 
   const loadAssessmentTypes = async () => {
     try {
-      const types = await curriculumService.getAssessmentTypes();
-      setAssessmentTypes(types);
+      const result = await curriculumService.getAssessmentTypes();
+      setAssessmentTypes(Array.isArray(result) ? result : (result?.data || []));
     } catch (error: any) {
       console.error('Error loading assessment types:', error);
     }
@@ -149,7 +149,7 @@ export const useCurriculum = (
       setChapters((prev) => [...prev, mappedChapter]);
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
-      
+
       return mappedChapter;
     } catch (error: any) {
       console.error('Error adding chapter:', error);
@@ -227,7 +227,7 @@ export const useCurriculum = (
       setLearningOutcomes((prev) => [...prev, mappedOutcome]);
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
-      
+
       return mappedOutcome;
     } catch (error: any) {
       console.error('Error adding learning outcome:', error);

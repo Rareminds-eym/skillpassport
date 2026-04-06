@@ -335,7 +335,7 @@ const getFileIcon = (fileName: string) => {
   const extension = fileName.split('.').pop()?.toLowerCase();
   const videoExtensions = ['mp4', 'mov', 'avi', 'wmv', 'mkv', 'webm'];
   const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'];
-  
+
   if (extension && videoExtensions.includes(extension)) {
     return { icon: VideoCameraIcon, color: 'text-purple-600' };
   } else if (extension && imageExtensions.includes(extension)) {
@@ -464,7 +464,7 @@ const ViewLessonPlanModal = ({
                                 const storageApiUrl = getPagesApiUrl('storage');
                                 let viewUrl;
                                 let method = 'unknown';
-                                
+
                                 // Extract key from lesson-plans URL pattern
                                 if (file.url!.includes('lesson-plans/')) {
                                   const keyMatch = file.url!.match(/lesson-plans\/(.+)$/);
@@ -481,10 +481,10 @@ const ViewLessonPlanModal = ({
                                   method = 'full-url';
                                   logger.info('Using FULL URL method for view');
                                 }
-                                
+
                                 logger.info('View method used', { method });
                                 logger.info('Final view URL generated', { url: viewUrl, urlLength: viewUrl.length });
-                                
+
                                 try {
                                   window.open(viewUrl, '_blank');
                                   logger.info('View window opened successfully');
@@ -497,15 +497,15 @@ const ViewLessonPlanModal = ({
                             >
                               {/* View */}
                             </button>
-                            
+
                             <button
                               onClick={() => {
                                 logger.info('Download button clicked', { fileName: file.name, fileType: file.type });
-                                
+
                                 const storageApiUrl = getPagesApiUrl('storage');
                                 let downloadUrl;
                                 let method = 'unknown';
-                                
+
                                 // Extract key from lesson-plans URL pattern
                                 if (file.url!.includes('lesson-plans/')) {
                                   const keyMatch = file.url!.match(/lesson-plans\/(.+)$/);
@@ -522,10 +522,10 @@ const ViewLessonPlanModal = ({
                                   method = 'full-url';
                                   logger.info('Using FULL URL method for download');
                                 }
-                                
+
                                 logger.info('Download method used', { method });
                                 logger.info('Final download URL generated', { url: downloadUrl, urlLength: downloadUrl.length });
-                                
+
                                 try {
                                   window.open(downloadUrl, '_blank');
                                   logger.info('Download window opened successfully');
@@ -578,10 +578,10 @@ const ViewLessonPlanModal = ({
             )}
 
             {!plan.requiredMaterials &&
-             (!plan.resourceFiles || plan.resourceFiles.length === 0) &&
-             (!plan.resourceLinks || plan.resourceLinks.length === 0) && (
-              <p className="text-sm text-gray-500 italic">No materials added</p>
-            )}
+              (!plan.resourceFiles || plan.resourceFiles.length === 0) &&
+              (!plan.resourceLinks || plan.resourceLinks.length === 0) && (
+                <p className="text-sm text-gray-500 italic">No materials added</p>
+              )}
           </div>
 
           <div className="border border-gray-200 rounded-lg p-4">
@@ -619,11 +619,10 @@ const ViewLessonPlanModal = ({
                 <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-gray-700">Total</span>
-                    <span className={`text-sm font-bold ${
-                      plan.evaluationItems.reduce((sum, item) => sum + item.percentage, 0) === 100
+                    <span className={`text-sm font-bold ${plan.evaluationItems.reduce((sum, item) => sum + item.percentage, 0) === 100
                         ? 'text-green-600'
                         : 'text-amber-600'
-                    }`}>
+                      }`}>
                       {plan.evaluationItems.reduce((sum, item) => sum + item.percentage, 0)}%
                     </span>
                   </div>
@@ -760,17 +759,19 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
   useEffect(() => {
     const loadFilterData = async () => {
       try {
-        const [subjectsData, classesData, yearsData, currentYear] = await Promise.all([
-          getSubjects(),
-          getClasses(),
-          Promise.resolve(curriculumService.getAcademicYears()),
-          Promise.resolve(curriculumService.getAcademicYears()[0] || null), // Use first year as current
-        ]);
-        
-        setSubjects(subjectsData);
-        setClasses(classesData);
+        const subjectsResult = await getSubjects(schoolId);
+        const classesResult = schoolId ? await getClasses(schoolId) : { data: null, error: null };
+        const yearsData = curriculumService.getAcademicYears();
+        const currentYear = yearsData[0] || null;
+
+        if (subjectsResult.data) {
+          setSubjects(subjectsResult.data.map((s: any) => typeof s === 'string' ? s : s.name));
+        }
+        if (classesResult.data) {
+          setClasses(classesResult.data.map((c: any) => c.grade || c.name || c));
+        }
         setAcademicYears(yearsData);
-        
+
         // Set current academic year as default for new lesson plans
         if (currentYear && !formData.academicYear) {
           setFormData(prev => ({ ...prev, academicYear: currentYear }));
@@ -809,7 +810,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
 
   // Use curriculum hook for backend data
-  const { chapters, learningOutcomes, loadChapters, loadLearningOutcomes } = 
+  const { chapters, learningOutcomes, loadChapters, loadLearningOutcomes } =
     useCurriculum(formData.subject, formData.class, formData.academicYear);
 
   // Load chapters when subject and class are selected
@@ -919,7 +920,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        
+
         // Validate file
         const validation = validateFile(file, {
           maxSize: 50, // 50MB max
@@ -940,9 +941,9 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
           file,
           'lesson-plans', // folder for lesson plan files
           (progress) => {
-            setUploadProgress(prev => ({ 
-              ...prev, 
-              [fileId]: Math.round(progress.percentage) 
+            setUploadProgress(prev => ({
+              ...prev,
+              [fileId]: Math.round(progress.percentage)
             }));
           }
         );
@@ -1069,7 +1070,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     if (!formData.date) {
       newErrors.date = "Please select a date for the lesson";
     }
-    
+
     // Curriculum-linked fields
     if (!formData.chapterId) {
       newErrors.chapterId = "Please select a chapter from curriculum";
@@ -1077,7 +1078,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     if (selectedLearningOutcomes.length === 0) {
       newErrors.learningOutcomes = "Please select at least one learning outcome";
     }
-    
+
     // Content fields
     if (!formData.learningObjectives.trim()) {
       newErrors.learningObjectives = "Lesson Objectives are required";
@@ -1107,7 +1108,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     try {
       // Find class ID - need to fetch from school_classes using grade and academic year
       let classId: string | null = null;
-      
+
       if (formData.class && formData.academicYear) {
         // Get school_id from current user if not provided
         let currentSchoolId = schoolId;
@@ -1123,7 +1124,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
             currentSchoolId = educatorData?.school_id || null;
           }
         }
-        
+
         if (currentSchoolId) {
           // Fetch the actual class ID from school_classes table
           // Use limit(1) to handle multiple classes with same grade/year
@@ -1134,14 +1135,14 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
             .eq('grade', formData.class)
             .eq('academic_year', formData.academicYear)
             .limit(1);
-          
+
           if (classError) {
             logger.error('Error fetching class', classError);
           }
-          
+
           const classData = classDataArray?.[0];
           classId = classData?.id || null;
-          
+
           if (!classId) {
             logger.warn('No class found', {
               school_id: currentSchoolId,
@@ -1158,23 +1159,23 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
             .eq('grade', formData.class)
             .eq('academic_year', formData.academicYear)
             .limit(1);
-          
+
           const classData = classDataArray?.[0];
-          
+
           if (classError) {
             logger.error('Error fetching class (no school filter)', classError);
           }
-          
+
           if (classData) {
             classId = classData.id;
             logger.info('Found class', { classData });
           }
         }
       }
-      
+
       // Fallback: try to find from propClasses
       if (!classId && propClasses) {
-        const classObj = propClasses?.find((c: any) => 
+        const classObj = propClasses?.find((c: any) =>
           (c.grade === formData.class || c === formData.class) &&
           (!formData.academicYear || c.academic_year === formData.academicYear)
         );
@@ -1215,16 +1216,16 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
             prev.map((p) =>
               p.id === editingPlan.id
                 ? {
-                    ...p,
-                    ...formData,
-                    chapterName: chapter?.name || "",
-                    duration,
-                    selectedLearningOutcomes,
-                    resourceFiles,
-                    resourceLinks,
-                    evaluationItems,
-                    status,
-                  }
+                  ...p,
+                  ...formData,
+                  chapterName: chapter?.name || "",
+                  duration,
+                  selectedLearningOutcomes,
+                  resourceFiles,
+                  resourceLinks,
+                  evaluationItems,
+                  status,
+                }
                 : p
             )
           );
@@ -1279,14 +1280,14 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     if (plan.subject && plan.class) {
       await loadCurriculumData(plan.subject, plan.class);
     }
-    
+
     // If academic year is not set, try to get the current academic year as default
     let academicYear = plan.academicYear || "";
     if (!academicYear) {
       const currentYear = curriculumService.getAcademicYears()[0] || null;
       academicYear = currentYear || "";
     }
-    
+
     setFormData({
       title: plan.title,
       subject: plan.subject,
@@ -1315,7 +1316,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     if (plan.subject && plan.class) {
       await loadCurriculumData(plan.subject, plan.class);
     }
-    
+
     setFormData({
       title: `${plan.title} (Copy)`,
       subject: plan.subject,
@@ -1680,9 +1681,8 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                         setSelectedLearningOutcomes([]); // Reset learning outcomes when chapter changes
                       }}
                       disabled={!formData.subject || !formData.class || !formData.academicYear}
-                      className={`w-full px-4 py-2.5 rounded-lg border ${
-                        errors.chapterId ? "border-red-300" : "border-gray-300"
-                      } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
+                      className={`w-full px-4 py-2.5 rounded-lg border ${errors.chapterId ? "border-red-300" : "border-gray-300"
+                        } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
                     >
                       <option value="">
                         {!formData.subject || !formData.class || !formData.academicYear
@@ -1731,11 +1731,10 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                       onChange={(e) =>
                         setFormData({ ...formData, date: e.target.value })
                       }
-                      className={`w-full px-4 py-2.5 rounded-lg border text-sm focus:ring-2 transition-colors ${
-                        errors.date
+                      className={`w-full px-4 py-2.5 rounded-lg border text-sm focus:ring-2 transition-colors ${errors.date
                           ? "border-red-300 focus:border-red-500 focus:ring-red-500/20"
                           : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20"
-                      }`}
+                        }`}
                     />
                     {errors.date && (
                       <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
@@ -1824,9 +1823,8 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                     })
                   }
                   rows={4}
-                  className={`w-full px-4 py-3 rounded-lg border ${
-                    errors.learningObjectives ? "border-red-300" : "border-gray-300"
-                  } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none`}
+                  className={`w-full px-4 py-3 rounded-lg border ${errors.learningObjectives ? "border-red-300" : "border-gray-300"
+                    } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none`}
                   placeholder="What should students learn and be able to do after this lesson? Describe specific, measurable learning objectives derived from the selected outcomes above..."
                 />
                 {errors.learningObjectives && (
@@ -1851,9 +1849,8 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                     setFormData({ ...formData, teachingMethodology: e.target.value })
                   }
                   rows={5}
-                  className={`w-full px-4 py-3 rounded-lg border ${
-                    errors.teachingMethodology ? "border-red-300" : "border-gray-300"
-                  } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none`}
+                  className={`w-full px-4 py-3 rounded-lg border ${errors.teachingMethodology ? "border-red-300" : "border-gray-300"
+                    } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none`}
                   placeholder="Describe your teaching methodology and activities. Examples: Inquiry-based learning, Lecture + Discussion, Activity-based, etc..."
                 />
                 {errors.teachingMethodology && (
@@ -1955,7 +1952,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                                         const storageApiUrl = getPagesApiUrl('storage');
                                         let viewUrl;
                                         let method = 'unknown';
-                                        
+
                                         // Extract key from lesson-plans URL pattern
                                         if (file.url!.includes('lesson-plans/')) {
                                           const keyMatch = file.url!.match(/lesson-plans\/(.+)$/);
@@ -1972,10 +1969,10 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                                           method = 'full-url';
                                           logger.info('Using FULL URL method for view');
                                         }
-                                        
+
                                         logger.info('View method used', { method });
                                         logger.info('Final view URL generated', { url: viewUrl, urlLength: viewUrl.length });
-                                        
+
                                         try {
                                           window.open(viewUrl, '_blank');
                                           logger.info('View window opened successfully');
@@ -1988,15 +1985,15 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                                     >
                                       {/* View */}
                                     </button>
-                                    
+
                                     <button
                                       onClick={() => {
                                         logger.info('Download button clicked', { fileName: file.name, fileType: file.type });
-                                        
+
                                         const storageApiUrl = getPagesApiUrl('storage');
                                         let downloadUrl;
                                         let method = 'unknown';
-                                        
+
                                         // Extract key from lesson-plans URL pattern
                                         if (file.url!.includes('lesson-plans/')) {
                                           const keyMatch = file.url!.match(/lesson-plans\/(.+)$/);
@@ -2013,10 +2010,10 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                                           method = 'full-url';
                                           logger.info('Using FULL URL method for download');
                                         }
-                                        
+
                                         logger.info('Download method used', { method });
                                         logger.info('Final download URL generated', { url: downloadUrl, urlLength: downloadUrl.length });
-                                        
+
                                         try {
                                           window.open(downloadUrl, '_blank');
                                           logger.info('Download window opened successfully');
@@ -2035,8 +2032,8 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                               {isUploading && (
                                 <div className="mt-1">
                                   <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                    <div 
-                                      className="bg-blue-600 h-1.5 rounded-full transition-all duration-300" 
+                                    <div
+                                      className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
                                       style={{ width: `${uploadProgress[file.id] || 0}%` }}
                                     ></div>
                                   </div>
@@ -2281,23 +2278,21 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                       ))}
 
                       {/* Total Percentage Indicator */}
-                      <div className={`p-3 rounded-lg border ${
-                        getTotalPercentage() === 100
+                      <div className={`p-3 rounded-lg border ${getTotalPercentage() === 100
                           ? 'bg-green-50 border-green-200'
                           : getTotalPercentage() > 100
-                          ? 'bg-red-50 border-red-200'
-                          : 'bg-amber-50 border-amber-200'
-                      }`}>
+                            ? 'bg-red-50 border-red-200'
+                            : 'bg-amber-50 border-amber-200'
+                        }`}>
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-semibold text-gray-700">Total Percentage</span>
                           <div className="flex items-center gap-2">
-                            <span className={`text-sm font-bold ${
-                              getTotalPercentage() === 100
+                            <span className={`text-sm font-bold ${getTotalPercentage() === 100
                                 ? 'text-green-600'
                                 : getTotalPercentage() > 100
-                                ? 'text-red-600'
-                                : 'text-amber-600'
-                            }`}>
+                                  ? 'text-red-600'
+                                  : 'text-amber-600'
+                              }`}>
                               {getTotalPercentage()}%
                             </span>
                             {getTotalPercentage() === 100 && (
@@ -2309,9 +2304,8 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                           </div>
                         </div>
                         {getTotalPercentage() !== 100 && (
-                          <p className={`text-xs mt-1 ${
-                            getTotalPercentage() > 100 ? 'text-red-600' : 'text-amber-600'
-                          }`}>
+                          <p className={`text-xs mt-1 ${getTotalPercentage() > 100 ? 'text-red-600' : 'text-amber-600'
+                            }`}>
                             {getTotalPercentage() > 100
                               ? `Exceeds 100% by ${getTotalPercentage() - 100}%`
                               : `${100 - getTotalPercentage()}% remaining`
@@ -2337,9 +2331,8 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                       })
                     }
                     rows={3}
-                    className={`w-full px-4 py-3 rounded-lg border ${
-                      errors.evaluationCriteria ? "border-red-300" : "border-gray-300"
-                    } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none`}
+                    className={`w-full px-4 py-3 rounded-lg border ${errors.evaluationCriteria ? "border-red-300" : "border-gray-300"
+                      } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none`}
                     placeholder="Describe how learning will be checked. Examples: Exit ticket, Quiz, Observation rubric, etc..."
                   />
                   {errors.evaluationCriteria && (

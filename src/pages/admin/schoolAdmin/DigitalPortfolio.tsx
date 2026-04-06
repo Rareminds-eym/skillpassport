@@ -9,7 +9,7 @@ import {
   ChevronDownIcon,
   TableCellsIcon,
 } from '@heroicons/react/24/outline';
-import { useStudents } from '@/entities/student';
+import { useStudents } from '@/entities/student/model/useAdminStudents';
 import { SearchBar } from '@/shared/ui';
 import { Pagination } from '@/shared/ui';
 
@@ -83,7 +83,7 @@ const BadgeComponent = ({ badges }: { badges: any[] }) => {
 
 const PortfolioCard = ({ student, onViewPortfolio }: any) => {
   return (
-    <div 
+    <div
       className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-all duration-200 cursor-pointer group"
       onClick={() => onViewPortfolio(student)}
     >
@@ -291,12 +291,12 @@ const DigitalPortfolioPage = () => {
   }, [allStudentsForFilters]);
 
   // Check if any filters are active
-  const hasActiveFilters = filters.classes.length > 0 || 
-                          filters.skills.length > 0 || 
-                          filters.badges.length > 0 || 
-                          filters.locations.length > 0 ||
-                          filters.minScore > 0 ||
-                          filters.maxScore < 100;
+  const hasActiveFilters = filters.classes.length > 0 ||
+    filters.skills.length > 0 ||
+    filters.badges.length > 0 ||
+    filters.locations.length > 0 ||
+    filters.minScore > 0 ||
+    filters.maxScore < 100;
 
   // Apply filters and sorting
   const filteredStudents = useMemo(() => {
@@ -307,7 +307,7 @@ const DigitalPortfolioPage = () => {
     // Apply search filter if not already applied at DB level
     if (hasActiveFilters && debouncedSearch) {
       const searchLower = debouncedSearch.toLowerCase();
-      result = result.filter(student => 
+      result = result.filter(student =>
         student.name?.toLowerCase().includes(searchLower) ||
         student.email?.toLowerCase().includes(searchLower) ||
         student.class?.toLowerCase().includes(searchLower) ||
@@ -372,14 +372,14 @@ const DigitalPortfolioPage = () => {
 
     return sorted;
   }, [students, allStudentsForFilters, filters, sortBy, hasActiveFilters, debouncedSearch]);
-  
+
   const totalItems = hasActiveFilters ? filteredStudents.length : (totalCount || 0);
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-  
+
   // If filters are active, paginate client-side; otherwise use DB-paginated data
-  const paginatedStudents = hasActiveFilters 
+  const paginatedStudents = hasActiveFilters
     ? filteredStudents.slice(startIndex, endIndex)
     : filteredStudents;
 
@@ -403,7 +403,7 @@ const DigitalPortfolioPage = () => {
     });
   };
 
-  const activeFilterCount = filters.skills.length + filters.classes.length + 
+  const activeFilterCount = filters.skills.length + filters.classes.length +
     filters.badges.length + filters.locations.length;
 
   return (
@@ -455,21 +455,19 @@ const DigitalPortfolioPage = () => {
           <div className="flex rounded-md shadow-sm">
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
-                viewMode === 'grid'
+              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === 'grid'
                   ? 'bg-primary-50 border-primary-300 text-primary-700'
                   : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+                }`}
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
-                viewMode === 'table'
+              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === 'table'
                   ? 'bg-primary-50 border-primary-300 text-primary-700'
                   : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+                }`}
             >
               <TableCellsIcon className="h-4 w-4" />
             </button>
@@ -513,21 +511,19 @@ const DigitalPortfolioPage = () => {
           <div className="flex rounded-md shadow-sm">
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
-                viewMode === 'grid'
+              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === 'grid'
                   ? 'bg-primary-50 border-primary-300 text-primary-700'
                   : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+                }`}
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
-                viewMode === 'table'
+              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === 'table'
                   ? 'bg-primary-50 border-primary-300 text-primary-700'
                   : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+                }`}
             >
               <TableCellsIcon className="h-4 w-4" />
             </button>
@@ -694,7 +690,7 @@ const DigitalPortfolioPage = () => {
                         ))}
                       </>
                     )}
-                    
+
                     {!loading && paginatedStudents.map((student) => (
                       <PortfolioCard
                         key={student.id}

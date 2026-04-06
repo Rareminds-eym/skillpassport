@@ -4,11 +4,5 @@
  * Complex navigation widget that composes sidebar and header navigation
  */
 
-// Default export for Header component (using educator Header)
-export { Header } from '@/features/educator';
-
-// TODO: AdminSidebar and AdminHeader components need to be implemented
-// export { AdminSidebar } from './ui/AdminSidebar'
-// export { AdminHeader } from './ui/AdminHeader'
-// export type { AdminNavigationProps } from './model/types'
-
+// Default export for Header component (using admin Header with notifications)
+export { default as Header } from '@/features/admin/ui/Header';

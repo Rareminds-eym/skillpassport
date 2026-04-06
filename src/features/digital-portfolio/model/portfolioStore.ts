@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { immer } from 'zustand/middleware/immer';
-import { getStudentPortfolioByEmail } from '@/features/digital-portfolio';
+import { getStudentPortfolioByEmail } from '@/features/digital-portfolio/api/portfolioService';
 
 // Service response type
 interface ServiceResponse<T> {
