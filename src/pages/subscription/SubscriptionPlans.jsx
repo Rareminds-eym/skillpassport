@@ -5,7 +5,7 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import { AddOnMarketplace, OrganizationPurchasePanel } from '@/features/subscription/ui';
 import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
 import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/stores';
-import { useSubscriptionAccess } from '@/features/subscription';
+import { useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
 
 import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parseStudentType } from "@/shared/lib/getEntityContent";
 import { calculateDaysRemaining, isActiveOrPaused } from '@/features/subscription';

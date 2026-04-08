@@ -17,9 +17,9 @@ import {
 import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { SearchBar } from '@/shared/ui'
-import { useClasses } from '@/features/college-admin'
+import { useClasses } from '@/features/college-admin/model/useClasses'
 import { useEducatorId } from '@/features/educator'
-import { useEducatorSchool } from '@/features/educator'
+import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool'
 import toast from "react-hot-toast"
 import { ManageStudentsModal } from '@/features/educator'
 import { Pagination } from '@/shared/ui'

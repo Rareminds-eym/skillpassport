@@ -23,7 +23,7 @@ import { Loader2 } from 'lucide-react';
 import { useUser, useTour } from '@/stores';
 // @ts-ignore - JS file without type declarations
 import { useAssessment } from '@/features/assessment';
-import { useAdaptiveAptitude } from '@/shared/lib/hooks';
+import { useAdaptiveAptitude } from '@/features/assessment/model/useAdaptiveAptitude';
 // @ts-ignore - JS service
 import * as assessmentService from '../api/assessmentService';
 // @ts-ignore - JS service

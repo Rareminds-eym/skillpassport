@@ -12,7 +12,7 @@ import {
   ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 import { useStudents, UICandidate } from '@/entities/student';
-import { useEducatorSchool } from '@/features/educator';
+import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
 import { useSearch, useUser } from '@/stores';
 import SearchBar from '@/shared/ui/SearchBar';
 import { Pagination } from '@/features/educator';

@@ -18,7 +18,7 @@ const logger = getLogger('MentorNotes');
 import { FeatureGate } from "@/features/subscription";
 import ConfirmationModal from '@/shared/ui/ConfirmationModal';
 import NotificationModal from '@/shared/ui/NotificationModal';
-import { useEducatorSchool } from '@/features/educator';
+import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
 import { useStudents } from '@/entities/student';
 import { supabase } from '@/shared/api/supabaseClient';
 import { saveMentorNote } from '@/features/educator';

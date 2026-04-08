@@ -15,8 +15,8 @@ import { getLogger } from '@/shared/config/logging'
 const logger = getLogger('ProgramSectionsPage');
 
 import { SearchBar } from '@/shared/ui'
-import { useProgramSections } from '@/shared/lib/hooks'
-import { useEducatorSchool } from '@/features/educator'
+import { useProgramSections } from '@/features/college-admin/model/useProgramSections'
+import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool'
 import toast from "react-hot-toast"
 import { Pagination } from '@/shared/ui'
 import { useAuth } from "@/features/auth"

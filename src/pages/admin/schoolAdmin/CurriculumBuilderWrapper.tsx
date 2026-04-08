@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { FeatureGate } from '@/features/subscription';
-import { useCurriculum } from '@/features/college-admin';
+import { useCurriculum } from '@/features/college-admin/model/useCurriculum';
 import * as curriculumService from '@/features/college-admin';
 import { authSessionService } from '@/features/auth';
 import { getLogger } from '@/shared/config/logging';

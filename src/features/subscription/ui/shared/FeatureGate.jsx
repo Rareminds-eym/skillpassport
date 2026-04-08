@@ -6,7 +6,7 @@ import { ArrowLeft, ArrowRight, Check, Lock, Shield, Sparkles, X, Zap } from 'lu
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSubscriptionContext } from '@/stores';
-import { clearFeatureAccessCache, useFeatureGate } from '@/features/subscription';
+import { clearFeatureAccessCache, useFeatureGate } from '@/features/subscription/model/useFeatureGate';
 import { addOnPaymentService } from '@/features/subscription';
 import { loadRazorpayScript } from '@/features/subscription/api';
 

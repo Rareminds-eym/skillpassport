@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSubscriptionContext } from '@/stores';
-import { useSubscriptionQuery } from '@/features/subscription/model';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 
 /**
  * Get the base path for subscription routes based on current location

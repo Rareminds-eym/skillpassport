@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { XMarkIcon, UserPlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { ProgramSection, ProgramStudent, getStudentsByProgramSection, getAvailableStudentsForProgram, addStudentToProgram, removeStudentFromProgram } from '@/features/college-admin'
-import { useEducatorSchool } from '@/features/educator'
+import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool'
 import { usePermission } from '@/shared/lib/hooks'
 import toast from 'react-hot-toast'
 

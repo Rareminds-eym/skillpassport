@@ -17,7 +17,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useStudents } from '@/entities/student';
-import { useEducatorSchool } from '@/features/educator';
+import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
 import { useSearch, useUser, useIsAuthenticated } from '@/stores';
 import { SearchBar } from '@/shared/ui';
 import { Pagination } from '@/shared/ui';
