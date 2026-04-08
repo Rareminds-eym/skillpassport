@@ -115,13 +115,13 @@ export { default as courseProgressService } from './api/courseProgressService';
 export { matchCoursesForRole } from './api/roleBasedMatcher';
 export { useLessonPlans } from './model/index';
 
-export { ValidationConflict } from './lib/timetableValidation';
+export type { ValidationConflict } from './lib/timetableValidation';
 
 export { default as Resource } from './ui/ResourceUploadComponent';
 
 export { validateTimetableSlot } from './lib/timetableValidation';
 
-export { Lesson } from './model/course-types';
+export type { Lesson } from './model/course-types';
 
 export { getAllTimetableConflicts } from './lib/timetableValidation';
 

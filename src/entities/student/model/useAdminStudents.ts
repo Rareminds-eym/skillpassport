@@ -346,7 +346,7 @@ interface UseStudentsOptions {
   pageSize?: number
 }
 
-export function useStudents(options: UseStudentsOptions = {}) {
+export function useAdminStudents(options: UseStudentsOptions = {}) {
   const { searchTerm = '', page = 1, pageSize = 500 } = options
   const [data, setData] = useState<UICandidate[]>([])
   const [loading, setLoading] = useState<boolean>(false)
@@ -642,3 +642,6 @@ export function useStudents(options: UseStudentsOptions = {}) {
 
   return { students: data, loading, error, stats, totalCount }
 }
+
+// Export alias for backward compatibility
+export { useAdminStudents as useStudents };

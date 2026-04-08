@@ -17,7 +17,7 @@ export type {
   CreateUserData,
   UpdateUserData,
   BulkImportResult,
-} from '@/shared/types';
+} from './types';
 
 // Validation
 export {
@@ -27,13 +27,15 @@ export {
   isAdminRole,
   isRecruiterRole,
   isLearnerRole,
-  isValidEmail,
   isValidPassword,
   validatePasswordStrength,
   validateCreateUserData,
   validateUpdateUserData,
   validateUser,
 } from './validation';
+
+// Re-export from shared lib
+export { isValidEmail } from '@/shared/lib/validation';
 
 // Utils
 export {

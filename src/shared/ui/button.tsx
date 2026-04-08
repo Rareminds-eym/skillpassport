@@ -56,7 +56,7 @@ const buttonVariants = ({ variant = "default", size = "default", className = "" 
   return cn(BASE_CLASSES, variantClass, sizeClass, className);
 };
 
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "default", size = "default", asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
 

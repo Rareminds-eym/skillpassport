@@ -1,106 +1,108 @@
-import React from 'react';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import * as React from "react"
+import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react"
 
-interface PaginationProps {
-  currentPage: number;
-  totalPages: number;
-  totalItems: number;
-  itemsPerPage: number;
-  onPageChange: (page: number) => void;
+import { cn } from '@/shared/lib/utils'
+import { buttonVariants } from "./button"
+
+const Pagination = ({
+  className,
+  ...props
+}: React.ComponentProps<"nav">) => (
+  <nav
+    role="navigation"
+    aria-label="pagination"
+    className={cn("mx-auto flex w-full justify-center", className)}
+    {...props} />
+)
+Pagination.displayName = "Pagination"
+
+const PaginationContent = React.forwardRef<
+  HTMLUListElement,
+  React.ComponentProps<"ul">
+>(({ className, ...props }, ref) => (
+  <ul
+    ref={ref}
+    className={cn("flex flex-row items-center gap-1", className)}
+    {...props} />
+))
+PaginationContent.displayName = "PaginationContent"
+
+const PaginationItem = React.forwardRef<
+  HTMLLIElement,
+  React.ComponentProps<"li">
+>(({ className, ...props }, ref) => (
+  <li ref={ref} className={cn("", className)} {...props} />
+))
+PaginationItem.displayName = "PaginationItem"
+
+type PaginationLinkProps = {
+  isActive?: boolean
+} & Pick<React.ComponentProps<"a">, "className"> &
+  React.ComponentProps<"a">
+
+const PaginationLink = ({
+  className,
+  isActive,
+  ...props
+}: PaginationLinkProps) => (
+  <a
+    aria-current={isActive ? "page" : undefined}
+    className={cn(buttonVariants({
+      variant: isActive ? "outline" : "ghost",
+      size: "icon",
+    }), className)}
+    {...props} />
+)
+PaginationLink.displayName = "PaginationLink"
+
+const PaginationPrevious = ({
+  className,
+  ...props
+}: React.ComponentProps<typeof PaginationLink>) => (
+  <PaginationLink
+    aria-label="Go to previous page"
+    className={cn("gap-1 pl-2.5", className)}
+    {...props}>
+    <ChevronLeft className="h-4 w-4" />
+    <span className="hidden sm:inline">Previous</span>
+  </PaginationLink>
+)
+PaginationPrevious.displayName = "PaginationPrevious"
+
+const PaginationNext = ({
+  className,
+  ...props
+}: React.ComponentProps<typeof PaginationLink>) => (
+  <PaginationLink
+    aria-label="Go to next page"
+    className={cn("gap-1 pr-2.5", className)}
+    {...props}>
+    <span className="hidden sm:inline">Next</span>
+    <ChevronRight className="h-4 w-4" />
+  </PaginationLink>
+)
+PaginationNext.displayName = "PaginationNext"
+
+const PaginationEllipsis = ({
+  className,
+  ...props
+}: React.ComponentProps<"span">) => (
+  <span
+    aria-hidden
+    className={cn("flex h-9 w-9 items-center justify-center", className)}
+    {...props}>
+    <MoreHorizontal className="h-4 w-4" />
+    <span className="sr-only">More pages</span>
+  </span>
+)
+PaginationEllipsis.displayName = "PaginationEllipsis"
+
+export {
+  Pagination,
+  PaginationContent,
+  PaginationLink,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis,
 }
-
-const Pagination: React.FC<PaginationProps> = ({
-  currentPage,
-  totalPages,
-  totalItems,
-  itemsPerPage,
-  onPageChange,
-}) => {
-  if (totalPages <= 1) return null;
-
-  const startItem = (currentPage - 1) * itemsPerPage + 1;
-  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
-
-  const handlePrev = () => currentPage > 1 && onPageChange(currentPage - 1);
-  const handleNext = () => currentPage < totalPages && onPageChange(currentPage + 1);
-
-  const getPages = () => {
-    const pages: (number | string)[] = [];
-    const maxVisible = 5;
-
-    if (totalPages <= maxVisible) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      const left = Math.max(1, currentPage - 1);
-      const right = Math.min(totalPages, currentPage + 1);
-
-      if (left > 2) pages.push(1, '...');
-      else for (let i = 1; i < left; i++) pages.push(i);
-
-      for (let i = left; i <= right; i++) pages.push(i);
-
-      if (right < totalPages - 1) pages.push('...', totalPages);
-      else for (let i = right + 1; i <= totalPages; i++) pages.push(i);
-    }
-    return pages;
-  };
-
-  return (
-    <div className="flex flex-col sm:flex-row items-center justify-between w-full px-4 py-3 bg-white border-t border-gray-200 text-gray-700">
-      {/* Info text */}
-      <p className="text-sm mb-3 sm:mb-0">
-        Showing <span className="font-semibold">{startItem}</span>–
-        <span className="font-semibold">{endItem}</span> of{' '}
-        <span className="font-semibold">{totalItems}</span>
-      </p>
-
-      {/* Navigation */}
-      <div className="flex items-center space-x-1 sm:space-x-2">
-        {/* Prev Button */}
-        <button
-          onClick={handlePrev}
-          disabled={currentPage === 1}
-          className="flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          <ChevronLeftIcon className="h-4 w-4" />
-          <span className="hidden sm:inline">Previous</span>
-        </button>
-
-        {/* Page Numbers */}
-        <div className="flex items-center space-x-1">
-          {getPages().map((page, index) =>
-            page === '...' ? (
-              <span key={`ellipsis-${index}`} className="px-2 text-gray-500">
-                ...
-              </span>
-            ) : (
-              <button
-                key={`page-${page}`}
-                onClick={() => onPageChange(page as number)}
-                className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
-                  currentPage === page
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
-                }`}
-              >
-                {page}
-              </button>
-            )
-          )}
-        </div>
-
-        {/* Next Button */}
-        <button
-          onClick={handleNext}
-          disabled={currentPage === totalPages}
-          className="flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          <span className="hidden sm:inline">Next</span>
-          <ChevronRightIcon className="h-4 w-4" />
-        </button>
-      </div>
-    </div>
-  );
-};
-
-export default Pagination;

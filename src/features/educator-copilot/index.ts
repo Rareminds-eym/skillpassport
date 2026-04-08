@@ -31,24 +31,25 @@ export { getAssignmentStats } from './api/assignmentsService';
 // Re-export from educator feature
 
 // Analytics
-export { getGeographicDistribution, getTopHiringColleges, getQualityMetrics } from './api/analyticsService';
+export { getQualityMetrics } from './api/analyticsService';
+export { getGeographicDistribution, getTopHiringColleges } from './api/analyticsService';
 
-export { FunnelRangePreset } from './api/analyticsService';
+export type { FunnelRangePreset } from './api/analyticsService';
 
 export { dashboardApi } from './api/dashboardApi';
 
-export { RecentActivity } from './api/dashboardApi';
+export type { RecentActivity } from './api/dashboardApi';
 
-export { Announcement } from './api/dashboardApi';
+export type { Announcement } from './api/dashboardApi';
 
 export { uploadInstructionFile } from './api/assignmentsService';
 
 export { deleteInstructionFile } from './api/assignmentsService';
 
-export { DashboardKPIs } from './api/dashboardApi';
+export type { DashboardKPIs } from './api/dashboardApi';
 
 export { buildEducatorContext } from './lib/contextBuilder';
 
-export { SkillAnalytics } from './api/dashboardApi';
+export type { SkillAnalytics } from './api/dashboardApi';
 
 export { useLessonPlans, useCurriculum, useSubjectsAndClasses } from './model/useLessonPlans';

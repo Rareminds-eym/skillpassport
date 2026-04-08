@@ -61,7 +61,7 @@ export * from './api/dashboardApi';
 
 // Mock data / models
 export { SKILL_CATEGORIES, CLASSES } from './model/mockCourses';
-export { Class, mockClasses } from './model/mockClasses';
-export { Activity, mockActivities } from './model/mockActivities';
-export { mockStudents, Student } from './model/mockStudents';
-export { MediaAsset, mockMediaAssets } from './model/mockMedia';
+export { mockClasses, type Class } from './model/mockClasses';
+export { mockActivities, type Activity } from './model/mockActivities';
+export { mockStudents, type Student } from './model/mockStudents';
+export { mockMediaAssets, type MediaAsset } from './model/mockMedia';

@@ -39,7 +39,7 @@ export * from './lib/errorHandlers';
 export * from './lib/stringHelpers';
 export * from './lib/supabaseHelpers';
 
-export { SchoolTimetableSlot } from './ui/tabs/TimetableViewTab';
+export type { SchoolTimetableSlot } from './ui/tabs/TimetableViewTab';
 
 export { getTodaySchedule } from './api/studentClassService';
 
@@ -47,33 +47,33 @@ export { formatClubName } from './lib/stringHelpers';
 
 export { isOverdue } from './lib/dateHelpers';
 
-export { SchoolAchievement } from './ui/tabs/CoCurricularsTab';
+export type { SchoolAchievement } from './ui/tabs/CoCurricularsTab';
 
-export { Assignment } from './ui/AssignmentCard';
+export type { Assignment } from './ui/AssignmentCard';
 
-export { SchoolActivity } from './ui/tabs/CoCurricularsTab';
+export type { SchoolActivity } from './ui/tabs/CoCurricularsTab';
 
 export { validateStorageConfig } from './lib/supabaseHelpers';
 
 export { getClassTimetable } from './api/studentClassService';
 
-export { AssignmentStats } from './ui/tabs/OverviewTab';
+export type { AssignmentStats } from './ui/tabs/OverviewTab';
 
-export { SchoolCertificate } from './ui/tabs/CoCurricularsTab';
+export type { SchoolCertificate } from './ui/tabs/CoCurricularsTab';
 
 export { getClassmates } from './api/studentClassService';
 
 export { getAuthSession } from './lib/supabaseHelpers';
 
-export { SchoolStudentResult } from './ui/tabs/ResultsTab';
+export type { SchoolStudentResult } from './ui/tabs/ResultsTab';
 
-export { SchoolClassInfo } from './ui/SchoolClassHeader';
+export type { SchoolClassInfo } from './ui/SchoolClassHeader';
 
-export { SchoolResultStats } from './ui/tabs/ResultsTab';
+export type { SchoolResultStats } from './ui/tabs/ResultsTab';
 
-export { SchoolGroupedExam } from './ui/tabs/ExamsTab';
+export type { SchoolGroupedExam } from './ui/tabs/ExamsTab';
 
-export { SchoolClub } from './ui/tabs/CoCurricularsTab';
+export type { SchoolClub } from './ui/tabs/CoCurricularsTab';
 
 export { getStudentClassInfo } from './api/studentClassService';
 

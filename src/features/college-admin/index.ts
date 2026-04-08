@@ -76,15 +76,15 @@ export { findAllocationId } from './api/mentorAllocationService';
 export { getMentorNotes } from './api/mentorAllocationService';
 export { updateMentorNoteFeedback } from './api/mentorAllocationService';
 export type { default as AssignmentFileUpload } from './ui/AssignmentFileUpload';
-export type { MANDATORY_FIELDS } from './api/csvImportService';
+export { MANDATORY_FIELDS } from './api/csvImportService';
 export type { default as ManageStudentsModal } from './ui/modals/ManageStudentsModal';
 export type { default as ManageProgramStudentsModal } from './ui/modals/ManageProgramStudentsModal';
 export type { default as AddStudentModal } from './ui/AddStudentModal';
 export type { default as MentorResponseModal } from './ui/modals/MentorResponseModal';
-export type { getStudentTypeInfo } from './api/collegeClassService';
+export { getStudentTypeInfo } from './api/collegeClassService';
 export type { default as StudentSelectionModal } from './ui/StudentSelectionModal';
 export { default as SwapRequestCard } from './ui/SwapRequestCard';
-export type { CollegeAdminNotificationService } from './api/collegeAdminNotificationService';
+export { CollegeAdminNotificationService } from './api/collegeAdminNotificationService';
 export type { default as SwapRequestModal } from './ui/modals/SwapRequestModal';
 
 // Note: Student type already exported above from mentorAllocationService

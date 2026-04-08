@@ -16,7 +16,7 @@ export { default as MobileTabBar } from './ui/MobileTabBar';
 export { default as NotificationPanel } from './ui/NotificationPanel';
 export { default as PipelineAdvancedFilters } from './ui/PipelineAdvancedFilters';
 export { default as PipelineSortMenu } from './ui/PipelineSortMenu';
-export { PipelineStats } from './ui/PipelineStats';
+export type { PipelineStats } from './ui/PipelineStats';
 export { default as Sidebar } from './ui/Sidebar';
 
 // Modals
