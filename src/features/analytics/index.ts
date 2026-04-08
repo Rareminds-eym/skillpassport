@@ -15,7 +15,7 @@ export * from './lib';
 
 export { getDashboardData } from './api/dashboardService';
 
-export { FunnelRangePreset } from './api/analyticsService';
+export type { FunnelRangePreset } from './api/analyticsService';
 
 export { getRecentActivity } from './api/dashboardService';
 
