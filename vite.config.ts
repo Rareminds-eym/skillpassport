@@ -11,18 +11,6 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  test: {
-    globals: true,
-    environment: 'node',
-    setupFiles: [],
-    exclude: [
-      '**/node_modules/**',
-      '**/dist/**',
-      '**/cypress/**',
-      '**/.{idea,git,cache,output,temp}/**',
-      '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*'
-    ],
-  },
   optimizeDeps: {
     exclude: ['lucide-react'],
     include: [
@@ -43,15 +31,114 @@ export default defineConfig({
   },
   build: {
     sourcemap: false,
-    minify: false,
-    chunkSizeWarningLimit: 2000,
+    minify: 'esbuild',
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       maxParallelFileOps: 3,
       output: {
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
-        manualChunks: undefined,
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+
+          // Extract package name from node_modules path
+          const parts = id.split('node_modules/')[1]?.split('/') ?? [];
+          if (!parts.length) return 'vendor-misc';
+
+          // Get the actual package name (handle scoped packages like @supabase/supabase-js)
+          const packageName = parts[0].startsWith('@') && parts.length > 1
+            ? `${parts[0]}/${parts[1]}`
+            : parts[0];
+
+          // React core - keep together to avoid circular deps
+          if (packageName === 'react' || packageName === 'react-dom' || 
+              packageName === 'react-router-dom' || packageName === 'react-is' || 
+              packageName === 'scheduler') {
+            return 'vendor-react';
+          }
+
+          // Victory charts and d3 - keep together to avoid circular deps
+          if (packageName.startsWith('victory') || packageName === 'victory-vendor' || packageName.startsWith('d3-')) {
+            return 'vendor-charts';
+          }
+
+          // Other chart libraries
+          if (packageName === 'recharts') {
+            return 'vendor-recharts';
+          }
+
+          // Large individual packages that need their own chunks
+          if (packageName === '@supabase/supabase-js' || packageName === '@supabase/postgrest-js' ||
+              packageName === '@supabase/realtime-js' || packageName === '@supabase/storage-js' ||
+              packageName === '@supabase/functions-js' || packageName === '@supabase/auth-js') {
+            return `vendor-${packageName.replace(/[@\/]/g, '-')}`;
+          }
+
+          if (packageName === '@tanstack/react-query') {
+            return 'vendor-tanstack-react-query';
+          }
+
+          if (packageName === 'lucide-react') {
+            return 'vendor-lucide-react';
+          }
+
+          if (packageName === 'xlsx') {
+            return 'vendor-xlsx';
+          }
+
+          if (packageName === 'react-datepicker' || packageName === 'date-fns') {
+            return 'vendor-datepicker';
+          }
+
+          if (packageName === 'country-state-city') {
+            return 'vendor-country-state-city';
+          }
+
+          if (packageName === 'indian-pincodes') {
+            return 'vendor-indian-pincodes';
+          }
+
+          // Radix UI - split each package separately
+          if (packageName.startsWith('@radix-ui/')) {
+            return `vendor-${packageName.replace(/[@\/]/g, '-')}`;
+          }
+
+          // PDF libraries
+          if (packageName === 'jspdf' || packageName === 'jspdf-autotable' || 
+              packageName === 'pdfjs-dist' || packageName === 'pdf-lib' ||
+              packageName === 'html2canvas') {
+            return `vendor-${packageName}`;
+          }
+
+          // AI libraries
+          if (packageName === '@google/generative-ai' || packageName === 'openai' || 
+              packageName === '@xenova/transformers') {
+            return `vendor-${packageName.replace(/[@\/]/g, '-')}`;
+          }
+
+          // Animation libraries
+          if (packageName === 'framer-motion' || packageName === 'motion' || 
+              packageName === 'gsap' || packageName === 'lottie-react' ||
+              packageName === '@tsparticles/react' || packageName === '@tsparticles/slim' ||
+              packageName === '@lottiefiles/dotlottie-react') {
+            return `vendor-${packageName.replace(/[@\/]/g, '-')}`;
+          }
+
+          // Icon libraries
+          if (packageName === 'react-icons' || packageName === '@heroicons/react' ||
+              packageName === '@tabler/icons-react') {
+            return `vendor-${packageName.replace(/[@\/]/g, '-')}`;
+          }
+
+          // Sentry
+          if (packageName === '@sentry/react') {
+            return 'vendor-sentry-react';
+          }
+
+          // Everything else gets its own chunk to avoid exceeding 25MB limit
+          return `vendor-${packageName.replace(/[@\/]/g, '-')}`;
+        },
       },
     },
   },

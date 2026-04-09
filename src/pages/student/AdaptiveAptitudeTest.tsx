@@ -33,7 +33,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/shared/ui';
-import { useAdaptiveAptitude } from '@/shared/lib/hooks';
+import { useAdaptiveAptitude } from '@/features/assessment/model/useAdaptiveAptitude';
 import { useUser } from '@/stores';
 import { useStudentProfile } from '@/features/student-profile';
 import { useStudentDataByEmail } from '@/entities/student';

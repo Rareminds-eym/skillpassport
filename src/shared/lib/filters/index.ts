@@ -3,4 +3,4 @@
  * Public API exports
  */
 
-export { searchEntities, filterByStatus, filterActive } from './common';
+export { filterByStatus, searchEntities, filterActive } from './common';

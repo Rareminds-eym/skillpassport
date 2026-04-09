@@ -15,7 +15,7 @@ export { default as ShinyButtonExamples } from './shiny-button-examples';
 export { Sparkles } from './sparkles';
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
 export { TextGenerateEffect, TextGenerateEffectOnce } from './text-generate-effect';
-export { AlertDialog, AlertDialogPortal, AlertDialogOverlay, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from './alert-dialog';
+export { AlertDialog, AlertDialogPortal, AlertDialogOverlay, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogAction } from './alert-dialog';
 export { RadioGroup, RadioGroupItem } from './radio-group';
 
 export { default as Loader } from './Loader';
@@ -32,34 +32,22 @@ export { default as SEOHead } from './SEOHead';
 
 // Marketing Components
 export * from './marketing';
-export type { AlertDialogTitle } from './alert-dialog.d';
+
+// Pagination Components (shadcn-style)
 export {
   Pagination,
   PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
   PaginationLink,
+  PaginationItem,
+  PaginationPrevious,
   PaginationNext,
-  PaginationPrevious
-} from './pagination';
-export type { AlertDialogCancel } from './alert-dialog.d';
-export type { AlertDialogHeader } from './alert-dialog.d';
-export { LampContainer } from './lamp';
-export type { AlertDialogDescription } from './alert-dialog.d';
-export type { AlertDialogAction } from './alert-dialog.d';
-export type { Input } from './input';
-export type { Label } from './label.d';
-export type { RadioGroup } from './radio-group.d';
-export type { AlertDialogContent } from './alert-dialog.d';
-export type { DropdownMenuContent } from './dropdown-menu';
-export type { AlertDialog } from './alert-dialog.d';
-export type { DropdownMenu } from './dropdown-menu';
-export type { DropdownMenuItem } from './dropdown-menu';
-export type { DropdownMenuTrigger } from './dropdown-menu';
-export type { RadioGroupItem } from './radio-group.d';
-export type { AlertDialogFooter } from './alert-dialog.d';
+  PaginationEllipsis,
+} from './Pagination';
 
-// Dropdown Menu Components (value exports)
+export { LampContainer } from './lamp';
+export { Input } from './input';
+
+// Dropdown Menu Components
 export {
   DropdownMenu,
   DropdownMenuTrigger,

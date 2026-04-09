@@ -1,7 +1,7 @@
 import React from 'react';
 import { RefreshCw, Search, TrendingUp, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { SwapRequestCard } from '@/features/college-admin';
-import { useSwapRequests } from '@/features/college-admin';
+import { useSwapRequests } from '@/features/college-admin/model/useSwapRequests';
 
 const SwapRequestsDashboard: React.FC = () => {
   const {

@@ -102,8 +102,11 @@ export {
 } from './api/subscriptionService';
 
 export {
-  verifyPayment,
-  handlePaymentSuccess
+  verifyPaymentSignature,
+  extractPaymentParams,
+  validatePaymentParams,
+  clearVerificationCache,
+  logFailedTransaction
 } from './api/paymentVerificationService';
 
 export {

@@ -46,8 +46,7 @@ export {
 // ============================================================================
 
 export {
-  studentProfileService,
-  studentDocumentService
+  studentProfileService
 } from './api';
 
 // ============================================================================
@@ -59,7 +58,7 @@ export type {
   Student as StudentProfile,
   Project,
   Certificate,
-  Course,
+  CourseExtended as Course,
 
   // Academic types
   AssessmentResult as AcademicRecord,
@@ -67,7 +66,7 @@ export type {
 
   // Component props
   StudentProfileDrawerProps
-} from './ui/types';
+} from '@/shared/types';
 
 export type {
   // Profile hook types
@@ -96,7 +95,7 @@ export { PROFILE_UPDATE_MESSAGES } from './lib/profileToast';
 export type { default as AchievementsExpanded } from './ui/AchievementsExpanded';
 export type { default as SkillTrackerExpanded } from './ui/SkillTrackerExpanded';
 export type { default as StudentPublicViewer } from './ui/StudentPublicViewer';
-export type { ProfileValidationService } from './api/profileValidationService';
+export { ProfileValidationService } from './api/profileValidationService';
 
 export { checkProfileCompleteness } from './lib/profileCompletenessChecker';
 

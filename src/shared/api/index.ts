@@ -17,7 +17,8 @@ export type * from './types';
 export * from './authenticatedMediaService';
 // Note: fileUploadService.deleteFile conflicts with storageApiService.deleteFile
 // Import directly from the specific service you need
-export { uploadFile, validateFile, getFileUrl, uploadMultipleFiles, getDocumentUrl } from './fileUploadService';
+export { uploadFile, validateFile, uploadMultipleFiles, getDocumentUrl } from './fileUploadService';
+export { getFileUrl } from './storageApiService';
 export * from './realtimeService';
 export * from './settingsService';
 export * from './storageApiService';

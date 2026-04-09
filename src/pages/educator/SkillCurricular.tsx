@@ -23,7 +23,7 @@ import {
     ChevronRight,
 } from "lucide-react";
 import { supabase } from '@/shared/api/supabaseClient';
-import { useEducatorSchool } from '@/features/educator';
+import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
 import * as clubsService from "@/features/college-admin";
 import * as competitionsService from "@/features/college-admin";
 import * as XLSX from 'xlsx';

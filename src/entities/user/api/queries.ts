@@ -5,13 +5,21 @@
 
 import { supabase } from '@/shared/api';
 import type { User, UserProfile, UserProfileExtended, UserDocument, UserActivity } from '../model/types';
-import { getUser } from '..\..\course\api\queries';
-import { getUserDocuments } from '..\..\course\api\queries';
-import { getUserRoleHistory } from '..\..\course\api\queries';
 
 // ============================================================================
 // User Queries
 // ============================================================================
+
+export const getUser = async (userId: string): Promise<User | null> => {
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') return null;
+  return data;
+};
 
 export const getUsers = async (filters?: {
   role?: string;
@@ -91,6 +99,18 @@ export const getUserDocuments = async (userId: string): Promise<UserDocument[]> 
 // ============================================================================
 // User Activity Log Queries
 // ============================================================================
+
+export const getUserActivity = async (userId: string, limit: number = 50): Promise<UserActivity[]> => {
+  const { data, error } = await supabase
+    .from('user_activity_log')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data || [];
+};
 
 export const getUserActivityLog = async (userId: string, limit: number = 50): Promise<any[]> => {
   const { data, error } = await supabase

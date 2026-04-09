@@ -17,7 +17,7 @@ import toast from 'react-hot-toast';
 import { supabase } from '@/shared/api/supabaseClient';
 import { useUser } from "@/stores";
 import { getLogger } from '@/shared/config/logging';
-import { useMentorAllocation } from '@/shared/lib/hooks';
+import { useMentorAllocation } from '@/features/college-admin/model/useMentorAllocation';
 import { findAllocationId, updateMentorAllocation } from "@/features/college-admin";
 import { SearchBar } from '@/shared/ui';
 import { KPICard } from '@/features/analytics';

@@ -32,6 +32,16 @@ export {
   type AuthContextType
 } from './model';
 
+// Convenience hooks from authStore
+export { 
+  useUser,
+  useUserRole,
+  useSession,
+  useIsAuthenticated,
+  useAuthLoading,
+  useErrorNotification
+} from './model/authStore';
+
 // ============================================================================
 // API SERVICES (Commonly Used)
 // ============================================================================
@@ -99,13 +109,11 @@ export { logAuthEvent } from './lib/authErrorHandler';
 
 export { buildErrorResponse } from './lib/authErrorHandler';
 
-export { RefreshResult } from './lib/refreshCoordinator';
+export type { RefreshResult } from './lib/refreshCoordinator';
 
 export { checkAuthentication } from './api/authService';
 
 export { validateEmail } from './lib/authErrorHandler';
-
-export { useUserRole } from './model/authStore';
 
 export { getGlobalTokenMonitor } from './lib/tokenMonitor';
 
@@ -120,7 +128,5 @@ export { TokenMonitor } from './lib/tokenMonitor';
 export { isJwtExpiryError } from './lib/authErrorHandler';
 
 export { generateCorrelationId } from './lib/authErrorHandler';
-
-export { useUser } from './model/authStore';
 
 export { withRetry } from './lib/authErrorHandler';
