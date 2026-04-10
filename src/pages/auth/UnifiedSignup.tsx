@@ -356,7 +356,6 @@ const UnifiedSignup = () => {
 
   // Check if OTP verification should be skipped (for localhost/development and production)
   const skipOtpVerification =
-    import.meta.env.VITE_SKIP_OTP_VERIFICATION === 'true' ||
     window.location.hostname === 'localhost' ||
     window.location.hostname === '127.0.0.1' ||
     window.location.origin === 'https://skillpassport.pages.dev';
