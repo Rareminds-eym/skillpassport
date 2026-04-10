@@ -32,7 +32,7 @@ const PaymentSuccess = lazy(() =>
   import("@/pages/subscription/PaymentSuccess")
 );
 const PaymentFailure = lazy(() =>
-  import("@/pages/subscription/PaymentFailure")
+  import("@/features/subscription/ui/shared/PaymentFailure")
 );
 const SubscriptionManage = lazy(() =>
   import("@/pages/subscription/SubscriptionManage")
@@ -84,10 +84,10 @@ const InternalTestingRegistration = lazy(() =>
 const Register = lazy(() => import("@/pages/auth/components/SignIn/Register"));
 const UnifiedLogin = lazy(() => import("@/pages/auth/UnifiedLogin"));
 const UnifiedSignup = lazy(() => import("@/pages/auth/UnifiedSignup"));
-const UnifiedForgotPassword = lazy(() => import("@/pages/auth/UnifiedForgotPassword"));
-const PasswordReset = lazy(() => import("@/pages/auth/PasswordReset"));
+const UnifiedForgotPassword = lazy(() => import("@/features/auth/ui/UnifiedForgotPassword"));
+const PasswordReset = lazy(() => import("@/features/auth/ui/PasswordReset"));
 const TokenPasswordReset = lazy(() => import("@/pages/auth/TokenPasswordReset"));
-const ResetPassword = lazy(() => import("@/pages/auth/ResetPassword"));
+const ResetPassword = lazy(() => import("@/features/auth/ui/ResetPassword"));
 const SignupRecruiter = lazy(() =>
   import("@/pages/auth/components/SignIn/recruitment/SignupRecruiter")
 );

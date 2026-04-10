@@ -8,7 +8,7 @@ import loginIllustration from "@/assets/images/auth/Recruiter-illustration.png";
 import { SignupFormFields } from '@/features/subscription';
 import { capitalizeFirstLetter, formatOtp, formatPhoneNumber, getInitialFormData, validateSignupFields } from "@/features/subscription";
 import { supabase } from "@/shared/api/supabaseClient";
-import FeatureCard from "@/pages/auth/components/ui/FeatureCard";
+import FeatureCard from "@/features/auth/ui/FeatureCard";
 
 export default function SignupRecruiter() {
   const navigate = useNavigate();

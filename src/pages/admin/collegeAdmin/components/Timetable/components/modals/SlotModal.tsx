@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { X, Save, Trash2, AlertTriangle, User, DoorOpen } from "lucide-react";
-import { Faculty, CollegeClass, ScheduleSlot, TimePeriod, SlotFormData } from "@/pages/admin/collegeAdmin/components/Timetable/types";
-import { DAYS } from "@/pages/admin/collegeAdmin/components/Timetable/constants";
-import { formatDate, getSubjectsForFaculty, getClassName } from "@/pages/admin/collegeAdmin/components/Timetable/utils";
+import { Faculty, CollegeClass, ScheduleSlot, TimePeriod, SlotFormData } from "@/features/college-admin/ui/components/Timetable/types";
+import { DAYS } from "@/features/college-admin/ui/components/Timetable/constants";
+import { formatDate, getSubjectsForFaculty, getClassName } from "@/features/college-admin/ui/components/Timetable/utils";
 
 interface ConflictInfo {
   type: "faculty" | "room";

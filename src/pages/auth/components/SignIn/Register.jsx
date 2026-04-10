@@ -17,7 +17,7 @@ import {
     X,
     Zap
 } from "lucide-react";
-import FeatureCard from "../ui/FeatureCard";
+import FeatureCard from "@/features/auth/ui/FeatureCard";
 
 export default function UnifiedSignup() {
   const { type } = useParams();

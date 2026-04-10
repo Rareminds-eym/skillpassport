@@ -138,13 +138,13 @@ const StudentAdmissions = lazy(() =>
   import("@/pages/admin/schoolAdmin/StudentAdmissions")
 );
 const TeacherList = lazy(() =>
-  import("@/pages/admin/schoolAdmin/components/TeacherList")
+  import("@/features/school-admin/ui/components/TeacherList")
 );
 const TeacherOnboarding = lazy(() =>
-  import("@/pages/admin/schoolAdmin/components/TeacherOnboarding")
+  import("@/features/school-admin/ui/components/TeacherOnboarding")
 );
 const TeacherTimetable = lazy(() =>
-  import("@/pages/admin/schoolAdmin/components/TimetableBuilderEnhanced")
+  import("@/features/school-admin/ui/components/TimetableBuilderEnhanced")
 );
 const LessonPlanApprovals = lazy(() => import("@/pages/admin/schoolAdmin/LessonPlanApprovals"));
 const CurriculumBuilder = lazy(() =>
@@ -177,7 +177,7 @@ const SkillBadges = lazy(() =>
 const Reports = lazy(() =>
   import("@/pages/admin/schoolAdmin/Reports")
 );
-const SchoolFinanceModule = lazy(() => import("@/pages/admin/schoolAdmin/finance/index"));
+const SchoolFinanceModule = lazy(() => import("@/features/school-admin/ui/finance/index"));
 const Library = lazy(() => import("@/pages/admin/schoolAdmin/Library"));
 const AttendanceReports = lazy(() =>
   import("@/pages/admin/schoolAdmin/AttendanceReports")
