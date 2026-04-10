@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { getPagesApiUrl, getPagesBaseUrl } from '../../utils/pagesUrl';
+import { getPagesApiUrl, getPagesBaseUrl } from '@/shared/lib/pagesUrl';
 
 // Service configuration
 interface ServiceConfig {

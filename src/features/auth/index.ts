@@ -13,7 +13,7 @@
 // ============================================================================
 // UI COMPONENTS (Primary Auth Flows)
 // ============================================================================
-export { 
+export {
   UnifiedLogin,
   UnifiedSignup,
   UnifiedForgotPassword,
@@ -25,17 +25,27 @@ export {
 // ============================================================================
 // STATE MANAGEMENT
 // ============================================================================
-export { 
+export {
   AuthProvider,
   useAuth,
   type AuthState,
-  type AuthContextType 
+  type AuthContextType
 } from './model';
+
+// Convenience hooks from authStore
+export { 
+  useUser,
+  useUserRole,
+  useSession,
+  useIsAuthenticated,
+  useAuthLoading,
+  useErrorNotification
+} from './model/authStore';
 
 // ============================================================================
 // API SERVICES (Commonly Used)
 // ============================================================================
-export { 
+export {
   signIn,
   signOut,
   resetPassword,
@@ -53,7 +63,7 @@ export {
 // ============================================================================
 // UTILITIES (Commonly Used)
 // ============================================================================
-export { 
+export {
   handleAuthError,
   redirectToRoleDashboard,
   getRouteForRole,
@@ -82,3 +92,41 @@ export type { AuthState as State, AuthContextType as Context } from './model';
  * import { TokenMonitor, validateEmail } from '@/features/auth/lib';
  * ```
  */
+
+// API & Data Access
+export * from './api';
+export { authSessionService } from './api/authSessionService';
+
+export { getGlobalRefreshCoordinator } from './lib/refreshCoordinator';
+
+export { withTimeout } from './lib/authErrorHandler';
+
+export { AUTH_ERROR_CODES } from './lib/authErrorHandler';
+
+export { getGlobalTokenRefreshErrorHandler } from './lib/tokenRefreshErrorHandler';
+
+export { logAuthEvent } from './lib/authErrorHandler';
+
+export { buildErrorResponse } from './lib/authErrorHandler';
+
+export type { RefreshResult } from './lib/refreshCoordinator';
+
+export { checkAuthentication } from './api/authService';
+
+export { validateEmail } from './lib/authErrorHandler';
+
+export { getGlobalTokenMonitor } from './lib/tokenMonitor';
+
+export { validateCredentials } from './lib/authErrorHandler';
+
+export { mapSupabaseError } from './lib/authErrorHandler';
+
+export { RefreshCoordinator } from './lib/refreshCoordinator';
+
+export { TokenMonitor } from './lib/tokenMonitor';
+
+export { isJwtExpiryError } from './lib/authErrorHandler';
+
+export { generateCorrelationId } from './lib/authErrorHandler';
+
+export { withRetry } from './lib/authErrorHandler';

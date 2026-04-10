@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
-import { Student } from '../types';
+import { Student } from '@/features/student-profile/model';
 import toast from 'react-hot-toast';
-import { isCollegeStudent as checkIsCollegeStudent, isSchoolStudent as checkIsSchoolStudent } from '@/utils/studentType';
+import { isCollegeStudent as checkIsCollegeStudent, isSchoolStudent as checkIsSchoolStudent } from '@/entities/student/lib/studentType';
 
 export const useStudentActions = (student: Student | null) => {
   const [actionLoading, setActionLoading] = useState(false);

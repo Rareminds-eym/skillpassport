@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { X, Clock, Plus, Trash2, Save, Coffee, GripVertical } from "lucide-react";
-import { TimePeriod } from "../../types";
+import { TimePeriod } from "@/features/college-admin/ui/components/Timetable/types";
 
 interface PeriodsModalProps {
   isOpen: boolean;

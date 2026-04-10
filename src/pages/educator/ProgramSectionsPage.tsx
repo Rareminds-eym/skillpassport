@@ -10,19 +10,19 @@ import {
 } from "@heroicons/react/24/outline"
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { getLogger } from "../../config/logging"
+import { getLogger } from '@/shared/config/logging'
 
 const logger = getLogger('ProgramSectionsPage');
 
-import SearchBar from "../../components/common/SearchBar"
-import { useProgramSections } from "../../hooks/useProgramSections"
-import { useEducatorSchool } from "../../hooks/useEducatorSchool"
+import { SearchBar } from '@/shared/ui'
+import { useProgramSections } from '@/features/college-admin/model/useProgramSections'
+import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool'
 import toast from "react-hot-toast"
-import Pagination from "../../components/educator/Pagination"
+import { Pagination } from '@/shared/ui'
 import { useAuth } from "@/features/auth"
-import { ProgramSection } from "../../services/programService"
-import ManageProgramStudentsModal from "../../components/educator/ManageProgramStudentsModal"
-import { usePermission } from "../../hooks/usePermissions"
+import { ProgramSection } from "@/features/college-admin"
+import { ManageProgramStudentsModal } from '@/features/educator'
+import { usePermission } from '@/shared/lib/hooks'
 
 const StatusBadge = ({ status }: { status: string }) => {
   const config: Record<string, string> = {

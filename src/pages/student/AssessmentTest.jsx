@@ -24,8 +24,8 @@ import {
     Zap
 } from 'lucide-react';
 import { Button, Card, CardContent } from '@/shared/ui';
-import { Label } from '../../components/Students/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '../../components/Students/components/ui/radio-group';
+import { Label } from '@/shared/ui';
+import { RadioGroup, RadioGroupItem } from '@/shared/ui';
 
 // Import AI-powered question banks from centralized assessment feature
 import {
@@ -45,26 +45,26 @@ import {
     riasecQuestions as aiPoweredRiasecQuestions,
     // Work Values
     workValuesQuestions as aiPoweredWorkValuesQuestions,
-} from '../../features/assessment';
+} from '@/features/assessment';
 
 // Import Gemini assessment service
-import { analyzeAssessmentWithGemini } from '../../services/geminiAssessmentService';
+import { analyzeAssessmentWithGemini } from '@/features/assessment/api/geminiAssessmentService';
 
 // Import AI question generation service for Aptitude & Knowledge
-import { loadCareerAssessmentQuestions, STREAM_KNOWLEDGE_PROMPTS, normalizeStreamId } from '../../services/careerAssessmentAIService';
+import { loadCareerAssessmentQuestions, STREAM_KNOWLEDGE_PROMPTS, normalizeStreamId } from '@/features/assessment';
 
 // Import database services
-import { useAssessment } from '../../hooks/useAssessment';
-import * as assessmentService from '../../services/assessmentService';
-import { useUser } from '../../stores';
+import { useAssessment } from '@/features/assessment';
+import * as assessmentService from '@/features/assessment';
+import { useUser } from '@/stores';
 
 // Import adaptive aptitude hook for integrated adaptive testing
-import { useAdaptiveAptitude } from '../../hooks/useAdaptiveAptitude';
+import { useAdaptiveAptitude } from '@/shared/lib/hooks';
 
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 
 // Import centralized student type detection
-import { isCollegeStudent as checkIsCollegeStudent } from '../../utils/studentType';
+import { isCollegeStudent as checkIsCollegeStudent } from '@/entities/student/lib/studentType';
 
 // Import centralized assessment utilities and components
 import {
@@ -82,7 +82,7 @@ import {
     StreamSelectionScreen,
     ResumePromptScreen,
     RestrictionScreen,
-} from '../../features/assessment';
+} from '@/features/assessment';
 
 const AssessmentTest = () => {
     const navigate = useNavigate();

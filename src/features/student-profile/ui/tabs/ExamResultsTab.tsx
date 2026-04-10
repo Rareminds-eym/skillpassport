@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { GraduationCap, Calendar, TrendingUp, BookOpen, Target, Award, BarChart3 } from 'lucide-react';
-import { supabase } from '../../../../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 
 interface ExamResult {
   id: string;

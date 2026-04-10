@@ -1,23 +1,23 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import studentIllustration from "../../assets/images/auth/Student-illustration.jpg";
-import { useAuthActions } from "../../stores";
+import studentIllustration from "@/assets/images/auth/Student-illustration.jpg";
+import { useAuthActions } from "@/stores";
 
 // Lucide icons
 import {
-    Activity,
-    AlertCircle,
-    BadgeCheck,
-    Eye,
-    EyeOff,
-    Lock,
-    Mail,
-    Share2,
+  Activity,
+  AlertCircle,
+  BadgeCheck,
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  Share2,
 } from "lucide-react";
 
 import { loginStudent } from "@/features/auth/api";
-import FeatureCard from "./components/ui/FeatureCard";
+import FeatureCard from "@/features/auth/ui/FeatureCard";
 
 export default function LoginStudent() {
   const [email, setEmail] = useState("");
@@ -56,7 +56,7 @@ export default function LoginStudent() {
 
       // Store student data in context
       const studentData = result.student;
-      login({ 
+      login({
         id: studentData.id,
         user_id: studentData.user_id,
         name: studentData.name || studentData.profile?.name || '',
@@ -86,9 +86,8 @@ export default function LoginStudent() {
         <div className="space-y-2">
           <label
             htmlFor="email"
-            className={`block text-sm font-medium ${
-              isLg ? "text-gray-800 lg:text-gray-700" : "text-white/90"
-            }`}
+            className={`block text-sm font-medium ${isLg ? "text-gray-800 lg:text-gray-700" : "text-white/90"
+              }`}
           >
             Email ID
           </label>
@@ -102,11 +101,10 @@ export default function LoginStudent() {
               placeholder="Enter email"
               autoComplete="username"
               aria-label="Email ID"
-              className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-[#5378f1] focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/60 lg:placeholder:text-gray-400 ${
-                isLg
+              className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-[#5378f1] focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/60 lg:placeholder:text-gray-400 ${isLg
                   ? "bg-white/90"
                   : "bg-white/15 border-2 border-white/15 backdrop-blur-sm"
-              }`}
+                }`}
             />
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 lg:text-gray-400" />
           </div>
@@ -116,9 +114,8 @@ export default function LoginStudent() {
         <div className="space-y-2">
           <label
             htmlFor="password"
-            className={`block text-sm font-medium ${
-              isLg ? "text-gray-800 lg:text-gray-700" : "text-white/90"
-            }`}
+            className={`block text-sm font-medium ${isLg ? "text-gray-800 lg:text-gray-700" : "text-white/90"
+              }`}
           >
             Password
           </label>
@@ -132,11 +129,10 @@ export default function LoginStudent() {
               placeholder="Enter your password"
               autoComplete="current-password"
               aria-label="Password"
-              className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-[#5378f1] focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/60 lg:placeholder:text-gray-400 ${
-                isLg
+              className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-[#5378f1] focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/60 lg:placeholder:text-gray-400 ${isLg
                   ? "bg-white/90"
                   : "bg-white/15 border-2 border-white/15 backdrop-blur-sm"
-              }`}
+                }`}
             />
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 lg:text-gray-400" />
             <button

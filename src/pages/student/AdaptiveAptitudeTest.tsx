@@ -21,8 +21,8 @@ import {
   Info,
 } from 'lucide-react';
 import { Button, Card, CardContent } from '@/shared/ui';
-import { RadioGroup, RadioGroupItem } from '../../components/Students/components/ui/radio-group';
-import { Label } from '../../components/Students/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/shared/ui';
+import { Label } from '@/shared/ui';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,14 +32,14 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '../../components/Students/components/ui/alert-dialog';
-import { useAdaptiveAptitude } from '../../hooks/useAdaptiveAptitude';
+} from '@/shared/ui';
+import { useAdaptiveAptitude } from '@/features/assessment/model/useAdaptiveAptitude';
 import { useUser } from '@/stores';
 import { useStudentProfile } from '@/features/student-profile';
-import { useStudentDataByEmail } from '@/hooks/useStudentDataByEmail';
-import { useAntiCheating } from '../../hooks/useAntiCheating';
-import { GradeLevel, TestPhase, Subtag, DifficultyLevel, ConfidenceTag } from '../../types/adaptiveAptitude';
-import { getLogger } from '../../config/logging';
+import { useStudentDataByEmail } from '@/entities/student';
+import { useAntiCheating } from '@/shared/lib/hooks';
+import { GradeLevel, TestPhase, Subtag, DifficultyLevel, ConfidenceTag } from '@/shared/types/adaptiveAptitude';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('AdaptiveAptitudeTest');
 

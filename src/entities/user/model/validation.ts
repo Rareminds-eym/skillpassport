@@ -4,7 +4,7 @@
  */
 
 import { isValidEmail } from '@/shared/lib/validation';
-import type { User, UserRole, CreateUserData, UpdateUserData } from './types';
+import type { User, UserRole, CreateUserData, UpdateUserData } from '@/shared/types';
 
 // ============================================================================
 // Role Validation

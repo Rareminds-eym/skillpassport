@@ -3,4 +3,4 @@
  * This file re-exports loginRecruiter from the original service location
  */
 
-export { loginRecruiter, getRecruiterByEmail, getRecruiterByUserId } from '../../../services/recruiterProfile';
+export { loginRecruiter, getRecruiterByEmail, getRecruiterByUserId } from '@/features/recruiter-copilot';

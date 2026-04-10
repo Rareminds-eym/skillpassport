@@ -4,6 +4,9 @@
  */
 
 // Model exports
+export { useOrganizationById, useOrganizations } from './model/useOrganization';
+export { useOrganizationCheck } from './model/useOrganizationCheck';
+export { useOrganizationSubscription } from './model/useOrganizationSubscription';
 export type {
   Organization,
   OrganizationType,
@@ -24,7 +27,6 @@ export type {
 export {
   isValidOrganizationType,
   validateOrganization,
-  isValidEmail,
   isValidPhone,
   isValidWebsite,
   validateSeatCount,
@@ -46,28 +48,14 @@ export {
 } from './model';
 
 // API exports
-export {
-  getOrganizationByAdminId,
-  getOrganizationById,
-  getOrganizations,
-  getSchools,
-  getColleges,
-  getUniversities,
-  getOrganizationByEmail,
-  getOrganizationSubscriptions,
-  getSubscriptionById,
-  getOrganizationMembers,
-  getMemberCounts,
-  createOrganization,
-  updateOrganization,
-  deleteOrganization,
-  checkOrganizationNameExists,
-  updateSeatCount,
-  cancelSubscription,
-  renewSubscription,
-  upgradeSubscription,
-  removeMember,
-} from './api';
+export * from './api';
 
 // UI exports
 export { OrganizationCard } from './ui';
+export { licenseManagementService } from './api/licenseManagementService';
+export { memberInvitationService } from './api/memberInvitationService';
+export { organizationMemberService } from './api/organizationMemberService';
+export { organizationSubscriptionService } from './api/organizationSubscriptionService';
+export type { LicensePool } from './api/licenseManagementService';
+export type { PaymentRecord } from './api/organizationBillingService';
+export type { BillingDashboard } from './api/organizationBillingService';

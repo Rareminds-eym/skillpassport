@@ -10,7 +10,7 @@
     "dev:staging": "vite --mode staging --port 3000",
     "dev:prod": "vite --port 3000",
     "build": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build",
-    "build:dev": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build --mode development",
+    "build:dev": "node --max-old-space-size=12288 ./node_modules/vite/bin/vite.js build --mode development",
     "build:staging": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build --mode staging",
     "build:production": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build",
     "lint": "eslint .",
@@ -74,7 +74,10 @@
     "test:verify-migration": "npx tsx src/migration/scripts/verify-migration-tests.ts",
     "fsd:create:entity": "bash .kiro/scripts/create-entity.sh",
     "fsd:create:widget": "bash .kiro/scripts/create-widget.sh",
-    "fsd:docs": "echo 'FSD Documentation:' && echo '  Entity API: .kiro/docs/entity-api-reference.md' && echo '  Widget API: .kiro/docs/widget-api-reference.md' && echo '  Quick Reference: .kiro/docs/fsd-quick-reference.md'"
+    "fsd:docs": "echo 'FSD Documentation:' && echo '  Entity API: .kiro/docs/entity-api-reference.md' && echo '  Widget API: .kiro/docs/widget-api-reference.md' && echo '  Quick Reference: .kiro/docs/fsd-quick-reference.md'",
+    "fsd:detect-violations": "npx tsx .kiro/scripts/detect-fsd-violations.ts",
+    "fsd:detect-violations:json": "npx tsx .kiro/scripts/detect-fsd-violations.ts --json",
+    "fsd:detect-violations:ci": "npx tsx .kiro/scripts/detect-fsd-violations.ts --ci"
   },
   "scripts-info": {
     "ENVIRONMENT_SETUP": "See .env.schema and .env.example for complete variable documentation",
@@ -128,7 +131,7 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@sentry/react": "^10.42.0",
     "@supabase/supabase-js": "^2.57.4",
-    "@tabler/icons-react": "^3.36.0",
+    "@tabler/icons-react": "^3.40.0",
     "@tanstack/react-query": "^5.90.3",
     "@tsparticles/react": "^3.0.0",
     "@tsparticles/slim": "^3.9.1",
@@ -188,6 +191,8 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@babel/parser": "^7.29.2",
+    "@babel/traverse": "^7.29.0",
     "@eslint/js": "^9.9.1",
     "@locator/babel-jsx": "^0.5.1",
     "@testing-library/dom": "^10.4.1",
@@ -207,6 +212,8 @@
     "autoprefixer": "^10.4.18",
     "concurrently": "^9.2.1",
     "eslint": "^9.9.1",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.11",
     "fast-check": "^4.3.0",

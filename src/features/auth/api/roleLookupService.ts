@@ -3,4 +3,4 @@
  * This file re-exports getUserRole from the original service location
  */
 
-export { getUserRole, type RoleLookupResult, type UserData } from '../../../services/roleLookupService';
+export { getUserRole, type RoleLookupResult, type UserData } from '@/entities/user/api/roleLookupService';

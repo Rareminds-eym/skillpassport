@@ -3,7 +3,7 @@
  * Handles embedding generation via the career-api Cloudflare worker.
  */
 
-import { getPagesApiUrl } from '@/utils/pagesUrl';
+import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
 import { supabase } from '@/shared/api/supabaseClient';
 
 const EMBEDDING_API_URL = getPagesApiUrl('career');

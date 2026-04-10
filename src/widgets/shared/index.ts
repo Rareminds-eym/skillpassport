@@ -1,0 +1,1 @@
+// Shared Widget - Public API

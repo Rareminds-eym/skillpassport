@@ -9,8 +9,8 @@
 import { ArrowLeft, Package, Sparkles } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { AddOnCheckout } from '@/components/Subscription/AddOnCheckout';
-import { AddOnMarketplace } from '@/components/Subscription/AddOnMarketplace';
+import { AddOnCheckout } from '@/features/subscription';
+import { AddOnMarketplace } from '@/features/subscription';
 import { useUser, useUserRole, useAuthLoading } from '@/stores';
 
 /**

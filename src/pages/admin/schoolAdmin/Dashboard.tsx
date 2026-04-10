@@ -8,10 +8,10 @@ import {
 import React, { useEffect, useState } from "react";
 import ReactApexChart from "react-apexcharts";
 import { useNavigate } from "react-router-dom";
-import KPIDashboard from "../../../components/admin/KPIDashboard";
-import { useUser } from "../../../stores";
-import { supabase } from "../../../lib/supabaseClient";
-import { getLogger } from "../../../config/logging";
+import { KPIDashboard } from '@/widgets/kpi-dashboard';
+import { useUser } from "@/stores";
+import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('school-admin-dashboard');
 

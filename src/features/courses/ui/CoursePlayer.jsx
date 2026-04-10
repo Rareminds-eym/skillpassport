@@ -16,17 +16,17 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AITutorPanel, VideoLearningPanel } from '@/components/ai-tutor';
+import { AITutorPanel, VideoLearningPanel } from '@/features/ai-tutor';
 import RestoreProgressModal from './RestoreProgressModal';
 import { Badge, Button, Card, CardContent } from '@/shared/ui';
-import { useUser, useUserRole } from '@/stores/authStore';
-import { useSessionRestore } from '@/hooks/useSessionRestore';
+import { useUser, useUserRole } from '@/features/auth';
+import { useSessionRestore } from '@/shared/lib/hooks';
 import { supabase } from '@/shared/api/supabaseClient';
-import { generateCourseCertificate } from '@/services/certificateService';
-import { enrollmentService } from '@/features/courses/api/enrollmentService';
-import { courseProgressService as progressService } from '@/features/courses/api/courseProgressService';
-import { fileService } from '@/services/fileService';
-import { getAuthenticatedMediaUrl, needsAuthentication } from '@/services/authenticatedMediaService';
+import { generateCourseCertificate } from '@/features/digital-portfolio';
+import { enrollmentService } from '@/features/courses';
+import { courseProgressService as progressService } from '@/features/courses';
+import { fileService } from '@/features/courses';
+import { getAuthenticatedMediaUrl, needsAuthentication } from '@/shared/api/authenticatedMediaService';
 
 const CoursePlayer = () => {
   const { courseId } = useParams();
@@ -458,7 +458,7 @@ const CoursePlayer = () => {
 
       // Update student streak after completing lesson
       try {
-        const { getPagesApiUrl } = await import('../../utils/pagesUrl');
+        const { getPagesApiUrl } = await import('@/shared/lib/pagesUrl');
         const STREAK_API_URL = getPagesApiUrl('streak');
         const response = await fetch(`${STREAK_API_URL}/${user.id}/complete`, {
           method: 'POST',

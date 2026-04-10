@@ -15,12 +15,12 @@ import {
   EditPoolModal,
   OrganizationSubscriptionDashboard,
   PoolAssignmentsModal
-} from '@/features/subscription/ui/organization';
-import type { PoolFormData } from '@/features/subscription/ui/organization/CreatePoolModal';
-import type { PoolUpdateData } from '@/features/subscription/ui/organization/EditPoolModal';
+} from '@/features/subscription';
+import type { PoolFormData } from '@/features/subscription';
+import type { PoolUpdateData } from '@/features/subscription';
 import { useOrganizationSubscription } from '@/features/subscription/model';
 import { useUser } from '@/stores';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 
 interface OrganizationDetails {
   id?: string;
@@ -669,7 +669,7 @@ function OrganizationSubscriptionPage() {
     
     try {
       // Import the service dynamically to avoid circular dependencies
-      const { licenseManagementService } = await import('@/services/organization/licenseManagementService');
+      const { licenseManagementService } = await import('@/entities/organization');
       
       // Map member IDs to user IDs (the license system uses auth user IDs)
       const membersToAssignData = organizationMembers.filter(m => memberIds.includes(m.id) && !m.hasLicense);
@@ -715,7 +715,7 @@ function OrganizationSubscriptionPage() {
     try {
       toast.loading(`Unassigning licenses from ${memberIds.length} member(s)...`);
       
-      const { licenseManagementService } = await import('@/services/organization/licenseManagementService');
+      const { licenseManagementService } = await import('@/entities/organization');
       
       // Find the license assignments for these members
       const membersToUnassign = organizationMembers.filter(
@@ -768,7 +768,7 @@ function OrganizationSubscriptionPage() {
     try {
       toast.loading('Transferring license...');
       
-      const { licenseManagementService } = await import('@/services/organization/licenseManagementService');
+      const { licenseManagementService } = await import('@/entities/organization');
       
       // Find the source member to get their user_id and subscription
       const fromMember = organizationMembers.find(m => m.id === fromMemberId);
@@ -823,7 +823,7 @@ function OrganizationSubscriptionPage() {
     }
 
     try {
-      const { organizationMemberService } = await import('@/services/organization/organizationMemberService');
+      const { organizationMemberService } = await import('@/entities/organization');
       
       const result = await organizationMemberService.removeMember(
         memberId,

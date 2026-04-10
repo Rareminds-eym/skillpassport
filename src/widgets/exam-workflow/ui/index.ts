@@ -2,4 +2,4 @@
  * Exam Workflow UI - Public API
  */
 
-export { default as ExamWorkflowManager } from '@/components/exams/ExamWorkflowManager'
+export { default as ExamWorkflowManager } from '@/features/exams'

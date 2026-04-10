@@ -8,7 +8,7 @@
 import {
   memberInvitationService,
   OrganizationInvitation,
-} from '@/services/organization/memberInvitationService';
+} from '@/entities/organization';
 import {
   AlertCircle,
   Check,

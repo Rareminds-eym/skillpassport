@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { supabase } from '../../utils/supabase';
+import { supabase } from '@/shared/api/supabaseClient';
 
 // Puter AI response type
 interface PuterAIResponse {

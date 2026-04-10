@@ -3,19 +3,12 @@ import {
     ArchiveBoxIcon,
     ArrowUturnLeftIcon,
     ChatBubbleLeftRightIcon,
-    ChevronLeftIcon,
     ChevronRightIcon,
     ChevronDownIcon,
-    EllipsisVerticalIcon,
-    FaceSmileIcon,
     MagnifyingGlassIcon,
     PaperAirplaneIcon,
-    PaperClipIcon,
-    PhoneIcon,
     TrashIcon,
-    UserGroupIcon,
     UserIcon,
-    VideoCameraIcon,
     XMarkIcon
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
@@ -24,20 +17,20 @@ import { formatDistanceToNow } from 'date-fns';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation } from 'react-router-dom';
-import DeleteConversationModal from '../../../components/messaging/DeleteConversationModal';
-import NewStudentConversationModalCollegeAdmin from '../../../components/messaging/NewStudentConversationModalCollegeAdmin';
-import NewCollegeAdminEducatorConversationModal from '../../../components/messaging/NewCollegeAdminEducatorConversationModal';
-import { useUser } from '../../../stores';
-import { useGlobalPresence } from '../../../stores';
-import { useCollegeAdminMessages } from '../../../hooks/useCollegeAdminMessages.js';
-import { useCollegeEducatorAdminConversationsForAdmin } from '../../../hooks/useCollegeEducatorAdminConversations.js';
-import { useCollegeEducatorAdminMessagesForAdmin } from '../../../hooks/useCollegeEducatorAdminMessages.js';
-import { useNotificationBroadcast } from '../../../hooks/useNotificationBroadcast';
-import { useRealtimePresence } from '../../../hooks/useRealtimePresence';
-import { useTypingIndicator } from '../../../hooks/useTypingIndicator';
-import { supabase } from '../../../lib/supabaseClient';
-import MessageService, { Conversation } from '../../../services/messageService';
-import { getLogger } from '../../../config/logging';
+import { DeleteConversationModal } from '@/features/messaging';
+import { NewStudentConversationModalCollegeAdmin } from '@/features/messaging';
+import { NewCollegeAdminEducatorConversationModal } from '@/features/college-admin';
+import { useUser } from '@/stores';
+import { useGlobalPresence } from '@/stores';
+import { useCollegeAdminMessages } from '@/features/messaging';
+import { useCollegeEducatorAdminConversationsForAdmin } from '@/features/educator';
+import { useCollegeEducatorAdminMessagesForAdmin } from '@/features/educator';
+import { useNotificationBroadcast } from '@/features/broadcast';
+import { useRealtimePresence } from '@/shared/lib/hooks';
+import { useTypingIndicator } from '@/shared/lib/hooks';
+import { supabase } from '@/shared/api/supabaseClient';
+import { MessageService, Conversation } from '@/features/messaging';
+import { getLogger } from '@/shared/config/logging';
 
 const StudentCollegeAdminCommunication = () => {
   const logger = getLogger('college-admin-communication');

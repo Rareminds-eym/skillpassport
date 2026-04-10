@@ -1,4 +1,4 @@
-import MainSettings from "../../components/Students/components/SettingsTabs/MainSettings";
+import { MainSettings } from '@/widgets/student-dashboard';
 
 const Settings = () => {
   return <MainSettings />;

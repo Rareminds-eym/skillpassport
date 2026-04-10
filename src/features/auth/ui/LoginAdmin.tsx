@@ -5,9 +5,9 @@ import { useAuthActions } from '@/stores';
 import { loginAdmin } from '@/features/auth/api';
 import { useToast } from '@/shared/lib/hooks';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
-import { Label } from '@/components/Students/components/ui/label';
-import { Input } from '@/components/Students/components/ui/input';
-import Button from '@/components/Button';
+import { Label } from '@/shared/ui/label';
+import { Input } from '@/shared/ui/input';
+import Button from '@/shared/ui/Button';
 
 const LoginAdmin = () => {
   const [email, setEmail] = useState('');

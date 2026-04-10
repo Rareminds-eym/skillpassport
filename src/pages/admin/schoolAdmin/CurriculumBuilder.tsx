@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabase } from "@/shared/api";
-import { exportCurriculum } from "@/services/curriculumExportService";
+import { exportCurriculum } from "@/features/college-admin";
+import { curriculumService } from "@/features/school-admin";
 import {
     AcademicCapIcon,
     ArchiveBoxIcon,
@@ -22,8 +23,9 @@ import {
 } from "@heroicons/react/24/outline";
 import React, { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import SearchBar from "../../../components/common/SearchBar";
-import { getLogger } from "../../../config/logging";
+import { SearchBar } from '@/shared/ui';
+import { getLogger } from '@/shared/config/logging';
+import { authSessionService } from '@/features/auth';
 
 const logger = getLogger('school-admin-curriculum-builder');
 
@@ -1584,7 +1586,7 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
   React.useEffect(() => {
     const initializeUser = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await authSessionService.getUser();
         if (user) {
           setCurrentUser(user);
           
@@ -2058,17 +2060,14 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
 
       // Use the database function to copy curriculum
       // Note: created_by should be user.id (not educator.id) because the FK references users table
-      const { data: newCurriculumId, error: copyError } = await supabase
-        .rpc('copy_curriculum_template', {
-          p_source_curriculum_id: sourceCurriculumId,
-          p_target_school_id: educatorData.school_id,
-          p_target_subject: targetSubject,
-          p_target_class: targetClass,
-          p_target_academic_year: targetAcademicYear,
-          p_created_by: educatorData.id
-        });
-
-      if (copyError) throw copyError;
+      const newCurriculumId = await curriculumService.copyCurriculumTemplate({
+        sourceCurriculumId,
+        targetSchoolId: educatorData.school_id,
+        targetSubject,
+        targetClass,
+        targetAcademicYear,
+        createdBy: educatorData.id
+      });
 
       // Fetch the copied curriculum data
       const { data: copiedCurriculum, error: fetchError } = await supabase

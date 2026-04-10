@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
-import { Student, AssessmentResult, CurriculumData, LessonPlan, Course, AdmissionNote, Project, Certificate } from '../types';
+import { Student, AssessmentResult, CurriculumData, LessonPlan, Course, AdmissionNote, Project, Certificate } from '@/features/student-profile/model';
 
 // Additional types for new data
 export interface Experience {

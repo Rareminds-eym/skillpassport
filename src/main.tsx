@@ -3,8 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { HelmetProvider } from 'react-helmet-async';
 import App from './App.tsx';
 import './index.css';
-import { QueryProvider } from './providers/QueryProvider';
-import { validateFileSizeConfig } from './config/fileSizeLimits';
+import { QueryProvider } from './app/providers/QueryProvider';
+import { validateFileSizeConfig } from './shared/config/fileSizeLimits';
 
 // Validate file size configuration at startup
 try {

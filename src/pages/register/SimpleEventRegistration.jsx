@@ -32,12 +32,12 @@ import {
   formatRegistrationDate,
   isPreRegistrationActive,
   PRE_REGISTRATION_END_DATE
-} from '../../config/registrationConfig';
+} from "@/shared/config/registrationConfig";
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import Footer from '../../components/Footer';
-import OTPInput from '../../components/OTPInput';
-import Header from '../../layouts/Header';
-import paymentsApiService from '../../services/paymentsApiService';
+import { Footer } from '@/shared/ui';
+import { OTPInput } from '@/shared/ui';
+import Header from '@/app/layouts/Header';
+import { paymentsApiService } from '@/features/subscription';
 import { ShinyButton, Sparkles } from '@/shared/ui';
 
 // Fixed registration fee

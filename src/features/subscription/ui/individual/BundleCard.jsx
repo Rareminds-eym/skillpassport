@@ -13,7 +13,7 @@
 
 import { Check, ChevronDown, ChevronUp, Package, Sparkles, Star } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import addOnCatalogService from '@/services/addOnCatalogService';
+import { addOnCatalogService } from '@/features/subscription';
 
 /**
  * BundleCard - Displays a bundle with included add-ons

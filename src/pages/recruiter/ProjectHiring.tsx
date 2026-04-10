@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getLogger } from '../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('ProjectHiring');
 
@@ -12,8 +12,8 @@ import {
   FunnelIcon
 } from '@heroicons/react/24/outline';
 import { RocketLaunchIcon } from '@heroicons/react/24/solid';
-import ProjectList from '../../components/Recruiter/Projects/ProjectList';
-import { mockProjects, getProjectStats } from '../../data/mock/mockProjects';
+import { ProjectList } from '@/features/recruiter';
+import { mockProjects, getProjectStats } from "@/shared/lib/test/mock/mockProjects";
 
 interface StatsCardProps {
   title: string;

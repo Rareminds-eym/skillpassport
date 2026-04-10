@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
-import ActivityFeed from '../../components/ActivityFeed';
-import { useRealtimeActivities } from '../../hooks/useRealtimeActivities';
+import { ActivityFeed } from '@/features/recruiter';
+import { useRealtimeActivities } from '@/shared/lib/hooks';
 
 const Activities: React.FC = () => {
   const { activities, loading } = useRealtimeActivities();

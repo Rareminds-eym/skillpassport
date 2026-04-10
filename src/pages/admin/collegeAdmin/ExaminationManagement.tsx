@@ -20,22 +20,23 @@ import {
 } from "lucide-react";
 import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { examinationService } from "../../../services/college";
-import { assessmentService } from "../../../services/college/assessmentService";
-import { markEntryService } from "../../../services/college/markEntryService";
-import { transcriptService } from "../../../services/college/transcriptService";
-import { departmentService } from "../../../services/college/departmentService";
-import { supabase } from "../../../lib/supabaseClient";
-import { getLogger } from "../../../config/logging";
+import { examinationService } from '@/features/college-admin';
+import { assessmentService } from '@/features/assessment';
+import { markEntryService } from '@/features/college-admin';
+import { transcriptService } from '@/features/college-admin';
+import { departmentService } from '@/entities/department';
+import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('college-admin-examination-management');
-import AssessmentFormModal from "./components/AssessmentFormModal";
-import TimetableScheduler from "./components/TimetableScheduler";
-import MarkEntryGrid from "./components/MarkEntryGrid";
-import ModerationPanel from "./components/ModerationPanel";
-import InvigilatorAssignment from "./components/InvigilatorAssignment";
-import TranscriptForm from "./components/TranscriptForm";
-import type { Assessment, ExamSlot, MarkEntry, Transcript } from "../../../types/college";
+import AssessmentFormModal from "@/features/college-admin/ui/components/AssessmentFormModal";
+import TimetableScheduler from "@/features/college-admin/ui/components/TimetableScheduler";
+import MarkEntryGrid from "@/features/college-admin/ui/components/MarkEntryGrid";
+import ModerationPanel from "@/features/college-admin/ui/components/ModerationPanel";
+import InvigilatorAssignment from "@/features/college-admin/ui/components/InvigilatorAssignment";
+import TranscriptForm from "@/features/college-admin/ui/components/TranscriptForm";
+import type { Assessment, ExamSlot, MarkEntry, Transcript } from '@/shared/types/college';
+import { authSessionService } from '@/features/auth';
 
 const ExaminationManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -60,14 +61,14 @@ const ExaminationManagement: React.FC = () => {
 
   useEffect(() => {
     const fetchUserCollege = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       if (user) {
         const { data: userData } = await supabase
           .from('users')
           .select('metadata')
           .eq('id', user.id)
           .single();
-        
+
         if (userData?.metadata?.college_id) {
           setCollegeId(userData.metadata.college_id);
         }
@@ -85,7 +86,7 @@ const ExaminationManagement: React.FC = () => {
         .select('*')
         .eq('college_id', collegeId)
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
       return data || [];
     },
@@ -240,7 +241,7 @@ const ExaminationManagement: React.FC = () => {
     mutationFn: async (data: Partial<Assessment>) => {
       // Get course details
       const course = courses.find(c => c.id === data.course_id);
-      
+
       // Generate assessment_code (auto-generated if not provided)
       const courseCode = course?.course_code || 'EXAM';
       const typeCode = (data.type || 'IA').substring(0, 3).toUpperCase();
@@ -266,12 +267,12 @@ const ExaminationManagement: React.FC = () => {
 
       const { data: result, error } = await supabase
         .from('assessments')
-        .insert([{ 
-          ...dataWithoutId, 
+        .insert([{
+          ...dataWithoutId,
           assessment_code: assessmentCode,
           course_name: course?.course_name || '',
           course_code: course?.course_code || '',
-          college_id: collegeId 
+          college_id: collegeId
         }])
         .select()
         .single();
@@ -292,20 +293,20 @@ const ExaminationManagement: React.FC = () => {
     mutationFn: async ({ id, data }: { id: string; data: Partial<Assessment> }) => {
       // Get course details if course_id is being updated or if we need to regenerate code
       const course = data.course_id ? courses.find(c => c.id === data.course_id) : null;
-      
+
       // Get current assessment to merge with updates
       const currentAssessment = assessments.find(a => a.id === id);
       const mergedData = { ...currentAssessment, ...data };
-      
+
       // Regenerate assessment_code if type, course, semester, or academic_year changed
       let assessmentCode = data.assessment_code || currentAssessment?.assessment_code;
-      
+
       if (data.type || data.course_id || data.semester || data.academic_year) {
         const courseCode = course?.course_code || currentAssessment?.course_code || 'EXAM';
         const year = (data.academic_year || currentAssessment?.academic_year)?.split('-')[0] || new Date().getFullYear();
         const semester = data.semester || currentAssessment?.semester || 1;
         const type = data.type || currentAssessment?.type || 'IA';
-        
+
         const typeCode = type.substring(0, 3).toUpperCase();
         assessmentCode = `${typeCode}-${courseCode.toUpperCase()}-S${semester}-${year}`;
 
@@ -321,7 +322,7 @@ const ExaminationManagement: React.FC = () => {
           throw new Error(`Assessment with code "${assessmentCode}" already exists.`);
         }
       }
-      
+
       // Check if custom assessment_code conflicts
       if (data.assessment_code && data.assessment_code !== currentAssessment?.assessment_code) {
         const { data: existingAssessment } = await supabase
@@ -381,9 +382,9 @@ const ExaminationManagement: React.FC = () => {
   const handleSubmitToExamCell = async (id: string) => {
     if (confirm('Submit this assessment to exam cell for approval?')) {
       try {
-        await updateAssessmentMutation.mutateAsync({ 
-          id, 
-          data: { status: 'scheduled' } 
+        await updateAssessmentMutation.mutateAsync({
+          id,
+          data: { status: 'scheduled' }
         });
         toast.success('Assessment submitted successfully');
       } catch (error: any) {
@@ -421,9 +422,9 @@ const ExaminationManagement: React.FC = () => {
         .from('exam_timetable')
         .insert(enrichedSlots)
         .select();
-      
+
       if (error) throw error;
-      
+
       queryClient.invalidateQueries({ queryKey: ['examSlots'] });
       setShowTimetableModal(false);
       toast.success('Exam timetable scheduled successfully');
@@ -447,9 +448,9 @@ const ExaminationManagement: React.FC = () => {
         .from('mark_entries')
         .upsert(marks, { onConflict: 'assessment_id,student_id' })
         .select();
-      
+
       if (error) throw error;
-      
+
       queryClient.invalidateQueries({ queryKey: ['markEntries'] });
       return { success: true };
     } catch (error: any) {
@@ -475,8 +476,8 @@ const ExaminationManagement: React.FC = () => {
 
   const handleModerate = async (entryId: string, newMarks: number, reason: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const { data: { user } } = await authSessionService.getUser();
+
       const { error } = await supabase
         .from('mark_entries')
         .update({
@@ -486,9 +487,9 @@ const ExaminationManagement: React.FC = () => {
           moderation_date: new Date().toISOString()
         })
         .eq('id', entryId);
-      
+
       if (error) throw error;
-      
+
       queryClient.invalidateQueries({ queryKey: ['markEntries'] });
       return { success: true };
     } catch (error: any) {
@@ -514,8 +515,8 @@ const ExaminationManagement: React.FC = () => {
 
   const handleAssignInvigilator = async (slotId: string, facultyId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const { data: { user } } = await authSessionService.getUser();
+
       await examinationService.assignInvigilator({
         exam_timetable_id: slotId,
         invigilator_id: facultyId,
@@ -526,7 +527,7 @@ const ExaminationManagement: React.FC = () => {
         duty_end_time: '12:00',
         assigned_by: user?.id
       });
-      
+
       queryClient.invalidateQueries({ queryKey: ['examSlots'] });
       return { success: true };
     } catch (error: any) {
@@ -542,9 +543,9 @@ const ExaminationManagement: React.FC = () => {
         .delete()
         .eq('exam_timetable_id', slotId)
         .eq('invigilator_id', facultyId);
-      
+
       if (error) throw error;
-      
+
       queryClient.invalidateQueries({ queryKey: ['examSlots'] });
       return { success: true };
     } catch (error: any) {
@@ -557,7 +558,7 @@ const ExaminationManagement: React.FC = () => {
   const handleGenerateTranscript = async (data: Partial<Transcript>) => {
     try {
       const verificationId = `TR${Date.now()}${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-      
+
       const { data: transcript, error } = await supabase
         .from('transcripts')
         .insert([{
@@ -568,9 +569,9 @@ const ExaminationManagement: React.FC = () => {
         }])
         .select()
         .single();
-      
+
       if (error) throw error;
-      
+
       queryClient.invalidateQueries({ queryKey: ['transcripts'] });
       setShowTranscriptModal(false);
       return { success: true, data: transcript };
@@ -625,11 +626,10 @@ const ExaminationManagement: React.FC = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition ${
-                activeTab === tab.id
+              className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition ${activeTab === tab.id
                   ? "bg-blue-600 text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+                }`}
             >
               {tab.label}
             </button>
@@ -645,7 +645,7 @@ const ExaminationManagement: React.FC = () => {
               <h2 className="text-xl font-bold text-gray-900">
                 Examinations & Results ({filteredAssessments.length})
               </h2>
-              <button 
+              <button
                 onClick={handleCreateAssessment}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
               >
@@ -686,7 +686,7 @@ const ExaminationManagement: React.FC = () => {
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              
+
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
@@ -783,7 +783,7 @@ const ExaminationManagement: React.FC = () => {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1">
-                            <button 
+                            <button
                               onClick={() => handleEditAssessment(assessment)}
                               className="p-1 text-blue-600 hover:bg-blue-50 rounded"
                               title="Edit assessment"
@@ -791,7 +791,7 @@ const ExaminationManagement: React.FC = () => {
                               <Edit className="h-4 w-4" />
                             </button>
                             {assessment.status === 'draft' && (
-                              <button 
+                              <button
                                 onClick={() => handleSubmitToExamCell(assessment.id)}
                                 className="p-1 text-green-600 hover:bg-green-50 rounded"
                                 title="Submit to exam cell"
@@ -799,28 +799,28 @@ const ExaminationManagement: React.FC = () => {
                                 <Send className="h-4 w-4" />
                               </button>
                             )}
-                            <button 
+                            <button
                               onClick={() => handleScheduleTimetable(assessment)}
                               className="p-1 text-purple-600 hover:bg-purple-50 rounded"
                               title="Schedule timetable"
                             >
                               <Calendar className="h-4 w-4" />
                             </button>
-                            <button 
+                            <button
                               onClick={() => handleOpenInvigilators(assessment)}
                               className="p-1 text-indigo-600 hover:bg-indigo-50 rounded"
                               title="Assign invigilators"
                             >
                               <UserCheck className="h-4 w-4" />
                             </button>
-                            <button 
+                            <button
                               onClick={() => handleOpenMarkEntry(assessment)}
                               className="p-1 text-orange-600 hover:bg-orange-50 rounded"
                               title="Enter marks"
                             >
                               <ClipboardList className="h-4 w-4" />
                             </button>
-                            <button 
+                            <button
                               onClick={() => handleOpenModeration(assessment)}
                               className="p-1 text-pink-600 hover:bg-pink-50 rounded"
                               title="Moderate marks"
@@ -842,7 +842,7 @@ const ExaminationManagement: React.FC = () => {
           <div>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gray-900">Transcript Generation</h2>
-              <button 
+              <button
                 onClick={() => setShowTranscriptModal(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
               >
@@ -890,11 +890,10 @@ const ExaminationManagement: React.FC = () => {
                               {transcript.verification_id}
                             </td>
                             <td className="px-4 py-3">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                transcript.status === 'published' ? 'bg-green-100 text-green-700' :
-                                transcript.status === 'approved' ? 'bg-blue-100 text-blue-700' :
-                                'bg-yellow-100 text-yellow-700'
-                              }`}>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${transcript.status === 'published' ? 'bg-green-100 text-green-700' :
+                                  transcript.status === 'approved' ? 'bg-blue-100 text-blue-700' :
+                                    'bg-yellow-100 text-yellow-700'
+                                }`}>
                                 {transcript.status}
                               </span>
                             </td>

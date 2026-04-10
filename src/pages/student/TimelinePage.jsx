@@ -16,8 +16,12 @@ import {
   MapPin,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/features/auth/model/useAuth";
+import { useUser, useAuthLoading } from '@/stores';
 import { useStudentProfile } from '@/features/student-profile';
+import { useStudentDataByEmail } from '@/entities/student';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('TimelinePage');
 
 /**
  * TimelinePage - Digital Portfolio Journey Map

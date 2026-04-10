@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Course } from '../types';
-import { StatusBadge } from '../components';
+import { Course } from '@/features/student-profile/model';
+import { StatusBadge } from '..';
 import { 
   BookOpenIcon, 
   AcademicCapIcon, 

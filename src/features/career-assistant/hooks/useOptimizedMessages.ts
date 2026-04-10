@@ -10,7 +10,7 @@
  */
 
 import { useState, useCallback, useTransition } from 'react';
-import type { Message } from '../types/message';
+import type { Message } from '@/shared/types/message';
 
 export type { Message };
 

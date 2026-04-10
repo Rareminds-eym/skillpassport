@@ -7,4 +7,4 @@
  * This wrapper exists for router compatibility.
  */
 
-export { default } from '../../features/assessment/career-test/AssessmentTestPage';
+export { default } from '@/features/assessment/ui/AssessmentTestPage';

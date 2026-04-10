@@ -6,7 +6,7 @@ import {
   CounsellingSession, 
   CounsellingMessage,
   CounsellingTopicType 
-} from '../types/counselling';
+} from '@/shared/types/counselling';
 
 export interface CounsellingStore {
   sessions: CounsellingSession[];

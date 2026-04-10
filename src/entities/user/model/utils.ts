@@ -4,7 +4,7 @@
  */
 
 import { isSameEntity } from '@/shared/lib/comparison';
-import type { User, UserRole } from './types';
+import type { User, UserRole } from '@/shared/types';
 
 // ============================================================================
 // User Display Utilities

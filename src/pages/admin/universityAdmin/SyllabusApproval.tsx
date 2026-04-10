@@ -20,10 +20,11 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from '@/shared/ui';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import { curriculumApprovalService, type CurriculumApprovalDashboard } from '../../../services/curriculumApprovalService';
-import { curriculumChangeRequestService } from '../../../services/curriculumChangeRequestService';
-import { supabase } from '../../../lib/supabaseClient';
-import { getLogger } from '../../../config/logging';
+import { curriculumApprovalService, type CurriculumApprovalDashboard } from '@/features/college-admin';
+import { curriculumChangeRequestService } from '@/features/college-admin';
+import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+import { authSessionService } from '@/features/auth';
 
 const logger = getLogger('university-admin-syllabus-approval');
 
@@ -86,7 +87,7 @@ const SyllabusApproval: React.FC = () => {
   useEffect(() => {
     const fetchUserUniversityId = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await authSessionService.getUser();
         if (!user) {
           logger.warn('No authenticated user found');
           toast.error('User not authenticated');

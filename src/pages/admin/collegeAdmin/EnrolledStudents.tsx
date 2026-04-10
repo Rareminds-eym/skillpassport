@@ -9,14 +9,13 @@ import {
   ArrowPathIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { supabase } from "../../../lib/supabaseClient";
+import { supabase } from '@/shared/api/supabaseClient';
 import { studentEnrollmentService, type EnrolledStudentView } from "@/features/student-profile/api";
-// @ts-ignore - AuthContext is a JS file
-import { useAuth } from "../../../context/AuthContext";
+import { useUser } from '@/stores';
 import toast from "react-hot-toast";
-import Pagination from "../../../components/admin/Pagination";
-import SearchBar from "../../../components/common/SearchBar";
-import { getLogger } from "../../../config/logging";
+import { Pagination } from '@/shared/ui';
+import { SearchBar } from '@/shared/ui';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('college-admin-enrolled-students');
 
@@ -25,15 +24,15 @@ const ITEMS_PER_PAGE = 10;
 const EnrolledStudents: React.FC = () => {
   const user = useUser();
   const [collegeId, setCollegeId] = useState<string | null>(null);
-  
+
   const [students, setStudents] = useState<EnrolledStudentView[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  
+
   // Filters
   const [departments, setDepartments] = useState<any[]>([]);
   const [programs, setPrograms] = useState<any[]>([]);
-  
+
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [programFilter, setProgramFilter] = useState("");
   const [semesterFilter, setSemesterFilter] = useState("");
@@ -58,21 +57,9 @@ const EnrolledStudents: React.FC = () => {
   useEffect(() => {
     const fetchCollegeId = async () => {
       if (!user?.id && !user?.email) return;
-      
+
       try {
-        // First try to get from college_lecturers table
-        const { data: lecturerData } = await supabase
-          .from('college_lecturers')
-          .select('collegeId')
-          .or(`user_id.eq.${user.id},email.eq.${user.email}`)
-          .maybeSingle();
-
-        if (lecturerData?.collegeId) {
-          setCollegeId(lecturerData.collegeId);
-          return;
-        }
-
-        // Try organizations table by admin_id
+        // Try organizations table by admin_id first (most reliable for college admins)
         const { data: orgData } = await supabase
           .from('organizations')
           .select('id')
@@ -82,6 +69,38 @@ const EnrolledStudents: React.FC = () => {
 
         if (orgData?.id) {
           setCollegeId(orgData.id);
+          return;
+        }
+
+        // Fallback: try organizations table by email
+        if (user.email) {
+          const { data: orgByEmail } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('email', user.email)
+            .eq('organization_type', 'college')
+            .maybeSingle();
+
+          if (orgByEmail?.id) {
+            setCollegeId(orgByEmail.id);
+            return;
+          }
+        }
+
+        // Fallback: check localStorage
+        const stored = localStorage.getItem('user');
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            if (parsed.collegeId) {
+              setCollegeId(parsed.collegeId);
+              return;
+            }
+            if (parsed.organizationId) {
+              setCollegeId(parsed.organizationId);
+              return;
+            }
+          } catch { /* ignore */ }
         }
       } catch (error) {
         logger.error('Error fetching college ID:', error as Error);
@@ -119,7 +138,7 @@ const EnrolledStudents: React.FC = () => {
 
   const loadDepartments = async () => {
     if (!collegeId) return;
-    
+
     try {
       const { data, error } = await supabase
         .from("departments")
@@ -153,7 +172,7 @@ const EnrolledStudents: React.FC = () => {
 
   const loadStudents = async () => {
     if (!collegeId) return;
-    
+
     try {
       setLoading(true);
 
@@ -167,10 +186,10 @@ const EnrolledStudents: React.FC = () => {
 
       if (result.success && result.data) {
         setStudents(result.data);
-        
+
         // Calculate stats - all enrolled students are considered active
         const total = result.data.length;
-        
+
         setStats({ total, active: total, inactive: 0, graduated: 0 });
       } else {
         toast.error(result.error?.message || "Failed to load students");
@@ -319,7 +338,7 @@ const EnrolledStudents: React.FC = () => {
             </button>
           )}
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           <SearchBar
             value={searchTerm}
@@ -425,7 +444,7 @@ const EnrolledStudents: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            
+
             {/* Pagination */}
             <Pagination
               currentPage={currentPage}
@@ -469,14 +488,14 @@ const EnrollStudentsModal: React.FC<{
   const [selectedProgram, setSelectedProgram] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
   const [selectedSemester, setSelectedSemester] = useState("");
-  
+
   // Data state
   const [programs, setPrograms] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
   const [availableSemesters, setAvailableSemesters] = useState<number[]>([]);
   const [availableStudents, setAvailableStudents] = useState<any[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
-  
+
   // UI state
   const [studentSearch, setStudentSearch] = useState("");
   const [loading, setLoading] = useState(false);
@@ -555,11 +574,11 @@ const EnrollStudentsModal: React.FC<{
         .eq("status", "active");
 
       if (error) throw error;
-      
+
       // Get unique semesters and sort them
       const semesters = [...new Set((data || []).map(s => s.semester))].sort((a, b) => a - b);
       setAvailableSemesters(semesters);
-      
+
       // Reset semester selection if current selection is not available
       if (selectedSemester && !semesters.includes(parseInt(selectedSemester))) {
         setSelectedSemester("");
@@ -582,7 +601,7 @@ const EnrollStudentsModal: React.FC<{
         .order("section");
 
       if (error) throw error;
-      
+
       // Get actual student counts for each section
       if (data && data.length > 0) {
         const sectionsWithCounts = await Promise.all(
@@ -594,7 +613,7 @@ const EnrollStudentsModal: React.FC<{
               .eq("semester", parseInt(selectedSemester))
               .eq("section", sec.section)
               .eq("is_deleted", false);
-            
+
             return {
               ...sec,
               current_students: count || 0
@@ -613,7 +632,7 @@ const EnrollStudentsModal: React.FC<{
   const loadUnenrolledStudents = async () => {
     try {
       setLoadingStudents(true);
-      
+
       // Get students who are NOT enrolled in any program (program_id is null)
       // AND belong to the same college as the admin
       let query = supabase
@@ -678,8 +697,8 @@ const EnrollStudentsModal: React.FC<{
   };
 
   const toggleStudent = (studentId: string) => {
-    setSelectedStudents(prev => 
-      prev.includes(studentId) 
+    setSelectedStudents(prev =>
+      prev.includes(studentId)
         ? prev.filter(id => id !== studentId)
         : [...prev, studentId]
     );
@@ -688,7 +707,7 @@ const EnrollStudentsModal: React.FC<{
   const toggleSelectAll = () => {
     const filteredIds = filteredStudents.map(s => s.id);
     const allSelected = filteredIds.every(id => selectedStudents.includes(id));
-    
+
     if (allSelected) {
       setSelectedStudents(prev => prev.filter(id => !filteredIds.includes(id)));
     } else {
@@ -729,15 +748,15 @@ const EnrollStudentsModal: React.FC<{
     <div className="fixed inset-0 z-50 overflow-hidden">
       <div className="flex min-h-screen">
         {/* Backdrop */}
-        <div 
-          className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" 
-          onClick={onClose} 
+        <div
+          className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity"
+          onClick={onClose}
         />
-        
+
         {/* Modal */}
         <div className="relative mx-auto my-4 sm:my-8 w-full max-w-5xl flex flex-col max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-4rem)]">
           <div className="bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-            
+
             {/* Header */}
             <div className="flex-shrink-0 bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5">
               <div className="flex items-center justify-between">
@@ -761,13 +780,13 @@ const EnrollStudentsModal: React.FC<{
 
             {/* Content */}
             <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
-              
+
               {/* Left Panel - Program Selection */}
               <div className="lg:w-80 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-gray-200 bg-gray-50 p-5 overflow-y-auto">
                 <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4">
                   Program Details
                 </h3>
-                
+
                 <div className="space-y-4">
                   {/* Department */}
                   <div>
@@ -826,11 +845,10 @@ const EnrollStudentsModal: React.FC<{
                             key={sem}
                             type="button"
                             onClick={() => setSelectedSemester(sem.toString())}
-                            className={`py-2 text-sm font-medium rounded-lg border transition ${
-                              selectedSemester === sem.toString()
-                                ? "bg-blue-600 text-white border-blue-600"
-                                : "bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:bg-blue-50"
-                            }`}
+                            className={`py-2 text-sm font-medium rounded-lg border transition ${selectedSemester === sem.toString()
+                              ? "bg-blue-600 text-white border-blue-600"
+                              : "bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:bg-blue-50"
+                              }`}
                           >
                             {sem}
                           </button>
@@ -891,13 +909,13 @@ const EnrollStudentsModal: React.FC<{
                         Unenrolled Students
                       </h3>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        {loadingStudents 
-                          ? "Loading students..." 
+                        {loadingStudents
+                          ? "Loading students..."
                           : `${filteredStudents.length} of ${availableStudents.length} students`
                         }
                       </p>
                     </div>
-                    
+
                     {/* Search */}
                     <div className="flex-1 max-w-xs">
                       <SearchBar
@@ -940,8 +958,8 @@ const EnrollStudentsModal: React.FC<{
                         {studentSearch ? "No matching students" : "No unenrolled students"}
                       </p>
                       <p className="text-sm text-gray-400 mt-1">
-                        {studentSearch 
-                          ? "Try a different search term" 
+                        {studentSearch
+                          ? "Try a different search term"
                           : "All students are already enrolled in programs"
                         }
                       </p>
@@ -977,11 +995,10 @@ const EnrollStudentsModal: React.FC<{
                         return (
                           <label
                             key={student.id}
-                            className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                              isSelected
-                                ? "border-blue-500 bg-blue-50 shadow-sm"
-                                : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
-                            }`}
+                            className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${isSelected
+                              ? "border-blue-500 bg-blue-50 shadow-sm"
+                              : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
+                              }`}
                           >
                             <input
                               type="checkbox"
@@ -989,14 +1006,13 @@ const EnrollStudentsModal: React.FC<{
                               onChange={() => toggleStudent(student.id)}
                               className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                             />
-                            
+
                             {/* Avatar */}
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0 ${
-                              isSelected ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"
-                            }`}>
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0 ${isSelected ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"
+                              }`}>
                               {student.name?.charAt(0)?.toUpperCase() || "?"}
                             </div>
-                            
+
                             {/* Info */}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
@@ -1055,7 +1071,7 @@ const EnrollStudentsModal: React.FC<{
                     <span className="text-gray-400">Select students to enroll</span>
                   )}
                 </div>
-                
+
                 <div className="flex items-center gap-3">
                   <button
                     onClick={onClose}

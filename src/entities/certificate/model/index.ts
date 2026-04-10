@@ -16,7 +16,7 @@ export type {
   CertificateVerification,
   CertificateStats,
   CertificateFilters
-} from './types';
+} from '@/shared/types';
 
 // Validation exports
 export {

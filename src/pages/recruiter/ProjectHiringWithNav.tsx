@@ -1,31 +1,32 @@
 import {
-    BriefcaseIcon,
-    ChartBarIcon,
-    ClockIcon,
-    DocumentTextIcon,
-    FunnelIcon,
-    ListBulletIcon,
-    MagnifyingGlassIcon,
-    PlusIcon,
-    RectangleStackIcon,
-    Squares2X2Icon
+  BriefcaseIcon,
+  ChartBarIcon,
+  ClockIcon,
+  DocumentTextIcon,
+  FunnelIcon,
+  ListBulletIcon,
+  MagnifyingGlassIcon,
+  PlusIcon,
+  RectangleStackIcon,
+  Squares2X2Icon
 } from '@heroicons/react/24/outline';
 import { RocketLaunchIcon } from '@heroicons/react/24/solid';
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 // @ts-ignore - FeatureGate is a JSX component
-import { FeatureGate } from '@/features/subscription/ui/shared';
+import { FeatureGate } from '@/features/subscription';
 
 // Import components
-import ProjectList from '../../components/Recruiter/Projects/ProjectList';
-import Breadcrumb from '../../components/Recruiter/Projects/navigation/Breadcrumb';
-import QuickActionsMenu from '../../components/Recruiter/Projects/navigation/QuickActionsMenu';
-import TabNavigation, { MobileTabNavigation, ProjectTab } from '../../components/Recruiter/Projects/navigation/TabNavigation';
+import { ProjectList } from '@/features/recruiter';
+import { Breadcrumb } from '@/features/recruiter';
+import { QuickActionsMenu } from '@/features/recruiter';
+import { TabNavigation, MobileTabNavigation } from '@/features/recruiter';
+import type { ProjectTab } from '@/features/recruiter';
 
 // Import mock data
-import { getActiveContracts } from '../../data/mock/mockContracts';
-import { getProjectStats, mockProjects } from '../../data/mock/mockProjects';
-import { mockProposals } from '../../data/mock/mockProposals';
+import { getActiveContracts } from '@/shared/model/mock/mockContracts';
+import { getProjectStats, mockProjects } from '@/shared/model/mock/mockProjects';
+import { mockProposals } from '@/shared/model/mock/mockProposals';
 
 interface StatsCardProps {
   title: string;
@@ -67,7 +68,7 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, subtit
 const ProjectHiringWithNavContent = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  
+
   // Get active tab from URL or default to 'all'
   const [activeTab, setActiveTab] = useState<ProjectTab>(
     (searchParams.get('tab') as ProjectTab) || 'all'
@@ -150,7 +151,7 @@ const ProjectHiringWithNavContent = () => {
   // Filter projects based on search and status
   const filteredProjects = mockProjects.filter(project => {
     const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         project.description.toLowerCase().includes(searchQuery.toLowerCase());
+      project.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || project.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -179,30 +180,30 @@ const ProjectHiringWithNavContent = () => {
 
             {/* Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <StatsCard 
-                title="Total Projects" 
-                value={projectStats.total} 
+              <StatsCard
+                title="Total Projects"
+                value={projectStats.total}
                 icon="📊"
                 color="purple"
                 subtitle="All time"
               />
-              <StatsCard 
-                title="Open Projects" 
-                value={projectStats.open} 
+              <StatsCard
+                title="Open Projects"
+                value={projectStats.open}
                 icon="🔓"
                 color="blue"
                 subtitle="Accepting proposals"
               />
-              <StatsCard 
-                title="In Progress" 
-                value={projectStats.in_progress} 
+              <StatsCard
+                title="In Progress"
+                value={projectStats.in_progress}
                 icon="⚡"
                 color="yellow"
                 subtitle="Active work"
               />
-              <StatsCard 
-                title="Completed" 
-                value={projectStats.completed} 
+              <StatsCard
+                title="Completed"
+                value={projectStats.completed}
                 icon="✅"
                 color="green"
                 subtitle="Successfully delivered"

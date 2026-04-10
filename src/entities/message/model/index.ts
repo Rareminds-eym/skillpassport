@@ -16,7 +16,7 @@ export type {
   MessageStats,
   TypingIndicator,
   MessageAttachment
-} from './types';
+} from '@/shared/types';
 
 // Validation exports
 export {

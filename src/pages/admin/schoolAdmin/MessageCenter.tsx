@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useRef, useEffect } from "react";
-import { getLogger } from '../../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 import {
   ChatBubbleLeftRightIcon,
   PaperClipIcon,
@@ -12,8 +12,8 @@ import {
   VideoCameraIcon,
 } from "@heroicons/react/24/outline";
 import { CheckCheck, Send } from "lucide-react";
-import { validateFileSize } from "../../../utils/fileValidation";
-import { getFileSizeLimit } from "../../../config/fileSizeLimits";
+import { validateFileSize } from "@/shared/lib/fileValidation";
+import { getFileSizeLimit } from "@/shared/config/fileSizeLimits";
 
 /* ==============================
    TYPES & INTERFACES

@@ -14,9 +14,9 @@ import {
   AcademicCapIcon,
   ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
-import { supabase } from "../../../lib/supabaseClient";
+import { supabase } from '@/shared/api/supabaseClient';
 import toast from "react-hot-toast";
-import { getLogger } from "../../../config/logging";
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('college-admin-academic-calendar');
 

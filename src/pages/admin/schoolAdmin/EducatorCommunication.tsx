@@ -21,17 +21,18 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import MessageService, { Conversation } from '../../../services/messageService';
-import { supabase } from '../../../lib/supabaseClient';
-import { useEducatorAdminMessages } from '../../../hooks/useEducatorAdminMessages.js';
+import MessageService, { Conversation } from '@/features/messaging';
+import { supabase } from '@/shared/api/supabaseClient';
+import { useEducatorAdminMessages } from '@/features/educator';
 import { formatDistanceToNow } from 'date-fns';
-import { useUser } from '../../../stores';
-import { useGlobalPresence } from '../../../stores';
-import { useRealtimePresence } from '../../../hooks/useRealtimePresence';
-import { useTypingIndicator } from '../../../hooks/useTypingIndicator';
-import { useNotificationBroadcast } from '../../../hooks/useNotificationBroadcast';
-import DeleteConversationModal from '../../../components/messaging/DeleteConversationModal';
-import { getLogger } from '../../../config/logging';
+import { useUser } from '@/stores';
+import { useGlobalPresence } from '@/stores';
+import { useRealtimePresence } from '@/shared/lib/hooks';
+import { useTypingIndicator } from '@/shared/lib/hooks';
+import { useNotificationBroadcast } from '@/features/broadcast';
+import { DeleteConversationModal } from '@/features/messaging';
+import { getLogger } from '@/shared/config/logging';
+import { authSessionService } from '@/features/auth';
 
 const logger = getLogger('school-admin-educator-communication');
 
@@ -83,7 +84,7 @@ const EducatorCommunication = () => {
       }
       
       // Fallback: Check organizations table for school admins
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       if (user) {
         const { data: org } = await supabase
           .from('organizations')

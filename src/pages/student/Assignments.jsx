@@ -24,13 +24,13 @@ import {
   ChevronDown,
   Loader2,
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/features/auth';
 import { useStudentProfile } from '@/features/student-profile';
 import {
   getAssignmentsByStudentId,
   getAssignmentStats,
   updateAssignmentStatus,
-} from '../../services/assignmentsService';
+} from '@/features/educator-copilot';
 
 // Helper function to parse date as local time (avoiding timezone conversion)
 const parseAsLocalDate = (dateString) => {

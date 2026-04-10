@@ -1,5 +1,5 @@
 import React from "react";
-import PlacementManagementComponent from "./placement";
+import { PlacementManagement as PlacementManagementComponent } from "@/features/placement";
 
 const PlacementManagement: React.FC = () => {
   return <PlacementManagementComponent />;

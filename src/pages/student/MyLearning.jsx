@@ -1,21 +1,19 @@
 import { ArrowRight, ArrowUpDown, Award, BarChart3, BookOpen, Filter, GraduationCap, Grid3X3, List, Plus, RefreshCw, Search, TrendingUp, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Pagination from "../../components/educator/Pagination";
-import LearningAnalyticsDashboard from "../../components/Students/components/LearningAnalyticsDashboard";
-import ModernLearningCard from "../../components/Students/components/ModernLearningCard";
-import { TrainingEditModal } from "../../components/Students/components/ProfileEditModals";
-import SelectCourseModal from "../../components/Students/components/SelectCourseModal";
+import { Pagination } from '@/shared/ui';
+import { LearningAnalyticsDashboard, ModernLearningCard, SelectCourseModal } from '@/widgets/student-dashboard';
+import { TrainingEditModal } from '@/widgets/student-dashboard/ui/modals';
 import { Button, Card, CardContent } from '@/shared/ui';
-import { useAuth } from "@/features/auth/model/AuthContext";
+import { useAuth } from "@/features/auth";
 import { useUser } from "@/stores";
 import { useStudentProfile, useStudentMessages } from "@/features/student-profile";
 import { useStudentPortfolio } from "@/features/student-profile";
-import { useStudentDataByEmail } from "@/hooks/useStudentDataByEmail";
-import { useStudentTrainings } from "../../hooks/useStudentTrainings";
-import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
-import { supabase } from "../../lib/supabaseClient";
-import { getLogger } from "../../config/logging";
+import { useStudentDataByEmail } from '@/entities/student';
+import { useStudentTrainings } from '@/entities/student';
+import { useStudentMessageNotifications } from '@/entities/student';
+import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('MyLearning');
 

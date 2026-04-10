@@ -9,7 +9,7 @@ import type {
   ProjectMilestone,
   Proposal,
   ProjectContract
-} from './types';
+} from '@/shared/types';
 
 // ============================================================================
 // Project Status Validation

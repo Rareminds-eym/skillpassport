@@ -1,4 +1,4 @@
-import { Question } from '../../../types';
+import { Question } from '@/shared/types';
 import { csevbmQuestions } from './csevbm';
 import { greenChemistryQuestions } from './green-chemistry';
 import { evBatteryQuestions } from './ev-battery';

@@ -9,7 +9,7 @@ import {
   BillingDashboard as BillingData,
   organizationBillingService,
   PaymentRecord,
-} from '@/services/organization/organizationBillingService';
+} from '@/entities/organization';
 import {
   AlertCircle,
   Calendar,

@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/Students/components/ui/card';
-import { Button } from '@/components/Students/components/ui/button';
-import { Badge } from '@/components/Students/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/Students/components/ui/tabs';
+import { Card, CardContent } from '@/shared/ui/card';
+import { Button } from '@/shared/ui/button';
+import { Badge } from '@/shared/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs';
 import { 
   Clock, 
   XCircle, 
@@ -29,11 +29,13 @@ import {
 import { useToast } from '@/shared/lib/hooks';
 import { supabase } from '@/shared/api';
 import { useUser } from '@/stores';
-import { CollegeAdminNotificationService } from '@/services/collegeAdminNotificationService';
-import TrainingDetailsModal from '@/components/admin/schoolAdmin/TrainingDetailsModal';
-import ExperienceDetailsModal from '@/components/admin/schoolAdmin/ExperienceDetailsModal';
-import ProjectDetailsModal from '@/components/admin/schoolAdmin/ProjectDetailsModal';
-import { getLogger } from '@/config/logging';
+import { CollegeAdminNotificationService } from '@/features/college-admin';
+import { 
+  TrainingDetailsModal, 
+  ExperienceDetailsModal, 
+  ProjectDetailsModal 
+} from '@/features/school-admin';
+import { getLogger } from '@/shared/config/logging';
 
 const CollegeVerifications = () => {
   const logger = getLogger('college-admin-verifications');

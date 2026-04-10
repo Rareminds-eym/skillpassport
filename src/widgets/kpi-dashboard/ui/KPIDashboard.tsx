@@ -14,10 +14,10 @@ import {
   UsersIcon
 } from '@heroicons/react/24/outline'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabaseClient'
-import { FeatureGate } from '@/components/Subscription/FeatureGate'
-import KPICard from '@/components/admin/KPICard'
-import type { KPIDashboardProps, KPIData } from '../model/types'
+import { supabase } from '@/shared/api/supabaseClient'
+import { FeatureGate } from '@/features/subscription'
+import { KPICard } from '@/features/analytics'
+import type { KPIDashboardProps, KPIData } from '..'
 
 const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({ 
   schoolId,

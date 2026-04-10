@@ -22,9 +22,9 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
-import SearchBar from '../../../components/common/SearchBar';
-import KPICard from '../../../components/admin/KPICard';
-import { getLogger } from '../../../config/logging';
+import { SearchBar } from '@/shared/ui';
+import { KPICard } from '@/features/analytics';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('college-admin-graduation-eligibility');
 

@@ -13,15 +13,15 @@ import {
   SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { UserPlusIcon } from 'lucide-react';
-import SearchBar from '../../../components/common/SearchBar';
-import Pagination from '../../../components/admin/Pagination';
+import { SearchBar } from '@/shared/ui';
+import { Pagination } from '@/shared/ui';
 import { StudentProfileDrawer, SchoolAdmissionNoteModal } from '@/features/student-profile';
-import AddStudentModal from '../../../components/educator/modals/Addstudentmodal';
-import { useStudents } from '../../../hooks/useAdminStudents';
-import AssessmentReportDrawer from '@/components/shared/AssessmentReportDrawer';
+import { AddStudentModal } from '@/features/college-admin';
+import { useStudents } from '@/entities/student/model/useAdminStudents';
+import { AssessmentReportDrawer } from '@/features/assessment';
 // @ts-ignore - JS file without types
-import { getLatestResult } from '../../../services/assessmentService';
-import { getLogger } from '../../../config/logging';
+import { getLatestResult } from '@/features/assessment';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('school-admin-student-admissions');
 
@@ -254,23 +254,23 @@ const StudentAdmissions = () => {
   }, [allStudentsForFilters]);
 
   // Check if any filters are active
-  const hasActiveFilters = filters.class.length > 0 || 
-                          filters.subjects.length > 0 || 
-                          filters.status.length > 0 || 
-                          filters.minScore > 0 || 
-                          filters.maxScore < 100;
+  const hasActiveFilters = filters.class.length > 0 ||
+    filters.subjects.length > 0 ||
+    filters.status.length > 0 ||
+    filters.minScore > 0 ||
+    filters.maxScore < 100;
 
   const filteredAndSortedStudents = useMemo(() => {
     // When filters are active, use ALL students; otherwise use paginated students
     const sourceData = hasActiveFilters ? allStudentsForFilters : students;
-    
+
     // Filter students associated with schools (universityId is null)
     let result = sourceData.filter(student => !student.universityId);
 
     // Apply search filter if not already applied at DB level
     if (hasActiveFilters && debouncedSearch) {
       const searchLower = debouncedSearch.toLowerCase();
-      result = result.filter(student => 
+      result = result.filter(student =>
         student.name?.toLowerCase().includes(searchLower) ||
         student.email?.toLowerCase().includes(searchLower) ||
         student.contact_number?.toLowerCase().includes(searchLower) ||
@@ -326,14 +326,14 @@ const StudentAdmissions = () => {
     }
     return sortedResult;
   }, [students, allStudentsForFilters, filters, sortBy, hasActiveFilters, debouncedSearch]);
-  
+
   const totalItems = hasActiveFilters ? filteredAndSortedStudents.length : (totalCount || 0);
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-  
+
   // If filters are active, paginate client-side; otherwise use DB-paginated data
-  const paginatedStudents = hasActiveFilters 
+  const paginatedStudents = hasActiveFilters
     ? filteredAndSortedStudents.slice(startIndex, endIndex)
     : filteredAndSortedStudents;
 
@@ -367,20 +367,20 @@ const StudentAdmissions = () => {
     try {
       setLoadingAssessmentForStudent(student.id);
       setStudentForReport(student);
-      
+
       // Fetch the student's latest assessment result
       // Try both student.id and student.user_id as getLatestResult can handle both
       let result = null;
-      
+
       if (student.user_id) {
         result = await getLatestResult(student.user_id);
       }
-      
+
       // If no result found with user_id, try with student.id
       if (!result && student.id) {
         result = await getLatestResult(student.id);
       }
-      
+
       if (result) {
         logger.info('Found assessment result for student', { studentName: student.name });
         setAssessmentResult(result);
@@ -657,7 +657,7 @@ const StudentAdmissions = () => {
                     ))}
                   </>
                 )}
-                
+
                 {error && <div className="text-sm text-red-600">{error}</div>}
                 {!loading && paginatedStudents.map((student) => (
                   <StudentCard

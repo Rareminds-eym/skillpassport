@@ -20,7 +20,7 @@ import {
   ChevronUpIcon,
   ChevronDownIcon
 } from '@heroicons/react/24/outline';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 import { 
   getShortlists, 
   getShortlistCandidates, 
@@ -29,11 +29,11 @@ import {
   deleteShortlist,
   removeCandidateFromShortlist,
   logExportActivity
-} from '../../services/shortlistService';
+} from '@/features/opportunities';
 import jsPDF from 'jspdf';
-import SearchBar from '../../components/common/SearchBar';
-import AdvancedShortlistFilters, { ShortlistFilters } from '../../components/Recruiter/components/AdvancedShortlistFilters';
-import { getLogger } from '../../config/logging';
+import { SearchBar } from '@/shared/ui';
+import { AdvancedShortlistFilters, ShortlistFilters } from '@/features/recruiter-pipeline';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('Shortlists');
 

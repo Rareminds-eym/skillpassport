@@ -1,5 +1,5 @@
 import { Target, Heart, Award } from 'lucide-react';
-import SEOHead from '../../components/SEO/SEOHead';
+import SEOHead from '@/shared/ui/SEOHead';
 
 const About = () => {
   return (

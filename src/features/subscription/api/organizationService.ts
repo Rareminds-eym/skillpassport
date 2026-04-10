@@ -4,7 +4,7 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
-import { checkAuthentication } from '@/features/auth/api/authService';
+import { checkAuthentication } from '@/features/auth';
 
 /**
  * Get organization subscription details

@@ -3,7 +3,7 @@
  * Central configuration for the course recommendation system.
  */
 
-import { getPagesApiUrl } from '@/utils/pagesUrl';
+import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
 
 // API URL for embedding generation (uses career-api Cloudflare worker)
 export const EMBEDDING_API_URL = getPagesApiUrl('career');

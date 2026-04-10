@@ -18,7 +18,7 @@ import {
     X,
 } from 'lucide-react';
 import { memo, useCallback, useMemo, useState } from 'react';
-import AddStudentModal from '@/components/educator/modals/Addstudentmodal';
+import { AddStudentModal } from '@/features/educator';
 
 interface Member {
   id: string;

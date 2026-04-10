@@ -11,6 +11,7 @@ export { useStudentPortfolio } from './useStudentPortfolio';
 export { useStudentActivity } from './useStudentActivity';
 export { useStudentMessages } from './useStudentMessages';
 export { useStudentSettings } from './useStudentSettings';
+export { default as useProfileCompletion } from './useProfileCompletion';
 
 // Types
 export type {
@@ -51,3 +52,14 @@ export type {
   UseStudentSettingsOptions,
   StudentSettings
 } from './useStudentSettings';
+
+// Types from types.ts (previously in ui/types/)
+export type {
+  Student,
+  Course,
+  LessonPlan,
+  AdmissionNote,
+  StudentProfileDrawerProps,
+  TabConfig,
+  ActionConfig
+} from './types';

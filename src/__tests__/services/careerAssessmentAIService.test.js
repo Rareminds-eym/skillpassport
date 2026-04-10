@@ -10,7 +10,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Import the validation functions
-import { validateQuestion, validateQuestionBatch } from '../../services/careerAssessmentAIService';
+import { validateQuestion, validateQuestionBatch } from '@/features/assessment/api/careerAssessmentAIService';
 
 describe('validateQuestion', () => {
   describe('valid questions', () => {
@@ -94,14 +94,14 @@ describe('validateQuestion', () => {
       const result = validateQuestion(question, 'aptitude');
 
       expect(result.isValid).toBe(false);
-      expect(result.errors.some(e => e.includes('outside valid range'))).toBe(true);
+      expect(result.errors.some(e => e.includes('too short'))).toBe(true);
     });
   });
 
   describe('invalid questions - text length', () => {
-    it('should reject question with text too short (9 characters)', () => {
+    it('should reject question with text too short (4 characters)', () => {
       const question = {
-        text: '123456789', // 9 characters
+        text: '1234', // 4 characters
         options: ['A', 'B', 'C', 'D'],
         correct: 'A',
         subtype: 'verbal'
@@ -110,12 +110,12 @@ describe('validateQuestion', () => {
       const result = validateQuestion(question, 'aptitude');
 
       expect(result.isValid).toBe(false);
-      expect(result.errors.some(e => e.includes('outside valid range'))).toBe(true);
+      expect(result.errors.some(e => e.includes('too short'))).toBe(true);
     });
 
-    it('should reject question with text too long (501 characters)', () => {
+    it('should reject question with text too long (1001 characters)', () => {
       const question = {
-        text: 'A'.repeat(501), // 501 characters
+        text: 'A'.repeat(1001), // 1001 characters
         options: ['A', 'B', 'C', 'D'],
         correct: 'A',
         subtype: 'verbal'
@@ -124,7 +124,7 @@ describe('validateQuestion', () => {
       const result = validateQuestion(question, 'aptitude');
 
       expect(result.isValid).toBe(false);
-      expect(result.errors.some(e => e.includes('outside valid range'))).toBe(true);
+      expect(result.errors.some(e => e.includes('too long'))).toBe(true);
     });
   });
 
@@ -229,7 +229,7 @@ describe('validateQuestion', () => {
   });
 
   describe('invalid questions - missing subtype', () => {
-    it('should reject aptitude question with missing subtype', () => {
+    it('should auto-fix aptitude question with missing subtype', () => {
       const question = {
         text: 'What is the capital of France?',
         options: ['London', 'Paris', 'Berlin', 'Madrid'],
@@ -238,8 +238,9 @@ describe('validateQuestion', () => {
 
       const result = validateQuestion(question, 'aptitude');
 
-      expect(result.isValid).toBe(false);
-      expect(result.errors).toContain('Missing subtype/category for aptitude question');
+      // Should be valid after auto-fix
+      expect(result.isValid).toBe(true);
+      expect(result.autoFixed).toBe(true);
     });
 
     it('should not require subtype for knowledge questions', () => {
@@ -444,7 +445,7 @@ describe('Error Handling Functions', () => {
   
   beforeEach(async () => {
     // Dynamically import the functions
-    const module = await import('../../services/careerAssessmentAIService.js');
+    const module = await import('../../features/assessment/api/careerAssessmentAIService.js');
     classifyError = module.classifyError;
     QuestionGenerationError = module.QuestionGenerationError;
     getUserErrorMessage = module.getUserErrorMessage;

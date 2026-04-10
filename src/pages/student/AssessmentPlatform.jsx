@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import EmbeddedAssessment from '../../components/assessment/EmbeddedAssessment';
+import { EmbeddedAssessment } from '@/features/assessment';
 
 /**
  * Assessment Platform Page

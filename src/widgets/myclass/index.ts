@@ -1,0 +1,1 @@
+// MyClass Widget - Public API

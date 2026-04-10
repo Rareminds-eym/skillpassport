@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { supabase } from '../lib/supabaseClient';
-import { secureStorage } from '../lib/secureStorage';
+import { supabase } from '@/shared/api/supabaseClient';
+import { secureStorage } from '@/shared/lib/secureStorage';
 
 // Types
 interface ErrorNotification {

@@ -11,15 +11,15 @@ import {
   TrashIcon,
   ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
-import { useStudents, UICandidate } from '../../hooks/useStudents';
-import { useEducatorSchool } from '../../hooks/useEducatorSchool';
-import { useSearch, useUser } from '../../stores';
-import SearchBar from '../../components/common/SearchBar';
-import Pagination from '../../components/educator/Pagination';
-import AddStudentModal from '../../components/educator/modals/Addstudentmodal';
-import EditStudentModal from '../../components/educator/modals/EditStudentModal';
-import DeleteStudentModal from '../../components/educator/modals/DeleteStudentModal';
-import BulkDeleteStudentsModal from '../../components/educator/modals/BulkDeleteStudentsModal';
+import { useStudents, UICandidate } from '@/entities/student';
+import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
+import { useSearch, useUser } from '@/stores';
+import SearchBar from '@/shared/ui/SearchBar';
+import { Pagination } from '@/features/educator';
+import { AddStudentModal } from '@/features/educator';
+import { EditStudentModal } from '@/features/educator';
+import { DeleteStudentModal } from '@/features/educator';
+import { BulkDeleteStudentsModal } from '@/features/educator';
 import { UserPlusIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -888,6 +888,7 @@ const StudentsPage = () => {
         onClose={() => setShowAddStudentModal(false)}
         onSuccess={() => {
           setShowAddStudentModal(false);
+          refetch();
         }}
       />
 

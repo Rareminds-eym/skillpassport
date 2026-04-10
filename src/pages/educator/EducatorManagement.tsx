@@ -7,11 +7,12 @@ import {
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
-import { getLogger } from '../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('EducatorManagement');
 
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
+import { authSessionService } from '@/features/auth';
 
 interface SchoolEducator {
   id: string;
@@ -98,7 +99,7 @@ const EducatorManagement = () => {
 
   const loadUsers = async () => {
     try {
-      const { data, error } = await supabase.auth.admin.listUsers();
+      const { data, error } = await authSessionService.listUsers();
       if (error) throw error;
       setUsers(data?.users || []);
     } catch (error) {

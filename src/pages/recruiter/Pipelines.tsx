@@ -1,34 +1,31 @@
 import React, { useEffect, useState } from 'react';
 // @ts-ignore
-import { CandidateQuickView } from '../../components/Recruiter/components/CandidateQuickView';
-import PipelineAdvancedFilters from '../../components/Recruiter/components/PipelineAdvancedFilters';
-import PipelineSortMenu from '../../components/Recruiter/components/PipelineSortMenu';
-import { PipelineStats, QuickStats } from '../../components/Recruiter/components/PipelineStats';
-import { useToast } from '../../components/Recruiter/components/Toast';
-import { FeatureGate } from '@/features/subscription/ui/shared';
-import { useNotifications } from '../../hooks/useNotifications';
-import { useOpportunities } from '../../hooks/useOpportunities';
-import { usePipelineData } from '../../hooks/usePipelineData';
-import { createNotification } from '../../services/notificationService.ts';
-import { addCandidateToPipeline, moveCandidateToStage } from '../../services/pipelineService';
-import { PipelineFilters, PipelineSortOptions } from '../../types/recruiter';
-import { getLogger } from '../../config/logging';
+import { CandidateQuickView, PipelineSortMenu, PipelineAdvancedFilters } from '@/features/recruiter';
+import { PipelineStats, QuickStats } from '@/features/recruiter';
+import { FeatureGate } from '@/features/subscription';
+import { useNotifications } from '@/features/notifications';
+import { useOpportunities } from '@/features/opportunities';
+import { usePipelineData } from '@/features/opportunities';
+import { createNotification } from '@/features/notifications';
+import { addCandidateToPipeline, moveCandidateToStage } from '@/features/opportunities';
+import { PipelineFilters, PipelineSortOptions } from '@/shared/types/recruiter';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('Pipelines');
 
 // Pipeline components
 import {
-    AIRecommendation,
-    AIRecommendedColumn,
-    AddFromTalentPoolModal,
-    KanbanColumn,
-    NextActionModal,
-    PipelineBulkActionsBar,
-    PipelineCandidate,
-    PipelineHeader,
-    PipelineQuickFilters,
-    STAGES
-} from '../../components/Recruiter/components/pipeline';
+  AIRecommendation,
+  AIRecommendedColumn,
+  AddFromTalentPoolModal,
+  KanbanColumn,
+  NextActionModal,
+  PipelineBulkActionsBar,
+  PipelineCandidate,
+  PipelineHeader,
+  PipelineQuickFilters,
+  STAGES
+} from '@/features/recruiter-pipeline';
 
 interface PipelinesProps {
   onViewProfile: (candidate: PipelineCandidate) => void;
@@ -97,7 +94,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
       const user = JSON.parse(userStr);
       currentRecruiterId = user.id || user.recruiter_id;
     }
-  } catch (e) {}
+  } catch (e) { }
 
   useNotifications(currentRecruiterId);
 
@@ -315,7 +312,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
       // Check if candidate already exists in pipeline by looking in pipelineData
       let existingPipelineId: number | null = null;
       let existingStage: string | null = null;
-      
+
       Object.keys(pipelineData).forEach(stage => {
         const found = pipelineData[stage as keyof typeof pipelineData].find(
           c => c.student_id === pipelineCandidate?.student_id
@@ -392,7 +389,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
   // Filtered pipeline data
   const getFilteredPipelineData = () => {
     let filtered = { ...pipelineData };
-    
+
     if (showAIRecommendedOnly) {
       Object.keys(filtered).forEach(stage => {
         if (stage === 'sourced' || stage === 'screened') {
@@ -400,11 +397,11 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         }
       });
     }
-    
+
     if (globalSearch.trim()) {
       const searchLower = globalSearch.toLowerCase();
       Object.keys(filtered).forEach(stage => {
-        filtered[stage as keyof typeof filtered] = filtered[stage as keyof typeof filtered].filter(candidate => 
+        filtered[stage as keyof typeof filtered] = filtered[stage as keyof typeof filtered].filter(candidate =>
           candidate.name?.toLowerCase().includes(searchLower) ||
           candidate.email?.toLowerCase().includes(searchLower) ||
           candidate.dept?.toLowerCase().includes(searchLower) ||
@@ -413,12 +410,12 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         );
       });
     }
-    
+
     return filtered;
   };
 
   const filteredPipelineData = getFilteredPipelineData();
-  const totalAIRecommended = aiRecommendations?.topRecommendations?.length || 
+  const totalAIRecommended = aiRecommendations?.topRecommendations?.length ||
     ((pipelineData.sourced?.length || 0) + (pipelineData.screened?.length || 0));
 
   return (

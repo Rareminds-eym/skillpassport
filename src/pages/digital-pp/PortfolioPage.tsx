@@ -1,19 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import AIPersonaLayout from '../../components/digital-pp/portfolio/layouts/AIPersonaLayout';
-import CompactResumeDashboard from '../../components/digital-pp/portfolio/layouts/CompactResumeDashboard';
-import CreativeLayout from '../../components/digital-pp/portfolio/layouts/CreativeLayout';
-import InfographicDashboard from '../../components/digital-pp/portfolio/layouts/InfographicDashboard';
-import JourneyMapLayout from '../../components/digital-pp/portfolio/layouts/JourneyMapLayout';
-import ModernLayout from '../../components/digital-pp/portfolio/layouts/ModernLayout';
-import SplitScreenLayout from '../../components/digital-pp/portfolio/layouts/SplitScreenLayout';
-import { usePortfolio } from '../../stores';
-import { exportAsHTML, exportAsPDF } from '../../utils/exportppUtils';
+import {
+  AIPersonaLayout,
+  CompactResumeDashboard,
+  CreativeLayout,
+  InfographicDashboard,
+  JourneyMapLayout,
+  ModernLayout,
+  SplitScreenLayout
+} from '@/features/digital-portfolio';
+import { usePortfolio } from '@/stores';
+import { exportAsHTML, exportAsPDF } from '@/features/digital-portfolio';
 
 const PortfolioPage: React.FC = () => {
   const navigate = useNavigate();
-  const { student, settings, isLoading, isManuallySet, viewerRole } = usePortfolio();
+  const { student, settings, isLoading, isManuallySet, viewerRole, loadStudentByEmail } = usePortfolio();
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Auto-load current user's data if not already loaded
+  useEffect(() => {
+    if (!student && !isLoading && !isManuallySet) {
+      const email = localStorage.getItem('userEmail');
+      if (email) {
+        loadStudentByEmail(email);
+      }
+    }
+  }, [student, isLoading, isManuallySet, loadStudentByEmail]);
 
   // Check if user is admin
   const isAdminViewing = viewerRole && (viewerRole.includes('admin') || viewerRole === 'admin');
@@ -44,7 +56,7 @@ const PortfolioPage: React.FC = () => {
       if (pendingExport) {
         try {
           const { type, filename, preferences } = JSON.parse(pendingExport);
-          
+
           // Small delay to ensure DOM is fully rendered
           setTimeout(async () => {
             try {
@@ -54,16 +66,16 @@ const PortfolioPage: React.FC = () => {
                   console.warn('Fullscreen not available');
                 });
                 setIsFullscreen(true);
-                
+
                 // Additional delay for fullscreen to apply
                 setTimeout(async () => {
-                  const layoutContent = document.querySelector('[data-portfolio-content]') || 
-                                      document.querySelector('.pt-20') ||
-                                      document.documentElement;
-                  
+                  const layoutContent = document.querySelector('[data-portfolio-content]') ||
+                    document.querySelector('.pt-20') ||
+                    document.documentElement;
+
                   await exportAsPDF(layoutContent as HTMLElement, filename);
                   sessionStorage.removeItem('pendingExport');
-                  
+
                   // Exit fullscreen after export
                   if (document.fullscreenElement) {
                     document.exitFullscreen();
@@ -76,10 +88,10 @@ const PortfolioPage: React.FC = () => {
                   if (!student || !settings) {
                     throw new Error('Student or settings data not available');
                   }
-                  
+
                   await exportAsHTML(student, settings, preferences, filename);
                   sessionStorage.removeItem('pendingExport');
-                  
+
                   // Navigate back to export settings
                   navigate('/settings/export');
                 }, 300);
@@ -154,7 +166,7 @@ const PortfolioPage: React.FC = () => {
         return <ModernLayout {...layoutProps} />;
     }
   };
-  
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Back Button - Only show for admins */}

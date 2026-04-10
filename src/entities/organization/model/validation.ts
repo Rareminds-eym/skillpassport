@@ -4,7 +4,7 @@
  */
 
 import { isValidEmail } from '@/shared/lib/validation';
-import type { Organization, OrganizationType } from './types';
+import type { Organization, OrganizationType } from '@/shared/types';
 
 // ============================================================================
 // Organization Type Validation

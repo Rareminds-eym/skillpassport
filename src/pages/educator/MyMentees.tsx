@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { getLogger } from '../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('MyMentees');
 
@@ -19,10 +19,10 @@ import {
   ChatBubbleLeftRightIcon,
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
-import { useMentorAllocation } from '../../hooks/useMentorAllocation';
-import KPICard from '../../components/admin/KPICard';
-import MentorResponseModal from '../../components/educator/MentorResponseModal';
-import Pagination from '../../components/educator/Pagination';
+import { useMentorAllocation } from '@/features/college-admin/model/useMentorAllocation';
+import { KPICard } from '@/features/analytics';
+import { MentorResponseModal } from '@/features/college-admin';
+import { Pagination } from '@/shared/ui';
 
 interface AuthUser {
   id: string;

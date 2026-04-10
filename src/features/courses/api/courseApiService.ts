@@ -3,7 +3,7 @@
  * Connects to Cloudflare Pages Function for course-related API calls
  */
 
-import { getPagesApiUrl, getAuthHeaders } from '@/utils/pagesUrl';
+import { getPagesApiUrl, getAuthHeaders } from '@/shared/lib/pagesUrl';
 
 const API_URL = getPagesApiUrl('course');
 const STORAGE_API_URL = getPagesApiUrl('storage');

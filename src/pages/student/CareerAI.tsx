@@ -1,5 +1,5 @@
-import { FeatureGate } from '@/features/subscription/ui/shared';
-import CareerAssistant from '../../features/career-assistant/components/CareerAssistant';
+import { FeatureGate } from '@/features/subscription';
+import CareerAssistant from '@/features/career-assistant/ui/CareerAssistant';
 
 /**
  * CareerAI Page - Wrapped with FeatureGate for add-on access control

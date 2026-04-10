@@ -10,9 +10,10 @@ import {
 } from '@heroicons/react/24/outline';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabaseClient';
-import { getDocumentUrl } from '../../services/fileUploadService';
-import { getLogger } from '../../config/logging';
+import { supabase } from '@/shared/api/supabaseClient';
+import { getDocumentUrl } from '@/shared/api';
+import { getLogger } from '@/shared/config/logging';
+import { authSessionService } from '@/features/auth';
 
 const logger = getLogger('EducatorProfileFixed');
 
@@ -126,7 +127,7 @@ const ProfileFixed = () => {
       logger.info('Loading profile', { email });
 
       // Get current user ID from auth
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       if (!user) {
         logger.error('No authenticated user');
         navigate('/login/educator');

@@ -6,7 +6,7 @@
  * Now uses career-api worker instead of calling OpenRouter directly
  */
 
-import { getPagesApiUrl } from '@/utils/pagesUrl';
+import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
 
 const CAREER_API_URL = getPagesApiUrl('career');
 

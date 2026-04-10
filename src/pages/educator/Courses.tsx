@@ -9,23 +9,20 @@ import {
   AcademicCapIcon
 } from '@heroicons/react/24/outline';
 
-import { Course } from '../../types/educator/course';
-import { SKILL_CATEGORIES, CLASSES } from '../../data/educator/mockCourses';
+import { Course } from '@/shared/types/educator/course';
+import { SKILL_CATEGORIES, CLASSES } from '@/features/educator';
 
-import CourseCard from '@/features/courses/ui/CourseCard';
-import CourseFilters from '@/features/courses/ui/CourseFilters';
-import CreateCourseModal from '@/features/courses/ui/CreateCourseModal';
-import CourseDetailDrawer from '@/features/courses/ui/CourseDetailDrawer';
+import { CourseCard, CourseFilters, CreateCourseModal, CourseDetailDrawer } from '@/features/courses';
 
 import {
-  getAllCourses,
+  getCourses,
   createCourse,
   updateCourse
-} from '../../services/educator/coursesService';
+} from '@/features/college-admin';
 import toast from 'react-hot-toast';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 import { View } from 'lucide-react';
-import { getLogger } from '../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('EducatorCourses');
 
@@ -218,7 +215,7 @@ const Courses: React.FC = () => {
 
         // Load all courses (not filtered by educator)
         logger.info('📡 Fetching all courses');
-        const coursesData = await getAllCourses();
+        const coursesData = await getCourses();
         logger.info('✅ Courses loaded:', coursesData.length, 'courses');
         
         // Debug: Log module counts for each course

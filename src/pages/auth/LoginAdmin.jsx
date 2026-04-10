@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GraduationCap, Loader2 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/features/auth';
 import { loginAdmin } from '@/features/auth/api';
 import { useToast } from '@/shared/lib/hooks';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
-import { Label } from '../../components/Students/components/ui/label';
-import { Input } from '../../components/Students/components/ui/input';
-import Button from '../../components/Button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui';
+import { Label } from '@/shared/ui';
+import { Input } from '@/shared/ui';
+import { Button } from '@/shared/ui';
 
 const LoginAdmin = () => {
   const [email, setEmail] = useState('');

@@ -12,10 +12,10 @@ import {
   ChevronRight,
   ArrowDownAZ
 } from 'lucide-react';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 import { motion } from 'framer-motion';
-import CourseDetailModal from '@/features/courses/ui/CourseDetailModal';
-import { getLogger } from '../../config/logging';
+import { CourseDetailModal } from '@/features/courses';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('BrowseCourses');
 

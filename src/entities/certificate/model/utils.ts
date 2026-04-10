@@ -7,7 +7,7 @@ import type {
   CertificateStatus,
   CertificateType,
   CertificateStats
-} from './types';
+} from '@/shared/types';
 
 // ============================================================================
 // Certificate Status Utilities

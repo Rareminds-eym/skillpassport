@@ -5,7 +5,7 @@
  * Extracted from courseEnrollmentService.js
  */
 
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ENROLLMENT OPERATIONS

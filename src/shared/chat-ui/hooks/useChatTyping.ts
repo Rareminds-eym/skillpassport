@@ -1,5 +1,5 @@
 import { useRef, useCallback } from 'react';
-import { MessageWithInteractive } from '../types';
+import type { MessageWithInteractive } from '../types';
 
 interface TypingCallbacks {
   onUpdateMessage: (id: string, content: string) => void;

@@ -23,14 +23,14 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { SubscriptionDashboard } from '@/components/Subscription/SubscriptionDashboard';
+import { SubscriptionDashboard } from '@/features/subscription';
 import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
 import { useUser, useUserRole, useAuthLoading } from '@/stores';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getUserSubscriptions } from '@/features/subscription/api';
-import { deactivateSubscription, pauseSubscription, resumeSubscription } from '@/services/paymentsApiService';
+import { deactivateSubscription, pauseSubscription, resumeSubscription } from '@/features/subscription';
 import { calculateDaysRemaining, calculateProgressPercentage, formatDate as formatDateUtil, getSubscriptionStatusChecks } from '@/features/subscription/lib';
-import { useUsageStatistics } from '@/hooks/useUsageStatistics';
+import { useUsageStatistics } from '@/shared/lib/hooks';
 
 /**
  * Get the settings path based on current URL path (more reliable than role)

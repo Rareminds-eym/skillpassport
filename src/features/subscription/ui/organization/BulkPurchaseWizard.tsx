@@ -26,7 +26,7 @@ import {
     X,
 } from 'lucide-react';
 import { memo, useCallback, useMemo, useState } from 'react';
-import AddStudentModal from '@/components/educator/modals/Addstudentmodal';
+import { AddStudentModal } from '@/features/educator';
 import MemberTypeSelector, { MemberType } from './MemberTypeSelector';
 import PricingBreakdown, { PricingBreakdownData } from './PricingBreakdown';
 import SeatSelector from './SeatSelector';

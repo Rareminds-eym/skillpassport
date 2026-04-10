@@ -13,7 +13,7 @@ import { useState, useEffect, useCallback } from 'react';
 //   getStudentSettingsByEmail, 
 //   updateStudentSettings, 
 //   updateStudentPassword 
-// } from '../api/studentProfileService';
+// } from '@/features/student-profile/api';
 
 export interface UseStudentSettingsOptions {
   email: string | null;

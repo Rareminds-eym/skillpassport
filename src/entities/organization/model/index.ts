@@ -18,13 +18,12 @@ export type {
   OrganizationEntitlement,
   OrganizationPurchaseData,
   OrganizationOrderResult,
-} from './types';
+} from '@/shared/types';
 
 // Validation
 export {
   isValidOrganizationType,
   validateOrganization,
-  isValidEmail,
   isValidPhone,
   isValidWebsite,
   validateSeatCount,

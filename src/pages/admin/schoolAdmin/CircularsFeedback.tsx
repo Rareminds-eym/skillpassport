@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useMemo } from "react";
-import { getLogger } from '../../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 import {
   PlusCircleIcon,
   XMarkIcon,
@@ -18,7 +18,7 @@ import {
   CalendarDaysIcon,
   ChatBubbleLeftRightIcon,
 } from "@heroicons/react/24/outline";
-import SearchBar from "../../../components/common/SearchBar";
+import { SearchBar } from '@/shared/ui';
 import toast from 'react-hot-toast';
 
 /* ==============================

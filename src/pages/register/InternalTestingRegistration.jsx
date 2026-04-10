@@ -20,8 +20,8 @@ import {
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { signupStudent } from '@/services/studentAuthService';
-import { supabase } from '../../lib/supabaseClient';
+import { signupStudent } from '@/entities/user/api/userApiService';
+import { supabase } from '@/shared/api/supabaseClient';
 
 const EMAIL_API_URL = import.meta.env.DEV 
   ? 'http://localhost:8788/api/email'

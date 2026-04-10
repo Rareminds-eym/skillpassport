@@ -4,7 +4,7 @@
  */
 
 import { isSameEntity } from '@/shared/lib/comparison';
-import type { Course, CourseModule, CourseProgress } from './types';
+import type { Course, CourseModule, CourseProgress } from '@/shared/types';
 
 // ============================================================================
 // Course Display Utilities

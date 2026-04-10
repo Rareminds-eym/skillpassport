@@ -13,7 +13,7 @@ import { formatPrice } from '..\..\..\shared\lib\format';
   OrganizationSubscription,
   SubscriptionStats,
   PricingBreakdown
-} from './types';
+} from '@/shared/types';
 
 // ============================================================================
 // Subscription Status Utilities

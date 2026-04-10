@@ -27,7 +27,7 @@ import {
   TrendingDown,
   Activity,
 } from "lucide-react";
-import KPICard from "../../../components/admin/KPICard";
+import { KPICard } from '@/features/analytics';
 
 // TypeScript Interfaces
 interface Internship {

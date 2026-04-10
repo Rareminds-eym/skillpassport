@@ -4,7 +4,7 @@
  */
 
 import { supabase } from '@/shared/api';
-import userApiService from '@/services/userApiService';
+import userApiService from '@/entities/user/api/userApiService';
 import type { 
   User, 
   CreateUserData, 
@@ -12,7 +12,7 @@ import type {
   UserProfileExtended,
   UserDocument,
   BulkImportResult 
-} from '../model/types';
+} from '..';
 import { mapRoleToWorkerAPI } from '../model/utils';
 
 const { unifiedSignup } = userApiService;

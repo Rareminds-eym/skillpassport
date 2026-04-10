@@ -19,10 +19,10 @@ import {
   GraduationCap
 } from 'lucide-react';
 import { useStudentProfile, useStudentMessages } from '@/features/student-profile';
-import { useGlobalPresence } from '../../context/GlobalPresenceContext';
-import { useRealtimePresence } from '../../hooks/useRealtimePresence';
+import { useGlobalPresence } from '@/stores';
+import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/features/messaging';
-import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
+import { useNotificationBroadcast } from '@/features/broadcast';
 import { DeleteConversationModal } from '@/features/messaging';
 
 const EducatorMessages = () => {

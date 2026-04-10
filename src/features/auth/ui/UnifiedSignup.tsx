@@ -24,7 +24,7 @@ import {
 // @ts-ignore - JS module without types
 import { sendOtp, verifyOtp as verifyOtpApi } from '@/features/auth/api';
 // @ts-ignore - JS module without types
-import DatePicker from '@/features/subscription/ui/shared/DatePicker';
+import { DatePicker } from '@/features/subscription';
 import { supabase } from '@/shared/api';
 
 type UserRole = 'school_student' | 'college_student' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
@@ -414,7 +414,7 @@ const UnifiedSignup = () => {
     try {
       // Use the Pages Function API for signup with proper rollback support
       // This ensures no orphaned auth users are created
-      const { getPagesApiUrl } = await import('@/utils/pagesUrl');
+      const { getPagesApiUrl } = await import('@/shared/lib/pagesUrl');
       const USER_API_URL = getPagesApiUrl('user');
 
       const response = await fetch(`${USER_API_URL}/signup`, {

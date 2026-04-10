@@ -13,7 +13,7 @@ import {
     withRetry,
     withTimeout
 } from '@/features/auth/lib';
-import userApiService from '../../../services/userApiService';
+import userApiService from '@/entities/user/api/userApiService';
 
 /**
  * Authentication Service

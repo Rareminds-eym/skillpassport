@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import AppliedJobsService from '../../services/appliedJobsService';
-import { getAllPipelineCandidatesByStage, moveCandidateToStage } from '../../services/pipelineService';
-import { supabase } from '../../lib/supabaseClient';
+import { AppliedJobsService } from '@/features/opportunities';
+import { getAllPipelineCandidatesByStage, moveCandidateToStage } from '@/features/opportunities';
+import { supabase } from '@/shared/api/supabaseClient';
 import { EyeIcon, ChatBubbleLeftIcon, MagnifyingGlassIcon, FunnelIcon, ArrowDownTrayIcon, UsersIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon, SparklesIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { MessageModal } from '@/features/messaging';
-import useMessageNotifications from '../../hooks/useMessageNotifications';
+import { useMessageNotifications } from '@/features/messaging';
 import { useUser } from '@/stores';
-import { recruiterInsights } from '../../features/recruiter-copilot/services/recruiterInsights';
-import { getLogger } from '../../config/logging';
+import { recruiterInsights } from '@/features/recruiter-copilot';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('ApplicantsList');
 
@@ -333,7 +333,7 @@ const ApplicantsList: React.FC = () => {
         }
 
         // Use the addCandidateToPipeline service which handles duplicates
-        const { addCandidateToPipeline } = await import('../../services/pipelineService');
+        const { addCandidateToPipeline } = await import('@/features/opportunities/api/pipelineService');
         
         const result = await addCandidateToPipeline({
           opportunity_id: applicant.opportunity_id,

@@ -24,14 +24,14 @@ import {
 } from 'lucide-react';
 
 import { useStudentProfile } from '@/features/student-profile';
-import AppliedJobsService from '../../services/appliedJobsService';
+import { AppliedJobsService } from '@/features/opportunities';
 import { studentPipelineService } from '@/features/student-profile/api';
 import { MessageService } from '@/features/messaging';
-import useMessageNotifications from '../../hooks/useMessageNotifications';
-import { supabase } from '../../lib/supabaseClient';
-import { useUser } from '../../stores';
+import { useMessageNotifications } from '@/features/messaging';
+import { supabase } from '@/shared/api/supabaseClient';
+import { useUser } from '@/stores';
 
-import { getLogger } from '../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('Applications');
 

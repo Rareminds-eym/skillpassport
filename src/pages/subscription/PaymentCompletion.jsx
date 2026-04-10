@@ -14,11 +14,12 @@ import {
 } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { SubscriptionRouteGuard } from '@/features/subscription/ui/shared';
+import { SubscriptionRouteGuard } from '@/features/subscription';
 import { useSubscription } from '@/features/subscription/model';
 import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/stores';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 import { initiateRazorpayPayment } from '@/features/subscription/api';
+import { authSessionService } from '@/features/auth';
 
 /**
  * Get the subscription manage path based on user role
@@ -247,7 +248,7 @@ function PaymentCompletion() {
       // CRITICAL: Verify user actually exists in database (not just localStorage)
       try {
         // First check if user exists in auth.users via session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await authSessionService.getSession();
 
         if (sessionError || !session?.user) {
           console.warn('⚠️ No valid Supabase session found, clearing stale data');

@@ -6,7 +6,7 @@ import {
   CheckIcon
 } from '@heroicons/react/24/outline';
 import { Course, CourseModule } from '@/shared/types';
-import ImageUpload from '@/components/common/ImageUpload';
+import ImageUpload from '@/shared/ui/ImageUpload';
 
 interface CreateCourseModalProps {
   isOpen: boolean;

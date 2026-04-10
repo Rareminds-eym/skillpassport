@@ -1,7 +1,6 @@
 import { useParams, useLocation } from 'react-router-dom';
-import ProfileEditSection from '../../components/Students/components/ProfileEditSection';
-import StudentPublicViewer from '../../components/Students/components/StudentPublicViewer';
-import { useUser } from '../../stores';
+import { ProfileEditSection, StudentPublicViewer } from '@/widgets/student-dashboard';
+import { useUser } from '@/stores';
 
 const Profile = () => {
   const { studentId } = useParams(); // Get studentId from URL if viewing someone else's profile

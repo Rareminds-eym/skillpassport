@@ -1,21 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/features/auth';
 import { useUser } from '@/stores';
-import { useStudentProfile } from '../../features/student-profile/model/useStudentProfile';
-import { useStudentDataByEmail } from '@/hooks/useStudentDataByEmail';
+import { useStudentProfile } from '@/features/student-profile/model/useStudentProfile';
+import { useStudentDataByEmail } from '@/entities/student';
 
 // Import student type detection service
-import { getStudentTypeInfo } from '../../services/collegeClassService';
-import { getLogger } from '../../config/logging';
+import { getStudentTypeInfo } from '@/features/college-admin';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('MyClass');
 
 // Import School Components
-import SchoolMyClass from '../../components/Myclass/SchoolMyClass';
+import { SchoolMyClass } from '@/features/myclass';
 
 // Import College Components  
-import CollegeMyClass from '../../components/Myclass/CollegeMyClass';
+import { CollegeMyClass } from '@/features/myclass';
 
 /**
  * MyClass - Smart Router Component

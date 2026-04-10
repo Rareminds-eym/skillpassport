@@ -1,19 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { getLogger } from '../../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 import { 
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
-  EllipsisVerticalIcon,
-  PhoneIcon,
-  VideoCameraIcon,
-  PaperClipIcon,
-  FaceSmileIcon,
   ArchiveBoxIcon,
   ChevronRightIcon,
   ArrowUturnLeftIcon,
-  ChevronLeftIcon,
   TrashIcon,
   UserGroupIcon,
   ChatBubbleLeftRightIcon,
@@ -23,19 +17,20 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import MessageService, { Conversation } from '../../../services/messageService';
-import { supabase } from '../../../lib/supabaseClient';
-import { useEducatorMessages } from '../../../hooks/useEducatorMessages.js';
-import { useEducatorAdminMessages } from '../../../hooks/useEducatorAdminMessages.js';
+import { MessageService, Conversation } from '@/features/messaging';
+import { supabase } from '@/shared/api/supabaseClient';
+import { useEducatorMessages } from '@/features/educator';
+import { useEducatorAdminMessages } from '@/features/educator';
 import { formatDistanceToNow } from 'date-fns';
-import { useUser } from '../../../stores';
-import { useGlobalPresence } from '../../../stores';
-import { useRealtimePresence } from '../../../hooks/useRealtimePresence';
-import { useTypingIndicator } from '../../../hooks/useTypingIndicator';
-import { useNotificationBroadcast } from '../../../hooks/useNotificationBroadcast';
-import DeleteConversationModal from '../../../components/messaging/DeleteConversationModal';
-import NewStudentConversationModal from '../../../components/messaging/NewStudentConversationModal';
-import NewSchoolAdminEducatorConversationModal from '../../../components/messaging/NewSchoolAdminEducatorConversationModal';
+import { useUser } from '@/stores';
+import { useGlobalPresence } from '@/stores';
+import { useRealtimePresence } from '@/shared/lib/hooks';
+import { useTypingIndicator } from '@/shared/lib/hooks';
+import { useNotificationBroadcast } from '@/features/broadcast';
+import { DeleteConversationModal } from '@/features/messaging';
+import { NewStudentConversationModal } from '@/features/messaging';
+import { NewSchoolAdminEducatorConversationModal } from '@/features/messaging';
+import { authSessionService } from '@/features/auth';
 
 const logger = getLogger('school-admin-student-communication');
 
@@ -111,7 +106,7 @@ const StudentCommunication = () => {
       
       // Fallback: Check organizations table for school admins
       logger.info('Trying fallback: organizations table');
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       logger.info('Current user', { userId: user?.id, email: user?.email });
       
       if (user) {

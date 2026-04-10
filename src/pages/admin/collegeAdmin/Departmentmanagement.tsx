@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useUser } from '@/stores';
-import { departmentService, DepartmentWithStats, Faculty } from '@/services/college/departmentService';
+import { departmentService, DepartmentWithStats, Faculty } from '@/features/college-admin';
 import {
     AcademicCapIcon,
     BookOpenIcon,
@@ -23,19 +23,21 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from 'react-hot-toast';
-import Pagination from "../../../components/admin/Pagination";
-import SearchBar from "../../../components/common/SearchBar";
-import { supabase } from '../../../lib/supabaseClient';
-import { getLogger } from '../../../config/logging';
+import { Pagination } from '@/shared/ui';
+import { SearchBar } from '@/shared/ui';
+import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('college-admin-department-management');
 
 // Import modal components
-import AddDepartmentModal from "../../../components/admin/collegeAdmin/AddDepartmentModal";
-import DepartmentDetailsDrawer from "../../../components/admin/collegeAdmin/DepartmentDetailsDrawer";
-import EditDepartmentModal from "../../../components/admin/collegeAdmin/EditDepartmentModal";
-import FacultyAssignmentModal from "../../../components/admin/collegeAdmin/FacultyAssignmentModal";
-import HODAssignmentModal from "../../../components/admin/collegeAdmin/HODAssignmentModal";
+import {
+  AddDepartmentModal,
+  DepartmentDetailsDrawer,
+  EditDepartmentModal,
+  FacultyAssignmentModal,
+  HODAssignmentModal
+} from '@/features/college-admin';
 import { ConfirmationModal } from '@/shared/ui';
 
 // Types

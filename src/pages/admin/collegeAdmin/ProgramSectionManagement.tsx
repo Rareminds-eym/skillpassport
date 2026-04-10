@@ -11,9 +11,10 @@ import {
   MagnifyingGlassIcon,
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
-import { supabase } from "../../../lib/supabaseClient";
+import { supabase } from '@/shared/api/supabaseClient';
 import toast from "react-hot-toast";
-import { getLogger } from "../../../config/logging";
+import { getLogger } from '@/shared/config/logging';
+import { authSessionService } from '@/features/auth';
 
 interface ProgramSection {
   id: string;
@@ -71,7 +72,7 @@ const ProgramSectionManagement: React.FC = () => {
 
   useEffect(() => {
     const fetchCollegeId = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       if (!user) return;
       
       try {
@@ -229,7 +230,7 @@ const ProgramSectionManagement: React.FC = () => {
 
   const handleSaveSection = async (data: Partial<ProgramSection>) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       
       if (selectedSection) {
         // Update existing section

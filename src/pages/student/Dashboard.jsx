@@ -42,11 +42,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import toast, { Toaster } from "react-hot-toast";
 import { useLocation, useNavigate } from "react-router-dom";
-import { getLogger } from '../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('Dashboard');
-import AchievementsTimeline from "../../components/Students/components/AchievementsTimeline";
-import AnalyticsView from "../../components/Students/components/AnalyticsView";
 import {
   CertificatesEditModal,
   EducationEditModal,
@@ -54,16 +52,16 @@ import {
   ProjectsEditModal,
   SkillsEditModal,
   TrainingEditModal,
-} from "../../components/Students/components/ProfileEditModals";
-import TrainingRecommendations from "../../components/Students/components/TrainingRecommendations";
+} from '@/widgets/student-dashboard/ui/modals';
+import { AchievementsTimeline, AnalyticsView, TrainingRecommendations } from '@/widgets/student-dashboard';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/ui';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "../../components/Students/components/ui/dropdown-menu";
-import { LampContainer } from "../../components/Students/components/ui/lamp";
+} from '@/shared/ui';
+import { LampContainer } from '@/shared/ui';
 import {
   educationData,
   experienceData,
@@ -71,25 +69,24 @@ import {
   suggestions,
   technicalSkills,
   trainingData,
-} from "../../components/Students/data/mockData";
-import { useAIRecommendations } from "../../hooks/useAIRecommendations";
-import { useAssessmentRecommendations } from "../../hooks/useAssessmentRecommendations";
-import { useUserRole } from "../../stores";
-import { useOpportunities } from "../../hooks/useOpportunities";
+} from "@/shared/lib/test/mockData";
+import { useAIRecommendations } from '@/features/ai-tutor';
+import { useAssessmentRecommendations } from '@/features/assessment/model/useAssessmentRecommendations';
+import { useUserRole } from "@/stores";
+import { useOpportunities } from '@/features/opportunities';
 import { useStudentProfile, useStudentPortfolio, useStudentActivity, useStudentMessages } from "@/features/student-profile";
-import { useStudentDataByEmail } from "@/hooks/useStudentDataByEmail";
-import { useStudentCertificates } from "@/hooks/useStudentCertificates";
-import { useStudentLearning } from "@/hooks/useStudentLearning";
-import { useStudentProjects } from "../../hooks/useStudentProjects";
-import { useStudentExperience } from "../../hooks/useStudentExperience";
-import { useStudentEducation } from "../../hooks/useStudentEducation";
-import { useStudentTechnicalSkills, useStudentSoftSkills } from "../../hooks/useStudentSkills";
-import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
-import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
-import { useStudentAchievements } from "../../hooks/useStudentAchievements";
-import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
-import { supabase } from "../../lib/supabaseClient";
-import { isSchoolStudent, isCollegeStudent, isLearner } from '../../utils/studentType';
+import { useStudentDataByEmail } from '@/entities/student';
+import { useStudentCertificates } from '@/entities/student';
+import { useStudentLearning } from '@/entities/student';
+import { useStudentProjects } from '@/entities/student';
+import { useStudentExperience } from '@/entities/student';
+import { useStudentEducation } from '@/entities/student';
+import { useStudentTechnicalSkills, useStudentSoftSkills } from '@/entities/student';
+import { useStudentMessageNotifications, useStudentUnreadCount } from '@/entities/student';
+import { useStudentAchievements } from '@/entities/student';
+import { useStudentRealtimeActivities } from '@/shared/lib/hooks';
+import { supabase } from '@/shared/api/supabaseClient';
+import { isSchoolStudent, isCollegeStudent, isLearner } from '@/entities/student/lib/studentType';
 // Debug utilities removed for production cleanliness
 
 // Import Tour Components - Now handled globally

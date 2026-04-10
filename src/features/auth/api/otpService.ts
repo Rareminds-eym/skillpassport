@@ -3,7 +3,7 @@
  * Connects to Cloudflare Pages Function
  */
 
-import { getPagesApiUrl } from '../../../utils/pagesUrl';
+import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
 
 const API_URL = getPagesApiUrl('otp');
 

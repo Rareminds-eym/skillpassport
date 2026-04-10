@@ -15,8 +15,9 @@ import {
     XMarkIcon,
 } from "@heroicons/react/24/outline";
 import React, { useEffect, useMemo, useState } from "react";
-import { supabase } from "../../lib/supabaseClient";
-import { getLogger } from "../../config/logging";
+import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+import { authSessionService } from '@/features/auth';
 
 const logger = getLogger('MarkAttendance');
 
@@ -109,7 +110,7 @@ const MarkAttendance: React.FC = () => {
   useEffect(() => {
     const fetchEducatorInfo = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await authSessionService.getUser();
         if (!user) {
           logger.info('No user found');
           return;

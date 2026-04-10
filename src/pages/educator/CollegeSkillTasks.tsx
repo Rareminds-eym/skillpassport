@@ -11,12 +11,14 @@ import {
   MoreVertical,
   Trash2
 } from "lucide-react";
-import { supabase } from "../../lib/supabaseClient";
-import { useEducatorSchool } from "../../hooks/useEducatorSchool";
+import { supabase } from '@/shared/api/supabaseClient';
+import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
 import toast from "react-hot-toast";
-import * as collegeAssignmentService from "../../services/collegeAssignmentService";
-import { getDocumentUrl, uploadMultipleFiles, deleteFile } from "../../services/fileUploadService";
-import { getLogger } from "../../config/logging";
+import * as collegeAssignmentService from "@/features/college-admin";
+import { getDocumentUrl, uploadMultipleFiles } from '@/shared/api';
+import { deleteFile } from '@/shared/api/storageApiService';
+import { getLogger } from '@/shared/config/logging';
+import { authSessionService } from '@/features/auth';
 
 const logger = getLogger('CollegeSkillTasks');
 
@@ -224,7 +226,7 @@ export default function CollegeSkillTasks() {
             setLoading(true);
             
             // Get current user
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await authSessionService.getUser();
             if (!user) {
                 toast.error('User not authenticated');
                 return;
@@ -250,7 +252,7 @@ export default function CollegeSkillTasks() {
         if (!educatorCollege?.id) return;
         
         // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await authSessionService.getUser();
         if (!user) return;
         
         const { data, error } = await collegeAssignmentService.fetchEducatorDepartments(user.id);
@@ -266,7 +268,7 @@ export default function CollegeSkillTasks() {
         if (!educatorCollege?.id) return;
         
         // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await authSessionService.getUser();
         if (!user) return;
         
         const { data, error } = await collegeAssignmentService.fetchEducatorPrograms(
@@ -490,7 +492,7 @@ export default function CollegeSkillTasks() {
         // Fetch programs for this department
         if (departmentId) {
             logger.info('Fetching programs for department', { departmentId });
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await authSessionService.getUser();
             if (user) {
                 logger.info('User ID', { userId: user.id });
                 const { data, error } = await collegeAssignmentService.fetchEducatorPrograms(user.id, departmentId);
@@ -534,7 +536,7 @@ export default function CollegeSkillTasks() {
         // Fetch courses for this program
         if (programId) {
             logger.info('Fetching courses for program', { programId });
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await authSessionService.getUser();
             if (user) {
                 logger.info('User ID', { userId: user.id });
                 const { data, error } = await collegeAssignmentService.fetchEducatorCoursesByProgram(user.id, programId);
@@ -625,7 +627,7 @@ export default function CollegeSkillTasks() {
                 return;
             }
 
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await authSessionService.getUser();
             if (!user) {
                 toast.error("User not authenticated");
                 return;
@@ -788,7 +790,7 @@ export default function CollegeSkillTasks() {
             setSelectedAssignment(null);
             
             // Refresh statistics
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await authSessionService.getUser();
             if (user) {
                 await fetchStatistics(user.id);
             }
@@ -999,7 +1001,7 @@ export default function CollegeSkillTasks() {
             });
             
             // Refresh assignments
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await authSessionService.getUser();
             if (user) {
                 await fetchAssignments(user.id);
                 await fetchStatistics(user.id);
@@ -1026,7 +1028,7 @@ export default function CollegeSkillTasks() {
             setSelectedAssignment(null);
             
             // Refresh assignments
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await authSessionService.getUser();
             if (user) {
                 await fetchAssignments(user.id);
                 await fetchStatistics(user.id);
