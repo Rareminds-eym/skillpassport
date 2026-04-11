@@ -52,9 +52,9 @@ export default defineConfig({
             : parts[0];
 
           // React core - keep together to avoid circular deps
-          if (packageName === 'react' || packageName === 'react-dom' || 
-              packageName === 'react-router-dom' || packageName === 'react-is' || 
-              packageName === 'scheduler') {
+          if (packageName === 'react' || packageName === 'react-dom' ||
+            packageName === 'react-router-dom' || packageName === 'react-is' ||
+            packageName === 'scheduler') {
             return 'vendor-react';
           }
 
@@ -70,8 +70,8 @@ export default defineConfig({
 
           // Large individual packages that need their own chunks
           if (packageName === '@supabase/supabase-js' || packageName === '@supabase/postgrest-js' ||
-              packageName === '@supabase/realtime-js' || packageName === '@supabase/storage-js' ||
-              packageName === '@supabase/functions-js' || packageName === '@supabase/auth-js') {
+            packageName === '@supabase/realtime-js' || packageName === '@supabase/storage-js' ||
+            packageName === '@supabase/functions-js' || packageName === '@supabase/auth-js') {
             return `vendor-${packageName.replace(/[@\/]/g, '-')}`;
           }
 
@@ -105,35 +105,30 @@ export default defineConfig({
           }
 
           // PDF libraries
-          if (packageName === 'jspdf' || packageName === 'jspdf-autotable' || 
-              packageName === 'pdfjs-dist' || packageName === 'pdf-lib' ||
-              packageName === 'html2canvas') {
+          if (packageName === 'jspdf' || packageName === 'jspdf-autotable' ||
+            packageName === 'pdfjs-dist' || packageName === 'pdf-lib' ||
+            packageName === 'html2canvas') {
             return `vendor-${packageName}`;
           }
 
           // AI libraries
-          if (packageName === '@google/generative-ai' || packageName === 'openai' || 
-              packageName === '@xenova/transformers') {
+          if (packageName === '@google/generative-ai' || packageName === 'openai' ||
+            packageName === '@xenova/transformers') {
             return `vendor-${packageName.replace(/[@\/]/g, '-')}`;
           }
 
           // Animation libraries
-          if (packageName === 'framer-motion' || packageName === 'motion' || 
-              packageName === 'gsap' || packageName === 'lottie-react' ||
-              packageName === '@tsparticles/react' || packageName === '@tsparticles/slim' ||
-              packageName === '@lottiefiles/dotlottie-react') {
+          if (packageName === 'framer-motion' || packageName === 'motion' ||
+            packageName === 'gsap' || packageName === 'lottie-react' ||
+            packageName === '@tsparticles/react' || packageName === '@tsparticles/slim' ||
+            packageName === '@lottiefiles/dotlottie-react') {
             return `vendor-${packageName.replace(/[@\/]/g, '-')}`;
           }
 
           // Icon libraries
           if (packageName === 'react-icons' || packageName === '@heroicons/react' ||
-              packageName === '@tabler/icons-react') {
+            packageName === '@tabler/icons-react') {
             return `vendor-${packageName.replace(/[@\/]/g, '-')}`;
-          }
-
-          // Sentry
-          if (packageName === '@sentry/react') {
-            return 'vendor-sentry-react';
           }
 
           // Everything else gets its own chunk to avoid exceeding 25MB limit
