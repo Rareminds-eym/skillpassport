@@ -1,75 +1,21 @@
 /**
  * Monitoring Configuration for Organization Subscription Management
  * 
- * This module configures:
- * - Sentry for error tracking
+ * This module provides:
+ * - Error capture (console-based, Sentry-ready stub)
  * - Performance monitoring
  * - Custom metrics collection
  * - Alert thresholds
  */
 
-import * as Sentry from '@sentry/react';
-
 // Environment detection
 const isDevelopment = import.meta.env.DEV;
-const isProduction = import.meta.env.PROD;
-
-// Sentry DSN from environment
-const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN;
 
 /**
- * Initialize Sentry error tracking
+ * Initialize error tracking (no-op stub, Sentry removed)
  */
 export function initializeSentry(): void {
-  if (!SENTRY_DSN) {
-    console.warn('Sentry DSN not configured. Error tracking disabled.');
-    return;
-  }
-
-  Sentry.init({
-    dsn: SENTRY_DSN,
-    environment: isProduction ? 'production' : 'development',
-    
-    // Performance Monitoring
-    tracesSampleRate: isProduction ? 0.1 : 1.0, // 10% in prod, 100% in dev
-    
-    // Session Replay (optional)
-    replaysSessionSampleRate: 0.1,
-    replaysOnErrorSampleRate: 1.0,
-    
-    // Release tracking
-    release: import.meta.env.VITE_APP_VERSION || 'unknown',
-    
-    // Filter out non-critical errors
-    beforeSend(event, hint) {
-      // Don't send errors in development
-      if (isDevelopment) {
-        console.error('Sentry would send:', event);
-        return null;
-      }
-      
-      // Filter out known non-critical errors
-      const error = hint.originalException;
-      if (error instanceof Error) {
-        // Ignore network errors that are expected
-        if (error.message.includes('Network request failed')) {
-          return null;
-        }
-        // Ignore user-initiated cancellations
-        if (error.message.includes('AbortError')) {
-          return null;
-        }
-      }
-      
-      return event;
-    },
-    
-    // Integrations
-    integrations: [
-      Sentry.browserTracingIntegration(),
-      Sentry.replayIntegration(),
-    ],
-  });
+  console.warn('Sentry is not configured. Error tracking disabled.');
 }
 
 /**
@@ -79,41 +25,27 @@ export function captureError(
   error: Error,
   context?: Record<string, unknown>
 ): void {
-  Sentry.withScope((scope) => {
-    if (context) {
-      scope.setExtras(context);
-    }
-    Sentry.captureException(error);
-  });
+  console.error('[captureError]', error.message, context);
 }
 
 /**
- * Set user context for error tracking
+ * Set user context for error tracking (no-op stub)
  */
-export function setUserContext(user: {
+export function setUserContext(_user: {
   id: string;
   email?: string;
   role?: string;
   organizationId?: string;
   organizationType?: string;
 }): void {
-  Sentry.setUser({
-    id: user.id,
-    email: user.email,
-  });
-  
-  Sentry.setTags({
-    userRole: user.role,
-    organizationId: user.organizationId,
-    organizationType: user.organizationType,
-  });
+  // no-op
 }
 
 /**
- * Clear user context on logout
+ * Clear user context on logout (no-op stub)
  */
 export function clearUserContext(): void {
-  Sentry.setUser(null);
+  // no-op
 }
 
 
@@ -156,23 +88,10 @@ export function trackPerformance(
   duration: number,
   metadata?: Record<string, unknown>
 ): void {
-  // Log to console in development
   if (isDevelopment) {
     console.log(`[Performance] ${name}: ${duration}ms`, metadata);
   }
-  
-  // Send to Sentry as custom measurement
-  Sentry.addBreadcrumb({
-    category: 'performance',
-    message: name,
-    data: {
-      duration,
-      ...metadata,
-    },
-    level: 'info',
-  });
-  
-  // Track as custom metric
+
   if (typeof window !== 'undefined' && 'performance' in window) {
     performance.mark(`${name}-end`);
   }
@@ -183,7 +102,7 @@ export function trackPerformance(
  */
 export function startMeasurement(name: string): () => number {
   const startTime = performance.now();
-  
+
   return () => {
     const duration = performance.now() - startTime;
     trackPerformance(name, duration);
@@ -215,17 +134,6 @@ export function trackOrgMetrics(
   organizationId: string,
   metrics: OrgSubscriptionMetrics
 ): void {
-  Sentry.addBreadcrumb({
-    category: 'metrics',
-    message: 'Organization subscription metrics',
-    data: {
-      organizationId,
-      ...metrics,
-    },
-    level: 'info',
-  });
-  
-  // Log warning if utilization is very low or very high
   if (metrics.utilizationRate < 20) {
     console.warn(`Low seat utilization (${metrics.utilizationRate}%) for org ${organizationId}`);
   } else if (metrics.utilizationRate > 95) {
@@ -245,13 +153,6 @@ export function trackPaymentEvent(
     errorMessage?: string;
   }
 ): void {
-  Sentry.addBreadcrumb({
-    category: 'payment',
-    message: `Payment ${event}`,
-    data,
-    level: event === 'failed' ? 'error' : 'info',
-  });
-  
   if (event === 'failed') {
     captureError(new Error(`Payment failed: ${data.errorMessage}`), data);
   }
@@ -269,10 +170,5 @@ export function trackLicenseEvent(
     count?: number;
   }
 ): void {
-  Sentry.addBreadcrumb({
-    category: 'license',
-    message: `License ${event}`,
-    data,
-    level: 'info',
-  });
+  // no-op — previously sent Sentry breadcrumb
 }

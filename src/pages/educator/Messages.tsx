@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { 
+import {
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
   EllipsisVerticalIcon,
@@ -36,7 +36,9 @@ import { DeleteConversationModal, ConversationModal } from '@/features/messaging
 import { supabase } from '@/shared/api/supabaseClient';
 import NewCollegeEducatorAdminConversationModal from '@/features/messaging/ui/NewCollegeEducatorAdminConversationModal';
 import NewCollegeLecturerConversationModal from '@/features/messaging/ui/NewCollegeLecturerConversationModal';
-import { logger } from '@sentry/react';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('college-lecturer-messages');
 
 const CollegeLecturerMessages = () => {
   const location = useLocation();
@@ -46,20 +48,20 @@ const CollegeLecturerMessages = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; conversationId: string | null; contactName: string }>({ 
-    isOpen: false, 
-    conversationId: null, 
-    contactName: '' 
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; conversationId: string | null; contactName: string }>({
+    isOpen: false,
+    conversationId: null,
+    contactName: ''
   });
   const [showNewConversationModal, setShowNewConversationModal] = useState(false);
   const [showTabDropdown, setShowTabDropdown] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const markedAsReadRef = useRef<Set<string>>(new Set());
   const tabDropdownRef = useRef<HTMLDivElement>(null);
-  
+
   // Tab management - college students and college admin
   const [activeTab, setActiveTab] = useState<'college_students' | 'college_admin'>('college_students');
-  
+
   // Get college lecturer ID from auth
   const user = useUser();
   logger.info('🔍 Raw user object from auth:', user);
@@ -68,17 +70,17 @@ const CollegeLecturerMessages = () => {
   logger.info('🔍 Final userId value:', userId);
   const lecturerName = user?.name || 'College Lecturer';
   const queryClient = useQueryClient();
-  
+
   // Define userAuthId early for use in useEffect  
   const userAuthId = userId; // For auth/user operations (needs auth user ID)
-  
+
   // Handle navigation from student management page
-  const targetStudent = location.state as { 
-    targetStudentId?: string; 
-    targetStudentName?: string; 
-    targetStudentEmail?: string; 
+  const targetStudent = location.state as {
+    targetStudentId?: string;
+    targetStudentName?: string;
+    targetStudentEmail?: string;
   } | null;
-  
+
   // Get college lecturer details
   const { data: collegeLecturerData } = useQuery({
     queryKey: ['college-lecturer-details', userId],
@@ -90,7 +92,7 @@ const CollegeLecturerMessages = () => {
         .select('id, collegeId, first_name, last_name, email, department, specialization')
         .eq('user_id', userId)
         .single();
-      
+
       if (error) {
         logger.error('❌ Error fetching college lecturer details:', error);
         throw error;
@@ -100,36 +102,36 @@ const CollegeLecturerMessages = () => {
     },
     enabled: !!userId,
   });
-  
+
   const collegeId = collegeLecturerData?.collegeId;
   const collegeLecturerRecordId = collegeLecturerData?.id;
-  
+
   // Get college admin ID
   const { data: collegeAdminData } = useQuery({
     queryKey: ['college-admin-id', collegeId],
     queryFn: async () => {
       if (!collegeId) return null;
-      
+
       const { data, error } = await supabase
         .from('organizations')
         .select('id, name, admin_id')
         .eq('id', collegeId)
         .eq('organization_type', 'college')
         .single();
-      
+
       if (error) {
         logger.error('❌ Error fetching college admin ID:', error);
         return null;
       }
-      
+
       logger.info('✅ College admin data:', data);
       return data;
     },
     enabled: !!collegeId,
   });
-  
+
   const collegeAdminId = collegeAdminData?.admin_id;
-  
+
   // Fetch active college student conversations
   const { data: activeCollegeStudentConversations = [], isLoading: loadingActiveCollegeStudents, refetch: refetchActiveCollegeStudents } = useQuery({
     queryKey: ['college-lecturer-conversations', collegeLecturerRecordId, 'active'],
@@ -155,7 +157,7 @@ const CollegeLecturerMessages = () => {
     queryFn: async () => {
       if (!collegeLecturerRecordId) return [];
       const allConversations = await MessageService.getUserConversations(collegeLecturerRecordId, 'college_educator', true);
-      return allConversations.filter(conv => 
+      return allConversations.filter(conv =>
         conv.conversation_type === 'student_college_educator' && conv.status === 'archived'
       );
     },
@@ -238,7 +240,7 @@ const CollegeLecturerMessages = () => {
       return showArchived ? refetchArchivedCollegeAdmin : refetchActiveCollegeAdmin;
     }
   }, [activeTab, showArchived, refetchArchivedCollegeStudents, refetchActiveCollegeStudents, refetchArchivedCollegeAdmin, refetchActiveCollegeAdmin]);
-  
+
   // Debug conversations loading
   useEffect(() => {
     logger.info('🔍 [College-Messages-Page] === CONVERSATIONS DEBUG ===');
@@ -249,16 +251,16 @@ const CollegeLecturerMessages = () => {
       currentConversations: conversations?.length || 0,
       loadingConversations
     });
-    
+
     if (conversations && conversations.length > 0) {
       logger.info('📋 [College-Messages-Page] Sample conversation:', conversations[0]);
-      logger.info('📋 [College-Messages-Page] All conversation IDs:', 
+      logger.info('📋 [College-Messages-Page] All conversation IDs:',
         conversations.map(c => ({ id: c.id, student_name: c.student?.name }))
       );
     }
     logger.info('🏁 [College-Messages-Page] === CONVERSATIONS DEBUG END ===');
   }, [activeCollegeStudentConversations, archivedCollegeStudentConversations, conversations, showArchived, loadingConversations]);
-  
+
   // Fetch messages for selected conversation - use appropriate hook based on tab
   const studentMessages = useCollegeLecturerMessages({
     conversationId: activeTab === 'college_students' ? selectedConversationId : null,
@@ -282,7 +284,7 @@ const CollegeLecturerMessages = () => {
       isLoading: loadingMessages,
       hasMessages: !!messages && messages.length > 0
     });
-    
+
     if (messages && messages.length > 0) {
       logger.info('📨 [College-Messages-Page] First message:', messages[0]);
       logger.info('📨 [College-Messages-Page] Last message:', messages[messages.length - 1]);
@@ -294,7 +296,7 @@ const CollegeLecturerMessages = () => {
 
   // Use shared global presence context
   const { isUserOnline: isUserOnlineGlobal } = useGlobalPresence();
-  
+
   // Debug presence system
   useEffect(() => {
     logger.info('🔍 [Messages] Global presence system loaded');
@@ -336,7 +338,7 @@ const CollegeLecturerMessages = () => {
       setShowTabDropdown(false);
     }
   }, []);
-  
+
   useEffect(() => {
     if (showTabDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
@@ -347,7 +349,7 @@ const CollegeLecturerMessages = () => {
   // Subscribe to conversation updates
   useEffect(() => {
     if (!collegeLecturerRecordId) return;
-    
+
     const subscription = MessageService.subscribeToUserConversations(
       collegeLecturerRecordId,
       'college_educator',
@@ -355,29 +357,29 @@ const CollegeLecturerMessages = () => {
         // Handle both student and admin conversations
         if (conversation.conversation_type === 'student_college_educator') {
           logger.info('🔄 [College Lecturer] Student conversation UPDATE:', conversation);
-          
+
           if (conversation.deleted_by_college_educator) {
             logger.info('❌ [College Lecturer] Ignoring deleted student conversation:', conversation.id);
             return;
           }
-          
-          queryClient.invalidateQueries({ 
+
+          queryClient.invalidateQueries({
             queryKey: ['college-lecturer-conversations', collegeLecturerRecordId, 'active'],
             refetchType: 'active'
           });
-          queryClient.invalidateQueries({ 
+          queryClient.invalidateQueries({
             queryKey: ['college-lecturer-conversations', collegeLecturerRecordId, 'archived'],
             refetchType: 'active'
           });
         } else if (conversation.conversation_type === 'college_educator_admin') {
           logger.info('🔄 [College Lecturer] Admin conversation UPDATE:', conversation);
-          
+
           if (conversation.deleted_by_educator) {
             logger.info('❌ [College Lecturer] Ignoring deleted admin conversation:', conversation.id);
             return;
           }
-          
-          queryClient.invalidateQueries({ 
+
+          queryClient.invalidateQueries({
             queryKey: ['college-educator-admin-conversations', collegeLecturerRecordId, 'college_educator', collegeId],
             refetchType: 'active'
           });
@@ -389,49 +391,49 @@ const CollegeLecturerMessages = () => {
       subscription.unsubscribe();
     };
   }, [collegeLecturerRecordId, queryClient, collegeId]);
-  
+
   // Mark messages as read when conversation is selected
   useEffect(() => {
     if (!selectedConversationId || !collegeLecturerRecordId) return;
-    
+
     const conversation = conversations.find(c => c.id === selectedConversationId);
-    const hasUnread = activeTab === 'college_students' 
+    const hasUnread = activeTab === 'college_students'
       ? (conversation?.college_educator_unread_count || 0) > 0
       : (conversation?.educator_unread_count || 0) > 0;
-    
+
     if (!hasUnread) return;
-    
-    const unreadCount = activeTab === 'college_students' 
-      ? conversation?.college_educator_unread_count 
+
+    const unreadCount = activeTab === 'college_students'
+      ? conversation?.college_educator_unread_count
       : conversation?.educator_unread_count;
     const markKey = `${selectedConversationId}-${unreadCount}`;
     if (markedAsReadRef.current.has(markKey)) return;
     markedAsReadRef.current.add(markKey);
-    
+
     // Optimistically update the UI
     const queryKey = activeTab === 'college_students'
       ? ['college-lecturer-conversations', collegeLecturerRecordId, 'active']
       : ['college-educator-admin-conversations', collegeLecturerRecordId, 'college_educator', collegeId, 'active'];
-    
+
     queryClient.setQueryData<typeof conversations>(queryKey, (oldData) => {
       if (!oldData) return oldData;
-      return oldData.map(conv => 
-        conv.id === selectedConversationId 
-          ? { 
-              ...conv, 
-              ...(activeTab === 'college_students' 
-                ? { college_educator_unread_count: 0 }
-                : { educator_unread_count: 0 }
-              )
-            }
+      return oldData.map(conv =>
+        conv.id === selectedConversationId
+          ? {
+            ...conv,
+            ...(activeTab === 'college_students'
+              ? { college_educator_unread_count: 0 }
+              : { educator_unread_count: 0 }
+            )
+          }
           : conv
       );
     });
-    
+
     MessageService.markConversationAsRead(selectedConversationId, collegeLecturerRecordId)
       .then(() => {
         // Force cache invalidation after successful mark as read
-        queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({
           queryKey: queryKey,
           refetchType: 'active'
         });
@@ -442,7 +444,7 @@ const CollegeLecturerMessages = () => {
         refetchConversations();
       });
   }, [selectedConversationId, collegeLecturerRecordId, conversations, queryClient, refetchConversations, activeTab, collegeId]);
-  
+
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async ({ conversationId }: { conversationId: string }) => {
@@ -453,28 +455,28 @@ const CollegeLecturerMessages = () => {
       const queryKey = activeTab === 'college_students'
         ? ['college-lecturer-conversations', collegeLecturerRecordId]
         : ['college-educator-admin-conversations', collegeLecturerRecordId, 'college_educator', collegeId];
-      
+
       await queryClient.cancelQueries({ queryKey });
-      
+
       const previousData = queryClient.getQueryData(queryKey);
-      
+
       // Update the appropriate query data
       if (activeTab === 'college_students') {
         queryClient.setQueryData(['college-lecturer-conversations', collegeLecturerRecordId, 'active'], (old: any) => {
           if (!old) return [];
-          return old.map((conv: any) => 
+          return old.map((conv: any) =>
             conv.id === conversationId ? { ...conv, _pendingDelete: true } : conv
           );
         });
       } else {
         queryClient.setQueryData(['college-educator-admin-conversations', collegeLecturerRecordId, 'college_educator', collegeId, 'active'], (old: any) => {
           if (!old) return [];
-          return old.map((conv: any) => 
+          return old.map((conv: any) =>
             conv.id === conversationId ? { ...conv, _pendingDelete: true } : conv
           );
         });
       }
-      
+
       return { previousData, conversationId };
     },
     onError: () => {
@@ -495,21 +497,21 @@ const CollegeLecturerMessages = () => {
       }
     }
   });
-  
+
   // Handle archive/unarchive
   const handleToggleArchive = useCallback(async (conversationId: string, isArchiving: boolean) => {
     setIsTransitioning(true);
-    
+
     try {
       if (selectedConversationId === conversationId) {
         setSelectedConversationId(null);
       }
-      
-      await (isArchiving 
+
+      await (isArchiving
         ? MessageService.archiveConversation(conversationId)
         : MessageService.unarchiveConversation(conversationId)
       );
-      
+
       // Refetch appropriate conversations based on active tab
       if (activeTab === 'college_students') {
         await Promise.all([
@@ -531,18 +533,18 @@ const CollegeLecturerMessages = () => {
   // Handle delete conversation
   const handleDeleteConversation = useCallback(async () => {
     if (!deleteModal.conversationId || !collegeLecturerRecordId) return;
-    
+
     const conversationId = deleteModal.conversationId;
     const contactName = deleteModal.contactName;
-    
+
     if (selectedConversationId === conversationId) {
       setSelectedConversationId(null);
     }
-    
+
     setDeleteModal({ isOpen: false, conversationId: null, contactName: '' });
-    
+
     deleteMutation.mutate({ conversationId });
-    
+
     // Show undo toast
     toast.success(`Conversation with ${contactName} deleted`, {
       duration: 5000,
@@ -553,12 +555,12 @@ const CollegeLecturerMessages = () => {
   const openDeleteModal = useCallback((conversationId: string, contactName: string) => {
     setDeleteModal({ isOpen: true, conversationId, contactName });
   }, []);
-  
+
   // Transform and filter conversations
   const filteredContacts = useMemo(() => {
     logger.info('🔍 [Messages] Processing conversations for activeTab:', activeTab);
     logger.info('🔍 [Messages] Raw conversations:', conversations);
-    
+
     const activeConversations = conversations.filter((conv: any) => !conv._pendingDelete);
     logger.info('🔍 [Messages] Active conversations after filtering:', activeConversations);
 
@@ -569,7 +571,7 @@ const CollegeLecturerMessages = () => {
         const studentUniversity = conv.student?.university || '';
         const studentBranch = conv.student?.branch_field || '';
         const subject = conv.subject || 'General Discussion';
-        
+
         // Build role string with university and branch info
         let role = subject;
         if (studentUniversity) {
@@ -578,7 +580,7 @@ const CollegeLecturerMessages = () => {
         if (studentBranch) {
           role += ` (${studentBranch})`;
         }
-        
+
         const isOnline = isUserOnlineGlobal(conv.student_id);
         logger.info('🔍 [Messages] Student online check:', {
           studentId: conv.student_id,
@@ -586,7 +588,7 @@ const CollegeLecturerMessages = () => {
           isOnline,
           checkedWith: 'isUserOnlineGlobal'
         });
-        
+
         return {
           id: conv.id,
           name: studentName,
@@ -594,7 +596,7 @@ const CollegeLecturerMessages = () => {
           avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=3B82F6&color=fff`,
           lastMessage: conv.last_message_preview || 'No messages yet',
           online: isOnline,
-          time: conv.last_message_at 
+          time: conv.last_message_at
             ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })
             : 'No messages',
           unread: conv.college_educator_unread_count || 0,
@@ -607,11 +609,11 @@ const CollegeLecturerMessages = () => {
         logger.info('🔍 [Messages] Processing college admin conversation:', conv);
         const adminName = conv.college?.name ? `${conv.college.name} Admin` : 'College Admin';
         const subject = conv.subject || 'General Discussion';
-        
+
         // Use admin ID from conversation data or fallback to directly fetched admin ID
         const adminId = conv.college?.admin_id || collegeAdminId;
         const isOnline = isUserOnlineGlobal(adminId);
-        
+
         logger.info('🔍 [Messages] Admin online check:', {
           adminId,
           adminName,
@@ -620,7 +622,7 @@ const CollegeLecturerMessages = () => {
           conversationAdminId: conv.college?.admin_id,
           fallbackAdminId: collegeAdminId
         });
-        
+
         const contact = {
           id: conv.id,
           name: adminName,
@@ -628,7 +630,7 @@ const CollegeLecturerMessages = () => {
           avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(adminName)}&background=3B82F6&color=fff`,
           lastMessage: conv.last_message_preview || 'No messages yet',
           online: isOnline,
-          time: conv.last_message_at 
+          time: conv.last_message_at
             ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })
             : 'No messages',
           unread: conv.educator_unread_count || 0,
@@ -636,23 +638,23 @@ const CollegeLecturerMessages = () => {
           subject: conv.subject,
           type: 'college_admin'
         };
-        
+
         logger.info('🔍 [Messages] Mapped college admin contact:', contact);
         return contact;
       }
     });
 
     if (!searchQuery) return contacts;
-    
+
     const query = searchQuery.toLowerCase();
-    return contacts.filter(c => 
-      c.name.toLowerCase().includes(query) || 
+    return contacts.filter(c =>
+      c.name.toLowerCase().includes(query) ||
       c.role.toLowerCase().includes(query) ||
       c.lastMessage.toLowerCase().includes(query)
     );
   }, [conversations, searchQuery, isUserOnlineGlobal, activeTab, collegeAdminId]);
 
-  const currentChat = useMemo(() => 
+  const currentChat = useMemo(() =>
     filteredContacts.find(c => c.id === selectedConversationId),
     [filteredContacts, selectedConversationId]
   );
@@ -660,7 +662,7 @@ const CollegeLecturerMessages = () => {
   const handleSendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageInput.trim() || !currentChat || !userAuthId) return;
-    
+
     try {
       if (activeTab === 'college_students') {
         // Send message to college student
@@ -672,7 +674,7 @@ const CollegeLecturerMessages = () => {
           messageText: messageInput,
           subject: currentChat.subject
         });
-        
+
         // Send notification to student
         try {
           await sendNotification(currentChat.studentId, {
@@ -694,7 +696,7 @@ const CollegeLecturerMessages = () => {
           messageText: messageInput,
           subject: currentChat.subject
         });
-        
+
         // Send notification to admin
         try {
           await sendNotification(currentChat.adminId, {
@@ -707,7 +709,7 @@ const CollegeLecturerMessages = () => {
           // Silent fail
         }
       }
-      
+
       setMessageInput('');
       setTyping(false);
     } catch (error) {
@@ -730,7 +732,7 @@ const CollegeLecturerMessages = () => {
     logger.info('🔍 [College-Messages-Page] === DISPLAY MESSAGES DEBUG ===');
     logger.info('📨 Raw messages:', messages);
     logger.info('📊 Messages count:', messages?.length || 0);
-    
+
     const processed = messages.map((msg: any) => {
       logger.info('🔄 [College-Messages-Page] Processing message:', {
         id: msg.id,
@@ -739,7 +741,7 @@ const CollegeLecturerMessages = () => {
         text: msg.message_text?.substring(0, 50) + '...',
         created_at: msg.created_at
       });
-      
+
       return {
         id: msg.id,
         text: msg.message_text,
@@ -748,10 +750,10 @@ const CollegeLecturerMessages = () => {
         status: msg.is_read ? 'read' : 'delivered'
       };
     });
-    
+
     logger.info('✅ [College-Messages-Page] Processed messages:', processed);
     logger.info('🏁 [College-Messages-Page] === DISPLAY MESSAGES DEBUG END ===');
-    
+
     return processed;
   }, [messages]);
 
@@ -775,7 +777,7 @@ const CollegeLecturerMessages = () => {
             <div className="px-6 py-5 border-b border-gray-200">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-900">Messages</h2>
-                
+
                 <div className="flex items-center gap-3 ml-4">
                   {/* New Button */}
                   {!showArchived && (
@@ -792,7 +794,7 @@ const CollegeLecturerMessages = () => {
                       New
                     </button>
                   )}
-                  
+
                   {/* Tab Dropdown */}
                   <div className="relative" ref={tabDropdownRef}>
                     <button
@@ -814,7 +816,7 @@ const CollegeLecturerMessages = () => {
                       )}
                       <ChevronDownIcon className="w-4 h-4 text-blue-600 flex-shrink-0" />
                     </button>
-                    
+
                     {/* Dropdown Menu */}
                     {showTabDropdown && (
                       <div className="absolute top-full right-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
@@ -825,9 +827,8 @@ const CollegeLecturerMessages = () => {
                             setSelectedConversationId(null);
                             setShowArchived(false);
                           }}
-                          className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center gap-3 ${
-                            activeTab === 'college_students' ? 'bg-blue-50 text-blue-900' : 'text-gray-700'
-                          }`}
+                          className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center gap-3 ${activeTab === 'college_students' ? 'bg-blue-50 text-blue-900' : 'text-gray-700'
+                            }`}
                         >
                           <AcademicCapIcon className="w-4 h-4 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
@@ -847,9 +848,8 @@ const CollegeLecturerMessages = () => {
                             setSelectedConversationId(null);
                             setShowArchived(false);
                           }}
-                          className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center gap-3 border-t border-gray-100 ${
-                            activeTab === 'college_admin' ? 'bg-blue-50 text-blue-900' : 'text-gray-700'
-                          }`}
+                          className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center gap-3 border-t border-gray-100 ${activeTab === 'college_admin' ? 'bg-blue-50 text-blue-900' : 'text-gray-700'
+                            }`}
                         >
                           <UserIcon className="w-4 h-4 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
@@ -867,7 +867,7 @@ const CollegeLecturerMessages = () => {
                   </div>
                 </div>
               </div>
-              
+
               {/* Search */}
               <div className="relative">
                 <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -898,31 +898,31 @@ const CollegeLecturerMessages = () => {
             {/* Contacts List */}
             <div className="flex-1 overflow-y-auto relative">
               {/* Archived Button */}
-              {!showArchived && 
-               !loadingConversations && 
-               (activeTab === 'college_students' ? archivedCollegeStudentConversations : archivedCollegeAdminConversations).length > 0 && (
-                <button
-                  onClick={() => {
-                    setShowArchived(true);
-                    setIsTransitioning(true);
-                    setTimeout(() => setIsTransitioning(false), 300);
-                  }}
-                  className="w-full px-6 py-4 flex items-center justify-between border-b border-gray-200 hover:bg-gray-50 transition-colors group"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                      <ArchiveBoxIcon className="w-6 h-6 text-gray-600" />
+              {!showArchived &&
+                !loadingConversations &&
+                (activeTab === 'college_students' ? archivedCollegeStudentConversations : archivedCollegeAdminConversations).length > 0 && (
+                  <button
+                    onClick={() => {
+                      setShowArchived(true);
+                      setIsTransitioning(true);
+                      setTimeout(() => setIsTransitioning(false), 300);
+                    }}
+                    className="w-full px-6 py-4 flex items-center justify-between border-b border-gray-200 hover:bg-gray-50 transition-colors group"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                        <ArchiveBoxIcon className="w-6 h-6 text-gray-600" />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="font-bold text-gray-900 text-sm">Archived</h3>
+                        <p className="text-xs text-gray-500">
+                          {(activeTab === 'college_students' ? archivedCollegeStudentConversations : archivedCollegeAdminConversations).length} conversation{(activeTab === 'college_students' ? archivedCollegeStudentConversations : archivedCollegeAdminConversations).length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <h3 className="font-bold text-gray-900 text-sm">Archived</h3>
-                      <p className="text-xs text-gray-500">
-                        {(activeTab === 'college_students' ? archivedCollegeStudentConversations : archivedCollegeAdminConversations).length} conversation{(activeTab === 'college_students' ? archivedCollegeStudentConversations : archivedCollegeAdminConversations).length !== 1 ? 's' : ''}
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRightIcon className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-                </button>
-              )}
+                    <ChevronRightIcon className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                  </button>
+                )}
 
               {/* Loading indicator during transition */}
               {isTransitioning && (
@@ -945,23 +945,23 @@ const CollegeLecturerMessages = () => {
                     )}
                   </div>
                   <p className="text-gray-600 text-sm font-medium">
-                    {showArchived 
-                      ? 'No archived conversations' 
-                      : searchQuery 
-                      ? `No conversations found for "${searchQuery}"` 
-                      : activeTab === 'college_students'
-                      ? 'No college student messages yet'
-                      : 'No college admin messages yet'
+                    {showArchived
+                      ? 'No archived conversations'
+                      : searchQuery
+                        ? `No conversations found for "${searchQuery}"`
+                        : activeTab === 'college_students'
+                          ? 'No college student messages yet'
+                          : 'No college admin messages yet'
                     }
                   </p>
                   <p className="text-gray-400 text-xs mt-2 mb-4">
-                    {showArchived 
-                      ? 'Archived conversations will appear here' 
-                      : searchQuery 
-                      ? 'Try searching by name, subject, or message content' 
-                      : activeTab === 'college_students'
-                      ? 'College students will message you about courses and assignments'
-                      : 'Start conversations with college administration'
+                    {showArchived
+                      ? 'Archived conversations will appear here'
+                      : searchQuery
+                        ? 'Try searching by name, subject, or message content'
+                        : activeTab === 'college_students'
+                          ? 'College students will message you about courses and assignments'
+                          : 'Start conversations with college administration'
                     }
                   </p>
                   {searchQuery && (
@@ -983,7 +983,7 @@ const CollegeLecturerMessages = () => {
                       </button>
                       <button
                         onClick={() => {
-                          toast(activeTab === 'college_students' 
+                          toast(activeTab === 'college_students'
                             ? 'College students will initiate conversations with you from their Messages page'
                             : 'You can start conversations with college administration for academic matters', {
                             icon: 'ℹ️',
@@ -1001,11 +1001,10 @@ const CollegeLecturerMessages = () => {
                 filteredContacts.map((contact) => (
                   <div
                     key={contact.id}
-                    className={`relative w-full flex items-center border-b border-gray-100 group transition-all duration-200 ${
-                      selectedConversationId === contact.id 
-                        ? 'bg-blue-50 border-l-4 border-l-blue-600' 
+                    className={`relative w-full flex items-center border-b border-gray-100 group transition-all duration-200 ${selectedConversationId === contact.id
+                        ? 'bg-blue-50 border-l-4 border-l-blue-600'
                         : 'hover:bg-gray-50 border-l-4 border-l-transparent'
-                    }`}
+                      }`}
                   >
                     <button
                       onClick={() => {
@@ -1053,7 +1052,7 @@ const CollegeLecturerMessages = () => {
                         </div>
                       )}
                     </button>
-                    
+
                     {/* Quick Actions on Hover */}
                     <div className="flex items-center gap-1 pr-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       {/* Archive/Unarchive Button */}
@@ -1071,7 +1070,7 @@ const CollegeLecturerMessages = () => {
                           <ArchiveBoxIcon className="w-4 h-4 text-gray-600" />
                         )}
                       </button>
-                      
+
                       {/* Delete Button */}
                       <button
                         onClick={(e) => {
@@ -1152,7 +1151,7 @@ const CollegeLecturerMessages = () => {
                       </div>
                       <p className="text-gray-600 font-semibold">No messages yet</p>
                       <p className="text-gray-400 text-sm mt-2">
-                        {activeTab === 'college_students' 
+                        {activeTab === 'college_students'
                           ? 'Start the conversation with your college student!'
                           : 'Start the conversation with college administration!'
                         }
@@ -1166,20 +1165,18 @@ const CollegeLecturerMessages = () => {
                       >
                         <div className="max-w-[70%]">
                           <div
-                            className={`rounded-2xl px-4 py-2.5 shadow-sm ${
-                              message.sender === 'me'
+                            className={`rounded-2xl px-4 py-2.5 shadow-sm ${message.sender === 'me'
                                 ? 'bg-blue-600 text-white'
                                 : 'bg-white text-gray-900 border border-gray-200'
-                            }`}
+                              }`}
                           >
                             <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                               {message.text}
                             </p>
                             <div className="flex items-center justify-end gap-2 mt-1">
                               <span
-                                className={`text-xs ${
-                                  message.sender === 'me' ? 'text-blue-100' : 'text-gray-400'
-                                }`}
+                                className={`text-xs ${message.sender === 'me' ? 'text-blue-100' : 'text-gray-400'
+                                  }`}
                               >
                                 {message.time}
                               </span>
@@ -1190,7 +1187,7 @@ const CollegeLecturerMessages = () => {
                       </div>
                     ))
                   )}
-                  
+
                   {/* Typing indicator */}
                   {isAnyoneTyping && (
                     <div className="flex justify-start">
@@ -1206,7 +1203,7 @@ const CollegeLecturerMessages = () => {
                       </div>
                     </div>
                   )}
-                  
+
                   <div ref={messagesEndRef} />
                 </div>
 
@@ -1298,7 +1295,7 @@ const CollegeLecturerMessages = () => {
           onCreateConversation={async ({ studentId, collegeLecturerId: lecturerId, programSectionId, subject, initialMessage }) => {
             try {
               logger.info('🚀 Creating college lecturer conversation:', { studentId, lecturerId, collegeId, programSectionId, subject, initialMessage });
-              
+
               const conversation = await MessageService.getOrCreateStudentCollegeLecturerConversation(
                 studentId,
                 lecturerId,
@@ -1328,7 +1325,7 @@ const CollegeLecturerMessages = () => {
               // Refetch conversations and select the new one
               await refetchActiveCollegeStudents();
               setSelectedConversationId(conversation.id);
-              
+
               toast.success('Conversation started with college student!');
             } catch (error) {
               logger.error('❌ Error creating college lecturer conversation:', error);
@@ -1348,7 +1345,7 @@ const CollegeLecturerMessages = () => {
           onCreateConversation={async ({ educatorId, collegeId: cId, adminId, subject, initialMessage }) => {
             try {
               logger.info('🚀 Creating college educator-admin conversation:', { educatorId, collegeId: cId, adminId, subject, initialMessage });
-              
+
               const conversation = await MessageService.getOrCreateCollegeEducatorAdminConversation(
                 educatorId,
                 cId,
@@ -1376,7 +1373,7 @@ const CollegeLecturerMessages = () => {
               // Refetch conversations and select the new one
               await refetchActiveCollegeAdmin();
               setSelectedConversationId(conversation.id);
-              
+
               toast.success('Conversation started with college admin!');
             } catch (error) {
               logger.error('❌ Error creating college educator-admin conversation:', error);
