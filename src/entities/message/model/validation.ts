@@ -159,7 +159,13 @@ export function isValidMessageText(text: string): boolean {
 }
 
 export function sanitizeMessageText(text: string): string {
-  return text.trim();
+  return text
+    .trim()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // ============================================================================
