@@ -17,14 +17,14 @@ export * from './model';
 // API & Data Access
 export * from './api';
 export { getAssignmentsByStudentId } from './api/assignmentsService';
-export { deleteResource } from './api/coursesService';
-export { addLesson } from './api/coursesService';
+export { deleteResource } from '@/features/educator/api/coursesService';
+export { addLesson } from '@/features/educator/api/coursesService';
 export { submitAssignmentWithStagedFiles } from './api/assignmentsService';
-export { addResource } from './api/coursesService';
+export { addResource } from '@/features/educator/api/coursesService';
 export { updateAssignmentStatus } from './api/assignmentsService';
 export { getAssignmentWithFiles } from './api/assignmentsService';
-export { deleteLesson } from './api/coursesService';
-export { updateLesson } from './api/coursesService';
+export { deleteLesson } from '@/features/educator/api/coursesService';
+export { updateLesson } from '@/features/educator/api/coursesService';
 export { getCurrentEducator } from './api/educatorService';
 export { getAssignmentStats } from './api/assignmentsService';
 
