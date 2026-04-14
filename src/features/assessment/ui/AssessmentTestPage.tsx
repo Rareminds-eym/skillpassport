@@ -695,9 +695,10 @@ const AssessmentTestPage: React.FC = () => {
           // Show section complete screen so user can submit
           flow.setShowSectionIntro(false);
           flow.setCurrentScreen('assessment');
-          setTimeout(() => {
+          const timer = setTimeout(() => {
             flow.completeSection();
           }, 100);
+          return () => clearTimeout(timer);
         } else {
 
           // Move to next section automatically

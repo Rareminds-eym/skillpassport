@@ -94,7 +94,8 @@ const CollegeAssignments: React.FC = () => {
 
   // Simulate loading
   useEffect(() => {
-    setTimeout(() => setLoading(false), 1000);
+    const timer = setTimeout(() => setLoading(false), 1000);
+    return () => clearTimeout(timer);
   }, []);
 
   // Helper function to parse date as local time
@@ -109,7 +110,7 @@ const CollegeAssignments: React.FC = () => {
     return assignments.filter(assignment => {
       if (selectedStatus !== 'all' && assignment.status !== selectedStatus) return false;
       if (searchQuery && !assignment.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
-          !assignment.course_name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+        !assignment.course_name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       return true;
     });
   }, [assignments, selectedStatus, searchQuery]);
@@ -126,7 +127,7 @@ const CollegeAssignments: React.FC = () => {
     const dueDateStr = dueDate.replace('Z', '').replace('+00:00', '').replace('T', ' ');
     const localDue = new Date(dueDateStr);
     const diffTime = localDue.getTime() - now.getTime();
-    
+
     if (diffTime < 0) {
       const overdueDays = Math.floor(Math.abs(diffTime) / (1000 * 60 * 60 * 24));
       if (overdueDays > 0) {
@@ -134,10 +135,10 @@ const CollegeAssignments: React.FC = () => {
       }
       return <span className="text-red-700 font-medium">Overdue</span>;
     }
-    
+
     const remainingDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     const remainingHours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    
+
     if (remainingDays > 1) {
       return <span className="text-gray-600">{remainingDays} days left</span>;
     } else if (remainingDays === 1) {
@@ -243,7 +244,7 @@ const CollegeAssignments: React.FC = () => {
                 />
               </div>
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Status</label>
               <div className="relative">
@@ -273,8 +274,8 @@ const CollegeAssignments: React.FC = () => {
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No Assignments Found</h3>
               <p className="text-gray-600">
-                {searchQuery || selectedStatus !== 'all' 
-                  ? 'Try adjusting your filters' 
+                {searchQuery || selectedStatus !== 'all'
+                  ? 'Try adjusting your filters'
                   : 'Your assignments will appear here when educators create them'}
               </p>
             </div>
@@ -282,41 +283,38 @@ const CollegeAssignments: React.FC = () => {
             filteredAssignments.map(assignment => {
               const overdueStatus = isOverdue(assignment.due_date);
               const isSubmitted = assignment.status === 'submitted' || assignment.status === 'graded';
-              
+
               return (
-                <div 
-                  key={assignment.assignment_id} 
-                  className={`bg-white rounded-xl shadow-sm border-2 transition-all hover:shadow-md ${
-                    overdueStatus && !isSubmitted
-                      ? 'border-red-200 bg-red-50/30' 
+                <div
+                  key={assignment.assignment_id}
+                  className={`bg-white rounded-xl shadow-sm border-2 transition-all hover:shadow-md ${overdueStatus && !isSubmitted
+                      ? 'border-red-200 bg-red-50/30'
                       : isSubmitted
-                      ? 'border-green-200 bg-green-50/30'
-                      : 'border-gray-200'
-                  }`}
+                        ? 'border-green-200 bg-green-50/30'
+                        : 'border-gray-200'
+                    }`}
                 >
                   {/* Status Bar */}
-                  <div className={`h-2 rounded-t-xl ${
-                    overdueStatus && !isSubmitted
-                      ? 'bg-gradient-to-r from-red-400 to-red-600' 
+                  <div className={`h-2 rounded-t-xl ${overdueStatus && !isSubmitted
+                      ? 'bg-gradient-to-r from-red-400 to-red-600'
                       : isSubmitted
-                      ? 'bg-gradient-to-r from-green-400 to-green-600'
-                      : assignment.status === 'in-progress'
-                      ? 'bg-gradient-to-r from-blue-400 to-blue-600'
-                      : 'bg-gradient-to-r from-gray-300 to-gray-400'
-                  }`} />
-                  
+                        ? 'bg-gradient-to-r from-green-400 to-green-600'
+                        : assignment.status === 'in-progress'
+                          ? 'bg-gradient-to-r from-blue-400 to-blue-600'
+                          : 'bg-gradient-to-r from-gray-300 to-gray-400'
+                    }`} />
+
                   <div className="p-6">
                     {/* Header */}
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                          <div className={`p-2 rounded-xl ${
-                            overdueStatus && !isSubmitted
-                              ? 'bg-red-100 text-red-600' 
+                          <div className={`p-2 rounded-xl ${overdueStatus && !isSubmitted
+                              ? 'bg-red-100 text-red-600'
                               : isSubmitted
-                              ? 'bg-green-100 text-green-600'
-                              : 'bg-blue-100 text-blue-600'
-                          }`}>
+                                ? 'bg-green-100 text-green-600'
+                                : 'bg-blue-100 text-blue-600'
+                            }`}>
                             <ClipboardList className="w-5 h-5" />
                           </div>
                           <div className="flex-1">
@@ -421,7 +419,7 @@ const CollegeAssignments: React.FC = () => {
                         <FileText className="w-4 h-4" />
                         View Details
                       </button>
-                      
+
                       {assignment.status !== 'submitted' && assignment.status !== 'graded' && (
                         <button
                           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"

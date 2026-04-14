@@ -1,21 +1,21 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import {
-    Building2,
-    Check,
-    CheckCheck,
-    ChevronDown,
-    GraduationCap,
-    Loader2,
-    MoreVertical,
-    Paperclip,
-    Phone,
-    Search,
-    Send,
-    Smile,
-    Trash2,
-    Users,
-    Video
+  Building2,
+  Check,
+  CheckCheck,
+  ChevronDown,
+  GraduationCap,
+  Loader2,
+  MoreVertical,
+  Paperclip,
+  Phone,
+  Search,
+  Send,
+  Smile,
+  Trash2,
+  Users,
+  Video
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -96,7 +96,7 @@ const Messages = () => {
   // - College Admin: Only if student has university_college_id
   const availableTabs = useMemo(() => {
     const tabs = ['recruiters'];
-    
+
     // Educators tab only for non-learners
     if (!isLearnerUser) {
       tabs.push('educators');
@@ -302,9 +302,11 @@ const Messages = () => {
         }
 
         // Clear tab switching state after fetch completes
+        let timer;
         fetchPromise.finally(() => {
-          setTimeout(() => setIsTabSwitching(false), 300); // Small delay for smooth UX
+          timer = setTimeout(() => setIsTabSwitching(false), 300); // Small delay for smooth UX
         });
+        return () => clearTimeout(timer);
       } else {
         setIsTabSwitching(false);
       }
@@ -328,7 +330,7 @@ const Messages = () => {
       school_id: conversation.school_id,
       college_id: conversation.college_id
     });
-    
+
     // Try JOIN data first (if it works)
     if (conversation.conversation_type === 'student_admin' && conversation.school_organization?.admin_id) {
       return conversation.school_organization.admin_id;
@@ -336,7 +338,7 @@ const Messages = () => {
     if (conversation.conversation_type === 'student_college_admin' && conversation.college_organization?.admin_id) {
       return conversation.college_organization.admin_id;
     }
-    
+
     // Dynamic lookup for school admin
     if (conversation.conversation_type === 'student_admin' && conversation.school_id) {
       try {
@@ -346,7 +348,7 @@ const Messages = () => {
           .eq('id', conversation.school_id)
           .eq('organization_type', 'school')
           .single();
-        
+
         if (schoolOrg?.admin_id) {
           logger.info('Found school admin dynamically', { adminId: schoolOrg.admin_id });
           return schoolOrg.admin_id;
@@ -355,7 +357,7 @@ const Messages = () => {
         logger.error('Error fetching school admin', error);
       }
     }
-    
+
     // Dynamic lookup for college admin
     if (conversation.conversation_type === 'student_college_admin' && conversation.college_id) {
       try {
@@ -365,7 +367,7 @@ const Messages = () => {
           .eq('id', conversation.college_id)
           .eq('organization_type', 'college')
           .single();
-        
+
         if (collegeOrg?.admin_id) {
           logger.info('Found college admin dynamically', { adminId: collegeOrg.admin_id });
           return collegeOrg.admin_id;
@@ -374,7 +376,7 @@ const Messages = () => {
         logger.error('Error fetching college admin', error);
       }
     }
-    
+
     return null;
   }, []);
 
@@ -382,18 +384,18 @@ const Messages = () => {
   useEffect(() => {
     const fetchAdminUserIds = async () => {
       if (!conversations || conversations.length === 0) return;
-      
-      const adminConversations = conversations.filter(conv => 
+
+      const adminConversations = conversations.filter(conv =>
         (conv.conversation_type === 'student_admin' || conv.conversation_type === 'student_college_admin') &&
         !adminUserIds[conv.id] // Only fetch if we don't have it yet
       );
-      
+
       if (adminConversations.length === 0) return;
-      
+
       logger.debug('Fetching admin user IDs for conversations', { count: adminConversations.length });
-      
+
       const newAdminUserIds = { ...adminUserIds };
-      
+
       for (const conv of adminConversations) {
         try {
           const adminUserId = await getSchoolAdminUserId(conv);
@@ -405,10 +407,10 @@ const Messages = () => {
           logger.error('Error fetching admin ID for conversation', error, { conversationId: conv.id });
         }
       }
-      
+
       setAdminUserIds(newAdminUserIds);
     };
-    
+
     fetchAdminUserIds();
   }, [conversations, adminUserIds, getSchoolAdminUserId]);
 
@@ -454,19 +456,19 @@ const Messages = () => {
 
   const getAdminOnlineStatus = useCallback((conversation) => {
     logger.debug('Full conversation object', { conversationId: conversation.id });
-    
+
     if (conversation.conversation_type === 'student_admin' || conversation.conversation_type === 'student_college_admin') {
       const adminUserId = adminUserIds[conversation.id];
       // Fix: Check user.userId since globalOnlineUsers contains objects
       const isOnline = adminUserId ? globalOnlineUsers.some(user => user.userId === adminUserId) : false;
-      
+
       logger.debug('Admin online status', {
         conversationId: conversation.id,
         conversationType: conversation.conversation_type,
         adminUserId,
         isOnline
       });
-      
+
       return isOnline;
     }
     return false;
@@ -713,7 +715,7 @@ const Messages = () => {
       // Educator conversations (both school educators and college lecturers)
       return activeConversations.map(conv => {
         const educator = conv.educator;
-        
+
         // Handle college lecturer conversations differently
         if (conv.conversation_type === 'student_college_educator') {
           // College lecturer conversation
@@ -727,7 +729,7 @@ const Messages = () => {
           });
 
           const subject = conv.subject || 'General Discussion';
-          
+
           // For college lecturers, show subject and department/specialization if available
           let role = subject;
           if (educator?.department) {
@@ -943,21 +945,21 @@ const Messages = () => {
           //   classId: currentChat.classId,
           //   subject: currentChat.subject
           // });
-          
-  // Check if it's a college lecturer conversation
-  const receiverType = currentChat.conversationType === 'student_college_educator' 
-    ? 'college_educator'  // ✅ For college lecturers
-    : 'educator';         // ✅ For school educators (unchanged)
-    
-  await sendMessage({
-    senderId: studentId,
-    senderType: 'student',
-    receiverId: currentChat.educatorId,
-    receiverType: receiverType,  // ✅ Use dynamic type
-    messageText: messageInput,
-    classId: currentChat.classId,
-    subject: currentChat.subject
-  });
+
+          // Check if it's a college lecturer conversation
+          const receiverType = currentChat.conversationType === 'student_college_educator'
+            ? 'college_educator'  // ✅ For college lecturers
+            : 'educator';         // ✅ For school educators (unchanged)
+
+          await sendMessage({
+            senderId: studentId,
+            senderType: 'student',
+            receiverId: currentChat.educatorId,
+            receiverType: receiverType,  // ✅ Use dynamic type
+            messageText: messageInput,
+            classId: currentChat.classId,
+            subject: currentChat.subject
+          });
 
 
           // Send notification broadcast to educator
@@ -1290,7 +1292,7 @@ const Messages = () => {
                     New
                     <ChevronDown className="w-4 h-4" />
                   </button>
-                  
+
                   {showNewEducatorDropdown && (
                     <div className="absolute top-full right-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                       {hasSchoolId && (
@@ -1312,7 +1314,7 @@ const Messages = () => {
                           </div>
                         </button>
                       )}
-                      
+
                       {hasCollegeId && (
                         <button
                           onClick={() => {
@@ -1463,13 +1465,13 @@ const Messages = () => {
                           <div className="flex-1">
                             <div className="font-medium">Educators</div>
                             <div className="text-xs text-gray-500">Teacher and class messages</div>
-                        </div>
-                        {educatorConversations.length > 0 && (
-                          <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
-                            {educatorConversations.length}
-                          </span>
-                        )}
-                      </button>
+                          </div>
+                          {educatorConversations.length > 0 && (
+                            <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
+                              {educatorConversations.length}
+                            </span>
+                          )}
+                        </button>
                       )}
 
                       {/* School Admin Tab - Only if student has school_id */}
@@ -1589,7 +1591,7 @@ const Messages = () => {
                   <GraduationCap className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500 text-sm">No educator conversations yet</p>
                   <p className="text-gray-400 text-xs mt-2 mb-4">Message your teachers about classes!</p>
-                  
+
                   {/* Show different buttons based on what's available */}
                   {hasSchoolId && hasCollegeId ? (
                     <div className="space-y-2">
@@ -1930,7 +1932,7 @@ const Messages = () => {
         onConversationCreated={async ({ educatorId, educatorType, classId, subject, initialMessage }) => {
           try {
             logger.info('Creating conversation with educator', { educatorId, educatorType, classId, subject });
-            
+
             let conversation;
             if (educatorType === 'college_lecturer') {
               // Create college lecturer conversation

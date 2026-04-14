@@ -90,8 +90,11 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
       setNewNotificationIds(new Set(newIds));
       setShowNewNotificationToast(true);
 
-      setTimeout(() => setShowNewNotificationToast(false), 3000);
-      setTimeout(() => setNewNotificationIds(new Set()), 3000);
+      const t1 = setTimeout(() => setShowNewNotificationToast(false), 3000);
+      const t2 = setTimeout(() => setNewNotificationIds(new Set()), 3000);
+
+      prevIdsRef.current = currentIds;
+      return () => { clearTimeout(t1); clearTimeout(t2); };
     }
 
     prevIdsRef.current = currentIds;

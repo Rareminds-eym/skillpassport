@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
-import { 
+import {
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
   ArchiveBoxIcon,
@@ -42,10 +42,10 @@ const StudentCommunication = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; conversationId: string | null; contactName: string }>({ 
-    isOpen: false, 
-    conversationId: null, 
-    contactName: '' 
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; conversationId: string | null; contactName: string }>({
+    isOpen: false,
+    conversationId: null,
+    contactName: ''
   });
   const [showNewConversationModal, setShowNewConversationModal] = useState(false);
   const [showNewEducatorConversationModal, setShowNewEducatorConversationModal] = useState(false);
@@ -54,7 +54,7 @@ const StudentCommunication = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const markedAsReadRef = useRef<Set<string>>(new Set());
   const tabDropdownRef = useRef<HTMLDivElement>(null);
-  
+
   // Tab management
   const tabFromUrl = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(() => {
@@ -63,31 +63,31 @@ const StudentCommunication = () => {
     }
     return 'students'; // Default to students
   });
-  
+
   // Get school admin ID from auth
   const user = useUser();
   const schoolAdminId = user?.id;
   const schoolAdminName = user?.name || 'School Admin';
   const queryClient = useQueryClient();
-  
+
   // Handle navigation from student management page
-  const targetStudent = location.state as { 
-    targetStudentId?: string; 
-    targetStudentName?: string; 
-    targetStudentEmail?: string; 
+  const targetStudent = location.state as {
+    targetStudentId?: string;
+    targetStudentName?: string;
+    targetStudentEmail?: string;
   } | null;
-  
+
   // Get school ID for the current admin - use maybeSingle() to avoid 406 error
   const { data: schoolData } = useQuery({
     queryKey: ['school-admin-school', schoolAdminId],
     queryFn: async () => {
       logger.info('Looking up school ID', { schoolAdminId });
-      
+
       if (!schoolAdminId) {
         logger.warn('No school admin ID, returning null');
         return null;
       }
-      
+
       // First try school_educators table
       logger.info('Querying school_educators table');
       const { data, error } = await supabase
@@ -96,19 +96,19 @@ const StudentCommunication = () => {
         .eq('user_id', schoolAdminId)
         .eq('role', 'school_admin')
         .maybeSingle();
-      
+
       logger.info('School educators query result', { hasData: !!data, error });
-      
+
       if (data?.school_id) {
         logger.info('Found school ID in school_educators', { schoolId: data.school_id });
         return { school_id: data.school_id };
       }
-      
+
       // Fallback: Check organizations table for school admins
       logger.info('Trying fallback: organizations table');
       const { data: { user } } = await authSessionService.getUser();
       logger.info('Current user', { userId: user?.id, email: user?.email });
-      
+
       if (user) {
         const { data: org, error: orgError } = await supabase
           .from('organizations')
@@ -116,25 +116,25 @@ const StudentCommunication = () => {
           .eq('organization_type', 'school')
           .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
           .maybeSingle();
-        
+
         logger.info('Organizations query result', { hasOrg: !!org, orgError });
-        
+
         if (org?.id) {
           logger.info('Found school ID in organizations', { schoolId: org.id });
           return { school_id: org.id };
         }
       }
-      
+
       logger.warn('No school ID found in any table');
       return null;
     },
     enabled: !!schoolAdminId,
   });
-  
+
   const schoolId = schoolData?.school_id;
-  
+
   logger.info('Final school ID for queries', { schoolId });
-  
+
   // Fetch active conversations with students using the same pattern as educator
   const { data: activeStudentConversations = [], isLoading: loadingActiveStudents, refetch: refetchActiveStudents } = useQuery({
     queryKey: ['school-admin-conversations', schoolId, 'active'],
@@ -150,7 +150,7 @@ const StudentCommunication = () => {
         .eq('conversation_type', 'student_admin')
         .eq('deleted_by_admin', false)
         .order('last_message_at', { ascending: false, nullsFirst: false });
-      
+
       if (error) throw error;
       return data || [];
     },
@@ -177,7 +177,7 @@ const StudentCommunication = () => {
         .eq('conversation_type', 'student_admin')
         .eq('status', 'archived')
         .order('last_message_at', { ascending: false, nullsFirst: false });
-      
+
       if (error) throw error;
       return data || [];
     },
@@ -194,14 +194,14 @@ const StudentCommunication = () => {
     queryKey: ['school-admin-educator-conversations', schoolId, 'active'],
     queryFn: async () => {
       logger.info('Fetching active educator conversations', { schoolId });
-      
+
       if (!schoolId) {
         logger.warn('No school ID, returning empty array');
         return [];
       }
-      
+
       logger.info('Executing query for active educator conversations');
-      
+
       // 1. Get conversations
       const { data: conversations, error } = await supabase
         .from('conversations')
@@ -210,34 +210,34 @@ const StudentCommunication = () => {
         .eq('conversation_type', 'educator_admin')
         .eq('deleted_by_admin', false)
         .order('last_message_at', { ascending: false, nullsFirst: false });
-      
+
       logger.info('Conversations query result', { count: conversations?.length, error });
-      
+
       if (error) {
         logger.error('Conversations query error', error);
         throw error;
       }
-      
+
       if (!conversations || conversations.length === 0) {
         logger.info('No conversations found, returning empty array');
         return [];
       }
-      
+
       // 2. Get educator IDs and fetch their details
       const educatorIds = conversations.map(c => c.educator_id).filter(Boolean);
       logger.info('Educator IDs to fetch', { educatorIds });
-      
+
       if (educatorIds.length === 0) {
         logger.info('No educator IDs found, returning conversations without educator data');
         return conversations;
       }
-      
+
       const { data: educators, error: educatorError } = await supabase
         .from('school_educators')
         .select('id, first_name, last_name, email, phone_number, photo_url, user_id')
         .in('id', educatorIds);
-      
-      logger.info('Educators query result', { 
+
+      logger.info('Educators query result', {
         count: educators?.length,
         educatorError,
         educatorDetails: educators?.map(edu => ({
@@ -248,19 +248,19 @@ const StudentCommunication = () => {
           has_user_id: !!edu.user_id
         }))
       });
-      
+
       if (educatorError) {
         logger.error('Educators query error', educatorError);
         // Return conversations without educator data rather than failing completely
         return conversations;
       }
-      
+
       // 3. Merge the data
       const conversationsWithEducators = conversations.map(conv => ({
         ...conv,
         school_educators: educators?.find(edu => edu.id === conv.educator_id) || null
       }));
-      
+
       logger.info('Final conversations with educators', { count: conversationsWithEducators.length });
       return conversationsWithEducators;
     },
@@ -277,14 +277,14 @@ const StudentCommunication = () => {
     queryKey: ['school-admin-educator-conversations', schoolId, 'archived'],
     queryFn: async () => {
       logger.info('Fetching archived educator conversations', { schoolId });
-      
+
       if (!schoolId) {
         logger.warn('No school ID, returning empty array');
         return [];
       }
-      
+
       logger.info('Executing query for archived educator conversations');
-      
+
       // 1. Get conversations
       const { data: conversations, error } = await supabase
         .from('conversations')
@@ -293,47 +293,47 @@ const StudentCommunication = () => {
         .eq('conversation_type', 'educator_admin')
         .eq('status', 'archived')
         .order('last_message_at', { ascending: false, nullsFirst: false });
-      
+
       logger.info('Archived conversations query result', { count: conversations?.length, error });
-      
+
       if (error) {
         logger.error('Archived conversations query error', error);
         throw error;
       }
-      
+
       if (!conversations || conversations.length === 0) {
         logger.info('No archived conversations found, returning empty array');
         return [];
       }
-      
+
       // 2. Get educator IDs and fetch their details
       const educatorIds = conversations.map(c => c.educator_id).filter(Boolean);
       logger.info('Archived educator IDs to fetch', { educatorIds });
-      
+
       if (educatorIds.length === 0) {
         logger.info('No archived educator IDs found, returning conversations without educator data');
         return conversations;
       }
-      
+
       const { data: educators, error: educatorError } = await supabase
         .from('school_educators')
         .select('id, first_name, last_name, email, phone_number, photo_url, user_id')
         .in('id', educatorIds);
-      
+
       logger.info('Archived educators query result', { count: educators?.length, educatorError });
-      
+
       if (educatorError) {
         logger.error('Archived educators query error', educatorError);
         // Return conversations without educator data rather than failing completely
         return conversations;
       }
-      
+
       // 3. Merge the data
       const conversationsWithEducators = conversations.map(conv => ({
         ...conv,
         school_educators: educators?.find(edu => edu.id === conv.educator_id) || null
       }));
-      
+
       logger.info('Final archived conversations with educators', { count: conversationsWithEducators.length });
       return conversationsWithEducators;
     },
@@ -346,18 +346,18 @@ const StudentCommunication = () => {
   });
 
   // Get current conversations based on active tab and archived state
-  const conversations = activeTab === 'students' 
+  const conversations = activeTab === 'students'
     ? (showArchived ? archivedStudentConversations : activeStudentConversations)
     : (showArchived ? archivedEducatorConversations : activeEducatorConversations);
-    
+
   const loadingConversations = activeTab === 'students'
     ? (showArchived ? loadingArchivedStudents : loadingActiveStudents)
     : (showArchived ? loadingArchivedEducators : loadingActiveEducators);
-    
+
   const refetchConversations = activeTab === 'students'
     ? (showArchived ? refetchArchivedStudents : refetchActiveStudents)
     : (showArchived ? refetchArchivedEducators : refetchActiveEducators);
-  
+
   // Fetch messages for selected conversation - call both hooks unconditionally
   const studentMessages = useEducatorMessages({
     conversationId: activeTab === 'students' ? selectedConversationId : null,
@@ -370,7 +370,7 @@ const StudentCommunication = () => {
   });
 
   // Select the appropriate messages based on active tab
-  const { messages, isLoading: loadingMessages, sendMessage, isSending } = 
+  const { messages, isLoading: loadingMessages, sendMessage, isSending } =
     activeTab === 'students' ? studentMessages : educatorMessages;
 
   // Use shared global presence context
@@ -384,7 +384,7 @@ const StudentCommunication = () => {
       schoolId,
       hasIsUserOnlineGlobal: typeof isUserOnlineGlobal === 'function'
     });
-    logger.info('Global online users', { 
+    logger.info('Global online users', {
       count: globalOnlineUsers?.length,
       users: globalOnlineUsers?.map(user => ({
         userId: user.userId,
@@ -394,16 +394,16 @@ const StudentCommunication = () => {
         lastSeen: user.lastSeen
       }))
     });
-    
+
     // Check if school admin can see themselves as online
     const isSchoolAdminOnline = isUserOnlineGlobal(schoolAdminId);
     logger.info('School Admin self-online check', { isOnline: isSchoolAdminOnline });
-    
+
     // Look for the educator we're trying to check
     const educatorPresenceId = '5d78d3c6-e53e-48df-887f-fd21e1e58db6'; // The educator's actual presence ID
     const isEducatorOnlineManual = globalOnlineUsers?.some(user => user.userId === educatorPresenceId);
     const isEducatorOnlineFunction = isUserOnlineGlobal(educatorPresenceId);
-    logger.info('Educator online check', { 
+    logger.info('Educator online check', {
       educatorPresenceId,
       isOnlineManual: isEducatorOnlineManual,
       isOnlineFunction: isEducatorOnlineFunction
@@ -458,7 +458,7 @@ const StudentCommunication = () => {
       setShowTabDropdown(false);
     }
   }, []);
-  
+
   useEffect(() => {
     if (showTabDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
@@ -470,28 +470,30 @@ const StudentCommunication = () => {
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
     const newTab = tabFromUrl === 'educators' ? 'educators' : 'students';
-    
+
     if (newTab !== activeTab) {
       logger.info('Tab switching', { from: activeTab, to: newTab });
       setIsTabSwitching(true);
       setActiveTab(newTab);
       setSelectedConversationId(null);
-      
+
       // Force fetch data for the new tab
       if (schoolId) {
         logger.info('Triggering fetch for new tab', { tab: newTab });
-        
+
         let fetchPromise = Promise.resolve();
-        
+
         if (newTab === 'students' && refetchActiveStudents) {
           fetchPromise = refetchActiveStudents();
         } else if (newTab === 'educators' && refetchActiveEducators) {
           fetchPromise = refetchActiveEducators();
         }
-        
+
+        let timer;
         fetchPromise.finally(() => {
-          setTimeout(() => setIsTabSwitching(false), 300);
+          timer = setTimeout(() => setIsTabSwitching(false), 300);
         });
+        return () => clearTimeout(timer);
       } else {
         setIsTabSwitching(false);
       }
@@ -501,22 +503,22 @@ const StudentCommunication = () => {
   // Subscribe to conversation updates
   useEffect(() => {
     if (!schoolId) return;
-    
+
     const subscription = MessageService.subscribeToUserConversations(
       schoolId,
       'school_admin',
       (conversation: Conversation) => {
         // Only handle student-admin conversations
         if (conversation.conversation_type !== 'student_admin') return;
-        
+
         logger.info('Realtime UPDATE detected', { conversationId: conversation.id });
-        
+
         if (conversation.deleted_by_admin) {
           logger.info('Ignoring UPDATE for deleted conversation', { conversationId: conversation.id });
           return;
         }
-        
-        queryClient.invalidateQueries({ 
+
+        queryClient.invalidateQueries({
           queryKey: ['school-admin-conversations', schoolId],
           refetchType: 'active'
         });
@@ -527,7 +529,7 @@ const StudentCommunication = () => {
       subscription.unsubscribe();
     };
   }, [schoolId, queryClient]);
-  
+
   // Auto-create conversation with target student from navigation
   useEffect(() => {
     const createConversationWithStudent = async () => {
@@ -537,19 +539,19 @@ const StudentCommunication = () => {
 
       try {
         logger.info('Auto-creating conversation with student', { targetStudent });
-        
+
         // Check if conversation already exists
-        const existingConversation = activeStudentConversations.find(conv => 
+        const existingConversation = activeStudentConversations.find(conv =>
           conv.student_id === targetStudent.targetStudentId
         );
-        
+
         if (existingConversation) {
           logger.info('Found existing conversation', { conversationId: existingConversation.id });
           setSelectedConversationId(existingConversation.id);
           toast.success(`Opened conversation with ${targetStudent.targetStudentName}`);
           return;
         }
-        
+
         // Create new conversation
         logger.info('Creating new conversation');
         const conversation = await MessageService.getOrCreateStudentAdminConversation(
@@ -557,17 +559,17 @@ const StudentCommunication = () => {
           schoolId,
           'General Discussion' // default subject
         );
-        
+
         logger.info('Conversation created', { conversationId: conversation.id });
-        
+
         // Refresh conversations to include the new one
         await refetchActiveStudents();
-        
+
         // Select the new conversation
         setSelectedConversationId(conversation.id);
-        
+
         toast.success(`Started conversation with ${targetStudent.targetStudentName}`);
-        
+
       } catch (error) {
         logger.error('Error creating conversation', error as Error);
         toast.error(`Failed to start conversation with ${targetStudent.targetStudentName}`);
@@ -576,35 +578,35 @@ const StudentCommunication = () => {
 
     createConversationWithStudent();
   }, [targetStudent, schoolId, activeStudentConversations, loadingConversations, refetchActiveStudents]);
-  
+
   // Mark messages as read when conversation is selected
   useEffect(() => {
     if (!selectedConversationId || !schoolAdminId) return;
-    
+
     const conversation = conversations.find(c => c.id === selectedConversationId);
     const hasUnread = (conversation?.admin_unread_count || 0) > 0;
-    
+
     if (!hasUnread) return;
-    
+
     const markKey = `${selectedConversationId}-${conversation?.admin_unread_count}`;
     if (markedAsReadRef.current.has(markKey)) return;
     markedAsReadRef.current.add(markKey);
-    
+
     // Optimistically update the UI
     queryClient.setQueryData<typeof conversations>(
-      activeTab === 'students' 
+      activeTab === 'students'
         ? ['school-admin-conversations', schoolId, 'active']
         : ['school-admin-educator-conversations', schoolId, 'active'],
       (oldData) => {
         if (!oldData) return oldData;
-        return oldData.map(conv => 
-          conv.id === selectedConversationId 
+        return oldData.map(conv =>
+          conv.id === selectedConversationId
             ? { ...conv, admin_unread_count: 0 }
             : conv
         );
       }
     );
-    
+
     MessageService.markConversationAsRead(selectedConversationId, schoolAdminId)
       .catch(err => {
         logger.error('Failed to mark as read', err);
@@ -612,7 +614,7 @@ const StudentCommunication = () => {
         refetchConversations();
       });
   }, [selectedConversationId, schoolAdminId, conversations, queryClient, refetchConversations, schoolId, activeTab]);
-  
+
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async ({ conversationId }: { conversationId: string }) => {
@@ -621,22 +623,22 @@ const StudentCommunication = () => {
     },
     onMutate: async ({ conversationId }) => {
       await queryClient.cancelQueries({ queryKey: ['school-admin-conversations', schoolId] });
-      
+
       const previousActive = queryClient.getQueryData(['school-admin-conversations', schoolId, 'active']);
       const previousArchived = queryClient.getQueryData(['school-admin-conversations', schoolId, 'archived']);
-      
+
       queryClient.setQueryData(['school-admin-conversations', schoolId, 'active'], (old: any) => {
         if (!old) return [];
-        return old.map((conv: any) => 
+        return old.map((conv: any) =>
           conv.id === conversationId ? { ...conv, _pendingDelete: true } : conv
         );
       });
-      
-      queryClient.invalidateQueries({ 
+
+      queryClient.invalidateQueries({
         queryKey: ['school-admin-conversations', schoolId, 'active'],
         refetchType: 'none'
       });
-      
+
       return { previousActive, previousArchived, conversationId };
     },
     onError: () => {
@@ -648,14 +650,14 @@ const StudentCommunication = () => {
         if (!old) return [];
         return old.filter((conv: any) => conv.id !== variables.conversationId);
       });
-      
-      queryClient.invalidateQueries({ 
+
+      queryClient.invalidateQueries({
         queryKey: ['school-admin-conversations', schoolId, 'active'],
         refetchType: 'none'
       });
     }
   });
-  
+
   // Undo mutation
   const undoMutation = useMutation({
     mutationFn: async ({ conversationId }: { conversationId: string }) => {
@@ -667,23 +669,23 @@ const StudentCommunication = () => {
       refetchConversations();
     }
   });
-  
+
   // Handle archive/unarchive
   const handleToggleArchive = useCallback(async (conversationId: string, isArchiving: boolean) => {
     setIsTransitioning(true);
-    
+
     try {
       if (selectedConversationId === conversationId) {
         setSelectedConversationId(null);
       }
-      
-      await (isArchiving 
+
+      await (isArchiving
         ? MessageService.archiveConversation(conversationId)
         : MessageService.unarchiveConversation(conversationId)
       );
-      
+
       await Promise.all([
-        activeTab === 'students' 
+        activeTab === 'students'
           ? (showArchived ? refetchArchivedStudents() : refetchActiveStudents())
           : (showArchived ? refetchArchivedEducators() : refetchActiveEducators())
       ]);
@@ -698,15 +700,15 @@ const StudentCommunication = () => {
   // Handle new conversation creation
   const handleNewConversation = useCallback(async (studentId: string, subject: string) => {
     if (!schoolId) return;
-    
+
     try {
       logger.info('Creating new conversation with student', { studentId, subject });
-      
+
       // Check if conversation already exists
-      const existingConversation = (activeTab === 'students' ? activeStudentConversations : activeEducatorConversations).find(conv => 
+      const existingConversation = (activeTab === 'students' ? activeStudentConversations : activeEducatorConversations).find(conv =>
         activeTab === 'students' ? conv.student_id === studentId : conv.educator_id === studentId
       );
-      
+
       if (existingConversation) {
         logger.info('Found existing conversation', { conversationId: existingConversation.id });
         setSelectedConversationId(existingConversation.id);
@@ -714,25 +716,25 @@ const StudentCommunication = () => {
         toast.success('Opened existing conversation');
         return;
       }
-      
+
       // Create new conversation
       const conversation = await MessageService.getOrCreateStudentAdminConversation(
         studentId,
         schoolId,
         subject
       );
-      
+
       logger.info('New conversation created', { conversationId: conversation.id });
-      
+
       // Refresh conversations to include the new one
       await (activeTab === 'students' ? refetchActiveStudents() : refetchActiveEducators());
-      
+
       // Select the new conversation
       setSelectedConversationId(conversation.id);
       setShowNewConversationModal(false);
-      
+
       toast.success('New conversation started');
-      
+
     } catch (error) {
       logger.error('Error creating conversation', error as Error);
       toast.error('Failed to start conversation');
@@ -742,15 +744,15 @@ const StudentCommunication = () => {
   // Handle new educator conversation creation
   const handleNewEducatorConversation = useCallback(async ({ educatorId, educatorUserId, subject, initialMessage }: { educatorId: string; educatorUserId: string; subject: string; initialMessage: string }) => {
     if (!schoolId || !schoolAdminId) return;
-    
+
     try {
       logger.info('Creating new conversation with educator', { educatorId, subject });
-      
+
       // Check if conversation already exists
-      const existingConversation = activeEducatorConversations.find(conv => 
+      const existingConversation = activeEducatorConversations.find(conv =>
         conv.educator_id === educatorId && conv.subject === subject
       );
-      
+
       if (existingConversation) {
         logger.info('Found existing conversation', { conversationId: existingConversation.id });
         setSelectedConversationId(existingConversation.id);
@@ -758,16 +760,16 @@ const StudentCommunication = () => {
         toast.success('Opened existing conversation');
         return;
       }
-      
+
       // Create new conversation
       const conversation = await MessageService.getOrCreateEducatorAdminConversation(
         educatorId,
         schoolId,
         subject
       );
-      
+
       logger.info('New educator conversation created', { conversationId: conversation.id });
-      
+
       // Send the initial message
       if (initialMessage.trim()) {
         logger.info('Sending initial message', {
@@ -776,7 +778,7 @@ const StudentCommunication = () => {
           receiverId: educatorId,
           hasMessageText: !!initialMessage?.trim()
         });
-        
+
         await MessageService.sendMessage(
           conversation.id,
           schoolAdminId,
@@ -786,18 +788,18 @@ const StudentCommunication = () => {
           initialMessage
         );
       }
-      
+
       // Refresh conversations to include the new one
       await refetchActiveEducators();
-      
+
       // Switch to educators tab and select the new conversation
       setActiveTab('educators');
       setSearchParams({ tab: 'educators' }, { replace: true });
       setSelectedConversationId(conversation.id);
       setShowNewEducatorConversationModal(false);
-      
+
       toast.success('New conversation started with educator');
-      
+
     } catch (error) {
       logger.error('Error creating educator conversation', error as Error);
       toast.error('Failed to start conversation with educator');
@@ -807,23 +809,23 @@ const StudentCommunication = () => {
   // Handle delete conversation
   const handleDeleteConversation = useCallback(async () => {
     if (!deleteModal.conversationId || !schoolAdminId) return;
-    
+
     const conversationId = deleteModal.conversationId;
     const contactName = deleteModal.contactName;
-    
+
     if (selectedConversationId === conversationId) {
       setSelectedConversationId(null);
     }
-    
+
     setDeleteModal({ isOpen: false, conversationId: null, contactName: '' });
-    
+
     deleteMutation.mutate({ conversationId });
-    
+
     // Show undo toast
     toast.success(`Conversation with ${contactName} deleted`, {
       duration: 5000,
     });
-    
+
     // Add undo button functionality (simplified)
     setTimeout(() => {
       toast('Click here to undo', {
@@ -836,20 +838,20 @@ const StudentCommunication = () => {
   const openDeleteModal = useCallback((conversationId: string, contactName: string) => {
     setDeleteModal({ isOpen: true, conversationId, contactName });
   }, []);
-  
+
   // Transform and filter conversations
   const filteredContacts = useMemo(() => {
-    logger.info('Transforming conversations', { 
-      activeTab, 
-      conversationCount: conversations?.length 
+    logger.info('Transforming conversations', {
+      activeTab,
+      conversationCount: conversations?.length
     });
-    
+
     const activeConversations = conversations.filter((conv: any) => !conv._pendingDelete);
     logger.info('Active conversations after filter', { count: activeConversations?.length });
 
     const contacts = activeConversations.map((conv: any) => {
       logger.info('Processing conversation', { conversationId: conv.id, type: activeTab });
-      
+
       if (activeTab === 'students') {
         // Student conversations
         const studentName = conv.student?.name || conv.student?.email || 'Student';
@@ -857,7 +859,7 @@ const StudentCommunication = () => {
         const studentUniversity = conv.student?.university || '';
         const studentBranch = conv.student?.branch_field || '';
         const subject = conv.subject || 'General Discussion';
-        
+
         // Build role string with university and branch info
         let role = subject;
         if (studentEmail) {
@@ -869,7 +871,7 @@ const StudentCommunication = () => {
         if (studentBranch) {
           role += ` (${studentBranch})`;
         }
-        
+
         const studentContact = {
           id: conv.id,
           name: studentName,
@@ -877,7 +879,7 @@ const StudentCommunication = () => {
           avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=3B82F6&color=fff`,
           lastMessage: conv.last_message_preview || 'No messages yet',
           online: isUserOnlineGlobal(conv.student_id),
-          time: conv.last_message_at 
+          time: conv.last_message_at
             ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })
             : 'No messages',
           unread: conv.admin_unread_count || 0,
@@ -885,7 +887,7 @@ const StudentCommunication = () => {
           subject: conv.subject,
           type: 'student'
         };
-        
+
         logger.info('Student contact created', { contactId: studentContact.id, name: studentContact.name });
         return studentContact;
       } else {
@@ -896,17 +898,17 @@ const StudentCommunication = () => {
           educatorId: conv.educator_id,
           subject: conv.subject
         });
-        
-        const educatorName = `${conv.school_educators?.first_name || ''} ${conv.school_educators?.last_name || ''}`.trim() || 
-                             conv.school_educators?.email || 'Educator';
+
+        const educatorName = `${conv.school_educators?.first_name || ''} ${conv.school_educators?.last_name || ''}`.trim() ||
+          conv.school_educators?.email || 'Educator';
         const educatorEmail = conv.school_educators?.email || '';
         const subject = conv.subject || 'General Discussion';
-        
+
         // FIXED: Use educator_id instead of user_id for online status check
         // The educator connects with their educator_id (5d78d3c6-e53e-48df-887f-fd21e1e58db6)
         // So we should check for that ID instead of the database user_id
         const educatorPresenceId = conv.educator_id; // This is what educator uses for presence
-        
+
         logger.info('Educator data extracted', {
           educatorName,
           educatorEmail,
@@ -918,7 +920,7 @@ const StudentCommunication = () => {
           onlineStatus: isUserOnlineGlobal(educatorPresenceId),
           checkingPresenceId: educatorPresenceId
         });
-        
+
         // DETAILED ONLINE STATUS DEBUG
         logger.info('Online status check', {
           educatorPresenceId,
@@ -932,7 +934,7 @@ const StudentCommunication = () => {
             status: user.status
           }))
         });
-        
+
         // DETAILED USER ID COMPARISON
         logger.info('User ID comparison details', {
           onlineUsers: globalOnlineUsers?.map((user, index) => ({
@@ -948,20 +950,20 @@ const StudentCommunication = () => {
             educator_presence_id_length: educatorPresenceId?.length
           }))
         });
-        
+
         // Check if the educator's presence ID is in the online users
         const isEducatorOnline = globalOnlineUsers?.some(user => user.userId === educatorPresenceId);
         logger.info('Final online check results', {
           manualCheck: isEducatorOnline,
           functionCheck: isUserOnlineGlobal(educatorPresenceId)
         });
-        
+
         // Build role string
         let role = `Educator • ${subject}`;
         if (educatorEmail) {
           role += ` • ${educatorEmail}`;
         }
-        
+
         const educatorContact = {
           id: conv.id,
           name: educatorName,
@@ -969,7 +971,7 @@ const StudentCommunication = () => {
           avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(educatorName)}&background=3B82F6&color=fff`,
           lastMessage: conv.last_message_preview || 'No messages yet',
           online: isUserOnlineGlobal(conv.educator_id), // FIXED: Use educator_id for presence check
-          time: conv.last_message_at 
+          time: conv.last_message_at
             ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })
             : 'No messages',
           unread: conv.admin_unread_count || 0,
@@ -977,7 +979,7 @@ const StudentCommunication = () => {
           subject: conv.subject,
           type: 'educator'
         };
-        
+
         logger.info('Educator contact created', { contactId: educatorContact.id, name: educatorContact.name });
         return educatorContact;
       }
@@ -989,22 +991,22 @@ const StudentCommunication = () => {
       logger.info('No search query, returning all contacts');
       return contacts;
     }
-    
+
     const query = searchQuery.toLowerCase();
-    const filteredResults = contacts.filter(c => 
-      c.name.toLowerCase().includes(query) || 
+    const filteredResults = contacts.filter(c =>
+      c.name.toLowerCase().includes(query) ||
       c.role.toLowerCase().includes(query) ||
       c.lastMessage.toLowerCase().includes(query)
     );
-    
-    logger.info('Search results', { 
-      query, 
-      resultCount: filteredResults?.length 
+
+    logger.info('Search results', {
+      query,
+      resultCount: filteredResults?.length
     });
     return filteredResults;
   }, [conversations, searchQuery, isUserOnlineGlobal, activeTab]);
 
-  const currentChat = useMemo(() => 
+  const currentChat = useMemo(() =>
     filteredContacts.find(c => c.id === selectedConversationId),
     [filteredContacts, selectedConversationId]
   );
@@ -1012,7 +1014,7 @@ const StudentCommunication = () => {
   const handleSendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageInput.trim() || !currentChat || !schoolAdminId) return;
-    
+
     try {
       if (activeTab === 'students') {
         // Send message to student
@@ -1024,7 +1026,7 @@ const StudentCommunication = () => {
           messageText: messageInput,
           subject: currentChat.subject
         });
-        
+
         // Send notification to student
         try {
           await sendNotification(currentChat.studentId, {
@@ -1044,7 +1046,7 @@ const StudentCommunication = () => {
           .select('user_id')
           .eq('id', currentChat.educatorId)
           .maybeSingle();
-        
+
         if (educatorError || !educator) {
           toast.error('Could not find educator');
           return;
@@ -1067,7 +1069,7 @@ const StudentCommunication = () => {
           messageText: messageInput,
           subject: currentChat.subject
         });
-        
+
         // Send notification to educator
         try {
           await sendNotification(educator.user_id, {
@@ -1080,7 +1082,7 @@ const StudentCommunication = () => {
           // Silent fail
         }
       }
-      
+
       setMessageInput('');
       setTyping(false);
     } catch (error) {
@@ -1110,20 +1112,20 @@ const StudentCommunication = () => {
   //   [messages]
   // );
   const displayMessages = useMemo(() => {
-  // First, deduplicate messages by ID
-  const uniqueMessages = messages.filter((msg, index, arr) => 
-    arr.findIndex(m => m.id === msg.id) === index
-  );
-  
-  // Then map to display format
-  return uniqueMessages.map((msg: any) => ({
-    id: msg.id,
-    text: msg.message_text,
-    sender: msg.sender_type === 'school_admin' ? 'me' : 'them',
-    time: formatDistanceToNow(new Date(msg.created_at), { addSuffix: true }),
-    status: msg.is_read ? 'read' : 'delivered'
-  }));
-}, [messages]);
+    // First, deduplicate messages by ID
+    const uniqueMessages = messages.filter((msg, index, arr) =>
+      arr.findIndex(m => m.id === msg.id) === index
+    );
+
+    // Then map to display format
+    return uniqueMessages.map((msg: any) => ({
+      id: msg.id,
+      text: msg.message_text,
+      sender: msg.sender_type === 'school_admin' ? 'me' : 'them',
+      time: formatDistanceToNow(new Date(msg.created_at), { addSuffix: true }),
+      status: msg.is_read ? 'read' : 'delivered'
+    }));
+  }, [messages]);
 
 
   const renderStatusIcon = useCallback((status: string) => (
@@ -1146,7 +1148,7 @@ const StudentCommunication = () => {
             <div className="px-6 py-5 border-b border-gray-200">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-900">Messages</h2>
-                
+
                 <div className="flex items-center gap-2">
                   {/* New Button - Show for both tabs */}
                   {!showArchived && (
@@ -1158,11 +1160,10 @@ const StudentCommunication = () => {
                           setShowNewEducatorConversationModal(true);
                         }
                       }}
-                      className={`px-3 py-2 ${
-                        activeTab === 'students' 
-                          ? 'bg-blue-600 hover:bg-blue-700' 
+                      className={`px-3 py-2 ${activeTab === 'students'
+                          ? 'bg-blue-600 hover:bg-blue-700'
                           : 'bg-blue-600 hover:bg-blue-700'
-                      } text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2`}
+                        } text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2`}
                       title={`Start new conversation with ${activeTab === 'students' ? 'student' : 'educator'}`}
                     >
                       {activeTab === 'students' ? (
@@ -1173,7 +1174,7 @@ const StudentCommunication = () => {
                       New
                     </button>
                   )}
-                  
+
                   {/* Tab Dropdown */}
                   <div className="relative" ref={tabDropdownRef}>
                     <button
@@ -1206,7 +1207,7 @@ const StudentCommunication = () => {
                       </div>
                       <ChevronDownIcon className={`w-4 h-4 text-gray-500 transition-transform ${showTabDropdown ? 'rotate-180' : ''}`} />
                     </button>
-                    
+
                     {/* Dropdown Menu */}
                     {showTabDropdown && (
                       <div className="absolute top-full right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
@@ -1220,7 +1221,7 @@ const StudentCommunication = () => {
                               setSelectedConversationId(null);
                               setSearchParams({ tab: 'students' }, { replace: true });
                               setShowTabDropdown(false);
-                              
+
                               // Force refetch for students tab
                               if (schoolId && refetchActiveStudents) {
                                 logger.info('Refetching student conversations');
@@ -1233,9 +1234,8 @@ const StudentCommunication = () => {
                                 setIsTabSwitching(false);
                               }
                             }}
-                            className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                              activeTab === 'students' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                            }`}
+                            className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${activeTab === 'students' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                              }`}
                           >
                             <UserGroupIcon className={`w-4 h-4 ${activeTab === 'students' ? 'text-blue-600' : 'text-gray-500'}`} />
                             <div className="flex-1">
@@ -1248,7 +1248,7 @@ const StudentCommunication = () => {
                               </span>
                             )}
                           </button>
-                          
+
                           {/* Educators Tab */}
                           <button
                             onClick={async () => {
@@ -1258,7 +1258,7 @@ const StudentCommunication = () => {
                               setSelectedConversationId(null);
                               setSearchParams({ tab: 'educators' }, { replace: true });
                               setShowTabDropdown(false);
-                              
+
                               // Force refetch for educators tab
                               if (schoolId && refetchActiveEducators) {
                                 logger.info('Refetching educator conversations');
@@ -1271,9 +1271,8 @@ const StudentCommunication = () => {
                                 setIsTabSwitching(false);
                               }
                             }}
-                            className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                              activeTab === 'educators' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                            }`}
+                            className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${activeTab === 'educators' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                              }`}
                           >
                             <AcademicCapIcon className={`w-4 h-4 ${activeTab === 'educators' ? 'text-blue-600' : 'text-gray-500'}`} />
                             <div className="flex-1">
@@ -1292,7 +1291,7 @@ const StudentCommunication = () => {
                   </div>
                 </div>
               </div>
-              
+
               {/* Search */}
               <div className="relative">
                 <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -1323,31 +1322,31 @@ const StudentCommunication = () => {
             {/* Contacts List */}
             <div className="flex-1 overflow-y-auto relative">
               {/* Archived Button */}
-              {!showArchived && 
-               !(activeTab === 'students' ? loadingArchivedStudents : loadingArchivedEducators) && 
-               (activeTab === 'students' ? archivedStudentConversations : archivedEducatorConversations).length > 0 && (
-                <button
-                  onClick={() => {
-                    setShowArchived(true);
-                    setIsTransitioning(true);
-                    setTimeout(() => setIsTransitioning(false), 300);
-                  }}
-                  className="w-full px-6 py-4 flex items-center justify-between border-b border-gray-200 hover:bg-gray-50 transition-colors group"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                      <ArchiveBoxIcon className="w-6 h-6 text-gray-600" />
+              {!showArchived &&
+                !(activeTab === 'students' ? loadingArchivedStudents : loadingArchivedEducators) &&
+                (activeTab === 'students' ? archivedStudentConversations : archivedEducatorConversations).length > 0 && (
+                  <button
+                    onClick={() => {
+                      setShowArchived(true);
+                      setIsTransitioning(true);
+                      setTimeout(() => setIsTransitioning(false), 300);
+                    }}
+                    className="w-full px-6 py-4 flex items-center justify-between border-b border-gray-200 hover:bg-gray-50 transition-colors group"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                        <ArchiveBoxIcon className="w-6 h-6 text-gray-600" />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="font-bold text-gray-900 text-sm">Archived</h3>
+                        <p className="text-xs text-gray-500">
+                          {(activeTab === 'students' ? archivedStudentConversations : archivedEducatorConversations).length} conversation{(activeTab === 'students' ? archivedStudentConversations : archivedEducatorConversations).length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <h3 className="font-bold text-gray-900 text-sm">Archived</h3>
-                      <p className="text-xs text-gray-500">
-                        {(activeTab === 'students' ? archivedStudentConversations : archivedEducatorConversations).length} conversation{(activeTab === 'students' ? archivedStudentConversations : archivedEducatorConversations).length !== 1 ? 's' : ''}
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRightIcon className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-                </button>
-              )}
+                    <ChevronRightIcon className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                  </button>
+                )}
 
               {/* Loading indicator during transition */}
               {isTransitioning && (
@@ -1370,23 +1369,23 @@ const StudentCommunication = () => {
                     )}
                   </div>
                   <p className="text-gray-600 text-sm font-medium">
-                    {showArchived 
-                      ? 'No archived conversations' 
-                      : searchQuery 
-                      ? `No conversations found for "${searchQuery}"` 
-                      : activeTab === 'students' 
-                      ? 'No student messages yet'
-                      : 'No educator messages yet'
+                    {showArchived
+                      ? 'No archived conversations'
+                      : searchQuery
+                        ? `No conversations found for "${searchQuery}"`
+                        : activeTab === 'students'
+                          ? 'No student messages yet'
+                          : 'No educator messages yet'
                     }
                   </p>
                   <p className="text-gray-400 text-xs mt-2 mb-4">
-                    {showArchived 
-                      ? 'Archived conversations will appear here' 
-                      : searchQuery 
-                      ? `Try searching by ${activeTab === 'students' ? 'student name, email, subject, or university' : 'educator name, email, or subject'}` 
-                      : activeTab === 'students'
-                      ? 'Students will message you about school matters'
-                      : 'Educators will message you about teaching matters'
+                    {showArchived
+                      ? 'Archived conversations will appear here'
+                      : searchQuery
+                        ? `Try searching by ${activeTab === 'students' ? 'student name, email, subject, or university' : 'educator name, email, or subject'}`
+                        : activeTab === 'students'
+                          ? 'Students will message you about school matters'
+                          : 'Educators will message you about teaching matters'
                     }
                   </p>
                   {searchQuery && (
@@ -1446,11 +1445,10 @@ const StudentCommunication = () => {
                 filteredContacts.map((contact) => (
                   <div
                     key={contact.id}
-                    className={`relative w-full flex items-center border-b border-gray-100 group transition-all duration-200 ${
-                      selectedConversationId === contact.id 
-                        ? 'bg-blue-50 border-l-4 border-l-blue-600' 
+                    className={`relative w-full flex items-center border-b border-gray-100 group transition-all duration-200 ${selectedConversationId === contact.id
+                        ? 'bg-blue-50 border-l-4 border-l-blue-600'
                         : 'hover:bg-gray-50 border-l-4 border-l-transparent'
-                    }`}
+                      }`}
                   >
                     <button
                       onClick={() => setSelectedConversationId(contact.id)}
@@ -1488,7 +1486,7 @@ const StudentCommunication = () => {
                         </div>
                       )}
                     </button>
-                    
+
                     {/* Quick Actions on Hover */}
                     <div className="flex items-center gap-1 pr-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       {/* Archive/Unarchive Button */}
@@ -1506,7 +1504,7 @@ const StudentCommunication = () => {
                           <ArchiveBoxIcon className="w-4 h-4 text-gray-600" />
                         )}
                       </button>
-                      
+
                       {/* Delete Button */}
                       <button
                         onClick={(e) => {
@@ -1592,20 +1590,18 @@ const StudentCommunication = () => {
                       >
                         <div className="max-w-[70%]">
                           <div
-                            className={`rounded-2xl px-4 py-2.5 shadow-sm ${
-                              message.sender === 'me'
+                            className={`rounded-2xl px-4 py-2.5 shadow-sm ${message.sender === 'me'
                                 ? 'bg-blue-600 text-white'
                                 : 'bg-white text-gray-900 border border-gray-200'
-                            }`}
+                              }`}
                           >
                             <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                               {message.text}
                             </p>
                             <div className="flex items-center justify-end gap-2 mt-1">
                               <span
-                                className={`text-xs ${
-                                  message.sender === 'me' ? 'text-blue-100' : 'text-gray-400'
-                                }`}
+                                className={`text-xs ${message.sender === 'me' ? 'text-blue-100' : 'text-gray-400'
+                                  }`}
                               >
                                 {message.time}
                               </span>
@@ -1616,7 +1612,7 @@ const StudentCommunication = () => {
                       </div>
                     ))
                   )}
-                  
+
                   {/* Typing indicator */}
                   {isAnyoneTyping && (
                     <div className="flex justify-start">
@@ -1632,7 +1628,7 @@ const StudentCommunication = () => {
                       </div>
                     </div>
                   )}
-                  
+
                   <div ref={messagesEndRef} />
                 </div>
 
