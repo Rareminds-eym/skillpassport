@@ -6,3 +6,4 @@
 
 export { QueryProvider } from './QueryProvider';
 export { ToastProvider, ToastContext } from './ToastProvider';
+export { GlobalErrorBoundary } from './GlobalErrorBoundary';

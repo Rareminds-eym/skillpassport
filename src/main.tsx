@@ -4,6 +4,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import App from './App.tsx';
 import './index.css';
 import { QueryProvider } from './app/providers/QueryProvider';
+import { GlobalErrorBoundary } from './app/providers/GlobalErrorBoundary';
 import { validateFileSizeConfig } from './shared/config/fileSizeLimits';
 
 // Validate file size configuration at startup
@@ -36,7 +37,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HelmetProvider>
       <QueryProvider>
-        <App />
+        <GlobalErrorBoundary>
+          <App />
+        </GlobalErrorBoundary>
       </QueryProvider>
     </HelmetProvider>
   </StrictMode>
