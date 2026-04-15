@@ -14,14 +14,6 @@ import type {
 // Re-export all types so existing imports keep working
 export * from './collegeAssignmentTypes';
 
-// Re-export student functions so existing imports keep working
-export {
-  fetchCollegeStudentAssignments,
-  getCollegeStudentAssignmentStats,
-  updateCollegeStudentAssignmentStatus,
-  submitCollegeAssignment,
-} from './collegeStudentAssignmentService';
-
 /**
  * Fetch departments assigned to a college educator
  */
