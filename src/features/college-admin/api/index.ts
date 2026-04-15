@@ -42,6 +42,7 @@ export * from './userManagementService';
 export * from './collegeAdminNotificationService';
 export * from './collegeAssignmentService';
 export * from './collegeStudentAssignmentService';
+export * from './collegeAssignmentTypes';
 export * from './collegeClassService';
 export * from './collegeService';
 export * from './competitionsService';
