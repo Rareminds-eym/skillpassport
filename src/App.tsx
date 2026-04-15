@@ -7,7 +7,7 @@ import AppRoutes from './app/routes/AppRoutes';
 
 // Zustand stores - state management migrated from Context
 import { initializeStores, useUser } from './stores';
-import { useSubscriptionStore } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionStore } from '@/stores';
 
 /**
  * SubscriptionInitializer

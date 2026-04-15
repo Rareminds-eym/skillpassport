@@ -40,7 +40,7 @@ export {
   useIsAuthenticated,
   useAuthLoading,
   useErrorNotification
-} from './model/authStore';
+} from '@/stores';
 
 // ============================================================================
 // API SERVICES (Commonly Used)

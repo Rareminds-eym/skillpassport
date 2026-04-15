@@ -15,7 +15,7 @@ export { useUsageStatistics } from '@/features/analytics/model/useUsageStatistic
 // Promotional & Events
 export { useCurrentPromotional } from './useCurrentPromotional';
 export { usePromotionalEvent } from './usePromotionalEvent';
-export { useAssessmentPromotional } from '@/features/promotional/model/promotionalStore';
+export { useAssessmentPromotional } from '@/stores';
 
 // Form & Validation
 export { useFormValidation } from './useFormValidation';
