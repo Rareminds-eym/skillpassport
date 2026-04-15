@@ -7,8 +7,13 @@ const logger = getLogger('supabase-utils');
 // TEST: Prove logger is working
 logger.info('✅ Logger is working! This is from supabase-utils');
 
-const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
+// These are safe to expose in frontend - they're public configuration
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing required Supabase environment variables: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
+}
 
 // Note: For most use cases, prefer importing supabase from '@/shared/api/supabaseClient'
 // which has full auth configuration. This client is for specific utility functions.

@@ -26,9 +26,8 @@ import { ShinyButton } from '@/shared/ui';
 
 const REGISTRATION_FEE_STUDENT = 499;
 const REGISTRATION_FEE_CORPORATE = 7500;
-const EMAIL_API_URL = import.meta.env.DEV
-  ? 'http://localhost:8788/api/email'
-  : 'https://skillpassport.rareminds.in/api/email';
+const EMAIL_API_URL = import.meta.env.VITE_EMAIL_API_URL || 
+  (import.meta.env.DEV ? '/api/email' : import.meta.env.VITE_PRODUCTION_EMAIL_API_URL || 'https://skillpassport.rareminds.in/api/email');
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
