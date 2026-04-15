@@ -13,10 +13,9 @@ import {
 } from '@/pages/homepage';
 import { useAssessmentPromotional } from '@/stores';
 import SEOHead from '@/shared/ui/SEOHead';
-
 const Home = () => {
-  const { 
-    showModal: showAssessmentModal, 
+  const {
+    showModal: showAssessmentModal,
     dismissModal: dismissAssessmentModal,
     getTimeRemaining: getAssessmentTimeRemaining
   } = useAssessmentPromotional();

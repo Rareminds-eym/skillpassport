@@ -12,9 +12,6 @@ import {
 } from './modals';
 import { useStudentDataByEmail } from '@/entities/student';
 import { useUser } from '@/stores';
-import DatabaseSaveVerification from './DatabaseSaveVerification';
-import StudentFindingDebug from './StudentFindingDebug';
-import QuickFix from './QuickFix';
 import PersonalInfoSummary from './PersonalInfoSummary';
 import ResumeParser from './ResumeParser';
 import { mergeResumeData } from '@/features/digital-portfolio';
@@ -30,14 +27,14 @@ const ProfileEditSection = ({ profileEmail }) => {
   const [activeModal, setActiveModal] = useState(null);
   const [refreshCounter, setRefreshCounter] = useState(0);
   const [showResumeParser, setShowResumeParser] = useState(false);
-  
+
   // Get user email from Zustand store
   const user = useUser();
   const userEmail = user?.email;
-  
+
   // Determine which email to fetch data for
   const displayEmail = profileEmail || userEmail;
-  
+
   // Check if viewing own profile or someone else's
   const isOwnProfile = !profileEmail || profileEmail === userEmail;
 
@@ -84,16 +81,16 @@ const ProfileEditSection = ({ profileEmail }) => {
   }, [studentData, education, training, experience, techSkills, soft]);
 
   const handleSave = async (section, data) => {
-    
+
     setUserData(prev => ({
       ...prev,
       [section]: data
     }));
-    
+
     // Save to Supabase if user is logged in
     if (userEmail && studentData?.profile) {
       try {
-        
+
         let result;
         switch (section) {
           case 'education':
@@ -143,13 +140,13 @@ const ProfileEditSection = ({ profileEmail }) => {
   };
 
   const handleResumeDataExtracted = async (parsedData) => {
-    
+
     try {
       // Merge parsed data with existing profile data
       const currentProfile = studentData?.profile || {};
       const mergedData = mergeResumeData(currentProfile, parsedData);
-      
-      
+
+
       // Update profile with merged data
       if (userEmail && studentData?.profile) {
         // Update personal info
@@ -171,48 +168,48 @@ const ProfileEditSection = ({ profileEmail }) => {
           contact_number_dial_code: mergedData.contact_number_dial_code,
           skill: mergedData.skill
         });
-        
+
         // Update education if present
         if (mergedData.education && mergedData.education.length > 0) {
           await handleSave('education', mergedData.education);
         }
-        
+
         // Update training if present
         if (mergedData.training && mergedData.training.length > 0) {
           await handleSave('training', mergedData.training);
         }
-        
+
         // Update experience if present
         if (mergedData.experience && mergedData.experience.length > 0) {
           await handleSave('experience', mergedData.experience);
         }
-        
+
         // Update projects if present
         if (mergedData.projects && mergedData.projects.length > 0) {
           await handleSave('projects', mergedData.projects);
         }
-        
+
         // Update certificates if present
         if (mergedData.certificates && mergedData.certificates.length > 0) {
           await handleSave('certificates', mergedData.certificates);
         }
-        
+
         // Update technical skills if present
         if (mergedData.technicalSkills && mergedData.technicalSkills.length > 0) {
           await handleSave('technicalSkills', mergedData.technicalSkills);
         }
-        
+
         // Update soft skills if present
         if (mergedData.softSkills && mergedData.softSkills.length > 0) {
           await handleSave('softSkills', mergedData.softSkills);
         }
-        
+
         // Refresh the data
         await refresh();
         setRefreshCounter(prev => prev + 1);
-        
+
       }
-      
+
       // Close the resume parser modal
       setShowResumeParser(false);
     } catch (error) {
@@ -344,27 +341,6 @@ const ProfileEditSection = ({ profileEmail }) => {
             </div>
           )}
         </div>
-
-        {/* Quick Fix Notification - Only for own profile */}
-        {isOwnProfile && (
-          <div className="mb-6">
-            <QuickFix />
-          </div>
-        )}
-
-        {/* Database Save Verification Component - Only for own profile */}
-        {isOwnProfile && (
-          <div className="mb-8">
-            <DatabaseSaveVerification />
-          </div>
-        )}
-
-        {/* Debug Component for Testing Student Finding - Only for own profile */}
-        {isOwnProfile && (
-          <div className="mb-8">
-            <StudentFindingDebug />
-          </div>
-        )}
 
         {/* Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

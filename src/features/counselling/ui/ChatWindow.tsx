@@ -3,6 +3,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import type { CounsellingMessage } from '../model/types';
 import ReactMarkdown from 'react-markdown';
+import rehypeSanitize from 'rehype-sanitize';
 import { Send, Loader2, StopCircle, Bot, User } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { Textarea } from '@/shared/ui/textarea';
@@ -156,6 +157,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming }) =
         {isAssistant ? (
           <div className="prose prose-sm max-w-none">
             <ReactMarkdown
+              rehypePlugins={[rehypeSanitize]}
               components={{
                 p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
                 ul: ({ children }) => <ul className="mb-2 ml-4 list-disc">{children}</ul>,

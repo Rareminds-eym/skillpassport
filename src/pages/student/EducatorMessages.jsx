@@ -2,13 +2,13 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { 
-  Search, 
-  Send, 
-  MoreVertical, 
-  Phone, 
-  Video, 
-  Paperclip, 
+import {
+  Search,
+  Send,
+  MoreVertical,
+  Phone,
+  Video,
+  Paperclip,
   Smile,
   Check,
   CheckCheck,
@@ -29,7 +29,7 @@ const EducatorMessages = () => {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const conversationIdFromUrl = searchParams.get('conversation');
-  
+
   const [selectedConversationId, setSelectedConversationId] = useState(conversationIdFromUrl);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -38,25 +38,25 @@ const EducatorMessages = () => {
   const messagesEndRef = useRef(null);
   const markedAsReadRef = useRef(new Set());
   const menuRef = useRef(null);
-  
+
   // Get student data
   const user = useUser();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const { studentData, loading: loadingStudentData } = useStudentDataByEmail(userEmail);
   const studentId = studentData?.id || user?.id;
   const studentName = studentData?.profile?.name || user?.name || 'Student';
-  
+
   // Fetch conversations with educators
-  const { 
-    conversations, 
-    isLoading: loadingConversations, 
+  const {
+    conversations,
+    isLoading: loadingConversations,
     refetch: refetchConversations,
     clearUnreadCount
   } = useStudentEducatorConversations(
     studentId,
     !!studentId && !loadingStudentData
   );
-  
+
   // Fetch messages for selected conversation
   const { messages, isLoading: loadingMessages, sendMessage, isSending } = useStudentEducatorMessages({
     studentId,
@@ -96,7 +96,7 @@ const EducatorMessages = () => {
     showToast: true,
     enabled: !!studentId
   });
-  
+
   // Auto-select conversation from URL parameter
   useEffect(() => {
     if (conversationIdFromUrl && conversations.length > 0) {
@@ -104,11 +104,12 @@ const EducatorMessages = () => {
       if (conversationExists) {
         setSelectedConversationId(conversationIdFromUrl);
         // Clear URL parameter after selecting
-        setTimeout(() => setSearchParams({}), 100);
+        const timer = setTimeout(() => setSearchParams({}), 100);
+        return () => clearTimeout(timer);
       }
     }
   }, [conversationIdFromUrl, conversations, setSearchParams]);
-  
+
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async ({ conversationId }) => {
@@ -117,21 +118,21 @@ const EducatorMessages = () => {
     },
     onMutate: async ({ conversationId }) => {
       await queryClient.cancelQueries({ queryKey: ['student-educator-conversations', studentId] });
-      
+
       const previousConversations = queryClient.getQueryData(['student-educator-conversations', studentId]);
-      
+
       queryClient.setQueryData(['student-educator-conversations', studentId], (old) => {
         if (!old) return [];
-        return old.map(conv => 
+        return old.map(conv =>
           conv.id === conversationId ? { ...conv, _pendingDelete: true } : conv
         );
       });
-      
-      queryClient.invalidateQueries({ 
+
+      queryClient.invalidateQueries({
         queryKey: ['student-educator-conversations', studentId],
         refetchType: 'none'
       });
-      
+
       return { previousConversations, conversationId };
     },
     onError: (err, variables, context) => {
@@ -145,14 +146,14 @@ const EducatorMessages = () => {
         if (!old) return [];
         return old.filter(conv => conv.id !== variables.conversationId);
       });
-      
-      queryClient.invalidateQueries({ 
+
+      queryClient.invalidateQueries({
         queryKey: ['student-educator-conversations', studentId],
         refetchType: 'none'
       });
     }
   });
-  
+
   // Undo mutation
   const undoMutation = useMutation({
     mutationFn: async ({ conversationId }) => {
@@ -164,20 +165,20 @@ const EducatorMessages = () => {
       refetchConversations();
     }
   });
-  
+
   // Mark messages as read when conversation is selected
   const markConversationAsRead = useCallback(async (conversationId, unreadCount) => {
     if (!studentId || !clearUnreadCount) return;
-    
+
     const markKey = `${conversationId}-${unreadCount}`;
-    
+
     if (markedAsReadRef.current.has(markKey)) {
       return;
     }
     markedAsReadRef.current.add(markKey);
-    
+
     clearUnreadCount(conversationId);
-    
+
     try {
       await MessageService.markConversationAsRead(conversationId, studentId);
     } catch (err) {
@@ -186,16 +187,16 @@ const EducatorMessages = () => {
       refetchConversations();
     }
   }, [studentId, clearUnreadCount, refetchConversations]);
-  
+
   // Trigger mark as read when conversation changes
   useEffect(() => {
     if (!selectedConversationId || !studentId) {
       return;
     }
-    
+
     const conversation = conversations.find(c => c.id === selectedConversationId);
     const hasUnread = conversation?.student_unread_count > 0;
-    
+
     if (hasUnread) {
       markConversationAsRead(selectedConversationId, conversation.student_unread_count);
     }
@@ -214,28 +215,28 @@ const EducatorMessages = () => {
     }
     return profile;
   };
-  
+
   // Transform conversations for display
   const contacts = useMemo(() => {
     const activeConversations = conversations.filter(conv => !conv._pendingDelete);
-    
+
     return activeConversations.map(conv => {
       const educator = conv.educator;
       const educatorProfile = parseProfile(educator?.profile);
       const educatorName = educator?.name || educatorProfile?.name || 'Educator';
       const courseName = conv.course?.title || 'General Discussion';
       const className = conv.class?.name || '';
-      
+
       // Build role string
       let role = courseName;
       if (className) {
         role += ` • ${className}`;
       }
-      
+
       // Generate avatar URL
-      const avatar = educatorProfile?.profilePicture || 
+      const avatar = educatorProfile?.profilePicture ||
         `https://ui-avatars.com/api/?name=${encodeURIComponent(educatorName)}&background=10B981&color=fff`;
-      
+
       // Format time
       let timeDisplay = 'No messages';
       if (conv.last_message_at) {
@@ -245,7 +246,7 @@ const EducatorMessages = () => {
           timeDisplay = conv.last_message_at;
         }
       }
-      
+
       return {
         id: conv.id,
         name: educatorName,
@@ -261,11 +262,11 @@ const EducatorMessages = () => {
       };
     });
   }, [conversations, globalOnlineUsers, isUserOnlineGlobal]);
-  
+
   // Filter contacts based on search
   const filteredContacts = useMemo(() => {
     if (!searchQuery) return contacts;
-    
+
     return contacts.filter(contact =>
       contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       contact.role.toLowerCase().includes(searchQuery.toLowerCase())
@@ -273,8 +274,8 @@ const EducatorMessages = () => {
   }, [contacts, searchQuery]);
 
   // Get selected conversation
-  const currentChat = selectedConversationId 
-    ? contacts.find(c => c.id === selectedConversationId) 
+  const currentChat = selectedConversationId
+    ? contacts.find(c => c.id === selectedConversationId)
     : null;
 
   const handleSendMessage = async (e) => {
@@ -290,7 +291,7 @@ const EducatorMessages = () => {
           courseId: currentChat.courseId,
           classId: currentChat.classId
         });
-        
+
         // Send notification broadcast to educator
         try {
           await sendNotification(currentChat.educatorId, {
@@ -302,7 +303,7 @@ const EducatorMessages = () => {
         } catch (notifError) {
           // Silent fail
         }
-        
+
         setMessageInput('');
         setTyping(false);
       } catch (error) {
@@ -320,13 +321,13 @@ const EducatorMessages = () => {
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (!messages.length) return;
-    
+
     const scrollToBottom = () => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
-    
+
     const rafId = requestAnimationFrame(scrollToBottom);
-    
+
     return () => cancelAnimationFrame(rafId);
   }, [messages]);
 
@@ -352,18 +353,18 @@ const EducatorMessages = () => {
   // Handle delete conversation
   const handleDeleteConversation = useCallback(async () => {
     if (!deleteModal.conversationId || !studentId) return;
-    
+
     const conversationId = deleteModal.conversationId;
     const contactName = deleteModal.contactName;
-    
+
     if (selectedConversationId === conversationId) {
       setSelectedConversationId(null);
     }
-    
+
     setDeleteModal({ isOpen: false, conversationId: null, contactName: '' });
-    
+
     deleteMutation.mutate({ conversationId });
-    
+
     // Show undo toast (similar to the recruiter implementation)
     toast.success(`Conversation with ${contactName} deleted`, {
       duration: 5000,
@@ -380,7 +381,7 @@ const EducatorMessages = () => {
     setShowMenu(null);
     setDeleteModal({ isOpen: true, conversationId, contactName });
   }, []);
-  
+
   // Show loading state
   if (loadingConversations || !studentId) {
     return (
@@ -394,7 +395,7 @@ const EducatorMessages = () => {
       </div>
     );
   }
-  
+
   return (
     <div className="flex h-[calc(100vh-180px)] bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
       {/* Left Panel - Contacts List */}
@@ -429,9 +430,8 @@ const EducatorMessages = () => {
             filteredContacts.map((contact) => (
               <div
                 key={contact.id}
-                className={`relative group flex items-start gap-3 p-4 cursor-pointer hover:bg-gray-50 transition-all duration-200 border-b border-gray-100 ${
-                  selectedConversationId === contact.id ? 'bg-green-50' : ''
-                }`}
+                className={`relative group flex items-start gap-3 p-4 cursor-pointer hover:bg-gray-50 transition-all duration-200 border-b border-gray-100 ${selectedConversationId === contact.id ? 'bg-green-50' : ''
+                  }`}
                 onClick={() => setSelectedConversationId(contact.id)}
               >
                 <div className="relative flex-shrink-0">
@@ -444,7 +444,7 @@ const EducatorMessages = () => {
                     <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
                   )}
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <h3 className="font-semibold text-gray-900 text-sm truncate">
@@ -520,7 +520,7 @@ const EducatorMessages = () => {
                   </p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                   <Phone className="w-5 h-5 text-gray-600" />
@@ -555,23 +555,21 @@ const EducatorMessages = () => {
                       className={`flex ${message.sender === 'me' ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
-                        className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${
-                          message.sender === 'me'
+                        className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${message.sender === 'me'
                             ? 'bg-green-500 text-white'
                             : 'bg-white text-gray-900 border border-gray-200'
-                        }`}
+                          }`}
                       >
                         <p className="text-sm leading-relaxed">{message.text}</p>
-                        <div className={`flex items-center gap-1 mt-1 text-xs ${
-                          message.sender === 'me' ? 'text-green-100' : 'text-gray-500'
-                        }`}>
+                        <div className={`flex items-center gap-1 mt-1 text-xs ${message.sender === 'me' ? 'text-green-100' : 'text-gray-500'
+                          }`}>
                           <span>{message.time}</span>
                           {message.sender === 'me' && getStatusIcon(message.status)}
                         </div>
                       </div>
                     </div>
                   ))}
-                  
+
                   {/* Typing indicator */}
                   {isAnyoneTyping && (
                     <div className="flex justify-start">
@@ -589,7 +587,7 @@ const EducatorMessages = () => {
                   )}
                 </div>
               )}
-              
+
               <div ref={messagesEndRef} />
             </div>
 
@@ -602,7 +600,7 @@ const EducatorMessages = () => {
                 >
                   <Paperclip className="w-5 h-5 text-gray-600" />
                 </button>
-                
+
                 <div className="flex-1 relative">
                   <input
                     type="text"

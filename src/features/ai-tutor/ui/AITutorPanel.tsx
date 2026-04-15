@@ -1,20 +1,20 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-    BookOpen,
-    Brain,
-    ChevronLeft,
-    ChevronRight,
-    History,
-    Loader2,
-    LogIn,
-    Pencil,
-    Plus,
-    RefreshCw,
-    Send,
-    Sparkles,
-    ThumbsDown,
-    ThumbsUp,
-    Trash2
+  BookOpen,
+  Brain,
+  ChevronLeft,
+  ChevronRight,
+  History,
+  Loader2,
+  LogIn,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Send,
+  Sparkles,
+  ThumbsDown,
+  ThumbsUp,
+  Trash2
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -73,9 +73,9 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     submitFeedback,
     refreshConversations,
     refreshSuggestions
-  } = useTutorChat({ 
-    courseId, 
-    lessonId: lessonContext?.lessonId 
+  } = useTutorChat({
+    courseId,
+    lessonId: lessonContext?.lessonId
   });
 
   // Keyboard shortcut: Cmd/Ctrl + K to toggle panel
@@ -101,7 +101,8 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   // Focus input when expanded
   useEffect(() => {
     if (isExpanded && !showHistory) {
-      setTimeout(() => inputRef.current?.focus(), 300);
+      const timer = setTimeout(() => inputRef.current?.focus(), 300);
+      return () => clearTimeout(timer);
     }
   }, [isExpanded, showHistory]);
 
@@ -207,7 +208,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
           </span>
           <Sparkles className="w-4 h-4 opacity-60" />
         </button>
-        
+
         {/* Tooltip */}
         <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
           <div className="bg-gray-900 text-white text-sm px-3 py-2 rounded-lg whitespace-nowrap shadow-lg">
@@ -291,11 +292,10 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                           loadConversation(conv.id);
                           setShowHistory(false);
                         }}
-                        className={`flex-1 min-w-0 p-3 text-left rounded-xl border transition-all ${
-                          conversationId === conv.id
+                        className={`flex-1 min-w-0 p-3 text-left rounded-xl border transition-all ${conversationId === conv.id
                             ? 'border-violet-500 bg-violet-50 shadow-sm'
                             : 'border-gray-200 hover:border-violet-300 hover:bg-gray-50'
-                        }`}
+                          }`}
                       >
                         <p className="font-medium text-gray-800 truncate text-sm">{conv.title}</p>
                         <p className="text-xs text-gray-500 mt-1 truncate">
@@ -479,11 +479,10 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                   <div className={`max-w-[85%] ${isUser ? 'order-2' : 'order-1'}`}>
                     <div className="relative">
                       <div
-                        className={`px-4 py-3 rounded-2xl ${
-                          isUser
+                        className={`px-4 py-3 rounded-2xl ${isUser
                             ? 'bg-violet-600 text-white rounded-br-md'
                             : 'bg-white text-gray-800 rounded-bl-md shadow-sm border border-gray-100'
-                        }`}
+                          }`}
                       >
                         {isUser ? (
                           <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
@@ -492,7 +491,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                             <ReactMarkdown>{msg.content}</ReactMarkdown>
                           </div>
                         )}
-                        
+
                         {/* Reasoning indicator */}
                         {isReasoning && isLastAssistant && !msg.content && (
                           <div className="flex items-center gap-2 text-violet-400">
@@ -500,7 +499,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                             <span className="text-xs">Thinking...</span>
                           </div>
                         )}
-                        
+
                         {/* Loading dots */}
                         {isStreaming && isLastAssistant && !msg.content && !isReasoning && (
                           <div className="flex items-center gap-1">
@@ -510,7 +509,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                           </div>
                         )}
                       </div>
-                      
+
                       {/* Edit button for user messages - appears on hover */}
                       {isUser && !isStreaming && (
                         <button
@@ -525,23 +524,21 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
 
                     <div className={`flex items-center gap-2 mt-1 ${isUser ? 'justify-end' : 'justify-start'}`}>
                       <span className="text-xs text-gray-400">{formatTime(msg.timestamp)}</span>
-                      
+
                       {/* Feedback buttons */}
                       {!isUser && msg.content && (
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => handleFeedback(index, 1)}
-                            className={`p-1 rounded hover:bg-gray-200 transition-colors ${
-                              feedbackGiven[index] === 1 ? 'text-green-600' : 'text-gray-400'
-                            }`}
+                            className={`p-1 rounded hover:bg-gray-200 transition-colors ${feedbackGiven[index] === 1 ? 'text-green-600' : 'text-gray-400'
+                              }`}
                           >
                             <ThumbsUp className="w-3 h-3" />
                           </button>
                           <button
                             onClick={() => handleFeedback(index, -1)}
-                            className={`p-1 rounded hover:bg-gray-200 transition-colors ${
-                              feedbackGiven[index] === -1 ? 'text-red-600' : 'text-gray-400'
-                            }`}
+                            className={`p-1 rounded hover:bg-gray-200 transition-colors ${feedbackGiven[index] === -1 ? 'text-red-600' : 'text-gray-400'
+                              }`}
                           >
                             <ThumbsDown className="w-3 h-3" />
                           </button>

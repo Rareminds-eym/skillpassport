@@ -25,7 +25,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
   const { theme } = useTheme();
   const { student, setStudent } = usePortfolio();
   const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
-  
+
   // Refs for focus management
   const modalRef = useRef<HTMLDivElement>(null);
   const firstButtonRef = useRef<HTMLButtonElement>(null);
@@ -95,17 +95,19 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
     if (isOpen) {
       // Store the currently focused element
       previousActiveElementRef.current = document.activeElement as HTMLElement;
-      
+
       // Set focus to the first button when modal opens
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         if (firstButtonRef.current) {
           firstButtonRef.current.focus();
         }
       }, 100); // Small delay to ensure modal is rendered
-      
+
       if (isDevelopment) {
         console.log('[ProfileCompletionModal] Modal opened, focus set to first button');
       }
+
+      return () => clearTimeout(timer);
     } else {
       // Return focus to the previously focused element when modal closes
       if (previousActiveElementRef.current) {
@@ -125,12 +127,12 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
       const focusableElements = modalRef.current?.querySelectorAll(
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
       );
-      
+
       if (!focusableElements || focusableElements.length === 0) return;
-      
+
       const firstElement = focusableElements[0] as HTMLElement;
       const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
-      
+
       if (e.shiftKey) {
         // Shift + Tab: moving backwards
         if (document.activeElement === firstElement) {
@@ -195,7 +197,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
       }
 
       let hasUpdates = false;
-      
+
       // Projects - save to projects table
       if (incompleteSections.includes('Projects') && formData.projects.length > 0) {
         const validProjects = formData.projects.filter(p => p.title.trim() !== '');
@@ -208,39 +210,39 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
             approval_status: 'pending',
             approval_authority: student.school_id ? 'school_admin' : 'college_admin'
           }));
-          
+
           const { error } = await supabase.from('projects').insert(projectRecords);
           if (error) throw error;
           hasUpdates = true;
         }
       }
-      
+
       // Hobbies, Interests, Languages, Achievements - save to students table
       const studentUpdates: any = {};
-      
+
       if (incompleteSections.includes('Achievements') && formData.achievements.length > 0) {
         const validAchievements = formData.achievements.filter(a => a.title.trim() !== '');
         if (validAchievements.length > 0) {
           studentUpdates.achievements = validAchievements;
         }
       }
-      
+
       if (incompleteSections.includes('Hobbies') && formData.hobbies.length > 0) {
         const validHobbies = formData.hobbies.filter(h => h.trim() !== '');
         if (validHobbies.length > 0) {
           studentUpdates.hobbies = validHobbies;
         }
       }
-      
+
       if (incompleteSections.includes('Interests') && formData.interests.length > 0) {
         const validInterests = formData.interests.filter(i => i.trim() !== '');
         if (validInterests.length > 0) {
           studentUpdates.interests = validInterests;
         }
       }
-      
+
       if (incompleteSections.includes('Languages') && formData.languages.length > 0) {
-        const validLanguages = formData.languages.filter(l => 
+        const validLanguages = formData.languages.filter(l =>
           typeof l === 'string' ? l.trim() !== '' : l.name.trim() !== ''
         );
         if (validLanguages.length > 0) {
@@ -253,7 +255,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
           .from('students')
           .update(studentUpdates)
           .eq('id', student.id);
-        
+
         if (error) throw error;
         hasUpdates = true;
       }
@@ -274,11 +276,11 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
         .select('*')
         .eq('id', student.id)
         .single();
-      
+
       if (updatedStudent) {
         setStudent(updatedStudent as any);
       }
-      
+
       setEditMode(false);
       onComplete();
     } catch (error: any) {
@@ -298,10 +300,10 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
         handleSaveProfile();
       } else {
         // Check if there are editable sections
-        const editableSections = incompleteSections.filter(s => 
+        const editableSections = incompleteSections.filter(s =>
           ['Projects', 'Achievements', 'Hobbies', 'Interests', 'Languages'].includes(s)
         );
-        
+
         if (editableSections.length > 0) {
           setEditMode(true);
         } else {
@@ -397,7 +399,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
   const updateProject = (index: number, field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
-      projects: prev.projects.map((proj, i) => 
+      projects: prev.projects.map((proj, i) =>
         i === index ? { ...proj, [field]: value } : proj
       )
     }));
@@ -417,7 +419,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
   const updateAchievement = (index: number, field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
-      achievements: prev.achievements.map((ach, i) => 
+      achievements: prev.achievements.map((ach, i) =>
         i === index ? { ...ach, [field]: value } : ach
       )
     }));
@@ -488,7 +490,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
                   </p>
 
                   {/* Incomplete Sections List */}
-                  <div 
+                  <div
                     id="incomplete-sections-list"
                     className="space-y-2 mb-6"
                     role="list"

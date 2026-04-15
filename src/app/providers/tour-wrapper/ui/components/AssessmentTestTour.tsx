@@ -14,7 +14,7 @@ const AssessmentTestTour: React.FC = () => {
   const { startTour, completeTour, skipTour, isEligible, loading } = useTour();
   const [shouldRun, setShouldRun] = useState(false);
   const [isReady, setIsReady] = useState(false);
-  
+
   const tourStarted = useRef(false);
   const observerRef = useRef<MutationObserver | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -35,7 +35,7 @@ const AssessmentTestTour: React.FC = () => {
 
     const checkAndStartTour = async () => {
       console.log('🎯 Assessment test tour: Checking elements...');
-      
+
       const requiredSelectors = [
         '[data-tour="section-progress"]',
         '[data-tour="navigation-controls"]'
@@ -54,7 +54,7 @@ const AssessmentTestTour: React.FC = () => {
         const optionalResults = await Promise.all(
           optionalSelectors.map(selector => waitForElement(selector, 15000).catch(() => null))
         );
-        
+
         const allRequiredFound = requiredResults.every(el => el !== null);
         const someOptionalFound = optionalResults.some(el => el !== null);
 
@@ -75,13 +75,13 @@ const AssessmentTestTour: React.FC = () => {
       // Check if on "Start Section" screen
       const allButtons = Array.from(document.querySelectorAll('button'));
       const hasStartSectionButton = allButtons.some(b => b.textContent?.includes('Start Section'));
-      
+
       if (hasStartSectionButton) {
         // Wait for user to start section
         const observer = new MutationObserver(async () => {
           const questionContent = document.querySelector('[data-tour="question-content"]');
           const answerOptions = document.querySelector('[data-tour="answer-options"]');
-          
+
           if (questionContent || answerOptions) {
             observer.disconnect();
             observerRef.current = null;
@@ -89,29 +89,40 @@ const AssessmentTestTour: React.FC = () => {
               clearTimeout(timeoutRef.current);
               timeoutRef.current = null;
             }
-            
+
             setTimeout(() => checkAndStartTour(), 500);
           }
         });
-        
+
         observerRef.current = observer;
         observer.observe(document.body, { childList: true, subtree: true });
-        
+
         timeoutRef.current = setTimeout(() => {
           if (observerRef.current) {
             observerRef.current.disconnect();
             observerRef.current = null;
           }
         }, 60000);
-        
+
         return;
       }
-      
+
       // Not on start screen, check elements immediately
       await checkAndStartTour();
     };
 
     startTourWhenReady();
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+        observerRef.current = null;
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
   }, [isReady, startTour]);
 
   // Handle tour completion
@@ -146,17 +157,17 @@ const AssessmentTestTour: React.FC = () => {
       tourStarted.current = false;
       setIsReady(false);
       setShouldRun(false);
-      
+
       if (observerRef.current) {
         observerRef.current.disconnect();
         observerRef.current = null;
       }
-      
+
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
-      
+
       console.log('🔄 Assessment test tour unmounted');
     };
   }, []);

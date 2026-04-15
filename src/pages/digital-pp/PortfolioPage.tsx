@@ -51,6 +51,8 @@ const PortfolioPage: React.FC = () => {
 
   // Handle pending export from settings page
   useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
     const handlePendingExport = async () => {
       const pendingExport = sessionStorage.getItem('pendingExport');
       if (pendingExport) {
@@ -58,7 +60,7 @@ const PortfolioPage: React.FC = () => {
           const { type, filename, preferences } = JSON.parse(pendingExport);
 
           // Small delay to ensure DOM is fully rendered
-          setTimeout(async () => {
+          timers.push(setTimeout(async () => {
             try {
               if (type === 'PDF') {
                 // Enter fullscreen mode for PDF
@@ -68,7 +70,7 @@ const PortfolioPage: React.FC = () => {
                 setIsFullscreen(true);
 
                 // Additional delay for fullscreen to apply
-                setTimeout(async () => {
+                timers.push(setTimeout(async () => {
                   const layoutContent = document.querySelector('[data-portfolio-content]') ||
                     document.querySelector('.pt-20') ||
                     document.documentElement;
@@ -81,10 +83,10 @@ const PortfolioPage: React.FC = () => {
                     document.exitFullscreen();
                     setIsFullscreen(false);
                   }
-                }, 500);
+                }, 500));
               } else if (type === 'HTML') {
                 // For HTML, we don't need fullscreen - just wait for render
-                setTimeout(async () => {
+                timers.push(setTimeout(async () => {
                   if (!student || !settings) {
                     throw new Error('Student or settings data not available');
                   }
@@ -94,14 +96,14 @@ const PortfolioPage: React.FC = () => {
 
                   // Navigate back to export settings
                   navigate('/settings/export');
-                }, 300);
+                }, 300));
               }
             } catch (error) {
               console.error('Export error:', error);
               sessionStorage.removeItem('pendingExport');
               alert('Export failed. Please try again.');
             }
-          }, 100);
+          }, 100));
         } catch (error) {
           console.error('Error parsing pending export:', error);
           sessionStorage.removeItem('pendingExport');
@@ -110,6 +112,7 @@ const PortfolioPage: React.FC = () => {
     };
 
     handlePendingExport();
+    return () => timers.forEach(t => clearTimeout(t));
   }, [student, settings, navigate]);
 
   if (isLoading) {
