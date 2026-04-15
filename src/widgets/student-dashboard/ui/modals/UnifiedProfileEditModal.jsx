@@ -24,8 +24,6 @@ import { Textarea } from '@/shared/ui/textarea';
 import { FIELD_CONFIGS } from "./fieldConfigs";
 import { calculateDuration, calculateProgress, generateUuid, isValidUrl, parsePositiveNumber, parseSkills } from "./utils";
 import ProfileItemModal from "./ProfileItemModal";
-
-const logger = getLogger('UnifiedProfileEditModal');
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +34,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/shared/ui/alert-dialog';
+
+const logger = getLogger('UnifiedProfileEditModal');
 
 const UnifiedProfileEditModal = ({
   isOpen,
@@ -468,7 +468,11 @@ const UnifiedProfileEditModal = ({
         await onSave(updatedItems);
         // Trigger parent refresh if available
         if (typeof onSave === 'function' && onSave.refresh) {
-          try { await onSave.refresh(); } catch (refreshError) { logger.error('Error refreshing after save', { refreshError }); }
+          try {
+            await onSave.refresh();
+          } catch (refreshError) {
+            logger.error('Error refreshing after save', { refreshError });
+          }
         }
         toast.success(`${config.title} updated successfully.`);
       } catch (error) {
@@ -494,7 +498,11 @@ const UnifiedProfileEditModal = ({
         await onSave(updatedItems);
         // Trigger parent refresh if available
         if (typeof onSave === 'function' && onSave.refresh) {
-          try { await onSave.refresh(); } catch (refreshError) { logger.error('Error refreshing after save', { refreshError }); }
+          try {
+            await onSave.refresh();
+          } catch (refreshError) {
+            logger.error('Error refreshing after save', { refreshError });
+          }
         }
         toast.success(`${config.title} added successfully.`);
       } catch (error) {
@@ -580,7 +588,11 @@ const UnifiedProfileEditModal = ({
       await onSave(updatedItems);
       // Trigger parent refresh if available
       if (typeof onSave === 'function' && onSave.refresh) {
-        try { await onSave.refresh(); } catch (refreshError) { logger.error('Error refreshing after delete', { refreshError }); }
+        try {
+          await onSave.refresh();
+        } catch (refreshError) {
+          logger.error('Error refreshing after delete', { refreshError });
+        }
       }
       toast.success(`${config.title} has been deleted successfully.`);
     } catch (error) {
@@ -595,7 +607,7 @@ const UnifiedProfileEditModal = ({
     const itemTitle = config.getDisplayTitle(item);
 
     // Don't allow hiding/showing items that are pending verification or approval
-    if (item.approval_status === 'pending' || item._hasPendingEdit) {
+    if (item.approval_status === 'pending' || item.has_pending_edit) {
       toast.error(`You cannot hide or show ${config.title.toLowerCase()} that are pending verification or approval.`);
       return;
     }
@@ -640,7 +652,11 @@ const UnifiedProfileEditModal = ({
 
       // Trigger parent refresh if available
       if (typeof onSave === 'function' && onSave.refresh) {
-        try { await onSave.refresh(); } catch (refreshError) { logger.error('Error refreshing after visibility toggle', { refreshError }); }
+        try {
+          await onSave.refresh();
+        } catch (refreshError) {
+          logger.error('Error refreshing after visibility toggle', { refreshError });
+        }
       }
 
       toast.success(`${config.title} ${newState ? 'is now visible' : 'is now hidden'} on your profile.`);

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GraduationCap, Loader2 } from 'lucide-react';
-import { useAuth } from '@/features/auth';
+import { useAuthActions } from '@/stores';
 import { loginAdmin } from '@/features/auth/api';
 import toast from 'react-hot-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui';
@@ -12,7 +12,6 @@ import { Button } from '@/shared/ui';
 const LoginAdmin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuthActions();
   const navigate = useNavigate();
@@ -27,61 +26,16 @@ const LoginAdmin = () => {
         throw new Error('Please enter both email and password');
       }
 
-      // DEMO CREDENTIALS - Hardcoded for testing
-      const DEMO_CREDENTIALS = {
-        'university@admin.com': {
-          id: 'university-001',
-          name: 'University',
-          email: 'university@admin.com',
-          role: 'university_admin',
-          schoolId: 'university-001',
-          schoolName: 'University',
-          schoolCode: 'UNI',
-        },
-        'college@admin.com': {
-          id: 'college-001',
-          name: 'College',
-          email: 'college@admin.com',
-          role: 'college_admin',
-          schoolId: 'college-001',
-          schoolName: 'College',
-          schoolCode: 'COL',
-        },
-        'school@admin.com': {
-          id: 'school-001',
-          name: 'School',
-          email: 'school@admin.com',
-          role: 'school_admin',
-          schoolId: 'school-001',
-          schoolName: 'School',
-          schoolCode: 'SCH',
-        },
-      };
-
-      // Check if it's a demo credential
-      if (DEMO_CREDENTIALS[email.trim().toLowerCase()]) {
-        const demoUser = DEMO_CREDENTIALS[email.trim().toLowerCase()];
-        
-        login(demoUser);
-
-        toast.success(`Welcome back, ${demoUser.name}!`);
-
-        // Route based on role
-        const dashboardRoutes = {
-          'university_admin': '/university-admin/dashboard',
-          'college_admin': '/college-admin/dashboard',
-          'school_admin': '/school-admin/dashboard',
-        };
-        
-        navigate(dashboardRoutes[demoUser.role] || '/school-admin/dashboard');
-        return;
+      // Real authentication
+      let result;
+      try {
+        result = await loginAdmin(email, password);
+      } catch (apiError) {
+        throw new Error(apiError instanceof Error ? apiError.message : 'Login failed');
       }
 
-      // Use the loginAdmin service for actual authentication
-      const result = await loginAdmin(email, password);
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Login failed');
+      if (!result?.success) {
+        throw new Error(result?.error || 'Login failed');
       }
 
       // Store admin data in context
@@ -98,7 +52,7 @@ const LoginAdmin = () => {
         navigate('/school-admin/dashboard');
       }
     } catch (error) {
-      toast.error(error.message || 'Invalid credentials');
+      toast.error(error instanceof Error ? error.message : 'Invalid credentials');
     } finally {
       setIsLoading(false);
     }
