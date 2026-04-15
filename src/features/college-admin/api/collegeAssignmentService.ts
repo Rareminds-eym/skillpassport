@@ -317,25 +317,43 @@ export const fetchEducatorAssignments = async (educatorUserId: string): Promise<
 
       if (fallbackError) throw fallbackError;
 
-      const assignments = (fallbackData || []).map((assignment: Record<string, unknown>) => ({
-        assignment_id: assignment.assignment_id, title: assignment.title, description: assignment.description || '',
-        instructions: assignment.instructions || '', course_name: assignment.course_name, course_code: assignment.course_code || '',
-        college_educator_id: assignment.college_educator_id, educator_name: assignment.educator_name || '',
-        college_id: assignment.college_id, program_section_id: assignment.program_section_id,
-        department_id: assignment.department_id, program_id: assignment.program_id,
-        total_points: assignment.total_points, assignment_type: assignment.assignment_type,
-        skill_outcomes: (assignment.skill_outcomes as string[]) || [], due_date: assignment.due_date,
-        available_from: assignment.available_from || '', allow_late_submission: assignment.allow_late_submission || false,
-        document_pdf: assignment.document_pdf, instruction_files: (assignment.instruction_files as unknown[]) || [],
-        created_date: assignment.created_date,
-        status: (assignment.due_date as string) < new Date().toISOString() ? 'completed' : 'active',
-        program_name: (assignment.programs as Record<string, string>)?.name || '',
-        department_name: (assignment.departments as Record<string, string>)?.name || '',
-        semester: (assignment.program_sections as Record<string, unknown>)?.semester,
-        section: (assignment.program_sections as Record<string, unknown>)?.section,
-        academic_year: (assignment.program_sections as Record<string, unknown>)?.academic_year,
-        student_count: 0
-      }));
+      const assignments = (fallbackData || []).map((row: Record<string, unknown>) => {
+        const programs = row.programs as Record<string, string> | undefined;
+        const departments = row.departments as Record<string, string> | undefined;
+        const sections = row.program_sections as Record<string, unknown> | undefined;
+        const dueDate = typeof row.due_date === 'string' ? row.due_date : '';
+
+        return {
+          assignment_id: row.assignment_id as string,
+          title: row.title as string,
+          description: (row.description as string) || '',
+          instructions: (row.instructions as string) || '',
+          course_name: row.course_name as string,
+          course_code: (row.course_code as string) || '',
+          college_educator_id: row.college_educator_id as string,
+          educator_name: (row.educator_name as string) || '',
+          college_id: row.college_id as string,
+          program_section_id: row.program_section_id as string,
+          department_id: row.department_id as string,
+          program_id: row.program_id as string,
+          total_points: row.total_points as number,
+          assignment_type: row.assignment_type as string,
+          skill_outcomes: Array.isArray(row.skill_outcomes) ? row.skill_outcomes as string[] : [],
+          due_date: dueDate,
+          available_from: (row.available_from as string) || '',
+          allow_late_submission: (row.allow_late_submission as boolean) || false,
+          document_pdf: row.document_pdf as string | undefined,
+          instruction_files: Array.isArray(row.instruction_files) ? row.instruction_files : [],
+          created_date: row.created_date as string,
+          status: dueDate < new Date().toISOString() ? 'completed' : 'active',
+          program_name: programs?.name || '',
+          department_name: departments?.name || '',
+          semester: sections?.semester as number | undefined,
+          section: sections?.section as string | undefined,
+          academic_year: sections?.academic_year as string | undefined,
+          student_count: 0
+        };
+      });
 
       return { data: assignments as CollegeAssignment[], error: null };
     } catch (fallbackErr: unknown) {

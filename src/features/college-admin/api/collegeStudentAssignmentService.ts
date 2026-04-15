@@ -1,5 +1,6 @@
 import { supabase } from '@/shared/api/supabaseClient';
 import { uploadMultipleFiles } from '@/shared/api/fileUploadService';
+import { getLogger } from '@/shared/config/logging';
 import type {
     CollegeStudentAssignment,
     CollegeAssignmentStats,
@@ -10,14 +11,14 @@ import type {
 // Re-export types so existing imports from this path still work
 export type { CollegeStudentAssignment, CollegeAssignmentStats } from './collegeAssignmentTypes';
 
-const isDev = import.meta.env.DEV;
+const logger = getLogger('college-student-assignments');
 
 /**
  * Fetch assignments for a college student
  */
 export const fetchCollegeStudentAssignments = async (studentId: string): Promise<ServiceResponse<CollegeStudentAssignment[]>> => {
     try {
-        if (isDev) console.log('📚 SERVICE: Fetching college assignments for student:', studentId);
+        logger.info('Fetching college assignments for student', { studentId });
 
         const { data: studentAssignments, error: saError } = await supabase
             .from('college_student_assignments')
@@ -84,7 +85,7 @@ export const fetchCollegeStudentAssignments = async (studentId: string): Promise
         combinedAssignments.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
         return { data: combinedAssignments, error: null };
     } catch (err: unknown) {
-        if (isDev) console.error('❌ SERVICE: Error fetching college student assignments:', err);
+        logger.error('Error fetching college student assignments', err instanceof Error ? err : undefined);
         const message = err instanceof Error ? err.message : 'Failed to fetch assignments';
         return { data: null, error: message };
     }
@@ -120,7 +121,7 @@ export const getCollegeStudentAssignmentStats = async (studentId: string): Promi
             error: null
         };
     } catch (err: unknown) {
-        if (isDev) console.error('❌ SERVICE: Error fetching assignment stats:', err);
+        logger.error('Error fetching assignment stats', err instanceof Error ? err : undefined);
         const message = err instanceof Error ? err.message : 'Failed to fetch assignment statistics';
         return { data: null, error: message };
     }
@@ -154,7 +155,7 @@ export const updateCollegeStudentAssignmentStatus = async (
         if (error) throw error;
         return { data: true, error: null };
     } catch (err: unknown) {
-        if (isDev) console.error('❌ SERVICE: Error updating assignment status:', err);
+        logger.error('Error updating assignment status', err instanceof Error ? err : undefined);
         const message = err instanceof Error ? err.message : 'Failed to update assignment status';
         return { data: null, error: message };
     }
@@ -213,7 +214,7 @@ export const submitCollegeAssignment = async (
         if (error) throw error;
         return { data: true, error: null };
     } catch (err: unknown) {
-        if (isDev) console.error('❌ SERVICE: Error submitting assignment:', err);
+        logger.error('Error submitting assignment', err instanceof Error ? err : undefined);
         const message = err instanceof Error ? err.message : 'Failed to submit assignment';
         return { data: null, error: message };
     }
