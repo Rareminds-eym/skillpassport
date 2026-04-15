@@ -60,7 +60,7 @@ export { updateClass } from './api/classService';
 export { getMentorPeriods } from './api/mentorAllocationService';
 export { getMentorAllocations } from './api/mentorAllocationService';
 export { collegeFacultyLeavesService } from './api/collegeFacultyLeavesService';
-export { fetchCollegeStudentAssignments } from './api/collegeAssignmentService';
+export { fetchCollegeStudentAssignments } from './api/collegeStudentAssignmentService';
 export { fetchEducatorClasses } from './api/classService';
 export { getSwapRequests } from './api/classSwapService';
 export { collegeFacultySubstitutionsService } from './api/collegeFacultySubstitutionsService';
