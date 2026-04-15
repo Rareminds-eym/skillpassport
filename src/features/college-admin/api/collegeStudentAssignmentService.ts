@@ -9,12 +9,21 @@ import type {
 // Re-export types so existing imports from this path still work
 export type { CollegeStudentAssignment, CollegeAssignmentStats } from './collegeAssignmentTypes';
 
+const isDev = import.meta.env.DEV;
+
+interface UploadedFile {
+    name: string;
+    url: string;
+    size: number;
+    type: string;
+}
+
 /**
  * Fetch assignments for a college student
  */
 export const fetchCollegeStudentAssignments = async (studentId: string): Promise<ServiceResponse<CollegeStudentAssignment[]>> => {
     try {
-        console.log('📚 SERVICE: Fetching college assignments for student:', studentId);
+        if (isDev) console.log('📚 SERVICE: Fetching college assignments for student:', studentId);
 
         const { data: studentAssignments, error: saError } = await supabase
             .from('college_student_assignments')
@@ -79,9 +88,10 @@ export const fetchCollegeStudentAssignments = async (studentId: string): Promise
 
         combinedAssignments.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
         return { data: combinedAssignments, error: null };
-    } catch (err: any) {
-        console.error('❌ SERVICE: Error fetching college student assignments:', err);
-        return { data: null, error: err.message || 'Failed to fetch assignments' };
+    } catch (err: unknown) {
+        if (isDev) console.error('❌ SERVICE: Error fetching college student assignments:', err);
+        const message = err instanceof Error ? err.message : 'Failed to fetch assignments';
+        return { data: null, error: message };
     }
 };
 
@@ -110,15 +120,14 @@ export const getCollegeStudentAssignmentStats = async (studentId: string): Promi
             ? gradedAssignments.reduce((sum, a) => sum + (a.grade_percentage || 0), 0) / gradedAssignments.length
             : 0;
 
-        const stats: CollegeAssignmentStats = {
-            total, todo, inProgress, submitted, graded,
-            averageGrade: Math.round(averageGrade * 10) / 10
+        return {
+            data: { total, todo, inProgress, submitted, graded, averageGrade: Math.round(averageGrade * 10) / 10 },
+            error: null
         };
-
-        return { data: stats, error: null };
-    } catch (err: any) {
-        console.error('❌ SERVICE: Error fetching assignment stats:', err);
-        return { data: null, error: err.message || 'Failed to fetch assignment statistics' };
+    } catch (err: unknown) {
+        if (isDev) console.error('❌ SERVICE: Error fetching assignment stats:', err);
+        const message = err instanceof Error ? err.message : 'Failed to fetch assignment statistics';
+        return { data: null, error: message };
     }
 };
 
@@ -130,7 +139,7 @@ export const updateCollegeStudentAssignmentStatus = async (
     newStatus: string
 ): Promise<ServiceResponse<boolean>> => {
     try {
-        const updateData: any = {
+        const updateData: Record<string, string> = {
             status: newStatus,
             updated_date: new Date().toISOString()
         };
@@ -149,9 +158,10 @@ export const updateCollegeStudentAssignmentStatus = async (
 
         if (error) throw error;
         return { data: true, error: null };
-    } catch (err: any) {
-        console.error('❌ SERVICE: Error updating assignment status:', err);
-        return { data: null, error: err.message || 'Failed to update assignment status' };
+    } catch (err: unknown) {
+        if (isDev) console.error('❌ SERVICE: Error updating assignment status:', err);
+        const message = err instanceof Error ? err.message : 'Failed to update assignment status';
+        return { data: null, error: message };
     }
 };
 
@@ -175,7 +185,7 @@ export const submitCollegeAssignment = async (
 
         if (assignmentError) throw assignmentError;
 
-        let uploadedFiles: any[] = [];
+        let uploadedFiles: UploadedFile[] = [];
 
         if (submissionFiles && submissionFiles.length > 0) {
             const folder = `college_assignment_submissions/${assignment.student_id}/${assignment.assignment_id}`;
@@ -189,13 +199,13 @@ export const submitCollegeAssignment = async (
                     }
                     return null;
                 })
-                .filter(file => file !== null);
+                .filter((file): file is UploadedFile => file !== null);
         }
 
         const updateData = {
             ...submissionData,
             submission_files: uploadedFiles.length > 0 ? uploadedFiles : null,
-            status: 'submitted',
+            status: 'submitted' as const,
             submission_date: new Date().toISOString(),
             updated_date: new Date().toISOString()
         };
@@ -207,8 +217,9 @@ export const submitCollegeAssignment = async (
 
         if (error) throw error;
         return { data: true, error: null };
-    } catch (err: any) {
-        console.error('❌ SERVICE: Error submitting assignment:', err);
-        return { data: null, error: err.message || 'Failed to submit assignment' };
+    } catch (err: unknown) {
+        if (isDev) console.error('❌ SERVICE: Error submitting assignment:', err);
+        const message = err instanceof Error ? err.message : 'Failed to submit assignment';
+        return { data: null, error: message };
     }
 };

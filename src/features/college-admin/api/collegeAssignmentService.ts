@@ -335,8 +335,9 @@ export const fetchEducatorAssignments = async (educatorUserId: string): Promise<
       }));
 
       return { data: assignments, error: null };
-    } catch (fallbackErr: any) {
-      return { data: null, error: fallbackErr.message || 'Failed to fetch assignments' };
+    } catch (fallbackErr: unknown) {
+      const message = fallbackErr instanceof Error ? fallbackErr.message : 'Failed to fetch assignments';
+      return { data: null, error: message };
     }
   }
 };
@@ -356,8 +357,8 @@ const ensureUserAccountsExist = async (students: CollegeStudent[]): Promise<stri
         }
         userIds.push(existingUser.id);
       }
-    } catch (error) {
-      console.error(`Error processing student ${student.email}:`, error);
+    } catch (error: unknown) {
+      if (import.meta.env.DEV) console.error(`Error processing student ${student.email}:`, error);
     }
   }
   return userIds;
