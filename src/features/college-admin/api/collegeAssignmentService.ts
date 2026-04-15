@@ -291,7 +291,8 @@ export const fetchEducatorAssignments = async (educatorUserId: string): Promise<
 
     if (error) throw error;
     return { data: data || [], error: null };
-  } catch (_rpcErr: unknown) {
+  } catch (rpcErr: unknown) {
+    if (import.meta.env.DEV) console.warn('RPC function failed, falling back to direct query:', rpcErr);
     try {
       const { data: fallbackData, error: fallbackError } = await supabase
         .from('college_assignments')
@@ -299,6 +300,8 @@ export const fetchEducatorAssignments = async (educatorUserId: string): Promise<
           assignment_id, title, description, instructions, course_name, course_code,
           due_date, total_points, assignment_type, skill_outcomes, created_date,
           program_section_id, instruction_files,
+          college_id, educator_name, college_educator_id, department_id, program_id,
+          available_from, allow_late_submission, document_pdf,
           program_sections!college_assignments_program_section_id_fkey(semester, section, academic_year),
           programs!college_assignments_program_id_fkey(name),
           departments!college_assignments_department_id_fkey(name)
