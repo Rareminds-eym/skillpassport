@@ -468,7 +468,7 @@ const UnifiedProfileEditModal = ({
         await onSave(updatedItems);
         // Trigger parent refresh if available
         if (typeof onSave === 'function' && onSave.refresh) {
-          await onSave.refresh();
+          try { await onSave.refresh(); } catch (refreshError) { logger.error('Error refreshing after save', { refreshError }); }
         }
         toast.success(`${config.title} updated successfully.`);
       } catch (error) {
@@ -494,7 +494,7 @@ const UnifiedProfileEditModal = ({
         await onSave(updatedItems);
         // Trigger parent refresh if available
         if (typeof onSave === 'function' && onSave.refresh) {
-          await onSave.refresh();
+          try { await onSave.refresh(); } catch (refreshError) { logger.error('Error refreshing after save', { refreshError }); }
         }
         toast.success(`${config.title} added successfully.`);
       } catch (error) {
@@ -580,7 +580,7 @@ const UnifiedProfileEditModal = ({
       await onSave(updatedItems);
       // Trigger parent refresh if available
       if (typeof onSave === 'function' && onSave.refresh) {
-        await onSave.refresh();
+        try { await onSave.refresh(); } catch (refreshError) { logger.error('Error refreshing after delete', { refreshError }); }
       }
       toast.success(`${config.title} has been deleted successfully.`);
     } catch (error) {
@@ -640,7 +640,7 @@ const UnifiedProfileEditModal = ({
 
       // Trigger parent refresh if available
       if (typeof onSave === 'function' && onSave.refresh) {
-        await onSave.refresh();
+        try { await onSave.refresh(); } catch (refreshError) { logger.error('Error refreshing after visibility toggle', { refreshError }); }
       }
 
       toast.success(`${config.title} ${newState ? 'is now visible' : 'is now hidden'} on your profile.`);

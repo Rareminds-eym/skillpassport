@@ -3,9 +3,6 @@ import toast from 'react-hot-toast';
 import {
   DocumentTextIcon,
   ClockIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  ExclamationCircleIcon,
   PlusIcon,
   EyeIcon,
   CalendarDaysIcon,
@@ -1327,9 +1324,9 @@ const OffersDecisions = () => {
     return Array.from(benefits).sort();
   }, [offers]);
 
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success'): void => {
     if (type === 'error') toast.error(message);
-    else if (type === 'info') toast(message);
+    else if (type === 'info') toast(message, { icon: 'ℹ️' });
     else toast.success(message);
   };
 

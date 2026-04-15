@@ -10,6 +10,7 @@ import {
   SparklesIcon
 } from '@heroicons/react/24/outline';
 
+// Remove unused onShowToast prop — toast calls are now direct via react-hot-toast
 interface PipelineQuickFiltersProps {
   showAIRecommendedOnly: boolean;
   setShowAIRecommendedOnly: (value: boolean) => void;
@@ -17,7 +18,6 @@ interface PipelineQuickFiltersProps {
   totalAIRecommended: number;
   globalSearch: string;
   setGlobalSearch: (value: string) => void;
-  onShowToast?: (type: 'success' | 'error' | 'warning' | 'info', title: string, message?: string) => void;
 }
 
 export const PipelineQuickFilters: React.FC<PipelineQuickFiltersProps> = ({

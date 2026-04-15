@@ -1445,12 +1445,7 @@ const StudentDashboard = () => {
 
     // Don't allow hiding/showing items that are pending verification or approval
     if (skill.approval_status === 'pending' || skill._hasPendingEdit) {
-      toast({
-        title: "Cannot Hide/Show",
-        description: "You cannot hide or show skills that are pending verification or approval.",
-        variant: "destructive",
-        duration: 4000,
-      });
+      toast.error("You cannot hide or show skills that are pending verification or approval.");
       return;
     }
 
@@ -1478,18 +1473,10 @@ const StudentDashboard = () => {
         await refreshTechnicalSkills();
       }
 
-      toast({
-        title: newState ? "Visibility Enabled" : "Visibility Disabled",
-        description: `Technical skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`,
-        duration: 3000,
-      });
+      toast.success(`Technical skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`);
     } catch (error) {
       logger.error('🔧 Dashboard - Error toggling technical skill visibility', error);
-      toast({
-        title: "Error",
-        description: "Failed to update visibility. Please try again.",
-        variant: "destructive"
-      });
+      toast.error("Failed to update visibility. Please try again.");
     }
   };
 
@@ -1502,12 +1489,7 @@ const StudentDashboard = () => {
 
     // Don't allow hiding/showing items that are pending verification or approval
     if (skill.approval_status === 'pending' || skill._hasPendingEdit) {
-      toast({
-        title: "Cannot Hide/Show",
-        description: "You cannot hide or show skills that are pending verification or approval.",
-        variant: "destructive",
-        duration: 4000,
-      });
+      toast.error("You cannot hide or show skills that are pending verification or approval.");
       return;
     }
 
@@ -1532,18 +1514,10 @@ const StudentDashboard = () => {
         await refreshSoftSkills();
       }
 
-      toast({
-        title: newState ? "Visibility Enabled" : "Visibility Disabled",
-        description: `Soft skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`,
-        duration: 3000,
-      });
+      toast.success(`Soft skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`);
     } catch (error) {
       logger.error('Error toggling soft skill visibility', error);
-      toast({
-        title: "Error",
-        description: "Failed to update visibility. Please try again.",
-        variant: "destructive"
-      });
+      toast.error("Failed to update visibility. Please try again.");
     }
   };
 
