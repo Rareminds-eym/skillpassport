@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useCallback, useState, useMemo } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
-import { useMessageStore } from '@/features/messaging/model/messageStore';
+import { useMessageStore } from '@/stores';
 import MessageService from '@/features/messaging/api/messageService';
 import type { Message } from '@/features/messaging/api/messageService';
 

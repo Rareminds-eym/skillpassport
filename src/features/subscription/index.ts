@@ -167,7 +167,7 @@ export { default as SignupFormFields, ALL_COUNTRIES, LANGUAGES } from './ui/shar
 
 export { default as addOnCatalogService } from './api/addOnCatalogService';
 
-export { useSubscriptionAccess } from './model/subscriptionStore';
+export { useSubscriptionAccess } from '@/stores';
 
 export { default as addOnAnalyticsService } from './api/addOnAnalyticsService';
 

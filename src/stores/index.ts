@@ -22,7 +22,7 @@ export {
   useErrorNotification,
   type User,
   type Session
-} from '@/features/auth/model/authStore';
+} from './authStore';
 
 // ====================
 // Feature Stores
@@ -52,7 +52,7 @@ export {
   useIsViewingOtherStudent,
   type PortfolioSettings,
   type DisplayPreferences
-} from '@/features/digital-portfolio/model/portfolioStore';
+} from './portfolioStore';
 
 export {
   useAssessmentStore,
@@ -70,7 +70,7 @@ export {
   type Answers,
   type SectionTimings,
   type AssessmentAttempt
-} from '@/features/assessment/model/assessmentStore';
+} from './assessmentStore';
 
 export {
   useTourStore,
@@ -102,7 +102,7 @@ export {
   type Subscription,
   type Entitlement,
   type SubscriptionCost
-} from '@/features/subscription/model/subscriptionStore';
+} from './subscriptionStore';
 
 // ====================
 // Additional Feature Stores
@@ -129,7 +129,7 @@ export {
   useTestProgress,
   useTestActions,
   type Question
-} from '@/features/assessment/model/testStore';
+} from './testStore';
 
 export {
   usePromotionalStore,
@@ -138,7 +138,7 @@ export {
   usePromotionalActions,
   type PromotionalEvent,
   type TimeRemaining
-} from '@/features/promotional/model/promotionalStore';
+} from './promotionalStore';
 
 export {
   useCareerAssistantStore,
@@ -151,7 +151,7 @@ export {
   type Conversation,
   type Message,
   type FeedbackData
-} from '@/features/career-assistant/model/careerAssistantStore';
+} from './careerAssistantStore';
 
 // ====================
 // Existing Stores (already in codebase)
@@ -160,7 +160,7 @@ export {
 export {
   useCounsellingStore,
   type CounsellingStore
-} from '@/features/counselling/model/counsellingStore';
+} from './counsellingStore';
 
 export {
   useMessageStore,
@@ -172,7 +172,7 @@ export {
   useCurrentConversation,
   useUnreadMessagesCount,
   type MessageState
-} from '@/features/messaging/model/messageStore';
+} from './useMessageStore';
 
 // ====================
 // Store Utilities
@@ -180,12 +180,12 @@ export {
 
 // Helper to reset all stores (useful for logout)
 export const resetAllStores = async () => {
-  const { useAuthStore } = await import('@/features/auth/model/authStore');
+  const { useAuthStore } = await import('./authStore');
   const { useSearchStore } = await import('@/shared/model/searchStore');
-  const { usePortfolioStore } = await import('@/features/digital-portfolio/model/portfolioStore');
+  const { usePortfolioStore } = await import('./portfolioStore');
   const { useTourStore } = await import('@/shared/model/tourStore');
-  const { useAssessmentStore } = await import('@/features/assessment/model/assessmentStore');
-  const { useSubscriptionStore } = await import('@/features/subscription/model/subscriptionStore');
+  const { useAssessmentStore } = await import('./assessmentStore');
+  const { useSubscriptionStore } = await import('./subscriptionStore');
 
   // Reset individual stores
   useAuthStore.getState().logout();
@@ -198,7 +198,7 @@ export const resetAllStores = async () => {
 
 // Initialize all stores on app load
 export const initializeStores = async () => {
-  const { useAuthStore } = await import('@/features/auth/model/authStore');
+  const { useAuthStore } = await import('./authStore');
 
   // Initialize auth first (other stores may depend on it)
   await useAuthStore.getState().initialize();
