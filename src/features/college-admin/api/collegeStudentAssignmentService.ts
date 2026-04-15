@@ -4,19 +4,13 @@ import type {
     CollegeStudentAssignment,
     CollegeAssignmentStats,
     ServiceResponse,
+    UploadedFile,
 } from './collegeAssignmentTypes';
 
 // Re-export types so existing imports from this path still work
 export type { CollegeStudentAssignment, CollegeAssignmentStats } from './collegeAssignmentTypes';
 
 const isDev = import.meta.env.DEV;
-
-interface UploadedFile {
-    name: string;
-    url: string;
-    size: number;
-    type: string;
-}
 
 /**
  * Fetch assignments for a college student
@@ -46,11 +40,11 @@ export const fetchCollegeStudentAssignments = async (studentId: string): Promise
 
         if (aError) throw aError;
 
-        const combinedAssignments: CollegeStudentAssignment[] = studentAssignments.map(sa => {
+        const combinedAssignments = studentAssignments.reduce<CollegeStudentAssignment[]>((acc, sa) => {
             const assignment = assignments?.find(a => a.assignment_id === sa.assignment_id);
-            if (!assignment) return null;
+            if (!assignment) return acc;
 
-            return {
+            acc.push({
                 assignment_id: assignment.assignment_id,
                 student_assignment_id: sa.student_assignment_id,
                 title: assignment.title,
@@ -83,8 +77,9 @@ export const fetchCollegeStudentAssignments = async (studentId: string): Promise
                 semester: undefined,
                 section: '',
                 academic_year: ''
-            };
-        }).filter(Boolean) as CollegeStudentAssignment[];
+            });
+            return acc;
+        }, []);
 
         combinedAssignments.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
         return { data: combinedAssignments, error: null };

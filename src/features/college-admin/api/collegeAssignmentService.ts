@@ -299,7 +299,7 @@ export const fetchEducatorAssignments = async (educatorUserId: string): Promise<
 
     if (error) throw error;
     return { data: data || [], error: null };
-  } catch (err: any) {
+  } catch (_rpcErr: unknown) {
     try {
       const { data: fallbackData, error: fallbackError } = await supabase
         .from('college_assignments')
@@ -317,24 +317,27 @@ export const fetchEducatorAssignments = async (educatorUserId: string): Promise<
 
       if (fallbackError) throw fallbackError;
 
-      const assignments = (fallbackData || []).map((a: any) => ({
-        assignment_id: a.assignment_id, title: a.title, description: a.description || '',
-        instructions: a.instructions || '', course_name: a.course_name, course_code: a.course_code || '',
-        college_educator_id: a.college_educator_id, educator_name: a.educator_name || '',
-        college_id: a.college_id, program_section_id: a.program_section_id,
-        department_id: a.department_id, program_id: a.program_id,
-        total_points: a.total_points, assignment_type: a.assignment_type,
-        skill_outcomes: a.skill_outcomes || [], due_date: a.due_date,
-        available_from: a.available_from || '', allow_late_submission: a.allow_late_submission || false,
-        document_pdf: a.document_pdf, instruction_files: a.instruction_files || [],
-        created_date: a.created_date,
-        status: a.due_date < new Date().toISOString() ? 'completed' : 'active',
-        program_name: a.programs?.name || '', department_name: a.departments?.name || '',
-        semester: a.program_sections?.semester, section: a.program_sections?.section,
-        academic_year: a.program_sections?.academic_year, student_count: 0
+      const assignments = (fallbackData || []).map((assignment: Record<string, unknown>) => ({
+        assignment_id: assignment.assignment_id, title: assignment.title, description: assignment.description || '',
+        instructions: assignment.instructions || '', course_name: assignment.course_name, course_code: assignment.course_code || '',
+        college_educator_id: assignment.college_educator_id, educator_name: assignment.educator_name || '',
+        college_id: assignment.college_id, program_section_id: assignment.program_section_id,
+        department_id: assignment.department_id, program_id: assignment.program_id,
+        total_points: assignment.total_points, assignment_type: assignment.assignment_type,
+        skill_outcomes: (assignment.skill_outcomes as string[]) || [], due_date: assignment.due_date,
+        available_from: assignment.available_from || '', allow_late_submission: assignment.allow_late_submission || false,
+        document_pdf: assignment.document_pdf, instruction_files: (assignment.instruction_files as unknown[]) || [],
+        created_date: assignment.created_date,
+        status: (assignment.due_date as string) < new Date().toISOString() ? 'completed' : 'active',
+        program_name: (assignment.programs as Record<string, string>)?.name || '',
+        department_name: (assignment.departments as Record<string, string>)?.name || '',
+        semester: (assignment.program_sections as Record<string, unknown>)?.semester,
+        section: (assignment.program_sections as Record<string, unknown>)?.section,
+        academic_year: (assignment.program_sections as Record<string, unknown>)?.academic_year,
+        student_count: 0
       }));
 
-      return { data: assignments, error: null };
+      return { data: assignments as CollegeAssignment[], error: null };
     } catch (fallbackErr: unknown) {
       const message = fallbackErr instanceof Error ? fallbackErr.message : 'Failed to fetch assignments';
       return { data: null, error: message };

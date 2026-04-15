@@ -132,7 +132,7 @@ export interface CollegeStudentAssignment {
     submission_date?: string;
     submission_content?: string;
     submission_url?: string;
-    submission_files?: any;
+    submission_files?: Array<{ name: string; url: string; size: number; type: string }> | null;
     is_late: boolean;
     program_name?: string;
     department_name?: string;
@@ -151,3 +151,10 @@ export interface CollegeAssignmentStats {
 }
 
 export type ServiceResponse<T> = { data: T; error: null } | { data: null; error: string };
+
+export interface UploadedFile {
+    name: string;
+    url: string;
+    size: number;
+    type: string;
+}
