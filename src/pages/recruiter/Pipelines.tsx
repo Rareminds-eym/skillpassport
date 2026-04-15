@@ -10,7 +10,7 @@ import { createNotification } from '@/features/notifications';
 import { addCandidateToPipeline, moveCandidateToStage } from '@/features/opportunities';
 import { PipelineFilters, PipelineSortOptions } from '@/shared/types/recruiter';
 import { getLogger } from '@/shared/config/logging';
-
+import toast from "react-hot-toast";
 const logger = getLogger('Pipelines');
 
 // Pipeline components
@@ -494,7 +494,6 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         totalAIRecommended={totalAIRecommended}
         globalSearch={globalSearch}
         setGlobalSearch={setGlobalSearch}
-        onShowToast={(message: string) => toast(message)}
       />
 
       {/* Kanban Board */}
