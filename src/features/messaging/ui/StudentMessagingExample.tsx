@@ -15,7 +15,6 @@ interface StudentMessagingExampleProps {
  * - Zustand state management
  * - React Query for non-blocking data fetching
  * - Supabase realtime for instant updates
- * - Hot-toast notifications with smooth animations
  */
 export const StudentMessagingExample: React.FC<StudentMessagingExampleProps> = ({
   studentId,

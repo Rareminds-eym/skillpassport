@@ -46,7 +46,6 @@ const ProfileItemModal = ({
       // Copy all fields from the item, including id
       const sourceData = item;
       
-      // Copy all fields from the item, including id
       Object.keys(sourceData).forEach(key => {
         if (sourceData[key] !== undefined) {
           if (key === 'skills') {

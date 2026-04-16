@@ -10,7 +10,6 @@ import {
   SparklesIcon
 } from '@heroicons/react/24/outline';
 
-// Remove unused onShowToast prop — toast calls are now direct via react-hot-toast
 interface PipelineQuickFiltersProps {
   showAIRecommendedOnly: boolean;
   setShowAIRecommendedOnly: (value: boolean) => void;
@@ -34,8 +33,10 @@ export const PipelineQuickFilters: React.FC<PipelineQuickFiltersProps> = ({
         <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Quick Filters:</span>
         <button
           onClick={() => {
+            if (showAIRecommendedOnly) {
+              toast('Showing all candidates');
+            }
             setShowAIRecommendedOnly(false);
-            toast('Showing all candidates');
           }}
           className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${
             !showAIRecommendedOnly

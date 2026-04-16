@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import {
   DocumentTextIcon,
@@ -25,8 +25,6 @@ import {
 import { useOffers, Offer } from '@/shared/lib/hooks';
 import { OfferAdvancedFilters, OfferFilters, OfferSortOptions, OfferSortButton } from '@/features/recruiter';
 import { getLogger } from '@/shared/config/logging';
-
-const InfoIcon = () => <InformationCircleIcon className="h-5 w-5 text-blue-500" />;
 
 const logger = getLogger('OffersDecisions');
 
@@ -1330,11 +1328,11 @@ const OffersDecisions = () => {
     return Array.from(benefits).sort();
   }, [offers]);
 
-  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success'): void => {
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success'): void => {
     if (type === 'error') toast.error(message);
-    else if (type === 'info') toast(message, { icon: <InfoIcon /> });
+    else if (type === 'info') toast(message, { icon: <InformationCircleIcon className="h-5 w-5 text-blue-500" /> });
     else toast.success(message);
-  }, []);
+  };
 
   const handleCreateOffer = async (newOfferData: Partial<Offer>) => {
     const result = await createOffer(newOfferData);
@@ -1415,8 +1413,9 @@ const OffersDecisions = () => {
     setCurrentPage(1);
   };
 
-  // avgTimeToOffer: not yet computed from real data (tracked in backlog)
-  const avgTimeToOffer = null;
+  // TODO: Implement avgTimeToOffer calculation from real data (tracked in backlog)
+  // Ticket: [Add ticket reference here]
+  const avgTimeToOffer: number | null = null;
 
   if (loading) {
     return (

@@ -1444,7 +1444,7 @@ const StudentDashboard = () => {
     const newState = !skill.enabled;
 
     // Don't allow hiding/showing items that are pending verification or approval
-    if (skill.approval_status === 'pending' || skill.has_pending_edit || skill._hasPendingEdit) {
+    if (skill.approval_status === 'pending' || skill.has_pending_edit) {
       toast.error("You cannot hide or show skills that are pending verification or approval.");
       return;
     }
@@ -1476,7 +1476,7 @@ const StudentDashboard = () => {
     const newState = !skill.enabled;
 
     // Don't allow hiding/showing items that are pending verification or approval
-    if (skill.approval_status === 'pending' || skill.has_pending_edit || skill._hasPendingEdit) {
+    if (skill.approval_status === 'pending' || skill.has_pending_edit) {
       toast.error("You cannot hide or show skills that are pending verification or approval.");
       return;
     }

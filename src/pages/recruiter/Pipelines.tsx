@@ -149,17 +149,17 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
 
     setMovingCandidates((prev) => [...prev, candidateId]);
 
-    try {
-      // Capture snapshot before any state mutation
-      const preSnapshot = {
-        sourced: [...pipelineData.sourced],
-        screened: [...pipelineData.screened],
-        interview_1: [...pipelineData.interview_1],
-        interview_2: [...pipelineData.interview_2],
-        offer: [...pipelineData.offer],
-        hired: [...pipelineData.hired]
-      };
+    // Capture snapshot BEFORE any state mutation so it's accessible in catch block
+    const preSnapshot = {
+      sourced: [...pipelineData.sourced],
+      screened: [...pipelineData.screened],
+      interview_1: [...pipelineData.interview_1],
+      interview_2: [...pipelineData.interview_2],
+      offer: [...pipelineData.offer],
+      hired: [...pipelineData.hired]
+    };
 
+    try {
       // Optimistic update — deep-clone each stage array to avoid stale references
       setPipelineData((prev) => {
         const newData = {
@@ -207,16 +207,8 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         }
       }
     } catch (error) {
-      // Revert to pre-move state on error
-      const revertSnapshot = {
-        sourced: [...pipelineData.sourced],
-        screened: [...pipelineData.screened],
-        interview_1: [...pipelineData.interview_1],
-        interview_2: [...pipelineData.interview_2],
-        offer: [...pipelineData.offer],
-        hired: [...pipelineData.hired]
-      };
-      setPipelineData(revertSnapshot);
+      // Revert to pre-move state using the captured snapshot
+      setPipelineData(preSnapshot);
       toast.error("Failed to move candidate. Please try again.");
     } finally {
       setMovingCandidates((prev) => prev.filter((id) => id !== candidateId));
@@ -277,13 +269,20 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
     setShowBulkRejectConfirm(true);
   };
 
-  const confirmBulkReject = async () => {
+  const confirmBulkReject = () => {
     setShowBulkRejectConfirm(false);
     const count = selectedCandidates.length;
 
     // TODO: Replace with real bulk-reject API call before shipping to production.
-    // Until then, this is a UI-only operation and the rollback path is unreachable.
-    // Deep-clone snapshot for reliable rollback
+    // Until then, this is a UI-only operation that will cause data loss on refresh.
+    // Rejected candidates will reappear on the next data load.
+    logger.warn('Bulk reject is UI-only - no backend API call implemented');
+    
+    toast.error('Bulk reject feature is not yet implemented. Please reject candidates individually.');
+    
+    // NOTE: The following code is commented out to prevent data loss
+    // Uncomment only after implementing the backend API endpoint
+    /*
     const snapshot = {
       sourced: [...pipelineData.sourced],
       screened: [...pipelineData.screened],
@@ -293,43 +292,36 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
       hired: [...pipelineData.hired]
     };
 
-    try {
-      // Update UI first — no bulk-reject API exists yet, notification is a side-effect
-      setPipelineData((prev) => {
-        const newData = {
-          sourced: [...prev.sourced],
-          screened: [...prev.screened],
-          interview_1: [...prev.interview_1],
-          interview_2: [...prev.interview_2],
-          offer: [...prev.offer],
-          hired: [...prev.hired]
-        };
-        selectedCandidates.forEach((candidateId) => {
-          Object.keys(newData).forEach((stage) => {
-            newData[stage as keyof typeof newData] = newData[
-              stage as keyof typeof newData
-            ].filter((c) => c.id !== candidateId);
-          });
+    setPipelineData((prev) => {
+      const newData = {
+        sourced: [...prev.sourced],
+        screened: [...prev.screened],
+        interview_1: [...prev.interview_1],
+        interview_2: [...prev.interview_2],
+        offer: [...prev.offer],
+        hired: [...prev.hired]
+      };
+      selectedCandidates.forEach((candidateId) => {
+        Object.keys(newData).forEach((stage) => {
+          newData[stage as keyof typeof newData] = newData[
+            stage as keyof typeof newData
+          ].filter((c) => c.id !== candidateId);
         });
-        return newData;
       });
-      toast.success(`${count} candidate(s) removed from pipeline`);
-      setSelectedCandidates([]);
+      return newData;
+    });
+    toast.success(`${count} candidate(s) removed from pipeline`);
+    setSelectedCandidates([]);
 
-      // Notify asynchronously — failure does not roll back the UI
-      createNotification(
-        currentRecruiterId!,
-        "candidate_rejected",
-        "Candidates Rejected",
-        `${count} candidate(s) were rejected from ${jobTitle}.`,
-      ).catch((notifyError: unknown) => {
-        logger.error('Error sending rejection notification', notifyError instanceof Error ? notifyError : undefined);
-      });
-    } catch (err: unknown) {
-      logger.error('Error during bulk reject', err instanceof Error ? err : undefined);
-      setPipelineData(snapshot);
-      toast.error('Failed to reject candidates. Please try again.');
-    }
+    createNotification(
+      currentRecruiterId!,
+      "candidate_rejected",
+      "Candidates Rejected",
+      `${count} candidate(s) were rejected from ${jobTitle}.`,
+    ).catch((notifyError: unknown) => {
+      logger.error('Error sending rejection notification', notifyError instanceof Error ? notifyError : undefined);
+    });
+    */
   };
 
   const handleExportPipeline = () => {
@@ -656,21 +648,21 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
                   }))
                 }
                 onCandidateMove={(id, stage) => handleCandidateMove(Number(id), stage)}
-                onCandidateView={handleCandidateView}
+                onCandidateView={(candidate) => handleCandidateView({ ...candidate, id: Number(candidate.id), student_id: Number(candidate.student_id) } as PipelineCandidateUI)}
                 selectedCandidates={selectedCandidates.map(String)}
                 onToggleSelect={(id) => toggleCandidateSelection(Number(id))}
-                onSendEmail={handleSendEmail}
+                onSendEmail={(candidate) => handleSendEmail({ ...candidate, id: Number(candidate.id), student_id: Number(candidate.student_id) } as PipelineCandidateUI)}
                 onAddClick={() => handleAddFromTalentPool(stage.key)}
-                onNextAction={handleNextAction}
+                onNextAction={(candidate) => handleNextAction({ ...candidate, id: Number(candidate.id), student_id: Number(candidate.student_id) } as PipelineCandidateUI)}
                 movingCandidates={movingCandidates.map(String)}
               />
               {index === 0 && (
                 <AIRecommendedColumn
                   recommendations={aiRecommendations}
                   loading={loadingRecommendations}
-                  onCandidateMove={handleCandidateMove}
+                  onCandidateMove={(id: number | string, stage: string) => handleCandidateMove(Number(id), stage)}
                   pipelineCandidates={allPipelineCandidatesForAI}
-                  onCandidateView={handleCandidateView}
+                  onCandidateView={(candidate) => handleCandidateView({ ...candidate, id: Number(candidate.id), student_id: Number(candidate.student_id) } as PipelineCandidateUI)}
                   onMoveToScreened={handleMoveAIRecommendedToScreened}
                 />
               )}
@@ -707,9 +699,14 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
 
       {/* Bulk Reject Confirmation Modal */}
       {showBulkRejectConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="bulk-reject-title"
+        >
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Confirm Bulk Rejection</h3>
+            <h3 id="bulk-reject-title" className="text-lg font-semibold mb-4">Confirm Bulk Rejection</h3>
             <p className="text-gray-600 mb-6">
               Are you sure you want to reject {selectedCandidates.length} candidate(s)?
               <br />
@@ -763,7 +760,10 @@ const Pipelines: React.FC<PipelinesProps> = (props) => (
     featureKey="pipeline_management" 
     showUpgradePrompt={true}
     fallback={null}
-    onUpgradeClick={() => {}}
+    onUpgradeClick={() => {
+      // TODO: Implement navigation to billing/upgrade page
+      window.location.href = '/billing';
+    }}
   >
     <PipelinesContent {...props} />
   </FeatureGate>

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Badge } from '@/shared/ui/badge';
@@ -36,6 +36,9 @@ import {
 } from '@/features/school-admin';
 import { getLogger } from '@/shared/config/logging';
 
+// Constants
+const ITEMS_PER_PAGE = 6;
+
 /**
  * Shared helper — resolves the college ID for the current user.
  * Checks user object first, then college_lecturers table, then organizations table.
@@ -50,7 +53,7 @@ async function getCollegeId(user) {
   const { data: educatorData, error: educatorError } = await supabase
     .from('college_lecturers')
     .select('collegeId')
-    .eq('user_id', user?.id)
+    .eq('user_id', user.id)
     .maybeSingle();
 
   if (educatorError) throw educatorError;
@@ -60,7 +63,7 @@ async function getCollegeId(user) {
   const { data: educatorByEmail, error: emailError } = await supabase
     .from('college_lecturers')
     .select('collegeId')
-    .eq('email', user?.email)
+    .eq('email', user.email)
     .maybeSingle();
 
   if (emailError) throw emailError;
@@ -69,7 +72,7 @@ async function getCollegeId(user) {
   const { data: orgData, error: orgError } = await supabase
     .from('organizations')
     .select('id')
-    .eq('admin_id', user?.id)
+    .eq('admin_id', user.id)
     .eq('organization_type', 'college')
     .maybeSingle();
 
@@ -274,7 +277,6 @@ const CollegeVerifications = () => {
   const [trainingsPage, setTrainingsPage] = useState(1);
   const [experiencesPage, setExperiencesPage] = useState(1);
   const [projectsPage, setProjectsPage] = useState(1);
-  const itemsPerPage = 6;
   
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -282,6 +284,7 @@ const CollegeVerifications = () => {
   const [viewMode, setViewMode] = useState('grid'); 
 
   const user = useUser();
+  const userId = user?.id;
 
   // Fetch pending trainings for college admin (Using database approval_authority)
   const fetchPendingTrainings = useCallback(async () => {
@@ -355,25 +358,47 @@ const CollegeVerifications = () => {
     }
   }, [user]);
 
-  // Initial data fetch
+  // Initial data fetch - depend only on userId to prevent infinite loop
   useEffect(() => {
     const fetchData = async () => {
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
-      await Promise.all([
-        fetchPendingTrainings(),
-        fetchPendingExperiences(),
-        fetchPendingProjects()
-      ]);
-      setLoading(false);
+      try {
+        const collegeId = await getCollegeId(user);
+
+        if (!collegeId) {
+          logger.warn('No college ID found - showing empty lists');
+          setPendingTrainings([]);
+          setPendingExperiences([]);
+          setPendingProjects([]);
+          return;
+        }
+
+        logger.info('Using college_id:', collegeId);
+
+        const [trainings, experiences, projects] = await Promise.all([
+          CollegeAdminNotificationService.getPendingTrainings(collegeId),
+          CollegeAdminNotificationService.getPendingExperiences(collegeId),
+          CollegeAdminNotificationService.getPendingProjects(collegeId)
+        ]);
+
+        setPendingTrainings(trainings);
+        setPendingExperiences(experiences);
+        setPendingProjects(projects);
+      } catch (error) {
+        logger.error('Error fetching data:', error);
+        toast.error("Failed to load pending items");
+      } finally {
+        setLoading(false);
+      }
     };
 
-    if (user) {
-      fetchData();
-    } else {
-      // If no user, stop loading to prevent perpetual loading state
-      setLoading(false);
-    }
-  }, [user, fetchPendingTrainings, fetchPendingExperiences, fetchPendingProjects]);
+    fetchData();
+  }, [userId]);
 
   // Handle training actions
   const handleTrainingAction = async (action, training) => {
@@ -381,14 +406,10 @@ const CollegeVerifications = () => {
       setSelectedTraining(training);
       setShowTrainingModal(true);
     } else if (action === 'approved' || action === 'rejected') {
-      try {
-        // Refresh data after approval/rejection
-        await fetchPendingTrainings();
-        toast.success(`Training ${action} successfully!`);
-      } catch (error) {
-        logger.error('Error handling training action:', error);
-        toast.error(`Failed to ${action} training. Please try again.`);
-      }
+      // Note: fetchPendingTrainings internally handles errors with toast.error
+      // so this outer try/catch may not catch those errors
+      await fetchPendingTrainings();
+      toast.success(`Training ${action} successfully!`);
     }
   };
 
@@ -398,14 +419,10 @@ const CollegeVerifications = () => {
       setSelectedExperience(experience);
       setShowExperienceModal(true);
     } else if (action === 'approved' || action === 'rejected') {
-      try {
-        // Refresh data after approval/rejection
-        await fetchPendingExperiences();
-        toast.success(`Experience ${action} successfully!`);
-      } catch (error) {
-        logger.error('Error handling experience action:', error);
-        toast.error(`Failed to ${action} experience. Please try again.`);
-      }
+      // Note: fetchPendingExperiences internally handles errors with toast.error
+      // so this outer try/catch may not catch those errors
+      await fetchPendingExperiences();
+      toast.success(`Experience ${action} successfully!`);
     }
   };
 
@@ -415,33 +432,35 @@ const CollegeVerifications = () => {
       setSelectedProject(project);
       setShowProjectModal(true);
     } else if (action === 'approved' || action === 'rejected') {
-      try {
-        // Refresh data after approval/rejection
-        await fetchPendingProjects();
-        toast.success(`Project ${action} successfully!`);
-      } catch (error) {
-        logger.error('Error handling project action:', error);
-        toast.error(`Failed to ${action} project. Please try again.`);
-      }
+      // Note: fetchPendingProjects internally handles errors with toast.error
+      // so this outer try/catch may not catch those errors
+      await fetchPendingProjects();
+      toast.success(`Project ${action} successfully!`);
     }
   };
 
   // Refresh all data
   const refreshData = async () => {
     setLoading(true);
-    await Promise.all([
-      fetchPendingTrainings(),
-      fetchPendingExperiences(),
-      fetchPendingProjects()
-    ]);
-    setLoading(false);
-    toast.success("Data has been refreshed successfully");
+    try {
+      await Promise.all([
+        fetchPendingTrainings(),
+        fetchPendingExperiences(),
+        fetchPendingProjects()
+      ]);
+      toast.success("Data has been refreshed successfully");
+    } catch (error) {
+      logger.error('Error refreshing data:', error);
+      toast.error("Failed to refresh data");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Pagination helper functions
   const getPageData = (data, page) => {
-    const startIndex = (page - 1) * itemsPerPage;
-    return data.slice(startIndex, startIndex + itemsPerPage);
+    const startIndex = (page - 1) * ITEMS_PER_PAGE;
+    return data.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   };
 
   const handleTabChange = (tab) => {
@@ -450,21 +469,15 @@ const CollegeVerifications = () => {
     setStatusFilter('all');
   };
 
-  // Reset pagination when search or filter changes
+  // Reset pagination when search or filter changes - collapsed into single effect
   useEffect(() => {
     setTrainingsPage(1);
-  }, [searchQuery, statusFilter]);
-
-  useEffect(() => {
     setExperiencesPage(1);
-  }, [searchQuery, statusFilter]);
-
-  useEffect(() => {
     setProjectsPage(1);
   }, [searchQuery, statusFilter]);
 
-  // Filter functions
-  const getFilteredTrainings = () => {
+  // Filter functions - memoized to avoid recomputing on unrelated re-renders
+  const filteredTrainings = useMemo(() => {
     return pendingTrainings.filter(training => {
       const matchesSearch = (training.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                            (training.student?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -474,9 +487,9 @@ const CollegeVerifications = () => {
       
       return matchesSearch && matchesStatus;
     });
-  };
+  }, [pendingTrainings, searchQuery, statusFilter]);
 
-  const getFilteredExperiences = () => {
+  const filteredExperiences = useMemo(() => {
     return pendingExperiences.filter(experience => {
       const matchesSearch = (experience.role || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                            (experience.student?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -486,9 +499,9 @@ const CollegeVerifications = () => {
       
       return matchesSearch && matchesStatus;
     });
-  };
+  }, [pendingExperiences, searchQuery, statusFilter]);
 
-  const getFilteredProjects = () => {
+  const filteredProjects = useMemo(() => {
     return pendingProjects.filter(project => {
       const matchesSearch = (project.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                            (project.student_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -498,12 +511,7 @@ const CollegeVerifications = () => {
       
       return matchesSearch && matchesStatus;
     });
-  };
-
-  // Get current page data for each tab (with filtering)
-  const filteredTrainings = getFilteredTrainings();
-  const filteredExperiences = getFilteredExperiences();
-  const filteredProjects = getFilteredProjects();
+  }, [pendingProjects, searchQuery, statusFilter]);
   
   const currentTrainings = getPageData(filteredTrainings, trainingsPage);
   const currentExperiences = getPageData(filteredExperiences, experiencesPage);
@@ -696,7 +704,7 @@ const CollegeVerifications = () => {
                   ))}
                 </div>
                 <PaginationControls
-                  totalPages={Math.ceil(filteredTrainings.length / itemsPerPage)}
+                  totalPages={Math.ceil(filteredTrainings.length / ITEMS_PER_PAGE)}
                   currentPage={trainingsPage}
                   onPageChange={setTrainingsPage}
                 />
@@ -786,7 +794,7 @@ const CollegeVerifications = () => {
                   ))}
                 </div>
                 <PaginationControls
-                  totalPages={Math.ceil(filteredExperiences.length / itemsPerPage)}
+                  totalPages={Math.ceil(filteredExperiences.length / ITEMS_PER_PAGE)}
                   currentPage={experiencesPage}
                   onPageChange={setExperiencesPage}
                 />
@@ -876,7 +884,7 @@ const CollegeVerifications = () => {
                   ))}
                 </div>
                 <PaginationControls
-                  totalPages={Math.ceil(filteredProjects.length / itemsPerPage)}
+                  totalPages={Math.ceil(filteredProjects.length / ITEMS_PER_PAGE)}
                   currentPage={projectsPage}
                   onPageChange={setProjectsPage}
                 />

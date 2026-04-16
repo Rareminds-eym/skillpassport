@@ -52,6 +52,7 @@ const UnifiedProfileEditModal = ({
   const [editingIndex, setEditingIndex] = useState(singleEditMode ? 0 : null);
   const [isFormOpen, setIsFormOpen] = useState(singleEditMode);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingItem, setIsSavingItem] = useState(false);
 
   // State for separate item modal
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
@@ -440,79 +441,90 @@ const UnifiedProfileEditModal = ({
       return;
     }
 
-    const processedData = processFormData();
+    // Guard against concurrent invocations
+    if (isSavingItem) {
+      return;
+    }
 
-    if (editingIndex !== null) {
-      // Update existing item
-      const existingItem = items[editingIndex];
+    setIsSavingItem(true);
 
-      // Preserve important metadata from existing item
-      const updatedItem = {
-        ...existingItem,
-        ...processedData,
-        // Keep these fields from existing item
-        id: existingItem.id,
-        student_id: existingItem.student_id,
-        created_at: existingItem.created_at,
-        updated_at: new Date().toISOString()
-      };
+    try {
+      const processedData = processFormData();
 
-      const updatedItems = items.map((item, idx) =>
-        idx === editingIndex ? updatedItem : item
-      );
+      if (editingIndex !== null) {
+        // Update existing item
+        const existingItem = items[editingIndex];
 
-      // AUTO-SAVE: Save to database — only update UI on success
-      try {
-        await onSave(updatedItems);
-        setItems(updatedItems);
-        resetForm();
-        toast.success(`${config.title} updated successfully.`);
-      } catch (error) {
-        logger.error('Error auto-saving updated item', error);
-        toast.error(`${config.title} could not be saved. Please try again.`);
-        // Don't reset form on error to preserve user input
-        return;
-      }
-      // Refresh separately — errors here don't affect the save result
-      if (typeof onSave === 'function' && onSave.refresh) {
+        // Preserve important metadata from existing item
+        const updatedItem = {
+          ...existingItem,
+          ...processedData,
+          // Keep these fields from existing item
+          id: existingItem.id,
+          student_id: existingItem.student_id,
+          created_at: existingItem.created_at,
+          updated_at: new Date().toISOString()
+        };
+
+        const updatedItems = items.map((item, idx) =>
+          idx === editingIndex ? updatedItem : item
+        );
+
+        // AUTO-SAVE: Save to database — only update UI on success
         try {
-          await onSave.refresh();
-        } catch (refreshError) {
-          logger.error('Error refreshing after save', { refreshError });
+          await onSave(updatedItems);
+          setItems(updatedItems);
+          resetForm();
+          toast.success(`${config.title} updated successfully.`);
+        } catch (error) {
+          logger.error('Error auto-saving updated item', error);
+          toast.error(`${config.title} could not be saved. Please try again.`);
+          // Don't reset form on error to preserve user input
+          return;
+        }
+        // Refresh separately — errors here don't affect the save result
+        if (typeof onSave === 'function' && onSave.refresh) {
+          try {
+            await onSave.refresh();
+          } catch (refreshError) {
+            logger.error('Error refreshing after save', { refreshError });
+          }
+        }
+      } else {
+        // Add new item
+        const newItem = {
+          ...processedData,
+          id: generateUuid(),
+          enabled: true,
+          verified: false,
+          approval_status: 'pending', // New items need approval
+          created_at: new Date().toISOString(),
+        };
+
+        const updatedItems = [...items, newItem];
+
+        // AUTO-SAVE: Save new items — only update UI on success
+        try {
+          await onSave(updatedItems);
+          setItems(updatedItems);
+          resetForm();
+          toast.success(`${config.title} added successfully.`);
+        } catch (error) {
+          logger.error('Error auto-saving new item', error);
+          toast.error(`${config.title} could not be saved. Please try again.`);
+          // Don't reset form on error to preserve user input
+          return;
+        }
+        if (typeof onSave === 'function' && onSave.refresh) {
+          try {
+            await onSave.refresh();
+          } catch (refreshError) {
+            logger.error('Error refreshing after save', { refreshError });
+          }
         }
       }
-    } else {
-      // Add new item
-      const newItem = {
-        ...processedData,
-        id: generateUuid(),
-        enabled: true,
-        verified: false,
-        approval_status: 'pending', // New items need approval
-        created_at: new Date().toISOString(),
-      };
-
-      const updatedItems = [...items, newItem];
-
-      // AUTO-SAVE: Save new items — only update UI on success
-      try {
-        await onSave(updatedItems);
-        setItems(updatedItems);
-        resetForm();
-        toast.success(`${config.title} added successfully.`);
-      } catch (error) {
-        logger.error('Error auto-saving new item', error);
-        toast.error(`${config.title} could not be saved. Please try again.`);
-        // Don't reset form on error to preserve user input
-        return;
-      }
-      if (typeof onSave === 'function' && onSave.refresh) {
-        try {
-          await onSave.refresh();
-        } catch (refreshError) {
-          logger.error('Error refreshing after save', { refreshError });
-        }
-      }
+    } finally {
+      setIsSavingItem(false);
     }
   };
 
@@ -582,12 +594,14 @@ const UnifiedProfileEditModal = ({
     // Remove item from list — only update UI after successful save
     const updatedItems = items.filter((_, idx) => idx !== index);
 
-    if (editingIndex === index) resetForm();
-
     // Auto-save to database
     try {
       await onSave(updatedItems);
       setItems(updatedItems);
+      
+      // Only reset form after confirmed success
+      if (editingIndex === index) resetForm();
+      
       // Trigger parent refresh if available
       if (typeof onSave === 'function' && onSave.refresh) {
         try {
@@ -698,6 +712,8 @@ const UnifiedProfileEditModal = ({
       } catch (error) {
         logger.error('Error auto-saving updated item (handleSaveItem)', error);
         toast.error(`Failed to update ${config.title}. Please try again.`);
+        // Early return on error to keep modal open and preserve user input
+        return;
       }
     } else {
       // Add new item
@@ -714,8 +730,12 @@ const UnifiedProfileEditModal = ({
       } catch (error) {
         logger.error('Error auto-saving new item (handleSaveItem)', error);
         toast.error(`Failed to add ${config.title}. Please try again.`);
+        // Early return on error to keep modal open and preserve user input
+        return;
       }
     }
+    
+    // Only close modal and clear state after successful save
     setIsItemModalOpen(false);
     setEditingItem(null);
   };
@@ -991,10 +1011,10 @@ const UnifiedProfileEditModal = ({
         )}
 
         <div className="flex gap-2">
-          <Button onClick={saveItem} className="bg-blue-600 hover:bg-blue-700 text-white">
-            {editingIndex !== null ? "Apply Changes" : "Add Item"}
+          <Button onClick={saveItem} disabled={isSavingItem} className="bg-blue-600 hover:bg-blue-700 text-white">
+            {isSavingItem ? 'Saving...' : (editingIndex !== null ? "Apply Changes" : "Add Item")}
           </Button>
-          <Button variant="outline" onClick={resetForm}>Cancel</Button>
+          <Button variant="outline" onClick={resetForm} disabled={isSavingItem}>Cancel</Button>
         </div>
       </div>
     );
@@ -1084,7 +1104,7 @@ const UnifiedProfileEditModal = ({
                 }
 
                 return techArray.filter(tech => tech && tech.trim()).map((tech, i) => (
-                  <Badge key={`${tech}-${i}`} variant="outline" className="bg-blue-50 text-blue-800 border-blue-300 text-xs font-semibold shadow-sm hover:bg-blue-100">
+                  <Badge key={`tech-${item.id || index}-${i}`} variant="outline" className="bg-blue-50 text-blue-800 border-blue-300 text-xs font-semibold shadow-sm hover:bg-blue-100">
                     {tech}
                   </Badge>
                 ));
