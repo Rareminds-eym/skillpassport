@@ -266,7 +266,8 @@ export const createCollegeAssignment = async (
           .eq('assignment_id', data.assignment_id);
 
         if (updateError) {
-          console.warn('Failed to update assignment with file URLs:', updateError);
+          // Throw error to prevent returning inconsistent data
+          throw new Error(`Failed to update assignment with file URLs: ${updateError.message}`);
         }
       }
     }
@@ -296,8 +297,18 @@ export const fetchEducatorAssignments = async (educatorUserId: string): Promise<
     if (error) throw error;
     return { data: data || [], error: null };
   } catch (rpcErr: unknown) {
-    // Log RPC failure unconditionally for production observability
-    console.warn('RPC function failed, falling back to direct query:', rpcErr);
+    // Only fall back for function-not-found errors (42883)
+    // Other errors (network, auth, etc.) should be thrown
+    const isRpcNotFound = rpcErr && typeof rpcErr === 'object' && 'code' in rpcErr && rpcErr.code === '42883';
+
+    if (!isRpcNotFound) {
+      // Re-throw non-RPC errors
+      const message = rpcErr instanceof Error ? rpcErr.message : 'Failed to fetch assignments';
+      return { data: null, error: message };
+    }
+
+    // Log RPC function not found and fall back
+    console.warn('RPC function not found, falling back to direct query:', rpcErr);
     try {
       const { data: fallbackData, error: fallbackError } = await supabase
         .from('college_assignments')
@@ -393,24 +404,20 @@ const ensureUserAccountsExist = async (students: CollegeStudent[]): Promise<stri
   // Find students that need user_id updates
   const studentsToUpdate = students.filter(s => !s.user_id && emailToUserId.has(s.email));
 
-  // Batch update students with their user_ids
+  // Batch update students with their user_ids using upsert
   if (studentsToUpdate.length > 0) {
     const updates = studentsToUpdate.map(s => ({
       id: s.id,
       user_id: emailToUserId.get(s.email)
     }));
 
-    // Note: Supabase doesn't support batch updates directly, but we can use upsert
-    for (const update of updates) {
-      await supabase
-        .from('students')
-        .update({ user_id: update.user_id })
-        .eq('id', update.id)
-        .then(({ error: updateError }) => {
-          if (updateError && import.meta.env.DEV) {
-            console.error(`Error updating student ${update.id}:`, updateError);
-          }
-        });
+    // Use upsert to batch all updates in one round-trip
+    const { error: upsertError } = await supabase
+      .from('students')
+      .upsert(updates, { onConflict: 'id' });
+
+    if (upsertError) {
+      console.error('Error batch updating students with user_ids:', upsertError);
     }
   }
 

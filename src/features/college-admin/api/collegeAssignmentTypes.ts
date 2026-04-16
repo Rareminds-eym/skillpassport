@@ -66,7 +66,7 @@ export interface CollegeAssignment {
     department_id: string;
     program_id: string;
     total_points: number;
-    assignment_type: AssignmentType | string; // Allow string for backward compatibility
+    assignment_type: string; // Keep as string for DB compatibility
     skill_outcomes: string[];
     due_date: string;
     available_from: string;
@@ -79,7 +79,7 @@ export interface CollegeAssignment {
         type: string;
     }>;
     created_date: string;
-    status: AssignmentStatus | string; // Allow string for backward compatibility
+    status: string; // Keep as string for DB compatibility
     program_name?: string;
     department_name?: string;
     semester?: number;
@@ -99,7 +99,7 @@ export interface CreateAssignmentData {
     department_id: string;
     program_id: string;
     total_points: number;
-    assignment_type: AssignmentType | string; // Allow string for backward compatibility
+    assignment_type: string; // Keep as string for DB compatibility
     skill_outcomes: string[];
     due_date: string;
     available_from?: string;
@@ -117,7 +117,7 @@ export interface CollegeStudentAssignment {
     course_code: string;
     educator_name: string;
     total_points: number;
-    assignment_type: AssignmentType | string; // Allow string for backward compatibility
+    assignment_type: string; // Keep as string for DB compatibility
     skill_outcomes: string[];
     due_date: string;
     available_from: string;
@@ -130,8 +130,8 @@ export interface CollegeStudentAssignment {
         type: string;
     }>;
     created_date: string;
-    status: StudentAssignmentStatus | string; // Allow string for backward compatibility
-    priority: AssignmentPriority | string; // Allow string for backward compatibility
+    status: string; // Keep as string for DB compatibility
+    priority: string; // Keep as string for DB compatibility
     grade_received?: number;
     grade_percentage?: number;
     instructor_feedback?: string;

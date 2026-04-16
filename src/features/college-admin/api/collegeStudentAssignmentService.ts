@@ -42,20 +42,31 @@ export const fetchCollegeStudentAssignments = async (studentId: string): Promise
                     allow_late_submission,
                     document_pdf,
                     instruction_files,
-                    created_date
+                    created_date,
+                    is_deleted
                 )
             `)
             .eq('student_id', studentId)
-            .eq('is_deleted', false)
-            .eq('college_assignments.is_deleted', false);
+            .eq('is_deleted', false);
 
         if (error) throw error;
         if (!data || data.length === 0) {
             return { data: [], error: null };
         }
 
-        const combinedAssignments = data.map((row): CollegeStudentAssignment => {
-            const assignment = row.college_assignments as Record<string, unknown>;
+        // Filter out soft-deleted assignments (PostgREST join filter may not work)
+        const validData = data.filter(row => {
+            const assignment = row.college_assignments;
+            return assignment && !assignment.is_deleted;
+        });
+
+        const combinedAssignments = validData.map((row): CollegeStudentAssignment => {
+            const assignment = row.college_assignments;
+
+            // Type guard: ensure assignment is an object, not an array
+            if (!assignment || typeof assignment !== 'object' || Array.isArray(assignment)) {
+                throw new Error('Invalid assignment data structure from join');
+            }
 
             return {
                 assignment_id: assignment.assignment_id as string,
@@ -146,6 +157,15 @@ export const updateCollegeStudentAssignmentStatus = async (
     newStatus: StudentAssignmentStatus
 ): Promise<ServiceResponse<boolean>> => {
     try {
+        // First, fetch the current assignment to check existing submission_date
+        const { data: currentAssignment, error: fetchError } = await supabase
+            .from('college_student_assignments')
+            .select('submission_date')
+            .eq('student_assignment_id', studentAssignmentId)
+            .single();
+
+        if (fetchError) throw fetchError;
+
         const updateData: Record<string, string> = {
             status: newStatus,
             updated_date: new Date().toISOString()
@@ -154,7 +174,9 @@ export const updateCollegeStudentAssignmentStatus = async (
         if (newStatus === 'in_progress') {
             updateData.started_date = new Date().toISOString();
         }
-        if (newStatus === 'submitted') {
+
+        // Only set submission_date if it's not already set (preserve original submission)
+        if (newStatus === 'submitted' && !currentAssignment?.submission_date) {
             updateData.submission_date = new Date().toISOString();
         }
 
