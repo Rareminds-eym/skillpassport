@@ -20,7 +20,7 @@ import { getLogger } from "@/shared/config/logging";
 import { useUser } from "@/stores";
 import toast from "react-hot-toast";
 
-const logger = getLogger("Pipelines");
+
 
 // Pipeline components
 import {
@@ -39,6 +39,8 @@ import {
 interface PipelinesProps {
   onViewProfile: (candidate: PipelineCandidate) => void;
 }
+
+const logger = getLogger("Pipelines");
 
 /**
  * Pipelines - Recruitment pipeline management

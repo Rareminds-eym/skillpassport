@@ -461,15 +461,14 @@ const UnifiedProfileEditModal = ({
         idx === editingIndex ? updatedItem : item
       );
 
-      setItems(updatedItems);
-
-      // AUTO-SAVE: Save to database immediately to prevent data loss on Cancel
+      // AUTO-SAVE: Save to database — only update UI on success
       try {
         await onSave(updatedItems);
+        setItems(updatedItems);
         toast.success(`${config.title} updated successfully.`);
       } catch (error) {
         logger.error('Error auto-saving updated item', error);
-        toast.error(`${config.title} updated. Click 'Save All Changes' to save to database.`);
+        toast.error(`${config.title} could not be saved. Please try again.`);
       }
       // Refresh separately — errors here don't affect the save result
       if (typeof onSave === 'function' && onSave.refresh) {
@@ -491,15 +490,15 @@ const UnifiedProfileEditModal = ({
       };
 
       const updatedItems = [...items, newItem];
-      setItems(updatedItems);
 
-      // AUTO-SAVE: Save new items immediately too
+      // AUTO-SAVE: Save new items — only update UI on success
       try {
         await onSave(updatedItems);
+        setItems(updatedItems);
         toast.success(`${config.title} added successfully.`);
       } catch (error) {
         logger.error('Error auto-saving new item', error);
-        toast.error(`${config.title} added. Click 'Save All Changes' to save to database.`);
+        toast.error(`${config.title} could not be saved. Please try again.`);
       }
       if (typeof onSave === 'function' && onSave.refresh) {
         try {
@@ -576,15 +575,15 @@ const UnifiedProfileEditModal = ({
     // Close dialog
     setConfirmDialog({ isOpen: false, type: null, itemIndex: null, itemTitle: '' });
 
-    // Remove item from list
+    // Remove item from list — only update UI after successful save
     const updatedItems = items.filter((_, idx) => idx !== index);
-    setItems(updatedItems);
 
     if (editingIndex === index) resetForm();
 
     // Auto-save to database
     try {
       await onSave(updatedItems);
+      setItems(updatedItems);
       // Trigger parent refresh if available
       if (typeof onSave === 'function' && onSave.refresh) {
         try {
@@ -719,61 +718,6 @@ const UnifiedProfileEditModal = ({
     setEditingItem(null);
   };
 
-  const handleSubmit = async () => {
-    setIsSaving(true);
-
-
-    try {
-      // Process all items with field mapping for skills
-      let processedItems = items.map(item => {
-        // Remove temporary flags before saving
-        const { _hasLocalChanges, _hasPendingEdit, _verifiedData, processing, ...cleanItem } = item;
-        return cleanItem;
-      });
-
-      if (config.title === 'Skills' || config.title === 'Technical Skills' || config.title === 'Soft Skills' ||
-        config.listKey === 'skillsList' || config.listKey === 'technicalSkillsList' || config.listKey === 'softSkillsList') {
-
-
-        processedItems = processedItems.map((item, index) => {
-          const processedItem = { ...item };
-
-          // Check what fields exist on the original item
-
-          // Store original level text as proficiency_level
-          if (processedItem.level && typeof processedItem.level === 'string') {
-            processedItem.proficiency_level = processedItem.level;
-          }
-
-          // Map rating (1-5) to level field in database
-          if (processedItem.rating) {
-            processedItem.level = parseInt(processedItem.rating) || 3;
-          } else if (processedItem.level && typeof processedItem.level === 'string') {
-            // If no rating but has text level, default to 3
-            processedItem.level = 3;
-          }
-
-          return processedItem;
-        });
-
-      }
-
-      await onSave(processedItems);
-
-      toast.success(`${config.title} saved successfully.`);
-
-      // Close modal after a brief delay to allow refresh to complete
-      setTimeout(() => {
-        onClose();
-      }, 300);
-    } catch (error) {
-      logger.error('Error saving all items (handleSubmit)', error);
-      toast.error("Failed to save. Please try again.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const renderField = (field) => {
     // Check if field should be disabled based on dependency
     if (field.dependsOn) {
@@ -858,7 +802,7 @@ const UnifiedProfileEditModal = ({
                 </div>
                 <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
                   {formData.skillsList.map((skill, index) => (
-                    <div key={skill.name || index} className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg hover:shadow-sm transition-all">
+                    <div key={skill.id ?? `${skill.name}-${index}`} className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg hover:shadow-sm transition-all">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-sm font-semibold text-blue-900">{skill.name}</span>
@@ -1056,7 +1000,7 @@ const UnifiedProfileEditModal = ({
 
   const renderItemCard = (item, index) => (
     <div
-      key={item.id}
+      key={item.id ?? index}
       className={`p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow ${item.enabled === false ? "opacity-50 bg-gray-50" : "bg-white"
         }`}
     >
@@ -1138,7 +1082,7 @@ const UnifiedProfileEditModal = ({
                 }
 
                 return techArray.filter(tech => tech && tech.trim()).map((tech, i) => (
-                  <Badge key={`tech-${i}-${tech}`} variant="outline" className="bg-blue-50 text-blue-800 border-blue-300 text-xs font-semibold shadow-sm hover:bg-blue-100">
+                  <Badge key={tech} variant="outline" className="bg-blue-50 text-blue-800 border-blue-300 text-xs font-semibold shadow-sm hover:bg-blue-100">
                     {tech}
                   </Badge>
                 ));

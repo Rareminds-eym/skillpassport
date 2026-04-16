@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Badge } from '@/shared/ui/badge';
@@ -13,7 +13,6 @@ import {
   GraduationCap,
   Building2,
   Calendar,
-  Timer,
   Eye,
   AlertCircle,
   RefreshCw,
@@ -47,11 +46,21 @@ async function getCollegeId(user) {
   const { data: educatorData, error: educatorError } = await supabase
     .from('college_lecturers')
     .select('collegeId')
-    .or(`user_id.eq.${user?.id},email.eq.${user?.email}`)
+    .eq('user_id', user?.id)
     .maybeSingle();
 
   if (educatorError) throw educatorError;
   if (educatorData?.collegeId) return educatorData.collegeId;
+
+  // Fallback: match by email
+  const { data: educatorByEmail, error: emailError } = await supabase
+    .from('college_lecturers')
+    .select('collegeId')
+    .eq('email', user?.email)
+    .maybeSingle();
+
+  if (emailError) throw emailError;
+  if (educatorByEmail?.collegeId) return educatorByEmail.collegeId;
 
   const { data: orgData, error: orgError } = await supabase
     .from('organizations')
@@ -71,6 +80,22 @@ async function getCollegeId(user) {
 
 const PaginationControls = ({ totalPages, currentPage, onPageChange }) => {
   if (totalPages <= 1) return null;
+
+  // Windowed page numbers: show currentPage ± 2 with ellipsis
+  const getPageNumbers = () => {
+    const delta = 2;
+    const pages = [];
+    const left = Math.max(2, currentPage - delta);
+    const right = Math.min(totalPages - 1, currentPage + delta);
+
+    pages.push(1);
+    if (left > 2) pages.push('...');
+    for (let i = left; i <= right; i++) pages.push(i);
+    if (right < totalPages - 1) pages.push('...');
+    if (totalPages > 1) pages.push(totalPages);
+    return pages;
+  };
+
   return (
     <div className="flex items-center justify-between mt-6 px-4">
       <div className="text-sm text-gray-600">Page {currentPage} of {totalPages}</div>
@@ -84,15 +109,17 @@ const PaginationControls = ({ totalPages, currentPage, onPageChange }) => {
         >
           <ChevronLeft className="w-4 h-4" />Previous
         </Button>
-        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-          <Button
-            key={page}
-            variant={page === currentPage ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => onPageChange(page)}
-            className="w-8 h-8 p-0"
-          >{page}</Button>
-        ))}
+        {getPageNumbers().map((page, i) =>
+          page === '...'
+            ? <span key={`ellipsis-${i}`} className="px-1 text-gray-400 select-none">…</span>
+            : <Button
+                key={page}
+                variant={page === currentPage ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onPageChange(page)}
+                className="w-8 h-8 p-0"
+              >{page}</Button>
+        )}
         <Button
           variant="outline"
           size="sm"
@@ -237,8 +264,10 @@ const CollegeVerifications = () => {
   const [showExperienceModal, setShowExperienceModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
   
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
+  // Per-tab pagination state
+  const [trainingsPage, setTrainingsPage] = useState(1);
+  const [experiencesPage, setExperiencesPage] = useState(1);
+  const [projectsPage, setProjectsPage] = useState(1);
   const itemsPerPage = 6;
   
   // Search and filter state
@@ -249,7 +278,7 @@ const CollegeVerifications = () => {
   const user = useUser();
 
   // Fetch pending trainings for college admin (Using database approval_authority)
-  const fetchPendingTrainings = async () => {
+  const fetchPendingTrainings = useCallback(async () => {
     try {
       logger.info('Fetching pending trainings using CollegeAdminNotificationService...');
 
@@ -263,23 +292,20 @@ const CollegeVerifications = () => {
 
       logger.info('Using college_id:', collegeId);
 
-      // Use the notification service which now uses approval_authority
       const trainings = await CollegeAdminNotificationService.getPendingTrainings(collegeId);
-      
       logger.info('Trainings fetched via notification service:', trainings.length);
       setPendingTrainings(trainings);
     } catch (error) {
       logger.error('Error in fetchPendingTrainings:', error);
       toast.error("Failed to fetch pending trainings");
     }
-  };
+  }, [user]);
 
   // Fetch pending experiences for college admin (Using database approval_authority)
-  const fetchPendingExperiences = async () => {
+  const fetchPendingExperiences = useCallback(async () => {
     try {
       logger.info('Fetching pending experiences using CollegeAdminNotificationService...');
-      
-      // Get college_id from user or college_lecturers table
+
       const collegeId = await getCollegeId(user);
 
       if (!collegeId) {
@@ -290,23 +316,20 @@ const CollegeVerifications = () => {
 
       logger.info('Using college_id:', collegeId);
 
-      // Use the notification service which now uses approval_authority
       const experiences = await CollegeAdminNotificationService.getPendingExperiences(collegeId);
-      
       logger.info('Experiences fetched via notification service:', experiences.length);
       setPendingExperiences(experiences);
     } catch (error) {
       logger.error('Error in fetchPendingExperiences:', error);
       toast.error("Failed to fetch pending experiences");
     }
-  };
+  }, [user]);
 
   // Fetch pending projects for college admin (Using database approval_authority)
-  const fetchPendingProjects = async () => {
+  const fetchPendingProjects = useCallback(async () => {
     try {
       logger.info('Fetching pending projects using CollegeAdminNotificationService...');
-      
-      // Get college_id from user or college_lecturers table
+
       const collegeId = await getCollegeId(user);
 
       if (!collegeId) {
@@ -317,16 +340,14 @@ const CollegeVerifications = () => {
 
       logger.info('Using college_id:', collegeId);
 
-      // Use the notification service which now uses approval_authority
       const projects = await CollegeAdminNotificationService.getPendingProjects(collegeId);
-      
       logger.info('Projects fetched via notification service:', projects.length);
       setPendingProjects(projects);
     } catch (error) {
       logger.error('Error in fetchPendingProjects:', error);
       toast.error(error.message || "Failed to load pending projects");
     }
-  };
+  }, [user]);
 
   // Initial data fetch
   useEffect(() => {
@@ -343,7 +364,7 @@ const CollegeVerifications = () => {
     if (user) {
       fetchData();
     }
-  }, [user]); // fetch functions depend only on user; stable across renders
+  }, [fetchPendingTrainings, fetchPendingExperiences, fetchPendingProjects]);
 
   // Handle training actions
   const handleTrainingAction = async (action, training) => {
@@ -394,25 +415,15 @@ const CollegeVerifications = () => {
   };
 
   // Pagination helper functions
-  const getCurrentPageData = (data) => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return data.slice(startIndex, endIndex);
-  };
-
-  const getTotalPages = (data) => {
-    return Math.ceil(data.length / itemsPerPage);
-  };
-
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
+  const getPageData = (data, page) => {
+    const startIndex = (page - 1) * itemsPerPage;
+    return data.slice(startIndex, startIndex + itemsPerPage);
   };
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    setCurrentPage(1); // Reset to first page when changing tabs
-    setSearchQuery(''); // Reset search when changing tabs
-    setStatusFilter('all'); // Reset filter when changing tabs
+    setSearchQuery('');
+    setStatusFilter('all');
   };
 
   // Filter functions
@@ -457,23 +468,9 @@ const CollegeVerifications = () => {
   const filteredExperiences = getFilteredExperiences();
   const filteredProjects = getFilteredProjects();
   
-  const currentTrainings = getCurrentPageData(filteredTrainings);
-  const currentExperiences = getCurrentPageData(filteredExperiences);
-  const currentProjects = getCurrentPageData(filteredProjects);
-
-  // Get total pages for current tab (with filtering)
-  const getCurrentTabTotalPages = () => {
-    switch (activeTab) {
-      case 'trainings':
-        return getTotalPages(filteredTrainings);
-      case 'experiences':
-        return getTotalPages(filteredExperiences);
-      case 'projects':
-        return getTotalPages(filteredProjects);
-      default:
-        return 1;
-    }
-  };
+  const currentTrainings = getPageData(filteredTrainings, trainingsPage);
+  const currentExperiences = getPageData(filteredExperiences, experiencesPage);
+  const currentProjects = getPageData(filteredProjects, projectsPage);
 
   if (loading) {
     return (
@@ -662,9 +659,9 @@ const CollegeVerifications = () => {
                   ))}
                 </div>
                 <PaginationControls
-                  totalPages={getTotalPages(filteredTrainings)}
-                  currentPage={currentPage}
-                  onPageChange={handlePageChange}
+                  totalPages={Math.ceil(filteredTrainings.length / itemsPerPage)}
+                  currentPage={trainingsPage}
+                  onPageChange={setTrainingsPage}
                 />
               </>
             )}
@@ -752,9 +749,9 @@ const CollegeVerifications = () => {
                   ))}
                 </div>
                 <PaginationControls
-                  totalPages={getTotalPages(filteredExperiences)}
-                  currentPage={currentPage}
-                  onPageChange={handlePageChange}
+                  totalPages={Math.ceil(filteredExperiences.length / itemsPerPage)}
+                  currentPage={experiencesPage}
+                  onPageChange={setExperiencesPage}
                 />
               </>
             )}
@@ -842,9 +839,9 @@ const CollegeVerifications = () => {
                   ))}
                 </div>
                 <PaginationControls
-                  totalPages={getTotalPages(filteredProjects)}
-                  currentPage={currentPage}
-                  onPageChange={handlePageChange}
+                  totalPages={Math.ceil(filteredProjects.length / itemsPerPage)}
+                  currentPage={projectsPage}
+                  onPageChange={setProjectsPage}
                 />
               </>
             )}
