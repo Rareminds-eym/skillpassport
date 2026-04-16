@@ -37,30 +37,30 @@ import {
 } from '@/features/school-admin';
 import { getLogger } from '@/shared/config/logging';
 
-const logger_verifications = null; // logger is initialized inside component
-
 /**
  * Shared helper — resolves the college ID for the current user.
  * Checks user object first, then college_lecturers table, then organizations table.
  */
-async function getCollegeId(user, supabase) {
+async function getCollegeId(user) {
   if (user?.college_id) return user.college_id;
 
-  const { data: educatorData } = await supabase
+  const { data: educatorData, error: educatorError } = await supabase
     .from('college_lecturers')
     .select('collegeId')
     .or(`user_id.eq.${user?.id},email.eq.${user?.email}`)
     .maybeSingle();
 
+  if (educatorError) throw educatorError;
   if (educatorData?.collegeId) return educatorData.collegeId;
 
-  const { data: orgData } = await supabase
+  const { data: orgData, error: orgError } = await supabase
     .from('organizations')
     .select('id')
     .eq('admin_id', user?.id)
     .eq('organization_type', 'college')
     .maybeSingle();
 
+  if (orgError) throw orgError;
   return orgData?.id || null;
 }
 
@@ -75,23 +75,33 @@ const PaginationControls = ({ totalPages, currentPage, onPageChange }) => {
     <div className="flex items-center justify-between mt-6 px-4">
       <div className="text-sm text-gray-600">Page {currentPage} of {totalPages}</div>
       <div className="flex items-center gap-2">
-        <button
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="px-3 py-1 text-sm border rounded disabled:opacity-50"
-        >Previous</button>
+          className="flex items-center gap-1"
+        >
+          <ChevronLeft className="w-4 h-4" />Previous
+        </Button>
         {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-          <button
+          <Button
             key={page}
+            variant={page === currentPage ? 'default' : 'outline'}
+            size="sm"
             onClick={() => onPageChange(page)}
-            className={`w-8 h-8 text-sm rounded ${page === currentPage ? 'bg-blue-600 text-white' : 'border'}`}
-          >{page}</button>
+            className="w-8 h-8 p-0"
+          >{page}</Button>
         ))}
-        <button
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="px-3 py-1 text-sm border rounded disabled:opacity-50"
-        >Next</button>
+          className="flex items-center gap-1"
+        >
+          Next<ChevronRight className="w-4 h-4" />
+        </Button>
       </div>
     </div>
   );
@@ -123,8 +133,8 @@ const TrainingCard = ({ training, onAction }) => (
       </div>
       {training.skills && training.skills.length > 0 && (
         <div className="mb-4 flex flex-wrap gap-1">
-          {training.skills.slice(0, 3).map((skill, index) => (
-            <Badge key={`skill-${index}-${skill}`} variant="outline" className="text-xs">{skill}</Badge>
+          {training.skills.slice(0, 3).map((skill) => (
+            <Badge key={skill} variant="outline" className="text-xs">{skill}</Badge>
           ))}
           {training.skills.length > 3 && <Badge variant="outline" className="text-xs">+{training.skills.length - 3} more</Badge>}
         </div>
@@ -190,8 +200,8 @@ const ProjectCard = ({ project, onAction }) => (
         )}
         {project.tech_stack && project.tech_stack.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {project.tech_stack.slice(0, 3).map((tech, index) => (
-              <Badge key={`tech-${index}-${tech}`} variant="secondary" className="text-xs">{tech}</Badge>
+            {project.tech_stack.slice(0, 3).map((tech) => (
+              <Badge key={tech} variant="secondary" className="text-xs">{tech}</Badge>
             ))}
             {project.tech_stack.length > 3 && <Badge variant="secondary" className="text-xs">+{project.tech_stack.length - 3} more</Badge>}
           </div>
@@ -242,9 +252,8 @@ const CollegeVerifications = () => {
   const fetchPendingTrainings = async () => {
     try {
       logger.info('Fetching pending trainings using CollegeAdminNotificationService...');
-      
-      // Get college_id from user or college_lecturers table
-      let collegeId = await getCollegeId(user, supabase);
+
+      const collegeId = await getCollegeId(user);
 
       if (!collegeId) {
         logger.warn('No college ID found - showing empty list');
@@ -271,7 +280,7 @@ const CollegeVerifications = () => {
       logger.info('Fetching pending experiences using CollegeAdminNotificationService...');
       
       // Get college_id from user or college_lecturers table
-      let collegeId = await getCollegeId(user, supabase);
+      const collegeId = await getCollegeId(user);
 
       if (!collegeId) {
         logger.warn('No college ID found - showing empty list');
@@ -298,7 +307,7 @@ const CollegeVerifications = () => {
       logger.info('Fetching pending projects using CollegeAdminNotificationService...');
       
       // Get college_id from user or college_lecturers table
-      let collegeId = await getCollegeId(user, supabase);
+      const collegeId = await getCollegeId(user);
 
       if (!collegeId) {
         logger.warn('No college ID found - showing empty list');
@@ -334,7 +343,7 @@ const CollegeVerifications = () => {
     if (user) {
       fetchData();
     }
-  }, [user]);
+  }, [user]); // fetch functions depend only on user; stable across renders
 
   // Handle training actions
   const handleTrainingAction = async (action, training) => {

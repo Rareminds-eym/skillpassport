@@ -103,7 +103,12 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
 
   // Get current recruiter ID from reactive auth store
   const currentUser = useUser();
-  const currentRecruiterId: string | null = currentUser?.id || (currentUser as any)?.recruiter_id || null;
+  // Derive recruiter ID from reactive auth store, memoized to avoid triggering
+  // downstream effects (e.g. useNotifications) on every render.
+  const currentRecruiterId = useMemo<string | null>(
+    () => currentUser?.id ?? null,
+    [currentUser]
+  );
 
   useNotifications(currentRecruiterId);
 
@@ -132,7 +137,6 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
   // Handlers
   const handleCandidateMove = async (candidateId: string, newStage: string) => {
     let movedCandidate: PipelineCandidate | null = null;
-    let oldStage: string | null = null;
 
     Object.keys(pipelineData).forEach((stage) => {
       const candidate = pipelineData[stage as keyof typeof pipelineData].find(
@@ -140,13 +144,17 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
       );
       if (candidate) {
         movedCandidate = candidate;
-        oldStage = stage;
       }
     });
 
     if (!movedCandidate) return;
 
     setMovingCandidates((prev) => [...prev, candidateId]);
+
+    // Pre-move snapshot for reliable revert
+    const preSnapshot = Object.fromEntries(
+      Object.entries(pipelineData).map(([s, arr]) => [s, [...arr]])
+    ) as unknown as typeof pipelineData;
 
     // Optimistic update — deep-clone each stage array to avoid stale references
     setPipelineData((prev) => {
@@ -171,17 +179,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
       const result = await moveCandidateToStage(candidateId, newStage);
 
       if (result.error) {
-        // Revert on error
-        setPipelineData((prev) => {
-          const newData = { ...prev };
-          newData[newStage as keyof typeof newData] = newData[
-            newStage as keyof typeof newData
-          ].filter((c) => c.id !== candidateId);
-          if (oldStage && newData[oldStage as keyof typeof newData]) {
-            newData[oldStage as keyof typeof newData].push(movedCandidate!);
-          }
-          return newData;
-        });
+        setPipelineData(preSnapshot);
         toast.error((result.error as any).message || "Unknown error");
         return;
       }
@@ -201,17 +199,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         }
       }
     } catch (error) {
-      // Revert on error
-      setPipelineData((prev) => {
-        const newData = { ...prev };
-        newData[newStage as keyof typeof newData] = newData[
-          newStage as keyof typeof newData
-        ].filter((c) => c.id !== candidateId);
-        if (oldStage && newData[oldStage as keyof typeof newData]) {
-          newData[oldStage as keyof typeof newData].push(movedCandidate!);
-        }
-        return newData;
-      });
+      setPipelineData(preSnapshot);
       toast.error("Failed to move candidate. Please try again.");
     } finally {
       setMovingCandidates((prev) => prev.filter((id) => id !== candidateId));
@@ -234,7 +222,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
     }
 
     toast(`Opening email composer for ${candidateNames.length} candidate(s)...`);
-    setSelectedCandidates([]);
+    // Selection preserved — user may still need it when the composer opens
   };
 
   const handleBulkWhatsApp = () => {
@@ -280,17 +268,11 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
       ) as unknown as typeof pipelineData;
 
       try {
-        if (currentRecruiterId) {
-          await createNotification(
-            currentRecruiterId,
-            "candidate_rejected",
-            "Candidates Rejected",
-            `${count} candidate(s) were rejected from ${jobTitle}.`,
-          );
-        }
-        // Only update UI after notification succeeds
+        // Update UI first — no bulk-reject API exists yet, notification is a side-effect
         setPipelineData((prev) => {
-          const newData = { ...prev };
+          const newData = Object.fromEntries(
+            Object.entries(prev).map(([s, arr]) => [s, [...arr]])
+          ) as unknown as typeof prev;
           selectedCandidates.forEach((candidateId) => {
             Object.keys(newData).forEach((stage) => {
               newData[stage as keyof typeof newData] = newData[
@@ -302,10 +284,20 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         });
         toast.success(`${count} candidate(s) removed from pipeline`);
         setSelectedCandidates([]);
-      } catch (notifyError: unknown) {
-        logger.error('Error sending rejection notification — reverting state', notifyError instanceof Error ? notifyError : undefined);
+
+        // Notify asynchronously — failure does not roll back the UI
+        createNotification(
+          currentRecruiterId,
+          "candidate_rejected",
+          "Candidates Rejected",
+          `${count} candidate(s) were rejected from ${jobTitle}.`,
+        ).catch((notifyError: unknown) => {
+          logger.error('Error sending rejection notification', notifyError instanceof Error ? notifyError : undefined);
+        });
+      } catch (err: unknown) {
+        logger.error('Error during bulk reject', err instanceof Error ? err : undefined);
         setPipelineData(snapshot);
-        toast.error('Failed to record rejection. Please try again.');
+        toast.error('Failed to reject candidates. Please try again.');
       }
     }
   };

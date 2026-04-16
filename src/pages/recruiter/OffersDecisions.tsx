@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import {
   DocumentTextIcon,
@@ -1330,11 +1330,11 @@ const OffersDecisions = () => {
     return Array.from(benefits).sort();
   }, [offers]);
 
-  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success'): void => {
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success'): void => {
     if (type === 'error') toast.error(message);
     else if (type === 'info') toast(message, { icon: <INFO_ICON /> });
     else toast.success(message);
-  }, []);
+  };
 
   const handleCreateOffer = async (newOfferData: Partial<Offer>) => {
     const result = await createOffer(newOfferData);
@@ -1415,7 +1415,7 @@ const OffersDecisions = () => {
     setCurrentPage(1);
   };
 
-  // TODO: compute from real offer date data when available
+  // avgTimeToOffer: not yet computed from real data (tracked in backlog)
   const avgTimeToOffer = 0;
 
   if (loading) {
