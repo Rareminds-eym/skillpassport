@@ -260,10 +260,14 @@ export const createCollegeAssignment = async (
         .filter((file): file is { name: string; url: string; size: number; type: string } => file !== null);
 
       if (uploadedFiles.length > 0) {
-        await supabase
+        const { error: updateError } = await supabase
           .from('college_assignments')
           .update({ instruction_files: uploadedFiles })
           .eq('assignment_id', data.assignment_id);
+
+        if (updateError) {
+          console.warn('Failed to update assignment with file URLs:', updateError);
+        }
       }
     }
 
@@ -292,7 +296,8 @@ export const fetchEducatorAssignments = async (educatorUserId: string): Promise<
     if (error) throw error;
     return { data: data || [], error: null };
   } catch (rpcErr: unknown) {
-    if (import.meta.env.DEV) console.warn('RPC function failed, falling back to direct query:', rpcErr);
+    // Log RPC failure unconditionally for production observability
+    console.warn('RPC function failed, falling back to direct query:', rpcErr);
     try {
       const { data: fallbackData, error: fallbackError } = await supabase
         .from('college_assignments')
@@ -317,6 +322,9 @@ export const fetchEducatorAssignments = async (educatorUserId: string): Promise<
         const departments = row.departments as Record<string, string> | undefined;
         const sections = row.program_sections as Record<string, unknown> | undefined;
         const dueDate = typeof row.due_date === 'string' ? row.due_date : '';
+        const now = new Date();
+        const dueDateObj = dueDate ? new Date(dueDate) : null;
+        const isOverdue = dueDateObj && dueDateObj < now;
 
         return {
           assignment_id: row.assignment_id as string,
@@ -340,7 +348,7 @@ export const fetchEducatorAssignments = async (educatorUserId: string): Promise<
           document_pdf: row.document_pdf as string | undefined,
           instruction_files: Array.isArray(row.instruction_files) ? row.instruction_files : [],
           created_date: row.created_date as string,
-          status: dueDate < new Date().toISOString() ? 'completed' : 'active',
+          status: isOverdue ? 'completed' : 'active',
           program_name: programs?.name || '',
           department_name: departments?.name || '',
           semester: sections?.semester as number | undefined,
@@ -359,25 +367,57 @@ export const fetchEducatorAssignments = async (educatorUserId: string): Promise<
 };
 
 /**
- * Ensure user accounts exist for students
+ * Ensure user accounts exist for students (batched version)
  */
 const ensureUserAccountsExist = async (students: CollegeStudent[]): Promise<string[]> => {
-  const userIds: string[] = [];
-  for (const student of students) {
-    try {
-      const { data: existingUser } = await supabase
-        .from('users').select('id').eq('email', student.email).single();
-      if (existingUser) {
-        if (!student.user_id) {
-          await supabase.from('students').update({ user_id: existingUser.id }).eq('id', student.id);
-        }
-        userIds.push(existingUser.id);
-      }
-    } catch (error: unknown) {
-      if (import.meta.env.DEV) console.error(`Error processing student ${student.email}:`, error);
+  if (students.length === 0) return [];
+
+  const emails = students.map(s => s.email);
+
+  // Batch lookup all users by email
+  const { data: existingUsers, error } = await supabase
+    .from('users')
+    .select('id, email')
+    .in('email', emails);
+
+  if (error) {
+    console.error('Error fetching users:', error);
+    return [];
+  }
+
+  if (!existingUsers || existingUsers.length === 0) return [];
+
+  // Create a map of email -> user_id
+  const emailToUserId = new Map(existingUsers.map(u => [u.email, u.id]));
+
+  // Find students that need user_id updates
+  const studentsToUpdate = students.filter(s => !s.user_id && emailToUserId.has(s.email));
+
+  // Batch update students with their user_ids
+  if (studentsToUpdate.length > 0) {
+    const updates = studentsToUpdate.map(s => ({
+      id: s.id,
+      user_id: emailToUserId.get(s.email)
+    }));
+
+    // Note: Supabase doesn't support batch updates directly, but we can use upsert
+    for (const update of updates) {
+      await supabase
+        .from('students')
+        .update({ user_id: update.user_id })
+        .eq('id', update.id)
+        .then(({ error: updateError }) => {
+          if (updateError && import.meta.env.DEV) {
+            console.error(`Error updating student ${update.id}:`, updateError);
+          }
+        });
     }
   }
-  return userIds;
+
+  // Return all found user IDs
+  return students
+    .map(s => s.user_id || emailToUserId.get(s.email))
+    .filter((id): id is string => !!id);
 };
 
 export const ensureStudentUserAccounts = async (students: CollegeStudent[]): Promise<ServiceResponse<string[]>> => {

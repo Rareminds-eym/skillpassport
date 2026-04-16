@@ -6,6 +6,7 @@ import type {
     CollegeAssignmentStats,
     ServiceResponse,
     UploadedFile,
+    StudentAssignmentStatus,
 } from './collegeAssignmentTypes';
 
 // Re-export types so existing imports from this path still work
@@ -14,73 +15,83 @@ export type { CollegeStudentAssignment, CollegeAssignmentStats } from './college
 const logger = getLogger('college-student-assignments');
 
 /**
- * Fetch assignments for a college student
+ * Fetch assignments for a college student (optimized with join)
  */
 export const fetchCollegeStudentAssignments = async (studentId: string): Promise<ServiceResponse<CollegeStudentAssignment[]>> => {
     try {
         logger.info('Fetching college assignments for student', { studentId });
 
-        const { data: studentAssignments, error: saError } = await supabase
+        // Use a single joined query instead of N+1 pattern
+        const { data, error } = await supabase
             .from('college_student_assignments')
-            .select('*')
+            .select(`
+                *,
+                college_assignments!inner(
+                    assignment_id,
+                    title,
+                    description,
+                    instructions,
+                    course_name,
+                    course_code,
+                    educator_name,
+                    total_points,
+                    assignment_type,
+                    skill_outcomes,
+                    due_date,
+                    available_from,
+                    allow_late_submission,
+                    document_pdf,
+                    instruction_files,
+                    created_date
+                )
+            `)
             .eq('student_id', studentId)
-            .eq('is_deleted', false);
+            .eq('is_deleted', false)
+            .eq('college_assignments.is_deleted', false);
 
-        if (saError) throw saError;
-        if (!studentAssignments || studentAssignments.length === 0) {
+        if (error) throw error;
+        if (!data || data.length === 0) {
             return { data: [], error: null };
         }
 
-        const assignmentIds = studentAssignments.map(sa => sa.assignment_id);
+        const combinedAssignments = data.map((row): CollegeStudentAssignment => {
+            const assignment = row.college_assignments as Record<string, unknown>;
 
-        const { data: assignments, error: aError } = await supabase
-            .from('college_assignments')
-            .select('*')
-            .in('assignment_id', assignmentIds)
-            .eq('is_deleted', false);
-
-        if (aError) throw aError;
-
-        const combinedAssignments = studentAssignments.reduce<CollegeStudentAssignment[]>((acc, sa) => {
-            const assignment = assignments?.find(a => a.assignment_id === sa.assignment_id);
-            if (!assignment) return acc;
-
-            acc.push({
-                assignment_id: assignment.assignment_id,
-                student_assignment_id: sa.student_assignment_id,
-                title: assignment.title,
-                description: assignment.description || '',
-                instructions: assignment.instructions || '',
-                course_name: assignment.course_name,
-                course_code: assignment.course_code || '',
-                educator_name: assignment.educator_name || '',
-                total_points: assignment.total_points,
-                assignment_type: assignment.assignment_type || 'assignment',
-                skill_outcomes: assignment.skill_outcomes || [],
-                due_date: assignment.due_date,
-                available_from: assignment.available_from || '',
-                allow_late_submission: assignment.allow_late_submission || false,
-                document_pdf: assignment.document_pdf,
-                instruction_files: assignment.instruction_files || [],
-                created_date: assignment.created_date,
-                status: sa.status,
-                priority: sa.priority,
-                grade_received: sa.grade_received,
-                grade_percentage: sa.grade_percentage,
-                instructor_feedback: sa.instructor_feedback,
-                submission_date: sa.submission_date,
-                submission_content: sa.submission_content,
-                submission_url: sa.submission_url,
-                submission_files: sa.submission_files,
-                is_late: sa.is_late,
+            return {
+                assignment_id: assignment.assignment_id as string,
+                student_assignment_id: row.student_assignment_id,
+                title: assignment.title as string,
+                description: (assignment.description as string) || '',
+                instructions: (assignment.instructions as string) || '',
+                course_name: assignment.course_name as string,
+                course_code: (assignment.course_code as string) || '',
+                educator_name: (assignment.educator_name as string) || '',
+                total_points: assignment.total_points as number,
+                assignment_type: (assignment.assignment_type as string) || 'assignment',
+                skill_outcomes: (assignment.skill_outcomes as string[]) || [],
+                due_date: assignment.due_date as string,
+                available_from: (assignment.available_from as string) || '',
+                allow_late_submission: (assignment.allow_late_submission as boolean) || false,
+                document_pdf: assignment.document_pdf as string | undefined,
+                instruction_files: (assignment.instruction_files as Array<{ name: string; url: string; size: number; type: string }>) || [],
+                created_date: assignment.created_date as string,
+                status: row.status,
+                priority: row.priority,
+                grade_received: row.grade_received,
+                grade_percentage: row.grade_percentage,
+                instructor_feedback: row.instructor_feedback,
+                submission_date: row.submission_date,
+                submission_content: row.submission_content,
+                submission_url: row.submission_url,
+                submission_files: row.submission_files,
+                is_late: row.is_late,
                 program_name: '',
                 department_name: '',
                 semester: undefined,
                 section: '',
                 academic_year: ''
-            });
-            return acc;
-        }, []);
+            };
+        });
 
         combinedAssignments.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
         return { data: combinedAssignments, error: null };
@@ -132,7 +143,7 @@ export const getCollegeStudentAssignmentStats = async (studentId: string): Promi
  */
 export const updateCollegeStudentAssignmentStatus = async (
     studentAssignmentId: string,
-    newStatus: string
+    newStatus: StudentAssignmentStatus
 ): Promise<ServiceResponse<boolean>> => {
     try {
         const updateData: Record<string, string> = {
@@ -162,7 +173,7 @@ export const updateCollegeStudentAssignmentStatus = async (
 };
 
 /**
- * Submit college assignment with files
+ * Submit college assignment with files (with improved error handling)
  */
 export const submitCollegeAssignment = async (
     studentAssignmentId: string,
@@ -183,6 +194,7 @@ export const submitCollegeAssignment = async (
 
         let uploadedFiles: UploadedFile[] = [];
 
+        // Upload files first, but don't commit to DB yet
         if (submissionFiles && submissionFiles.length > 0) {
             const folder = `college_assignment_submissions/${assignment.student_id}/${assignment.assignment_id}`;
             const results = await uploadMultipleFiles(submissionFiles, folder);
@@ -198,6 +210,7 @@ export const submitCollegeAssignment = async (
                 .filter((file): file is UploadedFile => file !== null);
         }
 
+        // Now update the DB record - if this fails, files are orphaned but logged
         const updateData = {
             ...submissionData,
             submission_files: uploadedFiles.length > 0 ? uploadedFiles : null,
@@ -211,7 +224,16 @@ export const submitCollegeAssignment = async (
             .update(updateData)
             .eq('student_assignment_id', studentAssignmentId);
 
-        if (error) throw error;
+        if (error) {
+            // Log orphaned files for cleanup
+            if (uploadedFiles.length > 0) {
+                logger.error('DB update failed after file upload - orphaned files', undefined, {
+                    studentAssignmentId,
+                    orphanedFiles: uploadedFiles.map(f => f.url)
+                });
+            }
+            throw error;
+        }
         return { data: true, error: null };
     } catch (err: unknown) {
         logger.error('Error submitting assignment', err instanceof Error ? err : undefined);

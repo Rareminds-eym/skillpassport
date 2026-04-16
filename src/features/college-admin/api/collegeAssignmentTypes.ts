@@ -1,3 +1,9 @@
+// Type-safe status and priority unions
+export type AssignmentStatus = 'active' | 'completed' | 'inactive' | 'pending';
+export type AssignmentType = 'homework' | 'project' | 'quiz' | 'exam' | 'lab' | 'other';
+export type AssignmentPriority = 'low' | 'medium' | 'high';
+export type StudentAssignmentStatus = 'todo' | 'in_progress' | 'submitted' | 'graded';
+
 export interface Department {
     id: string;
     name: string;
@@ -60,7 +66,7 @@ export interface CollegeAssignment {
     department_id: string;
     program_id: string;
     total_points: number;
-    assignment_type: string;
+    assignment_type: AssignmentType | string; // Allow string for backward compatibility
     skill_outcomes: string[];
     due_date: string;
     available_from: string;
@@ -73,7 +79,7 @@ export interface CollegeAssignment {
         type: string;
     }>;
     created_date: string;
-    status: string;
+    status: AssignmentStatus | string; // Allow string for backward compatibility
     program_name?: string;
     department_name?: string;
     semester?: number;
@@ -93,7 +99,7 @@ export interface CreateAssignmentData {
     department_id: string;
     program_id: string;
     total_points: number;
-    assignment_type: string;
+    assignment_type: AssignmentType | string; // Allow string for backward compatibility
     skill_outcomes: string[];
     due_date: string;
     available_from?: string;
@@ -111,7 +117,7 @@ export interface CollegeStudentAssignment {
     course_code: string;
     educator_name: string;
     total_points: number;
-    assignment_type: string;
+    assignment_type: AssignmentType | string; // Allow string for backward compatibility
     skill_outcomes: string[];
     due_date: string;
     available_from: string;
@@ -124,8 +130,8 @@ export interface CollegeStudentAssignment {
         type: string;
     }>;
     created_date: string;
-    status: string;
-    priority: string;
+    status: StudentAssignmentStatus | string; // Allow string for backward compatibility
+    priority: AssignmentPriority | string; // Allow string for backward compatibility
     grade_received?: number;
     grade_percentage?: number;
     instructor_feedback?: string;
