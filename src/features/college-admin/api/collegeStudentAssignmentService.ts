@@ -46,27 +46,25 @@ export const fetchCollegeStudentAssignments = async (studentId: string): Promise
                     is_deleted
                 )
             `)
-            .eq('student_id', studentId)
-            .eq('is_deleted', false);
+            .eq('student_id', studentId);
 
         if (error) throw error;
         if (!data || data.length === 0) {
             return { data: [], error: null };
         }
 
-        // Filter out soft-deleted assignments (PostgREST join filter may not work)
+        // Filter out invalid data and soft-deleted assignments
         const validData = data.filter(row => {
             const assignment = row.college_assignments;
-            return assignment && !assignment.is_deleted;
+            // Ensure assignment is a valid object and not soft-deleted
+            return assignment
+                && typeof assignment === 'object'
+                && !Array.isArray(assignment)
+                && !assignment.is_deleted;
         });
 
         const combinedAssignments = validData.map((row): CollegeStudentAssignment => {
-            const assignment = row.college_assignments;
-
-            // Type guard: ensure assignment is an object, not an array
-            if (!assignment || typeof assignment !== 'object' || Array.isArray(assignment)) {
-                throw new Error('Invalid assignment data structure from join');
-            }
+            const assignment = row.college_assignments as Record<string, unknown>;
 
             return {
                 assignment_id: assignment.assignment_id as string,
