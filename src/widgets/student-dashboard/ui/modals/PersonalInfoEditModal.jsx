@@ -144,10 +144,7 @@ const PersonalInfoEditModal = ({
     try {
       await onSave(formData);
       toast.success("Your personal information has been saved and updated.");
-      // Wait a moment for the refresh to complete before closing
-      setTimeout(() => {
-        onClose();
-      }, 500);
+      onClose();
     } catch (error) {
       logger.error('Error saving personal info', error);
       toast.error("Failed to save personal information. Please try again.");

@@ -43,8 +43,8 @@ const ProfileItemModal = ({
       // Edit mode - populate form with existing data
       const editData = { ...config.getDefaultValues() };
       
-      // VERSIONING FIX: If item has pending edit data, use that for editing
-      const sourceData = item._hasPendingEdit && item.pending_edit_data ? item : item;
+      // Copy all fields from the item, including id
+      const sourceData = item;
       
       // Copy all fields from the item, including id
       Object.keys(sourceData).forEach(key => {
@@ -360,13 +360,6 @@ const ProfileItemModal = ({
       
       if (item) {
         // Edit mode - ONLY send the fields we want to update
-        // CRITICAL: Do NOT spread the old item - it may have invalid fields
-        
-        // Define valid fields based on config
-        const validFields = config.fields.map(f => f.name);
-        const metadataFields = ['id', 'student_id', 'created_at', 'approval_status', 'enabled'];
-        
-        // Build clean item with ONLY valid fields
         savedItem = {
           id: item.id,
           student_id: item.student_id,
@@ -375,12 +368,9 @@ const ProfileItemModal = ({
           ...processedData,
           updated_at: new Date().toISOString()
         };
-        
-        // Remove any undefined values
+
         Object.keys(savedItem).forEach(key => {
-          if (savedItem[key] === undefined) {
-            delete savedItem[key];
-          }
+          if (savedItem[key] === undefined) delete savedItem[key];
         });
         
       } else {

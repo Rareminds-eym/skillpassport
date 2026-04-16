@@ -194,12 +194,16 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
       toast.success(`Successfully moved to ${newStage.replace("_", " ")}`);
 
       if (currentRecruiterId && movedCandidate) {
-        await createNotification(
-          currentRecruiterId,
-          "pipeline_stage_changed",
-          `Candidate moved to ${newStage}`,
-          `${(movedCandidate as PipelineCandidate).name} has been moved to the "${newStage}" stage.`,
-        );
+        try {
+          await createNotification(
+            currentRecruiterId,
+            "pipeline_stage_changed",
+            `Candidate moved to ${newStage}`,
+            `${(movedCandidate as PipelineCandidate).name} has been moved to the "${newStage}" stage.`,
+          );
+        } catch (notifyError: unknown) {
+          logger.error('Error sending stage-change notification', notifyError instanceof Error ? notifyError : undefined);
+        }
       }
     } catch (error) {
       // Revert on error
@@ -270,6 +274,9 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
     );
 
     if (confirmed) {
+      // Snapshot for rollback — no bulk-reject API exists yet
+      const snapshot = { ...pipelineData };
+
       setPipelineData((prev) => {
         const newData = { ...prev };
         selectedCandidates.forEach((candidateId) => {
@@ -282,22 +289,22 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         return newData;
       });
 
-      toast.success(`${count} candidate(s) removed from pipeline`);
-
-      if (currentRecruiterId) {
-        try {
+      try {
+        if (currentRecruiterId) {
           await createNotification(
             currentRecruiterId,
             "candidate_rejected",
             "Candidates Rejected",
             `${count} candidate(s) were rejected from ${jobTitle}.`,
           );
-        } catch (notifyError: unknown) {
-          logger.error('Error sending rejection notification', notifyError);
         }
+        toast.success(`${count} candidate(s) removed from pipeline`);
+        setSelectedCandidates([]);
+      } catch (notifyError: unknown) {
+        logger.error('Error sending rejection notification — reverting state', notifyError instanceof Error ? notifyError : undefined);
+        setPipelineData(snapshot);
+        toast.error('Failed to record rejection. Please try again.');
       }
-
-      setSelectedCandidates([]);
     }
   };
 

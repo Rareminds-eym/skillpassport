@@ -6,6 +6,7 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ExclamationCircleIcon,
+  InformationCircleIcon,
   PlusIcon,
   EyeIcon,
   CalendarDaysIcon,
@@ -25,7 +26,7 @@ import { useOffers, Offer } from '@/shared/lib/hooks';
 import { OfferAdvancedFilters, OfferFilters, OfferSortOptions, OfferSortButton } from '@/features/recruiter';
 import { getLogger } from '@/shared/config/logging';
 
-const INFO_ICON = 'ℹ️';
+const INFO_ICON = <InformationCircleIcon className="h-5 w-5 text-blue-500" />;
 
 const logger = getLogger('OffersDecisions');
 
@@ -1414,10 +1415,8 @@ const OffersDecisions = () => {
     setCurrentPage(1);
   };
 
-  const acceptanceRate = stats.acceptanceRate;
-  const avgTimeToOffer = offers.filter(o => o.status === 'accepted').length > 0
-    ? 5.2
-    : 0;
+  // TODO: compute from real offer date data when available
+  const avgTimeToOffer = 0;
 
   if (loading) {
     return (

@@ -1070,7 +1070,7 @@ const UnifiedProfileEditModal = ({
               <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100">
                 <Clock className="w-3 h-3 mr-1" /> Unsaved Changes
               </Badge>
-            ) : item._hasPendingEdit ? (
+            ) : (item._hasPendingEdit || item.has_pending_edit) ? (
               <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">
                 <Clock className="w-3 h-3 mr-1" /> Pending Approval
               </Badge>
@@ -1094,7 +1094,7 @@ const UnifiedProfileEditModal = ({
               <strong>Unsaved:</strong> Changes are pending. Click the edit button to save.
             </div>
           )}
-          {item._hasPendingEdit && !item._hasLocalChanges && (
+          {(item._hasPendingEdit || item.has_pending_edit) && !item._hasLocalChanges && (
             <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
               <strong>Note:</strong> Your changes are saved but pending approval. The dashboard shows the verified version until approved.
             </div>
@@ -1168,7 +1168,7 @@ const UnifiedProfileEditModal = ({
             <Trash2 className="w-4 h-4" />
           </Button>
           {/* Only show hide/show button for verified certificates (not pending approval) */}
-          {!(item.approval_status === 'pending' || item._hasPendingEdit) && (
+          {!(item.approval_status === 'pending' || item._hasPendingEdit || item.has_pending_edit) && (
             <Button variant="ghost" size="sm" onClick={() => toggleEnabled(index)} className={item.enabled === false ? "text-gray-500" : "text-green-600"}>
               {item.enabled === false ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </Button>
@@ -1365,72 +1365,12 @@ const UnifiedProfileEditModal = ({
             </div>
           </div>
 
-          {/* Fixed Footer with Save All */}
+          {/* Fixed Footer */}
           <div className="flex-shrink-0 flex justify-end gap-3 pt-4 border-t bg-white">
             <Button variant="outline" onClick={onClose} disabled={isSaving}>
               Cancel
             </Button>
-            {/* COMMENTED OUT: Save All Changes button - redundant with auto-save in "Update Certificates" button
-            <Button 
-              onClick={handleSubmit} 
-              disabled={isSaving}
-              className={`${
-                items.some(item => item.processing) 
-                  ? 'bg-orange-600 hover:bg-orange-700 animate-pulse' 
-                  : 'bg-blue-600 hover:bg-blue-700'
-              } text-white`}
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  Save All Changes
-                  {items.some(item => item.processing) && (
-                    <span className="ml-2 bg-white text-orange-600 px-2 py-0.5 rounded-full text-xs font-bold">
-                      {items.filter(item => item.processing).length}
-                    </span>
-                  )}
-                </>
-              )}
-            </Button>
-            */}
           </div>
-
-          {/* COMMENTED OUT: Save All Changes button - redundant since we have auto-save in "Update Certificates" button */}
-          {/* 
-          <div className="flex-shrink-0 flex justify-end gap-3 pt-4 border-t bg-white">
-            <Button 
-              onClick={handleSubmit} 
-              disabled={isSaving}
-              className={`${
-                items.some(item => item.processing) 
-                  ? 'bg-orange-600 hover:bg-orange-700 animate-pulse' 
-                  : 'bg-blue-600 hover:bg-blue-700'
-              } text-white`}
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  Save All Changes
-                  {items.some(item => item.processing) && (
-                    <span className="ml-2 bg-white text-orange-600 px-2 py-0.5 rounded-full text-xs font-bold">
-                      {items.filter(item => item.processing).length}
-                    </span>
-                  )}
-                </>
-              )}
-            </Button>
-          </div>
-          */}
         </DialogContent>
       </Dialog>
 
