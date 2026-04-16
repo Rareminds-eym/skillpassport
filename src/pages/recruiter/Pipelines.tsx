@@ -19,10 +19,6 @@ import { PipelineFilters, PipelineSortOptions } from "@/shared/types/recruiter";
 import { getLogger } from "@/shared/config/logging";
 import { useUser } from "@/stores";
 import toast from "react-hot-toast";
-
-
-
-// Pipeline components
 import {
   AIRecommendation,
   AIRecommendedColumn,
@@ -30,17 +26,21 @@ import {
   KanbanColumn,
   NextActionModal,
   PipelineBulkActionsBar,
-  PipelineCandidate,
+  PipelineCandidate as PipelineCandidateUI,
   PipelineHeader,
   PipelineQuickFilters,
   STAGES,
 } from "@/features/recruiter-pipeline";
+import { PipelineCandidate as PipelineCandidateData } from "@/features/opportunities/model/usePipelineData";
 
 interface PipelinesProps {
-  onViewProfile: (candidate: PipelineCandidate) => void;
+  onViewProfile: (candidate: PipelineCandidateUI) => void;
 }
 
 const logger = getLogger("Pipelines");
+
+// AI score threshold for recommended candidates
+const AI_RECOMMENDED_SCORE_THRESHOLD = 70;
 
 /**
  * Pipelines - Recruitment pipeline management
@@ -48,24 +48,25 @@ const logger = getLogger("Pipelines");
  * Wrapped with FeatureGate for pipeline_management add-on access control
  */
 const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
-  const { opportunities, loading: opportunitiesLoading } = useOpportunities();
+  const { opportunities, loading: opportunitiesLoading } = useOpportunities() as { opportunities: any[], loading: boolean };
 
   // State
   const [selectedJob, setSelectedJob] = useState<number | null>(null);
   const [showQuickView, setShowQuickView] = useState(false);
   const [selectedCandidate, setSelectedCandidate] =
-    useState<PipelineCandidate | null>(null);
+    useState<PipelineCandidateUI | null>(null);
   const [globalSearch, setGlobalSearch] = useState("");
-  const [movingCandidates, setMovingCandidates] = useState<string[]>([]); // Changed to string for UUID
+  const [movingCandidates, setMovingCandidates] = useState<number[]>([]);
   const [showAIRecommendedOnly, setShowAIRecommendedOnly] = useState(false);
-  const [selectedCandidates, setSelectedCandidates] = useState<string[]>([]); // Changed to string for UUID
+  const [selectedCandidates, setSelectedCandidates] = useState<number[]>([]);
 
   // Modal states
   const [showAddFromTalentPool, setShowAddFromTalentPool] = useState(false);
   const [addToStage, setAddToStage] = useState<string | null>(null);
   const [showNextActionModal, setShowNextActionModal] = useState(false);
   const [selectedCandidateForAction, setSelectedCandidateForAction] =
-    useState<PipelineCandidate | null>(null);
+    useState<PipelineCandidateUI | null>(null);
+  const [showBulkRejectConfirm, setShowBulkRejectConfirm] = useState(false);
 
   // Filter states
   const [filters, setFilters] = useState<PipelineFilters>({
@@ -105,12 +106,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
 
   // Get current recruiter ID from reactive auth store
   const currentUser = useUser();
-  // Derive recruiter ID from reactive auth store, memoized to avoid triggering
-  // downstream effects (e.g. useNotifications) on every render.
-  const currentRecruiterId = useMemo<string | null>(
-    () => currentUser?.id ?? null,
-    [currentUser]
-  );
+  const currentRecruiterId = currentUser?.id ?? null;
 
   useNotifications(currentRecruiterId);
 
@@ -137,8 +133,8 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
   }, [opportunitiesLoading, opportunities, selectedJob]);
 
   // Handlers
-  const handleCandidateMove = async (candidateId: string, newStage: string) => {
-    let movedCandidate: PipelineCandidate | null = null;
+  const handleCandidateMove = async (candidateId: number, newStage: string) => {
+    let movedCandidate: PipelineCandidateData | null = null;
 
     Object.keys(pipelineData).forEach((stage) => {
       const candidate = pipelineData[stage as keyof typeof pipelineData].find(
@@ -153,31 +149,41 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
 
     setMovingCandidates((prev) => [...prev, candidateId]);
 
-    // Pre-move snapshot for reliable revert
-    const preSnapshot = Object.fromEntries(
-      Object.entries(pipelineData).map(([s, arr]) => [s, [...arr]])
-    ) as unknown as typeof pipelineData;
-
-    // Optimistic update — deep-clone each stage array to avoid stale references
-    setPipelineData((prev) => {
-      const newData = Object.fromEntries(
-        Object.entries(prev).map(([s, arr]) => [s, [...arr]])
-      ) as unknown as typeof prev;
-      Object.keys(newData).forEach((stage) => {
-        newData[stage as keyof typeof newData] = newData[
-          stage as keyof typeof newData
-        ].filter((c) => c.id !== candidateId);
-      });
-      if (newData[newStage as keyof typeof newData]) {
-        newData[newStage as keyof typeof newData].push({
-          ...movedCandidate!,
-          last_updated: new Date().toISOString(),
-        });
-      }
-      return newData;
-    });
-
     try {
+      // Capture snapshot before any state mutation
+      const preSnapshot = {
+        sourced: [...pipelineData.sourced],
+        screened: [...pipelineData.screened],
+        interview_1: [...pipelineData.interview_1],
+        interview_2: [...pipelineData.interview_2],
+        offer: [...pipelineData.offer],
+        hired: [...pipelineData.hired]
+      };
+
+      // Optimistic update — deep-clone each stage array to avoid stale references
+      setPipelineData((prev) => {
+        const newData = {
+          sourced: [...prev.sourced],
+          screened: [...prev.screened],
+          interview_1: [...prev.interview_1],
+          interview_2: [...prev.interview_2],
+          offer: [...prev.offer],
+          hired: [...prev.hired]
+        };
+        Object.keys(newData).forEach((stage) => {
+          newData[stage as keyof typeof newData] = newData[
+            stage as keyof typeof newData
+          ].filter((c) => c.id !== candidateId);
+        });
+        if (newData[newStage as keyof typeof newData]) {
+          newData[newStage as keyof typeof newData].push({
+            ...movedCandidate!,
+            last_updated: new Date().toISOString(),
+          });
+        }
+        return newData;
+      });
+
       const result = await moveCandidateToStage(candidateId, newStage);
 
       if (result.error) {
@@ -194,14 +200,23 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
             currentRecruiterId,
             "pipeline_stage_changed",
             `Candidate moved to ${newStage}`,
-            `${(movedCandidate as PipelineCandidate).name} has been moved to the "${newStage}" stage.`,
+            `${(movedCandidate as PipelineCandidateData).name} has been moved to the "${newStage}" stage.`,
           );
         } catch (notifyError: unknown) {
           logger.error('Error sending stage-change notification', notifyError instanceof Error ? notifyError : undefined);
         }
       }
     } catch (error) {
-      setPipelineData(preSnapshot);
+      // Revert to pre-move state on error
+      const revertSnapshot = {
+        sourced: [...pipelineData.sourced],
+        screened: [...pipelineData.screened],
+        interview_1: [...pipelineData.interview_1],
+        interview_2: [...pipelineData.interview_2],
+        offer: [...pipelineData.offer],
+        hired: [...pipelineData.hired]
+      };
+      setPipelineData(revertSnapshot);
       toast.error("Failed to move candidate. Please try again.");
     } finally {
       setMovingCandidates((prev) => prev.filter((id) => id !== candidateId));
@@ -254,60 +269,73 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
       return;
     }
 
-    const confirmed = window.confirm(
-      `Are you sure you want to reject ${count} candidate(s)?\n\nThis action cannot be undone.`,
-    );
+    if (!currentRecruiterId) {
+      toast.error('Bulk reject is not available — no recruiter session found.');
+      return;
+    }
 
-    if (confirmed) {
-      if (!currentRecruiterId) {
-        toast('Bulk reject is not available — no recruiter session found.');
-        return;
-      }
+    setShowBulkRejectConfirm(true);
+  };
 
-      // Deep-clone snapshot for reliable rollback
-      const snapshot = Object.fromEntries(
-        Object.entries(pipelineData).map(([stage, candidates]) => [stage, [...candidates]])
-      ) as unknown as typeof pipelineData;
+  const confirmBulkReject = async () => {
+    setShowBulkRejectConfirm(false);
+    const count = selectedCandidates.length;
 
-      try {
-        // Update UI first — no bulk-reject API exists yet, notification is a side-effect
-        setPipelineData((prev) => {
-          const newData = Object.fromEntries(
-            Object.entries(prev).map(([s, arr]) => [s, [...arr]])
-          ) as unknown as typeof prev;
-          selectedCandidates.forEach((candidateId) => {
-            Object.keys(newData).forEach((stage) => {
-              newData[stage as keyof typeof newData] = newData[
-                stage as keyof typeof newData
-              ].filter((c) => c.id !== candidateId);
-            });
+    // TODO: Replace with real bulk-reject API call before shipping to production.
+    // Until then, this is a UI-only operation and the rollback path is unreachable.
+    // Deep-clone snapshot for reliable rollback
+    const snapshot = {
+      sourced: [...pipelineData.sourced],
+      screened: [...pipelineData.screened],
+      interview_1: [...pipelineData.interview_1],
+      interview_2: [...pipelineData.interview_2],
+      offer: [...pipelineData.offer],
+      hired: [...pipelineData.hired]
+    };
+
+    try {
+      // Update UI first — no bulk-reject API exists yet, notification is a side-effect
+      setPipelineData((prev) => {
+        const newData = {
+          sourced: [...prev.sourced],
+          screened: [...prev.screened],
+          interview_1: [...prev.interview_1],
+          interview_2: [...prev.interview_2],
+          offer: [...prev.offer],
+          hired: [...prev.hired]
+        };
+        selectedCandidates.forEach((candidateId) => {
+          Object.keys(newData).forEach((stage) => {
+            newData[stage as keyof typeof newData] = newData[
+              stage as keyof typeof newData
+            ].filter((c) => c.id !== candidateId);
           });
-          return newData;
         });
-        toast.success(`${count} candidate(s) removed from pipeline`);
-        setSelectedCandidates([]);
+        return newData;
+      });
+      toast.success(`${count} candidate(s) removed from pipeline`);
+      setSelectedCandidates([]);
 
-        // Notify asynchronously — failure does not roll back the UI
-        createNotification(
-          currentRecruiterId,
-          "candidate_rejected",
-          "Candidates Rejected",
-          `${count} candidate(s) were rejected from ${jobTitle}.`,
-        ).catch((notifyError: unknown) => {
-          logger.error('Error sending rejection notification', notifyError instanceof Error ? notifyError : undefined);
-        });
-      } catch (err: unknown) {
-        logger.error('Error during bulk reject', err instanceof Error ? err : undefined);
-        setPipelineData(snapshot);
-        toast.error('Failed to reject candidates. Please try again.');
-      }
+      // Notify asynchronously — failure does not roll back the UI
+      createNotification(
+        currentRecruiterId!,
+        "candidate_rejected",
+        "Candidates Rejected",
+        `${count} candidate(s) were rejected from ${jobTitle}.`,
+      ).catch((notifyError: unknown) => {
+        logger.error('Error sending rejection notification', notifyError instanceof Error ? notifyError : undefined);
+      });
+    } catch (err: unknown) {
+      logger.error('Error during bulk reject', err instanceof Error ? err : undefined);
+      setPipelineData(snapshot);
+      toast.error('Failed to reject candidates. Please try again.');
     }
   };
 
   const handleExportPipeline = () => {
     const allCandidates = Object.entries(pipelineData).flatMap(
       ([stage, candidates]) =>
-        candidates.map((candidate: PipelineCandidate) => ({
+        candidates.map((candidate: PipelineCandidateData) => ({
           ...candidate,
           stage,
         })),
@@ -318,11 +346,22 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
       return;
     }
 
+    // Helper to escape CSV values and prevent formula injection
+    const escapeCsvValue = (value: string | number): string => {
+      const str = String(value);
+      // Prevent CSV injection by prefixing dangerous characters with single quote
+      if (str.match(/^[=+\-@]/)) {
+        return `"'${str.replace(/"/g, '""')}"`;
+      }
+      // Standard CSV escaping
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+
     const csvContent = [
       "Name,Department,College,Location,Stage,AI Score,Skills,Last Updated",
       ...allCandidates.map(
         (candidate) =>
-          `"${candidate.name}","${candidate.dept}","${candidate.college}","${candidate.location}","${candidate.stage}",${candidate.ai_score_overall},"${candidate.skills.join("; ")}","${new Date(candidate.last_updated).toLocaleDateString()}"`,
+          `${escapeCsvValue(candidate.name)},${escapeCsvValue(candidate.dept)},${escapeCsvValue(candidate.college)},${escapeCsvValue(candidate.location)},${escapeCsvValue(candidate.stage)},${candidate.ai_score_overall},${escapeCsvValue(candidate.skills.join("; "))},${escapeCsvValue(new Date(candidate.last_updated).toLocaleDateString())}`,
       ),
     ].join("\n");
 
@@ -342,7 +381,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
     toast.success(`${allCandidates.length} candidates exported successfully`);
   };
 
-  const toggleCandidateSelection = (candidateId: string) => {
+  const toggleCandidateSelection = (candidateId: number) => {
     setSelectedCandidates((prev) =>
       prev.includes(candidateId)
         ? prev.filter((id) => id !== candidateId)
@@ -350,11 +389,11 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
     );
   };
 
-  const handleSendEmail = (candidate: PipelineCandidate) => {
+  const handleSendEmail = (candidate: PipelineCandidateUI) => {
     toast(`Opening email composer for ${candidate.name}...`);
   };
 
-  const handleCandidateView = (candidate: PipelineCandidate) => {
+  const handleCandidateView = (candidate: PipelineCandidateUI) => {
     setSelectedCandidate(candidate);
     setShowQuickView(true);
   };
@@ -371,7 +410,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
 
     try {
       // Check if candidate already exists in pipeline by looking in pipelineData
-      let existingPipelineId: string | null = null;
+      let existingPipelineId: number | null = null;
       let existingStage: string | null = null;
 
       Object.keys(pipelineData).forEach((stage) => {
@@ -379,7 +418,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
           (c) => c.student_id === pipelineCandidate?.student_id,
         );
         if (found) {
-          existingPipelineId = String(found.id);
+          existingPipelineId = found.id;
           existingStage = stage;
         }
       });
@@ -393,7 +432,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         // Candidate not in pipeline, add them directly to screened
         const result = await addCandidateToPipeline({
           opportunity_id: selectedJob,
-          student_id: pipelineCandidate?.student_id || rec.applicantId, // UUID is already string
+          student_id: pipelineCandidate?.student_id || rec.applicantId,
           candidate_name:
             rec.studentName || pipelineCandidate?.name || "Unknown",
           candidate_email: pipelineCandidate?.email || "",
@@ -418,7 +457,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         toast.success(`${rec.studentName} has been added to Screened stage`);
       }
     } catch (error) {
-      logger.error("Error moving AI recommended candidate:", error);
+      logger.error("Error moving AI recommended candidate:", error instanceof Error ? error : undefined);
       toast.error("Failed to move candidate. Please try again.");
     }
   };
@@ -428,7 +467,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
     setShowAddFromTalentPool(true);
   };
 
-  const handleNextAction = (candidate: PipelineCandidate) => {
+  const handleNextAction = (candidate: PipelineCandidateUI) => {
     setSelectedCandidateForAction(candidate);
     setShowNextActionModal(true);
   };
@@ -459,16 +498,19 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
 
   // Filtered pipeline data
   const filteredPipelineData = useMemo(() => {
-    let filtered = { ...pipelineData };
+    // Deep clone to avoid mutating original pipelineData
+    const filtered = {
+      sourced: [...pipelineData.sourced],
+      screened: [...pipelineData.screened],
+      interview_1: [...pipelineData.interview_1],
+      interview_2: [...pipelineData.interview_2],
+      offer: [...pipelineData.offer],
+      hired: [...pipelineData.hired]
+    };
 
     if (showAIRecommendedOnly) {
-      Object.keys(filtered).forEach((stage) => {
-        if (stage === "sourced" || stage === "screened") {
-          filtered[stage as keyof typeof filtered] = filtered[
-            stage as keyof typeof filtered
-          ].filter((c) => c.ai_score_overall >= 70);
-        }
-      });
+      filtered.sourced = filtered.sourced.filter((c) => c.ai_score_overall >= AI_RECOMMENDED_SCORE_THRESHOLD);
+      filtered.screened = filtered.screened.filter((c) => c.ai_score_overall >= AI_RECOMMENDED_SCORE_THRESHOLD);
     }
 
     if (globalSearch.trim()) {
@@ -605,18 +647,22 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
                 }
                 color={stage.color}
                 candidates={
-                  filteredPipelineData[
+                  (filteredPipelineData[
                     stage.key as keyof typeof filteredPipelineData
-                  ] || []
+                  ] || []).map(c => ({
+                    ...c,
+                    id: String(c.id),
+                    student_id: String(c.student_id)
+                  }))
                 }
-                onCandidateMove={handleCandidateMove}
+                onCandidateMove={(id, stage) => handleCandidateMove(Number(id), stage)}
                 onCandidateView={handleCandidateView}
-                selectedCandidates={selectedCandidates}
-                onToggleSelect={toggleCandidateSelection}
+                selectedCandidates={selectedCandidates.map(String)}
+                onToggleSelect={(id) => toggleCandidateSelection(Number(id))}
                 onSendEmail={handleSendEmail}
                 onAddClick={() => handleAddFromTalentPool(stage.key)}
                 onNextAction={handleNextAction}
-                movingCandidates={movingCandidates}
+                movingCandidates={movingCandidates.map(String)}
               />
               {index === 0 && (
                 <AIRecommendedColumn
@@ -659,6 +705,35 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         onSuccess={loadPipelineCandidates}
       />
 
+      {/* Bulk Reject Confirmation Modal */}
+      {showBulkRejectConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Confirm Bulk Rejection</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to reject {selectedCandidates.length} candidate(s)?
+              <br />
+              <br />
+              This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowBulkRejectConfirm(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmBulkReject}
+                className="px-4 py-2 text-white bg-red-600 rounded hover:bg-red-700"
+              >
+                Reject {selectedCandidates.length} Candidate(s)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <CandidateQuickView
         isOpen={showQuickView}
         onClose={() => setShowQuickView(false)}
@@ -668,7 +743,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
           if (selectedCandidate) onViewProfile(selectedCandidate);
         }}
         onSendEmail={handleSendEmail}
-        onScheduleCall={(candidate: PipelineCandidate) =>
+        onScheduleCall={(candidate: PipelineCandidateUI) =>
           toast(`Opening calendar for ${candidate.name}`)
         }
         onNextAction={(candidate) => {
@@ -684,7 +759,12 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
  * Wrapped Pipelines with FeatureGate for pipeline_management add-on
  */
 const Pipelines: React.FC<PipelinesProps> = (props) => (
-  <FeatureGate featureKey="pipeline_management" showUpgradePrompt={true}>
+  <FeatureGate 
+    featureKey="pipeline_management" 
+    showUpgradePrompt={true}
+    fallback={null}
+    onUpgradeClick={() => {}}
+  >
     <PipelinesContent {...props} />
   </FeatureGate>
 );

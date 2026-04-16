@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import {
   DocumentTextIcon,
@@ -26,7 +26,7 @@ import { useOffers, Offer } from '@/shared/lib/hooks';
 import { OfferAdvancedFilters, OfferFilters, OfferSortOptions, OfferSortButton } from '@/features/recruiter';
 import { getLogger } from '@/shared/config/logging';
 
-const INFO_ICON = () => <InformationCircleIcon className="h-5 w-5 text-blue-500" />;
+const InfoIcon = () => <InformationCircleIcon className="h-5 w-5 text-blue-500" />;
 
 const logger = getLogger('OffersDecisions');
 
@@ -1330,11 +1330,11 @@ const OffersDecisions = () => {
     return Array.from(benefits).sort();
   }, [offers]);
 
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success'): void => {
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success'): void => {
     if (type === 'error') toast.error(message);
-    else if (type === 'info') toast(message, { icon: <INFO_ICON /> });
+    else if (type === 'info') toast(message, { icon: <InfoIcon /> });
     else toast.success(message);
-  };
+  }, []);
 
   const handleCreateOffer = async (newOfferData: Partial<Offer>) => {
     const result = await createOffer(newOfferData);
@@ -1416,7 +1416,7 @@ const OffersDecisions = () => {
   };
 
   // avgTimeToOffer: not yet computed from real data (tracked in backlog)
-  const avgTimeToOffer = 0;
+  const avgTimeToOffer = null;
 
   if (loading) {
     return (
@@ -1581,7 +1581,7 @@ const OffersDecisions = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-blue-800">Avg Time-to-Offer</p>
-              <p className="text-3xl font-bold text-blue-900">{avgTimeToOffer} days</p>
+              <p className="text-3xl font-bold text-blue-900">{avgTimeToOffer !== null ? `${avgTimeToOffer} days` : 'N/A'}</p>
               <p className="text-xs text-blue-600 mt-1">From interview to offer</p>
             </div>
             <ClockIcon className="h-12 w-12 text-blue-600" />

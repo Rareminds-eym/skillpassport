@@ -465,10 +465,13 @@ const UnifiedProfileEditModal = ({
       try {
         await onSave(updatedItems);
         setItems(updatedItems);
+        resetForm();
         toast.success(`${config.title} updated successfully.`);
       } catch (error) {
         logger.error('Error auto-saving updated item', error);
         toast.error(`${config.title} could not be saved. Please try again.`);
+        // Don't reset form on error to preserve user input
+        return;
       }
       // Refresh separately — errors here don't affect the save result
       if (typeof onSave === 'function' && onSave.refresh) {
@@ -495,10 +498,13 @@ const UnifiedProfileEditModal = ({
       try {
         await onSave(updatedItems);
         setItems(updatedItems);
+        resetForm();
         toast.success(`${config.title} added successfully.`);
       } catch (error) {
         logger.error('Error auto-saving new item', error);
         toast.error(`${config.title} could not be saved. Please try again.`);
+        // Don't reset form on error to preserve user input
+        return;
       }
       if (typeof onSave === 'function' && onSave.refresh) {
         try {
@@ -508,8 +514,6 @@ const UnifiedProfileEditModal = ({
         }
       }
     }
-
-    resetForm();
   };
 
   const saveAndClose = async () => {
@@ -628,12 +632,6 @@ const UnifiedProfileEditModal = ({
     // Close dialog
     setConfirmDialog({ isOpen: false, type: null, itemIndex: null, itemTitle: '' });
 
-    // Update item state locally
-    const updatedItems = items.map((item, idx) =>
-      idx === index ? { ...item, enabled: newState } : item
-    );
-    setItems(updatedItems);
-
     // For hide/show, we need to update the database directly without triggering versioning
     // We'll update just the enabled field for this specific item
     try {
@@ -648,6 +646,12 @@ const UnifiedProfileEditModal = ({
 
       if (error) throw error;
 
+      // Update item state locally only after successful database update
+      const updatedItems = items.map((item, idx) =>
+        idx === index ? { ...item, enabled: newState } : item
+      );
+      setItems(updatedItems);
+
       // Trigger parent refresh if available
       if (typeof onSave === 'function' && onSave.refresh) {
         try {
@@ -661,8 +665,6 @@ const UnifiedProfileEditModal = ({
     } catch (error) {
       logger.error('Error toggling item visibility', error);
       toast.error("Failed to update visibility. Please try again.");
-      // Restore only the toggled item using functional updater to avoid stale closure
-      setItems(prev => prev.map((it, idx) => idx === index ? { ...it, enabled: !newState } : it));
     }
   };
 
@@ -686,16 +688,16 @@ const UnifiedProfileEditModal = ({
           ? { ...savedItem }
           : item
       );
-      setItems(updatedItems);
 
       // IMPORTANT: Auto-save to database immediately to prevent data loss
       // This ensures changes persist even if user clicks Cancel
       try {
         await onSave(updatedItems);
+        setItems(updatedItems);
         toast.success(`${config.title} updated successfully.`);
       } catch (error) {
         logger.error('Error auto-saving updated item (handleSaveItem)', error);
-        toast.error(`${config.title} updated. Click 'Save All Changes' to save to database.`);
+        toast.error(`Failed to update ${config.title}. Please try again.`);
       }
     } else {
       // Add new item
@@ -703,15 +705,15 @@ const UnifiedProfileEditModal = ({
         ...savedItem,
       };
       const updatedItems = [...items, newItem];
-      setItems(updatedItems);
 
       // Auto-save new items too
       try {
         await onSave(updatedItems);
+        setItems(updatedItems);
         toast.success(`${config.title} added successfully.`);
       } catch (error) {
         logger.error('Error auto-saving new item (handleSaveItem)', error);
-        toast.error(`${config.title} added. Click 'Save All Changes' to save to database.`);
+        toast.error(`Failed to add ${config.title}. Please try again.`);
       }
     }
     setIsItemModalOpen(false);
@@ -1000,7 +1002,7 @@ const UnifiedProfileEditModal = ({
 
   const renderItemCard = (item, index) => (
     <div
-      key={item.id ?? index}
+      key={item.id ?? `item-${index}`}
       className={`p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow ${item.enabled === false ? "opacity-50 bg-gray-50" : "bg-white"
         }`}
     >
@@ -1082,7 +1084,7 @@ const UnifiedProfileEditModal = ({
                 }
 
                 return techArray.filter(tech => tech && tech.trim()).map((tech, i) => (
-                  <Badge key={tech} variant="outline" className="bg-blue-50 text-blue-800 border-blue-300 text-xs font-semibold shadow-sm hover:bg-blue-100">
+                  <Badge key={`${tech}-${i}`} variant="outline" className="bg-blue-50 text-blue-800 border-blue-300 text-xs font-semibold shadow-sm hover:bg-blue-100">
                     {tech}
                   </Badge>
                 ));

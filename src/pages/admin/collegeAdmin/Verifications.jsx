@@ -41,7 +41,11 @@ import { getLogger } from '@/shared/config/logging';
  * Checks user object first, then college_lecturers table, then organizations table.
  */
 async function getCollegeId(user) {
-  if (user?.college_id) return user.college_id;
+  if (!user) {
+    throw new Error('User is required to fetch college ID');
+  }
+  
+  if (user.college_id) return user.college_id;
 
   const { data: educatorData, error: educatorError } = await supabase
     .from('college_lecturers')
@@ -93,7 +97,9 @@ const PaginationControls = ({ totalPages, currentPage, onPageChange }) => {
     for (let i = left; i <= right; i++) pages.push(i);
     if (right < totalPages - 1) pages.push('...');
     if (totalPages > 1) pages.push(totalPages);
-    return pages;
+    
+    // Deduplicate in case of small totalPages (e.g., totalPages === 2)
+    return [...new Set(pages)];
   };
 
   return (
@@ -160,8 +166,8 @@ const TrainingCard = ({ training, onAction }) => (
       </div>
       {training.skills && training.skills.length > 0 && (
         <div className="mb-4 flex flex-wrap gap-1">
-          {training.skills.slice(0, 3).map((skill) => (
-            <Badge key={skill} variant="outline" className="text-xs">{skill}</Badge>
+          {training.skills.slice(0, 3).map((skill, index) => (
+            <Badge key={`skill-${index}-${skill}`} variant="outline" className="text-xs">{skill}</Badge>
           ))}
           {training.skills.length > 3 && <Badge variant="outline" className="text-xs">+{training.skills.length - 3} more</Badge>}
         </div>
@@ -227,8 +233,8 @@ const ProjectCard = ({ project, onAction }) => (
         )}
         {project.tech_stack && project.tech_stack.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {project.tech_stack.slice(0, 3).map((tech) => (
-              <Badge key={tech} variant="secondary" className="text-xs">{tech}</Badge>
+            {project.tech_stack.slice(0, 3).map((tech, index) => (
+              <Badge key={`tech-${index}-${tech}`} variant="secondary" className="text-xs">{tech}</Badge>
             ))}
             {project.tech_stack.length > 3 && <Badge variant="secondary" className="text-xs">+{project.tech_stack.length - 3} more</Badge>}
           </div>
@@ -363,8 +369,11 @@ const CollegeVerifications = () => {
 
     if (user) {
       fetchData();
+    } else {
+      // If no user, stop loading to prevent perpetual loading state
+      setLoading(false);
     }
-  }, [fetchPendingTrainings, fetchPendingExperiences, fetchPendingProjects]);
+  }, [user, fetchPendingTrainings, fetchPendingExperiences, fetchPendingProjects]);
 
   // Handle training actions
   const handleTrainingAction = async (action, training) => {
@@ -372,9 +381,14 @@ const CollegeVerifications = () => {
       setSelectedTraining(training);
       setShowTrainingModal(true);
     } else if (action === 'approved' || action === 'rejected') {
-      // Refresh data after approval/rejection
-      await fetchPendingTrainings();
-      toast.success(`Training ${action} successfully!`);
+      try {
+        // Refresh data after approval/rejection
+        await fetchPendingTrainings();
+        toast.success(`Training ${action} successfully!`);
+      } catch (error) {
+        logger.error('Error handling training action:', error);
+        toast.error(`Failed to ${action} training. Please try again.`);
+      }
     }
   };
 
@@ -384,9 +398,14 @@ const CollegeVerifications = () => {
       setSelectedExperience(experience);
       setShowExperienceModal(true);
     } else if (action === 'approved' || action === 'rejected') {
-      // Refresh data after approval/rejection
-      await fetchPendingExperiences();
-      toast.success(`Experience ${action} successfully!`);
+      try {
+        // Refresh data after approval/rejection
+        await fetchPendingExperiences();
+        toast.success(`Experience ${action} successfully!`);
+      } catch (error) {
+        logger.error('Error handling experience action:', error);
+        toast.error(`Failed to ${action} experience. Please try again.`);
+      }
     }
   };
 
@@ -396,9 +415,14 @@ const CollegeVerifications = () => {
       setSelectedProject(project);
       setShowProjectModal(true);
     } else if (action === 'approved' || action === 'rejected') {
-      // Refresh data after approval/rejection
-      await fetchPendingProjects();
-      toast.success(`Project ${action} successfully!`);
+      try {
+        // Refresh data after approval/rejection
+        await fetchPendingProjects();
+        toast.success(`Project ${action} successfully!`);
+      } catch (error) {
+        logger.error('Error handling project action:', error);
+        toast.error(`Failed to ${action} project. Please try again.`);
+      }
     }
   };
 
@@ -425,6 +449,19 @@ const CollegeVerifications = () => {
     setSearchQuery('');
     setStatusFilter('all');
   };
+
+  // Reset pagination when search or filter changes
+  useEffect(() => {
+    setTrainingsPage(1);
+  }, [searchQuery, statusFilter]);
+
+  useEffect(() => {
+    setExperiencesPage(1);
+  }, [searchQuery, statusFilter]);
+
+  useEffect(() => {
+    setProjectsPage(1);
+  }, [searchQuery, statusFilter]);
 
   // Filter functions
   const getFilteredTrainings = () => {
