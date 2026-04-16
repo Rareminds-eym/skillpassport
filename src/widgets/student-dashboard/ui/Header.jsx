@@ -1,10 +1,13 @@
 import {
   AcademicCapIcon,
+  ArrowRightOnRectangleIcon,
   Bars3Icon,
   BellIcon,
+  BookmarkIcon,
   BookOpenIcon,
   BriefcaseIcon,
   ClipboardDocumentListIcon,
+  Cog6ToothIcon,
   EnvelopeIcon,
   HomeIcon,
   RocketLaunchIcon,
@@ -21,6 +24,12 @@ import DigitalPortfolioSideDrawer from "./DigitalPortfolioSideDrawer";
 import NotificationPanel from "./NotificationPanel";
 import NavButton from "./NavButton";
 import { PROFILE_MENU_ITEMS } from "../config/profileMenuItems";
+
+const ICON_MAP = {
+  BookmarkIcon,
+  Cog6ToothIcon,
+  ArrowRightOnRectangleIcon
+};
 
 const Header = ({ activeTab, setActiveTab }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -211,26 +220,29 @@ const Header = ({ activeTab, setActiveTab }) => {
               {activeModal === 'profile' && (
                 <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 shadow-xl rounded-lg z-50">
                   <div className="py-1">
-                    {PROFILE_MENU_ITEMS.map((item, index) => (
-                      <div key={item.id}>
-                        {item.isDivider && <div className="border-t border-gray-200 my-1" />}
-                        <button
-                          onClick={() => {
-                            if (item.id === 'logout') {
-                              handleLogout();
-                            } else {
-                              setActiveTab(item.id);
-                              navigate(item.path);
-                              setActiveModal(null);
-                            }
-                          }}
-                          className={`w-full flex items-center px-4 py-2 text-sm ${item.className} text-left`}
-                        >
-                          <item.icon className="w-4 h-4 mr-2" />
-                          {item.label}
-                        </button>
-                      </div>
-                    ))}
+                    {PROFILE_MENU_ITEMS.map((item) => {
+                      const Icon = ICON_MAP[item.iconName];
+                      return (
+                        <div key={item.id}>
+                          {item.isDivider && <div className="border-t border-gray-200 my-1" />}
+                          <button
+                            onClick={() => {
+                              if (item.id === 'logout') {
+                                handleLogout();
+                              } else {
+                                setActiveTab(item.id);
+                                navigate(item.path);
+                                setActiveModal(null);
+                              }
+                            }}
+                            className={`w-full flex items-center px-4 py-2 text-sm ${item.className} text-left`}
+                          >
+                            <Icon className="w-4 h-4 mr-2" />
+                            {item.label}
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
