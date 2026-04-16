@@ -45,8 +45,6 @@ export const StudentMessagingExample: React.FC<StudentMessagingExampleProps> = (
     enabled: true,
     playSound: true,
     excludeConversationId: selectedConversationId,
-    onMessageReceived: (message) => {
-    }
   });
   
   // Auto-select first conversation

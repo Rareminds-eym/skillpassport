@@ -1444,7 +1444,7 @@ const StudentDashboard = () => {
     const newState = !skill.enabled;
 
     // Don't allow hiding/showing items that are pending verification or approval
-    if (skill.approval_status === 'pending' || skill.has_pending_edit) {
+    if (skill.approval_status === 'pending' || skill.has_pending_edit || skill._hasPendingEdit) {
       toast.error("You cannot hide or show skills that are pending verification or approval.");
       return;
     }
@@ -1460,8 +1460,7 @@ const StudentDashboard = () => {
         throw error;
       }
 
-      await refreshTechnicalSkills();
-
+      if (refreshTechnicalSkills) await refreshTechnicalSkills();
       toast.success(`Technical skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`, { duration: 3000 });
     } catch (error) {
       logger.error('🔧 Dashboard - Error toggling technical skill visibility', error);
@@ -1477,7 +1476,7 @@ const StudentDashboard = () => {
     const newState = !skill.enabled;
 
     // Don't allow hiding/showing items that are pending verification or approval
-    if (skill.approval_status === 'pending' || skill.has_pending_edit) {
+    if (skill.approval_status === 'pending' || skill.has_pending_edit || skill._hasPendingEdit) {
       toast.error("You cannot hide or show skills that are pending verification or approval.");
       return;
     }
@@ -1490,7 +1489,7 @@ const StudentDashboard = () => {
 
       if (error) throw error;
 
-      await refreshSoftSkills();
+      if (refreshSoftSkills) await refreshSoftSkills();
 
       toast.success(`Soft skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`, { duration: 3000 });
     } catch (error) {

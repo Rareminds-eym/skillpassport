@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 // @ts-ignore
 import {
   CandidateQuickView,
@@ -100,15 +100,17 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
     getConversionRate,
   } = usePipelineData(selectedJob, filters, sortOptions);
 
-  // Get current recruiter ID
-  let currentRecruiterId: string | null = null;
-  try {
-    const userStr = localStorage.getItem("user");
-    if (userStr) {
-      const user = JSON.parse(userStr);
-      currentRecruiterId = user.id || user.recruiter_id;
-    }
-  } catch (e) {}
+  // Get current recruiter ID — memoized to avoid localStorage read on every render
+  const currentRecruiterId = useMemo<string | null>(() => {
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        return user.id || user.recruiter_id || null;
+      }
+    } catch (e) {}
+    return null;
+  }, []);
 
   useNotifications(currentRecruiterId);
 
@@ -242,7 +244,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
       toast.error("Please select candidates first");
       return;
     }
-    toast.success(`Messages delivered to ${count} candidate(s)`);
+    toast(`Preparing WhatsApp messages for ${count} candidate(s)...`);
     setSelectedCandidates([]);
   };
 
@@ -252,7 +254,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
       toast.error("Please select candidates first");
       return;
     }
-    toast.success(`Ready to assign interviewer to ${count} candidate(s)`);
+    toast(`Opening interviewer assignment for ${count} candidate(s)...`);
     setSelectedCandidates([]);
   };
 
@@ -282,13 +284,17 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
 
       toast.success(`${count} candidate(s) removed from pipeline`);
 
-      if (selectedJob) {
-        await createNotification(
-          selectedJob.toString(),
-          "candidate_rejected",
-          "Candidates Rejected",
-          `${count} candidate(s) were rejected from ${jobTitle}.`,
-        );
+      if (currentRecruiterId) {
+        try {
+          await createNotification(
+            currentRecruiterId,
+            "candidate_rejected",
+            "Candidates Rejected",
+            `${count} candidate(s) were rejected from ${jobTitle}.`,
+          );
+        } catch (notifyError: unknown) {
+          logger.error('Error sending rejection notification', notifyError);
+        }
       }
 
       setSelectedCandidates([]);
@@ -319,7 +325,8 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
-    link.setAttribute("href", URL.createObjectURL(blob));
+    const objectUrl = URL.createObjectURL(blob);
+    link.setAttribute("href", objectUrl);
     link.setAttribute(
       "download",
       `pipeline_${jobTitle.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.csv`,
@@ -327,6 +334,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(objectUrl);
 
     toast.success(`${allCandidates.length} candidates exported successfully`);
   };
@@ -340,7 +348,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
   };
 
   const handleSendEmail = (candidate: PipelineCandidate) => {
-    toast.success(`Email sent to ${candidate.name}`);
+    toast(`Opening email composer for ${candidate.name}...`);
   };
 
   const handleCandidateView = (candidate: PipelineCandidate) => {
@@ -447,7 +455,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
   };
 
   // Filtered pipeline data
-  const getFilteredPipelineData = () => {
+  const filteredPipelineData = useMemo(() => {
     let filtered = { ...pipelineData };
 
     if (showAIRecommendedOnly) {
@@ -479,9 +487,8 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
     }
 
     return filtered;
-  };
+  }, [pipelineData, showAIRecommendedOnly, globalSearch]);
 
-  const filteredPipelineData = getFilteredPipelineData();
   const totalAIRecommended =
     aiRecommendations?.topRecommendations?.length ||
     (pipelineData.sourced?.length || 0) + (pipelineData.screened?.length || 0);

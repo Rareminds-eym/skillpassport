@@ -1,8 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import {
   DocumentTextIcon,
   ClockIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ExclamationCircleIcon,
   PlusIcon,
   EyeIcon,
   CalendarDaysIcon,
@@ -21,6 +24,8 @@ import {
 import { useOffers, Offer } from '@/shared/lib/hooks';
 import { OfferAdvancedFilters, OfferFilters, OfferSortOptions, OfferSortButton } from '@/features/recruiter';
 import { getLogger } from '@/shared/config/logging';
+
+const INFO_ICON = 'ℹ️';
 
 const logger = getLogger('OffersDecisions');
 
@@ -1324,11 +1329,11 @@ const OffersDecisions = () => {
     return Array.from(benefits).sort();
   }, [offers]);
 
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success'): void => {
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success'): void => {
     if (type === 'error') toast.error(message);
-    else if (type === 'info') toast(message, { icon: 'ℹ️' });
+    else if (type === 'info') toast(message, { icon: INFO_ICON });
     else toast.success(message);
-  };
+  }, []);
 
   const handleCreateOffer = async (newOfferData: Partial<Offer>) => {
     const result = await createOffer(newOfferData);

@@ -202,10 +202,6 @@ const CollegeVerifications = () => {
         return;
       }
       
-      if (!collegeId) {
-        throw new Error('College ID not found for current user');
-      }
-      
       logger.info('Using college_id:', collegeId);
       
       // Use the notification service which now uses approval_authority
@@ -486,8 +482,8 @@ const CollegeVerifications = () => {
         {training.skills && training.skills.length > 0 && (
           <div className="mb-4">
             <div className="flex flex-wrap gap-1">
-              {training.skills.slice(0, 3).map((skill, index) => (
-                <Badge key={index} variant="outline" className="text-xs">
+              {training.skills.slice(0, 3).map((skill) => (
+                <Badge key={skill} variant="outline" className="text-xs">
                   {skill}
                 </Badge>
               ))}
@@ -646,8 +642,8 @@ const CollegeVerifications = () => {
           {project.tech_stack && project.tech_stack.length > 0 && (
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <div className="flex flex-wrap gap-1">
-                {project.tech_stack.slice(0, 3).map((tech, index) => (
-                  <Badge key={index} variant="secondary" className="text-xs">
+                {project.tech_stack.slice(0, 3).map((tech) => (
+                  <Badge key={tech} variant="secondary" className="text-xs">
                     {tech}
                   </Badge>
                 ))}
