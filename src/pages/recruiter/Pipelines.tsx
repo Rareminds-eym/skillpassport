@@ -17,6 +17,7 @@ import {
 } from "@/features/opportunities";
 import { PipelineFilters, PipelineSortOptions } from "@/shared/types/recruiter";
 import { getLogger } from "@/shared/config/logging";
+import { useUser } from "@/stores";
 import toast from "react-hot-toast";
 
 const logger = getLogger("Pipelines");
@@ -100,17 +101,9 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
     getConversionRate,
   } = usePipelineData(selectedJob, filters, sortOptions);
 
-  // Get current recruiter ID — memoized to avoid localStorage read on every render
-  const currentRecruiterId = useMemo<string | null>(() => {
-    try {
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        return user.id || user.recruiter_id || null;
-      }
-    } catch (e) {}
-    return null;
-  }, []);
+  // Get current recruiter ID from reactive auth store
+  const currentUser = useUser();
+  const currentRecruiterId: string | null = currentUser?.id || (currentUser as any)?.recruiter_id || null;
 
   useNotifications(currentRecruiterId);
 
@@ -155,9 +148,11 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
 
     setMovingCandidates((prev) => [...prev, candidateId]);
 
-    // Optimistic update
+    // Optimistic update — deep-clone each stage array to avoid stale references
     setPipelineData((prev) => {
-      const newData = { ...prev };
+      const newData = Object.fromEntries(
+        Object.entries(prev).map(([s, arr]) => [s, [...arr]])
+      ) as unknown as typeof prev;
       Object.keys(newData).forEach((stage) => {
         newData[stage as keyof typeof newData] = newData[
           stage as keyof typeof newData
@@ -238,7 +233,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
       return;
     }
 
-    toast.success(`Emails queued for ${candidateNames.length} candidate(s)`);
+    toast(`Opening email composer for ${candidateNames.length} candidate(s)...`);
     setSelectedCandidates([]);
   };
 
@@ -274,20 +269,15 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
     );
 
     if (confirmed) {
-      // Snapshot for rollback — no bulk-reject API exists yet
-      const snapshot = { ...pipelineData };
+      if (!currentRecruiterId) {
+        toast('Bulk reject is not available — no recruiter session found.');
+        return;
+      }
 
-      setPipelineData((prev) => {
-        const newData = { ...prev };
-        selectedCandidates.forEach((candidateId) => {
-          Object.keys(newData).forEach((stage) => {
-            newData[stage as keyof typeof newData] = newData[
-              stage as keyof typeof newData
-            ].filter((c) => c.id !== candidateId);
-          });
-        });
-        return newData;
-      });
+      // Deep-clone snapshot for reliable rollback
+      const snapshot = Object.fromEntries(
+        Object.entries(pipelineData).map(([stage, candidates]) => [stage, [...candidates]])
+      ) as unknown as typeof pipelineData;
 
       try {
         if (currentRecruiterId) {
@@ -298,6 +288,18 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
             `${count} candidate(s) were rejected from ${jobTitle}.`,
           );
         }
+        // Only update UI after notification succeeds
+        setPipelineData((prev) => {
+          const newData = { ...prev };
+          selectedCandidates.forEach((candidateId) => {
+            Object.keys(newData).forEach((stage) => {
+              newData[stage as keyof typeof newData] = newData[
+                stage as keyof typeof newData
+              ].filter((c) => c.id !== candidateId);
+            });
+          });
+          return newData;
+        });
         toast.success(`${count} candidate(s) removed from pipeline`);
         setSelectedCandidates([]);
       } catch (notifyError: unknown) {
@@ -375,7 +377,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
 
     try {
       // Check if candidate already exists in pipeline by looking in pipelineData
-      let existingPipelineId: number | null = null;
+      let existingPipelineId: string | null = null;
       let existingStage: string | null = null;
 
       Object.keys(pipelineData).forEach((stage) => {
@@ -383,7 +385,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
           (c) => c.student_id === pipelineCandidate?.student_id,
         );
         if (found) {
-          existingPipelineId = found.id;
+          existingPipelineId = String(found.id);
           existingStage = stage;
         }
       });

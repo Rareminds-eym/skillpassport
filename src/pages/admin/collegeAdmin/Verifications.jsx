@@ -37,6 +37,182 @@ import {
 } from '@/features/school-admin';
 import { getLogger } from '@/shared/config/logging';
 
+const logger_verifications = null; // logger is initialized inside component
+
+/**
+ * Shared helper — resolves the college ID for the current user.
+ * Checks user object first, then college_lecturers table, then organizations table.
+ */
+async function getCollegeId(user, supabase) {
+  if (user?.college_id) return user.college_id;
+
+  const { data: educatorData } = await supabase
+    .from('college_lecturers')
+    .select('collegeId')
+    .or(`user_id.eq.${user?.id},email.eq.${user?.email}`)
+    .maybeSingle();
+
+  if (educatorData?.collegeId) return educatorData.collegeId;
+
+  const { data: orgData } = await supabase
+    .from('organizations')
+    .select('id')
+    .eq('admin_id', user?.id)
+    .eq('organization_type', 'college')
+    .maybeSingle();
+
+  return orgData?.id || null;
+}
+
+// ---------------------------------------------------------------------------
+// Module-scope card components — defined outside CollegeVerifications to
+// prevent unnecessary remounts on every parent render.
+// ---------------------------------------------------------------------------
+
+const PaginationControls = ({ totalPages, currentPage, onPageChange }) => {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-between mt-6 px-4">
+      <div className="text-sm text-gray-600">Page {currentPage} of {totalPages}</div>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="px-3 py-1 text-sm border rounded disabled:opacity-50"
+        >Previous</button>
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+          <button
+            key={page}
+            onClick={() => onPageChange(page)}
+            className={`w-8 h-8 text-sm rounded ${page === currentPage ? 'bg-blue-600 text-white' : 'border'}`}
+          >{page}</button>
+        ))}
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="px-3 py-1 text-sm border rounded disabled:opacity-50"
+        >Next</button>
+      </div>
+    </div>
+  );
+};
+
+const TrainingCard = ({ training, onAction }) => (
+  <Card className="hover:shadow-md transition-shadow">
+    <CardContent className="p-6">
+      <div className="flex justify-between items-start mb-2">
+        <div className="flex items-center gap-2">
+          <User className="w-4 h-4 text-gray-600" />
+          <h3 className="font-bold text-lg text-gray-900">{training.student?.name || 'Unknown Student'}</h3>
+        </div>
+        <div className="text-xs text-gray-500 ml-4">Submitted: {new Date(training.created_at).toLocaleDateString()}</div>
+      </div>
+      <div className="space-y-2 mb-3">
+        <div className="flex items-center gap-2 text-sm text-gray-600"><Mail className="w-4 h-4" /><span>{training.student?.email}</span></div>
+        <div className="flex items-center gap-2 text-sm text-gray-600"><Award className="w-4 h-4" /><span>{training.title}</span></div>
+        {training.organization && (
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Building2 className="w-4 h-4" /><span>{training.organization}</span>
+            {training.organization.toLowerCase() === 'rareminds' && (
+              <Badge className="bg-purple-100 text-purple-700 text-xs">Rareminds Training</Badge>
+            )}
+          </div>
+        )}
+        {training.duration && <div className="flex items-center gap-2 text-sm text-gray-600"><Calendar className="w-4 h-4" /><span>{training.duration}</span></div>}
+        <div className="flex items-center gap-2 text-sm text-gray-600"><GraduationCap className="w-4 h-4" /><span>College: {training.student?.college_school_name || 'Unknown'}</span></div>
+      </div>
+      {training.skills && training.skills.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-1">
+          {training.skills.slice(0, 3).map((skill, index) => (
+            <Badge key={`skill-${index}-${skill}`} variant="outline" className="text-xs">{skill}</Badge>
+          ))}
+          {training.skills.length > 3 && <Badge variant="outline" className="text-xs">+{training.skills.length - 3} more</Badge>}
+        </div>
+      )}
+      <div className="flex justify-between items-center gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Badge className="bg-yellow-100 text-yellow-800 text-xs"><Clock className="w-3 h-3 mr-1" />Pending</Badge>
+          <Badge className="bg-blue-100 text-blue-700 text-xs">College Admin</Badge>
+        </div>
+        <Button onClick={() => onAction('view', training)} className="bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0" size="sm">
+          <Eye className="w-4 h-4 mr-2" />View Details
+        </Button>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const ExperienceCard = ({ experience, onAction }) => (
+  <Card className="hover:shadow-md transition-shadow">
+    <CardContent className="p-6">
+      <div className="flex justify-between items-start mb-2">
+        <div className="flex items-center gap-2">
+          <User className="w-4 h-4 text-gray-600" />
+          <h3 className="font-bold text-lg text-gray-900">{experience.student?.name || 'Unknown Student'}</h3>
+        </div>
+        <div className="text-xs text-gray-500 ml-4">Submitted: {new Date(experience.created_at).toLocaleDateString()}</div>
+      </div>
+      <div className="space-y-2 mb-4">
+        <div className="flex items-center gap-2 text-sm text-gray-600"><Mail className="w-4 h-4" /><span>{experience.student?.email}</span></div>
+        <div className="flex items-center gap-2 text-sm text-gray-600"><Briefcase className="w-4 h-4" /><span>{experience.role}</span></div>
+        <div className="flex items-center gap-2 text-sm text-gray-600"><Building2 className="w-4 h-4" /><span>{experience.organization}</span></div>
+        {experience.duration && <div className="flex items-center gap-2 text-sm text-gray-600"><Calendar className="w-4 h-4" /><span>{experience.duration}</span></div>}
+      </div>
+      <div className="flex justify-between items-center gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Badge className="bg-yellow-100 text-yellow-800 text-xs"><Clock className="w-3 h-3 mr-1" />Pending Review</Badge>
+          <Badge className="bg-blue-100 text-blue-700 text-xs">College Admin</Badge>
+        </div>
+        <Button onClick={() => onAction('view', experience)} className="bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0" size="sm">
+          <Eye className="w-4 h-4 mr-2" />View Details
+        </Button>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const ProjectCard = ({ project, onAction }) => (
+  <Card className="hover:shadow-md transition-shadow">
+    <CardContent className="p-6">
+      <div className="flex justify-between items-start mb-2">
+        <div className="flex-1"><h3 className="font-semibold text-lg text-gray-900 mb-2">{project.title}</h3></div>
+        <div className="text-xs text-gray-500 ml-4">Submitted: {new Date(project.created_at).toLocaleDateString()}</div>
+      </div>
+      <div className="space-y-2 mb-3">
+        <div className="flex items-center gap-2 text-sm text-gray-600"><User className="w-4 h-4" /><span className="font-bold text-base text-gray-900">{project.student_name || 'Unknown Student'}</span></div>
+        {project.organization && <div className="flex items-center gap-2 text-sm text-gray-600"><Building2 className="w-4 h-4" /><span>{project.organization}</span></div>}
+        {project.status && <div className="flex items-center gap-2 text-sm text-gray-600"><Clock className="w-4 h-4" /><span>Status: {project.status}</span></div>}
+        {(project.start_date || project.end_date) && (
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Calendar className="w-4 h-4" />
+            <span>{project.start_date ? new Date(project.start_date).toLocaleDateString() : 'N/A'} - {project.end_date ? new Date(project.end_date).toLocaleDateString() : 'Ongoing'}</span>
+          </div>
+        )}
+        {project.tech_stack && project.tech_stack.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {project.tech_stack.slice(0, 3).map((tech, index) => (
+              <Badge key={`tech-${index}-${tech}`} variant="secondary" className="text-xs">{tech}</Badge>
+            ))}
+            {project.tech_stack.length > 3 && <Badge variant="secondary" className="text-xs">+{project.tech_stack.length - 3} more</Badge>}
+          </div>
+        )}
+      </div>
+      {project.description && <p className="text-sm text-gray-600 mb-4 line-clamp-2">{project.description}</p>}
+      <div className="flex justify-between items-center gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Badge className="bg-yellow-100 text-yellow-800 text-xs"><Clock className="w-3 h-3 mr-1" />Pending Review</Badge>
+          <Badge className="bg-blue-100 text-blue-700 text-xs">College Admin</Badge>
+        </div>
+        <Button onClick={() => onAction('view', project)} className="bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0" size="sm">
+          <Eye className="w-4 h-4 mr-2" />View Details
+        </Button>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+// ---------------------------------------------------------------------------
+
 const CollegeVerifications = () => {
   const logger = getLogger('college-admin-verifications');
   const [activeTab, setActiveTab] = useState('trainings');
@@ -68,40 +244,16 @@ const CollegeVerifications = () => {
       logger.info('Fetching pending trainings using CollegeAdminNotificationService...');
       
       // Get college_id from user or college_lecturers table
-      let collegeId = user?.college_id;
-      
-      if (!collegeId) {
-        // Fallback: get college_id from college_lecturers table
-        logger.info('Looking up college_id for user:', user?.id);
-        const { data: educatorData } = await supabase
-          .from('college_lecturers')
-          .select('collegeId')
-          .or(`user_id.eq.${user?.id},email.eq.${user?.email}`)
-          .maybeSingle();
-          
-        if (educatorData?.collegeId) {
-          collegeId = educatorData.collegeId;
-        } else {
-          // Try organizations table
-          const { data: orgData } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('admin_id', user?.id)
-            .eq('organization_type', 'college')
-            .maybeSingle();
-          
-          collegeId = orgData?.id;
-        }
-      }
-      
+      let collegeId = await getCollegeId(user, supabase);
+
       if (!collegeId) {
         logger.warn('No college ID found - showing empty list');
         setPendingTrainings([]);
         return;
       }
-      
+
       logger.info('Using college_id:', collegeId);
-      
+
       // Use the notification service which now uses approval_authority
       const trainings = await CollegeAdminNotificationService.getPendingTrainings(collegeId);
       
@@ -119,40 +271,16 @@ const CollegeVerifications = () => {
       logger.info('Fetching pending experiences using CollegeAdminNotificationService...');
       
       // Get college_id from user or college_lecturers table
-      let collegeId = user?.college_id;
-      
-      if (!collegeId) {
-        // Fallback: get college_id from college_lecturers table
-        logger.info('Looking up college_id for user:', user?.id);
-        const { data: educatorData } = await supabase
-          .from('college_lecturers')
-          .select('collegeId')
-          .or(`user_id.eq.${user?.id},email.eq.${user?.email}`)
-          .maybeSingle();
-          
-        if (educatorData?.collegeId) {
-          collegeId = educatorData.collegeId;
-        } else {
-          // Try organizations table
-          const { data: orgData } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('admin_id', user?.id)
-            .eq('organization_type', 'college')
-            .maybeSingle();
-          
-          collegeId = orgData?.id;
-        }
-      }
-      
+      let collegeId = await getCollegeId(user, supabase);
+
       if (!collegeId) {
         logger.warn('No college ID found - showing empty list');
         setPendingExperiences([]);
         return;
       }
-      
+
       logger.info('Using college_id:', collegeId);
-      
+
       // Use the notification service which now uses approval_authority
       const experiences = await CollegeAdminNotificationService.getPendingExperiences(collegeId);
       
@@ -170,40 +298,16 @@ const CollegeVerifications = () => {
       logger.info('Fetching pending projects using CollegeAdminNotificationService...');
       
       // Get college_id from user or college_lecturers table
-      let collegeId = user?.college_id;
-      
-      if (!collegeId) {
-        // Fallback: get college_id from college_lecturers table
-        logger.info('Looking up college_id for user:', user?.id);
-        const { data: educatorData } = await supabase
-          .from('college_lecturers')
-          .select('collegeId')
-          .or(`user_id.eq.${user?.id},email.eq.${user?.email}`)
-          .maybeSingle();
-          
-        if (educatorData?.collegeId) {
-          collegeId = educatorData.collegeId;
-        } else {
-          // Try organizations table
-          const { data: orgData } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('admin_id', user?.id)
-            .eq('organization_type', 'college')
-            .maybeSingle();
-          
-          collegeId = orgData?.id;
-        }
-      }
+      let collegeId = await getCollegeId(user, supabase);
 
       if (!collegeId) {
         logger.warn('No college ID found - showing empty list');
         setPendingProjects([]);
         return;
       }
-      
+
       logger.info('Using college_id:', collegeId);
-      
+
       // Use the notification service which now uses approval_authority
       const projects = await CollegeAdminNotificationService.getPendingProjects(collegeId);
       
@@ -361,330 +465,6 @@ const CollegeVerifications = () => {
         return 1;
     }
   };
-
-  // Pagination Component
-  const PaginationControls = ({ totalPages, currentPage, onPageChange }) => {
-    if (totalPages <= 1) return null;
-
-    return (
-      <div className="flex items-center justify-between mt-6 px-4">
-        <div className="text-sm text-gray-600">
-          Page {currentPage} of {totalPages}
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="flex items-center gap-1"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Previous
-          </Button>
-          
-          {/* Page numbers */}
-          <div className="flex items-center gap-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                variant={page === currentPage ? "default" : "outline"}
-                size="sm"
-                onClick={() => onPageChange(page)}
-                className="w-8 h-8 p-0"
-              >
-                {page}
-              </Button>
-            ))}
-          </div>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="flex items-center gap-1"
-          >
-            Next
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-    );
-  };
-
-  // Training Card Component
-  const TrainingCard = ({ training }) => (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-6">
-        <div className="flex justify-between items-start mb-2">
-          <div className="flex items-center gap-2">
-            <User className="w-4 h-4 text-gray-600" />
-            <h3 className="font-bold text-lg text-gray-900">
-              {training.student?.name || 'Unknown Student'}
-            </h3>
-          </div>
-          <div className="text-xs text-gray-500 ml-4">
-            Submitted: {new Date(training.created_at).toLocaleDateString()}
-          </div>
-        </div>
-       
-        <div className="space-y-2 mb-3">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Mail className="w-4 h-4" />
-            <span>{training.student?.email}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Award className="w-4 h-4" />
-            <span>
-              {training.title}
-            </span>
-          </div>
-          {training.organization && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Building2 className="w-4 h-4" />
-              <span>{training.organization}</span>
-              {training.organization.toLowerCase() === 'rareminds' && (
-                <Badge className="bg-purple-100 text-purple-700 text-xs">
-                   Rareminds Training
-                </Badge>
-              )}
-            </div>
-          )}
-          
-          {training.duration && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Calendar className="w-4 h-4" />
-              <span>{training.duration}</span>
-            </div>
-          )}
-          
-          {/* {training.hours_spent > 0 && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Timer className="w-4 h-4" />
-              <span>{training.hours_spent} hours</span>
-            </div>
-          )} */}
-          
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <GraduationCap className="w-4 h-4" />
-            <span>College: {training.student?.college_school_name || 'Unknown'}</span>
-          </div>
-        </div>
-        
-        {/* {training.description && (
-          <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-            {training.description}
-          </p>
-        )} */}
-        
-        {training.skills && training.skills.length > 0 && (
-          <div className="mb-4">
-            <div className="flex flex-wrap gap-1">
-              {training.skills.slice(0, 3).map((skill) => (
-                <Badge key={skill} variant="outline" className="text-xs">
-                  {skill}
-                </Badge>
-              ))}
-              {training.skills.length > 3 && (
-                <Badge variant="outline" className="text-xs">
-                  +{training.skills.length - 3} more
-                </Badge>
-              )}
-            </div>
-          </div>
-        )}
-        
-        <div className="flex justify-between items-center gap-2">
-          <div className="flex gap-2 flex-wrap">
-            <Badge className="bg-yellow-100 text-yellow-800 text-xs">
-              <Clock className="w-3 h-3 mr-1" />
-              Pending
-            </Badge>
-            <Badge className="bg-blue-100 text-blue-700 text-xs">
-              College Admin
-            </Badge>
-          </div>
-          <Button
-            onClick={() => handleTrainingAction('view', training)}
-            className="bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0"
-            size="sm"
-          >
-            <Eye className="w-4 h-4 mr-2" />
-            View Details
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-
-  // Experience Card Component
-  const ExperienceCard = ({ experience }) => (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-6">
-        <div className="flex justify-between items-start mb-2">
-          <div className="flex items-center gap-2">
-            <User className="w-4 h-4 text-gray-600" />
-            <h3 className="font-bold text-lg text-gray-900">
-              {experience.student?.name || 'Unknown Student'}
-            </h3>
-          </div>
-          <div className="text-xs text-gray-500 ml-4">
-            Submitted: {new Date(experience.created_at).toLocaleDateString()}
-          </div>
-        </div>
-
-        <div className="space-y-2 mb-4">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Mail className="w-4 h-4" />
-            <span>{experience.student?.email}</span>
-          </div>
-          {/* <div className="flex-1">
-            <h4 className="font-semibold text-lg text-gray-900 mb-2">
-              {experience.role}
-            </h4>
-          </div> */}
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Briefcase className="w-4 h-4" />
-            <span>
-              {experience.role}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Building2 className="w-4 h-4" />
-            <span>{experience.organization}</span>
-          </div>
-          
-          {experience.duration && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Calendar className="w-4 h-4" />
-              <span>{experience.duration}</span>
-            </div>
-          )}
-          
-          {/* <div className="flex items-center gap-2 text-sm text-gray-600">
-            <GraduationCap className="w-4 h-4" />
-            <span>College: {experience.student?.college_school_name || 'Unknown'}</span>
-          </div> */}
-        </div>
-        
-        <div className="flex justify-between items-center gap-2">
-          <div className="flex gap-2 flex-wrap">
-            <Badge className="bg-yellow-100 text-yellow-800 text-xs">
-              <Clock className="w-3 h-3 mr-1" />
-              Pending Review
-            </Badge>
-            <Badge className="bg-blue-100 text-blue-700 text-xs">
-              College Admin
-            </Badge>
-          </div>
-          <Button
-            onClick={() => handleExperienceAction('view', experience)}
-            className="bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0"
-            size="sm"
-          >
-            <Eye className="w-4 h-4 mr-2" />
-            View Details
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-
-  // Project Card Component
-  const ProjectCard = ({ project }) => (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-6">
-        <div className="flex justify-between items-start mb-2">
-          <div className="flex-1">
-            <h3 className="font-semibold text-lg text-gray-900 mb-2">
-              {project.title}
-            </h3>
-          </div>
-          <div className="text-xs text-gray-500 ml-4">
-            Submitted: {new Date(project.created_at).toLocaleDateString()}
-          </div>
-        </div>
-
-        <div className="space-y-2 mb-3">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <User className="w-4 h-4" />
-            <span className="font-bold text-base text-gray-900">
-              {project.student_name || 'Unknown Student'}
-            </span>
-          </div>
-          
-          {project.organization && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Building2 className="w-4 h-4" />
-              <span>{project.organization}</span>
-            </div>
-          )}
-          
-          {project.status && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Clock className="w-4 h-4" />
-              <span>Status: {project.status}</span>
-            </div>
-          )}
-          
-          {(project.start_date || project.end_date) && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Calendar className="w-4 h-4" />
-              <span>
-                {project.start_date ? new Date(project.start_date).toLocaleDateString() : 'N/A'} - 
-                {project.end_date ? new Date(project.end_date).toLocaleDateString() : 'Ongoing'}
-              </span>
-            </div>
-          )}
-
-          {project.tech_stack && project.tech_stack.length > 0 && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <div className="flex flex-wrap gap-1">
-                {project.tech_stack.slice(0, 3).map((tech) => (
-                  <Badge key={tech} variant="secondary" className="text-xs">
-                    {tech}
-                  </Badge>
-                ))}
-                {project.tech_stack.length > 3 && (
-                  <Badge variant="secondary" className="text-xs">
-                    +{project.tech_stack.length - 3} more
-                  </Badge>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {project.description && (
-          <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-            {project.description}
-          </p>
-        )}
-        
-        <div className="flex justify-between items-center gap-2">
-          <div className="flex gap-2 flex-wrap">
-            <Badge className="bg-yellow-100 text-yellow-800 text-xs">
-              <Clock className="w-3 h-3 mr-1" />
-              Pending Review
-            </Badge>
-            <Badge className="bg-blue-100 text-blue-700 text-xs">
-              College Admin
-            </Badge>
-          </div>
-          <Button
-            onClick={() => handleProjectAction('view', project)}
-            className="bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0"
-            size="sm"
-          >
-            <Eye className="w-4 h-4 mr-2" />
-            View Details
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
 
   if (loading) {
     return (
@@ -869,7 +649,7 @@ const CollegeVerifications = () => {
                   : "space-y-4"
                 }>
                   {currentTrainings.map((training) => (
-                    <TrainingCard key={training.id} training={training} />
+                    <TrainingCard key={training.id} training={training} onAction={handleTrainingAction} />
                   ))}
                 </div>
                 <PaginationControls
@@ -959,7 +739,7 @@ const CollegeVerifications = () => {
                   : "space-y-4"
                 }>
                   {currentExperiences.map((experience) => (
-                    <ExperienceCard key={experience.id} experience={experience} />
+                    <ExperienceCard key={experience.id} experience={experience} onAction={handleExperienceAction} />
                   ))}
                 </div>
                 <PaginationControls
@@ -1049,7 +829,7 @@ const CollegeVerifications = () => {
                   : "space-y-4"
                 }>
                   {currentProjects.map((project) => (
-                    <ProjectCard key={project.project_id} project={project} />
+                    <ProjectCard key={project.project_id} project={project} onAction={handleProjectAction} />
                   ))}
                 </div>
                 <PaginationControls

@@ -466,18 +466,18 @@ const UnifiedProfileEditModal = ({
       // AUTO-SAVE: Save to database immediately to prevent data loss on Cancel
       try {
         await onSave(updatedItems);
-        // Trigger parent refresh if available
-        if (typeof onSave === 'function' && onSave.refresh) {
-          try {
-            await onSave.refresh();
-          } catch (refreshError) {
-            logger.error('Error refreshing after save', { refreshError });
-          }
-        }
         toast.success(`${config.title} updated successfully.`);
       } catch (error) {
         logger.error('Error auto-saving updated item', error);
         toast.error(`${config.title} updated. Click 'Save All Changes' to save to database.`);
+      }
+      // Refresh separately — errors here don't affect the save result
+      if (typeof onSave === 'function' && onSave.refresh) {
+        try {
+          await onSave.refresh();
+        } catch (refreshError) {
+          logger.error('Error refreshing after save', { refreshError });
+        }
       }
     } else {
       // Add new item
@@ -496,18 +496,17 @@ const UnifiedProfileEditModal = ({
       // AUTO-SAVE: Save new items immediately too
       try {
         await onSave(updatedItems);
-        // Trigger parent refresh if available
-        if (typeof onSave === 'function' && onSave.refresh) {
-          try {
-            await onSave.refresh();
-          } catch (refreshError) {
-            logger.error('Error refreshing after save', { refreshError });
-          }
-        }
         toast.success(`${config.title} added successfully.`);
       } catch (error) {
         logger.error('Error auto-saving new item', error);
         toast.error(`${config.title} added. Click 'Save All Changes' to save to database.`);
+      }
+      if (typeof onSave === 'function' && onSave.refresh) {
+        try {
+          await onSave.refresh();
+        } catch (refreshError) {
+          logger.error('Error refreshing after save', { refreshError });
+        }
       }
     }
 
@@ -607,7 +606,7 @@ const UnifiedProfileEditModal = ({
     const itemTitle = config.getDisplayTitle(item);
 
     // Don't allow hiding/showing items that are pending verification or approval
-    if (item.approval_status === 'pending' || item.has_pending_edit) {
+    if (item.approval_status === 'pending' || item._hasPendingEdit || item.has_pending_edit) {
       toast.error(`You cannot hide or show ${config.title.toLowerCase()} that are pending verification or approval.`);
       return;
     }
@@ -663,8 +662,8 @@ const UnifiedProfileEditModal = ({
     } catch (error) {
       logger.error('Error toggling item visibility', error);
       toast.error("Failed to update visibility. Please try again.");
-      // Restore original state on error
-      setItems(items);
+      // Restore only the toggled item using functional updater to avoid stale closure
+      setItems(prev => prev.map((it, idx) => idx === index ? { ...it, enabled: !newState } : it));
     }
   };
 
@@ -859,7 +858,7 @@ const UnifiedProfileEditModal = ({
                 </div>
                 <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
                   {formData.skillsList.map((skill, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg hover:shadow-sm transition-all">
+                    <div key={skill.name || index} className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg hover:shadow-sm transition-all">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-sm font-semibold text-blue-900">{skill.name}</span>
@@ -1057,7 +1056,7 @@ const UnifiedProfileEditModal = ({
 
   const renderItemCard = (item, index) => (
     <div
-      key={item.id || index}
+      key={item.id}
       className={`p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow ${item.enabled === false ? "opacity-50 bg-gray-50" : "bg-white"
         }`}
     >
@@ -1139,7 +1138,7 @@ const UnifiedProfileEditModal = ({
                 }
 
                 return techArray.filter(tech => tech && tech.trim()).map((tech, i) => (
-                  <Badge key={i} variant="outline" className="bg-blue-50 text-blue-800 border-blue-300 text-xs font-semibold shadow-sm hover:bg-blue-100">
+                  <Badge key={`tech-${i}-${tech}`} variant="outline" className="bg-blue-50 text-blue-800 border-blue-300 text-xs font-semibold shadow-sm hover:bg-blue-100">
                     {tech}
                   </Badge>
                 ));

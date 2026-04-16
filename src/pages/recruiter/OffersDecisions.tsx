@@ -26,7 +26,7 @@ import { useOffers, Offer } from '@/shared/lib/hooks';
 import { OfferAdvancedFilters, OfferFilters, OfferSortOptions, OfferSortButton } from '@/features/recruiter';
 import { getLogger } from '@/shared/config/logging';
 
-const INFO_ICON = <InformationCircleIcon className="h-5 w-5 text-blue-500" />;
+const INFO_ICON = () => <InformationCircleIcon className="h-5 w-5 text-blue-500" />;
 
 const logger = getLogger('OffersDecisions');
 
@@ -1332,7 +1332,7 @@ const OffersDecisions = () => {
 
   const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success'): void => {
     if (type === 'error') toast.error(message);
-    else if (type === 'info') toast(message, { icon: INFO_ICON });
+    else if (type === 'info') toast(message, { icon: <INFO_ICON /> });
     else toast.success(message);
   }, []);
 
@@ -1568,7 +1568,7 @@ const OffersDecisions = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-green-800">Acceptance Rate</p>
-              <p className="text-3xl font-bold text-green-900">{acceptanceRate}%</p>
+              <p className="text-3xl font-bold text-green-900">{stats.acceptanceRate}%</p>
               <p className="text-xs text-green-600 mt-1">
                 {stats.accepted} accepted of {stats.accepted + stats.rejected} responded
               </p>
