@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 // @ts-ignore
 import {
   CandidateQuickView,
@@ -149,7 +150,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
 
     setMovingCandidates((prev) => [...prev, candidateId]);
 
-    // Capture snapshot BEFORE any state mutation so it's accessible in catch block
+    // Capture snapshot before optimistic update
     const preSnapshot = {
       sourced: [...pipelineData.sourced],
       screened: [...pipelineData.screened],
@@ -271,57 +272,9 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
 
   const confirmBulkReject = () => {
     setShowBulkRejectConfirm(false);
-    const count = selectedCandidates.length;
 
-    // TODO: Replace with real bulk-reject API call before shipping to production.
-    // Until then, this is a UI-only operation that will cause data loss on refresh.
-    // Rejected candidates will reappear on the next data load.
-    logger.warn('Bulk reject is UI-only - no backend API call implemented');
-    
+    // TODO: Implement backend API endpoint for bulk reject before enabling this feature
     toast.error('Bulk reject feature is not yet implemented. Please reject candidates individually.');
-    
-    // NOTE: The following code is commented out to prevent data loss
-    // Uncomment only after implementing the backend API endpoint
-    /*
-    const snapshot = {
-      sourced: [...pipelineData.sourced],
-      screened: [...pipelineData.screened],
-      interview_1: [...pipelineData.interview_1],
-      interview_2: [...pipelineData.interview_2],
-      offer: [...pipelineData.offer],
-      hired: [...pipelineData.hired]
-    };
-
-    setPipelineData((prev) => {
-      const newData = {
-        sourced: [...prev.sourced],
-        screened: [...prev.screened],
-        interview_1: [...prev.interview_1],
-        interview_2: [...prev.interview_2],
-        offer: [...prev.offer],
-        hired: [...prev.hired]
-      };
-      selectedCandidates.forEach((candidateId) => {
-        Object.keys(newData).forEach((stage) => {
-          newData[stage as keyof typeof newData] = newData[
-            stage as keyof typeof newData
-          ].filter((c) => c.id !== candidateId);
-        });
-      });
-      return newData;
-    });
-    toast.success(`${count} candidate(s) removed from pipeline`);
-    setSelectedCandidates([]);
-
-    createNotification(
-      currentRecruiterId!,
-      "candidate_rejected",
-      "Candidates Rejected",
-      `${count} candidate(s) were rejected from ${jobTitle}.`,
-    ).catch((notifyError: unknown) => {
-      logger.error('Error sending rejection notification', notifyError instanceof Error ? notifyError : undefined);
-    });
-    */
   };
 
   const handleExportPipeline = () => {
@@ -647,7 +600,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
                     student_id: String(c.student_id)
                   }))
                 }
-                onCandidateMove={(id, stage) => handleCandidateMove(Number(id), stage)}
+                onCandidateMove={(candidateId, targetStage) => handleCandidateMove(Number(candidateId), targetStage)}
                 onCandidateView={(candidate) => handleCandidateView({ ...candidate, id: Number(candidate.id), student_id: Number(candidate.student_id) } as PipelineCandidateUI)}
                 selectedCandidates={selectedCandidates.map(String)}
                 onToggleSelect={(id) => toggleCandidateSelection(Number(id))}
@@ -755,18 +708,19 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
 /**
  * Wrapped Pipelines with FeatureGate for pipeline_management add-on
  */
-const Pipelines: React.FC<PipelinesProps> = (props) => (
-  <FeatureGate 
-    featureKey="pipeline_management" 
-    showUpgradePrompt={true}
-    fallback={null}
-    onUpgradeClick={() => {
-      // TODO: Implement navigation to billing/upgrade page
-      window.location.href = '/billing';
-    }}
-  >
-    <PipelinesContent {...props} />
-  </FeatureGate>
-);
+const Pipelines: React.FC<PipelinesProps> = (props) => {
+  const navigate = useNavigate();
+  
+  return (
+    <FeatureGate 
+      featureKey="pipeline_management" 
+      showUpgradePrompt={true}
+      fallback={null}
+      onUpgradeClick={() => navigate('/billing')}
+    >
+      <PipelinesContent {...props} />
+    </FeatureGate>
+  );
+};
 
 export default Pipelines;

@@ -429,7 +429,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       onComplete();
     } catch (error) {
       logger.error('Error updating profile', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to update profile. Please try again.');
+      toast.error(error instanceof Error ? 'Failed to update profile. Please try again.' : 'Failed to update profile. Please try again.');
     } finally {
       setIsSaving(false);
     }

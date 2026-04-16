@@ -41,40 +41,40 @@ const ITEMS_PER_PAGE = 6;
 
 /**
  * Shared helper — resolves the college ID for the current user.
- * Checks user object first, then college_lecturers table, then organizations table.
+ * Checks user object first, then queries college_lecturers and organizations in parallel.
  */
 async function getCollegeId(user) {
   if (!user) {
     throw new Error('User is required to fetch college ID');
   }
   
+  const userId = user.id || user;
+  const userEmail = user.email;
+  
   if (user.college_id) return user.college_id;
 
-  const { data: educatorData, error: educatorError } = await supabase
-    .from('college_lecturers')
-    .select('collegeId')
-    .eq('user_id', user.id)
-    .maybeSingle();
+  // Query college_lecturers and organizations in parallel to reduce latency
+  const [educatorResult, orgResult] = await Promise.all([
+    // Query college_lecturers by user_id OR email in a single query
+    supabase
+      .from('college_lecturers')
+      .select('collegeId')
+      .or(`user_id.eq.${userId}${userEmail ? `,email.eq.${userEmail}` : ''}`)
+      .maybeSingle(),
+    // Query organizations in parallel
+    supabase
+      .from('organizations')
+      .select('id')
+      .eq('admin_id', userId)
+      .eq('organization_type', 'college')
+      .maybeSingle()
+  ]);
+
+  const { data: educatorData, error: educatorError } = educatorResult;
+  const { data: orgData, error: orgError } = orgResult;
 
   if (educatorError) throw educatorError;
   if (educatorData?.collegeId) return educatorData.collegeId;
-
-  // Fallback: match by email
-  const { data: educatorByEmail, error: emailError } = await supabase
-    .from('college_lecturers')
-    .select('collegeId')
-    .eq('email', user.email)
-    .maybeSingle();
-
-  if (emailError) throw emailError;
-  if (educatorByEmail?.collegeId) return educatorByEmail.collegeId;
-
-  const { data: orgData, error: orgError } = await supabase
-    .from('organizations')
-    .select('id')
-    .eq('admin_id', user.id)
-    .eq('organization_type', 'college')
-    .maybeSingle();
 
   if (orgError) throw orgError;
   return orgData?.id || null;
@@ -170,7 +170,7 @@ const TrainingCard = ({ training, onAction }) => (
       {training.skills && training.skills.length > 0 && (
         <div className="mb-4 flex flex-wrap gap-1">
           {training.skills.slice(0, 3).map((skill, index) => (
-            <Badge key={`skill-${index}-${skill}`} variant="outline" className="text-xs">{skill}</Badge>
+            <Badge key={`${training.id}-skill-${skill}-${index}`} variant="outline" className="text-xs">{skill}</Badge>
           ))}
           {training.skills.length > 3 && <Badge variant="outline" className="text-xs">+{training.skills.length - 3} more</Badge>}
         </div>
@@ -308,7 +308,7 @@ const CollegeVerifications = () => {
       logger.error('Error in fetchPendingTrainings:', error);
       toast.error("Failed to fetch pending trainings");
     }
-  }, [user]);
+  }, [userId]);
 
   // Fetch pending experiences for college admin (Using database approval_authority)
   const fetchPendingExperiences = useCallback(async () => {
@@ -332,7 +332,7 @@ const CollegeVerifications = () => {
       logger.error('Error in fetchPendingExperiences:', error);
       toast.error("Failed to fetch pending experiences");
     }
-  }, [user]);
+  }, [userId]);
 
   // Fetch pending projects for college admin (Using database approval_authority)
   const fetchPendingProjects = useCallback(async () => {
@@ -356,7 +356,7 @@ const CollegeVerifications = () => {
       logger.error('Error in fetchPendingProjects:', error);
       toast.error(error.message || "Failed to load pending projects");
     }
-  }, [user]);
+  }, [userId]);
 
   // Initial data fetch - depend only on userId to prevent infinite loop
   useEffect(() => {
@@ -375,6 +375,7 @@ const CollegeVerifications = () => {
           setPendingTrainings([]);
           setPendingExperiences([]);
           setPendingProjects([]);
+          setLoading(false);
           return;
         }
 
@@ -401,46 +402,40 @@ const CollegeVerifications = () => {
   }, [userId]);
 
   // Handle training actions
-  const handleTrainingAction = async (action, training) => {
+  const handleTrainingAction = useCallback(async (action, training) => {
     if (action === 'view') {
       setSelectedTraining(training);
       setShowTrainingModal(true);
     } else if (action === 'approved' || action === 'rejected') {
-      // Note: fetchPendingTrainings internally handles errors with toast.error
-      // so this outer try/catch may not catch those errors
       await fetchPendingTrainings();
       toast.success(`Training ${action} successfully!`);
     }
-  };
+  }, [fetchPendingTrainings]);
 
   // Handle experience actions
-  const handleExperienceAction = async (action, experience) => {
+  const handleExperienceAction = useCallback(async (action, experience) => {
     if (action === 'view') {
       setSelectedExperience(experience);
       setShowExperienceModal(true);
     } else if (action === 'approved' || action === 'rejected') {
-      // Note: fetchPendingExperiences internally handles errors with toast.error
-      // so this outer try/catch may not catch those errors
       await fetchPendingExperiences();
       toast.success(`Experience ${action} successfully!`);
     }
-  };
+  }, [fetchPendingExperiences]);
 
   // Handle project actions
-  const handleProjectAction = async (action, project) => {
+  const handleProjectAction = useCallback(async (action, project) => {
     if (action === 'view') {
       setSelectedProject(project);
       setShowProjectModal(true);
     } else if (action === 'approved' || action === 'rejected') {
-      // Note: fetchPendingProjects internally handles errors with toast.error
-      // so this outer try/catch may not catch those errors
       await fetchPendingProjects();
       toast.success(`Project ${action} successfully!`);
     }
-  };
+  }, [fetchPendingProjects]);
 
   // Refresh all data
-  const refreshData = async () => {
+  const refreshData = useCallback(async () => {
     setLoading(true);
     try {
       await Promise.all([
@@ -449,13 +444,10 @@ const CollegeVerifications = () => {
         fetchPendingProjects()
       ]);
       toast.success("Data has been refreshed successfully");
-    } catch (error) {
-      logger.error('Error refreshing data:', error);
-      toast.error("Failed to refresh data");
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchPendingTrainings, fetchPendingExperiences, fetchPendingProjects]);
 
   // Pagination helper functions
   const getPageData = (data, page) => {

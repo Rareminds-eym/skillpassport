@@ -22,17 +22,12 @@ const LoginAdmin = () => {
 
     try {
       // Validate inputs
-      if (!email || !password.trim()) {
+      if (!email.trim() || !password.trim()) {
         throw new Error('Please enter both email and password');
       }
 
       // Real authentication
-      let result;
-      try {
-        result = await loginAdmin(email, password);
-      } catch (apiError) {
-        throw new Error(apiError instanceof Error ? apiError.message : 'Login failed');
-      }
+      const result = await loginAdmin(email, password);
 
       if (!result?.success) {
         throw new Error(result?.error || 'Login failed');
