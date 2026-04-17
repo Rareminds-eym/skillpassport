@@ -1,14 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { MessageService } from '@/features/messaging';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**
  * Hook for managing messages in an educator conversation
  */
-export const useEducatorMessages = ({ 
-  conversationId, 
+export const useEducatorMessages = ({
+  conversationId,
   enabled = true,
-  enableRealtime = true 
+  enableRealtime = true
 }) => {
   const queryClient = useQueryClient();
 
@@ -19,7 +20,7 @@ export const useEducatorMessages = ({
     error,
     refetch
   } = useQuery({
-    queryKey: ['educator-messages', conversationId],
+    queryKey: queryKeys.educator.messages.conversation(conversationId || ''),
     queryFn: async () => {
       if (!conversationId) return [];
       return await MessageService.getConversationMessages(conversationId, { useCache: true });
@@ -39,21 +40,21 @@ export const useEducatorMessages = ({
       conversationId,
       (newMessage) => {
         console.log('📨 [Educator] New message received:', newMessage);
-        
+
         // Add message to cache optimistically
-        queryClient.setQueryData(['educator-messages', conversationId], (oldMessages) => {
+        queryClient.setQueryData(queryKeys.educator.messages.conversation(conversationId), (oldMessages) => {
           if (!oldMessages) return [newMessage];
-          
+
           // Check if message already exists (prevent duplicates)
           const exists = oldMessages.some(msg => msg.id === newMessage.id);
           if (exists) return oldMessages;
-          
+
           return [...oldMessages, newMessage];
         });
 
         // Update conversation list with new message preview
-        queryClient.invalidateQueries({ 
-          queryKey: ['educator-conversations'],
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.educator.conversations.all,
           refetchType: 'active'
         });
       }
@@ -66,14 +67,14 @@ export const useEducatorMessages = ({
 
   // Send message mutation
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ 
-      senderId, 
-      senderType, 
-      receiverId, 
-      receiverType, 
-      messageText, 
+    mutationFn: async ({
+      senderId,
+      senderType,
+      receiverId,
+      receiverType,
+      messageText,
       classId,
-      subject 
+      subject
     }) => {
       return await MessageService.sendMessage(
         conversationId,
@@ -90,10 +91,10 @@ export const useEducatorMessages = ({
     },
     onMutate: async (variables) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['educator-messages', conversationId] });
+      await queryClient.cancelQueries({ queryKey: queryKeys.educator.messages.conversation(conversationId || '') });
 
       // Snapshot previous value
-      const previousMessages = queryClient.getQueryData(['educator-messages', conversationId]);
+      const previousMessages = queryClient.getQueryData(queryKeys.educator.messages.conversation(conversationId || ''));
 
       // Optimistically add the message
       const optimisticMessage = {
@@ -111,7 +112,7 @@ export const useEducatorMessages = ({
         _optimistic: true
       };
 
-      queryClient.setQueryData(['educator-messages', conversationId], (old) => {
+      queryClient.setQueryData(queryKeys.educator.messages.conversation(conversationId || ''), (old) => {
         return old ? [...old, optimisticMessage] : [optimisticMessage];
       });
 
@@ -120,22 +121,22 @@ export const useEducatorMessages = ({
     onError: (err, variables, context) => {
       // Rollback on error
       if (context?.previousMessages) {
-        queryClient.setQueryData(['educator-messages', conversationId], context.previousMessages);
+        queryClient.setQueryData(queryKeys.educator.messages.conversation(conversationId || ''), context.previousMessages);
       }
       console.error('❌ [Educator] Failed to send message:', err);
     },
     onSuccess: (data, variables, context) => {
       // Replace optimistic message with real one
-      queryClient.setQueryData(['educator-messages', conversationId], (old) => {
+      queryClient.setQueryData(queryKeys.educator.messages.conversation(conversationId || ''), (old) => {
         if (!old) return [data];
-        return old.map(msg => 
+        return old.map(msg =>
           msg.id === context?.optimisticMessage?.id ? data : msg
         );
       });
 
       // Update conversation list
-      queryClient.invalidateQueries({ 
-        queryKey: ['educator-conversations'],
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.educator.conversations.all,
         refetchType: 'active'
       });
     }

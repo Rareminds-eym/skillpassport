@@ -37,6 +37,7 @@ import { supabase } from '@/shared/api/supabaseClient';
 import NewCollegeEducatorAdminConversationModal from '@/features/messaging/ui/NewCollegeEducatorAdminConversationModal';
 import NewCollegeLecturerConversationModal from '@/features/messaging/ui/NewCollegeLecturerConversationModal';
 import { getLogger } from '@/shared/config/logging';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 const logger = getLogger('college-lecturer-messages');
 

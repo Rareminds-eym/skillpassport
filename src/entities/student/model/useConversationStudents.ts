@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { UICandidate } from './useStudents';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 interface User {
   id: string;
@@ -26,7 +27,7 @@ export function useConversationStudents(
 
   // Fetch active conversations with comprehensive student data
   const { data: activeConversations = [], isLoading: loadingActive, error: errorActive } = useQuery({
-    queryKey: ['educator-conversations', educatorId, 'active'],
+    queryKey: queryKeys.educator.conversations.byEducator(educatorId || '', 'active'),
     queryFn: async () => {
       if (!educatorId) return [];
       const allConversations = await messageService.getUserConversations(educatorId, 'educator', false);
@@ -42,7 +43,7 @@ export function useConversationStudents(
 
   // Fetch archived conversations with comprehensive student data
   const { data: archivedConversations = [], isLoading: loadingArchived, error: errorArchived } = useQuery({
-    queryKey: ['educator-conversations', educatorId, 'archived'],
+    queryKey: queryKeys.educator.conversations.byEducator(educatorId || '', 'archived'),
     queryFn: async () => {
       if (!educatorId) return [];
       const allConversations = await messageService.getUserConversations(educatorId, 'educator', true);

@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
 import { MessageService } from '@/features/messaging';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**
  * Hook for managing college educator ↔ admin conversations
@@ -18,7 +19,7 @@ export const useCollegeEducatorAdminConversations = ({
 
   // Fetch conversations based on user type
   const { data: conversations = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['college-educator-admin-conversations', userId, userType, collegeId, includeArchived ? 'archived' : 'active'],
+    queryKey: queryKeys.college.admin.conversations.byEducator(userId || '', collegeId || '', includeArchived ? 'archived' : 'active'),
     queryFn: async () => {
       if (!userId || !collegeId) return [];
 
@@ -146,7 +147,7 @@ export const useCollegeEducatorAdminConversations = ({
 
         // Invalidate and refetch conversations
         queryClient.invalidateQueries({ 
-          queryKey: ['college-educator-admin-conversations', userId, userType, collegeId],
+          queryKey: queryKeys.college.admin.conversations.all,
           refetchType: 'active'
         });
       }
