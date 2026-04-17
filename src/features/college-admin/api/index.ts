@@ -41,6 +41,8 @@ export * from './transcriptService';
 export * from './userManagementService';
 export * from './collegeAdminNotificationService';
 export * from './collegeAssignmentService';
+export * from './collegeStudentAssignmentService';
+export * from './collegeAssignmentTypes';
 export * from './collegeClassService';
 export * from './collegeService';
 export * from './competitionsService';
@@ -95,7 +97,7 @@ export async function getCurrentAcademicYear(): Promise<string> {
   // TODO: Implement proper current academic year fetching
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth();
-  
+
   // Academic year typically starts in July (month 6)
   if (currentMonth >= 6) {
     return `${currentYear}-${currentYear + 1}`;

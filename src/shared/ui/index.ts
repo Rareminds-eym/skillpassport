@@ -33,6 +33,7 @@ export { default as SuspenseWrapper } from './SuspenseWrapper';
 
 // Skeleton Components
 export * from './skeletons';
+export { SocialMediaLinks } from './SocialMediaLinks';
 
 // Marketing Components
 export * from './marketing';
