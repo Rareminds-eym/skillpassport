@@ -25,8 +25,8 @@ const LazyPageWrapper = ({
   preload = false,
   ...props 
 }) => {
-  // Memoize so a new lazy component is NOT created on every render
-  const LazyPage = useMemo(() => createLazyPage(importFn), [importFn]);
+  // preload passed through so callers can opt-in to eager loading
+  const LazyPage = useMemo(() => createLazyPage(importFn, { preload }), [importFn, preload]);
 
   const fallbackNode = fallback === 'dashboard' ? <DashboardSkeleton /> : <PageSkeleton />;
 

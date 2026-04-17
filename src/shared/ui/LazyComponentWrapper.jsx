@@ -3,7 +3,28 @@ import { useLazyComponent } from '@/shared/lib/hooks/useLazyComponent';
 import SuspenseWrapper from './SuspenseWrapper';
 
 /**
- * Enhanced lazy component wrapper with intersection observer for viewport-based loading
+ * Inner component — only mounted (and thus only calls useLazyComponent)
+ * once the parent decides it's time to load.
+ */
+const LazyComponentInner = ({ importFn, preload, fallback, customFallback, className, children, ...suspenseProps }) => {
+  const LazyComponent = useLazyComponent(importFn, { preload });
+
+  return (
+    <SuspenseWrapper
+      fallback={fallback}
+      customFallback={customFallback}
+      className={className}
+      {...suspenseProps}
+    >
+      <LazyComponent>{children}</LazyComponent>
+    </SuspenseWrapper>
+  );
+};
+
+/**
+ * Enhanced lazy component wrapper with intersection observer for viewport-based loading.
+ * useLazyComponent (and the underlying lazy import) is only invoked after shouldLoad is true,
+ * so viewport-based deferral actually works.
  */
 const LazyComponentWrapper = ({
   importFn,
@@ -13,6 +34,7 @@ const LazyComponentWrapper = ({
   rootMargin = '50px',
   threshold = 0.1,
   preload = false,
+  placeholderHeight = '200px',
   className = '',
   children,
   ...suspenseProps
@@ -20,7 +42,6 @@ const LazyComponentWrapper = ({
   const [shouldLoad, setShouldLoad] = useState(!loadOnViewport);
   const [elementRef, setElementRef] = useState(null);
 
-  // Use intersection observer for viewport-based loading
   useEffect(() => {
     if (!loadOnViewport || !elementRef || shouldLoad) return;
 
@@ -38,14 +59,12 @@ const LazyComponentWrapper = ({
     return () => observer.disconnect();
   }, [elementRef, loadOnViewport, shouldLoad, rootMargin, threshold]);
 
-  const LazyComponent = useLazyComponent(importFn, { preload });
-
-  if (loadOnViewport && !shouldLoad) {
+  if (!shouldLoad) {
     return (
-      <div 
-        ref={setElementRef} 
+      <div
+        ref={setElementRef}
         className={className}
-        style={{ minHeight: '200px' }} // Prevent layout shift
+        style={{ minHeight: placeholderHeight }}
       >
         {customFallback || (
           <SuspenseWrapper fallback={fallback} {...suspenseProps}>
@@ -57,14 +76,16 @@ const LazyComponentWrapper = ({
   }
 
   return (
-    <SuspenseWrapper 
-      fallback={fallback} 
+    <LazyComponentInner
+      importFn={importFn}
+      preload={preload}
+      fallback={fallback}
       customFallback={customFallback}
       className={className}
       {...suspenseProps}
     >
-      <LazyComponent>{children}</LazyComponent>
-    </SuspenseWrapper>
+      {children}
+    </LazyComponentInner>
   );
 };
 

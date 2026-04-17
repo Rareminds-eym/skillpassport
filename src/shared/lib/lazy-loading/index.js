@@ -21,30 +21,26 @@ export const createLazyComponent = (importFn, config = {}) => {
   const { retries, retryDelay, exponentialBackoff } = { ...DEFAULT_RETRY_CONFIG, ...config };
   
   return lazy(() => {
-    let attempt = 0;
-    
-    const loadWithRetry = async () => {
-      try {
-        return await importFn();
-      } catch (error) {
-        attempt++;
-        
-        if (attempt <= retries) {
-          const delay = exponentialBackoff 
-            ? retryDelay * Math.pow(2, attempt - 1)
-            : retryDelay;
-            
-          await new Promise(resolve => setTimeout(resolve, delay));
-          return loadWithRetry();
-        }
-        
-        logger.error(`Failed to load component after ${retries} retries:`, error);
-        throw error;
+  const loadWithRetry = async (attempt = 0) => {
+    try {
+      return await importFn();
+    } catch (error) {
+      if (attempt < retries) {
+        const delay = exponentialBackoff
+          ? retryDelay * Math.pow(2, attempt)
+          : retryDelay;
+
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return loadWithRetry(attempt + 1);
       }
-    };
-    
-    return loadWithRetry();
-  });
+
+      logger.error(`Failed to load component after ${retries} retries:`, error);
+      throw error;
+    }
+  };
+
+  return loadWithRetry();
+});
 };
 
 /**
@@ -64,7 +60,7 @@ export const preloadComponent = (importFn) => {
 /**
  * Create lazy components for common patterns
  */
-export const createLazyPage = (importFn) => createLazyComponent(importFn, { retries: 2 });
+export const createLazyPage = (importFn, config = {}) => createLazyComponent(importFn, { retries: 2, ...config });
 export const createLazyWidget = (importFn) => createLazyComponent(importFn, { retries: 1 });
 export const createLazyModal = (importFn) => createLazyComponent(importFn, { retries: 1 });
 
