@@ -1,4 +1,7 @@
 import { lazy } from 'react';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('lazy-loading');
 
 /**
  * Enhanced lazy loading utilities with proper error handling and retries
@@ -35,8 +38,7 @@ export const createLazyComponent = (importFn, config = {}) => {
           return loadWithRetry();
         }
         
-        // Log error for monitoring
-        console.error(`Failed to load component after ${retries} retries:`, error);
+        logger.error(`Failed to load component after ${retries} retries:`, error);
         throw error;
       }
     };
@@ -53,7 +55,7 @@ export const preloadComponent = (importFn) => {
   
   // Don't throw errors for preloading
   componentImport.catch(error => {
-    console.warn('Component preload failed:', error);
+    logger.warn('Component preload failed:', error);
   });
   
   return componentImport;

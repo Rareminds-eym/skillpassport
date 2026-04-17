@@ -1,6 +1,20 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, useMemo } from 'react';
 import { PageSkeleton, DashboardSkeleton } from './skeletons';
 import { createLazyPage } from '@/shared/lib/lazy-loading';
+
+class LazyErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) return this.props.fallback || null;
+    return this.props.children;
+  }
+}
 
 /**
  * Enhanced lazy page wrapper with route-specific optimizations
@@ -11,22 +25,17 @@ const LazyPageWrapper = ({
   preload = false,
   ...props 
 }) => {
-  const LazyPage = createLazyPage(importFn);
+  // Memoize so a new lazy component is NOT created on every render
+  const LazyPage = useMemo(() => createLazyPage(importFn), [importFn]);
 
-  const getFallback = () => {
-    switch (fallback) {
-      case 'dashboard':
-        return <DashboardSkeleton />;
-      case 'page':
-      default:
-        return <PageSkeleton />;
-    }
-  };
+  const fallbackNode = fallback === 'dashboard' ? <DashboardSkeleton /> : <PageSkeleton />;
 
   return (
-    <Suspense fallback={getFallback()}>
-      <LazyPage {...props} />
-    </Suspense>
+    <LazyErrorBoundary fallback={fallbackNode}>
+      <Suspense fallback={fallbackNode}>
+        <LazyPage {...props} />
+      </Suspense>
+    </LazyErrorBoundary>
   );
 };
 

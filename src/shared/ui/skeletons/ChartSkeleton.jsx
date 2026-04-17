@@ -1,5 +1,7 @@
 import React from 'react';
 
+const BAR_HEIGHTS = [60, 80, 45, 90, 55, 70, 40];
+
 const ChartSkeleton = ({ className = "", type = "bar" }) => {
   return (
     <div className={`bg-white rounded-lg border border-gray-200 p-6 animate-pulse ${className}`}>
@@ -15,7 +17,7 @@ const ChartSkeleton = ({ className = "", type = "bar" }) => {
               <div 
                 key={i} 
                 className="bg-gray-200 rounded-t flex-1"
-                style={{ height: `${Math.random() * 80 + 20}%` }}
+                style={{ height: `${BAR_HEIGHTS[i]}%` }}
               ></div>
             ))}
           </div>

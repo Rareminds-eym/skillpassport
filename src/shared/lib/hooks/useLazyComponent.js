@@ -1,4 +1,7 @@
-import { lazy, useMemo } from 'react';
+import { lazy, useMemo, useEffect } from 'react';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('useLazyComponent');
 
 /**
  * Hook for creating lazy components with enhanced error handling
@@ -22,7 +25,7 @@ export const useLazyComponent = (importFn, options = {}) => {
             return loadWithRetry();
           }
           
-          console.error(`Failed to load component after ${retries} retries:`, error);
+          logger.error(`Failed to load component after ${retries} retries:`, error);
           throw error;
         }
       };
@@ -31,8 +34,8 @@ export const useLazyComponent = (importFn, options = {}) => {
     });
   }, [importFn, retries]);
   
-  // Preload if requested
-  useMemo(() => {
+  // Preload if requested — useEffect is correct here (side effect, not derived value)
+  useEffect(() => {
     if (preload) {
       importFn().catch(() => {
         // Silently handle preload failures
