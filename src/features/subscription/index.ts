@@ -66,7 +66,6 @@ export { default as AddOnCardRoot } from './ui/AddOnCard';
 export { default as AddOnCheckout } from './ui/AddOnCheckout';
 export { default as AddOnMarketplaceRoot } from './ui/AddOnMarketplace';
 export { default as BundleCardRoot } from './ui/BundleCard';
-export { default as FeatureGateRoot } from './ui/FeatureGate';
 export { default as ReceiptCardRoot } from './ui/ReceiptCard';
 export { default as SubscriptionBannerRoot } from './ui/SubscriptionBanner';
 export { default as SubscriptionDashboardRoot } from './ui/SubscriptionDashboard';
