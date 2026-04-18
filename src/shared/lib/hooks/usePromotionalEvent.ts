@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/shared/api/supabaseClient';
 import { isJwtExpiryError } from '@/shared/lib/utils/authUtils';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**
  * Hook for fetching active promotional event
@@ -8,7 +9,7 @@ import { isJwtExpiryError } from '@/shared/lib/utils/authUtils';
  */
 export const usePromotionalEvent = () => {
   return useQuery({
-    queryKey: ['promotional-event', 'active'],
+    queryKey: queryKeys.subscription.promotions.active(),
     queryFn: async () => {
       const now = new Date().toISOString();
 

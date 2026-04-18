@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { FunnelRangePreset, getQualityMetrics } from '@/features/educator-copilot';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 interface UseQualityMetricsOptions {
     preset: FunnelRangePreset;
@@ -19,7 +20,7 @@ export const useQualityMetrics = ({
     enabled = true
 }: UseQualityMetricsOptions) => {
     return useQuery({
-        queryKey: ['quality-metrics', { preset, startDate, endDate }],
+        queryKey: queryKeys.analytics.quality.metrics(preset, { startDate, endDate }),
         queryFn: async () => {
             const { data, error } = await getQualityMetrics(preset, startDate, endDate);
             if (error) throw error;

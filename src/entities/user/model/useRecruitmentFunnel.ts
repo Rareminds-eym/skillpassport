@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/shared/api/supabaseClient';
+import { queryKeys } from '@/shared/lib/queryKeys';
 interface UseRecruitmentFunnelOptions {
   preset: FunnelRangePreset;
   startDate?: string;
@@ -24,7 +25,7 @@ export const useRecruitmentFunnel = (
   const channelRef = useRef<any>(null);
 
   const query = useQuery({
-    queryKey: ['recruitment-funnel', { preset, startDate, endDate }],
+    queryKey: queryKeys.analytics.recruitment.funnel(preset, { startDate, endDate }),
     queryFn: async () => {
       const { data } = await getRecruitmentFunnelStats(preset, startDate, endDate);
       return data;
@@ -38,10 +39,10 @@ export const useRecruitmentFunnel = (
     const channel = supabase.channel(`recruitment-funnel-${Date.now()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pipeline_activities' }, () => {
         // invalidate on any activity change
-        queryClient.invalidateQueries({ queryKey: ['recruitment-funnel'] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.analytics.recruitment.all });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pipeline_candidates' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['recruitment-funnel'] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.analytics.recruitment.all });
       });
 
     channel.subscribe();

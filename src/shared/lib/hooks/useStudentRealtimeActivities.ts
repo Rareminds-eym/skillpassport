@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getStudentRecentActivity } from '@/entities/student/api';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**
  * Helper — format timestamps into "2 min ago" / "Oct 24" etc.
@@ -178,7 +179,7 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
 
   // Fetch activities using React Query with optimized settings
   const query = useQuery({
-    queryKey: ['student-activities', effectiveEmail, studentId, limit],
+    queryKey: studentId ? queryKeys.student.activities.realtime(studentId) : ['student-activities', effectiveEmail, studentId, limit],
     queryFn: async () => {
       if (!effectiveEmail) {
         return [];
@@ -243,7 +244,7 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
 
     const interval = setInterval(() => {
       queryClient.setQueryData(
-        ['student-activities', studentEmail, studentId, limit],
+        studentId ? queryKeys.student.activities.realtime(studentId) : ['student-activities', studentEmail, studentId, limit],
         (oldData) => {
           if (!oldData) return oldData;
           return oldData.map(activity => ({
@@ -270,7 +271,7 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
     debounceTimerRef.current = setTimeout(() => {
       setLastUpdateTime(Date.now());
       queryClient.invalidateQueries({
-        queryKey: ['student-activities', studentEmail],
+        queryKey: queryKeys.student.activities.all,
         refetchType: 'active'
       });
     }, 500);
@@ -396,7 +397,7 @@ export const useRefreshStudentActivities = (studentEmail) => {
 
   return () => {
     queryClient.invalidateQueries({
-      queryKey: ['student-activities', studentEmail]
+      queryKey: queryKeys.student.activities.all
     });
   };
 };

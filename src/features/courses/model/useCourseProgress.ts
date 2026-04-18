@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { courseProgressService } from '@/features/courses';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**
  * Hook for managing video progress tracking
@@ -13,7 +14,7 @@ export const useVideoProgress = (
 
   // Query for getting saved video position
   const positionQuery = useQuery({
-    queryKey: ['video-position', studentId, courseId, lessonId],
+    queryKey: queryKeys.courses.progress.videoPosition(studentId, courseId, lessonId),
     queryFn: async () => {
       if (!studentId || !courseId || !lessonId) return null;
       return await courseProgressService.getVideoPosition(studentId, courseId, lessonId);
@@ -24,12 +25,12 @@ export const useVideoProgress = (
 
   // Mutation for saving video position
   const savePositionMutation = useMutation({
-    mutationFn: async ({ 
-      position, 
-      duration 
-    }: { 
-      position: number; 
-      duration: number 
+    mutationFn: async ({
+      position,
+      duration
+    }: {
+      position: number;
+      duration: number
     }) => {
       if (!studentId || !courseId || !lessonId) {
         throw new Error('Missing required parameters');
@@ -43,8 +44,8 @@ export const useVideoProgress = (
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['video-position', studentId, courseId, lessonId] });
-      queryClient.invalidateQueries({ queryKey: ['lesson-progress', studentId, courseId, lessonId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.videoPosition(studentId, courseId, lessonId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.byLesson(studentId, courseId, lessonId) });
     },
   });
 
@@ -57,9 +58,9 @@ export const useVideoProgress = (
       return await courseProgressService.markVideoCompleted(studentId, courseId, lessonId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['video-position', studentId, courseId, lessonId] });
-      queryClient.invalidateQueries({ queryKey: ['lesson-progress', studentId, courseId, lessonId] });
-      queryClient.invalidateQueries({ queryKey: ['course-progress-summary'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.videoPosition(studentId, courseId, lessonId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.byLesson(studentId, courseId, lessonId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.summary(studentId, courseId) });
     },
   });
 
@@ -83,7 +84,7 @@ export const useRestorePoint = (studentId: string | null, courseId: string | nul
 
   // Query for getting restore point
   const restoreQuery = useQuery({
-    queryKey: ['restore-point', studentId, courseId],
+    queryKey: queryKeys.courses.progress.restorePoint(studentId, courseId),
     queryFn: async () => {
       if (!studentId || !courseId) return null;
       return await courseProgressService.getRestorePoint(studentId, courseId);
@@ -94,16 +95,16 @@ export const useRestorePoint = (studentId: string | null, courseId: string | nul
 
   // Mutation for saving restore point
   const saveRestoreMutation = useMutation({
-    mutationFn: async ({ 
-      moduleIndex, 
-      lessonIndex, 
-      lessonId, 
-      videoPosition = 0 
-    }: { 
-      moduleIndex: number; 
-      lessonIndex: number; 
-      lessonId: string; 
-      videoPosition?: number 
+    mutationFn: async ({
+      moduleIndex,
+      lessonIndex,
+      lessonId,
+      videoPosition = 0
+    }: {
+      moduleIndex: number;
+      lessonIndex: number;
+      lessonId: string;
+      videoPosition?: number
     }) => {
       if (!studentId || !courseId) {
         throw new Error('Missing required parameters');
@@ -118,7 +119,7 @@ export const useRestorePoint = (studentId: string | null, courseId: string | nul
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['restore-point', studentId, courseId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.restorePoint(studentId, courseId) });
     },
   });
 
@@ -131,7 +132,7 @@ export const useRestorePoint = (studentId: string | null, courseId: string | nul
       return await courseProgressService.clearRestorePoint(studentId, courseId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['restore-point', studentId, courseId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.restorePoint(studentId, courseId) });
     },
   });
 
@@ -160,7 +161,7 @@ export const useLessonProgress = (
 
   // Query for getting lesson progress
   const progressQuery = useQuery({
-    queryKey: ['lesson-progress', studentId, courseId, lessonId],
+    queryKey: queryKeys.courses.progress.byLesson(studentId, courseId, lessonId),
     queryFn: async () => {
       if (!studentId || !courseId || !lessonId) return null;
       return await courseProgressService.getLessonProgress(studentId, courseId, lessonId);
@@ -178,8 +179,8 @@ export const useLessonProgress = (
       return await courseProgressService.updateLessonStatus(studentId, courseId, lessonId, status);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lesson-progress', studentId, courseId, lessonId] });
-      queryClient.invalidateQueries({ queryKey: ['course-progress-summary'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.byLesson(studentId, courseId, lessonId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.summary(studentId, courseId) });
     },
   });
 
@@ -192,7 +193,7 @@ export const useLessonProgress = (
       return await courseProgressService.saveTimeSpent(studentId, courseId, lessonId, additionalSeconds);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lesson-progress', studentId, courseId, lessonId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.byLesson(studentId, courseId, lessonId) });
     },
   });
 
@@ -216,7 +217,7 @@ export const useQuizProgress = (studentId: string | null, quizId: string | null)
 
   // Query for getting in-progress quiz
   const quizQuery = useQuery({
-    queryKey: ['quiz-progress', studentId, quizId],
+    queryKey: queryKeys.courses.progress.quiz(studentId, quizId),
     queryFn: async () => {
       if (!studentId || !quizId) return null;
       return await courseProgressService.getQuizProgress(studentId, quizId);
@@ -227,14 +228,14 @@ export const useQuizProgress = (studentId: string | null, quizId: string | null)
 
   // Mutation for starting quiz attempt
   const startQuizMutation = useMutation({
-    mutationFn: async ({ 
-      courseId, 
-      lessonId, 
-      totalQuestions 
-    }: { 
-      courseId: string; 
-      lessonId: string; 
-      totalQuestions: number 
+    mutationFn: async ({
+      courseId,
+      lessonId,
+      totalQuestions
+    }: {
+      courseId: string;
+      lessonId: string;
+      totalQuestions: number
     }) => {
       if (!studentId || !quizId) {
         throw new Error('Missing required parameters');
@@ -248,20 +249,20 @@ export const useQuizProgress = (studentId: string | null, quizId: string | null)
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['quiz-progress', studentId, quizId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.quiz(studentId, quizId) });
     },
   });
 
   // Mutation for saving quiz answer
   const saveAnswerMutation = useMutation({
-    mutationFn: async ({ 
-      attemptNumber, 
-      questionId, 
-      answer 
-    }: { 
-      attemptNumber: number; 
-      questionId: string; 
-      answer: any 
+    mutationFn: async ({
+      attemptNumber,
+      questionId,
+      answer
+    }: {
+      attemptNumber: number;
+      questionId: string;
+      answer: any
     }) => {
       if (!studentId || !quizId) {
         throw new Error('Missing required parameters');
@@ -275,20 +276,20 @@ export const useQuizProgress = (studentId: string | null, quizId: string | null)
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['quiz-progress', studentId, quizId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.quiz(studentId, quizId) });
     },
   });
 
   // Mutation for submitting quiz
   const submitQuizMutation = useMutation({
-    mutationFn: async ({ 
-      attemptNumber, 
-      correctAnswers, 
-      totalQuestions 
-    }: { 
-      attemptNumber: number; 
-      correctAnswers: number; 
-      totalQuestions: number 
+    mutationFn: async ({
+      attemptNumber,
+      correctAnswers,
+      totalQuestions
+    }: {
+      attemptNumber: number;
+      correctAnswers: number;
+      totalQuestions: number
     }) => {
       if (!studentId || !quizId) {
         throw new Error('Missing required parameters');
@@ -302,8 +303,8 @@ export const useQuizProgress = (studentId: string | null, quizId: string | null)
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['quiz-progress', studentId, quizId] });
-      queryClient.invalidateQueries({ queryKey: ['course-progress-summary'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.quiz(studentId, quizId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.summary(studentId, courseId) });
     },
   });
 
@@ -327,7 +328,7 @@ export const useQuizProgress = (studentId: string | null, quizId: string | null)
  */
 export const useCourseProgressSummary = (studentId: string | null, courseId: string | null) => {
   const query = useQuery({
-    queryKey: ['course-progress-summary', studentId, courseId],
+    queryKey: queryKeys.courses.progress.summary(studentId, courseId),
     queryFn: async () => {
       if (!studentId || !courseId) return null;
       return await courseProgressService.getCourseProgressSummary(studentId, courseId);
@@ -350,7 +351,7 @@ export const useCourseProgressSummary = (studentId: string | null, courseId: str
  */
 export const useAllCoursesProgress = (studentId: string | null) => {
   const query = useQuery({
-    queryKey: ['all-courses-progress', studentId],
+    queryKey: queryKeys.courses.progress.allByStudent(studentId),
     queryFn: async () => {
       if (!studentId) return [];
       return await courseProgressService.getAllCoursesProgress(studentId);

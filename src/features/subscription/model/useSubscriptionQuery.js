@@ -4,11 +4,11 @@ import { useUser } from '@/stores';
 import { getActiveSubscription } from '@/features/subscription/api';
 import { queryLogger } from '@/shared/lib/debug/queryLogger';
 import { isActiveOrPaused } from '@/features/subscription/lib';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**
  * React Query configuration for subscription
  */
-const SUBSCRIPTION_QUERY_KEY = 'subscription';
 const STALE_TIME = 2 * 60 * 1000; // 2 minutes
 const CACHE_TIME = 5 * 60 * 1000; // 5 minutes
 
@@ -79,7 +79,7 @@ export const useSubscriptionQuery = () => {
   const isQueryEnabled = !!user;
 
   const query = useQuery({
-    queryKey: [SUBSCRIPTION_QUERY_KEY, user?.id],
+    queryKey: user?.id ? queryKeys.subscription.data.byOrganization(user.id) : queryKeys.subscription.data.all,
     queryFn: () => fetchSubscription(user?.id),
     enabled: isQueryEnabled, // Only fetch when user is authenticated
     staleTime: STALE_TIME,
@@ -108,7 +108,7 @@ export const useSubscriptionQuery = () => {
     if (!user?.id) return;
 
     await queryClient.prefetchQuery({
-      queryKey: [SUBSCRIPTION_QUERY_KEY, user.id],
+      queryKey: queryKeys.subscription.data.byOrganization(user.id),
       queryFn: () => fetchSubscription(user.id),
       staleTime: STALE_TIME,
     });
@@ -117,14 +117,14 @@ export const useSubscriptionQuery = () => {
   // Invalidate and refetch subscription
   const refreshSubscription = () => {
     return queryClient.invalidateQueries({
-      queryKey: [SUBSCRIPTION_QUERY_KEY, user?.id]
+      queryKey: user?.id ? queryKeys.subscription.data.byOrganization(user.id) : queryKeys.subscription.data.all
     });
   };
 
   // Clear subscription cache
   const clearSubscriptionCache = () => {
     queryClient.removeQueries({
-      queryKey: [SUBSCRIPTION_QUERY_KEY]
+      queryKey: queryKeys.subscription.all
     });
   };
 
@@ -176,7 +176,7 @@ export const prefetchSubscriptionData = (queryClient, userId) => {
   if (!userId) return;
 
   return queryClient.prefetchQuery({
-    queryKey: [SUBSCRIPTION_QUERY_KEY, userId],
+    queryKey: queryKeys.subscription.data.byOrganization(userId),
     queryFn: () => fetchSubscription(userId),
     staleTime: STALE_TIME,
   });
@@ -190,7 +190,9 @@ export const useSubscriptionCache = () => {
   const user = useUser();
   const queryClient = useQueryClient();
 
-  const cachedData = queryClient.getQueryData([SUBSCRIPTION_QUERY_KEY, user?.id]);
+  const cachedData = queryClient.getQueryData(
+    user?.id ? queryKeys.subscription.data.byOrganization(user.id) : queryKeys.subscription.data.all
+  );
 
   return {
     subscriptionData: cachedData,

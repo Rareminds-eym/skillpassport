@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/shared/api/supabaseClient';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 interface CourseFilters {
   category?: string;
@@ -20,14 +21,14 @@ interface UseCourseOptions {
  * Hook for fetching and filtering courses
  * Supports pagination, search, and filtering by category, skill type, duration, and status
  */
-export const useCourses = ({ 
-  filters = {}, 
-  limit = 20, 
+export const useCourses = ({
+  filters = {},
+  limit = 20,
   offset = 0,
-  enabled = true 
+  enabled = true
 }: UseCourseOptions = {}) => {
   const query = useQuery({
-    queryKey: ['courses', filters, limit, offset],
+    queryKey: queryKeys.courses.list.filtered(filters, limit, offset),
     queryFn: async () => {
       let query = supabase
         .from('courses')
@@ -92,7 +93,7 @@ export const useCourses = ({
  */
 export const useCourse = (courseId: string | null, enabled = true) => {
   const query = useQuery({
-    queryKey: ['course', courseId],
+    queryKey: queryKeys.courses.list.byId(courseId),
     queryFn: async () => {
       if (!courseId) return null;
 
@@ -124,7 +125,7 @@ export const useCourse = (courseId: string | null, enabled = true) => {
  */
 export const useCourseModules = (courseId: string | null, enabled = true) => {
   const query = useQuery({
-    queryKey: ['course-modules', courseId],
+    queryKey: queryKeys.courses.list.modules(courseId),
     queryFn: async () => {
       if (!courseId) return [];
 
@@ -142,7 +143,7 @@ export const useCourseModules = (courseId: string | null, enabled = true) => {
       // Sort lessons within each module
       const modulesWithSortedLessons = (data || []).map((module: any) => ({
         ...module,
-        lessons: (module.lessons || []).sort((a: any, b: any) => 
+        lessons: (module.lessons || []).sort((a: any, b: any) =>
           (a.order_index || 0) - (b.order_index || 0)
         ),
       }));
@@ -167,7 +168,7 @@ export const useCourseModules = (courseId: string | null, enabled = true) => {
  */
 export const useCourseFilterOptions = () => {
   const query = useQuery({
-    queryKey: ['course-filter-options'],
+    queryKey: queryKeys.courses.list.filterOptions(),
     queryFn: async () => {
       // Fetch distinct categories
       const { data: categories } = await supabase

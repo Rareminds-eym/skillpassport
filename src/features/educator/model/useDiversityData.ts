@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/shared/api/supabaseClient';
 import { FunnelRangePreset, getGeographicDistribution, getTopHiringColleges } from '@/features/educator-copilot';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 interface UseDiversityDataOptions {
   preset: FunnelRangePreset;
@@ -32,11 +33,11 @@ export const useDiversityData = ({
   const invalidateQueries = useCallback(() => {
     // Invalidate both queries at once
     queryClient.invalidateQueries({
-      queryKey: ['geographic-distribution'],
+      queryKey: queryKeys.analytics.geographic.all,
       refetchType: 'active'
     });
     queryClient.invalidateQueries({
-      queryKey: ['top-hiring-colleges'],
+      queryKey: queryKeys.analytics.hiring.all,
       refetchType: 'active'
     });
   }, [queryClient]);
@@ -45,7 +46,7 @@ export const useDiversityData = ({
   const queries = useQueries({
     queries: [
       {
-        queryKey: ['geographic-distribution', { preset, startDate, endDate, limit: geoLimit }],
+        queryKey: queryKeys.analytics.geographic.distribution(preset, { startDate, endDate, limit: geoLimit }),
         queryFn: async () => {
           const { data, error } = await getGeographicDistribution(preset, startDate, endDate, geoLimit);
           if (error) throw error;
@@ -61,7 +62,7 @@ export const useDiversityData = ({
         placeholderData: (previousData: any) => previousData,
       },
       {
-        queryKey: ['top-hiring-colleges', { preset, startDate, endDate, limit: collegesLimit }],
+        queryKey: queryKeys.analytics.hiring.topColleges(preset, { startDate, endDate, limit: collegesLimit }),
         queryFn: async () => {
           const { data, error } = await getTopHiringColleges(preset, startDate, endDate, collegesLimit);
           if (error) throw error;
