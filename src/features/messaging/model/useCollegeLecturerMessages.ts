@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { MessageService } from '@/features/messaging';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**
  * Hook for managing messages in a college lecturer conversation
@@ -19,7 +20,7 @@ export const useCollegeLecturerMessages = ({
     error,
     refetch
   } = useQuery({
-    queryKey: ['college-lecturer-messages', conversationId],
+    queryKey: queryKeys.college.lecturer.messages(conversationId),
     queryFn: async () => {
       console.log('🔍 [College-Lecturer-Messages] === FETCH MESSAGES START ===');
       console.log('📋 Conversation ID:', conversationId);
@@ -86,7 +87,7 @@ export const useCollegeLecturerMessages = ({
         console.log('📨 [College-Lecturer-Messages] New message received via realtime:', newMessage);
         
         // Add message to cache optimistically
-        queryClient.setQueryData(['college-lecturer-messages', conversationId], (oldMessages) => {
+        queryClient.setQueryData(queryKeys.college.lecturer.messages(conversationId), (oldMessages) => {
           console.log('🔄 [College-Lecturer-Messages] Updating cache with new message:', {
             oldCount: oldMessages?.length || 0,
             newMessageId: newMessage.id
@@ -108,7 +109,7 @@ export const useCollegeLecturerMessages = ({
 
         // Update conversation list with new message preview
         queryClient.invalidateQueries({ 
-          queryKey: ['college-lecturer-conversations'],
+          queryKey: queryKeys.college.lecturer.all,
           refetchType: 'active'
         });
       }
@@ -150,7 +151,7 @@ export const useCollegeLecturerMessages = ({
     },
     onMutate: async (variables) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['college-lecturer-messages', conversationId] });
+      await queryClient.cancelQueries({ queryKey: queryKeys.college.lecturer.messages(conversationId) });
 
       // Snapshot previous value
       const previousMessages = queryClient.getQueryData(['college-lecturer-messages', conversationId]);
@@ -171,7 +172,7 @@ export const useCollegeLecturerMessages = ({
         _optimistic: true
       };
 
-      queryClient.setQueryData(['college-lecturer-messages', conversationId], (old) => {
+      queryClient.setQueryData(queryKeys.college.lecturer.messages(conversationId), (old) => {
         return old ? [...old, optimisticMessage] : [optimisticMessage];
       });
 
@@ -186,7 +187,7 @@ export const useCollegeLecturerMessages = ({
     },
     onSuccess: (data, variables, context) => {
       // Replace optimistic message with real one
-      queryClient.setQueryData(['college-lecturer-messages', conversationId], (old) => {
+      queryClient.setQueryData(queryKeys.college.lecturer.messages(conversationId), (old) => {
         if (!old) return [data];
         return old.map(msg => 
           msg.id === context?.optimisticMessage?.id ? data : msg
@@ -195,7 +196,7 @@ export const useCollegeLecturerMessages = ({
 
       // Update conversation list
       queryClient.invalidateQueries({ 
-        queryKey: ['college-lecturer-conversations'],
+        queryKey: queryKeys.college.lecturer.all,
         refetchType: 'active'
       });
     }
@@ -247,13 +248,13 @@ export const useCollegeLecturerSendMessage = () => {
     onSuccess: (data, variables) => {
       // Update message cache
       queryClient.invalidateQueries({ 
-        queryKey: ['college-lecturer-messages', variables.conversationId],
+        queryKey: queryKeys.college.lecturer.messages(variables.conversationId),
         refetchType: 'active'
       });
 
       // Update conversation list
       queryClient.invalidateQueries({ 
-        queryKey: ['college-lecturer-conversations'],
+        queryKey: queryKeys.college.lecturer.all,
         refetchType: 'active'
       });
     },

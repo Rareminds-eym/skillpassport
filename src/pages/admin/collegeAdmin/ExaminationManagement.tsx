@@ -38,6 +38,7 @@ import TranscriptForm from "@/features/college-admin/ui/components/TranscriptFor
 import type { Assessment, ExamSlot, MarkEntry, Transcript } from '@/shared/types/college';
 import { authSessionService } from '@/features/auth';
 
+import { queryKeys } from '@/shared/lib/queryKeys';
 const ExaminationManagement: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -95,7 +96,7 @@ const ExaminationManagement: React.FC = () => {
 
   // Fetch departments
   const { data: departments = [] } = useQuery({
-    queryKey: ['departments', collegeId],
+    queryKey: queryKeys.college.departments.byCollege(collegeId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('departments')
@@ -111,7 +112,7 @@ const ExaminationManagement: React.FC = () => {
 
   // Fetch programs
   const { data: programs = [] } = useQuery({
-    queryKey: ['programs', collegeId],
+    queryKey: queryKeys.college.programs.byCollege(collegeId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('programs')
@@ -126,7 +127,7 @@ const ExaminationManagement: React.FC = () => {
 
   // Fetch courses from curriculum_courses
   const { data: courses = [] } = useQuery({
-    queryKey: ['curriculum_courses', collegeId],
+    queryKey: queryKeys.courses.curriculum.byCollege(collegeId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('curriculum_courses')

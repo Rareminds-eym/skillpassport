@@ -1,13 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { MessageService } from '@/features/messaging';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**
  * Hook for managing college lecturer conversations
  * For college lecturers to view their student conversations
  */
 export const useCollegeLecturerConversations = (
-  collegeLecturerId, 
+  collegeLecturerId,
   enabled = true,
   includeArchived = false
 ) => {
@@ -20,14 +21,14 @@ export const useCollegeLecturerConversations = (
     error,
     refetch
   } = useQuery({
-    queryKey: ['college-lecturer-conversations', collegeLecturerId || 'none', includeArchived],
+    queryKey: queryKeys.college.lecturer.conversations(collegeLecturerId || 'none', includeArchived ? 'all' : 'active'),
     queryFn: async () => {
       if (!collegeLecturerId) return [];
-      
+
       // Get all conversations for this college lecturer
       return await MessageService.getUserConversations(
-        collegeLecturerId, 
-        'college_educator', 
+        collegeLecturerId,
+        'college_educator',
         includeArchived, // includeArchived
         true,  // useCache
         'student_college_educator' // conversationType filter
@@ -51,18 +52,18 @@ export const useCollegeLecturerConversations = (
       (conversation) => {
         // Only handle student-college lecturer conversations
         if (conversation.conversation_type !== 'student_college_educator') return;
-        
+
         console.log('🔄 [College-Lecturer] Realtime UPDATE detected:', conversation);
-        
+
         // Ignore updates for conversations that were deleted by college educator
         if (conversation.deleted_by_college_educator) {
           console.log('❌ [College-Lecturer] Ignoring UPDATE for deleted conversation:', conversation.id);
           return;
         }
-        
+
         // Invalidate conversation queries
-        queryClient.invalidateQueries({ 
-          queryKey: ['college-lecturer-conversations', collegeLecturerId],
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.college.lecturer.all,
           refetchType: 'active'
         });
       }
@@ -76,11 +77,11 @@ export const useCollegeLecturerConversations = (
   // Clear unread count function
   const clearUnreadCount = (conversationId) => {
     queryClient.setQueryData(
-      ['college-lecturer-conversations', collegeLecturerId || 'none', includeArchived], 
+      queryKeys.college.lecturer.conversations(collegeLecturerId || 'none', includeArchived ? 'all' : 'active'),
       (oldData) => {
         if (!oldData) return oldData;
-        return oldData.map(conv => 
-          conv.id === conversationId 
+        return oldData.map(conv =>
+          conv.id === conversationId
             ? { ...conv, college_educator_unread_count: 0 }
             : conv
         );
@@ -108,10 +109,10 @@ export const useCollegeLecturerStudents = (collegeLecturerId, enabled = true) =>
     error,
     refetch
   } = useQuery({
-    queryKey: ['college-lecturer-students', collegeLecturerId || 'none'],
+    queryKey: ['college-lecturer-students', collegeLecturerId || 'none'], // Keep as-is, not in factory
     queryFn: async () => {
       if (!collegeLecturerId) return [];
-      
+
       // Get students from program sections where this lecturer is assigned
       // This would need to be implemented in a service
       // For now, return empty array - will be implemented when needed
@@ -137,12 +138,12 @@ export const useCreateCollegeLecturerConversation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ 
-      studentId, 
-      collegeLecturerId, 
+    mutationFn: async ({
+      studentId,
+      collegeLecturerId,
       collegeId,
-      programSectionId, 
-      subject 
+      programSectionId,
+      subject
     }) => {
       return await MessageService.getOrCreateStudentCollegeLecturerConversation(
         studentId,
@@ -154,14 +155,14 @@ export const useCreateCollegeLecturerConversation = () => {
     },
     onSuccess: (data, variables) => {
       // Invalidate conversations list to include new conversation
-      queryClient.invalidateQueries({ 
-        queryKey: ['college-lecturer-conversations', variables.collegeLecturerId],
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.college.lecturer.all,
         refetchType: 'active'
       });
-      
+
       // Also invalidate student conversations if needed
-      queryClient.invalidateQueries({ 
-        queryKey: ['student-college-lecturer-conversations', variables.studentId],
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.student.conversations.all,
         refetchType: 'active'
       });
     },
@@ -183,8 +184,8 @@ export const useCollegeLecturerConversationActions = (collegeLecturerId) => {
     },
     onSuccess: () => {
       // Refetch both active and archived conversations
-      queryClient.invalidateQueries({ 
-        queryKey: ['college-lecturer-conversations', collegeLecturerId],
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.college.lecturer.all,
         refetchType: 'active'
       });
     }
@@ -196,8 +197,8 @@ export const useCollegeLecturerConversationActions = (collegeLecturerId) => {
     },
     onSuccess: () => {
       // Refetch both active and archived conversations
-      queryClient.invalidateQueries({ 
-        queryKey: ['college-lecturer-conversations', collegeLecturerId],
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.college.lecturer.all,
         refetchType: 'active'
       });
     }
@@ -206,14 +207,14 @@ export const useCollegeLecturerConversationActions = (collegeLecturerId) => {
   const deleteMutation = useMutation({
     mutationFn: async (conversationId) => {
       return await MessageService.deleteConversationForUser(
-        conversationId, 
-        collegeLecturerId, 
+        conversationId,
+        collegeLecturerId,
         'college_educator'
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ 
-        queryKey: ['college-lecturer-conversations', collegeLecturerId],
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.college.lecturer.all,
         refetchType: 'active'
       });
     }
