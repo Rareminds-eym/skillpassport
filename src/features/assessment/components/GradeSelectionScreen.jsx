@@ -139,6 +139,24 @@ const shouldShowOption = (optionId, {
     case 'college':
       // Show for college students only if they have university information
       // Either university_college_id OR custom university name must be present
+      // Also show for professionals (they use college assessment)
+      
+      // CRITICAL: Detect professionals using multiple methods since student_type may be blocked by RLS
+      const isProfessionalByType = profileData?.student_type?.startsWith('lp_');
+      const hasBranch = Boolean(profileData?.branch_field);
+      const hasUniversity = Boolean(profileData?.university_college_id || profileData?.university);
+      const hasSchool = Boolean(profileData?.school_id || profileData?.school_class_id);
+      const hasGrade = Boolean(profileData?.grade);
+      
+      // Professional if: has branch_field AND no university AND no school AND no grade
+      const isProfessionalByData = hasBranch && !hasUniversity && !hasSchool && !hasGrade;
+      const isProfessional = isProfessionalByType || isProfessionalByData;
+      
+      if (isProfessional) {
+        // Professionals can take college-level assessment
+        return true;
+      }
+      
       if (!isCollegeStudent) return false;
       
       // Check if university information is present
@@ -188,13 +206,37 @@ const getAdditionalInfo = (optionId, { studentGrade, monthsInGrade }) => {
 /**
  * Grade Option Button Component
  */
-const GradeOptionButton = ({ option, onClick, additionalInfo, studentProgram }) => {
+const GradeOptionButton = ({ option, onClick, additionalInfo, studentProgram, profileData }) => {
   // For college option, show student's program name if available
-  const displayTitle = option.id === 'college' && studentProgram 
+  // Or show profession name for professionals
+  
+  // CRITICAL: Detect professionals using multiple methods since student_type may be blocked by RLS
+  const isProfessionalByType = profileData?.student_type?.startsWith('lp_');
+  const hasBranch = Boolean(profileData?.branch_field);
+  const hasUniversity = Boolean(profileData?.university_college_id || profileData?.university);
+  const hasSchool = Boolean(profileData?.school_id || profileData?.school_class_id);
+  const hasGrade = Boolean(profileData?.grade);
+  
+  // Professional if: has branch_field AND no university AND no school AND no grade
+  const isProfessionalByData = hasBranch && !hasUniversity && !hasSchool && !hasGrade;
+  const isProfessional = isProfessionalByType || isProfessionalByData;
+  
+  // Extract profession name from student_type or use branch_field
+  const professionName = isProfessional 
+    ? (profileData?.student_type 
+        ? profileData.student_type.replace('lp_', '').replace(/_/g, ' ')
+        : 'Professional')
+    : null;
+  
+  const displayTitle = option.id === 'college' && professionName
+    ? professionName
+    : option.id === 'college' && studentProgram 
     ? studentProgram 
     : option.title;
   
-  const displaySubtitle = option.id === 'college' && studentProgram
+  const displaySubtitle = option.id === 'college' && professionName
+    ? 'Professional Development'
+    : option.id === 'college' && studentProgram
     ? 'College/University Student'
     : option.subtitle;
 
@@ -268,10 +310,28 @@ export const GradeSelectionScreen = ({
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Check if student has incomplete profile
-  // For school students: need grade information
-  // For college students: need university information (either ID or custom name)
-  const hasIncompleteProfile = shouldFilterByGrade && (
-    (!detectedGradeLevel && !isCollegeStudent) || // Undetermined type
+  // Priority order:
+  // 1. Check if professional (student_type starts with lp_) - only needs profession fields
+  // 2. Check if school student - needs grade information
+  // 3. Check if college student - needs university information
+  
+  // CRITICAL: Detect professionals using multiple methods since student_type may be blocked by RLS
+  // Method 1: Check student_type field (if available)
+  const isProfessionalByType = profileData?.student_type?.startsWith('lp_');
+  
+  // Method 2: Detect by data pattern - has branch but no university/school AND no grade
+  const hasBranch = Boolean(profileData?.branch_field);
+  const hasUniversity = Boolean(profileData?.university_college_id || profileData?.university);
+  const hasSchool = Boolean(profileData?.school_id || profileData?.school_class_id);
+  const hasGrade = Boolean(profileData?.grade);
+  
+  // Professional if: has branch_field AND no university AND no school AND no grade
+  const isProfessionalByData = hasBranch && !hasUniversity && !hasSchool && !hasGrade;
+  
+  const isProfessional = isProfessionalByType || isProfessionalByData;
+  
+  const hasIncompleteProfile = shouldFilterByGrade && !isProfessional && (
+    (!detectedGradeLevel && !isCollegeStudent) || // Undetermined type (not professional, not school, not college)
     (isCollegeStudent && !profileData?.university_college_id && !profileData?.university) // College student without university
   );
 
@@ -356,6 +416,7 @@ export const GradeSelectionScreen = ({
                     onClick={onGradeSelect}
                     additionalInfo={getAdditionalInfo(option.id, { studentGrade, monthsInGrade })}
                     studentProgram={studentProgram}
+                    profileData={profileData}
                   />
                 ))}
 

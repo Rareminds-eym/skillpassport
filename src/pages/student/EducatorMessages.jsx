@@ -299,7 +299,7 @@ const EducatorMessages = () => {
         // Send notification broadcast to educator
         try {
           await sendNotification(currentChat.educatorId, {
-            title: 'New Message from Student',
+            title: 'New Message from Learner',
             message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
             type: 'message',
             link: `/educator/messages?conversation=${selectedConversationId}`

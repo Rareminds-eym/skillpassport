@@ -694,10 +694,10 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                       className="text-xs text-gray-900 font-bold mb-2 sm:mb-3 hover:text-blue-600 transition-colors cursor-pointer block w-full leading-tight"
                     >
                       SKILL PASSPORT-ID : {
-                        realStudentData?.student_id ||
+                        (realStudentData?.student_id?.replace(/^STU-/, '') || 
                         (realStudentData?.registration_number ? `SP-${realStudentData.registration_number}` : null) ||
                         displayData?.passportId ||
-                        (userEmail ? `SP-${userEmail.split("@")[0].toUpperCase().slice(0, 5)}` : "SP-2024-8421")
+                        (userEmail ? `SP-${userEmail.split("@")[0].toUpperCase().slice(0, 5)}` : "SP-2024-8421"))
                       }
                     </button>
 
@@ -926,13 +926,13 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                   </div>
                 </div>
 
-                {/* Student ID (commented out) */}
+                {/* Learner ID (commented out) */}
                 <div className="space-y-2 ml-1" style={{ display: 'none' }}>
                   {/* <div className="flex items-center gap-2 text-white">
                     <CreditCard className="w-4 h-4" />
                     <span>
-                      Student ID:{" "}
-                      {realStudentData?.student_id || "Not Assigned"}
+                      Learner ID:{" "}
+                      {realStudentData?.student_id?.replace(/^STU-/, '') || "Not Assigned"}
                     </span>
                   </div> */}
                 </div>
@@ -989,7 +989,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                       )}
                       {realStudentData.student_id && (
                         <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700 shadow-sm">
-                          <span className="text-gray-500">ID:</span> {realStudentData.student_id}
+                          <span className="text-gray-500">ID:</span> {realStudentData.student_id?.replace(/^STU-/, '')}
                         </span>
                       )}
                       {realStudentData.roll_number && (
@@ -1578,7 +1578,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
         </div>
       )}
 
-      {/* ================= STUDENT DETAILS MODAL ================= */}
+      {/* ================= LEARNER DETAILS MODAL ================= */}
       {showDetailsModal && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in p-4">
           <div className="bg-white rounded-3xl shadow-2xl p-4 sm:p-6 w-full max-w-sm sm:max-w-lg mx-4 relative max-h-[90vh] overflow-y-auto border border-gray-100">
@@ -1593,8 +1593,8 @@ const ProfileHeroEdit = ({ onEditClick }) => {
 
             {/* Header */}
             <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">🎓 Student Details</h2>
-              <p className="text-sm text-gray-500">Overview of student profile and progress</p>
+              <h2 className="text-2xl font-bold text-gray-900">🎓 Learner Details</h2>
+              <p className="text-sm text-gray-500">Overview of learner profile and progress</p>
             </div>
 
             {/* Profile Info */}
@@ -1612,12 +1612,12 @@ const ProfileHeroEdit = ({ onEditClick }) => {
 
             {/* Details Grid */}
             <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <DetailItem label="Student ID" value={
-                realStudentData?.student_id || 
+              <DetailItem label="Learner ID" value={
+                (realStudentData?.student_id?.replace(/^STU-/, '') || 
                 (realStudentData?.registration_number ? `SP-${realStudentData.registration_number}` : null) ||
                 displayData?.passportId || 
                 displayData?.studentId || 
-                "N/A"
+                "N/A")
               } />
               <DetailItem 
                 label={(realStudentData?.student_type === 'school' || realStudentData?.school_id) ? 'Grade/Section' : 'Department'} 
@@ -1627,8 +1627,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                         ? `Grade ${realStudentData.grade}${realStudentData?.section ? ` - ${realStudentData.section}` : ''}` 
                         : 'N/A')
                     : (displayData.department || displayData.degree || 'N/A')
-                } 
-              />
+                } />
               <DetailItem 
                 label="Class Year" 
                 value={displayData.classYear || 'N/A'} 

@@ -340,7 +340,7 @@ export default function UnifiedSignup() {
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
                       <span className="text-white">
-                        {activeTab === "school" ? "School Student" : "College Student"}
+                        {activeTab === "school" ? "School Student" : "Learner"}
                       </span>
                     </label>
                     <label className="flex items-center space-x-3 cursor-pointer">
@@ -571,7 +571,7 @@ export default function UnifiedSignup() {
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
                       <span className="text-gray-700">
-                        {activeTab === "school" ? "School Student" : "College Student"}
+                        {activeTab === "school" ? "School Student" : "Learner"}
                       </span>
                     </label>
                     <label className="flex items-center space-x-3 cursor-pointer">

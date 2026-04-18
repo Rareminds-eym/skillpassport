@@ -922,7 +922,7 @@ console.log('🔍 Checking online for educator:', {
           // Send notification broadcast to recruiter
           try {
             await sendNotification(currentChat.recruiterId, {
-              title: 'New Message from Student',
+              title: 'New Message from Learner',
               message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
               type: 'message',
               link: `/recruiter/messages?conversation=${selectedConversationId}`
@@ -961,7 +961,7 @@ console.log('🔍 Checking online for educator:', {
           // Send notification broadcast to educator
           try {
             await sendNotification(currentChat.educatorId, {
-              title: 'New Message from Student',
+              title: 'New Message from Learner',
               message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
               type: 'message',
               link: `/educator/messages?conversation=${selectedConversationId}`

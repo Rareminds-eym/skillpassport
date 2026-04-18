@@ -321,7 +321,7 @@ const NotebookLabel = ({ studentInfo, description }) => {
         >
           {/* Row 1, Col 1: Student Name */}
           <div>
-            <span style={labelStyle}>Student Name</span>
+            <span style={labelStyle}> Name</span>
             <span style={valueStyle}>{safeInfo.name}</span>
           </div>
           

@@ -7,9 +7,30 @@ import { formatStreamId } from '../../../../utils/formatters';
 import { isCollegeStudent as checkIsCollegeStudent } from '../../../../utils/studentType';
 
 const ReportHeader = ({ studentInfo, gradeLevel }) => {
-    // Debug
-    console.log('ReportHeader gradeLevel:', gradeLevel);
-    console.log('ReportHeader studentInfo:', studentInfo);
+    // CRITICAL: Detect if student is a professional
+    const isProfessionalByType = studentInfo?.student_type?.startsWith('lp_');
+    const hasBranch = Boolean(studentInfo?.branchField || studentInfo?.branch);
+    const hasUniversity = Boolean(studentInfo?.college && studentInfo?.college !== '—');
+    const hasSchool = Boolean(studentInfo?.school && studentInfo?.school !== '—');
+    const hasGrade = Boolean(studentInfo?.grade && studentInfo?.grade !== '—');
+    const isProfessionalByData = hasBranch && !hasUniversity && !hasSchool && !hasGrade;
+    const isProfessional = isProfessionalByType || isProfessionalByData;
+
+    // Extract profession name from student_type (format: lp_Teacher -> Teacher)
+    const getProfessionName = () => {
+        if (!studentInfo?.student_type) {
+            return null;
+        }
+        if (!studentInfo.student_type.startsWith('lp_')) {
+            return null;
+        }
+        const professionName = studentInfo.student_type
+            .replace('lp_', '')
+            .replace(/_/g, ' '); // Replace underscores with spaces
+        return professionName;
+    };
+
+    const professionName = getProfessionName();
 
     // Format stream display name
     const formatStreamDisplay = (stream) => {
@@ -141,8 +162,17 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
         return 'Programme/Stream';
     };
 
-    const infoItems = [
-        { label: 'Student Name', value: studentInfo.name },
+    // Build info items based on whether user is a professional
+    const infoItems = isProfessional ? [
+        // For professionals: Show Name, Profession, Program/Course, Stream, Assessment Date
+        { label: 'Learner Name', value: studentInfo.name },
+        { label: 'Profession', value: professionName || '—' },
+        { label: 'Program/Course', value: studentInfo.branchField || studentInfo.branch || '—' },
+        { label: getStreamLabel(), value: formatStreamId(studentInfo.stream || studentInfo.branchField) || '—' },
+        { label: 'Assessment Date', value: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) },
+    ] : [
+        // For students: Show Name, Roll/Enrollment Number, Stream, Grade/Course, College/School, Assessment Date
+        { label: 'Learner Name', value: studentInfo.name },
         { label: rollNumberLabel, value: studentInfo.regNo },
         { label: getStreamLabel(), value: formatStreamId(studentInfo.stream || studentInfo.branchField) || '—' },
         { label: gradeCourseField.label, value: gradeCourseField.value },

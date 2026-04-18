@@ -248,7 +248,8 @@ export const useAssessmentResults = () => {
         stream: '—',
         grade: '—',
         branchField: '—',
-        courseName: '—'
+        courseName: '—',
+        student_type: null
     });
     const [studentAcademicData, setStudentAcademicData] = useState({
         subjectMarks: [],
@@ -460,6 +461,7 @@ export const useAssessmentResults = () => {
                         college_school_name,
                         grade_start_date,
                         program_id,
+                        student_type,
                         programs (
                             id,
                             name,
@@ -475,6 +477,7 @@ export const useAssessmentResults = () => {
                     hasData: !!studentData,
                     hasError: !!fetchError,
                     studentData: studentData,
+                    student_type: studentData?.student_type,
                     error: fetchError
                 });
 
@@ -841,7 +844,8 @@ export const useAssessmentResults = () => {
                         stream: streamFromAssessmentRef.current || derivedStream, // Use assessment stream if available, otherwise derived
                         grade: studentGrade,
                         branchField: programName, // Use program name instead of branch_field
-                        courseName: programName   // Use program name for course name too
+                        courseName: programName,   // Use program name for course name too
+                        student_type: studentData.student_type || null  // Add student_type for professional detection
                     });
 
                     // Calculate months in grade from grade_start_date
@@ -887,7 +891,8 @@ export const useAssessmentResults = () => {
                 stream: '—',
                 grade: '—',
                 branchField: '—',
-                courseName: '—'
+                courseName: '—',
+                student_type: null
             });
         }
     };

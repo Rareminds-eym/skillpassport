@@ -89,7 +89,6 @@ export async function sendWelcomeEmail(
           <div class="credentials">
             <p><strong>Email:</strong> ${email}</p>
             <p><strong>Temporary Password:</strong> ${password}</p>
-            <p><strong>Role:</strong> ${role}</p>
             ${additionalInfo ? `<p>${additionalInfo}</p>` : ''}
           </div>
           
