@@ -156,17 +156,17 @@ export type {
 
 // API & Data Access
 export * from './api';
-export { capitalizeFirstLetter } from './lib/signupValidation';
-export { getInitialFormData } from './lib/signupValidation';
-export { formatOtp } from './lib/signupValidation';
-export { validateSignupFields } from './lib/signupValidation';
-export { formatPhoneNumber } from './lib/signupValidation';
+export {
+  capitalizeFirstLetter,
+  getInitialFormData,
+  formatOtp,
+  validateSignupFields,
+  formatPhoneNumber
+} from './lib/signupValidation';
 export { default as paymentsApiService } from './api/paymentsApiService';
 export { default as SignupFormFields, ALL_COUNTRIES, LANGUAGES } from './ui/shared/SignupFormFields';
 
 export { default as addOnCatalogService } from './api/addOnCatalogService';
-
-export { useSubscriptionAccess } from '@/stores';
 
 export { default as addOnAnalyticsService } from './api/addOnAnalyticsService';
 
