@@ -20,7 +20,7 @@ export const roleDisplayNames: Record<string, string> = {
   'educator': 'Educator',
   'college_admin': 'College Administrator',
   'college_educator': 'College Educator',
-  'college_student': 'College Student',
+  'college_student': 'Learner',
   'university_admin': 'University Administrator',
   'university_educator': 'University Educator',
   'university_student': 'University Student',

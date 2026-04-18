@@ -107,7 +107,7 @@ const StudentLayout = () => {
         {!isCareerAIPage && (
           <footer className="bg-white border-t border-gray-200 py-4 px-6">
             <div className="flex items-center justify-between text-sm text-gray-500">
-              <span>© {new Date().getFullYear()} Student Portal. All rights reserved.</span>
+              <span>© {new Date().getFullYear()} Learner Portal. All rights reserved.</span>
               <div className="flex items-center gap-4">
                 <Link to="/privacy-policy" className="hover:text-gray-700 transition-colors">Privacy Policy</Link>
                 <Link to="/terms" className="hover:text-gray-700 transition-colors">Terms of Service</Link>

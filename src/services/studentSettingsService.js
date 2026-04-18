@@ -35,6 +35,8 @@ export const getStudentSettingsByEmail = async (email) => {
         university,
         branch_field,
         college_school_name,
+        student_type,
+        course_name,
         registration_number,
         enrollmentNumber,
         github_link,
@@ -119,13 +121,6 @@ export const getStudentSettingsByEmail = async (email) => {
       return { success: false, error: 'Student not found' };
     }
 
-    console.log('📊 Raw data from database:', {
-      university: data.university,
-      universityId: data.universityId,
-      college_school_name: data.college_school_name,
-      branch_field: data.branch_field
-    });
-
     // Extract role from the joined users table
     const userRole = Array.isArray(data.users) && data.users.length > 0
       ? data.users[0]?.role
@@ -170,6 +165,8 @@ export const getStudentSettingsByEmail = async (email) => {
       // Academic info
       university: data.university || '',
       branch: data.branch_field || '',
+      student_type: data.student_type || '',
+      courseName: data.course_name || '',
       college: userRole === 'college_student' ? collegeSchoolName : '',
       schoolName: userRole === 'school_student' ? collegeSchoolName : '',
       registrationNumber: data.registration_number || '',
@@ -306,6 +303,7 @@ export const updateStudentSettings = async (email, updates) => {
       program: 'branch_field', // Custom program name also maps to branch_field
       college: 'college_school_name',
       courseName: 'course_name', // Program name field
+      student_type: 'student_type', // Learner type field (profession, etc.)
       registrationNumber: 'registration_number',
       enrollmentNumber: 'enrollmentNumber',
       currentCgpa: 'currentCgpa',

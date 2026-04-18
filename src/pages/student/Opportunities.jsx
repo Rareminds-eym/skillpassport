@@ -51,22 +51,49 @@ import useMessageNotifications from '../../hooks/useMessageNotifications';
 import MessageService from '../../services/messageService';
 import StudentPipelineService from '../../services/studentPipelineService';
 
+// CONSOLIDATED: Helper function to detect if student is a professional
+// This eliminates duplicate logic across the file
+const isProfessionalStudent = (studentData) => {
+  if (!studentData) return false;
+  
+  // Method 1: Check student_type field (if available - may be blocked by RLS)
+  const isProfessionalByType = studentData.student_type?.startsWith('lp_');
+  
+  // Method 2: Detect by data pattern - has branch but no university/school AND no grade
+  const hasBranch = Boolean(studentData.branch_field);
+  const hasUniversity = Boolean(studentData.university_college_id || studentData.university || studentData.universityId);
+  const hasSchool = Boolean(studentData.school_id);
+  const hasGrade = Boolean(studentData.grade);
+  
+  // Professional if: has branch_field AND no university AND no school AND no grade
+  const isProfessionalByData = hasBranch && !hasUniversity && !hasSchool && !hasGrade;
+  
+  const result = isProfessionalByType || isProfessionalByData;
+  
+  return result;
+};
+
 // Helper function to check if institution details are complete
 const checkInstitutionDetailsComplete = (studentData) => {
   if (!studentData) return false;
   
-  console.log('🔍 Checking institution details:', {
-    universityId: studentData.universityId,
-    university: studentData.university,
-    university_college_id: studentData.university_college_id,
-    college_school_name: studentData.college_school_name,
-    program_id: studentData.program_id,
-    branch_field: studentData.branch_field,
-    program_section_id: studentData.program_section_id,
-    section: studentData.section,
-    semester: studentData.semester,
-    grade: studentData.grade
-  });
+  // CRITICAL: Check if professional first (they don't need institution details)
+  // Method 1: Check student_type field (if available - may be blocked by RLS)
+  const isProfessionalByType = studentData.student_type?.startsWith('lp_');
+  
+  // Method 2: Detect by data pattern - has branch but no university/school AND no grade
+  const hasBranch = Boolean(studentData.branch_field);
+  const hasUniversity = Boolean(studentData.university_college_id || studentData.university || studentData.universityId);
+  const hasSchool = Boolean(studentData.school_id);
+  const hasGrade = Boolean(studentData.grade);
+  
+  // Professional if: has branch_field AND no university AND no school AND no grade
+  const isProfessionalByData = hasBranch && !hasUniversity && !hasSchool && !hasGrade;
+  
+  if (isProfessionalByType || isProfessionalByData) {
+    // Professionals don't need institution details
+    return true;
+  }
   
   const gradeStr = String(studentData.grade || '').toUpperCase().trim();
   const isSchool = gradeStr.match(/(\d+)/) || gradeStr.includes('DIPLOMA');
@@ -78,7 +105,6 @@ const checkInstitutionDetailsComplete = (studentData) => {
   if (isSchool && !isCollege) {
     // School students need: school_id (or custom school name) + school_class_id (or custom section)
     const isComplete = !!(studentData.school_id || studentData.college_school_name);
-    console.log('📚 School student check:', { isComplete, school_id: studentData.school_id, college_school_name: studentData.college_school_name });
     return isComplete;
   } else if (isCollege) {
     // College students need: university + college + program (semester is optional)
@@ -89,13 +115,6 @@ const checkInstitutionDetailsComplete = (studentData) => {
     
     // Consider complete if at least university, college, and program are filled
     const isComplete = hasUniversity && hasCollege && hasProgram;
-    console.log('🎓 College student check:', { 
-      isComplete, 
-      hasUniversity, 
-      hasCollege, 
-      hasProgram, 
-      hasSemester 
-    });
     return isComplete;
   }
   
@@ -271,9 +290,30 @@ const Opportunities = () => {
   // Check profile completion status
   const { canApplyToJobs, needsProfileCompletion, isLoading: profileCheckLoading } = useProfileCompletion(studentId, !!studentId);
 
-  // Left sidebar tab state - Set default based on student type
-  const getDefaultTab = () => {
-    if (!studentData) return 'my-jobs'; // Temporary default while loading
+  // Initialize with null to indicate "not yet determined"
+  const [activeTab, setActiveTab] = useState(null);
+
+  // Determine default tab based on student type - only after studentData is loaded
+  useEffect(() => {
+    // Don't set default if navigation state provides a tab
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+      return;
+    }
+    
+    // Wait for studentData to load
+    if (!studentData) {
+      return;
+    }
+    
+    // Professionals always default to my-jobs
+    const isProfessional = isProfessionalStudent(studentData);
+    
+    if (isProfessional) {
+      setActiveTab('my-jobs');
+      return;
+    }
+    
     const gradeStr = String(studentData.grade || '').toUpperCase().trim();
     
     // Check for college/university grades (UG, PG, etc.) - default to my-jobs
@@ -281,12 +321,14 @@ const Opportunities = () => {
         gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') || 
         gradeStr.includes('POSTGRADUATE') || gradeStr.includes('BACHELOR') || 
         gradeStr.includes('MASTER')) {
-      return 'my-jobs';
+      setActiveTab('my-jobs');
+      return;
     }
     
     // Check for Diploma explicitly - treat as high school
     if (gradeStr.includes('DIPLOMA')) {
-      return 'industrial-visits';
+      setActiveTab('industrial-visits');
+      return;
     }
     
     // Extract numeric part from strings like "GRADE 10", "10", "10TH", etc.
@@ -297,40 +339,20 @@ const Opportunities = () => {
       
       // Middle school (6-8): Default to industrial visits
       if (gradeNum >= 6 && gradeNum <= 8) {
-        return 'industrial-visits';
+        setActiveTab('industrial-visits');
+        return;
       }
       
       // High school (9-12): Default to industrial visits
       if (gradeNum >= 9 && gradeNum <= 12) {
-        return 'industrial-visits';
+        setActiveTab('industrial-visits');
+        return;
       }
     }
     
     // College: Default to my-jobs
-    return 'my-jobs';
-  };
-  
-  const [activeTab, setActiveTab] = useState(getDefaultTab()); // 'my-jobs', 'my-applications', 'industrial-visits', or 'history'
-
-  // Handle navigation state to set active tab
-  useEffect(() => {
-    if (location.state?.activeTab) {
-      setActiveTab(location.state.activeTab);
-    }
-  }, [location.state]);
-
-  // Update active tab when student data loads
-  useEffect(() => {
-    // Don't override if we have a navigation state
-    if (location.state?.activeTab) return;
-    
-    if (studentData && studentData.grade) {
-      const correctTab = getDefaultTab();
-      if (activeTab !== correctTab) {
-        setActiveTab(correctTab);
-      }
-    }
-  }, [studentData, location.state]);
+    setActiveTab('my-jobs');
+  }, [studentData, location.state?.activeTab]);
 
   // My Jobs state (existing opportunities logic)
   const [searchTerm, setSearchTerm] = useState('');
@@ -379,10 +401,26 @@ const Opportunities = () => {
 
   // Memoize student type to prevent unnecessary recalculations
   const studentType = React.useMemo(() => {
-    if (!studentData) return { isSchoolStudent: false, isUniversityStudent: false, isMiddleSchool: false, isHighSchool: false };
+    if (!studentData) return { isSchoolStudent: false, isUniversityStudent: false, isMiddleSchool: false, isHighSchool: false, isProfessional: false };
+    
+    // Use consolidated professional detection
+    const isProfessional = isProfessionalStudent(studentData);
     
     const isSchool = isSchoolStudent(studentData);
     const isUniversity = isCollegeStudent(studentData);
+    
+    console.log('🔍 studentType calculation:', {
+      isProfessional,
+      isSchool,
+      isUniversity,
+      studentData: {
+        student_type: studentData.student_type,
+        branch_field: studentData.branch_field,
+        university_college_id: studentData.university_college_id,
+        school_id: studentData.school_id,
+        grade: studentData.grade
+      }
+    });
     
     // Determine specific school level
     let isMiddleSchool = false;
@@ -415,12 +453,15 @@ const Opportunities = () => {
       }
     }
     
-    return { 
+    const result = { 
       isSchoolStudent: isSchool, 
       isUniversityStudent: isUniversity,
       isMiddleSchool,
-      isHighSchool
+      isHighSchool,
+      isProfessional
     };
+    
+    return result;
   }, [studentData]);
 
   // Build server-side filters (excluding skills which needs client-side filtering)
@@ -435,6 +476,13 @@ const Opportunities = () => {
     } else if (studentType.isHighSchool) {
       // High school (9-12): Only internships
       filters.employmentType = ['Internship'];
+    } else if (studentType.isProfessional) {
+      // Professionals: Only full-time jobs
+      if (advancedFilters.employmentType.length > 0) {
+        filters.employmentType = advancedFilters.employmentType;
+      } else {
+        filters.employmentType = ['Full-time'];
+      }
     } else if (studentType.isUniversityStudent) {
       // College: Both internships and full-time jobs
       if (advancedFilters.employmentType.length > 0) {
@@ -464,8 +512,18 @@ const Opportunities = () => {
       filters.postedWithin = advancedFilters.postedWithin;
     }
 
+    console.log('🔍 serverFilters:', {
+      filters,
+      studentType: {
+        isMiddleSchool: studentType.isMiddleSchool,
+        isHighSchool: studentType.isHighSchool,
+        isProfessional: studentType.isProfessional,
+        isUniversityStudent: studentType.isUniversityStudent
+      }
+    });
+
     return filters;
-  }, [advancedFilters, studentType.isMiddleSchool, studentType.isHighSchool, studentType.isUniversityStudent]);
+  }, [advancedFilters, studentType.isMiddleSchool, studentType.isHighSchool, studentType.isUniversityStudent, studentType.isProfessional]);
 
   // Fetch opportunities with server-side pagination
   // IMPORTANT: Only fetch after studentData is loaded to ensure correct filters
@@ -473,10 +531,13 @@ const Opportunities = () => {
   
   // Determine if we should fetch opportunities based on student type and active tab
   const shouldFetchOpportunities = React.useMemo(() => {
-    if (!studentData) return false;
-    // Fetch opportunities for high school and college students when on my-jobs tab
-    return (studentType.isHighSchool || studentType.isUniversityStudent) && activeTab === 'my-jobs';
-  }, [studentData, studentType.isHighSchool, studentType.isUniversityStudent, activeTab]);
+    if (!studentData) {
+      return false;
+    }
+    const shouldFetch = (studentType.isHighSchool || studentType.isUniversityStudent || studentType.isProfessional) && activeTab === 'my-jobs';
+    // Fetch opportunities for high school, college, and professionals when on my-jobs tab
+    return shouldFetch;
+  }, [studentData, studentType, activeTab]);
   
   const {
     opportunities,
@@ -501,14 +562,17 @@ const Opportunities = () => {
       return opportunities;
     }
 
-    return opportunities.filter(opp => {
+    const filtered = opportunities.filter(opp => {
       const oppSkills = opp.required_skills || opp.skills_required || [];
-      return advancedFilters.skills.some(skill =>
+      const matches = advancedFilters.skills.some(skill =>
         oppSkills.some(oppSkill =>
           oppSkill.toLowerCase().includes(skill.toLowerCase())
         )
       );
+      return matches;
     });
+    
+    return filtered;
   }, [opportunities, advancedFilters.skills]);
 
   // Debounce search term
@@ -563,8 +627,8 @@ const Opportunities = () => {
         setIsLoading(false);
       }
     } 
-    // For high school and college, wait for opportunities to load
-    else if (studentType.isHighSchool || studentType.isUniversityStudent) {
+    // For high school, college, and professionals, wait for opportunities to load
+    else if (studentType.isHighSchool || studentType.isUniversityStudent || studentType.isProfessional) {
       if (!dataLoading) {
         setIsLoading(false);
       }
@@ -573,7 +637,7 @@ const Opportunities = () => {
     else if (studentData) {
       setIsLoading(false);
     }
-  }, [dataLoading, industrialVisitsLoading, studentType.isMiddleSchool, studentType.isHighSchool, studentType.isUniversityStudent, studentData]);
+  }, [dataLoading, industrialVisitsLoading, studentType.isMiddleSchool, studentType.isHighSchool, studentType.isUniversityStudent, studentType.isProfessional, studentData]);
 
   useMessageNotifications({
     userId: studentId,
@@ -595,7 +659,7 @@ const Opportunities = () => {
         setAppliedJobs(new Set(applicationsData.map(app => app.opportunity_id)));
         setSavedJobs(new Set(savedIds));
       } catch (error) {
-        console.error('Error loading jobs data:', error);
+        // Error loading jobs data
       }
     };
 
@@ -642,7 +706,7 @@ const Opportunities = () => {
       setApplications(transformedApplications);
       setFilteredApplications(transformedApplications);
     } catch (err) {
-      console.error('Error fetching applications:', err);
+      // Error fetching applications
     }
   }, [studentId, userEmail]);
 
@@ -698,7 +762,7 @@ const Opportunities = () => {
             setRegisteredVisits(registeredIds);
           }
         } catch (error) {
-          console.error('Error fetching industrial visits:', error);
+          // Error fetching industrial visits
         } finally {
           setIndustrialVisitsLoading(false);
         }
@@ -763,13 +827,12 @@ const Opportunities = () => {
         }
       }
     } catch (error) {
-      console.error('Error toggling save:', error);
+      // Error toggling save
     }
   };
 
   const handleApply = async (opportunity) => {
     if (!studentId) {
-      console.error('Please log in to apply for jobs');
       return;
     }
 
@@ -808,10 +871,10 @@ const Opportunities = () => {
       if (result.success) {
         setAppliedJobs(prev => new Set([...prev, opportunity.id]));
       } else {
-        console.error('Application failed:', result.message);
+        // Application failed
       }
     } catch (error) {
-      console.error('Error applying to job:', error);
+      // Error applying to job
     } finally {
       setIsApplying(false);
     }
@@ -843,7 +906,7 @@ const Opportunities = () => {
         }
       }
     } catch (error) {
-      console.error('Error registering for visit:', error);
+      // Error registering for visit
       toast.error('An error occurred while registering');
     } finally {
       setIsRegistering(false);
@@ -1009,7 +1072,7 @@ const Opportunities = () => {
               <div className={`grid ${
                 studentType.isMiddleSchool 
                   ? 'grid-cols-2' 
-                  : studentType.isHighSchool 
+                  : studentType.isHighSchool || studentType.isProfessional
                     ? 'grid-cols-3' 
                     : 'grid-cols-3'
               } gap-2`}>
@@ -1063,8 +1126,8 @@ const Opportunities = () => {
                   </button>
                 )}
 
-                {/* My Jobs Tab - Show for high school and college */}
-                {(studentType.isHighSchool || studentType.isUniversityStudent) && (
+                {/* My Jobs Tab - Show for high school, college, and professionals */}
+                {(studentType.isHighSchool || studentType.isUniversityStudent || studentType.isProfessional) && (
                   <button
                     onClick={() => setActiveTab('my-jobs')}
                     className={`relative text-left p-4 rounded-lg transition-all ${
@@ -1082,17 +1145,19 @@ const Opportunities = () => {
                           My Jobs
                         </h1>
                         <p className="text-sm text-gray-600 mt-1">
-                          {studentType.isUniversityStudent 
-                            ? 'Browse internships and full-time opportunities' 
-                            : 'Explore internship opportunities'}
+                          {studentType.isProfessional
+                            ? 'Browse full-time job opportunities'
+                            : studentType.isUniversityStudent 
+                              ? 'Browse internships and full-time opportunities' 
+                              : 'Explore internship opportunities'}
                         </p>
                       </div>
                     </div>
                   </button>
                 )}
 
-                {/* My Applications Tab - Show for high school and college */}
-                {(studentType.isHighSchool || studentType.isUniversityStudent) && (
+                {/* My Applications Tab - Show for high school, college, and professionals */}
+                {(studentType.isHighSchool || studentType.isUniversityStudent || studentType.isProfessional) && (
                   <button
                     onClick={() => setActiveTab('my-applications')}
                     className={`relative text-left p-4 rounded-lg transition-all ${
@@ -1136,8 +1201,8 @@ const Opportunities = () => {
               />
             )}
 
-            {/* My Jobs Tab - Show for high school and college */}
-            {activeTab === 'my-jobs' && (studentType.isHighSchool || studentType.isUniversityStudent) && (
+            {/* My Jobs Tab - Show for high school, college, and professionals */}
+            {activeTab === 'my-jobs' && (studentType.isHighSchool || studentType.isUniversityStudent || studentType.isProfessional) && (
               <MyJobsContent
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}
@@ -2111,14 +2176,6 @@ const MyApplicationsContent = ({
 
   // Handle messaging
   const handleMessage = async (app) => {
-    console.log('🔍 handleMessage called with:', {
-      appId: app.id,
-      recruiterId: app.recruiterId,
-      opportunityId: app.opportunityId,
-      studentId: studentId,
-      jobTitle: app.jobTitle
-    });
-
     if (!app.recruiterId) {
       alert('Recruiter information not available for this application.');
       return;
@@ -2149,13 +2206,6 @@ const MyApplicationsContent = ({
         }
       });
     } catch (error) {
-      console.error('❌ Error opening message:', error);
-      console.error('Error details:', {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint
-      });
       alert(`Failed to open messaging: ${error.message || 'Please try again.'}`);
     } finally {
       setMessagingApplicationId(null);

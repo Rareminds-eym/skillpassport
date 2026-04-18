@@ -215,7 +215,7 @@ const Messages = () => {
       
       // Send notification (non-blocking)
       sendNotification(currentChat.recruiterId, {
-        title: 'New Message from Student',
+        title: 'New Message from Learner',
         message: trimmedInput.length > MESSAGE_PREVIEW_LENGTH 
           ? `${trimmedInput.substring(0, MESSAGE_PREVIEW_LENGTH)}...` 
           : trimmedInput,

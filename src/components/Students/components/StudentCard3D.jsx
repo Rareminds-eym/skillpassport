@@ -61,7 +61,7 @@ const StudentCard3D = () => {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 text-lg font-medium">Loading student profile...</p>
+          <p className="text-gray-600 text-lg font-medium">Loading learner profile...</p>
         </div>
       </div>
     );
@@ -74,8 +74,8 @@ const StudentCard3D = () => {
           <div className="text-red-500 mb-4">
             <User className="w-16 h-16 mx-auto" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Student Not Found</h2>
-          <p className="text-gray-600 mb-6">The student profile you're looking for doesn't exist or has been removed.</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Learner Not Found</h2>
+          <p className="text-gray-600 mb-6">The learner profile you're looking for doesn't exist or has been removed.</p>
           <Button 
             onClick={() => navigate('/student/dashboard')}
             className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -124,7 +124,7 @@ const StudentCard3D = () => {
             <div className="p-8 md:p-12">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 
-                {/* Left Section - Student Info */}
+                {/* Left Section - Learner Info */}
                 <div className="space-y-6">
                   {/* Logo/Name Header */}
                   <div className="flex items-center gap-4 mb-6">
@@ -138,7 +138,7 @@ const StudentCard3D = () => {
                     </div>
                   </div>
 
-                  {/* Student Photo and Name */}
+                  {/* Learner Photo and Name */}
                   <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
                     <div className="flex items-start gap-6">
                       {profile.photo ? (
@@ -154,7 +154,7 @@ const StudentCard3D = () => {
                       )}
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2 flex-wrap">
-                          <h2 className="text-2xl font-bold text-white">{capitalizeName(profile.name) || 'Student Name'}</h2>
+                          <h2 className="text-2xl font-bold text-white">{capitalizeName(profile.name) || 'Learner Name'}</h2>
                           {approvalStatus === 'approved' && (
                             <Badge className="bg-green-500 text-white border-0 px-3 py-1 text-xs font-semibold rounded-full shadow-md flex items-center gap-1.5">
                               <CheckCircle className="w-3.5 h-3.5" />
@@ -180,12 +180,12 @@ const StudentCard3D = () => {
                     </div>
                   </div>
 
-                  {/* Student Details */}
+                  {/* Learner Details */}
                   <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 space-y-4">
                     <div className="flex items-center justify-between">
                       <span className="text-white/80 text-sm flex items-center gap-2">
                         <User className="w-4 h-4" />
-                        Student ID
+                        Learner ID
                       </span>
                       <span className="text-white font-bold">{studentData.id || 'N/A'}</span>
                     </div>
@@ -248,7 +248,7 @@ const StudentCard3D = () => {
                     <div className="bg-green-500 rounded-2xl p-4 flex items-center gap-3 shadow-lg">
                       <CheckCircle className="w-8 h-8 text-white" />
                       <div>
-                        <p className="text-white font-bold text-lg">Verified Student</p>
+                        <p className="text-white font-bold text-lg">Verified Learner</p>
                         <p className="text-white/90 text-sm">Profile authenticated and verified</p>
                       </div>
                     </div>
@@ -270,7 +270,7 @@ const StudentCard3D = () => {
                       />
                     </div>
                     <p className="text-white text-xl font-bold tracking-wider">
-                      PASSPORT-ID: {studentData.passport_id || studentData.id?.toUpperCase().slice(0, 8) || 'N/A'}
+                      PASSPORT-ID: {(studentData.passport_id?.replace(/^STU-/, '') || studentData.student_id?.replace(/^STU-/, '') || studentData.id?.toUpperCase().slice(0, 8)) || 'N/A'}
                     </p>
                     <p className="text-white/70 text-sm mt-2">Scan to view profile</p>
                   </div>
@@ -370,7 +370,7 @@ const StudentCard3D = () => {
         {/* Additional Info Below Card */}
         <div className="mt-8 text-center">
           <p className="text-gray-600 text-sm">
-            This is a digital student profile card. Scan the QR code to access the full profile.
+            This is a digital learner profile card. Scan the QR code to access the full profile.
           </p>
         </div>
       </div>

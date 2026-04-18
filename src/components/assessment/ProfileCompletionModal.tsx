@@ -82,7 +82,9 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
   });
 
   // Student type selection state
-  const [studentType, setStudentType] = useState<'school' | 'college' | ''>('');
+  const [studentType, setStudentType] = useState<'school' | 'college' | 'profession' | ''>('');
+  const [professionName, setProfessionName] = useState('');
+  const [professionProgram, setProfessionProgram] = useState('');
 
   // Custom institution states
   const [showCustomSchool, setShowCustomSchool] = useState(false);
@@ -158,36 +160,40 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
                        initialProfileData.users?.role || 
                        (Array.isArray(initialProfileData.users) && initialProfileData.users[0]?.role);
       
-      console.log('🔍 ProfileCompletionModal - Detecting student type:', {
-        fullProfileData: initialProfileData,
-        directRole: initialProfileData.role,
-        nestedRole: initialProfileData.users?.role,
-        arrayRole: Array.isArray(initialProfileData.users) ? initialProfileData.users[0]?.role : null,
-        finalRole: userRole,
-        hasSchoolId: initialProfileData.school_id || initialProfileData.schoolId,
-        hasUniversityId: initialProfileData.university_college_id || initialProfileData.universityId
-      });
+      // CRITICAL: Check if this is a professional first (before checking institution data)
+      // Professionals have student_type starting with 'lp_'
+      // OR they have branch_field but no university/school (RLS workaround)
+      const hasBranch = Boolean(initialProfileData.branch_field);
+      const hasUniversityData = Boolean(initialProfileData.university_college_id || initialProfileData.universityId || initialProfileData.university);
+      const hasSchoolData = Boolean(initialProfileData.school_id || initialProfileData.schoolId);
+      const isProfessionalByType = initialProfileData.student_type?.startsWith('lp_');
+      const isProfessionalByData = hasBranch && !hasUniversityData && !hasSchoolData;
+      
+      if (isProfessionalByType || isProfessionalByData) {
+        setStudentType('profession');
+        // Extract profession name and program from existing data
+        if (initialProfileData.student_type) {
+          const profName = (initialProfileData.student_type as string).replace('lp_', '').replace(/_/g, ' ');
+          setProfessionName(profName);
+        }
+        if (initialProfileData.branch_field) {
+          setProfessionProgram(initialProfileData.branch_field);
+        }
+        return; // Skip institution detection for professionals
+      }
 
-      if (userRole === 'school_student') {
-        console.log('✅ Detected school_student from role');
-        setStudentType('school');
-      } else if (userRole === 'college_student') {
-        console.log('✅ Detected college_student from role');
-        setStudentType('college');
-      } else {
-        // Fallback: Detect student type based on existing data
-        const hasSchoolId = initialProfileData.school_id || initialProfileData.schoolId;
-        const hasUniversityId = initialProfileData.university_college_id || initialProfileData.universityId;
+      // Only auto-detect student type if they have institution data
+      // Otherwise, let them choose (school, college, or profession)
+      const hasSchoolId = initialProfileData.school_id || initialProfileData.schoolId;
+      const hasUniversityId = initialProfileData.university_college_id || initialProfileData.universityId;
+      const hasInstitutionData = hasSchoolId || hasUniversityId;
 
-        console.log('⚠️ No role found, using fallback detection', { hasSchoolId, hasUniversityId });
-        if (hasSchoolId && !hasUniversityId) {
-          console.log('✅ Detected school student from school_id');
+      if (hasInstitutionData) {
+        // User has already selected an institution, auto-detect type
+        if (userRole === 'school_student' || (hasSchoolId && !hasUniversityId)) {
           setStudentType('school');
-        } else if (hasUniversityId && !hasSchoolId) {
-          console.log('✅ Detected college student from university_college_id');
+        } else if (userRole === 'college_student' || (hasUniversityId && !hasSchoolId)) {
           setStudentType('college');
-        } else {
-          console.log('❌ Could not determine student type');
         }
       }
 
@@ -234,7 +240,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
   }, [initialProfileData, userEmail]);
 
   // Handle student type change
-  const handleStudentTypeChange = (type: 'school' | 'college' | '') => {
+  const handleStudentTypeChange = (type: 'school' | 'college' | 'profession' | '') => {
     setStudentType(type);
 
     // Clear opposite type data when switching
@@ -250,6 +256,8 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       setShowCustomUniversity(false);
       setCustomCollegeName('');
       setCustomUniversityName('');
+      setProfessionName('');
+      setProfessionProgram('');
     } else if (type === 'college') {
       setProfileData(prev => ({
         ...prev,
@@ -260,6 +268,26 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       }));
       setShowCustomSchool(false);
       setCustomSchoolName('');
+      setProfessionName('');
+      setProfessionProgram('');
+    } else if (type === 'profession') {
+      setProfileData(prev => ({
+        ...prev,
+        schoolId: '',
+        schoolClassId: '',
+        grade: '',
+        gradeStartDate: '',
+        universityId: '',
+        universityCollegeId: '',
+        programId: '',
+        semester: ''
+      }));
+      setShowCustomSchool(false);
+      setShowCustomCollege(false);
+      setShowCustomUniversity(false);
+      setCustomSchoolName('');
+      setCustomCollegeName('');
+      setCustomUniversityName('');
     }
   };
 
@@ -267,10 +295,11 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
   const studentDataForTypeCheck = {
     university_college_id: profileData.universityCollegeId || profileData.universityId,
     school_id: profileData.schoolId,
-    role: studentType === 'college' ? 'college_student' : studentType === 'school' ? 'school_student' : undefined
+    role: studentType === 'college' ? 'college_student' : studentType === 'school' ? 'school_student' : studentType === 'profession' ? 'college_student' : undefined
   };
   const isSchoolStudent = checkIsSchoolStudent(studentDataForTypeCheck);
-  const isCollegeStudent = checkIsCollegeStudent(studentDataForTypeCheck);
+  const isCollegeStudent = checkIsCollegeStudent(studentDataForTypeCheck) && studentType !== 'profession';
+  const isProfessional = studentType === 'profession';
   const isUndetermined = !studentType && !profileData.schoolId && !profileData.universityId && !profileData.universityCollegeId;
 
   // Get filtered options based on selections
@@ -340,7 +369,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
     const errors: string[] = [];
 
     if (!studentType && isUndetermined) {
-      errors.push('Please select student type (School or College)');
+      errors.push('Please select learner type (School, College, or Profession)');
       return errors;
     }
 
@@ -363,6 +392,15 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       // Program is optional - user might just want to specify university and college
     }
 
+    if (studentType === 'profession' || isProfessional) {
+      if (!professionName) {
+        errors.push('Profession name is required');
+      }
+      if (!professionProgram) {
+        errors.push('Program/Course is required');
+      }
+    }
+
     return errors;
   };
 
@@ -383,7 +421,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       // IMPORTANT: Only send the fields that are being edited in this modal
       // Don't send the entire profileData object as it may have empty strings
       // for fields that weren't loaded (like name, phone, etc.)
-      const dataToSave = {};
+      const dataToSave: any = {};
       
       // Map custom entries to correct database columns
       // Based on studentSettingsService.js field mapping:
@@ -409,6 +447,17 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
         dataToSave.branch = customProgramName;
       }
 
+      // For profession type, store profession name in student_type field
+      // Replace spaces with underscores for database storage
+      if (studentType === 'profession' && professionName) {
+        const sanitizedProfessionName = professionName.trim().replace(/\s+/g, '_');
+        dataToSave.student_type = `lp_${sanitizedProfessionName}`;
+        // Store program in branch field
+        if (professionProgram) {
+          dataToSave.branch = professionProgram;
+        }
+      }
+
       // Only include institution-related fields that are actually set
       if (profileData.schoolId) dataToSave.schoolId = profileData.schoolId;
       if (profileData.universityId) dataToSave.universityId = profileData.universityId;
@@ -418,8 +467,6 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       if (profileData.gradeStartDate) dataToSave.gradeStartDate = profileData.gradeStartDate;
       if (profileData.semester) dataToSave.semester = profileData.semester;
       if (profileData.section) dataToSave.section = profileData.section;
-
-      console.log('💾 Saving profile data (institution fields only):', dataToSave);
 
       // Pass only the fields being updated
       await updateProfile(dataToSave);
@@ -497,7 +544,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
                       Student Type Not Determined
                     </p>
                     <p className="text-sm text-blue-700 mb-4">
-                      Please select whether you are a school student or college student.
+                      Please select whether you are a school student, college student, or professional.
                     </p>
                   </div>
 
@@ -505,12 +552,13 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
                     <label className="text-sm font-semibold text-gray-700">I am a *</label>
                     <select
                       value={studentType}
-                      onChange={(e) => handleStudentTypeChange(e.target.value as 'school' | 'college' | '')}
+                      onChange={(e) => handleStudentTypeChange(e.target.value as 'school' | 'college' | 'profession' | '')}
                       className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
                     >
-                      <option value="">Select Student Type</option>
+                    
                       <option value="school">School Student</option>
                       <option value="college">College Student</option>
+                      <option value="profession">Professional</option>
                     </select>
                   </div>
                 </div>
@@ -771,6 +819,43 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
                       onChange={(e) => handleProfileChange('gradeStartDate', e.target.value)}
                       className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
                     />
+                  </div>
+                </div>
+              )}
+
+              {/* Professional Fields */}
+              {isProfessional && (
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-gray-800 border-b border-slate-100 pb-2">
+                    Professional Information
+                  </h3>
+
+                  {/* Profession Name */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-gray-700" htmlFor="professionName">Profession Name *</label>
+                    <input
+                      type="text"
+                      id="professionName"
+                      value={professionName}
+                      onChange={(e) => setProfessionName(e.target.value)}
+                      placeholder="e.g., Software Engineer, Doctor, Teacher"
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                    />
+                    <p className="text-xs text-gray-500">Enter your current profession or job title</p>
+                  </div>
+
+                  {/* Program/Course */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-gray-700" htmlFor="professionProgram">Degree *</label>
+                    <input
+                      type="text"
+                      id="professionProgram"
+                      value={professionProgram}
+                      onChange={(e) => setProfessionProgram(e.target.value)}
+                      placeholder="e.g., MBA, B.tech in Computer Science, Nursing"
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                    />
+                    <p className="text-xs text-gray-500">Enter the degree or course you're completed</p>
                   </div>
                 </div>
               )}

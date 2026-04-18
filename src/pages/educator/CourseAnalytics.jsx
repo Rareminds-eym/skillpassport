@@ -301,7 +301,7 @@ const CourseAnalytics = () => {
         {/* Enrollments Table */}
         <Card className="border-0 shadow-lg">
           <CardHeader>
-            <CardTitle>Student Enrollments ({filteredEnrollments.length})</CardTitle>
+            <CardTitle>Learner Enrollments ({filteredEnrollments.length})</CardTitle>
           </CardHeader>
           <CardContent>
             {filteredEnrollments.length === 0 ? (

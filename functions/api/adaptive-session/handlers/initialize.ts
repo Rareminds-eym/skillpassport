@@ -162,10 +162,17 @@ export const initializeHandler: PagesFunction = async (context) => {
 
   } catch (error) {
     console.error('❌ [InitializeHandler] Error:', error);
+    console.error('❌ [InitializeHandler] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('❌ [InitializeHandler] Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      cause: error instanceof Error ? error.cause : undefined
+    });
     return jsonResponse(
       { 
         error: 'Failed to initialize test',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
       },
       500
     );
