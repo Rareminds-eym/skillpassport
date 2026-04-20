@@ -62,11 +62,17 @@ export async function uploadToCloudflareR2(
     // Generate unique filename
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 15);
-    const extension = file.name.split('.').pop();
+    const extension = file.name.includes('.') ? file.name.split('.').pop() : null;
+
+    if (!extension) {
+      return {
+        success: false,
+        error: 'File must have a valid extension (e.g. .jpg, .png, .webp)'
+      };
+    }
+
     const filename = `${folder}/${timestamp}-${randomString}.${extension}`;
 
-    console.log('🚀 Uploading to Cloudflare R2...');
-    
     const formData = new FormData();
     formData.append('file', file);
     formData.append('filename', filename);
@@ -96,7 +102,6 @@ export async function uploadToCloudflareR2(
     }
 
     const data = await response.json();
-    console.log('✅ Uploaded to Cloudflare R2:', data.url);
     
     return {
       success: true,
@@ -123,7 +128,6 @@ export async function deleteFromCloudflareR2(url: string): Promise<boolean> {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError || !session) {
-      console.error('Authentication required');
       return false;
     }
 
@@ -137,7 +141,6 @@ export async function deleteFromCloudflareR2(url: string): Promise<boolean> {
     });
 
     if (response.status === 401) {
-      console.error('Authentication failed. Please refresh and log in again.');
       return false;
     }
 

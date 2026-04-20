@@ -87,8 +87,8 @@ const getTourProgressFromStorage = (): TourProgress => {
 const saveTourProgressToStorage = (progress: TourProgress) => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
-  } catch (error) {
-    console.error('Failed to save tour progress to localStorage:', error);
+  } catch {
+    // localStorage unavailable, silently skip
   }
 };
 
@@ -135,29 +135,23 @@ export const useTourStore = create<TourStore>()(
 
       // Don't start if still loading
       if (loading) {
-        console.log(`⚠️ Tour ${tourKey} requested but tour progress is still loading`);
         return false;
       }
 
       // Don't start if not eligible
       if (!isEligibleForTour(tourKey, state.progress)) {
-        console.log(`⚠️ Tour ${tourKey} requested but is not eligible`);
         return false;
       }
 
       // Don't start if another tour is running
       if (isTourRunning && activeTourKey !== tourKey) {
-        console.log(`⚠️ Tour ${tourKey} requested but tour ${activeTourKey} is already running`);
         return false;
       }
 
       // Don't start if same tour is already running
       if (isTourRunning && activeTourKey === tourKey) {
-        console.log(`⚠️ Tour ${tourKey} already running`);
         return false;
       }
-
-      console.log(`🎯 Starting tour: ${tourKey}`);
 
       set((store) => {
         store.state.isRunning = true;
