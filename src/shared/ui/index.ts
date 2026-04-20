@@ -11,7 +11,7 @@ export { default as NotificationModal } from './NotificationModal';
 export { PulseBeams } from './pulse-beams';
 export { ShinyButton } from './shiny-button';
 export { default as ShinyButtonDemo } from './shiny-button-demo';
-export { default as ShinyButtonExamples } from './shiny-button-examples';
+
 export { Sparkles } from './sparkles';
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
 export { TextGenerateEffect, TextGenerateEffectOnce } from './text-generate-effect';

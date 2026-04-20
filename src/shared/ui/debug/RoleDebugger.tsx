@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/shared/api/supabaseClient";
 import { useUserRole } from '@/entities/user';
 import { useUser, useUserRole as useUserRoleFromStore } from '@/stores';
 
 const RoleDebugger: React.FC = () => {
+  // Do not render in production — debug component only
+  if (import.meta.env.PROD) return null;
+
   const authUser = useUser();
   const { role: authRole } = useUserRoleFromStore();
   const [userInfo, setUserInfo] = useState<any>(null);
@@ -11,43 +14,37 @@ const RoleDebugger: React.FC = () => {
   const [educatorData, setEducatorData] = useState<any>(null);
   const { role, permissions, loading } = useUserRole(authUser, authRole);
 
-  useEffect(() => {
-    fetchDebugInfo();
-  }, []);
-
-  const fetchDebugInfo = async () => {
+  const fetchDebugInfo = useCallback(async () => {
     try {
-      // Check session first
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('Session exists:', !!session);
+      const { data: { session: _session } } = await supabase.auth.getSession();
 
       const { data: { user }, error } = await supabase.auth.getUser();
-      console.log('User fetch error:', error);
-      console.log('User exists:', !!user);
 
       setUserInfo(user || { error: error?.message || 'No user found' });
 
       if (user) {
-        const { data: teacher, error: teacherError } = await supabase
+        const { data: teacher } = await supabase
           .from('teachers')
           .select('*')
           .eq('email', user.email)
           .maybeSingle();
-        console.log('Teacher query error:', teacherError);
         setTeacherData(teacher);
 
-        const { data: educator, error: educatorError } = await supabase
+        const { data: educator } = await supabase
           .from('school_educators')
           .select('*')
           .eq('user_id', user.id)
           .maybeSingle();
-        console.log('Educator query error:', educatorError);
         setEducatorData(educator);
       }
     } catch (err) {
-      console.error('Debug fetch error:', err);
+      setUserInfo({ error: err instanceof Error ? err.message : 'Failed to fetch debug info' });
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchDebugInfo();
+  }, [fetchDebugInfo]);
 
   if (loading) return <div>Loading role info...</div>;
 
