@@ -4,9 +4,6 @@ import { useUserRole } from '@/entities/user';
 import { useUser, useUserRole as useUserRoleFromStore } from '@/stores';
 
 const RoleDebugger: React.FC = () => {
-  // Do not render in production — debug component only
-  if (import.meta.env.PROD) return null;
-
   const authUser = useUser();
   const { role: authRole } = useUserRoleFromStore();
   const [userInfo, setUserInfo] = useState<any>(null);
@@ -16,11 +13,14 @@ const RoleDebugger: React.FC = () => {
 
   const fetchDebugInfo = useCallback(async () => {
     try {
-      const { data: { session: _session } } = await supabase.auth.getSession();
-
       const { data: { user }, error } = await supabase.auth.getUser();
 
-      setUserInfo(user || { error: error?.message || 'No user found' });
+      if (error) {
+        setUserInfo({ error: error.message });
+        return;
+      }
+
+      setUserInfo(user || { error: 'No user found' });
 
       if (user) {
         const { data: teacher } = await supabase
@@ -45,6 +45,9 @@ const RoleDebugger: React.FC = () => {
   useEffect(() => {
     fetchDebugInfo();
   }, [fetchDebugInfo]);
+
+  // Guard AFTER all hooks — do not render in production
+  if (import.meta.env.PROD) return null;
 
   if (loading) return <div>Loading role info...</div>;
 

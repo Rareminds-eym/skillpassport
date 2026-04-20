@@ -88,7 +88,8 @@ const saveTourProgressToStorage = (progress: TourProgress) => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
   } catch (error) {
-    // localStorage unavailable, silently skip
+    // localStorage unavailable (quota exceeded, private browsing, security restrictions)
+    // Tour progress is non-critical — silently skip to avoid disrupting the user experience
   }
 };
 

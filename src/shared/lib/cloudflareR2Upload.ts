@@ -71,7 +71,7 @@ export async function uploadToCloudflareR2(
       };
     }
 
-    const extension: string = extensionMatch; // safe: narrowed to string after null check
+    const extension: string = extensionMatch;
     const filename = `${folder}/${timestamp}-${randomString}.${extension}`;
 
     const formData = new FormData();

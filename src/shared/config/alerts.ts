@@ -240,7 +240,7 @@ class AlertService {
    * Send email alert (placeholder - integrate with email service)
    */
   private sendEmailAlert(alert: Alert): void {
-    // TODO: Integrate with email service
+    // TODO: Integrate with email service for structured alert logging
     // await emailService.sendAlert({
     //   to: 'admin@organization.com',
     //   subject: `[${alert.severity.toUpperCase()}] ${alert.message}`,
@@ -252,7 +252,7 @@ class AlertService {
    * Send Slack alert (placeholder - integrate with Slack webhook)
    */
   private sendSlackAlert(alert: Alert): void {
-    // TODO: Integrate with Slack webhook
+    // TODO: Integrate with Slack webhook for structured alert logging
     // await fetch(SLACK_WEBHOOK_URL, {
     //   method: 'POST',
     //   body: JSON.stringify({
