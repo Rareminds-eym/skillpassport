@@ -87,7 +87,7 @@ const getTourProgressFromStorage = (): TourProgress => {
 const saveTourProgressToStorage = (progress: TourProgress) => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
-  } catch {
+  } catch (error) {
     // localStorage unavailable, silently skip
   }
 };
