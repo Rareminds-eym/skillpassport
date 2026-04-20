@@ -66,7 +66,6 @@ export { default as AddOnCardRoot } from './ui/AddOnCard';
 export { default as AddOnCheckout } from './ui/AddOnCheckout';
 export { default as AddOnMarketplaceRoot } from './ui/AddOnMarketplace';
 export { default as BundleCardRoot } from './ui/BundleCard';
-export { default as FeatureGateRoot } from './ui/FeatureGate';
 export { default as ReceiptCardRoot } from './ui/ReceiptCard';
 export { default as SubscriptionBannerRoot } from './ui/SubscriptionBanner';
 export { default as SubscriptionDashboardRoot } from './ui/SubscriptionDashboard';
@@ -157,20 +156,27 @@ export type {
 
 // API & Data Access
 export * from './api';
-export { capitalizeFirstLetter } from './lib/signupValidation';
-export { getInitialFormData } from './lib/signupValidation';
-export { formatOtp } from './lib/signupValidation';
-export { validateSignupFields } from './lib/signupValidation';
-export { formatPhoneNumber } from './lib/signupValidation';
-export { default as paymentsApiService } from './api/paymentsApiService';
+export {
+  capitalizeFirstLetter,
+  getInitialFormData,
+  formatOtp,
+  validateSignupFields,
+  formatPhoneNumber
+} from './lib/signupValidation';
+
 export { default as SignupFormFields, ALL_COUNTRIES, LANGUAGES } from './ui/shared/SignupFormFields';
 
 export { default as addOnCatalogService } from './api/addOnCatalogService';
-
-export { useSubscriptionAccess } from '@/stores';
 
 export { default as addOnAnalyticsService } from './api/addOnAnalyticsService';
 
 export { formatDate } from './lib/subscriptionHelpers';
 
 export { default as addOnPaymentService } from './api/addOnPaymentService';
+
+/**
+ * @deprecated Use useSubscriptionAccess from @/stores directly instead.
+ * This re-export will be removed in the next major version.
+ * Import directly: import { useSubscriptionAccess } from '@/stores';
+ */
+export { useSubscriptionAccess } from '@/stores';
