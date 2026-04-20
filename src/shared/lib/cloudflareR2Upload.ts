@@ -62,15 +62,16 @@ export async function uploadToCloudflareR2(
     // Generate unique filename
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 15);
-    const extension = file.name.includes('.') ? file.name.split('.').pop() : null;
+    const extensionMatch = file.name.includes('.') ? file.name.split('.').pop() : undefined;
 
-    if (!extension) {
+    if (!extensionMatch) {
       return {
         success: false,
         error: 'File must have a valid extension (e.g. .jpg, .png, .webp)'
       };
     }
 
+    const extension: string = extensionMatch;
     const filename = `${folder}/${timestamp}-${randomString}.${extension}`;
 
     const formData = new FormData();
@@ -94,7 +95,6 @@ export async function uploadToCloudflareR2(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error('❌ Upload failed:', errorData);
       return {
         success: false,
         error: errorData.error || `Upload failed with status ${response.status}`
@@ -109,7 +109,6 @@ export async function uploadToCloudflareR2(
     };
 
   } catch (error) {
-    console.error('❌ Error uploading image:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Upload failed'
@@ -145,14 +144,12 @@ export async function deleteFromCloudflareR2(url: string): Promise<boolean> {
     }
 
     if (!response.ok) {
-      console.error('Error deleting from R2:', await response.text());
       return false;
     }
 
     const data = await response.json();
     return data.success === true;
   } catch (error) {
-    console.error('Error deleting image:', error);
     return false;
   }
 }

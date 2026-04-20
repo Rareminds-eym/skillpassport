@@ -12,7 +12,7 @@ import { useState } from "react";
 // Example 1: Basic Usage
 export function BasicExample() {
   return (
-    <ShinyButton onClick={() => {}}>
+    <ShinyButton>
       Get Started
     </ShinyButton>
   );
@@ -21,7 +21,7 @@ export function BasicExample() {
 // Example 2: With Icons
 export function WithIconsExample() {
   return (
-    <ShinyButton onClick={() => {}}>
+    <ShinyButton>
       <div className="flex items-center gap-2">
         <Lock className="w-5 h-5" />
         <span>Complete Pre-Registration</span>
@@ -95,7 +95,7 @@ export function FormSubmitExample() {
 // Example 5: Download Button
 export function DownloadExample() {
   return (
-    <ShinyButton onClick={() => {}}>
+    <ShinyButton>
       <div className="flex items-center gap-2">
         <Download className="w-5 h-5" />
         <span>Download Now</span>
@@ -107,7 +107,7 @@ export function DownloadExample() {
 // Example 6: Success Button
 export function SuccessExample() {
   return (
-    <ShinyButton onClick={() => {}}>
+    <ShinyButton>
       <div className="flex items-center gap-2">
         <Check className="w-5 h-5" />
         <span>Confirmed</span>
