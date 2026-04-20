@@ -986,7 +986,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                       )}
                     </div>
                     <span className="text-sm text-gray-600 leading-relaxed">
-                      📲 I'd like to receive updates & reminders on WhatsApp
+                       I'd like to receive updates & reminders on WhatsApp
                     </span>
                   </label>
                 </div>
