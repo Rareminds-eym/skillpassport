@@ -163,7 +163,7 @@ export {
   validateSignupFields,
   formatPhoneNumber
 } from './lib/signupValidation';
-export { default as paymentsApiService } from './api/paymentsApiService';
+
 export { default as SignupFormFields, ALL_COUNTRIES, LANGUAGES } from './ui/shared/SignupFormFields';
 
 export { default as addOnCatalogService } from './api/addOnCatalogService';
@@ -173,3 +173,10 @@ export { default as addOnAnalyticsService } from './api/addOnAnalyticsService';
 export { formatDate } from './lib/subscriptionHelpers';
 
 export { default as addOnPaymentService } from './api/addOnPaymentService';
+
+/**
+ * @deprecated Use useSubscriptionAccess from @/stores directly instead.
+ * This re-export will be removed in the next major version.
+ * Import directly: import { useSubscriptionAccess } from '@/stores';
+ */
+export { useSubscriptionAccess } from '@/stores';
