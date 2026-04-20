@@ -67,7 +67,6 @@ const validateForm = (form, emailVerified, phoneVerified, consentGiven) => {
 
   return errors;
 };
-
 const sendOTPEmail = async (email, otp, name) => {
   const response = await fetch(`${EMAIL_API_URL}/event-otp`, {
     method: 'POST',
@@ -77,6 +76,30 @@ const sendOTPEmail = async (email, otp, name) => {
 
   if (!response.ok) throw new Error('Failed to send verification email');
   return true;
+};
+
+const triggerZohoFlow = async (details) => {
+  try {
+    await fetch('/api/zoho-simple/trigger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: details.name,
+        email: details.email,
+        lastName: details.lastName || 'Unknown',
+        mobile: details.phone,
+        company: details.company || '',
+        amount: details.amount,
+        product: details.product || 'skill-passport',
+        purchaseId: details.orderId,
+        type: details.type || 'registration',
+        status: details.status || 'completed',
+        whatsappOptIn: details.whatsappOptIn === true,
+      }),
+    });
+  } catch (err) {
+    console.error('Zoho trigger error:', err);
+  }
 };
 
 const sendConfirmationEmail = async (details) => {
@@ -97,14 +120,14 @@ const sendConfirmationEmail = async (details) => {
   }
 };
 
-const InputField = ({ label, icon: Icon, error, verified, disabled, rightElement, ...props }) => (
+const InputField = ({ label, icon: Icon, error, verified, disabled, rightElement, required = true, ...props }) => (
   <motion.div
     initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.3 }}
   >
     <label className="block text-sm sm:text-base font-semibold text-gray-800 mb-2">
-      {label} <span className="text-blue-600">*</span>
+      {label} {required && <span className="text-blue-600">*</span>}
     </label>
     <div className="relative">
       {Icon && (
@@ -150,7 +173,6 @@ const InputField = ({ label, icon: Icon, error, verified, disabled, rightElement
     )}
   </motion.div>
 );
-
 const TermsModal = ({ isOpen, onClose, onAccept, registrationFee }) => {
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
   const scrollContainerRef = useRef(null);
@@ -245,11 +267,12 @@ const TermsModal = ({ isOpen, onClose, onAccept, registrationFee }) => {
     </AnimatePresence>
   );
 };
-
 export default function RegistrationForm({ campaign = 'skill-passport' }) {
   const location = useLocation();
   const isCorporate = location.pathname.includes('/register/corporate');
-  const REGISTRATION_FEE = isCorporate ? REGISTRATION_FEE_CORPORATE : REGISTRATION_FEE_STUDENT;
+  const BASE_FEE_STUDENT = 99;
+  const COMBO_FEE_STUDENT = 499; // Guide + SkillPassport combo
+  const REGISTRATION_FEE_CORPORATE = 7500;
   
   const [form, setForm] = useState({ name: '', email: '', phone: '' });
   const [errors, setErrors] = useState({});
@@ -280,6 +303,13 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
   const [consentGiven, setConsentGiven] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [hasReadTerms, setHasReadTerms] = useState(false);
+  const [upsell, setUpsell] = useState(true);
+  const [whatsappOptIn, setWhatsappOptIn] = useState(true);
+
+  // Calculate registration fee based on type and upsell
+  const REGISTRATION_FEE = isCorporate 
+    ? REGISTRATION_FEE_CORPORATE 
+    : upsell ? COMBO_FEE_STUDENT : BASE_FEE_STUDENT;
 
   useEffect(() => {
     loadRazorpay()
@@ -315,7 +345,6 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
       setPhoneOtpTimeout(60);
     }
   }, [errors]);
-
   const handleSendOTP = async () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!form.email?.trim() || !emailRegex.test(form.email)) {
@@ -353,7 +382,6 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
     try {
       const result = await sendPhoneOTP(cleanPhone);
       setPhoneVerificationId(result.verificationId);
-      // Parse timeout from API response (comes as string "60.0")
       const timeoutSeconds = parseInt(result.timeout) || 60;
       setPhoneOtpTimeout(timeoutSeconds);
       setPhoneOtpSent(true);
@@ -363,7 +391,6 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
       setSendingPhoneOTP(false);
     }
   };
-
   const handlePayment = async () => {
     const validationErrors = validateForm(form, emailVerified, phoneVerified, consentGiven);
     if (Object.keys(validationErrors).length > 0) {
@@ -415,6 +442,20 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
               status: 'completed',
               planName: `Pre-Registration - ${campaign}`
             });
+
+            if (!isCorporate) {
+              await triggerZohoFlow({
+                name: form.name.trim(),
+                email: form.email.trim(),
+                phone: form.phone.replace(/\D/g, ''),
+                amount: REGISTRATION_FEE,
+                orderId: response.razorpay_order_id,
+                product: upsell ? 'guide-skillpassport-combo' : 'skillpassport-basic',
+                type: 'registration',
+                status: 'completed',
+                whatsappOptIn,
+              });
+            }
 
             await sendConfirmationEmail({
               name: form.name.trim(),
@@ -473,7 +514,6 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
       setLoading(false);
     }
   };
-
   // Success View
   if (success && orderDetails) {
     return (
@@ -535,18 +575,18 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
       </section>
     );
   }
-
   // Registration Form
   return (
     <section id="registration-form" className="py-8 sm:py-12 md:py-16 lg:py-20 bg-gradient-to-br from-gray-50 via-slate-50 to-gray-100">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-6 sm:mb-8"
-        >
-          {!isCorporate && (
+      {!isCorporate ? (
+        // Student Registration - Two Column Layout
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-center mb-6 sm:mb-8"
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -565,435 +605,842 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
               </div>
               <span className="text-gray-900 text-sm sm:text-base font-bold">For Students Only</span>
             </motion.div>
-          )}
 
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2 sm:mb-3 px-4">
-            {isCorporate ? 'Corporate Registration' : 'Registration'}
-          </h2>
-          <p className="text-gray-600 text-sm sm:text-base leading-relaxed max-w-md mx-auto px-4">
-            {isCorporate 
-              ? 'Access skilled talent and hire confidently' 
-              : 'Secure your access to Skill Ecosystem today'}
-          </p>
-        </motion.div>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2 sm:mb-3 px-4">
+              Registration
+            </h2>
+            <p className="text-gray-600 text-sm sm:text-base leading-relaxed max-w-md mx-auto px-4">
+              Secure your access to the Job-Ready AI System today
+            </p>
+          </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="bg-white rounded-2xl sm:rounded-3xl shadow-xl border border-gray-100 p-5 sm:p-6 md:p-8 lg:p-10"
-        >
-          <div className="space-y-4 sm:space-y-5">
-            <InputField
-              label="Full Name"
-              icon={User}
-              type="text"
-              value={form.name}
-              onChange={(e) => updateField('name', e.target.value)}
-              placeholder="Enter your full name"
-              error={errors.name}
-            />
-
-            <div>
-              <InputField
-                label="Email Address"
-                icon={Mail}
-                type="email"
-                value={form.email}
-                onChange={(e) => updateField('email', e.target.value)}
-                placeholder="you@example.com"
-                error={errors.email}
-                verified={emailVerified}
-                disabled={emailVerified}
-                rightElement={
-                  !emailVerified && (
-                    <button
-                      type="button"
-                      onClick={handleSendOTP}
-                      disabled={sendingOTP || !form.email}
-                      className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
-                    >
-                      {sendingOTP ? (
-                        <>
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                          <span className="hidden sm:inline">Sending...</span>
-                          <span className="sm:hidden">...</span>
-                        </>
-                      ) : otpSent ? (
-                        'Resend'
-                      ) : (
-                        'Verify'
-                      )}
-                    </button>
-                  )
-                }
-              />
-
-              <AnimatePresence>
-                {otpSent && !emailVerified && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="mt-2 sm:mt-3 overflow-hidden"
-                  >
-                    <div className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl border-2 border-blue-100 shadow-lg">
-                      <OTPInput
-                        length={6}
-                        email={form.email}
-                        expirySeconds={600}
-                        onComplete={(code) => {
-                          setOtpValue(code);
-                          setTimeout(() => {
-                            if (code === generatedOTP) {
-                              setEmailVerified(true);
-                              setOtpSent(false);
-                              setOtpError('');
-                            } else {
-                              setOtpError('Invalid verification code. Please try again.');
-                            }
-                          }, 500);
-                        }}
-                        onResend={handleSendOTP}
-                        error={otpError}
-                        isVerifying={verifyingOTP}
-                        isSuccess={emailVerified}
-                      />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <AnimatePresence>
-                {emailVerified && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-2 flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span className="text-xs sm:text-sm font-semibold">Email verified successfully</span>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            <div>
-              <InputField
-                label="Phone Number"
-                icon={Phone}
-                type="tel"
-                value={form.phone}
-                onChange={(e) => updateField('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
-                placeholder="10-digit mobile number"
-                error={errors.phone}
-                verified={phoneVerified}
-                disabled={phoneVerified}
-                rightElement={
-                  !phoneVerified && (
-                    <button
-                      type="button"
-                      onClick={handleSendPhoneOTP}
-                      disabled={sendingPhoneOTP || !form.phone || form.phone.length !== 10}
-                      className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
-                    >
-                      {sendingPhoneOTP ? (
-                        <>
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                          <span className="hidden sm:inline">Sending...</span>
-                          <span className="sm:hidden">...</span>
-                        </>
-                      ) : phoneOtpSent ? (
-                        'Resend'
-                      ) : (
-                        'Verify'
-                      )}
-                    </button>
-                  )
-                }
-              />
-
-              <AnimatePresence>
-                {phoneOtpSent && !phoneVerified && (
-                  <motion.div
-                    key={phoneVerificationId}
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="mt-2 sm:mt-3 overflow-hidden"
-                  >
-                    <div className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl border-2 border-blue-100 shadow-lg">
-                      <OTPInput
-                        length={4}
-                        email={form.phone}
-                        expirySeconds={phoneOtpTimeout}
-                        onComplete={async (code) => {
-                          setPhoneOtpValue(code);
-                          setVerifyingPhoneOTP(true);
-                          setPhoneOtpError('');
-                          
-                          try {
-                            const result = await validatePhoneOTP(
-                              form.phone.replace(/\D/g, ''),
-                              phoneVerificationId,
-                              code
-                            );
-                            
-                            if (result.verified) {
-                              setPhoneVerified(true);
-                              setPhoneOtpSent(false);
-                              setPhoneOtpError('');
-                            } else {
-                              setPhoneOtpError('Invalid OTP. Please try again.');
-                            }
-                          } catch (error) {
-                            setPhoneOtpError(error.message || 'Invalid OTP. Please try again.');
-                          } finally {
-                            setVerifyingPhoneOTP(false);
-                          }
-                        }}
-                        onResend={handleSendPhoneOTP}
-                        error={phoneOtpError}
-                        isVerifying={verifyingPhoneOTP}
-                        isSuccess={phoneVerified}
-                      />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <AnimatePresence>
-                {phoneVerified && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-2 flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span className="text-xs sm:text-sm font-semibold">Phone verified successfully</span>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.4 }}
-            className="mt-5 sm:mt-6"
-          >
-            <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-white border border-grey-200 shadow-md hover:shadow-lg transition-all duration-300 group">
-              <div className="absolute inset-0 bg-grey-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              
-              <div className="relative p-4 sm:p-5">
-                <div className="flex items-center gap-2 sm:gap-3 mb-3">
-                  <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
-                    className="w-12 h-12 sm:w-16 sm:h-16 flex-shrink-0 flex items-center justify-center"
-                  >
-                    <div style={{ transform: 'scale(1.5) sm:scale(1.8)', transformOrigin: 'center' }}>
-                      <DotLottieReact
-                        src="https://lottie.host/a780779d-eba6-4a45-a35d-fa077c411c67/A719VudDmU.lottie"
-                        loop
-                        autoplay
-                        style={{ width: '48px', height: '48px' }}
-                      />
-                    </div>
-                  </motion.div>
-                  <div className="flex-1">
-                    <h3 className="text-base sm:text-lg font-bold text-gray-900">Registration Fee</h3>
-                    <p className="text-xs sm:text-sm text-gray-500 flex items-center gap-1 sm:gap-1.5 mt-0.5">
-                      <Lock className="w-3 h-3" />
-                      Secure payment via Razorpay
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
+            {/* Left Column - Promotional Content */}
+            <div className="lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-5rem)]">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="space-y-8 sm:space-y-6"
+              >
+                {/* Main Offer Card */}
+                <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-xl border border-gray-100">
+                  <div className="inline-block bg-blue-50 text-blue-600 text-xs font-semibold uppercase tracking-wider rounded-full px-3 py-1 mb-4 border border-blue-200">
+                    AI-Powered Career System
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 leading-tight">
+                    Build Your Entire Job Application System in{' '}
+                    <span className="text-blue-600">1 Day</span> Using AI
+                  </h3>
+                  <p className="text-gray-600 text-sm sm:text-base mb-6 leading-relaxed">
+                    Stop applying randomly. Set up a system that gets you interviews.
+                  </p>
+                  
+                  <div className="border-t border-gray-100 pt-5">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
+                      What You'll Get
                     </p>
+                    <div className="space-y-3">
+                      {[
+                        "1-day strategy with zero guesswork",
+                        "Resume + AI setup that actually gets you interviews", 
+                        "Outreach + interview flow that gets responses"
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-start gap-3">
+                          <div className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center mt-0.5 flex-shrink-0">
+                            <Check className="w-2.5 h-2.5 text-blue-600" strokeWidth={3} />
+                          </div>
+                          <span className="text-sm text-gray-700 leading-relaxed">{item}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
-                <div className="h-px bg-gray-200 mb-3" />
-
-                <div className="flex items-center justify-between">
-                  <span className="text-xs sm:text-sm font-semibold text-gray-700">Total Amount</span>
-                  <span className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-blue-600">₹{REGISTRATION_FEE}</span>
+                {/* Guarantee Card */}
+                <div className="bg-white rounded-xl p-5 sm:p-6 border border-emerald-200 shadow-lg">
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Shield className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-gray-900 mb-1">7-Day Refund Guarantee</h4>
+                      <p className="text-sm text-gray-600 leading-relaxed">
+                        If you don't find it useful, get your money back. No questions asked.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              <div className="h-1 sm:h-1.5 bg-blue-600" />
+                {/* Stats Card */}
+                <div className="bg-white rounded-xl p-5 sm:p-6 shadow-lg border border-gray-100">
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    {[
+                      ["2,400+", "Students"],
+                      ["4.9★", "Rating"], 
+                      ["1 Day", "System"]
+                    ].map(([value, label]) => (
+                      <div key={label}>
+                        <div className="text-lg sm:text-xl font-bold text-blue-600">{value}</div>
+                        <div className="text-xs text-gray-500 mt-1">{label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
             </div>
-          </motion.div>
+            {/* Right Column - Registration Form */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="w-full"
+            >
+              <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl border border-gray-100 p-5 sm:p-6 md:p-8 lg:p-10">
+                <div className="space-y-4 sm:space-y-5">
+                  <InputField
+                    label="Full Name"
+                    icon={User}
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => updateField('name', e.target.value)}
+                    placeholder="Enter your full name"
+                    error={errors.name}
+                  />
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="mt-5 sm:mt-6"
-          >
-            <label className={`flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg sm:rounded-xl border border-gray-200 transition-all duration-200 bg-white ${
-              hasReadTerms 
-                ? 'cursor-pointer group hover:border-blue-300 hover:bg-blue-50/30' 
-                : 'cursor-not-allowed'
-            }`}>
-              <div className="relative mt-0.5 flex-shrink-0">
-                <input
-                  type="checkbox"
-                  checked={consentGiven}
-                  disabled={!hasReadTerms}
-                  onChange={(e) => {
-                    if (hasReadTerms) {
-                      setConsentGiven(e.target.checked);
-                      if (errors.consent) setErrors(prev => ({ ...prev, consent: null }));
-                    }
-                  }}
-                  className="sr-only peer"
-                />
-                <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-md border-2 transition-all duration-200 flex items-center justify-center shadow-sm
-                  ${!hasReadTerms
-                    ? 'border-gray-300 bg-gray-100'
-                    : consentGiven
-                      ? 'bg-blue-600 border-blue-600 shadow-blue-200'
-                      : errors.consent
-                        ? 'border-red-400 bg-red-50'
-                        : 'border-gray-300 bg-white group-hover:border-blue-400'
+                  <div>
+                    <InputField
+                      label="Email Address"
+                      icon={Mail}
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => updateField('email', e.target.value)}
+                      placeholder="you@example.com"
+                      error={errors.email}
+                      verified={emailVerified}
+                      disabled={emailVerified}
+                      rightElement={
+                        !emailVerified && (
+                          <button
+                            type="button"
+                            onClick={handleSendOTP}
+                            disabled={sendingOTP || !form.email}
+                            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
+                          >
+                            {sendingOTP ? (
+                              <>
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                <span className="hidden sm:inline">Sending...</span>
+                                <span className="sm:hidden">...</span>
+                              </>
+                            ) : otpSent ? (
+                              'Resend'
+                            ) : (
+                              'Verify'
+                            )}
+                          </button>
+                        )
+                      }
+                    />
+
+                    <AnimatePresence>
+                      {otpSent && !emailVerified && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="mt-2 sm:mt-3 overflow-hidden"
+                        >
+                          <div className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl border-2 border-blue-100 shadow-lg">
+                            <OTPInput
+                              length={6}
+                              email={form.email}
+                              expirySeconds={600}
+                              onComplete={(code) => {
+                                setOtpValue(code);
+                                setTimeout(() => {
+                                  if (code === generatedOTP) {
+                                    setEmailVerified(true);
+                                    setOtpSent(false);
+                                    setOtpError('');
+                                  } else {
+                                    setOtpError('Invalid verification code. Please try again.');
+                                  }
+                                }, 500);
+                              }}
+                              onResend={handleSendOTP}
+                              error={otpError}
+                              isVerifying={verifyingOTP}
+                              isSuccess={emailVerified}
+                            />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <AnimatePresence>
+                      {emailVerified && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="mt-2 flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span className="text-xs sm:text-sm font-semibold">Email verified successfully</span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                  <div>
+                    <InputField
+                      label="Phone Number"
+                      icon={Phone}
+                      type="tel"
+                      required={true}
+                      value={form.phone}
+                      onChange={(e) => updateField('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      placeholder="10-digit mobile number"
+                      error={errors.phone}
+                      verified={phoneVerified}
+                      disabled={phoneVerified}
+                      rightElement={
+                        !phoneVerified && (
+                          <button
+                            type="button"
+                            onClick={handleSendPhoneOTP}
+                            disabled={sendingPhoneOTP || !form.phone || form.phone.length !== 10}
+                            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
+                          >
+                            {sendingPhoneOTP ? (
+                              <>
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                <span className="hidden sm:inline">Sending...</span>
+                                <span className="sm:hidden">...</span>
+                              </>
+                            ) : phoneOtpSent ? (
+                              'Resend'
+                            ) : (
+                              'Verify'
+                            )}
+                          </button>
+                        )
+                      }
+                    />
+
+                    <AnimatePresence>
+                      {phoneOtpSent && !phoneVerified && (
+                        <motion.div
+                          key={phoneVerificationId}
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="mt-2 sm:mt-3 overflow-hidden"
+                        >
+                          <div className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl border-2 border-blue-100 shadow-lg">
+                            <OTPInput
+                              length={4}
+                              email={form.phone}
+                              expirySeconds={phoneOtpTimeout}
+                              onComplete={async (code) => {
+                                setPhoneOtpValue(code);
+                                setVerifyingPhoneOTP(true);
+                                setPhoneOtpError('');
+                                
+                                try {
+                                  const result = await validatePhoneOTP(
+                                    form.phone.replace(/\D/g, ''),
+                                    phoneVerificationId,
+                                    code
+                                  );
+                                  
+                                  if (result.verified) {
+                                    setPhoneVerified(true);
+                                    setPhoneOtpSent(false);
+                                    setPhoneOtpError('');
+                                  } else {
+                                    setPhoneOtpError('Invalid OTP. Please try again.');
+                                  }
+                                } catch (error) {
+                                  setPhoneOtpError(error.message || 'Invalid OTP. Please try again.');
+                                } finally {
+                                  setVerifyingPhoneOTP(false);
+                                }
+                              }}
+                              onResend={handleSendPhoneOTP}
+                              error={phoneOtpError}
+                              isVerifying={verifyingPhoneOTP}
+                              isSuccess={phoneVerified}
+                            />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <AnimatePresence>
+                      {phoneVerified && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="mt-2 flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span className="text-xs sm:text-sm font-semibold">Phone verified successfully</span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+
+                {/* Fee summary */}
+                <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
+                  <div className="p-4 flex gap-3 items-center border-b border-gray-100">
+                    <div className="w-3 h-3 rounded-full bg-orange-500 flex-shrink-0" />
+                    <div>
+                      <div className="text-sm font-semibold text-gray-900">Registration Fee</div>
+                      <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                        <Lock className="w-3 h-3" /> Secure payment via Razorpay
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    {upsell ? (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Guide + SkillPassport Combo</span>
+                        <span className="text-sm font-semibold">₹{COMBO_FEE_STUDENT}</span>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">1-Day Job-Ready System</span>
+                        <span className="text-sm font-semibold">₹{BASE_FEE_STUDENT}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3 flex justify-between items-center border-t-2 border-blue-600 bg-blue-50">
+                    <span className="text-sm font-semibold text-gray-700">Total Amount</span>
+                    <span className="text-xl font-bold text-blue-600">₹{REGISTRATION_FEE}</span>
+                  </div>
+                </div>
+
+                {/* UPSELL */}
+                <div
+                  onClick={() => setUpsell(v => !v)}
+                  className={`border-2 rounded-xl p-4 mb-4 cursor-pointer transition-all duration-200 ${
+                    upsell ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-gray-50'
                   }`}
                 >
-                  {consentGiven && <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" strokeWidth={3} />}
+                  <div className="flex gap-3 items-start mb-3">
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-200 ${
+                      upsell ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
+                    }`}>
+                      {upsell && (
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                          <path d="M2.5 6l2.5 2.5 4.5-4.5" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs text-orange-500 font-bold uppercase tracking-wide mb-1">
+                        ⬇ Add This to Make It Work Better
+                      </div>
+                      <div className="text-sm font-bold text-gray-900">
+                        Yes, I want to track my progress with SkillPassport
+                      </div>
+                      <div className="flex gap-2 items-center mt-1">
+                        <span className="text-sm text-gray-400 line-through">₹4,999</span>
+                        <span className="text-lg font-bold text-blue-600">₹{COMBO_FEE_STUDENT}</span>
+                        <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-green-200">
+                          90% OFF
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="border-t border-blue-200 pt-3">
+                    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+                      What You Get with SkillPassport
+                    </p>
+                    {[
+                      "400+ courses across in-demand skills",
+                      "Structured path + portfolio so you always have proof of work", 
+                      "Exclusive job opportunities based on your actual skills and progress"
+                    ].map((item, i) => (
+                      <div key={i} className="flex gap-2 mb-2 items-start">
+                        <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center mt-0.5 flex-shrink-0">
+                          <Check className="w-2.5 h-2.5 text-green-600" strokeWidth={3} />
+                        </div>
+                        <span className="text-sm text-gray-700 leading-relaxed">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* WhatsApp Opt-in */}
+                <div className="mb-4">
+                  <label className="flex gap-3 items-start cursor-pointer" onClick={() => setWhatsappOptIn(v => !v)}>
+                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-200 ${
+                      whatsappOptIn ? 'bg-green-500 border-green-500' : 'border-gray-300'
+                    }`}>
+                      {whatsappOptIn && (
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                          <path d="M1.5 5l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="text-sm text-gray-600 leading-relaxed">
+                       I'd like to receive updates & reminders on WhatsApp
+                    </span>
+                  </label>
+                </div>
+
+                {/* Terms */}
+                <div className="mb-4">
+                  <label className="flex gap-3 items-start cursor-pointer">
+                    <div
+                      onClick={() => { 
+                        setConsentGiven(v => !v); 
+                        if (errors.consent) setErrors(p => ({ ...p, consent: null })); 
+                      }}
+                      className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-200 ${
+                        errors.consent ? 'border-red-400' : consentGiven ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
+                      }`}
+                    >
+                      {consentGiven && (
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                          <path d="M1.5 5l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="text-sm text-gray-600 leading-relaxed">
+                      I agree to the{' '}
+                      <button
+                        type="button"
+                        onClick={() => setShowTerms(true)}
+                        className="text-blue-600 underline cursor-pointer"
+                      >
+                        Terms & Conditions
+                      </button>
+                      {' '}and consent to the payment of ₹{REGISTRATION_FEE} for registration.
+                    </span>
+                  </label>
+                  {errors.consent && (
+                    <div className="text-sm text-orange-500 mt-1 pl-7 font-medium">
+                      {errors.consent}
+                    </div>
+                  )}
+                </div>
+
+                {/* CTA */}
+                <button
+                  onClick={handlePayment}
+                  disabled={loading || !consentGiven}
+                  className={`w-full bg-gradient-to-r from-gray-600 to-gray-700 border-none rounded-full py-4 text-sm font-bold text-white cursor-pointer flex items-center justify-center gap-2 font-inherit shadow-lg transition-opacity duration-150 ${
+                    loading || !consentGiven ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
+                  }`}
+                >
+                  {loading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Processing...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <Lock className="w-4 h-4" /> Register Now ›
+                    </>
+                  )}
+                </button>
+
+                {/* Trust badges */}
+                <div className="flex justify-center gap-5 mt-4">
+                  {[["🔒", "SSL Secured"], ["🛡️", "Razorpay Protected"]].map(([icon, label]) => (
+                    <div key={label} className="flex items-center gap-1 text-xs text-gray-500">
+                      {icon} {label}
+                    </div>
+                  ))}
                 </div>
               </div>
-              <span className="text-xs sm:text-sm leading-relaxed">
-                <span className={`${!hasReadTerms ? 'text-gray-400' : 'text-gray-700'}`}>
-                  I agree to the{' '}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setShowTerms(true)}
-                  className="text-blue-600 hover:text-blue-700 font-semibold underline underline-offset-2 min-h-[44px] inline-flex items-center gap-1 transition-all duration-300"
-                >
-                  {!hasReadTerms && (
-                    <motion.span
-                      animate={{ 
-                        opacity: [1, 0.4, 1],
-                        scale: [1, 1.1, 1]
-                      }}
-                      transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                      className="inline-flex text-blue-600"
-                    >
-                      →
-                    </motion.span>
-                  )}
-                  <motion.span
-                    animate={!hasReadTerms ? {
-                      backgroundColor: ['rgba(59, 130, 246, 0)', 'rgba(59, 130, 246, 0.15)', 'rgba(59, 130, 246, 0)']
-                    } : {}}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                    className="px-1 rounded"
-                  >
-                    Terms & Conditions
-                  </motion.span>
-                </button>
-                <span className={`${!hasReadTerms ? 'text-gray-400' : 'text-gray-700'}`}>
-                  {' '}and consent to the payment of ₹{REGISTRATION_FEE} for registration.
-                </span>
-                {!hasReadTerms && (
-                  <span className="block mt-1 text-xs text-amber-600 font-medium">
-                    Please read the Terms & Conditions first
-                  </span>
-                )}
-              </span>
-            </label>
-            {errors.consent && (
-              <motion.p
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-2 text-xs sm:text-sm text-red-600 flex items-center gap-1 font-medium"
-              >
-                <X className="w-3 h-3" /> {errors.consent}
-              </motion.p>
-            )}
-          </motion.div>
+            </motion.div>
+          </div>
 
-          <AnimatePresence>
-            {paymentError && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="mt-3 sm:mt-4 p-3 bg-red-50 border-2 border-red-200 rounded-lg sm:rounded-xl shadow-sm"
-              >
-                <p className="text-xs sm:text-sm text-red-700 flex items-center gap-2 font-medium">
-                  <X className="w-4 h-4" />
-                  {paymentError}
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="mt-5 sm:mt-6"
-          >
-            <ShinyButton
-              onClick={handlePayment}
-              disabled={loading || !consentGiven}
-              className="w-full py-3 sm:py-4 text-sm sm:text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-300 min-h-[48px] sm:min-h-[56px]"
-            >
-              {loading ? (
-                <div className="flex items-center justify-center gap-2">
-                  <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Processing...</span>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center gap-2">
-                  <Lock className="w-4 h-4" />
-                  <span>Register Now</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              )}
-            </ShinyButton>
-          </motion.div>
-
-          <motion.div
+          <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.6 }}
-            className="mt-5 sm:mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-gray-500"
+            transition={{ delay: 0.7 }}
+            className="text-center text-xs sm:text-sm text-gray-500 mt-5 sm:mt-6 px-4"
           >
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-xs sm:text-sm font-medium">SSL Secured</span>
-            </div>
-            <div className="hidden sm:block w-px h-5 bg-gray-300" />
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-xs sm:text-sm font-medium">Razorpay Protected</span>
+            Need help?{' '}
+            <a href="https://rareminds.in/contact" className="text-blue-600 hover:text-blue-700 font-semibold underline underline-offset-2">
+              Contact Support
+            </a>
+          </motion.p>
+        </div>
+      ) : (
+        // Corporate Registration - Original Single Column Layout  
+        <div className="max-w-2xl mx-auto px-4 sm:px-6">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-center mb-6 sm:mb-8"
+          >
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2 sm:mb-3 px-4">
+              Corporate Registration
+            </h2>
+            <p className="text-gray-600 text-sm sm:text-base leading-relaxed max-w-md mx-auto px-4">
+              Access skilled talent and hire confidently
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="bg-white rounded-2xl sm:rounded-3xl shadow-xl border border-gray-100 p-5 sm:p-6 md:p-8 lg:p-10"
+          >
+            <div className="space-y-4 sm:space-y-5">
+              <InputField
+                label="Full Name"
+                icon={User}
+                type="text"
+                value={form.name}
+                onChange={(e) => updateField('name', e.target.value)}
+                placeholder="Enter your full name"
+                error={errors.name}
+              />
+
+              <div>
+                <InputField
+                  label="Email Address"
+                  icon={Mail}
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => updateField('email', e.target.value)}
+                  placeholder="you@example.com"
+                  error={errors.email}
+                  verified={emailVerified}
+                  disabled={emailVerified}
+                  rightElement={
+                    !emailVerified && (
+                      <button
+                        type="button"
+                        onClick={handleSendOTP}
+                        disabled={sendingOTP || !form.email}
+                        className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
+                      >
+                        {sendingOTP ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            <span className="hidden sm:inline">Sending...</span>
+                            <span className="sm:hidden">...</span>
+                          </>
+                        ) : otpSent ? (
+                          'Resend'
+                        ) : (
+                          'Verify'
+                        )}
+                      </button>
+                    )
+                  }
+                />
+
+                <AnimatePresence>
+                  {otpSent && !emailVerified && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mt-2 sm:mt-3 overflow-hidden"
+                    >
+                      <div className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl border-2 border-blue-100 shadow-lg">
+                        <OTPInput
+                          length={6}
+                          email={form.email}
+                          expirySeconds={600}
+                          onComplete={(code) => {
+                            setOtpValue(code);
+                            setTimeout(() => {
+                              if (code === generatedOTP) {
+                                setEmailVerified(true);
+                                setOtpSent(false);
+                                setOtpError('');
+                              } else {
+                                setOtpError('Invalid verification code. Please try again.');
+                              }
+                            }, 500);
+                          }}
+                          onResend={handleSendOTP}
+                          error={otpError}
+                          isVerifying={verifyingOTP}
+                          isSuccess={emailVerified}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                  {emailVerified && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-2 flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span className="text-xs sm:text-sm font-semibold">Email verified successfully</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <div>
+                <InputField
+                  label="Phone Number"
+                  icon={Phone}
+                  type="tel"
+                  required={false}
+                  value={form.phone}
+                  onChange={(e) => updateField('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  placeholder="10-digit mobile number"
+                  error={errors.phone}
+                  verified={phoneVerified}
+                  disabled={phoneVerified}
+                  rightElement={
+                    !phoneVerified && (
+                      <button
+                        type="button"
+                        onClick={handleSendPhoneOTP}
+                        disabled={sendingPhoneOTP || !form.phone || form.phone.length !== 10}
+                        className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
+                      >
+                        {sendingPhoneOTP ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            <span className="hidden sm:inline">Sending...</span>
+                            <span className="sm:hidden">...</span>
+                          </>
+                        ) : phoneOtpSent ? (
+                          'Resend'
+                        ) : (
+                          'Verify'
+                        )}
+                      </button>
+                    )
+                  }
+                />
+
+                <AnimatePresence>
+                  {phoneOtpSent && !phoneVerified && (
+                    <motion.div
+                      key={phoneVerificationId}
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mt-2 sm:mt-3 overflow-hidden"
+                    >
+                      <div className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl border-2 border-blue-100 shadow-lg">
+                        <OTPInput
+                          length={4}
+                          email={form.phone}
+                          expirySeconds={phoneOtpTimeout}
+                          onComplete={async (code) => {
+                            setPhoneOtpValue(code);
+                            setVerifyingPhoneOTP(true);
+                            setPhoneOtpError('');
+                            
+                            try {
+                              const result = await validatePhoneOTP(
+                                form.phone.replace(/\D/g, ''),
+                                phoneVerificationId,
+                                code
+                              );
+                              
+                              if (result.verified) {
+                                setPhoneVerified(true);
+                                setPhoneOtpSent(false);
+                                setPhoneOtpError('');
+                              } else {
+                                setPhoneOtpError('Invalid OTP. Please try again.');
+                              }
+                            } catch (error) {
+                              setPhoneOtpError(error.message || 'Invalid OTP. Please try again.');
+                            } finally {
+                              setVerifyingPhoneOTP(false);
+                            }
+                          }}
+                          onResend={handleSendPhoneOTP}
+                          error={phoneOtpError}
+                          isVerifying={verifyingPhoneOTP}
+                          isSuccess={phoneVerified}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                  {phoneVerified && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-2 flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span className="text-xs sm:text-sm font-semibold">Phone verified successfully</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.4 }}
+                className="mt-5 sm:mt-6"
+              >
+                <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-white border border-grey-200 shadow-md hover:shadow-lg transition-all duration-300 group">
+                  <div className="absolute inset-0 bg-grey-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  
+                  <div className="relative p-4 sm:p-5">
+                    <div className="flex items-center gap-2 sm:gap-3 mb-3">
+                      <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
+                        className="w-12 h-12 sm:w-16 sm:h-16 flex-shrink-0 flex items-center justify-center"
+                      >
+                        <div style={{ transform: 'scale(1.5) sm:scale(1.8)', transformOrigin: 'center' }}>
+                          <DotLottieReact
+                            src="https://lottie.host/a780779d-eba6-4a45-a35d-fa077c411c67/A719VudDmU.lottie"
+                            loop
+                            autoplay
+                            style={{ width: '48px', height: '48px' }}
+                          />
+                        </div>
+                      </motion.div>
+                      <div className="flex-1">
+                        <h3 className="text-base sm:text-lg font-bold text-gray-900">Registration Fee</h3>
+                        <p className="text-xs sm:text-sm text-gray-500 flex items-center gap-1 sm:gap-1.5 mt-0.5">
+                          <Lock className="w-3 h-3" />
+                          Secure payment via Razorpay
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="h-px bg-gray-200 mb-3" />
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs sm:text-sm font-semibold text-gray-700">Total Amount</span>
+                      <span className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-blue-600">₹{REGISTRATION_FEE}</span>
+                    </div>
+                  </div>
+
+                  <div className="h-1 sm:h-1.5 bg-blue-600" />
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="mt-5 sm:mt-6"
+              >
+                <label className="flex gap-3 items-start cursor-pointer">
+                  <div
+                    onClick={() => { 
+                      setConsentGiven(v => !v); 
+                      if (errors.consent) setErrors(p => ({ ...p, consent: null })); 
+                    }}
+                    className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-200 ${
+                      errors.consent ? 'border-red-400' : consentGiven ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
+                    }`}
+                  >
+                    {consentGiven && (
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                        <path d="M1.5 5l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="text-sm text-gray-600 leading-relaxed">
+                    I agree to the{' '}
+                    <button
+                      type="button"
+                      onClick={() => setShowTerms(true)}
+                      className="text-blue-600 underline cursor-pointer"
+                    >
+                      Terms & Conditions
+                    </button>
+                    {' '}and consent to the payment of ₹{REGISTRATION_FEE} for registration.
+                  </span>
+                </label>
+                {errors.consent && (
+                  <div className="text-sm text-orange-500 mt-1 pl-7 font-medium">
+                    {errors.consent}
+                  </div>
+                )}
+              </motion.div>
+
+              <AnimatePresence>
+                {paymentError && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="mt-3 sm:mt-4 p-3 bg-red-50 border-2 border-red-200 rounded-lg sm:rounded-xl shadow-sm"
+                  >
+                    <p className="text-xs sm:text-sm text-red-700 flex items-center gap-2 font-medium">
+                      <X className="w-4 h-4" />
+                      {paymentError}
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <button
+                onClick={handlePayment}
+                disabled={loading || !consentGiven}
+                className={`w-full bg-gradient-to-r from-gray-600 to-gray-700 border-none rounded-full py-4 text-sm font-bold text-white cursor-pointer flex items-center justify-center gap-2 font-inherit shadow-lg transition-opacity duration-150 ${
+                  loading || !consentGiven ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
+                }`}
+              >
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Processing...</span>
+                  </div>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4" /> Register Now ›
+                  </>
+                )}
+              </button>
+
+              {/* Trust badges */}
+              <div className="flex justify-center gap-5 mt-4">
+                {[["🔒", "SSL Secured"], ["🛡️", "Razorpay Protected"]].map(([icon, label]) => (
+                  <div key={label} className="flex items-center gap-1 text-xs text-gray-500">
+                    {icon} {label}
+                  </div>
+                ))}
+              </div>
             </div>
           </motion.div>
-        </motion.div>
 
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.7 }}
-          className="text-center text-xs sm:text-sm text-gray-500 mt-5 sm:mt-6 px-4"
-        >
-          Need help?{' '}
-          <a href="https://rareminds.in/contact" className="text-blue-600 hover:text-blue-700 font-semibold underline underline-offset-2">
-            Contact Support
-          </a>
-        </motion.p>
-      </div>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7 }}
+            className="text-center text-xs sm:text-sm text-gray-500 mt-5 sm:mt-6 px-4"
+          >
+            Need help?{' '}
+            <a href="https://rareminds.in/contact" className="text-blue-600 hover:text-blue-700 font-semibold underline underline-offset-2">
+              Contact Support
+            </a>
+          </motion.p>
+        </div>
+      )}
 
-      <TermsModal 
-        isOpen={showTerms} 
-        onClose={() => setShowTerms(false)} 
-        onAccept={() => {
-          setHasReadTerms(true);
-          setConsentGiven(true);
-          if (errors.consent) setErrors(prev => ({ ...prev, consent: null }));
-        }}
+      <TermsModal
+        isOpen={showTerms}
+        onClose={() => setShowTerms(false)}
+        onAccept={() => setHasReadTerms(true)}
         registrationFee={REGISTRATION_FEE}
       />
     </section>
