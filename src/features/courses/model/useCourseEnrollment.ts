@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { enrollmentService } from '../api/enrollmentService';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**
  * Hook for managing course enrollment operations
@@ -9,7 +10,7 @@ export const useCourseEnrollment = (studentEmail: string | null, courseId: strin
 
   // Query for checking enrollment status
   const enrollmentQuery = useQuery({
-    queryKey: ['enrollment', studentEmail, courseId],
+    queryKey: queryKeys.courses.enrollment.byStudentAndCourse(studentEmail, courseId),
     queryFn: async () => {
       if (!studentEmail || !courseId) return null;
       const result = await enrollmentService.getEnrollment(studentEmail, courseId);
@@ -30,21 +31,20 @@ export const useCourseEnrollment = (studentEmail: string | null, courseId: strin
     },
     onSuccess: () => {
       // Invalidate enrollment queries
-      queryClient.invalidateQueries({ queryKey: ['enrollment'] });
-      queryClient.invalidateQueries({ queryKey: ['student-enrollments'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.enrollment.all });
     },
   });
 
   // Mutation for updating progress
   const updateProgressMutation = useMutation({
-    mutationFn: async ({ 
-      email, 
-      course, 
-      completedLessons 
-    }: { 
-      email: string; 
-      course: string; 
-      completedLessons: string[] 
+    mutationFn: async ({
+      email,
+      course,
+      completedLessons
+    }: {
+      email: string;
+      course: string;
+      completedLessons: string[]
     }) => {
       const result = await enrollmentService.updateProgress(email, course, completedLessons);
       if (!result.success) {
@@ -54,9 +54,8 @@ export const useCourseEnrollment = (studentEmail: string | null, courseId: strin
     },
     onSuccess: () => {
       // Invalidate enrollment queries
-      queryClient.invalidateQueries({ queryKey: ['enrollment'] });
-      queryClient.invalidateQueries({ queryKey: ['student-enrollments'] });
-      queryClient.invalidateQueries({ queryKey: ['course-progress'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.enrollment.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.all });
     },
   });
 
@@ -67,19 +66,19 @@ export const useCourseEnrollment = (studentEmail: string | null, courseId: strin
     isLoading: enrollmentQuery.isLoading,
     isError: enrollmentQuery.isError,
     error: enrollmentQuery.error,
-    
+
     // Enrollment actions
     enroll: enrollMutation.mutate,
     enrollAsync: enrollMutation.mutateAsync,
     isEnrolling: enrollMutation.isPending,
     enrollError: enrollMutation.error,
-    
+
     // Progress update actions
     updateProgress: updateProgressMutation.mutate,
     updateProgressAsync: updateProgressMutation.mutateAsync,
     isUpdatingProgress: updateProgressMutation.isPending,
     updateProgressError: updateProgressMutation.error,
-    
+
     // Refetch
     refetch: enrollmentQuery.refetch,
   };
@@ -90,7 +89,7 @@ export const useCourseEnrollment = (studentEmail: string | null, courseId: strin
  */
 export const useStudentEnrollments = (studentEmail: string | null) => {
   const query = useQuery({
-    queryKey: ['student-enrollments', studentEmail],
+    queryKey: queryKeys.courses.enrollment.byStudent(studentEmail),
     queryFn: async () => {
       if (!studentEmail) return [];
       const result = await enrollmentService.getStudentEnrollments(studentEmail);
@@ -114,7 +113,7 @@ export const useStudentEnrollments = (studentEmail: string | null) => {
  */
 export const useCourseEnrollments = (courseId: string | null) => {
   const query = useQuery({
-    queryKey: ['course-enrollments', courseId],
+    queryKey: queryKeys.courses.enrollment.byCourse(courseId),
     queryFn: async () => {
       if (!courseId) return [];
       const result = await enrollmentService.getCourseEnrollments(courseId);
@@ -138,7 +137,7 @@ export const useCourseEnrollments = (courseId: string | null) => {
  */
 export const useEducatorEnrollmentStats = (educatorId: string | null) => {
   const query = useQuery({
-    queryKey: ['educator-enrollment-stats', educatorId],
+    queryKey: queryKeys.courses.enrollment.educatorStats(educatorId),
     queryFn: async () => {
       if (!educatorId) return null;
       const result = await enrollmentService.getEducatorEnrollmentStats(educatorId);

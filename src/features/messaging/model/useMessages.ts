@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MessageService, Message, Conversation } from '../api';
 import { useEffect } from 'react';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 interface UseMessagesOptions {
   conversationId: string | null;
@@ -20,7 +21,7 @@ export const useMessages = ({ conversationId, enabled = true }: UseMessagesOptio
     error,
     refetch
   } = useQuery({
-    queryKey: ['messages', conversationId],
+    queryKey: queryKeys.recruiter.messages.conversation(conversationId), // Generic messages, using recruiter domain
     queryFn: async () => {
       if (!conversationId) return [];
       return await MessageService.getConversationMessages(conversationId);
@@ -43,7 +44,7 @@ export const useMessages = ({ conversationId, enabled = true }: UseMessagesOptio
       (newMessage: Message) => {
         // Optimistically update the cache
         queryClient.setQueryData<Message[]>(
-          ['messages', conversationId],
+          queryKeys.recruiter.messages.conversation(conversationId),
           (oldMessages = []) => {
             // Check if message already exists (avoid duplicates)
             const exists = oldMessages.some(msg => msg.id === newMessage.id);
@@ -99,7 +100,7 @@ export const useMessages = ({ conversationId, enabled = true }: UseMessagesOptio
     },
     onMutate: async (variables) => {
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['messages', conversationId] });
+      await queryClient.cancelQueries({ queryKey: queryKeys.recruiter.messages.conversation(conversationId) });
 
       // Snapshot the previous value
       const previousMessages = queryClient.getQueryData<Message[]>(['messages', conversationId]);
@@ -122,7 +123,7 @@ export const useMessages = ({ conversationId, enabled = true }: UseMessagesOptio
       };
 
       queryClient.setQueryData<Message[]>(
-        ['messages', conversationId],
+        queryKeys.recruiter.messages.conversation(conversationId),
         (old = []) => [...old, optimisticMessage]
       );
 
@@ -138,7 +139,7 @@ export const useMessages = ({ conversationId, enabled = true }: UseMessagesOptio
     onSuccess: (data) => {
       // Replace optimistic message with real one
       queryClient.setQueryData<Message[]>(
-        ['messages', conversationId],
+        queryKeys.recruiter.messages.conversation(conversationId),
         (old = []) => {
           // Remove the optimistic message (temporary ID from Date.now())
           const withoutOptimistic = old.filter(msg => msg.id < 1000000000000 && msg.id !== data.id);
@@ -179,7 +180,7 @@ export const useConversation = (
     isLoading,
     error
   } = useQuery({
-    queryKey: ['conversation', studentId, recruiterId, applicationId],
+    queryKey: queryKeys.recruiter.conversations.byRecruiter(recruiterId), // Simplified from original
     queryFn: async () => {
       const result = await MessageService.getOrCreateConversation(
         studentId,

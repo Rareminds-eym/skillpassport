@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
 import { MessageService } from '@/features/messaging';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**
  * Hook for managing college admin conversations with students
@@ -17,7 +18,7 @@ export const useCollegeAdminConversations = (collegeAdminId, enabled = true) => 
     error,
     refetch
   } = useQuery({
-    queryKey: ['college-admin-conversations', collegeAdminId],
+    queryKey: queryKeys.college.admin.conversations.all, // Note: simplified, original used collegeAdminId
     queryFn: async () => {
       if (!collegeAdminId) return [];
       
@@ -131,7 +132,7 @@ export const useCollegeAdminConversations = (collegeAdminId, enabled = true) => 
         
         // Invalidate conversation queries
         queryClient.invalidateQueries({ 
-          queryKey: ['college-admin-conversations', collegeAdminId],
+          queryKey: queryKeys.college.admin.conversations.all, // Note: simplified, original used collegeAdminId
           refetchType: 'active'
         });
       }
@@ -144,7 +145,7 @@ export const useCollegeAdminConversations = (collegeAdminId, enabled = true) => 
 
   // Clear unread count function
   const clearUnreadCount = (conversationId) => {
-    queryClient.setQueryData(['college-admin-conversations', collegeAdminId], (oldData) => {
+    queryClient.setQueryData(queryKeys.college.admin.conversations.all, (oldData) => {
       if (!oldData) return oldData;
       return oldData.map(conv => 
         conv.id === conversationId 
@@ -183,7 +184,7 @@ export const useCollegeAdminMessages = ({
     error,
     refetch
   } = useQuery({
-    queryKey: ['college-admin-messages', conversationId],
+    queryKey: queryKeys.college.admin.messages(conversationId),
     queryFn: async () => {
       if (!conversationId) return [];
       return await MessageService.getConversationMessages(conversationId, { useCache: true });
@@ -205,7 +206,7 @@ export const useCollegeAdminMessages = ({
         console.log('📨 [College Admin] New message received:', newMessage);
         
         // Add message to cache optimistically
-        queryClient.setQueryData(['college-admin-messages', conversationId], (oldMessages) => {
+        queryClient.setQueryData(queryKeys.college.admin.messages(conversationId), (oldMessages) => {
           if (!oldMessages) return [newMessage];
           
           // Check if message already exists (prevent duplicates)
@@ -265,7 +266,7 @@ export const useCollegeAdminMessages = ({
     },
     onMutate: async (variables) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['college-admin-messages', conversationId] });
+      await queryClient.cancelQueries({ queryKey: queryKeys.college.admin.messages(conversationId) });
 
       // Snapshot previous value
       const previousMessages = queryClient.getQueryData(['college-admin-messages', conversationId]);
@@ -285,7 +286,7 @@ export const useCollegeAdminMessages = ({
         _optimistic: true
       };
 
-      queryClient.setQueryData(['college-admin-messages', conversationId], (old) => {
+      queryClient.setQueryData(queryKeys.college.admin.messages(conversationId), (old) => {
         return old ? [...old, optimisticMessage] : [optimisticMessage];
       });
 
@@ -300,7 +301,7 @@ export const useCollegeAdminMessages = ({
     },
     onSuccess: (data, variables, context) => {
       // Replace optimistic message with real one
-      queryClient.setQueryData(['college-admin-messages', conversationId], (old) => {
+      queryClient.setQueryData(queryKeys.college.admin.messages(conversationId), (old) => {
         if (!old) return [data];
         return old.map(msg => 
           msg.id === context?.optimisticMessage?.id ? data : msg

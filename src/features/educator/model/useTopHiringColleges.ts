@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/shared/api/supabaseClient';
 import { FunnelRangePreset, getTopHiringColleges } from '@/features/educator-copilot';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 interface UseTopHiringCollegesOptions {
   preset: FunnelRangePreset;
@@ -21,12 +22,12 @@ export const useTopHiringColleges = ({
   const queryClient = useQueryClient();
   const channelRef = useRef<any>(null);
 
-  const queryKey = ['top-hiring-colleges', { preset, startDate, endDate, limit }];
+  const queryKey = queryKeys.analytics.hiring.topColleges(preset, { startDate, endDate, limit });
 
   // Memoized invalidation callback to prevent unnecessary re-subscriptions
   const invalidateQuery = useCallback(() => {
     queryClient.invalidateQueries({
-      queryKey: ['top-hiring-colleges'],
+      queryKey: queryKeys.analytics.hiring.all,
       refetchType: 'active' // Only refetch active queries
     });
   }, [queryClient]);

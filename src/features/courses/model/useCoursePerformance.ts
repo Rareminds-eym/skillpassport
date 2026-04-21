@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/shared/api/supabaseClient';
 import type { FunnelRangePreset } from '@/features/analytics';
 import { getCoursePerformance } from '../api/coursePerformanceService';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 interface UseCoursePerformanceOptions {
   preset: FunnelRangePreset;
@@ -21,7 +22,7 @@ export const useCoursePerformance = ({
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const query = useQuery({
-    queryKey: ['course-performance', { preset, startDate, endDate, limit }],
+    queryKey: queryKeys.courses.performance.byPreset(preset, { startDate, endDate, limit }),
     queryFn: async () => {
       const { data } = await getCoursePerformance(preset, startDate, endDate, limit);
       return data;
@@ -33,10 +34,10 @@ export const useCoursePerformance = ({
   useEffect(() => {
     const channel = supabase.channel(`course-performance-${Date.now()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pipeline_candidates' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['course-performance'] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.courses.performance.all });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['course-performance'] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.courses.performance.all });
       });
 
     channel.subscribe();

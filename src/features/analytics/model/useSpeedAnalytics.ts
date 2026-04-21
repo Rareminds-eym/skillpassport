@@ -4,6 +4,7 @@ import { supabase } from '@/shared/api/supabaseClient';
 // TODO: Fix this import - getSpeedAnalytics function is missing from educator-copilot
 // import { FunnelRangePreset, getSpeedAnalytics } from '@/features/educator-copilot';
 import type { FunnelRangePreset } from '@/features/educator-copilot';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 interface UseSpeedAnalyticsOptions {
   preset: FunnelRangePreset;
@@ -16,7 +17,7 @@ export const useSpeedAnalytics = ({ preset, startDate, endDate }: UseSpeedAnalyt
   const channelRef = useRef<any>(null);
 
   const query = useQuery({
-    queryKey: ['speed-analytics', { preset, startDate, endDate }],
+    queryKey: queryKeys.analytics.speed.metrics(preset, { startDate, endDate }),
     queryFn: async () => {
       // TODO: Implement getSpeedAnalytics or use alternative API
       // const { data } = await getSpeedAnalytics(preset, startDate, endDate);
@@ -32,11 +33,11 @@ export const useSpeedAnalytics = ({ preset, startDate, endDate }: UseSpeedAnalyt
     const channel = supabase.channel(`speed-analytics-${Date.now()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pipeline_activities' }, () => {
         // Invalidate when activities change (stage changes, timings)
-        queryClient.invalidateQueries({ queryKey: ['speed-analytics'] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.analytics.speed.all });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pipeline_candidates' }, () => {
         // Invalidate when candidates are added or updated
-        queryClient.invalidateQueries({ queryKey: ['speed-analytics'] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.analytics.speed.all });
       });
 
     channel.subscribe();

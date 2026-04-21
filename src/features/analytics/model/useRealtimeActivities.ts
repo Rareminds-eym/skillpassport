@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getRecentActivity } from '@/features/analytics/api/dashboardService';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**
  * Custom hook for real-time activity tracking
@@ -15,7 +16,7 @@ export const useRealtimeActivities = (limit = 15) => {
 
   // Fetch activities using React Query
   const query = useQuery({
-    queryKey: ['activities', limit],
+    queryKey: queryKeys.analytics.realtime.activities(limit),
     queryFn: async () => {
       const result = await getRecentActivity(limit);
       const dbActivities = result.data || [];
@@ -75,7 +76,7 @@ export const useRealtimeActivities = (limit = 15) => {
 
     // Force refetch to get fresh data (will merge with deletion activities)
     queryClient.invalidateQueries({
-      queryKey: ['activities'],
+      queryKey: queryKeys.analytics.realtime.all,
       refetchType: 'active'
     });
 
@@ -163,6 +164,6 @@ export const useRefreshActivities = () => {
   const queryClient = useQueryClient();
 
   return () => {
-    queryClient.invalidateQueries({ queryKey: ['activities'] });
+    queryClient.invalidateQueries({ queryKey: queryKeys.analytics.realtime.all });
   };
 };

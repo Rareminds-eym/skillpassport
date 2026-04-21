@@ -32,6 +32,7 @@ import { supabase } from '@/shared/api/supabaseClient';
 import { MessageService, Conversation } from '@/features/messaging';
 import { getLogger } from '@/shared/config/logging';
 
+import { queryKeys } from '@/shared/lib/queryKeys';
 const StudentCollegeAdminCommunication = () => {
   const logger = getLogger('college-admin-communication');
   const location = useLocation();
@@ -118,7 +119,7 @@ const StudentCollegeAdminCommunication = () => {
   
   // Fetch active conversations with students
   const { data: activeConversations = [], isLoading: loadingActive, refetch: refetchActive } = useQuery({
-    queryKey: ['college-admin-conversations', collegeId, 'active'],
+    queryKey: queryKeys.college.admin.conversations(collegeId, 'active'),
     queryFn: async () => {
       if (!collegeId) return [];
       // Note: colleges table doesn't exist - college info already available from collegeData
@@ -154,7 +155,7 @@ const StudentCollegeAdminCommunication = () => {
 
   // Fetch archived conversations
   const { data: archivedConversations = [], isLoading: loadingArchived, refetch: refetchArchived } = useQuery({
-    queryKey: ['college-admin-conversations', collegeId, 'archived'],
+    queryKey: queryKeys.college.admin.conversations(collegeId, 'archived'),
     queryFn: async () => {
       if (!collegeId) return [];
       // Note: colleges table doesn't exist - college info already available from collegeData
@@ -303,11 +304,11 @@ const StudentCollegeAdminCommunication = () => {
           }
           
           queryClient.invalidateQueries({ 
-            queryKey: ['college-admin-conversations', collegeId, 'active'],
+            queryKey: queryKeys.college.admin.conversations(collegeId, 'active'),
             refetchType: 'active'
           });
           queryClient.invalidateQueries({ 
-            queryKey: ['college-admin-conversations', collegeId, 'archived'],
+            queryKey: queryKeys.college.admin.conversations(collegeId, 'archived'),
             refetchType: 'active'
           });
         } else if (conversation.conversation_type === 'college_educator_admin') {
@@ -410,7 +411,7 @@ const StudentCollegeAdminCommunication = () => {
       .then(() => {
         // Force cache invalidation after successful mark as read
         queryClient.invalidateQueries({ 
-          queryKey: ['college-admin-conversations', collegeId, 'active'],
+          queryKey: queryKeys.college.admin.conversations(collegeId, 'active'),
           refetchType: 'active'
         });
       })
@@ -428,7 +429,7 @@ const StudentCollegeAdminCommunication = () => {
       return { conversationId };
     },
     onMutate: async ({ conversationId }) => {
-      await queryClient.cancelQueries({ queryKey: ['college-admin-conversations', collegeId] });
+      await queryClient.cancelQueries({ queryKey: queryKeys.college.admin.all });
       
       const previousActive = queryClient.getQueryData(['college-admin-conversations', collegeId, 'active']);
       const previousArchived = queryClient.getQueryData(['college-admin-conversations', collegeId, 'archived']);
@@ -441,7 +442,7 @@ const StudentCollegeAdminCommunication = () => {
       });
       
       queryClient.invalidateQueries({ 
-        queryKey: ['college-admin-conversations', collegeId, 'active'],
+        queryKey: queryKeys.college.admin.conversations(collegeId, 'active'),
         refetchType: 'none'
       });
       
@@ -459,7 +460,7 @@ const StudentCollegeAdminCommunication = () => {
       });
       
       queryClient.invalidateQueries({ 
-        queryKey: ['college-admin-conversations', collegeId, 'active'],
+        queryKey: queryKeys.college.admin.conversations(collegeId, 'active'),
         refetchType: 'none'
       });
     }

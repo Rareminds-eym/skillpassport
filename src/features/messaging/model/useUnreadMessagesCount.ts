@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { MessageService } from '@/features/messaging';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**
  * Hook to get total unread messages count for recruiter sidebar badge
@@ -10,7 +11,7 @@ export const useUnreadMessagesCount = (recruiterId: string | undefined) => {
   const subscriptionRef = useRef<any>(null);
 
   const { data: unreadCount = 0 } = useQuery({
-    queryKey: ['recruiter-unread-count', recruiterId],
+    queryKey: queryKeys.recruiter.messages.unread(recruiterId),
     queryFn: async () => {
       if (!recruiterId) return 0;
       
@@ -49,7 +50,7 @@ export const useUnreadMessagesCount = (recruiterId: string | undefined) => {
       () => {
         // Invalidate the unread count query to trigger refetch
         queryClient.invalidateQueries({ 
-          queryKey: ['recruiter-unread-count', recruiterId],
+          queryKey: queryKeys.recruiter.messages.unread(recruiterId),
           refetchType: 'active'
         });
       }

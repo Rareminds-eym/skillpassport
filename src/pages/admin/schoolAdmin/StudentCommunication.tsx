@@ -32,6 +32,7 @@ import { NewStudentConversationModal } from '@/features/messaging';
 import { NewSchoolAdminEducatorConversationModal } from '@/features/messaging';
 import { authSessionService } from '@/features/auth';
 
+import { queryKeys } from '@/shared/lib/queryKeys';
 const logger = getLogger('school-admin-student-communication');
 
 const StudentCommunication = () => {
@@ -137,7 +138,7 @@ const StudentCommunication = () => {
 
   // Fetch active conversations with students using the same pattern as educator
   const { data: activeStudentConversations = [], isLoading: loadingActiveStudents, refetch: refetchActiveStudents } = useQuery({
-    queryKey: ['school-admin-conversations', schoolId, 'active'],
+    queryKey: queryKeys.student.conversations.byStudent(schoolId, 'active'),
     queryFn: async () => {
       if (!schoolId) return [];
       const { data, error } = await supabase
@@ -164,7 +165,7 @@ const StudentCommunication = () => {
 
   // Fetch archived student conversations
   const { data: archivedStudentConversations = [], isLoading: loadingArchivedStudents, refetch: refetchArchivedStudents } = useQuery({
-    queryKey: ['school-admin-conversations', schoolId, 'archived'],
+    queryKey: queryKeys.student.conversations.byStudent(schoolId, 'archived'),
     queryFn: async () => {
       if (!schoolId) return [];
       const { data, error } = await supabase
@@ -191,7 +192,7 @@ const StudentCommunication = () => {
 
   // Fetch active educator conversations
   const { data: activeEducatorConversations = [], isLoading: loadingActiveEducators, refetch: refetchActiveEducators } = useQuery({
-    queryKey: ['school-admin-educator-conversations', schoolId, 'active'],
+    queryKey: queryKeys.educator.conversations.byEducator(schoolId, 'active'),
     queryFn: async () => {
       logger.info('Fetching active educator conversations', { schoolId });
 
@@ -274,7 +275,7 @@ const StudentCommunication = () => {
 
   // Fetch archived educator conversations
   const { data: archivedEducatorConversations = [], isLoading: loadingArchivedEducators, refetch: refetchArchivedEducators } = useQuery({
-    queryKey: ['school-admin-educator-conversations', schoolId, 'archived'],
+    queryKey: queryKeys.educator.conversations.byEducator(schoolId, 'archived'),
     queryFn: async () => {
       logger.info('Fetching archived educator conversations', { schoolId });
 
@@ -519,7 +520,7 @@ const StudentCommunication = () => {
         }
 
         queryClient.invalidateQueries({
-          queryKey: ['school-admin-conversations', schoolId],
+          queryKey: queryKeys.student.conversations.all,
           refetchType: 'active'
         });
       }
@@ -622,7 +623,7 @@ const StudentCommunication = () => {
       return { conversationId };
     },
     onMutate: async ({ conversationId }) => {
-      await queryClient.cancelQueries({ queryKey: ['school-admin-conversations', schoolId] });
+      await queryClient.cancelQueries({ queryKey: queryKeys.student.conversations.all });
 
       const previousActive = queryClient.getQueryData(['school-admin-conversations', schoolId, 'active']);
       const previousArchived = queryClient.getQueryData(['school-admin-conversations', schoolId, 'archived']);
@@ -635,7 +636,7 @@ const StudentCommunication = () => {
       });
 
       queryClient.invalidateQueries({
-        queryKey: ['school-admin-conversations', schoolId, 'active'],
+        queryKey: queryKeys.student.conversations.byStudent(schoolId, 'active'),
         refetchType: 'none'
       });
 
@@ -652,7 +653,7 @@ const StudentCommunication = () => {
       });
 
       queryClient.invalidateQueries({
-        queryKey: ['school-admin-conversations', schoolId, 'active'],
+        queryKey: queryKeys.student.conversations.byStudent(schoolId, 'active'),
         refetchType: 'none'
       });
     }

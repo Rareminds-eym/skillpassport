@@ -4,6 +4,7 @@ import { supabase } from '@/shared/api/supabaseClient';
 // TODO: Fix this import - getAnalyticsKPIMetrics function is missing from educator-copilot
 // import { FunnelRangePreset, getAnalyticsKPIMetrics } from '@/features/educator-copilot';
 import type { FunnelRangePreset } from '@/features/educator-copilot';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 interface UseAnalyticsKPIsOptions {
   preset: FunnelRangePreset;
@@ -16,7 +17,7 @@ export const useAnalyticsKPIs = ({ preset, startDate, endDate }: UseAnalyticsKPI
   const channelRef = useRef<any>(null);
 
   const query = useQuery({
-    queryKey: ['analytics-kpis', { preset, startDate, endDate }],
+    queryKey: queryKeys.analytics.kpis.data(preset, { startDate, endDate }),
     queryFn: async () => {
       // TODO: Implement getAnalyticsKPIMetrics or use alternative API
       // const { data } = await getAnalyticsKPIMetrics(preset, startDate, endDate);
@@ -32,11 +33,11 @@ export const useAnalyticsKPIs = ({ preset, startDate, endDate }: UseAnalyticsKPI
     const channel = supabase.channel(`analytics-kpis-${Date.now()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pipeline_activities' }, () => {
         // Invalidate on any activity change (stage changes, hires)
-        queryClient.invalidateQueries({ queryKey: ['analytics-kpis'] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.analytics.kpis.all });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pipeline_candidates' }, () => {
         // Invalidate when candidates are added or updated
-        queryClient.invalidateQueries({ queryKey: ['analytics-kpis'] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.analytics.kpis.all });
       });
 
     channel.subscribe();

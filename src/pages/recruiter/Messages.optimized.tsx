@@ -17,6 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/shared/lib/queryKeys';
 import { MessageService, Conversation } from '@/features/messaging';
 import { useMessages } from '@/features/messaging';
 import { formatDistanceToNow } from 'date-fns';
@@ -94,7 +95,7 @@ const Messages = () => {
     isLoading: loadingActive, 
     refetch: refetchActive 
   } = useQuery({
-    queryKey: ['recruiter-conversations', recruiterId, 'active'],
+    queryKey: queryKeys.recruiter.conversations.byRecruiter(recruiterId, 'active'),
     queryFn: async () => {
       if (!recruiterId) return [];
       return await MessageService.getUserConversations(recruiterId, 'recruiter', false);
@@ -113,7 +114,7 @@ const Messages = () => {
     isLoading: loadingArchived, 
     refetch: refetchArchived 
   } = useQuery({
-    queryKey: ['recruiter-conversations', recruiterId, 'archived'],
+    queryKey: queryKeys.recruiter.conversations.byRecruiter(recruiterId, 'archived'),
     queryFn: async () => {
       if (!recruiterId) return [];
       const allConversations = await MessageService.getUserConversations(recruiterId, 'recruiter', true);

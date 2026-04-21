@@ -18,11 +18,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 import { useUserEntitlements, useUser } from "@/stores";
 import addOnCatalogService from '../api/addOnCatalogService';
-
-// Query keys
-const ADDON_CATALOG_KEY = 'addon-catalog';
-const BUNDLES_KEY = 'bundles';
-const BUNDLE_SAVINGS_KEY = 'bundle-savings';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 // Cache times
 const STALE_TIME = 5 * 60 * 1000; // 5 minutes
@@ -52,7 +48,7 @@ export function useAddOnCatalog(options = {}) {
     error: addOnsError,
     refetch: refetchAddOns
   } = useQuery({
-    queryKey: [ADDON_CATALOG_KEY, userRole, category],
+    queryKey: [...queryKeys.subscription.addons.catalog(), userRole, category],
     queryFn: async () => {
       const result = await addOnCatalogService.getAddOns({
         role: userRole,
@@ -76,7 +72,7 @@ export function useAddOnCatalog(options = {}) {
     error: bundlesError,
     refetch: refetchBundles
   } = useQuery({
-    queryKey: [BUNDLES_KEY, userRole],
+    queryKey: [...queryKeys.subscription.addons.all, 'bundles', userRole],
     queryFn: async () => {
       const result = await addOnCatalogService.getBundles(userRole);
 
@@ -180,7 +176,7 @@ export function useAddOnCatalog(options = {}) {
 
   // Calculate bundle savings
   const calculateBundleSavings = useCallback(async (bundleId) => {
-    const cacheKey = [BUNDLE_SAVINGS_KEY, bundleId];
+    const cacheKey = [...queryKeys.subscription.addons.all, 'bundle-savings', bundleId];
 
     // Check cache first
     const cached = queryClient.getQueryData(cacheKey);
@@ -269,7 +265,7 @@ export function useAddOn(featureKey) {
     isLoading,
     error
   } = useQuery({
-    queryKey: [ADDON_CATALOG_KEY, 'single', featureKey],
+    queryKey: [...queryKeys.subscription.addons.catalog(), 'single', featureKey],
     queryFn: async () => {
       if (!featureKey) return null;
 
@@ -321,7 +317,7 @@ export function useBundle(bundleId) {
     isLoading,
     error
   } = useQuery({
-    queryKey: [BUNDLES_KEY, 'single', bundleId],
+    queryKey: [...queryKeys.subscription.addons.all, 'bundles', 'single', bundleId],
     queryFn: async () => {
       if (!bundleId) return null;
 

@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/shared/api/supabaseClient';
 import { FunnelRangePreset, getGeographicDistribution } from '@/features/educator-copilot';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 interface UseGeographicDistributionOptions {
   preset: FunnelRangePreset;
@@ -21,12 +22,12 @@ export const useGeographicDistribution = ({
   const queryClient = useQueryClient();
   const channelRef = useRef<any>(null);
 
-  const queryKey = ['geographic-distribution', { preset, startDate, endDate, limit }];
+  const queryKey = queryKeys.analytics.geographic.distribution(preset, { startDate, endDate, limit });
 
   // Memoized invalidation callback to prevent unnecessary re-subscriptions
   const invalidateQuery = useCallback(() => {
     queryClient.invalidateQueries({
-      queryKey: ['geographic-distribution'],
+      queryKey: queryKeys.analytics.geographic.all,
       refetchType: 'active' // Only refetch active queries
     });
   }, [queryClient]);

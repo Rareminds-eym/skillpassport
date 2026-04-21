@@ -163,39 +163,39 @@ This implementation plan migrates 46 files from hardcoded React Query keys to a 
     - Verify archive status filtering works correctly
     - _Requirements: 3.5, 3.6, 8.1_
 
-- [-] 5. Checkpoint - Verify Phase 2 migration
+- [x] 5. Checkpoint - Verify Phase 2 migration
   - Run `npm run build:dev` to check for TypeScript errors
   - Test educator messaging features in development
   - Ensure all tests pass, ask the user if questions arise
 
-- [ ] 6. Migrate Phase 3: College and recruiter messaging files (7 files)
-  - [ ] 6.1 Migrate src/features/college-profile/model/useCollegeLecturerConversations.ts
+- [x] 6. Migrate Phase 3: College and recruiter messaging files (7 files)
+  - [x] 6.1 Migrate src/features/college-profile/model/useCollegeLecturerConversations.ts
     - Replace hardcoded query keys with `queryKeys.college.lecturer.conversations()` calls
     - _Requirements: 4.1, 4.2, 4.5, 4.6, 8.1, 8.2_
   
-  - [ ] 6.2 Migrate src/features/college-profile/model/useCollegeLecturerMessages.ts
+  - [x] 6.2 Migrate src/features/college-profile/model/useCollegeLecturerMessages.ts
     - Replace hardcoded query keys with `queryKeys.college.lecturer.messages()` calls
     - _Requirements: 4.1, 4.2, 4.5, 4.6, 8.1, 8.2_
   
-  - [ ] 6.3 Migrate src/features/college-profile/model/useCollegeAdminMessages.ts
+  - [x] 6.3 Migrate src/features/college-profile/model/useCollegeAdminMessages.ts
     - Replace hardcoded query keys with `queryKeys.college.admin.messages()` calls
     - _Requirements: 4.1, 4.2, 4.5, 4.6, 8.1, 8.2_
   
-  - [ ] 6.4 Migrate src/features/messaging/model/useMessages.ts
+  - [x] 6.4 Migrate src/features/messaging/model/useMessages.ts
     - Replace hardcoded query keys with appropriate domain factory calls
     - Handle multiple user types (student, educator, recruiter, college)
     - _Requirements: 4.1, 4.3, 4.5, 4.6, 8.1, 8.2_
   
-  - [ ] 6.5 Migrate src/features/messaging/model/useUnreadMessagesCount.ts
+  - [x] 6.5 Migrate src/features/messaging/model/useUnreadMessagesCount.ts
     - Replace hardcoded query keys with unread count factory calls
     - Support all user types
     - _Requirements: 4.1, 4.3, 4.5, 4.6, 8.1, 8.2_
   
-  - [ ] 6.6 Migrate src/pages/recruiter/Messages.tsx
+  - [x] 6.6 Migrate src/pages/recruiter/Messages.tsx
     - Replace hardcoded query keys with `queryKeys.recruiter.messages.*` calls
     - _Requirements: 4.1, 4.4, 4.5, 4.6, 8.1, 8.2_
   
-  - [ ] 6.7 Migrate src/pages/recruiter/Messages.optimized.tsx
+  - [x] 6.7 Migrate src/pages/recruiter/Messages.optimized.tsx
     - Replace hardcoded query keys with factory calls
     - _Requirements: 4.1, 4.4, 4.5, 4.6, 8.1, 8.2_
   
@@ -204,33 +204,33 @@ This implementation plan migrates 46 files from hardcoded React Query keys to a 
     - Verify multi-user-type hooks work correctly
     - _Requirements: 4.5, 4.6, 8.1_
 
-- [ ] 7. Checkpoint - Verify Phase 3 migration
+- [x] 7. Checkpoint - Verify Phase 3 migration
   - Run `npm run build:dev` to check for TypeScript errors
   - Test college and recruiter messaging features
   - Ensure all tests pass, ask the user if questions arise
 
-- [ ] 8. Migrate Phase 4: School and college admin pages (6 files)
-  - [ ] 8.1 Migrate src/pages/admin/schoolAdmin/EducatorCommunication.tsx
+- [x] 8. Migrate Phase 4: School and college admin pages (6 files)
+  - [x] 8.1 Migrate src/pages/admin/schoolAdmin/EducatorCommunication.tsx
     - Replace hardcoded query keys with `queryKeys.educator.*` calls
     - _Requirements: 5.1, 5.2, 5.4, 5.5, 8.1, 8.2_
   
-  - [ ] 8.2 Migrate src/pages/admin/schoolAdmin/StudentCommunication.tsx
+  - [x] 8.2 Migrate src/pages/admin/schoolAdmin/StudentCommunication.tsx
     - Replace hardcoded query keys with `queryKeys.student.*` calls
     - _Requirements: 5.1, 5.2, 5.4, 5.5, 8.1, 8.2_
   
-  - [ ] 8.3 Migrate src/pages/admin/collegeAdmin/StudentCollegeAdminCommunication.tsx
+  - [x] 8.3 Migrate src/pages/admin/collegeAdmin/StudentCollegeAdminCommunication.tsx
     - Replace hardcoded query keys with factory calls
     - _Requirements: 5.1, 5.2, 5.4, 5.5, 8.1, 8.2_
   
-  - [ ] 8.4 Migrate src/pages/admin/collegeAdmin/CourseManagement.tsx
+  - [x] 8.4 Migrate src/pages/admin/collegeAdmin/CourseManagement.tsx
     - Replace hardcoded query keys with `queryKeys.courses.*` calls
     - _Requirements: 5.1, 5.2, 5.4, 5.5, 8.1, 8.2_
   
-  - [ ] 8.5 Migrate src/pages/admin/collegeAdmin/Departmentmanagement.tsx
+  - [x] 8.5 Migrate src/pages/admin/collegeAdmin/Departmentmanagement.tsx
     - Replace hardcoded query keys with `queryKeys.college.departments.*` calls
     - _Requirements: 5.1, 5.2, 5.4, 5.5, 8.1, 8.2_
   
-  - [ ] 8.6 Migrate src/pages/admin/collegeAdmin/ExaminationManagement.tsx
+  - [x] 8.6 Migrate src/pages/admin/collegeAdmin/ExaminationManagement.tsx
     - Replace hardcoded query keys with factory calls
     - _Requirements: 5.1, 5.2, 5.4, 5.5, 8.1, 8.2_
   
@@ -239,65 +239,65 @@ This implementation plan migrates 46 files from hardcoded React Query keys to a 
     - Verify course and department queries work correctly
     - _Requirements: 5.4, 5.5, 8.1_
 
-- [ ] 9. Checkpoint - Verify Phase 4 migration
+- [x] 9. Checkpoint - Verify Phase 4 migration
   - Run `npm run build:dev` to check for TypeScript errors
   - Test admin pages in development
   - Ensure all tests pass, ask the user if questions arise
 
-- [ ] 10. Migrate Phase 5: Analytics and course files (13 files)
-  - [ ] 10.1 Migrate src/features/analytics/model/useDiversityData.ts
+- [x] 10. Migrate Phase 5: Analytics and course files (13 files)
+  - [x] 10.1 Migrate src/features/analytics/model/useDiversityData.ts
     - Replace hardcoded query keys with `queryKeys.analytics.diversity.data()` calls
     - Support optional filters parameter
     - _Requirements: 6.1, 6.2, 6.5, 6.6, 8.1, 8.2_
   
-  - [ ] 10.2 Migrate src/features/analytics/model/useGeographicDistribution.ts
+  - [x] 10.2 Migrate src/features/analytics/model/useGeographicDistribution.ts
     - Replace hardcoded query keys with `queryKeys.analytics.geographic.distribution()` calls
     - _Requirements: 6.1, 6.2, 6.5, 6.6, 8.1, 8.2_
   
-  - [ ] 10.3 Migrate src/features/analytics/model/useTopHiringColleges.ts
+  - [x] 10.3 Migrate src/features/analytics/model/useTopHiringColleges.ts
     - Replace hardcoded query keys with `queryKeys.analytics.hiring.topColleges()` calls
     - Support optional limit parameter
     - _Requirements: 6.1, 6.2, 6.5, 6.6, 8.1, 8.2_
   
-  - [ ] 10.4 Migrate src/features/analytics/model/useQualityMetrics.ts
+  - [x] 10.4 Migrate src/features/analytics/model/useQualityMetrics.ts
     - Replace hardcoded query keys with `queryKeys.analytics.quality.metrics()` calls
     - _Requirements: 6.1, 6.2, 6.5, 6.6, 8.1, 8.2_
   
-  - [ ] 10.5 Migrate src/features/analytics/model/useRecruitmentFunnel.ts
+  - [x] 10.5 Migrate src/features/analytics/model/useRecruitmentFunnel.ts
     - Replace hardcoded query keys with `queryKeys.analytics.recruitment.funnel()` calls
     - Support optional dateRange parameter
     - _Requirements: 6.1, 6.2, 6.5, 6.6, 8.1, 8.2_
   
-  - [ ] 10.6 Migrate src/features/analytics/model/useCoursePerformance.ts
+  - [x] 10.6 Migrate src/features/analytics/model/useCoursePerformance.ts
     - Replace hardcoded query keys with `queryKeys.courses.performance.*` calls
     - _Requirements: 6.1, 6.2, 6.5, 6.6, 8.1, 8.2_
   
-  - [ ] 10.7 Migrate src/features/analytics/model/useAnalyticsKPIs.ts
+  - [x] 10.7 Migrate src/features/analytics/model/useAnalyticsKPIs.ts
     - Replace hardcoded query keys with `queryKeys.analytics.kpis.data()` calls
     - _Requirements: 6.1, 6.3, 6.5, 6.6, 8.1, 8.2_
   
-  - [ ] 10.8 Migrate src/features/analytics/model/useRealtimeActivities.ts
+  - [x] 10.8 Migrate src/features/analytics/model/useRealtimeActivities.ts
     - Replace hardcoded query keys with `queryKeys.analytics.realtime.activities()` calls
     - _Requirements: 6.1, 6.3, 6.5, 6.6, 8.1, 8.2_
   
-  - [ ] 10.9 Migrate src/features/analytics/model/useSpeedAnalytics.ts
+  - [x] 10.9 Migrate src/features/analytics/model/useSpeedAnalytics.ts
     - Replace hardcoded query keys with `queryKeys.analytics.speed.metrics()` calls
     - _Requirements: 6.1, 6.3, 6.5, 6.6, 8.1, 8.2_
   
-  - [ ] 10.10 Migrate src/features/courses/model/useCourseEnrollment.ts
+  - [x] 10.10 Migrate src/features/courses/model/useCourseEnrollment.ts
     - Replace hardcoded query keys with `queryKeys.courses.enrollment.*` calls
     - _Requirements: 6.1, 6.4, 6.5, 6.6, 8.1, 8.2_
   
-  - [ ] 10.11 Migrate src/features/courses/model/useCourseProgress.ts
+  - [x] 10.11 Migrate src/features/courses/model/useCourseProgress.ts
     - Replace hardcoded query keys with `queryKeys.courses.progress.byStudent()` calls
     - _Requirements: 6.1, 6.4, 6.5, 6.6, 8.1, 8.2_
   
-  - [ ] 10.12 Migrate src/features/courses/model/useCourses.ts
+  - [x] 10.12 Migrate src/features/courses/model/useCourses.ts
     - Replace hardcoded query keys with `queryKeys.courses.list.*` or `queryKeys.courses.curriculum.*` calls
     - Maintain backward compatibility for curriculum_courses keys
     - _Requirements: 6.1, 6.4, 6.5, 6.6, 8.1, 8.2_
   
-  - [ ] 10.13 Verify curriculum_courses backward compatibility
+  - [x] 10.13 Verify curriculum_courses backward compatibility
     - Ensure `queryKeys.courses.curriculum.byCollege()` generates `['curriculum_courses', collegeId]`
     - Test that existing cached data is preserved
     - _Requirements: 6.5, 6.6, 8.1, 8.3_
@@ -308,27 +308,27 @@ This implementation plan migrates 46 files from hardcoded React Query keys to a 
     - Verify curriculum_courses backward compatibility
     - _Requirements: 6.5, 6.6, 8.1, 8.3_
 
-- [ ] 11. Checkpoint - Verify Phase 5 migration
+- [x] 11. Checkpoint - Verify Phase 5 migration
   - Run `npm run build:dev` to check for TypeScript errors
   - Test analytics dashboards and course features
   - Verify curriculum_courses keys maintain cache
   - Ensure all tests pass, ask the user if questions arise
 
-- [ ] 12. Migrate Phase 6: Shared hooks and subscription files (4 files)
-  - [ ] 12.1 Migrate src/shared/hooks/usePromotionalEvent.ts
+- [x] 12. Migrate Phase 6: Shared hooks and subscription files (4 files)
+  - [x] 12.1 Migrate src/shared/hooks/usePromotionalEvent.ts
     - Replace hardcoded query keys with `queryKeys.subscription.promotions.active()` calls
     - _Requirements: 7.1, 7.2, 7.4, 7.5, 8.1, 8.2_
   
-  - [ ] 12.2 Migrate src/shared/hooks/useStudentRealtimeActivities.ts
+  - [x] 12.2 Migrate src/shared/hooks/useStudentRealtimeActivities.ts
     - Replace hardcoded query keys with `queryKeys.student.activities.realtime()` calls
     - _Requirements: 7.1, 7.2, 7.4, 7.5, 8.1, 8.2_
   
-  - [ ] 12.3 Migrate src/shared/hooks/useSubscriptionQuery.js
+  - [x] 12.3 Migrate src/shared/hooks/useSubscriptionQuery.js
     - Replace hardcoded query keys with `queryKeys.subscription.data.byOrganization()` calls
     - Convert from .js to .ts if needed for type safety
     - _Requirements: 7.1, 7.2, 7.4, 7.5, 8.1, 8.2, 9.1_
   
-  - [ ] 12.4 Migrate src/shared/hooks/useAddOnCatalog.ts
+  - [x] 12.4 Migrate src/shared/hooks/useAddOnCatalog.ts
     - Replace hardcoded query keys with `queryKeys.subscription.addons.catalog()` calls
     - _Requirements: 7.1, 7.2, 7.4, 7.5, 8.1, 8.2_
   
@@ -337,14 +337,14 @@ This implementation plan migrates 46 files from hardcoded React Query keys to a 
     - Test student realtime activities
     - _Requirements: 7.4, 7.5, 8.1_
 
-- [ ] 13. Checkpoint - Verify Phase 6 migration
+- [x] 13. Checkpoint - Verify Phase 6 migration
   - Run `npm run build:dev` to check for TypeScript errors
   - Test subscription features and realtime activities
   - Verify all 46 files have been migrated (1 factory + 45 migration files)
   - Ensure all tests pass, ask the user if questions arise
 
-- [ ] 14. Final validation and documentation
-  - [ ] 14.1 Run full test suite
+- [x] 14. Final validation and documentation
+  - [x] 14.1 Run full test suite
     - Execute all unit tests for query key factory
     - Execute all integration tests for migrated files
     - Verify 100% test coverage for factory module
@@ -361,26 +361,26 @@ This implementation plan migrates 46 files from hardcoded React Query keys to a 
     - Run each property test with minimum 100 iterations
     - _Requirements: 8.1, 8.2, 8.3, 10.2, 10.3_
   
-  - [ ] 14.3 Verify TypeScript compilation across entire codebase
+  - [x] 14.3 Verify TypeScript compilation across entire codebase
     - Run `npm run build:dev` for full build
     - Ensure zero TypeScript errors
     - Verify all imports resolve correctly
     - _Requirements: 2.6, 3.6, 4.6, 5.5, 6.6, 7.5, 9.1, 9.2_
   
-  - [ ] 14.4 Test cache invalidation patterns
+  - [x] 14.4 Test cache invalidation patterns
     - Test domain-level invalidation (e.g., `queryKeys.student.all`)
     - Test resource-level invalidation (e.g., `queryKeys.student.messages.all`)
     - Test specific query invalidation
     - Verify hierarchical invalidation works correctly
     - _Requirements: 10.1, 10.2, 10.3, 10.4_
   
-  - [ ] 14.5 Performance validation
+  - [x] 14.5 Performance validation
     - Measure factory function execution time (should be < 1 microsecond)
     - Verify bundle size impact (should be ~5-8 KB)
     - Confirm no performance regression in query operations
     - _Requirements: 1.6, 8.1_
 
-- [ ] 15. Final checkpoint - Complete migration
+- [x] 15. Final checkpoint - Complete migration
   - All 46 files successfully migrated
   - All tests passing (unit, integration, property-based)
   - Zero TypeScript errors
