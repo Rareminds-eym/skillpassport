@@ -11,6 +11,12 @@ interface UseMessageNotificationsProps {
   onMessageReceived?: (message: Message) => void;
 }
 
+/**
+ * @deprecated This hook is deprecated and will be removed in a future version.
+ * Please use `useMessageNotifications` from @/features/messaging/model instead.
+ * 
+ * @see {@link useMessageNotifications} from @/features/messaging
+ */
 export const useMessageNotifications = ({
   userId,
   userType,

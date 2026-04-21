@@ -163,16 +163,8 @@ export {
 } from './counsellingStore';
 
 export {
-  useMessageStore,
-  useMessages,
-  useConversations,
-  useCurrentConversationId,
-  useUnreadCount,
-  useMessageLoadingStates,
-  useCurrentConversation,
-  useUnreadMessagesCount,
-  type MessageState
-} from './useMessageStore';
+  useMessageStore
+} from '@/features/messaging/model/useMessageStore';
 
 // ====================
 // Store Utilities

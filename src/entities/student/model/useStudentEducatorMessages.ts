@@ -7,104 +7,24 @@ import { useEffect, useRef } from 'react';
 import MessageService from '@/features/messaging/api/messageService';
 import { queryKeys } from '@/shared/lib/queryKeys';
 /**
- * Hook for managing student-educator conversations (both school and college)
- */
-export const useStudentEducatorConversations = (studentId, enabled = true) => {
-  const queryClient = useQueryClient();
-  const clearUnreadCountRef = useRef(null);
-
-  // Fetch conversations
-  const {
-    data: conversations = [],
-    isLoading,
-    error,
-    refetch
-  } = useQuery({
-    queryKey: queryKeys.student.conversations.byStudent(studentId || 'none', 'student_educator'),
-    queryFn: async () => {
-      if (!studentId) return [];
-
-      // Fetch both school educator and college lecturer conversations
-      const allConversations = await MessageService.getUserConversations(
-        studentId,
-        'student',
-        false, // includeArchived
-        true,  // useCache
-      );
-
-      // Filter for both student_educator and student_college_educator conversations
-      return allConversations.filter(conv =>
-        conv.conversation_type === 'student_educator' ||
-        conv.conversation_type === 'student_college_educator'
-      );
-    },
-    enabled: !!studentId && enabled,
-    staleTime: 30000, // 30 seconds
-    gcTime: 5 * 60 * 1000, // 5 minutes
-    refetchInterval: false,
-    refetchOnWindowFocus: true,
-    refetchOnMount: 'always',
-  });
-
-  // Subscribe to real-time updates
-  useEffect(() => {
-    if (!studentId || !enabled) return;
-
-    const subscription = MessageService.subscribeToUserConversations(
-      studentId,
-      'student',
-      (conversation) => {
-        // Handle both student-educator and student-college-educator conversations
-        if (conversation.conversation_type !== 'student_educator' &&
-          conversation.conversation_type !== 'student_college_educator') return;
-
-        console.log('🔄 [Student-Educator] Realtime UPDATE detected:', conversation);
-
-        // Ignore updates for conversations that were deleted
-        if (conversation.deleted_by_student) {
-          console.log('❌ [Student-Educator] Ignoring UPDATE for deleted conversation:', conversation.id);
-          return;
-        }
-
-        // Invalidate conversation queries
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.student.conversations.byStudent(studentId, 'student_educator'),
-          refetchType: 'active'
-        });
-      }
-    );
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [studentId, enabled, queryClient]);
-
-  // Clear unread count function
-  const clearUnreadCount = (conversationId) => {
-    queryClient.setQueryData(queryKeys.student.conversations.byStudent(studentId || 'none', 'student_educator'), (oldData) => {
-      if (!oldData) return oldData;
-      return oldData.map(conv =>
-        conv.id === conversationId
-          ? { ...conv, student_unread_count: 0 }
-          : conv
-      );
-    });
-  };
-
-  // Store the function in ref so it can be accessed by components
-  clearUnreadCountRef.current = clearUnreadCount;
-
-  return {
-    conversations: conversations, // No need to filter - already filtered at DB level
-    isLoading,
-    error,
-    refetch,
-    clearUnreadCount: clearUnreadCountRef.current
-  };
-};
-
-/**
- * Hook for managing messages in a student-educator conversation
+ * @deprecated This hook is deprecated and will be removed in a future version.
+ * Please migrate to the new unified messaging hooks from @/features/messaging:
+ * 
+ * **Migration Guide:**
+ * ```typescript
+ * // Before:
+ * import { useStudentMessages } from '@/entities/student' (or @/features/student-profile);
+ * const { messages, isLoading, sendMessage } = useStudentMessages({ studentId, conversationId });
+ * 
+ * // After:
+ * import { useStudentMessages } from '@/features/messaging';
+ * const { messages, isLoadingMessages, sendMessage } = useStudentMessages(
+ *   studentId,
+ *   { conversationId }
+ * );
+ * ```
+ * 
+ * @see {@link useStudentMessages} from @/features/messaging - New unified student messaging hook
  */
 export const useStudentEducatorMessages = ({
   studentId,
@@ -250,6 +170,53 @@ export const useStudentEducatorMessages = ({
     refetch,
     sendMessage: sendMessageMutation.mutateAsync,
     isSending: sendMessageMutation.isPending
+  };
+};
+
+/**
+ * Hook for fetching student-educator conversations
+ * @deprecated Use useStudentMessages from @/features/messaging instead
+ */
+export const useStudentEducatorConversations = (studentId, enabled = true) => {
+  const queryClient = useQueryClient();
+  const clearUnreadCountRef = useRef(null);
+
+  const {
+    data: conversations = [],
+    isLoading,
+    error,
+    refetch
+  } = useQuery({
+    queryKey: queryKeys.student.conversations.byStudent(studentId, 'student_educator'),
+    queryFn: async () => {
+      if (!studentId) return [];
+      return await MessageService.getConversationsByStudent(studentId, 'student_educator');
+    },
+    enabled: !!studentId && enabled,
+    staleTime: 30000,
+    gcTime: 5 * 60 * 1000,
+  });
+
+  clearUnreadCountRef.current = (conversationId) => {
+    queryClient.setQueryData(
+      queryKeys.student.conversations.byStudent(studentId, 'student_educator'),
+      (old) => {
+        if (!old) return old;
+        return old.map(conv =>
+          conv.conversation_id === conversationId
+            ? { ...conv, unread_count: 0 }
+            : conv
+        );
+      }
+    );
+  };
+
+  return {
+    conversations,
+    isLoading,
+    error,
+    refetch,
+    clearUnreadCount: clearUnreadCountRef.current
   };
 };
 

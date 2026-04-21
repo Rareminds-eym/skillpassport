@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { MessageSquare, Send, Loader2 } from 'lucide-react';
-import { useStudentMessages, useStudentUnreadCount, useStudentConversations } from '@/features/hooks/useStudentMessages';
-import { useStudentMessageNotifications } from '@/features/hooks/useStudentMessageNotifications';
-import { useMessageStore } from '@/features/messaging';
+import { useStudentMessages } from '@/features/messaging';
+import { useMessageNotifications } from '@/features/messaging';
 
 interface StudentMessagingExampleProps {
   studentId: string;
@@ -25,61 +24,58 @@ export const StudentMessagingExample: React.FC<StudentMessagingExampleProps> = (
 }) => {
   const [messageText, setMessageText] = useState('');
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
-  
-  // Get unread count with realtime updates
-  const { unreadCount } = useStudentUnreadCount(studentId);
-  
-  // Get all conversations
-  const { conversations, isLoading: loadingConversations } = useStudentConversations(studentId);
-  
-  // Get messages for selected conversation
-  const { messages, sendMessage, isSending, isLoading: loadingMessages } = useStudentMessages({
-    studentId,
+
+  // Use the new consolidated hook - gets messages, conversations, and unread count all in one
+  const {
+    messages,
+    conversations,
+    unreadCount,
+    sendMessage,
+    isSending,
+    isLoadingMessages: loadingMessages,
+    isLoadingConversations: loadingConversations,
+  } = useStudentMessages(studentId, {
     conversationId: selectedConversationId,
-    enabled: !!selectedConversationId,
-    enableRealtime: true
+    enableRealtime: true,
   });
-  
-  // Setup hot-toast notifications (exclude current conversation)
-  useStudentMessageNotifications({
-    studentId,
+
+  // Setup message notifications (exclude current conversation)
+  useMessageNotifications({
+    userId: studentId,
+    userRole: 'student',
     enabled: true,
-    playSound: true,
     excludeConversationId: selectedConversationId,
-    onMessageReceived: (message) => {
-    }
   });
-  
+
   // Auto-select first conversation
   useEffect(() => {
     if (conversations.length > 0 && !selectedConversationId) {
       setSelectedConversationId(conversations[0].id);
     }
   }, [conversations, selectedConversationId]);
-  
+
   const handleSendMessage = () => {
     if (!messageText.trim() || !selectedConversationId) return;
-    
+
     const currentConversation = conversations.find(c => c.id === selectedConversationId);
     if (!currentConversation) return;
-    
+
     sendMessage({
-      senderId: studentId,
-      senderType: 'student',
-      receiverId: currentConversation.recruiter_id,
+      conversationId: selectedConversationId,
+      receiverId: currentConversation.recruiter_id || '',
       receiverType: 'recruiter',
       messageText: messageText.trim(),
       applicationId: currentConversation.application_id
     });
-    
+
     setMessageText('');
   };
-  
+
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Toaster for notifications */}
       <Toaster position="top-right" />
-      
+
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
@@ -87,7 +83,7 @@ export const StudentMessagingExample: React.FC<StudentMessagingExampleProps> = (
             <MessageSquare className="w-6 h-6 text-indigo-600" />
             <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
           </div>
-          
+
           {unreadCount > 0 && (
             <div className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
               {unreadCount} unread
@@ -95,7 +91,7 @@ export const StudentMessagingExample: React.FC<StudentMessagingExampleProps> = (
           )}
         </div>
       </div>
-      
+
       <div className="flex flex-1 overflow-hidden">
         {/* Conversations Sidebar */}
         <div className="w-80 bg-white border-r border-gray-200 overflow-y-auto">
@@ -103,7 +99,7 @@ export const StudentMessagingExample: React.FC<StudentMessagingExampleProps> = (
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
               Conversations
             </h2>
-            
+
             {loadingConversations ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
@@ -118,11 +114,10 @@ export const StudentMessagingExample: React.FC<StudentMessagingExampleProps> = (
                   <button
                     key={conv.id}
                     onClick={() => setSelectedConversationId(conv.id)}
-                    className={`w-full text-left p-3 rounded-lg transition-colors ${
-                      selectedConversationId === conv.id
-                        ? 'bg-indigo-50 border-2 border-indigo-500'
-                        : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
-                    }`}
+                    className={`w-full text-left p-3 rounded-lg transition-colors ${selectedConversationId === conv.id
+                      ? 'bg-indigo-50 border-2 border-indigo-500'
+                      : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
+                      }`}
                   >
                     <div className="flex justify-between items-start mb-1">
                       <p className="font-semibold text-sm text-gray-900">
@@ -148,7 +143,7 @@ export const StudentMessagingExample: React.FC<StudentMessagingExampleProps> = (
             )}
           </div>
         </div>
-        
+
         {/* Messages Area */}
         <div className="flex-1 flex flex-col">
           {selectedConversationId ? (
@@ -173,17 +168,15 @@ export const StudentMessagingExample: React.FC<StudentMessagingExampleProps> = (
                         className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
                       >
                         <div
-                          className={`max-w-md px-4 py-3 rounded-2xl ${
-                            isOwnMessage
-                              ? 'bg-indigo-600 text-white'
-                              : 'bg-white text-gray-900 border border-gray-200'
-                          }`}
+                          className={`max-w-md px-4 py-3 rounded-2xl ${isOwnMessage
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-white text-gray-900 border border-gray-200'
+                            }`}
                         >
                           <p className="text-sm">{message.message_text}</p>
                           <p
-                            className={`text-xs mt-1 ${
-                              isOwnMessage ? 'text-indigo-200' : 'text-gray-400'
-                            }`}
+                            className={`text-xs mt-1 ${isOwnMessage ? 'text-indigo-200' : 'text-gray-400'
+                              }`}
                           >
                             {new Date(message.created_at).toLocaleTimeString([], {
                               hour: '2-digit',
@@ -196,7 +189,7 @@ export const StudentMessagingExample: React.FC<StudentMessagingExampleProps> = (
                   })
                 )}
               </div>
-              
+
               {/* Message Input */}
               <div className="bg-white border-t border-gray-200 p-4">
                 <div className="flex gap-3">

@@ -41,6 +41,26 @@ export interface Conversation {
   created_at: string;
 }
 
+/**
+ * @deprecated This hook is deprecated and will be removed in a future version.
+ * Please migrate to the new unified messaging hooks from @/features/messaging:
+ * 
+ * **Migration Guide:**
+ * ```typescript
+ * // Before:
+ * import { useStudentMessages } from '@/entities/student' (or @/features/student-profile);
+ * const { messages, isLoading, sendMessage } = useStudentMessages({ studentId, conversationId });
+ * 
+ * // After:
+ * import { useStudentMessages } from '@/features/messaging';
+ * const { messages, isLoadingMessages, sendMessage } = useStudentMessages(
+ *   studentId,
+ *   { conversationId }
+ * );
+ * ```
+ * 
+ * @see {@link useStudentMessages} from @/features/messaging - New unified student messaging hook
+ */
 export const useStudentMessages = ({
   studentId,
   conversationId = null,

@@ -23,10 +23,8 @@ import {
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { MessageService, Conversation } from '@/features/messaging';
-// import { useStudentCollegeLecturerMessages } from '@/features/messaging';
-import { useCollegeLecturerMessages } from '@/features/messaging';
+import { useEducatorMessages, useConversationActions } from '@/features/messaging';
 import { useCollegeEducatorAdminConversationsForEducator } from '@/features/educator';
-import { useCollegeEducatorAdminMessagesForEducator } from '@/features/educator';
 import { formatDistanceToNow } from 'date-fns';
 import { useGlobalPresence, useUser } from '@/stores';
 import { useRealtimePresence } from '@/shared/lib/hooks';
@@ -262,20 +260,23 @@ const CollegeLecturerMessages = () => {
     logger.info('🏁 [College-Messages-Page] === CONVERSATIONS DEBUG END ===');
   }, [activeCollegeStudentConversations, archivedCollegeStudentConversations, conversations, showArchived, loadingConversations]);
 
-  // Fetch messages for selected conversation - use appropriate hook based on tab
-  const studentMessages = useCollegeLecturerMessages({
-    conversationId: activeTab === 'college_students' ? selectedConversationId : null,
-    enabled: !!selectedConversationId && activeTab === 'college_students',
+  // Fetch messages for selected conversation using the new unified hook
+  // The new hook handles both student and admin conversations based on conversation type
+  const { messages, isLoadingMessages: loadingMessages, sendMessage, isSending } = useEducatorMessages(
+    collegeLecturerRecordId || '',
+    {
+      conversationId: selectedConversationId,
+      enabled: !!selectedConversationId && !!collegeLecturerRecordId,
+      enableRealtime: true,
+    }
+  );
+
+  // Use conversation actions hook for archive/delete operations
+  const { archiveConversation, unarchiveConversation, deleteConversation } = useConversationActions({
+    userId: collegeLecturerRecordId || '',
+    userRole: 'college_educator',
   });
 
-  const adminMessages = useCollegeEducatorAdminMessagesForEducator({
-    conversationId: activeTab === 'college_admin' ? selectedConversationId : null,
-    educatorId: collegeLecturerRecordId,
-    enabled: !!selectedConversationId && activeTab === 'college_admin' && !!collegeLecturerRecordId,
-  });
-
-  // Use the appropriate messages based on active tab
-  const { messages, isLoading: loadingMessages, sendMessage, isSending } = activeTab === 'college_students' ? studentMessages : adminMessages;
   // Debug messages loading
   useEffect(() => {
     logger.info('🔍 [College-Messages-Page] === MESSAGES DEBUG ===');
@@ -449,7 +450,7 @@ const CollegeLecturerMessages = () => {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async ({ conversationId }: { conversationId: string }) => {
-      await MessageService.deleteConversationForUser(conversationId, collegeLecturerRecordId!, 'college_educator');
+      await deleteConversation(conversationId);
       return { conversationId };
     },
     onMutate: async ({ conversationId }) => {
@@ -509,8 +510,8 @@ const CollegeLecturerMessages = () => {
       }
 
       await (isArchiving
-        ? MessageService.archiveConversation(conversationId)
-        : MessageService.unarchiveConversation(conversationId)
+        ? archiveConversation(conversationId)
+        : unarchiveConversation(conversationId)
       );
 
       // Refetch appropriate conversations based on active tab
@@ -529,7 +530,7 @@ const CollegeLecturerMessages = () => {
     } finally {
       setTimeout(() => setIsTransitioning(false), 300);
     }
-  }, [selectedConversationId, refetchConversations, showArchived, activeTab, refetchArchivedCollegeStudents, refetchActiveCollegeStudents, refetchArchivedCollegeAdmin, refetchActiveCollegeAdmin]);
+  }, [selectedConversationId, refetchConversations, showArchived, activeTab, refetchArchivedCollegeStudents, refetchActiveCollegeStudents, refetchArchivedCollegeAdmin, refetchActiveCollegeAdmin, archiveConversation, unarchiveConversation]);
 
   // Handle delete conversation
   const handleDeleteConversation = useCallback(async () => {
@@ -668,12 +669,10 @@ const CollegeLecturerMessages = () => {
       if (activeTab === 'college_students') {
         // Send message to college student
         await sendMessage({
-          senderId: userAuthId,
-          senderType: 'college_educator',
+          conversationId: selectedConversationId!,
           receiverId: currentChat.studentId,
           receiverType: 'student',
           messageText: messageInput,
-          subject: currentChat.subject
         });
 
         // Send notification to student
@@ -684,18 +683,16 @@ const CollegeLecturerMessages = () => {
             type: 'message',
             link: `/student/messages?tab=college_lecturers&conversation=${selectedConversationId}`
           });
-        } catch (notifError) {
+        } catch {
           // Silent fail
         }
       } else {
         // Send message to college admin
         await sendMessage({
-          senderId: collegeLecturerRecordId,
-          senderType: 'college_educator',
+          conversationId: selectedConversationId!,
           receiverId: currentChat.adminId,
           receiverType: 'college_admin',
           messageText: messageInput,
-          subject: currentChat.subject
         });
 
         // Send notification to admin
@@ -706,7 +703,7 @@ const CollegeLecturerMessages = () => {
             type: 'message',
             link: `/college-admin/communication?tab=educators&conversation=${selectedConversationId}`
           });
-        } catch (notifError) {
+        } catch {
           // Silent fail
         }
       }
@@ -716,7 +713,7 @@ const CollegeLecturerMessages = () => {
     } catch (error) {
       logger.error('Error sending message:', error);
     }
-  }, [messageInput, currentChat, userAuthId, collegeLecturerRecordId, sendMessage, sendNotification, selectedConversationId, setTyping, activeTab]);
+  }, [messageInput, currentChat, sendMessage, sendNotification, selectedConversationId, setTyping, activeTab]);
 
   // Handle typing in input
   const handleInputChange = useCallback((value: string) => {
@@ -1003,8 +1000,8 @@ const CollegeLecturerMessages = () => {
                   <div
                     key={contact.id}
                     className={`relative w-full flex items-center border-b border-gray-100 group transition-all duration-200 ${selectedConversationId === contact.id
-                        ? 'bg-blue-50 border-l-4 border-l-blue-600'
-                        : 'hover:bg-gray-50 border-l-4 border-l-transparent'
+                      ? 'bg-blue-50 border-l-4 border-l-blue-600'
+                      : 'hover:bg-gray-50 border-l-4 border-l-transparent'
                       }`}
                   >
                     <button
@@ -1167,8 +1164,8 @@ const CollegeLecturerMessages = () => {
                         <div className="max-w-[70%]">
                           <div
                             className={`rounded-2xl px-4 py-2.5 shadow-sm ${message.sender === 'me'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-white text-gray-900 border border-gray-200'
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-white text-gray-900 border border-gray-200'
                               }`}
                           >
                             <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">

@@ -1,10 +1,13 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import RealtimeService, { TypingIndicator } from '@/shared/api/realtimeService';
+import type { UserRole, ConversationType } from '../api/types';
 
 interface UseTypingIndicatorProps {
   conversationId: string;
   currentUserId: string;
   currentUserName: string;
+  userRole?: UserRole;
+  conversationType?: ConversationType;
   enabled?: boolean;
 }
 
@@ -34,10 +37,14 @@ export const useTypingIndicator = ({
   conversationId,
   currentUserId,
   currentUserName,
+  userRole,
+  conversationType,
   enabled = true
 }: UseTypingIndicatorProps) => {
   const [typingUsers, setTypingUsers] = useState<TypingIndicator[]>([]);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastBroadcastRef = useRef<number>(0);
 
   useEffect(() => {
     if (!enabled || !conversationId) return;
@@ -80,15 +87,42 @@ export const useTypingIndicator = ({
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
     };
   }, [conversationId, currentUserId, enabled]);
 
   /**
    * Set typing status for the current user
+   * Debounced to once per 2 seconds to reduce network traffic
    */
   const setTyping = useCallback(
     async (isTyping: boolean) => {
       try {
+        // Debounce typing broadcasts to once per 2 seconds
+        const now = Date.now();
+        const timeSinceLastBroadcast = now - lastBroadcastRef.current;
+
+        if (isTyping && timeSinceLastBroadcast < 2000) {
+          // Too soon since last broadcast, debounce it
+          if (debounceTimeoutRef.current) {
+            clearTimeout(debounceTimeoutRef.current);
+          }
+
+          debounceTimeoutRef.current = setTimeout(() => {
+            RealtimeService.sendTypingIndicator(
+              conversationId,
+              currentUserId,
+              currentUserName,
+              true
+            );
+            lastBroadcastRef.current = Date.now();
+          }, 2000 - timeSinceLastBroadcast);
+
+          return;
+        }
+
         await RealtimeService.sendTypingIndicator(
           conversationId,
           currentUserId,
@@ -96,7 +130,9 @@ export const useTypingIndicator = ({
           isTyping
         );
 
-        // Auto-hide typing indicator after 3 seconds
+        lastBroadcastRef.current = now;
+
+        // Auto-clear typing indicator after 3 seconds
         if (isTyping) {
           if (typingTimeoutRef.current) {
             clearTimeout(typingTimeoutRef.current);

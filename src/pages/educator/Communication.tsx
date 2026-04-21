@@ -23,8 +23,7 @@ import {
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { MessageService, Conversation, NewStudentConversationModalEducator } from '@/features/messaging';
-import { useEducatorMessages } from '@/features/educator';
-import { useEducatorAdminMessages } from '@/features/educator';
+import { useEducatorMessages, useConversationActions } from '@/features/messaging';
 import { formatDistanceToNow } from 'date-fns';
 import { useGlobalPresence, useUser } from '@/stores';
 import { useRealtimePresence } from '@/shared/lib/hooks';
@@ -395,22 +394,22 @@ const Communication = () => {
       ? (showArchived ? refetchArchivedAdmin : refetchActiveAdmin)
       : () => Promise.resolve();
 
-  // Fetch messages for selected conversation - call all hooks unconditionally
-  const studentMessages = useEducatorMessages({
-    conversationId: activeTab === 'students' ? selectedConversationId : null,
-    enabled: activeTab === 'students' && !!selectedConversationId,
-  });
+  // Fetch messages for selected conversation using the new unified hook
+  // The new hook returns both student and admin messages based on conversation type
+  const { messages, isLoadingMessages: loadingMessages, sendMessage, isSending } = useEducatorMessages(
+    educatorId || '',
+    {
+      conversationId: selectedConversationId,
+      enabled: !!selectedConversationId && !!educatorId,
+      enableRealtime: true,
+    }
+  );
 
-  const adminMessages = useEducatorAdminMessages({
-    conversationId: activeTab === 'admin' ? selectedConversationId : null,
-    enabled: activeTab === 'admin' && !!selectedConversationId,
+  // Use conversation actions hook for archive/delete operations
+  const { archiveConversation, unarchiveConversation, deleteConversation, restoreConversation } = useConversationActions({
+    userId: educatorId || '',
+    userRole: 'educator',
   });
-
-  // Select the appropriate messages based on active tab
-  const { messages, isLoading: loadingMessages, sendMessage, isSending } =
-    activeTab === 'students' ? studentMessages :
-      activeTab === 'admin' ? adminMessages :
-        { messages: [], isLoading: false, sendMessage: async () => { }, isSending: false };
 
   // Use shared global presence context
   const { isUserOnline: isUserOnlineGlobal, onlineUsers: globalOnlineUsers } = useGlobalPresence();
@@ -751,7 +750,7 @@ const Communication = () => {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async ({ conversationId }: { conversationId: string }) => {
-      await MessageService.deleteConversationForUser(conversationId, educatorId!, 'educator');
+      await deleteConversation(conversationId);
       return { conversationId };
     },
     onMutate: async ({ conversationId }) => {
@@ -794,7 +793,7 @@ const Communication = () => {
   // Undo mutation
   const undoMutation = useMutation({
     mutationFn: async ({ conversationId }: { conversationId: string }) => {
-      await MessageService.restoreConversation(conversationId, educatorId!, 'educator');
+      await restoreConversation(conversationId);
       return { conversationId };
     },
     onSuccess: () => {
@@ -813,8 +812,8 @@ const Communication = () => {
       }
 
       await (isArchiving
-        ? MessageService.archiveConversation(conversationId)
-        : MessageService.unarchiveConversation(conversationId)
+        ? archiveConversation(conversationId)
+        : unarchiveConversation(conversationId)
       );
 
       await Promise.all([
@@ -828,7 +827,7 @@ const Communication = () => {
     } finally {
       setTimeout(() => setIsTransitioning(false), 300);
     }
-  }, [selectedConversationId, refetchConversations, activeTab, showArchived, refetchArchivedStudents, refetchActiveStudents, refetchArchivedAdmin, refetchActiveAdmin]);
+  }, [selectedConversationId, refetchConversations, activeTab, showArchived, refetchArchivedStudents, refetchActiveStudents, refetchArchivedAdmin, refetchActiveAdmin, archiveConversation, unarchiveConversation]);
 
   // Handle delete conversation
   const handleDeleteConversation = useCallback(async () => {
@@ -978,13 +977,13 @@ const Communication = () => {
       if (activeTab === 'students') {
         // Send message to student
         await sendMessage({
-          senderId: userAuthId,
-          senderType: 'educator',
+          conversationId: selectedConversationId!,
           receiverId: currentChat.studentId,
           receiverType: 'student',
           messageText: messageInput,
-          classId: currentChat.classId,
-          subject: currentChat.subject
+          metadata: {
+            classId: currentChat.classId,
+          }
         });
 
         // Send notification to student
@@ -995,7 +994,7 @@ const Communication = () => {
             type: 'message',
             link: `/student/messages?tab=educators&conversation=${selectedConversationId}`
           });
-        } catch (notifError) {
+        } catch {
           // Silent fail
         }
       } else {
@@ -1014,12 +1013,10 @@ const Communication = () => {
         }
 
         await sendMessage({
-          senderId: userAuthId,
-          senderType: 'educator',
+          conversationId: selectedConversationId!,
           receiverId: schoolAdmin.user_id,
           receiverType: 'educator', // School admin is also an educator
           messageText: messageInput,
-          subject: currentChat.subject
         });
 
         // Send notification to school admin
@@ -1030,7 +1027,7 @@ const Communication = () => {
             type: 'message',
             link: `/admin/school/educator-communication?conversation=${selectedConversationId}`
           });
-        } catch (notifError) {
+        } catch {
           // Silent fail
         }
       }

@@ -5,8 +5,29 @@ import { MessageService } from '@/features/messaging';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**
- * Hook for managing college educator ↔ admin conversations
+ * Hook for managing college educator-admin conversations
  * Handles both educator and admin perspectives
+ * 
+ * @deprecated This hook is deprecated and will be removed in a future version.
+ * Please migrate to the new unified messaging hooks:
+ * 
+ * **Migration Guide:**
+ * ```typescript
+ * // Before:
+ * import { useCollegeEducatorAdminConversations } from '@/features/educator';
+ * const { conversations, isLoading } = useCollegeEducatorAdminConversations({
+ *   userId, userType, collegeId, enabled
+ * });
+ * 
+ * // After:
+ * import { useEducatorMessages } from '@/features/messaging';
+ * const { conversations, isLoadingConversations } = useEducatorMessages(
+ *   userId,
+ *   { conversationType: 'college_educator_admin', enabled }
+ * );
+ * ```
+ * 
+ * @see {@link useEducatorMessages} from @/features/messaging
  */
 export const useCollegeEducatorAdminConversations = ({
   userId,

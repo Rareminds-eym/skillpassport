@@ -7,29 +7,24 @@ import type { Message } from '@/features/messaging/api/messageService';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**
- * DEPENDENCY INJECTION PATTERN APPLIED
+ * @deprecated This hook is deprecated and will be removed in a future version.
+ * Please migrate to the new unified messaging hooks from @/features/messaging:
  * 
- * This hook has been refactored to accept API functions as parameters
- * instead of directly importing from @/features/student-profile/api.
+ * **Migration Guide:**
+ * ```typescript
+ * // Before:
+ * import { useStudentMessages } from '@/entities/student' (or @/features/student-profile);
+ * const { messages, isLoading, sendMessage } = useStudentMessages({ studentId, conversationId });
  * 
- * This maintains FSD architecture by preventing entities from depending on features.
+ * // After:
+ * import { useStudentMessages } from '@/features/messaging';
+ * const { messages, isLoadingMessages, sendMessage } = useStudentMessages(
+ *   studentId,
+ *   { conversationId }
+ * );
+ * ```
  * 
- * Usage: Import the API functions from the feature layer and pass them to this hook.
- * Example:
- *   import * as studentProfileApi from '@/features/student-profile/api';
- *   const hook = useStudentData(studentId, studentProfileApi);
- */
-
-interface UseStudentMessagesOptions {
-  studentId: string | null;
-  conversationId?: string | null;
-  enabled?: boolean;
-  enableRealtime?: boolean;
-}
-
-/**
- * Hook for managing student messages with zustand + react-query + realtime
- * Non-blocking, efficient state management with optimistic updates
+ * @see {@link useStudentMessages} from @/features/messaging - New unified student messaging hook
  */
 export const useStudentMessages = ({
   studentId,

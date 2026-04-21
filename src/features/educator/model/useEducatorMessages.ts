@@ -5,6 +5,25 @@ import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**
  * Hook for managing messages in an educator conversation
+ * 
+ * @deprecated This hook is deprecated and will be removed in a future version.
+ * Please migrate to the new unified messaging hooks:
+ * 
+ * **Migration Guide:**
+ * ```typescript
+ * // Before:
+ * import { useEducatorMessages } from '@/features/educator';
+ * const { messages, isLoading, sendMessage } = useEducatorMessages({ conversationId, enabled });
+ * 
+ * // After:
+ * import { useEducatorMessages } from '@/features/messaging';
+ * const { messages, isLoadingMessages, sendMessage } = useEducatorMessages(
+ *   educatorId,
+ *   { conversationId, enabled }
+ * );
+ * ```
+ * 
+ * @see {@link useEducatorMessages} from @/features/messaging - New unified educator messaging hook
  */
 export const useEducatorMessages = ({
   conversationId,

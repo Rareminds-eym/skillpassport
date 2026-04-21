@@ -8,143 +8,24 @@ import { supabase } from '@/shared/api/supabaseClient';
 import MessageService from '@/features/messaging/api/messageService';
 import { queryKeys } from '@/shared/lib/queryKeys';
 /**
- * Hook for managing student-college_admin conversations
- */
-export const useStudentCollegeAdminConversations = (studentId, enabled = true) => {
-  const queryClient = useQueryClient();
-  const clearUnreadCountRef = useRef(null);
-
-  // Fetch conversations
-  const {
-    data: conversations = [],
-    isLoading,
-    error,
-    refetch
-  } = useQuery({
-    queryKey: queryKeys.student.conversations.byStudent(studentId || 'none', 'student_college_admin'),
-    queryFn: async () => {
-      if (!studentId) return [];
-
-      // Get student's college_id first
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
-        .select('college_id, university_college_id')
-        .eq('user_id', studentId)
-        .maybeSingle();
-
-      if (studentError) {
-        console.error('Error fetching student college:', studentError);
-        return [];
-      }
-
-      if (!studentData?.college_id && !studentData?.university_college_id) {
-        // Not a college student or no college assigned - simply return empty list
-        return [];
-      }
-
-      const collegeId = studentData.college_id || studentData.university_college_id;
-
-      // Fetch student-college_admin conversations directly from database
-      // Note: colleges table doesn't exist - fetch college name from organizations separately
-      const { data: collegeAdminConversations, error: convError } = await supabase
-        .from('conversations')
-        .select(`
-          *
-        `)
-        .eq('student_id', studentId)
-        .eq('conversation_type', 'student_college_admin')
-        .eq('college_id', collegeId)
-        .eq('deleted_by_student', false)
-        .order('last_message_at', { ascending: false, nullsFirst: false });
-
-      if (convError) {
-        console.error('Error fetching college admin conversations:', convError);
-        throw convError;
-      }
-
-      // Fetch college name from organizations table
-      if (collegeAdminConversations && collegeAdminConversations.length > 0) {
-        const { data: orgData } = await supabase
-          .from('organizations')
-          .select('id, name')
-          .eq('id', collegeId)
-          .maybeSingle();
-
-        // Add college info to each conversation
-        return collegeAdminConversations.map(conv => ({
-          ...conv,
-          college: orgData || null
-        }));
-      }
-
-      return collegeAdminConversations || [];
-    },
-    enabled: !!studentId && enabled,
-    staleTime: 30000, // 30 seconds
-    gcTime: 5 * 60 * 1000, // 5 minutes
-    refetchInterval: false,
-    refetchOnWindowFocus: true,
-    refetchOnMount: 'always',
-  });
-
-  // Subscribe to real-time updates
-  useEffect(() => {
-    if (!studentId || !enabled) return;
-
-    const subscription = MessageService.subscribeToUserConversations(
-      studentId,
-      'student',
-      (conversation) => {
-        // Only handle student-college_admin conversations
-        if (conversation.conversation_type !== 'student_college_admin') return;
-
-        console.log('🔄 [Student-College-Admin] Realtime UPDATE detected:', conversation);
-
-        // Ignore updates for conversations that were deleted
-        if (conversation.deleted_by_student) {
-          console.log('❌ [Student-College-Admin] Ignoring UPDATE for deleted conversation:', conversation.id);
-          return;
-        }
-
-        // Invalidate conversation queries
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.student.conversations.byStudent(studentId, 'student_college_admin'),
-          refetchType: 'active'
-        });
-      }
-    );
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [studentId, enabled, queryClient]);
-
-  // Clear unread count function
-  const clearUnreadCount = (conversationId) => {
-    queryClient.setQueryData(queryKeys.student.conversations.byStudent(studentId || 'none', 'student_college_admin'), (oldData) => {
-      if (!oldData) return oldData;
-      return oldData.map(conv =>
-        conv.id === conversationId
-          ? { ...conv, student_unread_count: 0 }
-          : conv
-      );
-    });
-  };
-
-  // Store the function in ref so it can be accessed by components
-  clearUnreadCountRef.current = clearUnreadCount;
-
-  return {
-    conversations: conversations,
-    isLoading,
-    error,
-    refetch,
-    clearUnreadCount: clearUnreadCountRef.current
-  };
-};
-
-/**
- * Hook for managing messages in a student-college_admin conversation
+ * @deprecated This hook is deprecated and will be removed in a future version.
+ * Please migrate to the new unified messaging hooks from @/features/messaging:
+ * 
+ * **Migration Guide:**
+ * ```typescript
+ * // Before:
+ * import { useStudentMessages } from '@/entities/student' (or @/features/student-profile);
+ * const { messages, isLoading, sendMessage } = useStudentMessages({ studentId, conversationId });
+ * 
+ * // After:
+ * import { useStudentMessages } from '@/features/messaging';
+ * const { messages, isLoadingMessages, sendMessage } = useStudentMessages(
+ *   studentId,
+ *   { conversationId }
+ * );
+ * ```
+ * 
+ * @see {@link useStudentMessages} from @/features/messaging - New unified student messaging hook
  */
 export const useStudentCollegeAdminMessages = ({
   studentId,
@@ -288,6 +169,53 @@ export const useStudentCollegeAdminMessages = ({
     refetch,
     sendMessage: sendMessageMutation.mutateAsync,
     isSending: sendMessageMutation.isPending
+  };
+};
+
+/**
+ * Hook for fetching student-college_admin conversations
+ * @deprecated Use useStudentMessages from @/features/messaging instead
+ */
+export const useStudentCollegeAdminConversations = (studentId, enabled = true) => {
+  const queryClient = useQueryClient();
+  const clearUnreadCountRef = useRef(null);
+
+  const {
+    data: conversations = [],
+    isLoading,
+    error,
+    refetch
+  } = useQuery({
+    queryKey: queryKeys.student.conversations.byStudent(studentId, 'student_college_admin'),
+    queryFn: async () => {
+      if (!studentId) return [];
+      return await MessageService.getConversationsByStudent(studentId, 'student_college_admin');
+    },
+    enabled: !!studentId && enabled,
+    staleTime: 30000,
+    gcTime: 5 * 60 * 1000,
+  });
+
+  clearUnreadCountRef.current = (conversationId) => {
+    queryClient.setQueryData(
+      queryKeys.student.conversations.byStudent(studentId, 'student_college_admin'),
+      (old) => {
+        if (!old) return old;
+        return old.map(conv =>
+          conv.conversation_id === conversationId
+            ? { ...conv, unread_count: 0 }
+            : conv
+        );
+      }
+    );
+  };
+
+  return {
+    conversations,
+    isLoading,
+    error,
+    refetch,
+    clearUnreadCount: clearUnreadCountRef.current
   };
 };
 

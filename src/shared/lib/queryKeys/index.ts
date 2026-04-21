@@ -5,6 +5,7 @@ export { recruiterKeys } from './recruiter';
 export { analyticsKeys } from './analytics';
 export { coursesKeys } from './courses';
 export { subscriptionKeys } from './subscription';
+export { messagesKeys } from './messages';
 
 export type { QueryKey, UserType, ConversationType, ArchiveStatus } from './types';
 
@@ -15,6 +16,7 @@ import { recruiterKeys } from './recruiter';
 import { analyticsKeys } from './analytics';
 import { coursesKeys } from './courses';
 import { subscriptionKeys } from './subscription';
+import { messagesKeys } from './messages';
 
 /**
  * Centralized query key factory for React Query
@@ -63,4 +65,5 @@ export const queryKeys = {
     analytics: analyticsKeys,
     courses: coursesKeys,
     subscription: subscriptionKeys,
+    messages: messagesKeys,
 } as const;
