@@ -240,8 +240,8 @@ class AlertService {
    * Send email alert (placeholder - integrate with email service)
    */
   private sendEmailAlert(alert: Alert): void {
-    console.log('[Alert] Email notification:', alert);
-    // TODO: Integrate with email service
+    // TODO: Integrate with email service for structured alert logging
+    // Options: SendGrid, AWS SES, or similar. Use structured logging (e.g., Sentry, DataDog) for observability.
     // await emailService.sendAlert({
     //   to: 'admin@organization.com',
     //   subject: `[${alert.severity.toUpperCase()}] ${alert.message}`,
@@ -253,8 +253,8 @@ class AlertService {
    * Send Slack alert (placeholder - integrate with Slack webhook)
    */
   private sendSlackAlert(alert: Alert): void {
-    console.log('[Alert] Slack notification:', alert);
-    // TODO: Integrate with Slack webhook
+    // TODO: Integrate with Slack webhook for structured alert logging
+    // Use SLACK_WEBHOOK_URL env variable. Add error handling for failed webhook requests.
     // await fetch(SLACK_WEBHOOK_URL, {
     //   method: 'POST',
     //   body: JSON.stringify({
@@ -310,6 +310,14 @@ class AlertService {
    */
   getAlertsBySeverity(severity: AlertSeverity): Alert[] {
     return this.getActiveAlerts().filter(a => a.severity === severity);
+  }
+
+  /**
+   * Reset all in-memory state — call on session/org context change
+   */
+  reset(): void {
+    this.alerts.clear();
+    this.lastAlertTime.clear();
   }
 }
 
