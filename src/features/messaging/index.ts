@@ -25,27 +25,33 @@ export { default as NewAdminConversationModal } from './ui/NewAdminConversationM
 export { default as NewSchoolAdminEducatorConversationModal } from './ui/NewSchoolAdminEducatorConversationModal';
 
 // ============================================================================
-// Hooks
+// Hooks - New Unified API
 // ============================================================================
-export { 
-  useMessages, 
-  useConversation 
-} from './model/useMessages';
+export {
+  useMessages,
+  useStudentMessages,
+  useEducatorMessages,
+  useRecruiterMessages,
+  useAdminMessages,
+  useConversationActions,
+  useConversation
+} from './model';
+
+export type {
+  UseMessagesOptions,
+  UseMessagesReturn,
+  UseConversationActionsOptions,
+  UseConversationActionsReturn
+} from './model';
 
 export { useMessageNotifications } from './model/useMessageNotifications';
 export { default as useTypingIndicator } from './model/useTypingIndicator';
 
-// Store hooks
-export {
-  useMessageStore,
-  useMessages as useMessagesFromStore,
-  useConversations,
-  useCurrentConversationId,
-  useUnreadCount,
-  useMessageLoadingStates,
-  useCurrentConversation,
-  useUnreadMessagesCount
-} from './model/useMessageStore';
+// Store
+export { useMessageStore } from './model/useMessageStore';
+
+// Deprecated - kept for backward compatibility during migration
+export { useUnreadMessagesCount } from './model/useUnreadMessagesCount';
 
 // ============================================================================
 // Services
@@ -58,7 +64,3 @@ export { default as MessageService } from './api/messageService';
 
 // API & Data Access
 export * from './api';
-
-export * from './model';
-export { useCollegeAdminMessages } from './model/useCollegeAdminMessages';
-export { useCollegeLecturerMessages } from './model/useCollegeLecturerMessages';

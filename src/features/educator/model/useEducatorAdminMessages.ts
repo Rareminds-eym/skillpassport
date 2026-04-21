@@ -7,6 +7,25 @@ import { queryKeys } from '@/shared/lib/queryKeys';
 /**
  * Hook for managing educator-admin messages
  * Similar to useEducatorMessages but for educator-admin conversations
+ * 
+ * @deprecated This hook is deprecated and will be removed in a future version.
+ * Please migrate to the new unified messaging hooks:
+ * 
+ * **Migration Guide:**
+ * ```typescript
+ * // Before:
+ * import { useEducatorAdminMessages } from '@/features/educator';
+ * const { messages, isLoading, sendMessage } = useEducatorAdminMessages({ conversationId, enabled });
+ * 
+ * // After:
+ * import { useEducatorMessages } from '@/features/messaging';
+ * const { messages, isLoadingMessages, sendMessage } = useEducatorMessages(
+ *   educatorId,
+ *   { conversationId, conversationType: 'educator_admin', enabled }
+ * );
+ * ```
+ * 
+ * @see {@link useEducatorMessages} from @/features/messaging - New unified educator messaging hook
  */
 export const useEducatorAdminMessages = ({ conversationId, enabled = true }) => {
   const [isSending, setIsSending] = useState(false);

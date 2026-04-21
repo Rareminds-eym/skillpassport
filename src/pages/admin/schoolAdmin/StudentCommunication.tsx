@@ -19,8 +19,7 @@ import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { MessageService, Conversation } from '@/features/messaging';
 import { supabase } from '@/shared/api/supabaseClient';
-import { useEducatorMessages } from '@/features/educator';
-import { useEducatorAdminMessages } from '@/features/educator';
+import { useAdminMessages } from '@/features/messaging';
 import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '@/stores';
 import { useGlobalPresence } from '@/stores';
@@ -359,20 +358,16 @@ const StudentCommunication = () => {
     ? (showArchived ? refetchArchivedStudents : refetchActiveStudents)
     : (showArchived ? refetchArchivedEducators : refetchActiveEducators);
 
-  // Fetch messages for selected conversation - call both hooks unconditionally
-  const studentMessages = useEducatorMessages({
-    conversationId: activeTab === 'students' ? selectedConversationId : null,
-    enabled: activeTab === 'students' && !!selectedConversationId,
-  });
-
-  const educatorMessages = useEducatorAdminMessages({
-    conversationId: activeTab === 'educators' ? selectedConversationId : null,
-    enabled: activeTab === 'educators' && !!selectedConversationId,
-  });
-
-  // Select the appropriate messages based on active tab
-  const { messages, isLoading: loadingMessages, sendMessage, isSending } =
-    activeTab === 'students' ? studentMessages : educatorMessages;
+  // Fetch messages for selected conversation using the new unified admin hook
+  const { messages, isLoadingMessages: loadingMessages, sendMessage, isSending } = useAdminMessages(
+    schoolAdminId || '',
+    'school_admin',
+    {
+      conversationId: selectedConversationId,
+      enabled: !!selectedConversationId && !!schoolAdminId,
+      enableRealtime: true,
+    }
+  );
 
   // Use shared global presence context
   const { isUserOnline: isUserOnlineGlobal, onlineUsers: globalOnlineUsers } = useGlobalPresence();
@@ -1020,12 +1015,13 @@ const StudentCommunication = () => {
       if (activeTab === 'students') {
         // Send message to student
         await sendMessage({
-          senderId: schoolAdminId,
-          senderType: 'school_admin',
+          conversationId: selectedConversationId!,
           receiverId: currentChat.studentId,
           receiverType: 'student',
           messageText: messageInput,
-          subject: currentChat.subject
+          metadata: {
+            subject: currentChat.subject
+          }
         });
 
         // Send notification to student
@@ -1063,12 +1059,13 @@ const StudentCommunication = () => {
         });
 
         await sendMessage({
-          senderId: schoolAdminId,
-          senderType: 'school_admin',
+          conversationId: selectedConversationId!,
           receiverId: educator.user_id,
           receiverType: 'educator',
           messageText: messageInput,
-          subject: currentChat.subject
+          metadata: {
+            subject: currentChat.subject
+          }
         });
 
         // Send notification to educator
@@ -1162,8 +1159,8 @@ const StudentCommunication = () => {
                         }
                       }}
                       className={`px-3 py-2 ${activeTab === 'students'
-                          ? 'bg-blue-600 hover:bg-blue-700'
-                          : 'bg-blue-600 hover:bg-blue-700'
+                        ? 'bg-blue-600 hover:bg-blue-700'
+                        : 'bg-blue-600 hover:bg-blue-700'
                         } text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2`}
                       title={`Start new conversation with ${activeTab === 'students' ? 'student' : 'educator'}`}
                     >
@@ -1447,8 +1444,8 @@ const StudentCommunication = () => {
                   <div
                     key={contact.id}
                     className={`relative w-full flex items-center border-b border-gray-100 group transition-all duration-200 ${selectedConversationId === contact.id
-                        ? 'bg-blue-50 border-l-4 border-l-blue-600'
-                        : 'hover:bg-gray-50 border-l-4 border-l-transparent'
+                      ? 'bg-blue-50 border-l-4 border-l-blue-600'
+                      : 'hover:bg-gray-50 border-l-4 border-l-transparent'
                       }`}
                   >
                     <button
@@ -1592,8 +1589,8 @@ const StudentCommunication = () => {
                         <div className="max-w-[70%]">
                           <div
                             className={`rounded-2xl px-4 py-2.5 shadow-sm ${message.sender === 'me'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-white text-gray-900 border border-gray-200'
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-white text-gray-900 border border-gray-200'
                               }`}
                           >
                             <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">

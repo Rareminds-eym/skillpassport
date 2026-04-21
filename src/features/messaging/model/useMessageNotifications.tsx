@@ -2,18 +2,18 @@ import { useEffect } from 'react';
 import { supabase } from '@/shared/api';
 import toast from 'react-hot-toast';
 import { MessageSquare, X } from 'lucide-react';
-import { Message } from '../api';
+import type { Message, Conversation, UserRole } from '../api/types';
 
 interface UseMessageNotificationsProps {
   userId: string | null;
-  userType: 'student' | 'recruiter' | 'educator';
+  userRole: UserRole;
   enabled?: boolean;
   onMessageReceived?: (message: Message) => void;
 }
 
 export const useMessageNotifications = ({
   userId,
-  userType,
+  userRole,
   enabled = true,
   onMessageReceived
 }: UseMessageNotificationsProps) => {
@@ -33,7 +33,7 @@ export const useMessageNotifications = ({
         },
         (payload) => {
           const message = payload.new as Message;
-          
+
 
           // Don't show notification if current user sent the message
           if (message.sender_id === userId) {
@@ -49,9 +49,8 @@ export const useMessageNotifications = ({
           toast.custom(
             (t) => (
               <div
-                className={`${
-                  t.visible ? 'animate-enter' : 'animate-leave'
-                } max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}
+                className={`${t.visible ? 'animate-enter' : 'animate-leave'
+                  } max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}
               >
                 <div className="flex-1 w-0 p-4">
                   <div className="flex items-start">
@@ -101,7 +100,7 @@ export const useMessageNotifications = ({
     return () => {
       channel.unsubscribe();
     };
-  }, [userId, userType, enabled, onMessageReceived]);
+  }, [userId, userRole, enabled, onMessageReceived]);
 };
 
 export default useMessageNotifications;

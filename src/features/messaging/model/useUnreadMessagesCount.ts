@@ -4,7 +4,10 @@ import { MessageService } from '@/features/messaging';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**
- * Hook to get total unread messages count for recruiter sidebar badge
+ * @deprecated This hook is deprecated and will be removed in a future version.
+ * Please use the `unreadCount` from the unified messaging hooks instead.
+ * 
+ * @see {@link useStudentMessages}, {@link useEducatorMessages}, {@link useRecruiterMessages}
  */
 export const useUnreadMessagesCount = (recruiterId: string | undefined) => {
   const queryClient = useQueryClient();

@@ -4,8 +4,29 @@ import {MessageService} from '@/features/messaging';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**
- * Hook for managing messages in college educator ↔ admin conversations
+ * Hook for managing college educator-admin messages
  * Handles sending, receiving, and marking messages as read
+ * 
+ * @deprecated This hook is deprecated and will be removed in a future version.
+ * Please migrate to the new unified messaging hooks:
+ * 
+ * **Migration Guide:**
+ * ```typescript
+ * // Before:
+ * import { useCollegeEducatorAdminMessages } from '@/features/educator';
+ * const { messages, isLoading, sendMessage } = useCollegeEducatorAdminMessages({
+ *   conversationId, userId, userType, enabled
+ * });
+ * 
+ * // After:
+ * import { useEducatorMessages } from '@/features/messaging';
+ * const { messages, isLoadingMessages, sendMessage } = useEducatorMessages(
+ *   userId,
+ *   { conversationId, conversationType: 'college_educator_admin', enabled }
+ * );
+ * ```
+ * 
+ * @see {@link useEducatorMessages} from @/features/messaging - New unified educator messaging hook
  */
 export const useCollegeEducatorAdminMessages = ({
   conversationId,

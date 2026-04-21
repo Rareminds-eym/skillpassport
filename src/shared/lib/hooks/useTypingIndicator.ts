@@ -9,26 +9,10 @@ interface UseTypingIndicatorProps {
 }
 
 /**
- * Hook for managing typing indicators in a conversation
+ * @deprecated This hook is deprecated and will be removed in a future version.
+ * Please use `useTypingIndicator` from @/features/messaging/model instead.
  * 
- * @example
- * ```tsx
- * const { typingUsers, setTyping } = useTypingIndicator({
- *   conversationId: 'conv-123',
- *   currentUserId: 'user-123',
- *   currentUserName: 'John Doe'
- * });
- * 
- * // Show typing indicator
- * setTyping(true);
- * 
- * // Hide typing indicator
- * setTyping(false);
- * 
- * // Check if someone is typing
- * if (typingUsers.length > 0) {
- * }
- * ```
+ * @see {@link useTypingIndicator} from @/features/messaging
  */
 export const useTypingIndicator = ({
   conversationId,

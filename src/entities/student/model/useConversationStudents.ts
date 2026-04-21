@@ -13,11 +13,10 @@ interface MessageServiceType {
 }
 
 /**
- * Hook to get students from educator conversations
- * This provides the same UICandidate format as useStudents but from conversation data
+ * @deprecated This hook is deprecated and will be removed in a future version.
+ * Please use the new unified messaging hooks from @/features/messaging.
  * 
- * @param user - The authenticated user object (pass from store/context)
- * @param messageService - The message service instance (pass from @/features/messaging)
+ * @see {@link useStudentMessages}, {@link useEducatorMessages}, {@link useAdminMessages}
  */
 export function useConversationStudents(
   user: User | null,
