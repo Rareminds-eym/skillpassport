@@ -19,13 +19,10 @@ import {
   EnvelopeIcon,
   MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
-import { supabase } from '../../lib/supabaseClient';
-import { createInterview, sendReminder } from '../../services/interviewService';
-import { createNotification } from "../../services/notificationService.ts";
-import { useUser } from "../../stores"; // Import auth context
-import { getLogger } from '../../config/logging';
-
-const logger = getLogger('Interviews');
+import { supabase } from '@/shared/api/supabaseClient';
+import { createInterview, sendReminder } from '@/features/opportunities';
+import { createNotification } from '@/features/notifications'; // ✅ Import notification service
+import { useUser } from '@/stores';
 
 // Define TypeScript interfaces
 interface Scorecard {

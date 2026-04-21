@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Search, MapPin, Bookmark } from 'lucide-react';
-import Button from '../../components/Button';
+import { Button } from '@/shared/ui';
 
 const BrowseJobs = () => {
   const [searchTerm, setSearchTerm] = useState('');

@@ -1,10 +1,10 @@
 import { ArrowLeft, CheckCircle, Clock, FileText, Target, Zap } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useUser } from '../../stores';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
-import { checkAssessmentStatus } from '../../services/externalAssessmentService';
-import { getLogger } from '../../config/logging';
+import { useUser } from '@/stores';
+import { useStudentDataByEmail } from '@/entities/student';
+import { checkAssessmentStatus } from '@/features/assessment/api/externalAssessmentService';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('AssessmentStart');
 
@@ -108,7 +108,7 @@ const AssessmentStart = () => {
         logger.info('Pre-generating questions', { certificateName });
         
         // Use the generateAssessment service which checks database first
-        const { generateAssessment } = await import('../../services/assessmentGenerationService');
+        const { generateAssessment } = await import('../../features/assessment/api/assessmentGenerationService');
         const assessment = await generateAssessment(certificateName, level, 15, courseId);
         
         logger.info('Questions loaded, navigating to test');

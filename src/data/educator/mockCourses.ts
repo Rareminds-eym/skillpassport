@@ -1,4 +1,4 @@
-import { Course } from '../../types/educator/course';
+import { Course } from '@/shared/types/educator/course';
 
 export const MOCK_COURSES: Course[] = [
   {

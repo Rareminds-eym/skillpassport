@@ -16,19 +16,19 @@ import {
 } from "@heroicons/react/24/outline"
 import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import SearchBar from "../../components/common/SearchBar"
-import { useClasses } from "../../hooks/useClasses"
-import { useEducatorId } from "../../hooks/useEducatorId"
-import { useEducatorSchool } from "../../hooks/useEducatorSchool"
-// @ts-ignore - AuthContext is a .jsx file
+import { SearchBar } from '@/shared/ui'
+import { useClasses } from '@/features/college-admin/model/useClasses'
+import { useEducatorId } from '@/features/educator'
+import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool'
 import toast from "react-hot-toast"
-import ManageStudentsModal from "../../components/educator/ManageStudentsModal"
-import Pagination from "../../components/educator/Pagination"
-import { useUser, useIsAuthenticated } from "../../stores"
-import { supabase } from "../../lib/supabaseClient"
-import { createClass, EducatorClass, updateClass } from "../../services/classService"
+import { ManageStudentsModal } from '@/features/educator'
+import { Pagination } from '@/shared/ui'
+import { useAuth } from "@/features/auth"
+import { useUser, useIsAuthenticated } from "@/stores"
+import { supabase } from '@/shared/api/supabaseClient'
+import { createClass, EducatorClass, updateClass } from "@/features/college-admin"
 import ProgramSectionsPage from "./ProgramSectionsPage"
-import { getLogger } from "../../config/logging"
+import { getLogger } from '@/shared/config/logging'
 
 const logger = getLogger('EducatorClassesPage')
 

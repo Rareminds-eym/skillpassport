@@ -1,12 +1,14 @@
+import { authSessionService } from '@/features/auth';
+
 import { motion } from "framer-motion";
 import { AlertCircle, BarChart3, CheckCircle, Zap } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import loginIllustration from "../../../../../assets/images/auth/Recruiter-illustration.png";
-import SignupFormFields from "../../../../../components/Subscription/shared/SignupFormFields";
-import { capitalizeFirstLetter, formatOtp, formatPhoneNumber, getInitialFormData, validateSignupFields } from "../../../../../components/Subscription/shared/signupValidation";
-import { supabase } from "../../../../../lib/supabaseClient";
-import FeatureCard from "../../ui/FeatureCard";
+import loginIllustration from "@/assets/images/auth/Recruiter-illustration.png";
+import { SignupFormFields } from '@/features/subscription';
+import { capitalizeFirstLetter, formatOtp, formatPhoneNumber, getInitialFormData, validateSignupFields } from "@/features/subscription";
+import { supabase } from "@/shared/api/supabaseClient";
+import FeatureCard from "@/features/auth/ui/FeatureCard";
 
 export default function SignupRecruiter() {
   const navigate = useNavigate();
@@ -109,7 +111,7 @@ export default function SignupRecruiter() {
       const lastName = capitalizeFirstLetter(formData.lastName);
 
       // Use the Pages Function API for signup with proper rollback support
-      const { getPagesApiUrl } = await import('../../../../../utils/pagesUrl');
+      const { getPagesApiUrl } = await import('@/shared/lib/pagesUrl');
       const USER_API_URL = getPagesApiUrl('user');
 
       const response = await fetch(`${USER_API_URL}/signup/recruiter`, {
@@ -136,7 +138,7 @@ export default function SignupRecruiter() {
       // CRITICAL FIX: Auto-login after successful signup
       // This establishes a Supabase session so the user is authenticated
       console.log('🔐 Auto-logging in after signup...');
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await authSessionService.signInWithPassword({
         email: formData.email,
         password: formData.password,
       });

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../../../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 import { Plus, Edit, Trash2, Search, BookOpen } from 'lucide-react';
+import { authSessionService } from '@/features/auth';
 
+import { queryKeys } from '@/shared/lib/queryKeys';
 interface Course {
   id: string;
   course_code: string;
@@ -27,7 +29,7 @@ const CourseManagement: React.FC = () => {
 
   useEffect(() => {
     const fetchUserCollege = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       if (user) {
         const { data: userData } = await supabase
           .from('users')
@@ -45,7 +47,7 @@ const CourseManagement: React.FC = () => {
 
   // Fetch courses
   const { data: courses = [], isLoading } = useQuery({
-    queryKey: ['curriculum_courses', collegeId],
+    queryKey: queryKeys.courses.curriculum.byCollege(collegeId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('curriculum_courses')
@@ -62,7 +64,7 @@ const CourseManagement: React.FC = () => {
 
   // Fetch departments
   const { data: departments = [] } = useQuery({
-    queryKey: ['departments', collegeId],
+    queryKey: queryKeys.college.departments.byCollege(collegeId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('departments')
@@ -78,7 +80,7 @@ const CourseManagement: React.FC = () => {
 
   // Fetch programs
   const { data: programs = [] } = useQuery({
-    queryKey: ['programs', collegeId],
+    queryKey: queryKeys.college.programs.byCollege(collegeId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('programs')
@@ -276,7 +278,7 @@ const CourseManagement: React.FC = () => {
           departments={departments}
           programs={programs}
           onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ['curriculum_courses'] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.courses.curriculum.all });
             setIsModalOpen(false);
             setEditingCourse(null);
           }}
@@ -326,7 +328,7 @@ const CourseFormModal: React.FC<CourseFormModalProps> = ({
     setError(null);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       
       const courseData = {
         ...formData,

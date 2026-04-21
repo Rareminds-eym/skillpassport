@@ -14,14 +14,14 @@ import {
   RefreshCw,
 } from "lucide-react";
 import toast from 'react-hot-toast';
-import { supabase } from '../../../../lib/supabaseClient';
-import { opportunitiesService } from '../../../../services/opportunitiesService';
+import { supabase } from '@/shared/api/supabaseClient';
+import { opportunitiesService } from '@/features/opportunities';
 import { 
   placementAnalyticsService, 
   PlacementRecord, 
   DepartmentAnalytics,
   PlacementStats 
-} from '../../../../services/placementAnalyticsService';
+} from '@/features/placement';
 
 const PlacementAnalytics: React.FC = () => {
   const [selectedAnalyticsDepartment, setSelectedAnalyticsDepartment] = useState("");

@@ -1,4 +1,4 @@
-import SubscriptionRouteGuard from '../../components/Subscription/SubscriptionRouteGuard';
+import { SubscriptionRouteGuard } from '@/features/subscription';
 import MySubscription from './MySubscription';
 
 /**

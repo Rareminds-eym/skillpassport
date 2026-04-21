@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 
 // Types
 export interface PromotionalEvent {
@@ -284,13 +284,16 @@ export const usePromotionalStore = create<PromotionalState>()(
 // Convenience hooks
 export const useAssessmentPromotional = () => {
   const event = usePromotionalStore((state) => state.assessmentEvent);
-  const showModal = usePromotionalStore((state) => state.showAssessmentModal);
-  const showBanner = usePromotionalStore((state) => state.showAssessmentBanner);
+  const isLoaded = usePromotionalStore((state) => state.isLoaded);
   const isModalDismissed = usePromotionalStore((state) => state.isAssessmentModalDismissed);
   const isBannerDismissed = usePromotionalStore((state) => state.isAssessmentBannerDismissed);
   const dismissModal = usePromotionalStore((state) => state.dismissAssessmentModal);
   const dismissBanner = usePromotionalStore((state) => state.dismissAssessmentBanner);
   const getTimeRemaining = usePromotionalStore((state) => state.getAssessmentTimeRemaining);
+
+  // Compute directly from plain state so Zustand reactivity works correctly
+  const showModal = isLoaded && !isModalDismissed;
+  const showBanner = isModalDismissed && !isBannerDismissed;
 
   return { event, showModal, showBanner, isModalDismissed, isBannerDismissed, dismissModal, dismissBanner, getTimeRemaining };
 };

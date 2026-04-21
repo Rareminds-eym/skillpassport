@@ -24,7 +24,7 @@ const supabase = {
   from: vi.fn(),
 };
 
-vi.mock('../../lib/supabaseClient', () => ({
+vi.mock('@/shared/api/supabaseClient', () => ({
   supabase,
 }));
 

@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/Students/components/ui/card';
-import { Button } from '@/components/Students/components/ui/button';
-import { Badge } from '@/components/Students/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/Students/components/ui/tabs';
+import { Card, CardContent } from '@/shared/ui/card';
+import { Button } from '@/shared/ui/button';
+import { Badge } from '@/shared/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs';
 import { 
   Clock, 
-  XCircle, 
   User, 
   BookOpen, 
   Briefcase,
@@ -28,16 +27,17 @@ import {
   CheckCircle,
   FileText
 } from 'lucide-react';
-import { getLogger } from '../../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('school-admin-verifications');
-import { useUser } from '../../../stores';
-import { SchoolAdminNotificationService } from '../../../services/schoolAdminNotificationService';
-import TrainingDetailsModal from '../../../components/admin/schoolAdmin/TrainingDetailsModal';
-import ExperienceDetailsModal from '../../../components/admin/schoolAdmin/ExperienceDetailsModal';
-import ProjectDetailsModal from '../../../components/admin/schoolAdmin/ProjectDetailsModal';
-import toast from 'react-hot-toast';
-import { supabase } from '../../../lib/supabaseClient';
+import { useUser } from '@/stores';
+import { SchoolAdminNotificationService } from '@/features/school-admin';
+import { 
+  TrainingDetailsModal, 
+  ExperienceDetailsModal, 
+  ProjectDetailsModal 
+} from '@/features/school-admin';
+import { supabase } from '@/shared/api/supabaseClient';
 
 const Verifications: React.FC = () => {
   const user = useUser();

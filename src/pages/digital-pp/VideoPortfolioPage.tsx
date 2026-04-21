@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { CheckCircle, Download, Trash2, Upload, Video, X } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FeatureGate } from '../../components/Subscription/FeatureGate';
+import { FeatureGate } from '@/features/subscription';
 
 interface VideoFile {
   id: string;

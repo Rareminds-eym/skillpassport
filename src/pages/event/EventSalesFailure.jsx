@@ -5,7 +5,7 @@
 
 import { AlertTriangle, ArrowLeft, HelpCircle, RefreshCw, XCircle } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
-import Header from '../../layouts/Header';
+import Header from '@/app/layouts/Header';
 
 export default function EventSalesFailure() {
   const [searchParams] = useSearchParams();

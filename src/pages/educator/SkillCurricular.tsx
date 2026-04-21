@@ -22,12 +22,12 @@ import {
     ChevronLeft,
     ChevronRight,
 } from "lucide-react";
-import { supabase } from "../../lib/supabaseClient";
-import { useEducatorSchool } from "../../hooks/useEducatorSchool";
-import * as clubsService from "../../services/clubsService";
-import * as competitionsService from "../../services/competitionsService";
+import { supabase } from '@/shared/api/supabaseClient';
+import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
+import * as clubsService from "@/features/college-admin";
+import * as competitionsService from "@/features/college-admin";
 import * as XLSX from 'xlsx';
-import { getLogger } from "../../config/logging";
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('SkillCurricular');
 
@@ -900,7 +900,7 @@ export default function ClubsActivitiesPage() {
                 status: status as "present" | "absent" | "late" | "excused"
             }));
 
-            await clubsService.markAttendance(
+            await clubsService.markClubAttendance(
                 attendanceModal.club?.club_id || '',
                 attendanceDate,
                 attendanceTopic,

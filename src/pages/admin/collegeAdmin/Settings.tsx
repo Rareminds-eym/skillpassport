@@ -1,25 +1,25 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
-    AcademicCapIcon,
-    ArrowPathIcon,
-    ChartBarIcon,
-    CheckIcon,
-    CreditCardIcon,
-    PencilSquareIcon,
-    PlusCircleIcon,
-    ShieldCheckIcon,
-    TrashIcon,
-    UserGroupIcon,
-    XMarkIcon,
-    ExclamationTriangleIcon
+  AcademicCapIcon,
+  ArrowPathIcon,
+  ChartBarIcon,
+  CheckIcon,
+  CreditCardIcon,
+  PencilSquareIcon,
+  PlusCircleIcon,
+  ShieldCheckIcon,
+  TrashIcon,
+  UserGroupIcon,
+  XMarkIcon,
+  ExclamationTriangleIcon
 } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
-import { SubscriptionSettingsSection } from "../../../components/Subscription/SubscriptionSettingsSection";
+import { SubscriptionSettingsSection } from '@/features/subscription';
 import { ClipboardDocumentListIcon } from "@heroicons/react/24/solid";
-import { getLogger } from "../../../config/logging";
-import { 
-  getRolesWithPermissions, 
-  getAvailableModules, 
+import { getLogger } from '@/shared/config/logging';
+import {
+  getRolesWithPermissions,
+  getAvailableModules,
   getAvailablePermissions,
   saveRolePermissions,
   getModulesForRole,
@@ -30,8 +30,8 @@ import {
   type Permission,
   type ModuleAccess,
   type ScopeRule
-} from "../../../services/settingsService";
-import { useUser, useIsAuthenticated, useUserRole } from "../../../stores";
+} from '@/shared/api';
+import { useUser, useIsAuthenticated, useUserRole } from "@/stores";
 import toast from 'react-hot-toast';
 
 /* ==============================
@@ -39,7 +39,7 @@ import toast from 'react-hot-toast';
    ============================== */
 
 // Re-export types from service for backward compatibility
-export type { Role, ModuleAccess, ScopeRule } from "../../../services/settingsService";
+export type { Role, ModuleAccess, ScopeRule } from '@/shared/api';
 
 /* ==============================
    MODAL WRAPPER
@@ -69,9 +69,8 @@ const ModalWrapper = ({
           onClick={onClose}
         />
         <div
-          className={`relative w-full ${
-            size === "large" ? "max-w-4xl" : "max-w-2xl"
-          } transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all`}
+          className={`relative w-full ${size === "large" ? "max-w-4xl" : "max-w-2xl"
+            } transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all`}
         >
           <div className="flex items-start justify-between border-b border-gray-100 px-6 py-5">
             <div className="flex-1">
@@ -124,9 +123,8 @@ const StatsCard = ({
   return (
     <div
       onClick={onClick}
-      className={`bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-all ${
-        onClick ? "cursor-pointer" : ""
-      }`}
+      className={`bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-all ${onClick ? "cursor-pointer" : ""
+        }`}
     >
       <div className="flex items-center justify-between">
         <div className="flex-1">
@@ -178,7 +176,7 @@ const RolePermissionModal = ({
   const user = useUser();
   const isAuthenticated = useIsAuthenticated();
   const userRole = useUserRole();
-  
+
   const [activeRoleTab, setActiveRoleTab] = useState("basic");
   const [formData, setFormData] = useState({
     roleName: "",
@@ -191,8 +189,12 @@ const RolePermissionModal = ({
   const [submitting, setSubmitting] = useState(false);
 
   // Check authentication when modal opens
+  const isModalCollegeAdmin = userRole.role === 'college_admin' ||
+    (userRole.role === 'admin' && (user as any)?.collegeId) ||
+    (userRole.role === 'admin' && (user as any)?.organizationId);
+
   useEffect(() => {
-    if (isOpen && (!isAuthenticated || userRole.role !== 'college_admin')) {
+    if (isOpen && (!isAuthenticated || !isModalCollegeAdmin)) {
       logger.error('UNAUTHORIZED MODAL ACCESS ATTEMPT');
       logger.info('User', { email: user?.email });
       logger.info('Role', { role: userRole.role });
@@ -206,22 +208,22 @@ const RolePermissionModal = ({
   // Available modules for college administration - Now loaded from database
   const getAvailableModulesForRole = () => {
     if (!availableModules.length) return [];
-    
+
     // Filter modules based on current role being edited
     const isCollegeAdmin = formData.roleName.includes('Dean') || formData.roleName.includes('College Admin');
-    
+
     if (isCollegeAdmin) {
-      return availableModules.filter(m => 
-        ['Dashboard', 'Students', 'Departments & Faculty', 'Academics', 
-         'Examinations', 'Placements & Skills', 'Operations', 'Administration', 'Settings']
-        .includes(m.module_name)
+      return availableModules.filter(m =>
+        ['Dashboard', 'Students', 'Departments & Faculty', 'Academics',
+          'Examinations', 'Placements & Skills', 'Operations', 'Administration', 'Settings']
+          .includes(m.module_name)
       ).map(m => ({ name: m.module_name, description: m.description || '' }));
     } else {
-      return availableModules.filter(m => 
-        ['Dashboard', 'Teaching Intelligence', 'Courses', 'Classroom Management', 
-         'Learning & Evaluation', 'Skill & Co-Curriculm', 'Digital Portfolio', 
-         'Analytics', 'Reports', 'Media Manager', 'Communication', 'Settings']
-        .includes(m.module_name)
+      return availableModules.filter(m =>
+        ['Dashboard', 'Teaching Intelligence', 'Courses', 'Classroom Management',
+          'Learning & Evaluation', 'Skill & Co-Curriculm', 'Digital Portfolio',
+          'Analytics', 'Reports', 'Media Manager', 'Communication', 'Settings']
+          .includes(m.module_name)
       ).map(m => ({ name: m.module_name, description: m.description || '' }));
     }
   };
@@ -244,7 +246,7 @@ const RolePermissionModal = ({
       logger.info('Related database tables');
       logger.info('college_role_module_permissions table');
       logger.info('college_role_scope_rules table');
-      
+
       setFormData({
         roleName: role.roleName,
         description: "",
@@ -256,7 +258,7 @@ const RolePermissionModal = ({
     } else if (!role && isOpen) {
       logger.info('CREATE NEW ROLE MODAL OPENED');
       logger.info('Creating new role with empty permissions');
-      
+
       setFormData({
         roleName: "",
         description: "",
@@ -276,7 +278,7 @@ const RolePermissionModal = ({
     logger.info('Target database tables', {
       tables: ['college_role_module_permissions (will be updated/inserted)', 'college_role_scope_rules (will be updated/inserted)']
     });
-    
+
     setSubmitting(true);
     setTimeout(() => {
       const roleData = {
@@ -285,7 +287,7 @@ const RolePermissionModal = ({
         moduleAccess: modulePermissions,
         scopeRules,
       };
-      
+
       logger.info('Final role data being saved:', { roleData });
       onSaved(roleData);
       setSubmitting(false);
@@ -301,22 +303,22 @@ const RolePermissionModal = ({
       timestamp: new Date().toISOString(),
       relatedTable: 'college_role_module_permissions'
     });
-    
+
     setModulePermissions(prev => {
       const existing = prev.find(m => m.module === moduleName);
       if (existing) {
-        const updatedPermissions = checked 
+        const updatedPermissions = checked
           ? [...existing.permissions, permission as any]
           : existing.permissions.filter(p => p !== permission);
-        
+
         if (updatedPermissions.length === 0) {
           logger.info('Module removed (no permissions left)', { moduleName });
           return prev.filter(m => m.module !== moduleName);
         }
-        
+
         logger.info('Module updated:', { moduleName, permissions: updatedPermissions });
-        return prev.map(m => 
-          m.module === moduleName 
+        return prev.map(m =>
+          m.module === moduleName
             ? { ...m, permissions: updatedPermissions }
             : m
         );
@@ -344,7 +346,7 @@ const RolePermissionModal = ({
       relatedTable: 'college_role_scope_rules',
       timestamp: new Date().toISOString()
     });
-    setScopeRules(prev => prev.map((rule, i) => 
+    setScopeRules(prev => prev.map((rule, i) =>
       i === index ? { ...rule, values } : rule
     ));
   };
@@ -381,11 +383,10 @@ const RolePermissionModal = ({
               <button
                 key={tab.id}
                 onClick={() => setActiveRoleTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                  activeRoleTab === tab.id
-                    ? "border-indigo-600 text-indigo-600"
-                    : "border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300"
-                }`}
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeRoleTab === tab.id
+                  ? "border-indigo-600 text-indigo-600"
+                  : "border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300"
+                  }`}
               >
                 <Icon className="h-4 w-4" />
                 {tab.label}
@@ -486,7 +487,7 @@ const RolePermissionModal = ({
                         <p className="text-sm text-gray-600 mt-1">{module.description}</p>
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-5 gap-3">
                       {permissions.map((permission) => (
                         <label key={permission} className="flex items-center gap-2 cursor-pointer">
@@ -547,7 +548,7 @@ const RolePermissionModal = ({
                       <TrashIcon className="h-4 w-4" />
                     </button>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                     {(rule.type === "department" ? availableDepartments : availablePrograms).map((item) => (
                       <label key={item.id} className="flex items-center gap-2 cursor-pointer">
@@ -566,13 +567,13 @@ const RolePermissionModal = ({
                       </label>
                     ))}
                   </div>
-                  
+
                   {rule.values.length === 0 && (
                     <p className="text-sm text-gray-500 mt-2">No {rule.type}s selected. This rule will have no effect.</p>
                   )}
                 </div>
               ))}
-              
+
               {scopeRules.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
                   <UserGroupIcon className="h-12 w-12 mx-auto mb-3 text-gray-300" />
@@ -593,9 +594,8 @@ const RolePermissionModal = ({
               <h5 className="font-semibold text-gray-900">{formData.roleName || "Role Name"}</h5>
               <p className="text-sm text-gray-600 mt-1">{formData.description || "No description provided"}</p>
             </div>
-            <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${
-              formData.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-            }`}>
+            <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${formData.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+              }`}>
               {formData.isActive ? "Active" : "Inactive"}
             </span>
           </div>
@@ -613,7 +613,7 @@ const RolePermissionModal = ({
               <p className="text-purple-800 font-bold">Level {formData.priority}</p>
             </div>
           </div>
-          
+
           {/* Scope Rules Preview */}
           {scopeRules.length > 0 && (
             <div className="mt-3 pt-3 border-t border-gray-200">
@@ -629,7 +629,7 @@ const RolePermissionModal = ({
                       return prog ? prog.name : value;
                     }
                   });
-                  
+
                   return (
                     <span key={idx} className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">
                       {rule.type}: {scopeNames.join(", ")}
@@ -683,7 +683,7 @@ const Settings = () => {
   const isAuthenticated = useIsAuthenticated();
   const authLoading = false; // Zustand doesn't have loading state
   const { role } = useUserRole();
-  
+
   const [activeTab, setActiveTab] = useState<
     "roles" | "subscription"
   >("subscription");
@@ -701,6 +701,11 @@ const Settings = () => {
   const [departments, setDepartments] = useState<{ id: string; name: string; code: string }[]>([]);
   const [programs, setPrograms] = useState<{ id: string; name: string; code: string }[]>([]);
 
+  // Check if user is a college admin (handles legacy 'admin' role for users routed through college admin)
+  const isCollegeAdmin = role === 'college_admin' ||
+    (role === 'admin' && (user as any)?.collegeId) ||
+    (role === 'admin' && (user as any)?.organizationId);
+
   // Authentication checks
   useEffect(() => {
     if (!authLoading) {
@@ -710,33 +715,33 @@ const Settings = () => {
         userRole: role,
         requiredRole: 'college_admin'
       });
-      
+
       if (!isAuthenticated) {
         logger.info('User not authenticated - redirecting to login');
         // In a real app, you might redirect to login page
         return;
       }
-      
-      if (role !== 'college_admin') {
+
+      if (!isCollegeAdmin) {
         logger.info('User not authorized - insufficient permissions', { userRole: role, requiredRole: 'college_admin' });
         return;
       }
-      
+
       logger.info('User authorized to access settings');
       loadSettingsData();
     }
   }, [authLoading, isAuthenticated, role, user]);
 
   const loadSettingsData = async () => {
-    if (!isAuthenticated || role !== 'college_admin') {
+    if (!isAuthenticated || !isCollegeAdmin) {
       logger.info('Skipping data load - user not authorized');
       return;
     }
-    
+
     setLoading(true);
     try {
       logger.info('Loading settings data for authorized user:', { userEmail: user?.email });
-      
+
       const [rolesData, modulesData, permissionsData, departmentsData, programsData] = await Promise.all([
         getRolesWithPermissions(),
         getAvailableModules(),
@@ -744,9 +749,9 @@ const Settings = () => {
         getDepartments(),
         getPrograms()
       ]);
-      
+
       logger.info('Loaded departments and programs:', { departmentCount: departmentsData.length, programCount: programsData.length });
-      
+
       setRoles(rolesData);
       setAvailableModules(modulesData);
       setAvailablePermissions(permissionsData);
@@ -761,18 +766,18 @@ const Settings = () => {
 
   const handleSaveRole = async (role: Role) => {
     // Double-check authentication before saving
-    if (!isAuthenticated || user?.role !== 'college_admin') {
+    if (!isAuthenticated || !isCollegeAdmin) {
       logger.error('UNAUTHORIZED PERMISSION UPDATE ATTEMPT', undefined, { userEmail: user?.email, userRole: user?.role, requiredRole: 'college_admin' });
       toast.error('❌ Unauthorized: Only College Administrators can modify permissions.');
       return;
     }
-    
+
     try {
       setLoading(true);
-      
+
       // Convert role type back to enum format
       const roleType = role.roleName.includes('Dean') ? 'college_admin' : 'college_educator';
-      
+
       // Log the permission update details
       logger.info('Permission update started:', {
         authorizedUser: user?.email,
@@ -783,7 +788,7 @@ const Settings = () => {
         scopeRuleCount: role.scopeRules.length,
         targetTables: ['college_role_module_permissions (for module access)', 'college_role_scope_rules (for scope restrictions)']
       });
-      
+
       // Log each module permission being updated
       role.moduleAccess.forEach((moduleAccess, index) => {
         logger.debug('Module permission:', {
@@ -793,7 +798,7 @@ const Settings = () => {
           relatedTo: 'College Administration System'
         });
       });
-      
+
       // Log scope rules being updated
       role.scopeRules.forEach((scopeRule, index) => {
         logger.debug('Scope rule:', {
@@ -803,22 +808,22 @@ const Settings = () => {
           relatedTo: 'Access Control & Data Filtering'
         });
       });
-      
+
       // Save to database with scope rules
       const success = await saveRolePermissions(roleType, role.moduleAccess, role.scopeRules);
-      
+
       if (success) {
         logger.info('Permission update successful', {
           updatedBy: user?.email,
           databaseTables: ['college_role_module_permissions: Module access permissions', 'college_role_scope_rules: Department/Program scope restrictions']
         });
-        
+
         // Show success toast
         toast.success(`✅ Successfully updated permissions for ${role.roleName}!\n\nUpdated by: ${user?.email}\nUpdated:\n• ${role.moduleAccess.length} module permissions\n• ${role.scopeRules.length} scope rules\n\nTables modified:\n• college_role_module_permissions\n• college_role_scope_rules`);
-        
+
         // Reload data to reflect changes
         await loadSettingsData();
-        
+
         logger.info('Permission update completed');
       } else {
         logger.error('Permission update failed', undefined, { reason: 'Database operation returned false' });
@@ -832,7 +837,7 @@ const Settings = () => {
     } finally {
       setLoading(false);
     }
-    
+
     setEditRole(null);
   };
 
@@ -863,7 +868,7 @@ const Settings = () => {
           <p className="text-gray-600 mb-4">
             You must be logged in to access the settings page.
           </p>
-          <button 
+          <button
             onClick={() => window.location.href = '/login'}
             className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
           >
@@ -875,7 +880,7 @@ const Settings = () => {
   }
 
   // Show unauthorized message if user doesn't have the right role
-  if (role !== 'college_admin') {
+  if (!isCollegeAdmin) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6">
@@ -890,7 +895,7 @@ const Settings = () => {
               <strong>Required Role:</strong> college_admin
             </p>
           </div>
-          <button 
+          <button
             onClick={() => window.history.back()}
             className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
           >
@@ -963,13 +968,12 @@ const Settings = () => {
                     key={tab.id}
                     onClick={() => !tab.disabled && setActiveTab(tab.id as any)}
                     disabled={tab.disabled}
-                    className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg font-medium text-xs whitespace-nowrap transition-all duration-200 min-w-[80px] flex-shrink-0 touch-manipulation ${
-                      tab.disabled
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-60"
-                        : activeTab === tab.id
+                    className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg font-medium text-xs whitespace-nowrap transition-all duration-200 min-w-[80px] flex-shrink-0 touch-manipulation ${tab.disabled
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-60"
+                      : activeTab === tab.id
                         ? "bg-indigo-600 text-white shadow-md"
                         : "text-gray-600 hover:bg-white hover:text-gray-900 hover:shadow-sm"
-                    }`}
+                      }`}
                   >
                     <Icon className="h-5 w-5 flex-shrink-0" />
                     <span className="font-semibold leading-tight text-center">
@@ -991,13 +995,12 @@ const Settings = () => {
                     key={tab.id}
                     onClick={() => !tab.disabled && setActiveTab(tab.id as any)}
                     disabled={tab.disabled}
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg font-medium text-xs whitespace-nowrap transition-all duration-200 min-w-fit flex-shrink-0 ${
-                      tab.disabled
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-60"
-                        : activeTab === tab.id
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg font-medium text-xs whitespace-nowrap transition-all duration-200 min-w-fit flex-shrink-0 ${tab.disabled
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-60"
+                      : activeTab === tab.id
                         ? "bg-indigo-600 text-white shadow-md"
                         : "text-gray-600 hover:bg-white hover:text-gray-900 hover:shadow-sm"
-                    }`}
+                      }`}
                   >
                     <Icon className="h-4 w-4 flex-shrink-0" />
                     <span className="font-semibold">
@@ -1019,13 +1022,12 @@ const Settings = () => {
                     key={tab.id}
                     onClick={() => !tab.disabled && setActiveTab(tab.id as any)}
                     disabled={tab.disabled}
-                    className={`flex items-center gap-2 px-4 py-3 rounded-lg font-medium text-sm whitespace-nowrap transition-all duration-200 ${
-                      tab.disabled
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-60"
-                        : activeTab === tab.id
+                    className={`flex items-center gap-2 px-4 py-3 rounded-lg font-medium text-sm whitespace-nowrap transition-all duration-200 ${tab.disabled
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-60"
+                      : activeTab === tab.id
                         ? "bg-indigo-600 text-white shadow-md"
                         : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 hover:shadow-sm"
-                    }`}
+                      }`}
                   >
                     <Icon className="h-4 w-4 flex-shrink-0" />
                     <span>{tab.label}</span>
@@ -1040,203 +1042,200 @@ const Settings = () => {
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           {/* Roles & Permission Settings */}
           {activeTab === "roles" && (
-          <div className="p-4 sm:p-6 lg:p-8">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
-              <div className="flex-1">
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Roles & Permission Settings</h2>
-                <p className="text-sm sm:text-base text-gray-600 max-w-2xl">Module access matrix with scope rules for department/program</p>
-              </div>
-              <button 
-                onClick={() => {
-                  // Authentication check before creating role
-                  if (!isAuthenticated || role !== 'college_admin') {
-                    logger.error('UNAUTHORIZED CREATE ROLE ATTEMPT', undefined, { userEmail: user?.email, userRole: role, requiredRole: 'college_admin' });
-                    toast.error('❌ Unauthorized: Only College Administrators can create roles.');
-                    return;
-                  }
-                  
-                  logger.info('Authorized user creating new role:', { userEmail: user?.email });
-                  setShowRoleModal(true);
-                }}
-                disabled={!isAuthenticated || role !== 'college_admin'}
-                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md ${
-                  isAuthenticated && role === 'college_admin'
+            <div className="p-4 sm:p-6 lg:p-8">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
+                <div className="flex-1">
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Roles & Permission Settings</h2>
+                  <p className="text-sm sm:text-base text-gray-600 max-w-2xl">Module access matrix with scope rules for department/program</p>
+                </div>
+                <button
+                  onClick={() => {
+                    // Authentication check before creating role
+                    if (!isAuthenticated || !isCollegeAdmin) {
+                      logger.error('UNAUTHORIZED CREATE ROLE ATTEMPT', undefined, { userEmail: user?.email, userRole: role, requiredRole: 'college_admin' });
+                      toast.error('❌ Unauthorized: Only College Administrators can create roles.');
+                      return;
+                    }
+
+                    logger.info('Authorized user creating new role:', { userEmail: user?.email });
+                    setShowRoleModal(true);
+                  }}
+                  disabled={!isAuthenticated || !isCollegeAdmin}
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md ${isAuthenticated && isCollegeAdmin
                     ? 'bg-indigo-600 text-white hover:bg-indigo-700'
                     : 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                }`}
-                title={!isAuthenticated || role !== 'college_admin' ? 'Only College Administrators can create roles' : 'Create new role'}
-              >
-                <PlusCircleIcon className="h-4 w-4" />
-                <span className="hidden sm:inline">Create Role</span>
-                <span className="sm:hidden">Create</span>
-              </button>
-            </div>
+                    }`}
+                  title={!isAuthenticated || !isCollegeAdmin ? 'Only College Administrators can create roles' : 'Create new role'}
+                >
+                  <PlusCircleIcon className="h-4 w-4" />
+                  <span className="hidden sm:inline">Create Role</span>
+                  <span className="sm:hidden">Create</span>
+                </button>
+              </div>
 
-            {/* Role Overview */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 sm:mb-8">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <div className="flex items-center gap-2">
-                  <UserGroupIcon className="h-4 w-4 text-blue-600" />
-                  <span className="text-xs font-medium text-blue-900">Total Roles</span>
-                </div>
-                <p className="text-lg font-bold text-blue-800 mt-1">{roles.length}</p>
-              </div>
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <div className="flex items-center gap-2">
-                  <ShieldCheckIcon className="h-4 w-4 text-green-600" />
-                  <span className="text-xs font-medium text-green-900">Avg Modules</span>
-                </div>
-                <p className="text-lg font-bold text-green-800 mt-1">
-                  {Math.round(roles.reduce((sum, r) => sum + r.moduleAccess.length, 0) / roles.length)}
-                </p>
-              </div>
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                <div className="flex items-center gap-2">
-                  <AcademicCapIcon className="h-4 w-4 text-purple-600" />
-                  <span className="text-xs font-medium text-purple-900">Dept Scoped</span>
-                </div>
-                <p className="text-lg font-bold text-purple-800 mt-1">
-                  {roles.filter(r => r.scopeRules.some(s => s.type === "department")).length}
-                </p>
-              </div>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <div className="flex items-center gap-2">
-                  <ClipboardDocumentListIcon className="h-4 w-4 text-amber-600" />
-                  <span className="text-xs font-medium text-amber-900">Program Scoped</span>
-                </div>
-                <p className="text-lg font-bold text-amber-800 mt-1">
-                  {roles.filter(r => r.scopeRules.some(s => s.type === "program")).length}
-                </p>
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:gap-6">
-              {roles.map((roleItem) => (
-                <div key={roleItem.id} className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-all duration-200 hover:border-indigo-200">
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <UserGroupIcon className="h-6 w-6 text-indigo-600" />
-                        <h3 className="font-bold text-gray-900 text-lg sm:text-xl">{roleItem.roleName}</h3>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        <span className="font-medium">{roleItem.moduleAccess.length}</span> modules • <span className="font-medium">{roleItem.scopeRules.length}</span> scope rules
-                      </p>
-                    </div>
+              {/* Role Overview */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 sm:mb-8">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2">
+                    <UserGroupIcon className="h-4 w-4 text-blue-600" />
+                    <span className="text-xs font-medium text-blue-900">Total Roles</span>
                   </div>
-                  
-                  <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      Module Access
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {roleItem.moduleAccess.map((module, idx) => (
-                        <div key={idx} className="bg-blue-50 border border-blue-200 rounded-lg p-3 hover:bg-blue-100 transition-colors">
-                          <p className="text-sm font-semibold text-blue-900 mb-1">{module.module}</p>
-                          <div className="flex flex-wrap gap-1">
-                            {module.permissions.map((perm, permIdx) => (
-                              <span key={permIdx} className="text-xs font-medium px-2 py-0.5 bg-blue-200 text-blue-800 rounded-full">
-                                {perm}
-                              </span>
-                            ))}
-                          </div>
+                  <p className="text-lg font-bold text-blue-800 mt-1">{roles.length}</p>
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheckIcon className="h-4 w-4 text-green-600" />
+                    <span className="text-xs font-medium text-green-900">Avg Modules</span>
+                  </div>
+                  <p className="text-lg font-bold text-green-800 mt-1">
+                    {Math.round(roles.reduce((sum, r) => sum + r.moduleAccess.length, 0) / roles.length)}
+                  </p>
+                </div>
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2">
+                    <AcademicCapIcon className="h-4 w-4 text-purple-600" />
+                    <span className="text-xs font-medium text-purple-900">Dept Scoped</span>
+                  </div>
+                  <p className="text-lg font-bold text-purple-800 mt-1">
+                    {roles.filter(r => r.scopeRules.some(s => s.type === "department")).length}
+                  </p>
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2">
+                    <ClipboardDocumentListIcon className="h-4 w-4 text-amber-600" />
+                    <span className="text-xs font-medium text-amber-900">Program Scoped</span>
+                  </div>
+                  <p className="text-lg font-bold text-amber-800 mt-1">
+                    {roles.filter(r => r.scopeRules.some(s => s.type === "program")).length}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:gap-6">
+                {roles.map((roleItem) => (
+                  <div key={roleItem.id} className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-all duration-200 hover:border-indigo-200">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <UserGroupIcon className="h-6 w-6 text-indigo-600" />
+                          <h3 className="font-bold text-gray-900 text-lg sm:text-xl">{roleItem.roleName}</h3>
                         </div>
-                      ))}
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">{roleItem.moduleAccess.length}</span> modules • <span className="font-medium">{roleItem.scopeRules.length}</span> scope rules
+                        </p>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      Scope Rules
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {roleItem.scopeRules.map((scope, idx) => {
-                        // Convert IDs to names for display
-                        const scopeNames = scope.values.map(value => {
-                          if (scope.type === 'department') {
-                            const dept = departments.find(d => d.id === value);
-                            return dept ? `${dept.name} (${dept.code})` : value;
-                          } else {
-                            const prog = programs.find(p => p.id === value);
-                            return prog ? `${prog.name} (${prog.code})` : value;
+                    <div className="mb-6">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        Module Access
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {roleItem.moduleAccess.map((module, idx) => (
+                          <div key={idx} className="bg-blue-50 border border-blue-200 rounded-lg p-3 hover:bg-blue-100 transition-colors">
+                            <p className="text-sm font-semibold text-blue-900 mb-1">{module.module}</p>
+                            <div className="flex flex-wrap gap-1">
+                              {module.permissions.map((perm, permIdx) => (
+                                <span key={permIdx} className="text-xs font-medium px-2 py-0.5 bg-blue-200 text-blue-800 rounded-full">
+                                  {perm}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mb-6">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        Scope Rules
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {roleItem.scopeRules.map((scope, idx) => {
+                          // Convert IDs to names for display
+                          const scopeNames = scope.values.map(value => {
+                            if (scope.type === 'department') {
+                              const dept = departments.find(d => d.id === value);
+                              return dept ? `${dept.name} (${dept.code})` : value;
+                            } else {
+                              const prog = programs.find(p => p.id === value);
+                              return prog ? `${prog.name} (${prog.code})` : value;
+                            }
+                          });
+
+                          return (
+                            <span key={idx} className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-green-50 text-green-800 border border-green-200 rounded-lg">
+                              <span className="font-semibold">{scope.type}:</span>
+                              <span>{scopeNames.join(", ")}</span>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={() => {
+                          // Authentication check before opening modal
+                          if (!isAuthenticated || !isCollegeAdmin) {
+                            logger.error('UNAUTHORIZED EDIT ATTEMPT', undefined, { userEmail: user?.email, userRole: role, requiredRole: 'college_admin' });
+                            toast.error('❌ Unauthorized: Only College Administrators can edit permissions.');
+                            return;
                           }
-                        });
-                        
-                        return (
-                          <span key={idx} className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-green-50 text-green-800 border border-green-200 rounded-lg">
-                            <span className="font-semibold">{scope.type}:</span>
-                            <span>{scopeNames.join(", ")}</span>
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button 
-                      onClick={() => {
-                        // Authentication check before opening modal
-                        if (!isAuthenticated || role !== 'college_admin') {
-                          logger.error('UNAUTHORIZED EDIT ATTEMPT', undefined, { userEmail: user?.email, userRole: role, requiredRole: 'college_admin' });
-                          toast.error('❌ Unauthorized: Only College Administrators can edit permissions.');
-                          return;
-                        }
-                        
-                        logger.info('Authorized user opening edit modal:', { userEmail: user?.email });
-                        setEditRole(roleItem);
-                        setShowRoleModal(true);
-                      }}
-                      disabled={!isAuthenticated || role !== 'college_admin'}
-                      className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                        isAuthenticated && role === 'college_admin'
+                          logger.info('Authorized user opening edit modal:', { userEmail: user?.email });
+                          setEditRole(roleItem);
+                          setShowRoleModal(true);
+                        }}
+                        disabled={!isAuthenticated || !isCollegeAdmin}
+                        className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${isAuthenticated && isCollegeAdmin
                           ? 'text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100'
                           : 'text-gray-400 bg-gray-50 border border-gray-200 cursor-not-allowed'
-                      }`}
-                      title={!isAuthenticated || role !== 'college_admin' ? 'Only College Administrators can edit permissions' : 'Edit role permissions'}
-                    >
-                      <PencilSquareIcon className="h-4 w-4" />
-                      Edit Permissions
-                    </button>
-                    <button 
-                      onClick={() => {
-                        // Authentication check before deleting
-                        if (!isAuthenticated || role !== 'college_admin') {
-                          logger.error('UNAUTHORIZED DELETE ATTEMPT', undefined, { userEmail: user?.email, userRole: role, requiredRole: 'college_admin' });
-                          toast.error('❌ Unauthorized: Only College Administrators can delete roles.');
-                          return;
-                        }
-                        
-                        if (confirm(`Are you sure you want to delete the role "${roleItem.roleName}"? This action cannot be undone.`)) {
-                          logger.info('Authorized user deleting role:', { roleName: roleItem.roleName, deletedBy: user?.email });
-                          setRoles(prev => prev.filter(r => r.id !== roleItem.id));
-                        }
-                      }}
-                      disabled={!isAuthenticated || role !== 'college_admin'}
-                      className={`inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                        isAuthenticated && role === 'college_admin'
+                          }`}
+                        title={!isAuthenticated || !isCollegeAdmin ? 'Only College Administrators can edit permissions' : 'Edit role permissions'}
+                      >
+                        <PencilSquareIcon className="h-4 w-4" />
+                        Edit Permissions
+                      </button>
+                      <button
+                        onClick={() => {
+                          // Authentication check before deleting
+                          if (!isAuthenticated || !isCollegeAdmin) {
+                            logger.error('UNAUTHORIZED DELETE ATTEMPT', undefined, { userEmail: user?.email, userRole: role, requiredRole: 'college_admin' });
+                            toast.error('❌ Unauthorized: Only College Administrators can delete roles.');
+                            return;
+                          }
+
+                          if (confirm(`Are you sure you want to delete the role "${roleItem.roleName}"? This action cannot be undone.`)) {
+                            logger.info('Authorized user deleting role:', { roleName: roleItem.roleName, deletedBy: user?.email });
+                            setRoles(prev => prev.filter(r => r.id !== roleItem.id));
+                          }
+                        }}
+                        disabled={!isAuthenticated || !isCollegeAdmin}
+                        className={`inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${isAuthenticated && isCollegeAdmin
                           ? 'text-red-700 bg-red-50 border border-red-200 hover:bg-red-100'
                           : 'text-gray-400 bg-gray-50 border border-gray-200 cursor-not-allowed'
-                      }`}
-                      title={!isAuthenticated || role !== 'college_admin' ? 'Only College Administrators can delete roles' : 'Delete role'}
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                      <span className="hidden sm:inline">Delete</span>
-                    </button>
+                          }`}
+                        title={!isAuthenticated || !isCollegeAdmin ? 'Only College Administrators can delete roles' : 'Delete role'}
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                        <span className="hidden sm:inline">Delete</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* E7. Subscription Settings */}
-        {activeTab === "subscription" && (
-          <div className="p-4 sm:p-6 lg:p-8">
-            <SubscriptionSettingsSection />
-          </div>
-        )}
+          {/* E7. Subscription Settings */}
+          {activeTab === "subscription" && (
+            <div className="p-4 sm:p-6 lg:p-8">
+              <SubscriptionSettingsSection />
+            </div>
+          )}
         </div>
 
         {/* Modals */}

@@ -16,19 +16,17 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AITutorPanel, VideoLearningPanel } from '../../components/ai-tutor';
-import RestoreProgressModal from '../../components/student/courses/RestoreProgressModal';
-import { Badge } from '../../components/Students/components/ui/badge';
-import { Button } from '../../components/Students/components/ui/button';
-import { Card, CardContent } from '../../components/Students/components/ui/card';
-import { useUser } from '../../stores';
-import { useSessionRestore } from '../../hooks/useSessionRestore';
-import { supabase } from '../../lib/supabaseClient';
-import { generateCourseCertificate } from '../../services/certificateService';
-import { courseEnrollmentService } from '../../services/courseEnrollmentService';
-import { courseProgressService } from '../../services/courseProgressService';
-import { fileService } from '../../services/fileService';
-import { getAuthenticatedMediaUrl, needsAuthentication } from '../../services/authenticatedMediaService';
+import { AITutorPanel, VideoLearningPanel } from '@/features/ai-tutor';
+import { RestoreProgressModal } from '@/features/courses';
+import { Badge, Button, Card, CardContent } from '@/shared/ui';
+import { useUser } from '@/features/auth';
+import { useSessionRestore } from '@/shared/lib/hooks';
+import { supabase } from '@/shared/api/supabaseClient';
+import { generateCourseCertificate } from '@/features/digital-portfolio';
+import { enrollmentService as courseEnrollmentService } from '@/features/courses/api';
+import { courseProgressService } from '@/features/courses';
+import { fileService } from '@/features/courses';
+import { getAuthenticatedMediaUrl, needsAuthentication } from '@/shared/api';
 
 const CoursePlayer = () => {
   const { courseId } = useParams();
@@ -609,7 +607,7 @@ const CoursePlayer = () => {
 
       // Update student streak after completing lesson
       try {
-        const { getPagesApiUrl } = await import('../../utils/pagesUrl');
+        const { getPagesApiUrl } = await import('@/shared/lib/pagesUrl');
         const STREAK_API_URL = getPagesApiUrl('streak');
         const response = await fetch(`${STREAK_API_URL}/${user.id}/complete`, {
           method: 'POST',

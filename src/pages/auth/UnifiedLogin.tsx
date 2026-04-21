@@ -1,10 +1,10 @@
 import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, UserCircle } from 'lucide-react';
 import { ChangeEvent, FormEvent, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuthActions } from '../../stores';
-import { getUserRole } from '../../services/roleLookupService';
-import { signIn, UserRole } from '../../services/unifiedAuthService';
-import { redirectToRoleDashboard } from '../../utils/roleBasedRouter';
+import { useAuthActions } from '@/stores';
+import { getUserRole } from '@/features/auth';
+import { signIn, UserRole } from '@/features/auth/api';
+import { redirectToRoleDashboard } from '@/features/auth/lib';
 
 interface LoginState {
   email: string;

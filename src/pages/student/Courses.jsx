@@ -16,13 +16,11 @@ import {
 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import SearchBar from '../../components/common/SearchBar';
-import CourseDetailModal from '../../components/student/courses/CourseDetailModal';
-import WeeklyLearningTracker from '../../components/student/WeeklyLearningTracker';
-import CourseAdvancedFilters from '../../components/Students/components/CourseAdvancedFilters';
-import { Badge } from '../../components/Students/components/ui/badge';
-import { Button } from '../../components/Students/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
+import { SearchBar } from '@/shared/ui';
+import { CourseDetailModal } from '@/features/courses';
+import WeeklyLearningTracker from '@/entities/student/ui/WeeklyLearningTracker';
+import { CourseAdvancedFilters } from '@/widgets/student-dashboard';
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/ui';
 import {
   Pagination,
   PaginationContent,
@@ -31,14 +29,11 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from '../../components/Students/components/ui/pagination';
-import { useUser } from '../../stores';
-import { supabase } from '../../lib/supabaseClient';
-import { downloadCertificate, getCertificateProxyUrl } from '../../services/certificateService';
-import { courseEnrollmentService } from '../../services/courseEnrollmentService';
-import { getLogger } from '../../config/logging';
-
-const logger = getLogger('Courses');
+} from '@/shared/ui';
+import { useUser } from '@/stores';
+import { supabase } from '@/shared/api/supabaseClient';
+import { downloadCertificate, getCertificateProxyUrl } from '@/features/digital-portfolio';
+import { enrollmentService as courseEnrollmentService } from '@/features/courses';
 
 const Courses = () => {
   const navigate = useNavigate();

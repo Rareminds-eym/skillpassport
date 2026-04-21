@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/shared/api";
 import toast from 'react-hot-toast';
 import {
     AcademicCapIcon,
@@ -25,12 +25,13 @@ import {
     XMarkIcon
 } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
-import SearchBar from "../../../components/common/SearchBar";
-import { SubscriptionSettingsSection } from "../../../components/Subscription/SubscriptionSettingsSection";
-import { getLogger } from '../../../config/logging';
+import { SearchBar } from '@/shared/ui';
+import { SubscriptionSettingsSection } from '@/features/subscription';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('school-admin-settings');
-// import { supabase } from "../../../supabaseClient";
+// import { supabase } from '@/shared/api/supabaseClient';
+import { authSessionService } from '@/features/auth';
 
 /* ==============================
    TYPES & INTERFACES
@@ -1751,7 +1752,7 @@ const Settings = () => {
   const fetchCurrentSchool = async () => {
     try {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       
       if (!user) {
         logger.error('No authenticated user');
@@ -2076,7 +2077,7 @@ const Settings = () => {
     if (!currentSchoolId) return;
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       if (!user) return;
 
       // Fetch from user_settings table using privacy_settings JSONB column
@@ -2118,7 +2119,7 @@ const Settings = () => {
   // Save role permissions to database
   const saveRolePermissionsToDb = async (permissions: Record<string, string[]>) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       if (!user) return;
 
       // Check if user_settings record exists
@@ -2174,7 +2175,7 @@ const Settings = () => {
     if (!currentSchoolId) return;
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       if (!user) return;
 
       // Fetch from user_settings table using notification_preferences JSONB column
@@ -2243,7 +2244,7 @@ const Settings = () => {
   // Save notification settings to database
   const saveNotificationSettingsToDb = async (settings: NotificationSetting[]) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       if (!user) return;
 
       // Check if user_settings record exists

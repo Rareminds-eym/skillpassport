@@ -12,9 +12,9 @@ import {
 } from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser, useIsAuthenticated } from '../../stores';
-import { supabase } from '../../lib/supabaseClient';
-import { getLogger } from '../../config/logging';
+import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+import { authSessionService } from '@/features/auth';
 
 const logger = getLogger('EducatorProfile');
 
@@ -111,7 +111,7 @@ const Profile = () => {
       }
       
       // Method 3: Fallback to Supabase auth
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       
       if (user && user.email) {
         logger.info('Using Supabase user', { email: user.email });
@@ -226,7 +226,7 @@ const Profile = () => {
       
       // Get current user from Supabase Auth if not provided
       if (!user) {
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        const { data: { user: currentUser } } = await authSessionService.getUser();
         user = currentUser;
       }
       

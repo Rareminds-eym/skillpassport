@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { departmentService, DepartmentWithStats, Faculty } from '@/services/college/departmentService';
+import { useUser } from '@/stores';
+import { departmentService, DepartmentWithStats, Faculty } from '@/features/college-admin';
 import {
     AcademicCapIcon,
     BookOpenIcon,
@@ -22,21 +23,24 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from 'react-hot-toast';
-import Pagination from "../../../components/admin/Pagination";
-import SearchBar from "../../../components/common/SearchBar";
-import { supabase } from '../../../lib/supabaseClient';
-import { getLogger } from '../../../config/logging';
+import { Pagination } from '@/shared/ui';
+import { SearchBar } from '@/shared/ui';
+import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('college-admin-department-management');
 
 // Import modal components
-import AddDepartmentModal from "../../../components/admin/collegeAdmin/AddDepartmentModal";
-import DepartmentDetailsDrawer from "../../../components/admin/collegeAdmin/DepartmentDetailsDrawer";
-import EditDepartmentModal from "../../../components/admin/collegeAdmin/EditDepartmentModal";
-import FacultyAssignmentModal from "../../../components/admin/collegeAdmin/FacultyAssignmentModal";
-import HODAssignmentModal from "../../../components/admin/collegeAdmin/HODAssignmentModal";
-import ConfirmationModal from "../../../components/ui/ConfirmationModal";
+import {
+  AddDepartmentModal,
+  DepartmentDetailsDrawer,
+  EditDepartmentModal,
+  FacultyAssignmentModal,
+  HODAssignmentModal
+} from '@/features/college-admin';
+import { ConfirmationModal } from '@/shared/ui';
 
+import { queryKeys } from '@/shared/lib/queryKeys';
 // Types
 interface Course {
   id: number;
@@ -238,7 +242,7 @@ const DepartmentManagement: React.FC = () => {
 
   // Fetch departments from database
   const { data: departmentsData = [], isLoading, error } = useQuery({
-    queryKey: ['departments', collegeId],
+    queryKey: queryKeys.college.departments.byCollege(collegeId),
     queryFn: () => departmentService.getDepartments(collegeId!),
     enabled: !!collegeId,
   });
@@ -281,7 +285,7 @@ const DepartmentManagement: React.FC = () => {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['departments'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.college.departments.all });
       toast.success('Department created successfully');
       setShowAddModal(false);
     },
@@ -301,7 +305,7 @@ const DepartmentManagement: React.FC = () => {
         metadata: updates.metadata, // Include metadata updates for HOD info
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['departments'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.college.departments.all });
       toast.success('Department updated successfully');
       setShowEditModal(false);
       setSelectedDepartment(null);
@@ -315,7 +319,7 @@ const DepartmentManagement: React.FC = () => {
   const deleteDepartmentMutation = useMutation({
     mutationFn: (id: string) => departmentService.deleteDepartment(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['departments'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.college.departments.all });
       toast.success('Department deleted successfully');
       if (detailDepartment) setDetailDepartment(null);
     },
@@ -568,7 +572,7 @@ const DepartmentManagement: React.FC = () => {
     mutationFn: ({ departmentId, facultyIds }: { departmentId: string; facultyIds: string[] }) =>
       departmentService.assignFacultyToDepartment(departmentId, facultyIds, user?.id!),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['departments'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.college.departments.all });
       queryClient.invalidateQueries({ queryKey: ['college-faculty'] });
       toast.success('Faculty assigned successfully');
       setShowFacultyAssignmentModal(false);
@@ -594,7 +598,7 @@ const DepartmentManagement: React.FC = () => {
       });
 
       // Refresh data
-      queryClient.invalidateQueries({ queryKey: ['departments'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.college.departments.all });
       toast.success('HOD assigned successfully');
       
       setShowHODAssignmentModal(false);
@@ -621,7 +625,7 @@ const DepartmentManagement: React.FC = () => {
       }> 
     }) => departmentService.addStudentsToDepartment(departmentId, students),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['departments'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.college.departments.all });
       toast.success('Students added successfully');
       setSelectedDepartment(null);
     },

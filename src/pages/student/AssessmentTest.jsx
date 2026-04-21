@@ -23,10 +23,9 @@ import {
     Users,
     Zap
 } from 'lucide-react';
-import { Button } from '../../components/Students/components/ui/button';
-import { Card, CardContent } from '../../components/Students/components/ui/card';
-import { Label } from '../../components/Students/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '../../components/Students/components/ui/radio-group';
+import { Button, Card, CardContent } from '@/shared/ui';
+import { Label } from '@/shared/ui';
+import { RadioGroup, RadioGroupItem } from '@/shared/ui';
 
 // Import AI-powered question banks from centralized assessment feature
 import {
@@ -46,26 +45,26 @@ import {
     riasecQuestions as aiPoweredRiasecQuestions,
     // Work Values
     workValuesQuestions as aiPoweredWorkValuesQuestions,
-} from '../../features/assessment';
+} from '@/features/assessment';
 
 // Import Gemini assessment service
-import { analyzeAssessmentWithGemini } from '../../services/geminiAssessmentService';
+import { analyzeAssessmentWithGemini } from '@/features/assessment/api/geminiAssessmentService';
 
 // Import AI question generation service for Aptitude & Knowledge
-import { loadCareerAssessmentQuestions, STREAM_KNOWLEDGE_PROMPTS, normalizeStreamId } from '../../services/careerAssessmentAIService';
+import { loadCareerAssessmentQuestions, STREAM_KNOWLEDGE_PROMPTS, normalizeStreamId } from '@/features/assessment';
 
 // Import database services
-import { useAssessment } from '../../hooks/useAssessment';
-import * as assessmentService from '../../services/assessmentService';
-import { useUser } from '../../stores';
+import { useAssessment } from '@/features/assessment';
+import * as assessmentService from '@/features/assessment';
+import { useUser } from '@/stores';
 
 // Import adaptive aptitude hook for integrated adaptive testing
-import { useAdaptiveAptitude } from '../../hooks/useAdaptiveAptitude';
+import { useAdaptiveAptitude } from '@/shared/lib/hooks';
 
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 
 // Import centralized student type detection
-import { isCollegeStudent as checkIsCollegeStudent } from '../../utils/studentType';
+import { isCollegeStudent as checkIsCollegeStudent } from '@/entities/student/lib/studentType';
 
 // Import centralized assessment utilities and components
 import {
@@ -83,7 +82,7 @@ import {
     StreamSelectionScreen,
     ResumePromptScreen,
     RestrictionScreen,
-} from '../../features/assessment';
+} from '@/features/assessment';
 
 const AssessmentTest = () => {
     const navigate = useNavigate();
@@ -652,6 +651,7 @@ const AssessmentTest = () => {
 
     // Load AI questions for after10, higher_secondary, after12 AND college students
     useEffect(() => {
+        let cancelled = false;
         const loadAIQuestions = async () => {
             // Only require gradeLevel and studentStream - studentId is optional for saving
             // Support 'after10', 'higher_secondary', 'after12' and 'college' grade levels
@@ -666,12 +666,12 @@ const AssessmentTest = () => {
 
                 setAiQuestionsLoading(true);
                 try {
-                    
+
                     // For college students, pass their actual course for knowledge questions
                     const studentCourse = (gradeLevel === 'college' && studentProgram) ? studentProgram : null;
                     if (studentCourse) {
                     }
-                    
+
                     // Pass studentId, attemptId, and course for save/resume functionality
                     const questions = await loadCareerAssessmentQuestions(
                         studentStream,
@@ -685,6 +685,7 @@ const AssessmentTest = () => {
                     if (!questions || (!questions.aptitude && !questions.knowledge)) {
                         // Retry once after a delay
                         await new Promise(resolve => setTimeout(resolve, 2000));
+                        if (cancelled) return;
                         const retryQuestions = await loadCareerAssessmentQuestions(
                             studentStream,
                             gradeLevel,
@@ -692,9 +693,9 @@ const AssessmentTest = () => {
                             currentAttempt?.id || null,
                             studentCourse // Pass course for college students
                         );
-                        setAiQuestions(retryQuestions || { aptitude: null, knowledge: null });
+                        if (!cancelled) setAiQuestions(retryQuestions || { aptitude: null, knowledge: null });
                     } else {
-                        setAiQuestions(questions);
+                        if (!cancelled) setAiQuestions(questions);
                     }
 
                     console.log({
@@ -703,12 +704,13 @@ const AssessmentTest = () => {
                     });
                 } catch (error) {
                     // Set empty state so UI doesn't hang
-                    setAiQuestions({ aptitude: [], knowledge: [] });
+                    if (!cancelled) setAiQuestions({ aptitude: [], knowledge: [] });
                 }
-                setAiQuestionsLoading(false);
+                if (!cancelled) setAiQuestionsLoading(false);
             }
         };
         loadAIQuestions();
+        return () => { cancelled = true; };
     }, [gradeLevel, studentStream, studentId, currentAttempt?.id, studentProgram]);
 
     // Get questions for a section - from database or AI-powered questions
@@ -1524,1951 +1526,1951 @@ const AssessmentTest = () => {
         // Handle adaptive aptitude section differently
         if (currentSection?.isAdaptive) {
             if (adaptiveAptitudeAnswer && adaptiveAptitude.currentQuestion) {
-                    answer: adaptiveAptitudeAnswer,
+                answer: adaptiveAptitudeAnswer,
                     questionId: adaptiveAptitude.currentQuestion?.id,
-                    questionText: adaptiveAptitude.currentQuestion?.text?.substring(0, 50),
-                    sessionId: adaptiveAptitude.session?.id,
-                    currentQuestionIndex: adaptiveAptitude.session?.currentQuestionIndex,
-                    questionsAnswered: adaptiveAptitude.progress?.questionsAnswered,
+                        questionText: adaptiveAptitude.currentQuestion?.text?.substring(0, 50),
+                            sessionId: adaptiveAptitude.session?.id,
+                                currentQuestionIndex: adaptiveAptitude.session?.currentQuestionIndex,
+                                    questionsAnswered: adaptiveAptitude.progress?.questionsAnswered,
                 });
 
-                try {
-                    // Submit the answer to the adaptive engine (only pass the answer, hook handles timing)
-                    const result = await adaptiveAptitude.submitAnswer(adaptiveAptitudeAnswer);
+            try {
+                // Submit the answer to the adaptive engine (only pass the answer, hook handles timing)
+                const result = await adaptiveAptitude.submitAnswer(adaptiveAptitudeAnswer);
 
-                        isCorrect: result?.isCorrect,
-                        testComplete: result?.testComplete,
+                isCorrect: result?.isCorrect,
+                    testComplete: result?.testComplete,
                         phaseComplete: result?.phaseComplete,
-                        newDifficulty: result?.newDifficulty,
+                            newDifficulty: result?.newDifficulty,
                     });
 
-                    // Log the updated state after submission
-                        newQuestionId: adaptiveAptitude.currentQuestion?.id,
-                        newQuestionText: adaptiveAptitude.currentQuestion?.text?.substring(0, 50),
-                        newQuestionsAnswered: adaptiveAptitude.progress?.questionsAnswered,
+            // Log the updated state after submission
+            newQuestionId: adaptiveAptitude.currentQuestion?.id,
+                newQuestionText: adaptiveAptitude.currentQuestion?.text?.substring(0, 50),
+                    newQuestionsAnswered: adaptiveAptitude.progress?.questionsAnswered,
                         newCurrentQuestionIndex: adaptiveAptitude.session?.currentQuestionIndex,
-                        isTestComplete: adaptiveAptitude.isTestComplete,
+                            isTestComplete: adaptiveAptitude.isTestComplete,
                     });
 
-                    // Reset for next question
-                    setAdaptiveAptitudeAnswer(null);
-                    // Reset timer for next question
-                    setAdaptiveQuestionTimer(ADAPTIVE_QUESTION_TIME_LIMIT);
-                    setAdaptiveQuestionStartTime(Date.now());
+        // Reset for next question
+        setAdaptiveAptitudeAnswer(null);
+        // Reset timer for next question
+        setAdaptiveQuestionTimer(ADAPTIVE_QUESTION_TIME_LIMIT);
+        setAdaptiveQuestionStartTime(Date.now());
 
-                    // Check if test is complete (check the result, not the state which may not have updated yet)
-                    if (result?.testComplete) {
-                        setShowSectionComplete(true);
-                    }
-                } catch (err) {
-                    setError(`Failed to submit answer: ${err.message}`);
-                }
-            } else {
-                    hasAnswer: !!adaptiveAptitudeAnswer,
-                    hasQuestion: !!adaptiveAptitude.currentQuestion,
+        // Check if test is complete (check the result, not the state which may not have updated yet)
+        if (result?.testComplete) {
+            setShowSectionComplete(true);
+        }
+    } catch (err) {
+        setError(`Failed to submit answer: ${err.message}`);
+    }
+} else {
+    hasAnswer: !!adaptiveAptitudeAnswer,
+        hasQuestion: !!adaptiveAptitude.currentQuestion,
                 });
             }
-            return;
+return;
         }
 
-        if (currentQuestionIndex < currentSection.questions.length - 1) {
-            const nextQuestionIndex = currentQuestionIndex + 1;
+if (currentQuestionIndex < currentSection.questions.length - 1) {
+    const nextQuestionIndex = currentQuestionIndex + 1;
 
-            // Save progress to database before moving to next question
-            if (useDatabase && currentAttempt?.id) {
-                setIsSaving(true);
-                try {
-                    const timerToSave = currentSection.isTimed ? timeRemaining : null;
-                    const elapsedToSave = !currentSection.isTimed ? elapsedTime : null;
-
-                    const result = await updateProgress(
-                        currentSectionIndex,
-                        nextQuestionIndex,
-                        sectionTimings,
-                        timerToSave,
-                        elapsedToSave
-                    );
-
-                    if (!result?.success) {
-                        // Still proceed but log the error
-                    }
-                } catch (err) {
-                } finally {
-                    setIsSaving(false);
-                }
-            }
-
-            // Move to next question
-            setCurrentQuestionIndex(nextQuestionIndex);
-        } else {
-            // Show section complete message before moving to next section
-            if (currentSectionIndex < sections.length - 1) {
-                setShowSectionComplete(true);
-            } else {
-                handleSubmit();
-            }
-        }
-    };
-
-    // Generate course recommendations based on assessment results
-    const generateCourseRecommendations = (analysisResults) => {
+    // Save progress to database before moving to next question
+    if (useDatabase && currentAttempt?.id) {
+        setIsSaving(true);
         try {
-            // Get all courses from all categories
-            const allCourses = [
-                ...streamsByCategory.science,
-                ...streamsByCategory.commerce,
-                ...streamsByCategory.arts
-            ];
+            const timerToSave = currentSection.isTimed ? timeRemaining : null;
+            const elapsedToSave = !currentSection.isTimed ? elapsedTime : null;
 
-            if (allCourses.length === 0) return [];
-
-            // Extract scores from analysis results
-            const riasec = analysisResults?.riasec || {};
-            const riasecScores = riasec.scores || {}; // { R: 15, I: 12, A: 8, ... }
-            const riasecMaxScore = riasec.maxScore || 20;
-            const riasecTopThree = riasec.topThree || []; // ['R', 'I', 'A']
-
-            const aptitudeResults = analysisResults?.aptitude || {};
-            const aptitudeScores = aptitudeResults.scores || {}; // { verbal: {percentage: 80}, numerical: {percentage: 70}, ... }
-            const aptitudeTopStrengths = aptitudeResults.topStrengths || [];
-
-            const bigFive = analysisResults?.bigFive || {};
-            // Big Five scores are 0-5 scale
-
-                riasecScores,
-                riasecTopThree,
-                aptitudeScores,
-                aptitudeTopStrengths,
-                bigFive
-            });
-
-            // Calculate match scores for each course
-            const courseMatches = allCourses.map(course => {
-                let matchScore = 0;
-                let matchReasons = [];
-
-                // RIASEC matching (40% weight)
-                // Check if course's RIASEC types match student's top interests
-                if (course.riasec && course.riasec.length > 0) {
-                    let riasecMatchPoints = 0;
-
-                    course.riasec.forEach(type => {
-                        const typeUpper = type.toUpperCase();
-                        const score = riasecScores[typeUpper] || 0;
-                        const percentage = (score / riasecMaxScore) * 100;
-
-                        // Bonus if this type is in student's top 3
-                        if (riasecTopThree.includes(typeUpper)) {
-                            riasecMatchPoints += percentage * 1.5; // 50% bonus for top 3
-                        } else {
-                            riasecMatchPoints += percentage;
-                        }
-                    });
-
-                    const avgRiasecMatch = riasecMatchPoints / course.riasec.length;
-                    matchScore += avgRiasecMatch * 0.4;
-
-                    // Add reason if strong match
-                    const matchingTopTypes = course.riasec.filter(type =>
-                        riasecTopThree.includes(type.toUpperCase())
-                    );
-                    if (matchingTopTypes.length > 0) {
-                        matchReasons.push(`Aligns with your ${matchingTopTypes.join(', ')} interests`);
-                    }
-                }
-
-                // Aptitude matching (35% weight)
-                if (course.aptitudeStrengths && course.aptitudeStrengths.length > 0) {
-                    let aptitudeMatchPoints = 0;
-
-                    course.aptitudeStrengths.forEach(strength => {
-                        const strengthLower = strength.toLowerCase();
-                        const scoreData = aptitudeScores[strengthLower];
-                        const percentage = scoreData?.percentage || 0;
-
-                        // Bonus if this is in student's top strengths
-                        const isTopStrength = aptitudeTopStrengths.some(s =>
-                            s.toLowerCase().includes(strengthLower) || strengthLower.includes(s.toLowerCase())
-                        );
-
-                        if (isTopStrength) {
-                            aptitudeMatchPoints += percentage * 1.3; // 30% bonus
-                        } else {
-                            aptitudeMatchPoints += percentage;
-                        }
-                    });
-
-                    const avgAptitudeMatch = aptitudeMatchPoints / course.aptitudeStrengths.length;
-                    matchScore += avgAptitudeMatch * 0.35;
-
-                    // Add reason if strong aptitude match
-                    if (avgAptitudeMatch > 60) {
-                        matchReasons.push(`Strong aptitude in required skills`);
-                    }
-                }
-
-                // Personality fit (25% weight)
-                // Big Five scores are 0-5, convert to percentage
-                const O = ((bigFive.O || 3) / 5) * 100; // Openness
-                const C = ((bigFive.C || 3) / 5) * 100; // Conscientiousness
-                const E = ((bigFive.E || 3) / 5) * 100; // Extraversion
-                const A = ((bigFive.A || 3) / 5) * 100; // Agreeableness
-                const N = ((bigFive.N || 3) / 5) * 100; // Neuroticism (lower is better for most careers)
-
-                let personalityFit = 50; // Base score
-
-                // Adjust based on course type
-                if (course.id === 'cs' || course.id === 'bca' || course.id === 'engineering') {
-                    // Tech/Engineering: High Openness, High Conscientiousness
-                    personalityFit = (O * 0.4) + (C * 0.4) + ((100 - N) * 0.2);
-                    if (O > 70) matchReasons.push('Your curiosity suits technical fields');
-                } else if (course.id === 'bba' || course.id === 'dm' || course.id === 'finance') {
-                    // Business: High Extraversion, High Conscientiousness
-                    personalityFit = (E * 0.4) + (C * 0.3) + (A * 0.3);
-                    if (E > 70) matchReasons.push('Your outgoing nature fits business roles');
-                } else if (course.id === 'design' || course.id === 'finearts' || course.id === 'animation') {
-                    // Creative: High Openness, Moderate Extraversion
-                    personalityFit = (O * 0.5) + (E * 0.2) + ((100 - C) * 0.3); // Less structure-focused
-                    if (O > 75) matchReasons.push('Your creativity aligns with design fields');
-                } else if (course.id === 'medical' || course.id === 'pharmacy' || course.id === 'psychology') {
-                    // Healthcare: High Agreeableness, High Conscientiousness
-                    personalityFit = (A * 0.4) + (C * 0.4) + ((100 - N) * 0.2);
-                    if (A > 70) matchReasons.push('Your empathy suits healthcare careers');
-                } else if (course.id === 'law' || course.id === 'journalism') {
-                    // Communication-heavy: High Extraversion, High Openness
-                    personalityFit = (E * 0.35) + (O * 0.35) + (C * 0.3);
-                } else if (course.id === 'bcom' || course.id === 'ca') {
-                    // Accounting: High Conscientiousness, Lower Openness OK
-                    personalityFit = (C * 0.5) + ((100 - N) * 0.3) + (A * 0.2);
-                    if (C > 75) matchReasons.push('Your attention to detail suits accounting');
-                } else {
-                    // Default: balanced approach
-                    personalityFit = (O * 0.25) + (C * 0.25) + (E * 0.2) + (A * 0.2) + ((100 - N) * 0.1);
-                }
-
-                matchScore += personalityFit * 0.25;
-
-                // Ensure score is between 0-100
-                matchScore = Math.min(100, Math.max(0, matchScore));
-
-                // Determine category
-                const category = streamsByCategory.science.find(s => s.id === course.id) ? 'Science' :
-                    streamsByCategory.commerce.find(s => s.id === course.id) ? 'Commerce' : 'Arts';
-
-                return {
-                    courseId: course.id,
-                    courseName: course.label,
-                    matchScore: Math.round(matchScore),
-                    matchLevel: matchScore >= 75 ? 'Excellent' : matchScore >= 60 ? 'Good' : matchScore >= 45 ? 'Fair' : 'Low',
-                    reasons: matchReasons.slice(0, 3), // Max 3 reasons
-                    category: category
-                };
-            });
-
-            // Sort by match score and return top 5 recommendations
-            const topRecommendations = courseMatches
-                .sort((a, b) => b.matchScore - a.matchScore)
-                .slice(0, 5);
-
-            return topRecommendations;
-
-        } catch (error) {
-            return [];
-        }
-    };
-
-    const handleNextSection = () => {
-        // Save timing for current section before moving
-        const currentSectionId = currentSection?.id;
-        if (currentSectionId) {
-            const timeSpent = currentSection.isTimed
-                ? (currentSection.timeLimit - (timeRemaining || 0)) // For timed section, calculate used time
-                : elapsedTime; // For non-timed sections, use elapsed time
-
-            setSectionTimings(prev => {
-                const newTimings = { ...prev, [currentSectionId]: timeSpent };
-                // Update progress in database
-                if (useDatabase && currentAttempt?.id) {
-                    updateProgress(currentSectionIndex + 1, 0, newTimings);
-                }
-                return newTimings;
-            });
-        }
-
-        setShowSectionComplete(false);
-        if (currentSectionIndex < sections.length - 1) {
-            setCurrentSectionIndex(prev => prev + 1);
-            setCurrentQuestionIndex(0);
-            setTimeRemaining(null);
-            setShowSectionIntro(true);
-        } else {
-            handleSubmit();
-        }
-    };
-
-    const handlePrevious = () => {
-        // Only allow going back within the current section, not to previous sections
-        if (currentQuestionIndex > 0) {
-            setCurrentQuestionIndex(prev => prev - 1);
-        }
-        // Removed: going back to previous sections is not allowed
-    };
-
-    const handleSubmit = async () => {
-        setIsSubmitting(true);
-        setError(null);
-
-        // Capture final section timing (knowledge section)
-        const finalTimings = { ...sectionTimings };
-        const currentSectionId = currentSection?.id;
-        if (currentSectionId && !finalTimings[currentSectionId]) {
-            const timeSpent = currentSection.isTimed
-                ? (currentSection.timeLimit - (timeRemaining || 0))
-                : elapsedTime;
-            finalTimings[currentSectionId] = timeSpent;
-        }
-
-        try {
-            // Save answers and timings to localStorage (for backward compatibility)
-            localStorage.setItem('assessment_answers', JSON.stringify(answers));
-            localStorage.setItem('assessment_stream', studentStream);
-            localStorage.setItem('assessment_grade_level', gradeLevel || 'after12');
-            localStorage.setItem('assessment_section_timings', JSON.stringify(finalTimings));
-            // Clear any previous results
-            localStorage.removeItem('assessment_gemini_results');
-
-            // Prepare question banks for Gemini analysis
-            // Use database questions if available, otherwise fallback to hardcoded
-            // IMPORTANT: Section names must match grade level
-            const getSectionId = (baseSection) => {
-                if (gradeLevel === 'middle') {
-                    const map = { 'riasec': 'middle_interest_explorer', 'bigfive': 'middle_strengths_character', 'knowledge': 'middle_learning_preferences' };
-                    return map[baseSection] || baseSection;
-                } else if (gradeLevel === 'highschool' || gradeLevel === 'higher_secondary') {
-                    const map = { 'riasec': 'hs_interest_explorer', 'aptitude': 'hs_aptitude_sampling', 'bigfive': 'hs_strengths_character', 'knowledge': 'hs_learning_preferences' };
-                    return map[baseSection] || baseSection;
-                }
-                // after12 and college use default section names (riasec, bigfive, aptitude, values, employability, knowledge)
-                return baseSection;
-            };
-
-            // Build question banks - fetch AI-generated questions from database for proper scoring
-            const questionBanks = {
-                riasecQuestions: getQuestionsForSection(getSectionId('riasec')),
-                aptitudeQuestions: getQuestionsForSection(getSectionId('aptitude')),
-                bigFiveQuestions: getQuestionsForSection(getSectionId('bigfive')),
-                workValuesQuestions: getQuestionsForSection('values'),
-                employabilityQuestions: getQuestionsForSection('employability'),
-                streamKnowledgeQuestions: { [studentStream]: getQuestionsForSection(getSectionId('knowledge')) }
-            };
-
-            // ✅ FIX: Fetch AI-generated questions from database for proper scoring
-            // For AI assessments (after10, after12, college, higher_secondary), questions are generated
-            // and stored in database. We need to fetch them to score answers correctly.
-            const isAIAssessment = ['after10', 'after12', 'college', 'higher_secondary'].includes(gradeLevel);
-
-            if (isAIAssessment && user) {
-                try {
-                    const answerKeys = Object.keys(answersWithAdaptive);
-
-                    // Fetch AI aptitude questions if needed
-                    const aptitudeAnswerKeys = answerKeys.filter(k => k.startsWith('aptitude_'));
-                    if (aptitudeAnswerKeys.length > 0) {
-
-                        // Get student record ID
-                        const { data: student } = await supabase
-                            .from('students')
-                            .select('id')
-                            .eq('user_id', user.id)
-                            .maybeSingle();
-
-                        if (student) {
-                            const { data: questionSets } = await supabase
-                                .from('career_assessment_ai_questions')
-                                .select('questions')
-                                .eq('student_id', student.id)
-                                .eq('question_type', 'aptitude')
-                                .order('created_at', { ascending: false })
-                                .limit(1)
-                                .maybeSingle();
-
-                            if (questionSets?.questions) {
-                                questionBanks.aptitudeQuestions = questionSets.questions.map(q => ({
-                                    ...q,
-                                    correct: q.correct_answer,
-                                    correctAnswer: q.correct_answer,
-                                    subtype: q.subtype || q.category || 'verbal'
-                                }));
-                            }
-                        }
-                    }
-
-                    // Fetch AI knowledge questions if needed
-                    const knowledgeAnswerKeys = answerKeys.filter(k => k.startsWith('knowledge_'));
-                    if (knowledgeAnswerKeys.length > 0) {
-
-                        // Get student record ID
-                        const { data: student } = await supabase
-                            .from('students')
-                            .select('id')
-                            .eq('user_id', user.id)
-                            .maybeSingle();
-
-                        if (student) {
-                            const { data: questionSets } = await supabase
-                                .from('career_assessment_ai_questions')
-                                .select('questions')
-                                .eq('student_id', student.id)
-                                .eq('question_type', 'knowledge')
-                                .order('created_at', { ascending: false })
-                                .limit(1)
-                                .maybeSingle();
-
-                            if (questionSets?.questions) {
-                                const aiKnowledgeQuestions = questionSets.questions.map(q => ({
-                                    ...q,
-                                    correct: q.correct_answer,
-                                    correctAnswer: q.correct_answer
-                                }));
-                                questionBanks.streamKnowledgeQuestions = { [studentStream]: aiKnowledgeQuestions };
-                            }
-                        }
-                    }
-                } catch (fetchErr) {
-                    // Continue with questions from sections (fallback)
-                }
-            }
-            // ✅ END OF FIX
-
-            // Include adaptive aptitude results in the answers if available (for high school)
-            const answersWithAdaptive = { ...answers };
-            if (gradeLevel === 'highschool' && answers.adaptive_aptitude_results) {
-                // The adaptive_aptitude_results contains detailed aptitude breakdown
-                // This will be used by the AI to enhance career recommendations
-            }
-
-            // Build student context for enhanced AI recommendations
-            const studentContext = {
-                rawGrade: studentGrade, // Original grade string (e.g., "PG Year 1", "Grade 10")
-                programName: studentProgram, // Program name (e.g., "MCA", "B.Tech CSE")
-                programCode: null, // Not available in this context
-                degreeLevel: null // Will be extracted from rawGrade in service
-            };
-
-
-            // 🔧 CRITICAL FIX: Extract adaptive results to pass as parameter
-            const adaptiveResultsForAI = answers.adaptive_aptitude_results || null;
-
-            // Analyze with Gemini AI - this is required, no fallback
-            const geminiResults = await analyzeAssessmentWithGemini(
-                answersWithAdaptive,
-                studentStream,
-                questionBanks,
-                finalTimings, // Pass section timings to Gemini
-                gradeLevel, // Pass grade level for proper scoring
-                null, // preCalculatedScores (not available here)
-                studentContext, // Pass student context for enhanced recommendations
-                adaptiveResultsForAI // Pass adaptive results for aptitude scoring
+            const result = await updateProgress(
+                currentSectionIndex,
+                nextQuestionIndex,
+                sectionTimings,
+                timerToSave,
+                elapsedToSave
             );
 
-            if (geminiResults) {
-                // Enhance results with adaptive aptitude data for high school students
-                if (gradeLevel === 'highschool' && answers.adaptive_aptitude_results) {
-                    const adaptiveResults = answers.adaptive_aptitude_results;
-
-                    // Add adaptive aptitude insights to the results
-                    geminiResults.adaptiveAptitude = {
-                        aptitudeLevel: adaptiveResults.aptitudeLevel,
-                        confidenceTag: adaptiveResults.confidenceTag,
-                        tier: adaptiveResults.tier,
-                        overallAccuracy: adaptiveResults.overallAccuracy,
-                        accuracyBySubtag: adaptiveResults.accuracyBySubtag,
-                        pathClassification: adaptiveResults.pathClassification,
-                        totalQuestions: adaptiveResults.totalQuestions,
-                        totalCorrect: adaptiveResults.totalCorrect
-                    };
-
-                    // Enhance aptitude scores with adaptive test results
-                    if (geminiResults.aptitude) {
-                        geminiResults.aptitude.adaptiveLevel = adaptiveResults.aptitudeLevel;
-                        geminiResults.aptitude.adaptiveConfidence = adaptiveResults.confidenceTag;
-
-                        // Map adaptive subtag accuracy to aptitude categories
-                        if (adaptiveResults.accuracyBySubtag) {
-                            const subtagMapping = {
-                                numerical_reasoning: 'numerical',
-                                logical_reasoning: 'abstract',
-                                verbal_reasoning: 'verbal',
-                                spatial_reasoning: 'spatial',
-                                data_interpretation: 'numerical',
-                                pattern_recognition: 'abstract'
-                            };
-
-                            Object.entries(adaptiveResults.accuracyBySubtag).forEach(([subtag, data]) => {
-                                const category = subtagMapping[subtag];
-                                if (category && geminiResults.aptitude.scores?.[category]) {
-                                    geminiResults.aptitude.scores[category].adaptiveAccuracy = data.accuracy;
-                                }
-                            });
-                        }
-                    }
-
-                }
-
-                // Add course recommendations for after12 students
-                if (gradeLevel === 'after12') {
-                    geminiResults.courseRecommendations = generateCourseRecommendations(geminiResults);
-                }
-
-                // Save AI-analyzed results to localStorage (backward compatibility)
-                localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
-
-                // ===========================================
-                // STEP-BY-STEP SUBMISSION WITH VALIDATION
-                // ===========================================
-
-                let submissionSuccess = true;
-                let submissionError = null;
-                let finalAttemptId = null;
-
-                // STEP 1: Get or lookup attempt ID
-
-                let attemptId = currentAttempt?.id;
-
-                if (!attemptId && (studentRecordId || user?.id)) {
-                    const lookupStudentId = studentRecordId || user.id;
-
-                    try {
-                        const { data: latestAttempt, error: lookupError } = await supabase
-                            .from('personal_assessment_attempts')
-                            .select('id, stream_id, grade_level')
-                            .eq('student_id', lookupStudentId)
-                            .eq('status', 'in_progress')
-                            .order('created_at', { ascending: false })
-                            .limit(1)
-                            .single();
-
-                        if (lookupError) {
-                        }
-
-                        if (latestAttempt) {
-                            attemptId = latestAttempt.id;
-                        } else {
-                            submissionSuccess = false;
-                            submissionError = 'No assessment attempt found. Please start a new assessment.';
-                        }
-                    } catch (fetchErr) {
-                        submissionSuccess = false;
-                        submissionError = 'Failed to find assessment attempt: ' + fetchErr.message;
-                    }
-                } else if (attemptId) {
-                } else {
-                    submissionSuccess = false;
-                    submissionError = 'No student record found. Please log in again.';
-                }
-
-                finalAttemptId = attemptId;
-
-                // STEP 2: Save results to database (only if Step 1 succeeded)
-                if (submissionSuccess && attemptId) {
-
-                    try {
-                        let dbResults = null;
-
-                        if (currentAttempt?.id) {
-                            dbResults = await completeAssessment(geminiResults, finalTimings);
-                        } else {
-                            const studentIdForDb = studentRecordId || user.id;
-
-                            dbResults = await assessmentService.completeAttempt(
-                                attemptId,
-                                studentIdForDb,
-                                studentStream,
-                                gradeLevel || 'after12',
-                                geminiResults,
-                                finalTimings
-                            );
-                        }
-
-                        if (!dbResults) {
-                            throw new Error('Database returned no result record');
-                        }
-
-                    } catch (dbErr) {
-                            message: dbErr.message,
-                            code: dbErr.code,
-                            details: dbErr.details,
-                            hint: dbErr.hint
-                        });
-                        submissionSuccess = false;
-                        submissionError = 'Failed to save results: ' + (dbErr.message || 'Database error');
-                    }
-                }
-
-                // STEP 3: Navigate to results page (only if all steps succeeded)
-
-                if (submissionSuccess && finalAttemptId) {
-                    navigate(`/student/assessment/result?attemptId=${finalAttemptId}`);
-                } else {
-                    setIsSubmitting(false);
-                    setError(submissionError || 'Assessment submission failed. Please try again.');
-                    // Do NOT navigate - stay on page and show error
-                    return;
-                }
-            } else {
-                throw new Error('AI analysis returned no results. Please check your API key configuration.');
+            if (!result?.success) {
+                // Still proceed but log the error
             }
         } catch (err) {
-            setIsSubmitting(false);
-            setError(err.message || 'Failed to analyze assessment with AI. Please try again.');
+        } finally {
+            setIsSaving(false);
         }
+    }
+
+    // Move to next question
+    setCurrentQuestionIndex(nextQuestionIndex);
+} else {
+    // Show section complete message before moving to next section
+    if (currentSectionIndex < sections.length - 1) {
+        setShowSectionComplete(true);
+    } else {
+        handleSubmit();
+    }
+}
     };
 
-    // For adaptive sections, use the question from the adaptive hook
-    const currentQuestion = currentSection?.isAdaptive
-        ? adaptiveAptitude.currentQuestion
-        : currentSection?.questions[currentQuestionIndex];
-    const questionId = currentSection?.isAdaptive
-        ? `adaptive_aptitude_${adaptiveAptitude.currentQuestion?.id}`
-        : `${currentSection?.id}_${currentQuestion?.id}`;
-
-    // Check if current question is answered (SJT needs both BEST and WORST, multiselect needs required count, text needs content)
-    const isCurrentAnswered = (() => {
-        // For adaptive sections, check if an answer is selected
-        if (currentSection?.isAdaptive) {
-            return adaptiveAptitudeAnswer !== null && adaptiveAptitudeAnswer !== undefined && adaptiveAptitudeAnswer !== '';
-        }
-
-        // Check if questionId is valid
-        if (!questionId || questionId.includes('undefined')) {
-            return false;
-        }
-
-        const answer = answers[questionId];
-        
-        // For MCQ questions (aptitude and knowledge sections), answer must be a non-empty string
-        // CRITICAL: Check this BEFORE the general empty check to ensure strict validation
-        if (currentSection?.isAptitude || currentSection?.isKnowledge) {
-            // Answer must be a non-empty string (option value)
-            return typeof answer === 'string' && answer.trim().length > 0;
-        }
-        
-        // No answer selected for other question types
-        if (answer === null || answer === undefined || answer === '') {
-            return false;
-        }
-
-        // For SJT questions, both best and worst must be selected
-        if (currentQuestion?.partType === 'sjt') {
-            return answer.best && answer.worst;
-        }
-
-        // For multiselect questions, check if required number of selections made
-        if (currentQuestion?.type === 'multiselect') {
-            return Array.isArray(answer) && answer.length === currentQuestion.maxSelections;
-        }
-
-        // For text questions, check if there's some content (at least 10 characters for meaningful response)
-        if (currentQuestion?.type === 'text') {
-            return typeof answer === 'string' && answer.trim().length >= 10;
-        }
-
-        // For MCQ and other question types, ensure answer is not empty
-        return answer !== null && answer !== undefined && answer !== '';
-    })();
-
-    // formatTime and formatElapsedTime are now imported from centralized utilities
-
-    // Unified loading screen - clean and simple
-    // Only show loading for initial check and questions loading, not for dbLoading during assessment
-    const showLoading = checkingExistingAttempt || questionsLoading || (!assessmentStarted && dbLoading);
-    if (showLoading) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading...</p>
-                </div>
-            </div>
-        );
-    }
-
-    // Show error if questions failed to load
-    if (questionsError && !showGradeSelection && !showCategorySelection) {
-        return (
-            <RestrictionScreen
-                errorMessage={questionsError}
-                onViewLastReport={() => navigate('/student/assessment/result')}
-                onBackToDashboard={() => navigate('/student/dashboard')}
-            />
-        );
-    }
-
-    // Show restriction message if user cannot take assessment
-    if (error && !showStreamSelection && !showResumePrompt && !assessmentStarted) {
-        return (
-            <RestrictionScreen
-                errorMessage={error}
-                onViewLastReport={() => navigate('/student/assessment/result')}
-                onBackToDashboard={() => navigate('/student/dashboard')}
-            />
-        );
-    }
-
-    // Resume Prompt Screen - Using extracted component
-    if (showResumePrompt && pendingAttempt) {
-        return (
-            <ResumePromptScreen
-                pendingAttempt={pendingAttempt}
-                onResume={handleResumeAssessment}
-                onStartNew={handleStartNewAssessment}
-                isLoading={questionsLoading}
-            />
-        );
-    }
-
-    // Grade Level Selection Screen - Using extracted component
-    if (showGradeSelection) {
-        const detectedGradeLevel = getGradeLevelFromGrade(studentGrade);
-
-        return (
-            <GradeSelectionScreen
-                onGradeSelect={handleGradeSelect}
-                studentGrade={studentGrade}
-                detectedGradeLevel={detectedGradeLevel}
-                monthsInGrade={monthsInGrade}
-                isCollegeStudent={isCollegeStudent}
-                loadingStudentGrade={loadingStudentGrade}
-                shouldShowAllOptions={shouldShowAllOptions}
-                shouldFilterByGrade={shouldFilterByGrade}
-                studentProgram={studentProgram}
-                profileData={profileData}
-            />
-        );
-    }
-
-    // Category Selection Screen - Using extracted component
-    if (showCategorySelection) {
-        return (
-            <CategorySelectionScreen
-                onCategorySelect={handleCategorySelect}
-                onBack={() => {
-                    setShowCategorySelection(false);
-                    setShowGradeSelection(true);
-                }}
-                gradeLevel={gradeLevel}
-            />
-        );
-    }
-
-    // Stream selection is no longer used - college students go directly to assessment
-    // Keeping this commented for reference if needed in future
-    /*
-    if (showStreamSelection) {
-        // Default streams for college students
-        const collegeStreams = [
-            { id: 'cs', label: 'B.Sc Computer Science / B.Tech CS/IT' },
-            { id: 'bca', label: 'BCA General' },
-            { id: 'bba', label: 'BBA General' },
-            { id: 'dm', label: 'BBA Digital Marketing' },
-            { id: 'animation', label: 'B.Sc Animation' }
+// Generate course recommendations based on assessment results
+const generateCourseRecommendations = (analysisResults) => {
+    try {
+        // Get all courses from all categories
+        const allCourses = [
+            ...streamsByCategory.science,
+            ...streamsByCategory.commerce,
+            ...streamsByCategory.arts
         ];
 
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-                <Card className="w-full max-w-2xl border-none shadow-2xl">
-                    <CardContent className="p-8">
-                        <div className="text-center mb-8">
-                            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                                <Award className="w-8 h-8 text-white" />
-                            </div>
-                            <h1 className="text-3xl font-bold text-gray-800 mb-2">Career Assessment</h1>
-                            <p className="text-gray-600">Let's personalize your assessment based on your stream</p>
-                        </div>
+        if (allCourses.length === 0) return [];
 
-                        <div className="space-y-4">
-                            <Label className="text-sm font-semibold text-gray-700">Select Your Stream/Course</Label>
-                            
-                            {collegeStreams.map((stream) => (
-                                <button
-                                    key={stream.id}
-                                    onClick={() => handleStreamSelect(stream.id)}
-                                    className="w-full p-4 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-xl shadow-sm hover:shadow-lg hover:border-indigo-300 transition-all duration-300 text-left group"
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-gray-800 font-medium group-hover:text-indigo-700">{stream.label}</span>
-                                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-indigo-600" />
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
+        // Extract scores from analysis results
+        const riasec = analysisResults?.riasec || {};
+        const riasecScores = riasec.scores || {}; // { R: 15, I: 12, A: 8, ... }
+        const riasecMaxScore = riasec.maxScore || 20;
+        const riasecTopThree = riasec.topThree || []; // ['R', 'I', 'A']
 
-                        <div className="mt-8 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                            <div className="flex gap-3">
-                                <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-                                <div className="text-sm text-blue-700">
-                                    <p className="font-semibold mb-1">What to expect:</p>
-                                    <ul className="space-y-1">
-                                        <li>• 6 assessment sections covering interests, personality, values, skills, and knowledge</li>
-                                        <li>• Approximately 45-60 minutes to complete</li>
-                                        <li>• Your responses are private and used only for career guidance</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                setShowStreamSelection(false);
-                                setShowGradeSelection(true);
-                            }}
-                            className="w-full mt-4 py-4"
-                        >
-                            <ArrowLeft className="w-4 h-4 mr-2" />
-                            Back to Grade Selection
-                        </Button>
-                    </CardContent>
-                </Card>
-            </div>
-        );
+        const aptitudeResults = analysisResults?.aptitude || {};
+        const aptitudeScores = aptitudeResults.scores || {}; // { verbal: {percentage: 80}, numerical: {percentage: 70}, ... }
+        const aptitudeTopStrengths = aptitudeResults.topStrengths || [];
+
+        const bigFive = analysisResults?.bigFive || {};
+        // Big Five scores are 0-5 scale
+
+        riasecScores,
+            riasecTopThree,
+            aptitudeScores,
+            aptitudeTopStrengths,
+            bigFive
+    });
+
+    // Calculate match scores for each course
+    const courseMatches = allCourses.map(course => {
+        let matchScore = 0;
+        let matchReasons = [];
+
+        // RIASEC matching (40% weight)
+        // Check if course's RIASEC types match student's top interests
+        if (course.riasec && course.riasec.length > 0) {
+            let riasecMatchPoints = 0;
+
+            course.riasec.forEach(type => {
+                const typeUpper = type.toUpperCase();
+                const score = riasecScores[typeUpper] || 0;
+                const percentage = (score / riasecMaxScore) * 100;
+
+                // Bonus if this type is in student's top 3
+                if (riasecTopThree.includes(typeUpper)) {
+                    riasecMatchPoints += percentage * 1.5; // 50% bonus for top 3
+                } else {
+                    riasecMatchPoints += percentage;
+                }
+            });
+
+            const avgRiasecMatch = riasecMatchPoints / course.riasec.length;
+            matchScore += avgRiasecMatch * 0.4;
+
+            // Add reason if strong match
+            const matchingTopTypes = course.riasec.filter(type =>
+                riasecTopThree.includes(type.toUpperCase())
+            );
+            if (matchingTopTypes.length > 0) {
+                matchReasons.push(`Aligns with your ${matchingTopTypes.join(', ')} interests`);
+            }
+        }
+
+        // Aptitude matching (35% weight)
+        if (course.aptitudeStrengths && course.aptitudeStrengths.length > 0) {
+            let aptitudeMatchPoints = 0;
+
+            course.aptitudeStrengths.forEach(strength => {
+                const strengthLower = strength.toLowerCase();
+                const scoreData = aptitudeScores[strengthLower];
+                const percentage = scoreData?.percentage || 0;
+
+                // Bonus if this is in student's top strengths
+                const isTopStrength = aptitudeTopStrengths.some(s =>
+                    s.toLowerCase().includes(strengthLower) || strengthLower.includes(s.toLowerCase())
+                );
+
+                if (isTopStrength) {
+                    aptitudeMatchPoints += percentage * 1.3; // 30% bonus
+                } else {
+                    aptitudeMatchPoints += percentage;
+                }
+            });
+
+            const avgAptitudeMatch = aptitudeMatchPoints / course.aptitudeStrengths.length;
+            matchScore += avgAptitudeMatch * 0.35;
+
+            // Add reason if strong aptitude match
+            if (avgAptitudeMatch > 60) {
+                matchReasons.push(`Strong aptitude in required skills`);
+            }
+        }
+
+        // Personality fit (25% weight)
+        // Big Five scores are 0-5, convert to percentage
+        const O = ((bigFive.O || 3) / 5) * 100; // Openness
+        const C = ((bigFive.C || 3) / 5) * 100; // Conscientiousness
+        const E = ((bigFive.E || 3) / 5) * 100; // Extraversion
+        const A = ((bigFive.A || 3) / 5) * 100; // Agreeableness
+        const N = ((bigFive.N || 3) / 5) * 100; // Neuroticism (lower is better for most careers)
+
+        let personalityFit = 50; // Base score
+
+        // Adjust based on course type
+        if (course.id === 'cs' || course.id === 'bca' || course.id === 'engineering') {
+            // Tech/Engineering: High Openness, High Conscientiousness
+            personalityFit = (O * 0.4) + (C * 0.4) + ((100 - N) * 0.2);
+            if (O > 70) matchReasons.push('Your curiosity suits technical fields');
+        } else if (course.id === 'bba' || course.id === 'dm' || course.id === 'finance') {
+            // Business: High Extraversion, High Conscientiousness
+            personalityFit = (E * 0.4) + (C * 0.3) + (A * 0.3);
+            if (E > 70) matchReasons.push('Your outgoing nature fits business roles');
+        } else if (course.id === 'design' || course.id === 'finearts' || course.id === 'animation') {
+            // Creative: High Openness, Moderate Extraversion
+            personalityFit = (O * 0.5) + (E * 0.2) + ((100 - C) * 0.3); // Less structure-focused
+            if (O > 75) matchReasons.push('Your creativity aligns with design fields');
+        } else if (course.id === 'medical' || course.id === 'pharmacy' || course.id === 'psychology') {
+            // Healthcare: High Agreeableness, High Conscientiousness
+            personalityFit = (A * 0.4) + (C * 0.4) + ((100 - N) * 0.2);
+            if (A > 70) matchReasons.push('Your empathy suits healthcare careers');
+        } else if (course.id === 'law' || course.id === 'journalism') {
+            // Communication-heavy: High Extraversion, High Openness
+            personalityFit = (E * 0.35) + (O * 0.35) + (C * 0.3);
+        } else if (course.id === 'bcom' || course.id === 'ca') {
+            // Accounting: High Conscientiousness, Lower Openness OK
+            personalityFit = (C * 0.5) + ((100 - N) * 0.3) + (A * 0.2);
+            if (C > 75) matchReasons.push('Your attention to detail suits accounting');
+        } else {
+            // Default: balanced approach
+            personalityFit = (O * 0.25) + (C * 0.25) + (E * 0.2) + (A * 0.2) + ((100 - N) * 0.1);
+        }
+
+        matchScore += personalityFit * 0.25;
+
+        // Ensure score is between 0-100
+        matchScore = Math.min(100, Math.max(0, matchScore));
+
+        // Determine category
+        const category = streamsByCategory.science.find(s => s.id === course.id) ? 'Science' :
+            streamsByCategory.commerce.find(s => s.id === course.id) ? 'Commerce' : 'Arts';
+
+        return {
+            courseId: course.id,
+            courseName: course.label,
+            matchScore: Math.round(matchScore),
+            matchLevel: matchScore >= 75 ? 'Excellent' : matchScore >= 60 ? 'Good' : matchScore >= 45 ? 'Fair' : 'Low',
+            reasons: matchReasons.slice(0, 3), // Max 3 reasons
+            category: category
+        };
+    });
+
+    // Sort by match score and return top 5 recommendations
+    const topRecommendations = courseMatches
+        .sort((a, b) => b.matchScore - a.matchScore)
+        .slice(0, 5);
+
+    return topRecommendations;
+
+} catch (error) {
+    return [];
+}
+    };
+
+const handleNextSection = () => {
+    // Save timing for current section before moving
+    const currentSectionId = currentSection?.id;
+    if (currentSectionId) {
+        const timeSpent = currentSection.isTimed
+            ? (currentSection.timeLimit - (timeRemaining || 0)) // For timed section, calculate used time
+            : elapsedTime; // For non-timed sections, use elapsed time
+
+        setSectionTimings(prev => {
+            const newTimings = { ...prev, [currentSectionId]: timeSpent };
+            // Update progress in database
+            if (useDatabase && currentAttempt?.id) {
+                updateProgress(currentSectionIndex + 1, 0, newTimings);
+            }
+            return newTimings;
+        });
     }
-    */
 
-    // Guard: Don't render main assessment UI if sections is empty
-    if (!sections || sections.length === 0 || !currentSection) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading assessment...</p>
-                </div>
-            </div>
-        );
+    setShowSectionComplete(false);
+    if (currentSectionIndex < sections.length - 1) {
+        setCurrentSectionIndex(prev => prev + 1);
+        setCurrentQuestionIndex(0);
+        setTimeRemaining(null);
+        setShowSectionIntro(true);
+    } else {
+        handleSubmit();
     }
+};
+
+const handlePrevious = () => {
+    // Only allow going back within the current section, not to previous sections
+    if (currentQuestionIndex > 0) {
+        setCurrentQuestionIndex(prev => prev - 1);
+    }
+    // Removed: going back to previous sections is not allowed
+};
+
+const handleSubmit = async () => {
+    setIsSubmitting(true);
+    setError(null);
+
+    // Capture final section timing (knowledge section)
+    const finalTimings = { ...sectionTimings };
+    const currentSectionId = currentSection?.id;
+    if (currentSectionId && !finalTimings[currentSectionId]) {
+        const timeSpent = currentSection.isTimed
+            ? (currentSection.timeLimit - (timeRemaining || 0))
+            : elapsedTime;
+        finalTimings[currentSectionId] = timeSpent;
+    }
+
+    try {
+        // Save answers and timings to localStorage (for backward compatibility)
+        localStorage.setItem('assessment_answers', JSON.stringify(answers));
+        localStorage.setItem('assessment_stream', studentStream);
+        localStorage.setItem('assessment_grade_level', gradeLevel || 'after12');
+        localStorage.setItem('assessment_section_timings', JSON.stringify(finalTimings));
+        // Clear any previous results
+        localStorage.removeItem('assessment_gemini_results');
+
+        // Prepare question banks for Gemini analysis
+        // Use database questions if available, otherwise fallback to hardcoded
+        // IMPORTANT: Section names must match grade level
+        const getSectionId = (baseSection) => {
+            if (gradeLevel === 'middle') {
+                const map = { 'riasec': 'middle_interest_explorer', 'bigfive': 'middle_strengths_character', 'knowledge': 'middle_learning_preferences' };
+                return map[baseSection] || baseSection;
+            } else if (gradeLevel === 'highschool' || gradeLevel === 'higher_secondary') {
+                const map = { 'riasec': 'hs_interest_explorer', 'aptitude': 'hs_aptitude_sampling', 'bigfive': 'hs_strengths_character', 'knowledge': 'hs_learning_preferences' };
+                return map[baseSection] || baseSection;
+            }
+            // after12 and college use default section names (riasec, bigfive, aptitude, values, employability, knowledge)
+            return baseSection;
+        };
+
+        // Build question banks - fetch AI-generated questions from database for proper scoring
+        const questionBanks = {
+            riasecQuestions: getQuestionsForSection(getSectionId('riasec')),
+            aptitudeQuestions: getQuestionsForSection(getSectionId('aptitude')),
+            bigFiveQuestions: getQuestionsForSection(getSectionId('bigfive')),
+            workValuesQuestions: getQuestionsForSection('values'),
+            employabilityQuestions: getQuestionsForSection('employability'),
+            streamKnowledgeQuestions: { [studentStream]: getQuestionsForSection(getSectionId('knowledge')) }
+        };
+
+        // ✅ FIX: Fetch AI-generated questions from database for proper scoring
+        // For AI assessments (after10, after12, college, higher_secondary), questions are generated
+        // and stored in database. We need to fetch them to score answers correctly.
+        const isAIAssessment = ['after10', 'after12', 'college', 'higher_secondary'].includes(gradeLevel);
+
+        if (isAIAssessment && user) {
+            try {
+                const answerKeys = Object.keys(answersWithAdaptive);
+
+                // Fetch AI aptitude questions if needed
+                const aptitudeAnswerKeys = answerKeys.filter(k => k.startsWith('aptitude_'));
+                if (aptitudeAnswerKeys.length > 0) {
+
+                    // Get student record ID
+                    const { data: student } = await supabase
+                        .from('students')
+                        .select('id')
+                        .eq('user_id', user.id)
+                        .maybeSingle();
+
+                    if (student) {
+                        const { data: questionSets } = await supabase
+                            .from('career_assessment_ai_questions')
+                            .select('questions')
+                            .eq('student_id', student.id)
+                            .eq('question_type', 'aptitude')
+                            .order('created_at', { ascending: false })
+                            .limit(1)
+                            .maybeSingle();
+
+                        if (questionSets?.questions) {
+                            questionBanks.aptitudeQuestions = questionSets.questions.map(q => ({
+                                ...q,
+                                correct: q.correct_answer,
+                                correctAnswer: q.correct_answer,
+                                subtype: q.subtype || q.category || 'verbal'
+                            }));
+                        }
+                    }
+                }
+
+                // Fetch AI knowledge questions if needed
+                const knowledgeAnswerKeys = answerKeys.filter(k => k.startsWith('knowledge_'));
+                if (knowledgeAnswerKeys.length > 0) {
+
+                    // Get student record ID
+                    const { data: student } = await supabase
+                        .from('students')
+                        .select('id')
+                        .eq('user_id', user.id)
+                        .maybeSingle();
+
+                    if (student) {
+                        const { data: questionSets } = await supabase
+                            .from('career_assessment_ai_questions')
+                            .select('questions')
+                            .eq('student_id', student.id)
+                            .eq('question_type', 'knowledge')
+                            .order('created_at', { ascending: false })
+                            .limit(1)
+                            .maybeSingle();
+
+                        if (questionSets?.questions) {
+                            const aiKnowledgeQuestions = questionSets.questions.map(q => ({
+                                ...q,
+                                correct: q.correct_answer,
+                                correctAnswer: q.correct_answer
+                            }));
+                            questionBanks.streamKnowledgeQuestions = { [studentStream]: aiKnowledgeQuestions };
+                        }
+                    }
+                }
+            } catch (fetchErr) {
+                // Continue with questions from sections (fallback)
+            }
+        }
+        // ✅ END OF FIX
+
+        // Include adaptive aptitude results in the answers if available (for high school)
+        const answersWithAdaptive = { ...answers };
+        if (gradeLevel === 'highschool' && answers.adaptive_aptitude_results) {
+            // The adaptive_aptitude_results contains detailed aptitude breakdown
+            // This will be used by the AI to enhance career recommendations
+        }
+
+        // Build student context for enhanced AI recommendations
+        const studentContext = {
+            rawGrade: studentGrade, // Original grade string (e.g., "PG Year 1", "Grade 10")
+            programName: studentProgram, // Program name (e.g., "MCA", "B.Tech CSE")
+            programCode: null, // Not available in this context
+            degreeLevel: null // Will be extracted from rawGrade in service
+        };
+
+
+        // 🔧 CRITICAL FIX: Extract adaptive results to pass as parameter
+        const adaptiveResultsForAI = answers.adaptive_aptitude_results || null;
+
+        // Analyze with Gemini AI - this is required, no fallback
+        const geminiResults = await analyzeAssessmentWithGemini(
+            answersWithAdaptive,
+            studentStream,
+            questionBanks,
+            finalTimings, // Pass section timings to Gemini
+            gradeLevel, // Pass grade level for proper scoring
+            null, // preCalculatedScores (not available here)
+            studentContext, // Pass student context for enhanced recommendations
+            adaptiveResultsForAI // Pass adaptive results for aptitude scoring
+        );
+
+        if (geminiResults) {
+            // Enhance results with adaptive aptitude data for high school students
+            if (gradeLevel === 'highschool' && answers.adaptive_aptitude_results) {
+                const adaptiveResults = answers.adaptive_aptitude_results;
+
+                // Add adaptive aptitude insights to the results
+                geminiResults.adaptiveAptitude = {
+                    aptitudeLevel: adaptiveResults.aptitudeLevel,
+                    confidenceTag: adaptiveResults.confidenceTag,
+                    tier: adaptiveResults.tier,
+                    overallAccuracy: adaptiveResults.overallAccuracy,
+                    accuracyBySubtag: adaptiveResults.accuracyBySubtag,
+                    pathClassification: adaptiveResults.pathClassification,
+                    totalQuestions: adaptiveResults.totalQuestions,
+                    totalCorrect: adaptiveResults.totalCorrect
+                };
+
+                // Enhance aptitude scores with adaptive test results
+                if (geminiResults.aptitude) {
+                    geminiResults.aptitude.adaptiveLevel = adaptiveResults.aptitudeLevel;
+                    geminiResults.aptitude.adaptiveConfidence = adaptiveResults.confidenceTag;
+
+                    // Map adaptive subtag accuracy to aptitude categories
+                    if (adaptiveResults.accuracyBySubtag) {
+                        const subtagMapping = {
+                            numerical_reasoning: 'numerical',
+                            logical_reasoning: 'abstract',
+                            verbal_reasoning: 'verbal',
+                            spatial_reasoning: 'spatial',
+                            data_interpretation: 'numerical',
+                            pattern_recognition: 'abstract'
+                        };
+
+                        Object.entries(adaptiveResults.accuracyBySubtag).forEach(([subtag, data]) => {
+                            const category = subtagMapping[subtag];
+                            if (category && geminiResults.aptitude.scores?.[category]) {
+                                geminiResults.aptitude.scores[category].adaptiveAccuracy = data.accuracy;
+                            }
+                        });
+                    }
+                }
+
+            }
+
+            // Add course recommendations for after12 students
+            if (gradeLevel === 'after12') {
+                geminiResults.courseRecommendations = generateCourseRecommendations(geminiResults);
+            }
+
+            // Save AI-analyzed results to localStorage (backward compatibility)
+            localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
+
+            // ===========================================
+            // STEP-BY-STEP SUBMISSION WITH VALIDATION
+            // ===========================================
+
+            let submissionSuccess = true;
+            let submissionError = null;
+            let finalAttemptId = null;
+
+            // STEP 1: Get or lookup attempt ID
+
+            let attemptId = currentAttempt?.id;
+
+            if (!attemptId && (studentRecordId || user?.id)) {
+                const lookupStudentId = studentRecordId || user.id;
+
+                try {
+                    const { data: latestAttempt, error: lookupError } = await supabase
+                        .from('personal_assessment_attempts')
+                        .select('id, stream_id, grade_level')
+                        .eq('student_id', lookupStudentId)
+                        .eq('status', 'in_progress')
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .single();
+
+                    if (lookupError) {
+                    }
+
+                    if (latestAttempt) {
+                        attemptId = latestAttempt.id;
+                    } else {
+                        submissionSuccess = false;
+                        submissionError = 'No assessment attempt found. Please start a new assessment.';
+                    }
+                } catch (fetchErr) {
+                    submissionSuccess = false;
+                    submissionError = 'Failed to find assessment attempt: ' + fetchErr.message;
+                }
+            } else if (attemptId) {
+            } else {
+                submissionSuccess = false;
+                submissionError = 'No student record found. Please log in again.';
+            }
+
+            finalAttemptId = attemptId;
+
+            // STEP 2: Save results to database (only if Step 1 succeeded)
+            if (submissionSuccess && attemptId) {
+
+                try {
+                    let dbResults = null;
+
+                    if (currentAttempt?.id) {
+                        dbResults = await completeAssessment(geminiResults, finalTimings);
+                    } else {
+                        const studentIdForDb = studentRecordId || user.id;
+
+                        dbResults = await assessmentService.completeAttempt(
+                            attemptId,
+                            studentIdForDb,
+                            studentStream,
+                            gradeLevel || 'after12',
+                            geminiResults,
+                            finalTimings
+                        );
+                    }
+
+                    if (!dbResults) {
+                        throw new Error('Database returned no result record');
+                    }
+
+                } catch (dbErr) {
+                    message: dbErr.message,
+                        code: dbErr.code,
+                            details: dbErr.details,
+                                hint: dbErr.hint
+                });
+                submissionSuccess = false;
+                submissionError = 'Failed to save results: ' + (dbErr.message || 'Database error');
+            }
+        }
+
+        // STEP 3: Navigate to results page (only if all steps succeeded)
+
+        if (submissionSuccess && finalAttemptId) {
+            navigate(`/student/assessment/result?attemptId=${finalAttemptId}`);
+        } else {
+            setIsSubmitting(false);
+            setError(submissionError || 'Assessment submission failed. Please try again.');
+            // Do NOT navigate - stay on page and show error
+            return;
+        }
+    } else {
+        throw new Error('AI analysis returned no results. Please check your API key configuration.');
+    }
+} catch (err) {
+    setIsSubmitting(false);
+    setError(err.message || 'Failed to analyze assessment with AI. Please try again.');
+}
+    };
+
+// For adaptive sections, use the question from the adaptive hook
+const currentQuestion = currentSection?.isAdaptive
+    ? adaptiveAptitude.currentQuestion
+    : currentSection?.questions[currentQuestionIndex];
+const questionId = currentSection?.isAdaptive
+    ? `adaptive_aptitude_${adaptiveAptitude.currentQuestion?.id}`
+    : `${currentSection?.id}_${currentQuestion?.id}`;
+
+// Check if current question is answered (SJT needs both BEST and WORST, multiselect needs required count, text needs content)
+const isCurrentAnswered = (() => {
+    // For adaptive sections, check if an answer is selected
+    if (currentSection?.isAdaptive) {
+        return adaptiveAptitudeAnswer !== null && adaptiveAptitudeAnswer !== undefined && adaptiveAptitudeAnswer !== '';
+    }
+
+    // Check if questionId is valid
+    if (!questionId || questionId.includes('undefined')) {
+        return false;
+    }
+
+    const answer = answers[questionId];
+
+    // For MCQ questions (aptitude and knowledge sections), answer must be a non-empty string
+    // CRITICAL: Check this BEFORE the general empty check to ensure strict validation
+    if (currentSection?.isAptitude || currentSection?.isKnowledge) {
+        // Answer must be a non-empty string (option value)
+        return typeof answer === 'string' && answer.trim().length > 0;
+    }
+
+    // No answer selected for other question types
+    if (answer === null || answer === undefined || answer === '') {
+        return false;
+    }
+
+    // For SJT questions, both best and worst must be selected
+    if (currentQuestion?.partType === 'sjt') {
+        return answer.best && answer.worst;
+    }
+
+    // For multiselect questions, check if required number of selections made
+    if (currentQuestion?.type === 'multiselect') {
+        return Array.isArray(answer) && answer.length === currentQuestion.maxSelections;
+    }
+
+    // For text questions, check if there's some content (at least 10 characters for meaningful response)
+    if (currentQuestion?.type === 'text') {
+        return typeof answer === 'string' && answer.trim().length >= 10;
+    }
+
+    // For MCQ and other question types, ensure answer is not empty
+    return answer !== null && answer !== undefined && answer !== '';
+})();
+
+// formatTime and formatElapsedTime are now imported from centralized utilities
+
+// Unified loading screen - clean and simple
+// Only show loading for initial check and questions loading, not for dbLoading during assessment
+const showLoading = checkingExistingAttempt || questionsLoading || (!assessmentStarted && dbLoading);
+if (showLoading) {
+    return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="text-center">
+                <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading...</p>
+            </div>
+        </div>
+    );
+}
+
+// Show error if questions failed to load
+if (questionsError && !showGradeSelection && !showCategorySelection) {
+    return (
+        <RestrictionScreen
+            errorMessage={questionsError}
+            onViewLastReport={() => navigate('/student/assessment/result')}
+            onBackToDashboard={() => navigate('/student/dashboard')}
+        />
+    );
+}
+
+// Show restriction message if user cannot take assessment
+if (error && !showStreamSelection && !showResumePrompt && !assessmentStarted) {
+    return (
+        <RestrictionScreen
+            errorMessage={error}
+            onViewLastReport={() => navigate('/student/assessment/result')}
+            onBackToDashboard={() => navigate('/student/dashboard')}
+        />
+    );
+}
+
+// Resume Prompt Screen - Using extracted component
+if (showResumePrompt && pendingAttempt) {
+    return (
+        <ResumePromptScreen
+            pendingAttempt={pendingAttempt}
+            onResume={handleResumeAssessment}
+            onStartNew={handleStartNewAssessment}
+            isLoading={questionsLoading}
+        />
+    );
+}
+
+// Grade Level Selection Screen - Using extracted component
+if (showGradeSelection) {
+    const detectedGradeLevel = getGradeLevelFromGrade(studentGrade);
 
     return (
-        <div className="min-h-screen bg-gray-50/50 flex flex-col items-center py-8 px-4">
-            {/* Modern Progress Header */}
-            <div className="w-full max-w-4xl mb-6" data-tour="section-progress">
-                {/* Progress Stats */}
-                <div className="flex justify-between items-center mb-6">
-                    <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
-                            <Award className="w-4 h-4 text-indigo-600" />
+        <GradeSelectionScreen
+            onGradeSelect={handleGradeSelect}
+            studentGrade={studentGrade}
+            detectedGradeLevel={detectedGradeLevel}
+            monthsInGrade={monthsInGrade}
+            isCollegeStudent={isCollegeStudent}
+            loadingStudentGrade={loadingStudentGrade}
+            shouldShowAllOptions={shouldShowAllOptions}
+            shouldFilterByGrade={shouldFilterByGrade}
+            studentProgram={studentProgram}
+            profileData={profileData}
+        />
+    );
+}
+
+// Category Selection Screen - Using extracted component
+if (showCategorySelection) {
+    return (
+        <CategorySelectionScreen
+            onCategorySelect={handleCategorySelect}
+            onBack={() => {
+                setShowCategorySelection(false);
+                setShowGradeSelection(true);
+            }}
+            gradeLevel={gradeLevel}
+        />
+    );
+}
+
+// Stream selection is no longer used - college students go directly to assessment
+// Keeping this commented for reference if needed in future
+/*
+if (showStreamSelection) {
+    // Default streams for college students
+    const collegeStreams = [
+        { id: 'cs', label: 'B.Sc Computer Science / B.Tech CS/IT' },
+        { id: 'bca', label: 'BCA General' },
+        { id: 'bba', label: 'BBA General' },
+        { id: 'dm', label: 'BBA Digital Marketing' },
+        { id: 'animation', label: 'B.Sc Animation' }
+    ];
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+            <Card className="w-full max-w-2xl border-none shadow-2xl">
+                <CardContent className="p-8">
+                    <div className="text-center mb-8">
+                        <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                            <Award className="w-8 h-8 text-white" />
                         </div>
-                        <span className="text-sm font-medium text-gray-700">Career Assessment</span>
+                        <h1 className="text-3xl font-bold text-gray-800 mb-2">Career Assessment</h1>
+                        <p className="text-gray-600">Let's personalize your assessment based on your stream</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                        {/* Test Mode Toggle - Only in dev mode */}
-                        {isDevMode && !testMode && (
+
+                    <div className="space-y-4">
+                        <Label className="text-sm font-semibold text-gray-700">Select Your Stream/Course</Label>
+                        
+                        {collegeStreams.map((stream) => (
                             <button
-                                onClick={() => setTestMode(true)}
-                                className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-full text-xs font-semibold hover:bg-amber-200 transition-all flex items-center gap-1"
-                                title="Enable Test Mode for quick testing"
+                                key={stream.id}
+                                onClick={() => handleStreamSelect(stream.id)}
+                                className="w-full p-4 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-xl shadow-sm hover:shadow-lg hover:border-indigo-300 transition-all duration-300 text-left group"
                             >
-                                <Zap className="w-3 h-3" />
-                                Test Mode
+                                <div className="flex items-center justify-between">
+                                    <span className="text-gray-800 font-medium group-hover:text-indigo-700">{stream.label}</span>
+                                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-indigo-600" />
+                                </div>
                             </button>
-                        )}
-                        <div className="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-full" data-tour="progress-percentage">
-                            <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
-                            <span className="text-sm font-semibold text-indigo-700">{Math.round(progress)}% Complete</span>
+                        ))}
+                    </div>
+
+                    <div className="mt-8 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                        <div className="flex gap-3">
+                            <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                            <div className="text-sm text-blue-700">
+                                <p className="font-semibold mb-1">What to expect:</p>
+                                <ul className="space-y-1">
+                                    <li>• 6 assessment sections covering interests, personality, values, skills, and knowledge</li>
+                                    <li>• Approximately 45-60 minutes to complete</li>
+                                    <li>• Your responses are private and used only for career guidance</li>
+                                </ul>
+                            </div>
                         </div>
+                    </div>
+                    
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            setShowStreamSelection(false);
+                            setShowGradeSelection(true);
+                        }}
+                        className="w-full mt-4 py-4"
+                    >
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back to Grade Selection
+                    </Button>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+*/
+
+// Guard: Don't render main assessment UI if sections is empty
+if (!sections || sections.length === 0 || !currentSection) {
+    return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading assessment...</p>
+            </div>
+        </div>
+    );
+}
+
+return (
+    <div className="min-h-screen bg-gray-50/50 flex flex-col items-center py-8 px-4">
+        {/* Modern Progress Header */}
+        <div className="w-full max-w-4xl mb-6" data-tour="section-progress">
+            {/* Progress Stats */}
+            <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                        <Award className="w-4 h-4 text-indigo-600" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-700">Career Assessment</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    {/* Test Mode Toggle - Only in dev mode */}
+                    {isDevMode && !testMode && (
+                        <button
+                            onClick={() => setTestMode(true)}
+                            className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-full text-xs font-semibold hover:bg-amber-200 transition-all flex items-center gap-1"
+                            title="Enable Test Mode for quick testing"
+                        >
+                            <Zap className="w-3 h-3" />
+                            Test Mode
+                        </button>
+                    )}
+                    <div className="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-full" data-tour="progress-percentage">
+                        <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
+                        <span className="text-sm font-semibold text-indigo-700">{Math.round(progress)}% Complete</span>
                     </div>
                 </div>
+            </div>
 
-                {/* Dev Mode Controls - Only visible when test mode is enabled */}
-                {isDevMode && testMode && (
-                    <div className="mb-4 p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Zap className="w-4 h-4 text-amber-600" />
-                            <span className="text-sm font-semibold text-amber-800">Test Mode Active</span>
-                        </div>
-                        <div className="flex gap-2 flex-wrap">
-                            <button
-                                onClick={autoFillAllAnswers}
-                                className="px-3 py-1.5 bg-amber-200 text-amber-800 rounded-lg text-xs font-semibold hover:bg-amber-300 transition-all"
-                            >
-                                Auto-fill All
-                            </button>
-                            <button
-                                onClick={skipToAptitude}
-                                className="px-3 py-1.5 bg-purple-500 text-white rounded-lg text-xs font-semibold hover:bg-purple-600 transition-all"
-                            >
-                                → Aptitude (AI)
-                            </button>
-                            <button
-                                onClick={skipToKnowledge}
-                                className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-semibold hover:bg-blue-600 transition-all"
-                            >
-                                → Knowledge (AI)
-                            </button>
-                            <button
-                                onClick={skipToLastSection}
-                                className="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-semibold hover:bg-amber-700 transition-all"
-                            >
-                                Skip to Submit
-                            </button>
-                            <button
-                                onClick={() => setTestMode(false)}
-                                className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-300 transition-all"
-                            >
-                                Exit Test Mode
-                            </button>
-                        </div>
+            {/* Dev Mode Controls - Only visible when test mode is enabled */}
+            {isDevMode && testMode && (
+                <div className="mb-4 p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-amber-600" />
+                        <span className="text-sm font-semibold text-amber-800">Test Mode Active</span>
                     </div>
-                )}
+                    <div className="flex gap-2 flex-wrap">
+                        <button
+                            onClick={autoFillAllAnswers}
+                            className="px-3 py-1.5 bg-amber-200 text-amber-800 rounded-lg text-xs font-semibold hover:bg-amber-300 transition-all"
+                        >
+                            Auto-fill All
+                        </button>
+                        <button
+                            onClick={skipToAptitude}
+                            className="px-3 py-1.5 bg-purple-500 text-white rounded-lg text-xs font-semibold hover:bg-purple-600 transition-all"
+                        >
+                            → Aptitude (AI)
+                        </button>
+                        <button
+                            onClick={skipToKnowledge}
+                            className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-semibold hover:bg-blue-600 transition-all"
+                        >
+                            → Knowledge (AI)
+                        </button>
+                        <button
+                            onClick={skipToLastSection}
+                            className="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-semibold hover:bg-amber-700 transition-all"
+                        >
+                            Skip to Submit
+                        </button>
+                        <button
+                            onClick={() => setTestMode(false)}
+                            className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-300 transition-all"
+                        >
+                            Exit Test Mode
+                        </button>
+                    </div>
+                </div>
+            )}
 
-                {/* Section Steps with Progress Lines - Proper Alignment */}
-                <div className="relative">
-                    {/* Circles and Lines Row */}
-                    <div className="flex items-center">
-                        {sections.map((section, idx) => {
-                            const isCompleted = idx < currentSectionIndex;
-                            const isCurrent = idx === currentSectionIndex;
-                            const isUpcoming = idx > currentSectionIndex;
+            {/* Section Steps with Progress Lines - Proper Alignment */}
+            <div className="relative">
+                {/* Circles and Lines Row */}
+                <div className="flex items-center">
+                    {sections.map((section, idx) => {
+                        const isCompleted = idx < currentSectionIndex;
+                        const isCurrent = idx === currentSectionIndex;
+                        const isUpcoming = idx > currentSectionIndex;
 
-                            let lineProgress = 0;
-                            if (idx < currentSectionIndex) {
-                                lineProgress = 100;
-                            } else if (idx === currentSectionIndex) {
-                                // Handle adaptive section progress differently
-                                if (sections[idx].isAdaptive) {
-                                    const adaptiveTotal = adaptiveAptitude.progress?.estimatedTotalQuestions || 20;
-                                    const adaptiveAnswered = adaptiveAptitude.progress?.questionsAnswered || 0;
-                                    lineProgress = adaptiveTotal > 0 ? (adaptiveAnswered / adaptiveTotal) * 100 : 0;
-                                } else {
-                                    const totalQuestions = sections[idx].questions.length;
-                                    lineProgress = totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0;
-                                }
+                        let lineProgress = 0;
+                        if (idx < currentSectionIndex) {
+                            lineProgress = 100;
+                        } else if (idx === currentSectionIndex) {
+                            // Handle adaptive section progress differently
+                            if (sections[idx].isAdaptive) {
+                                const adaptiveTotal = adaptiveAptitude.progress?.estimatedTotalQuestions || 20;
+                                const adaptiveAnswered = adaptiveAptitude.progress?.questionsAnswered || 0;
+                                lineProgress = adaptiveTotal > 0 ? (adaptiveAnswered / adaptiveTotal) * 100 : 0;
+                            } else {
+                                const totalQuestions = sections[idx].questions.length;
+                                lineProgress = totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0;
                             }
+                        }
 
-                            return (
-                                <div key={section.id} className={`flex items-center ${idx < sections.length - 1 ? 'flex-1' : ''}`}>
-                                    {/* Step Circle */}
-                                    <div className={`
+                        return (
+                            <div key={section.id} className={`flex items-center ${idx < sections.length - 1 ? 'flex-1' : ''}`}>
+                                {/* Step Circle */}
+                                <div className={`
                                         w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 border-2 shrink-0
                                         ${isCompleted ? 'bg-green-500 border-green-500 text-white shadow-md' : ''}
                                         ${isCurrent ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg ring-4 ring-indigo-100 relative z-10' : ''}
                                         ${isUpcoming ? 'bg-white border-gray-300 text-gray-500' : ''}
                                     `}>
-                                        {isCompleted ? (
-                                            <CheckCircle2 className="w-5 h-5" />
-                                        ) : (
-                                            <span className="text-sm font-bold">{idx + 1}</span>
-                                        )}
-                                    </div>
-
-                                    {/* Connector Line */}
-                                    {idx < sections.length - 1 && (
-                                        <div className="flex-1 h-1.5 rounded-full bg-gray-200 overflow-hidden mx-2">
-                                            <motion.div
-                                                className={`h-full rounded-full ${idx < currentSectionIndex
-                                                    ? 'bg-green-500'
-                                                    : idx === currentSectionIndex
-                                                        ? 'bg-indigo-500'
-                                                        : ''
-                                                    }`}
-                                                initial={{ width: 0 }}
-                                                animate={{ width: `${lineProgress}%` }}
-                                                transition={{ duration: 0.3, ease: "easeOut" }}
-                                            />
-                                        </div>
+                                    {isCompleted ? (
+                                        <CheckCircle2 className="w-5 h-5" />
+                                    ) : (
+                                        <span className="text-sm font-bold">{idx + 1}</span>
                                     )}
                                 </div>
-                            );
-                        })}
-                    </div>
 
-                    {/* Labels Row - Separate for proper alignment */}
-                    <div className="hidden sm:flex items-start mt-2">
-                        {sections.map((section, idx) => {
-                            const isCompleted = idx < currentSectionIndex;
-                            const isCurrent = idx === currentSectionIndex;
-                            const isUpcoming = idx > currentSectionIndex;
+                                {/* Connector Line */}
+                                {idx < sections.length - 1 && (
+                                    <div className="flex-1 h-1.5 rounded-full bg-gray-200 overflow-hidden mx-2">
+                                        <motion.div
+                                            className={`h-full rounded-full ${idx < currentSectionIndex
+                                                ? 'bg-green-500'
+                                                : idx === currentSectionIndex
+                                                    ? 'bg-indigo-500'
+                                                    : ''
+                                                }`}
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${lineProgress}%` }}
+                                            transition={{ duration: 0.3, ease: "easeOut" }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
 
-                            return (
-                                <div key={`label-${section.id}`} className={`${idx < sections.length - 1 ? 'flex-1' : ''}`}>
-                                    <span className={`
+                {/* Labels Row - Separate for proper alignment */}
+                <div className="hidden sm:flex items-start mt-2">
+                    {sections.map((section, idx) => {
+                        const isCompleted = idx < currentSectionIndex;
+                        const isCurrent = idx === currentSectionIndex;
+                        const isUpcoming = idx > currentSectionIndex;
+
+                        return (
+                            <div key={`label-${section.id}`} className={`${idx < sections.length - 1 ? 'flex-1' : ''}`}>
+                                <span className={`
                                         text-[10px] font-semibold text-center leading-tight block w-10
                                         ${isCompleted ? 'text-green-700' : ''}
                                         ${isCurrent ? 'text-indigo-700' : ''}
                                         ${isUpcoming ? 'text-gray-500' : ''}
                                     `}>
-                                        {section.title.split(' ')[0]}
-                                    </span>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                    {section.title.split(' ')[0]}
+                                </span>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
+        </div>
 
-            {/* Main Card */}
-            <Card className="w-full max-w-4xl border-none shadow-xl bg-white overflow-hidden relative">
-                <div className={`absolute top-0 left-0 w-full h-1.5 bg-${currentSection.color}-500`}></div>
+        {/* Main Card */}
+        <Card className="w-full max-w-4xl border-none shadow-xl bg-white overflow-hidden relative">
+            <div className={`absolute top-0 left-0 w-full h-1.5 bg-${currentSection.color}-500`}></div>
 
-                <CardContent className="p-0 overflow-hidden">
-                    <AnimatePresence mode="wait">
-                        {/* Section Complete - Full Width */}
-                        {showSectionComplete && !error && !isSubmitting ? (
+            <CardContent className="p-0 overflow-hidden">
+                <AnimatePresence mode="wait">
+                    {/* Section Complete - Full Width */}
+                    {showSectionComplete && !error && !isSubmitting ? (
+                        <motion.div
+                            key={`section-complete-${currentSectionIndex}`}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="min-h-[600px] flex flex-col items-center justify-center text-center p-8 bg-gray-50"
+                        >
                             <motion.div
-                                key={`section-complete-${currentSectionIndex}`}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.3 }}
-                                className="min-h-[600px] flex flex-col items-center justify-center text-center p-8 bg-gray-50"
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ type: "spring", stiffness: 200, damping: 12, delay: 0.1 }}
+                                className="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center mb-6"
                             >
                                 <motion.div
-                                    initial={{ scale: 0 }}
-                                    animate={{ scale: 1 }}
-                                    transition={{ type: "spring", stiffness: 200, damping: 12, delay: 0.1 }}
-                                    className="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center mb-6"
+                                    initial={{ scale: 0, rotate: -90 }}
+                                    animate={{ scale: 1, rotate: 0 }}
+                                    transition={{ type: "spring", stiffness: 200, damping: 10, delay: 0.3 }}
                                 >
-                                    <motion.div
-                                        initial={{ scale: 0, rotate: -90 }}
-                                        animate={{ scale: 1, rotate: 0 }}
-                                        transition={{ type: "spring", stiffness: 200, damping: 10, delay: 0.3 }}
-                                    >
-                                        <CheckCircle2 className="w-12 h-12 text-green-600" />
-                                    </motion.div>
+                                    <CheckCircle2 className="w-12 h-12 text-green-600" />
                                 </motion.div>
-                                <motion.h2
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.4, duration: 0.3 }}
-                                    className="text-3xl font-bold text-gray-800 mb-3"
+                            </motion.div>
+                            <motion.h2
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.4, duration: 0.3 }}
+                                className="text-3xl font-bold text-gray-800 mb-3"
+                            >
+                                {currentSection.title} Complete!
+                            </motion.h2>
+                            <motion.p
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.5, duration: 0.3 }}
+                                className="text-gray-600 mb-4 max-w-md leading-relaxed text-lg"
+                            >
+                                Great job! You've finished this section.
+                            </motion.p>
+                            {!currentSection.isTimed && elapsedTime > 0 && (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: 0.55, duration: 0.3 }}
+                                    className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-full mb-4 border border-emerald-200"
                                 >
-                                    {currentSection.title} Complete!
-                                </motion.h2>
+                                    <Clock className="w-4 h-4" />
+                                    <span className="text-sm font-medium">Completed in {formatElapsedTime(elapsedTime)}</span>
+                                </motion.div>
+                            )}
+                            {currentSectionIndex < sections.length - 1 && (
                                 <motion.p
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
-                                    transition={{ delay: 0.5, duration: 0.3 }}
-                                    className="text-gray-600 mb-4 max-w-md leading-relaxed text-lg"
+                                    transition={{ delay: 0.6, duration: 0.3 }}
+                                    className="text-gray-500 mb-6"
                                 >
-                                    Great job! You've finished this section.
+                                    Next up: <span className="font-semibold text-indigo-600">{sections[currentSectionIndex + 1]?.title}</span>
                                 </motion.p>
-                                {!currentSection.isTimed && elapsedTime > 0 && (
-                                    <motion.div
-                                        initial={{ opacity: 0, scale: 0.9 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        transition={{ delay: 0.55, duration: 0.3 }}
-                                        className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-full mb-4 border border-emerald-200"
-                                    >
-                                        <Clock className="w-4 h-4" />
-                                        <span className="text-sm font-medium">Completed in {formatElapsedTime(elapsedTime)}</span>
-                                    </motion.div>
-                                )}
-                                {currentSectionIndex < sections.length - 1 && (
-                                    <motion.p
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        transition={{ delay: 0.6, duration: 0.3 }}
-                                        className="text-gray-500 mb-6"
-                                    >
-                                        Next up: <span className="font-semibold text-indigo-600">{sections[currentSectionIndex + 1]?.title}</span>
-                                    </motion.p>
-                                )}
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.7, duration: 0.3 }}
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.98 }}
-                                >
-                                    <Button
-                                        onClick={handleNextSection}
-                                        className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-10 py-6 text-lg shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 transform hover:-translate-y-1 active:scale-95 rounded-xl font-bold tracking-wide"
-                                    >
-                                        {currentSectionIndex === sections.length - 1 ? (
-                                            <>
-                                                Submit Assessment
-                                                <CheckCircle2 className="w-5 h-5 ml-2" />
-                                            </>
-                                        ) : (
-                                            <>
-                                                Continue
-                                                <ChevronRight className="w-5 h-5 ml-2" />
-                                            </>
-                                        )}
-                                    </Button>
-                                </motion.div>
-                            </motion.div>
-                        ) : showSectionIntro && !error && !isSubmitting ? (
+                            )}
                             <motion.div
-                                key={`section-intro-${currentSectionIndex}`}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.3 }}
-                                className="min-h-[600px] flex flex-col items-center justify-center text-center p-8 bg-gray-50"
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.7, duration: 0.3 }}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.98 }}
                             >
-                                <motion.div
-                                    initial={{ scale: 0, rotate: -180 }}
-                                    animate={{ scale: 1, rotate: 0 }}
-                                    transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
-                                    className={`w-20 h-20 rounded-2xl bg-${currentSection.color}-100 flex items-center justify-center mb-6 shadow-lg`}
+                                <Button
+                                    onClick={handleNextSection}
+                                    className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-10 py-6 text-lg shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 transform hover:-translate-y-1 active:scale-95 rounded-xl font-bold tracking-wide"
                                 >
-                                    {currentSection.icon}
-                                </motion.div>
-                                <motion.h2
-                                    initial={{ opacity: 0, y: 30 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ type: "spring", stiffness: 100, damping: 12, delay: 0.2 }}
-                                    className="text-3xl font-bold text-gray-800 mb-4"
-                                >
-                                    {currentSection.title}
-                                </motion.h2>
-                                {/* AI-Powered badge for after10/higher_secondary/after12/college grade levels */}
-                                {['after10', 'higher_secondary', 'after12', 'college'].includes(gradeLevel) && (
-                                    <motion.div
-                                        initial={{ opacity: 0, scale: 0.8 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        transition={{ delay: 0.25, duration: 0.3 }}
-                                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-xs font-semibold mb-4 shadow-md"
-                                    >
-                                        <Sparkles className="w-3.5 h-3.5" />
-                                        <span>AI-Powered Questions</span>
-                                    </motion.div>
-                                )}
-                                <motion.p
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ type: "spring", stiffness: 100, damping: 12, delay: 0.3 }}
-                                    className="text-gray-600 mb-6 max-w-lg leading-relaxed text-lg"
-                                >
-                                    {currentSection.description}
-                                </motion.p>
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ type: "spring", stiffness: 100, damping: 12, delay: 0.4 }}
-                                    className="p-4 bg-indigo-50 rounded-xl border border-indigo-100 mb-6 max-w-lg w-full"
-                                >
-                                    <p className="text-sm font-medium text-indigo-700">
-                                        {currentSection.instruction}
-                                    </p>
-                                </motion.div>
-                                {/* Section type indicator */}
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ delay: 0.45, duration: 0.3 }}
-                                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full mb-4 ${currentSection.id === 'knowledge' || currentSection.id === 'aptitude'
-                                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                        : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                                        }`}
-                                >
-                                    {currentSection.id === 'knowledge' ? (
+                                    {currentSectionIndex === sections.length - 1 ? (
                                         <>
-                                            <Code className="w-4 h-4" />
-                                            <span className="text-sm font-medium">Knowledge Test - Answers will be scored</span>
-                                        </>
-                                    ) : currentSection.id === 'aptitude' ? (
-                                        <>
-                                            <Zap className="w-4 h-4" />
-                                            <span className="text-sm font-medium">Aptitude Test - Speed & accuracy matter</span>
+                                            Submit Assessment
+                                            <CheckCircle2 className="w-5 h-5 ml-2" />
                                         </>
                                     ) : (
                                         <>
-                                            <CheckCircle2 className="w-4 h-4" />
-                                            <span className="text-sm font-medium">There are no right or wrong answers.</span>
+                                            Continue
+                                            <ChevronRight className="w-5 h-5 ml-2" />
                                         </>
                                     )}
-                                </motion.div>
-
-                                {/* Module breakdown for Aptitude section */}
-                                {currentSection.id === 'aptitude' && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: 0.5, duration: 0.3 }}
-                                        className="mb-4 p-4 bg-amber-50 rounded-xl border border-amber-200 max-w-lg w-full"
-                                    >
-                                        <p className="text-xs font-bold text-amber-800 mb-2">5 Modules in this section:</p>
-                                        <div className="grid grid-cols-1 gap-1 text-xs">
-                                            {aptitudeModules.map((mod) => (
-                                                <div key={mod.id} className="flex items-center justify-between text-amber-700">
-                                                    <span>{mod.title}</span>
-                                                    <span className="text-amber-500">{mod.questionCount} Qs</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </motion.div>
-                                )}
-
-                                {/* Module breakdown for Employability section */}
-                                {currentSection.id === 'employability' && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: 0.5, duration: 0.3 }}
-                                        className="mb-4 p-4 bg-green-50 rounded-xl border border-green-200 max-w-lg w-full"
-                                    >
-                                        <p className="text-xs font-bold text-green-800 mb-2">2 Parts in this section:</p>
-                                        <div className="space-y-2 text-xs">
-                                            <div className="bg-white/70 rounded-lg p-2">
-                                                <p className="font-semibold text-green-700">Part A: Self-Rating Skills (25 Qs)</p>
-                                                <p className="text-green-600 text-[10px]">Communication, Teamwork, Problem Solving, Adaptability, Leadership, Digital Fluency, Professionalism, Career Readiness</p>
-                                            </div>
-                                            <div className="bg-white/70 rounded-lg p-2">
-                                                <p className="font-semibold text-rose-700">Part B: Situational Judgement Test (6 Qs)</p>
-                                                <p className="text-rose-600 text-[10px]">Choose BEST and WORST response for workplace scenarios</p>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                )}
-
-                                {/* Adaptive Aptitude Test info */}
-                                {currentSection?.isAdaptive && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: 0.5, duration: 0.3 }}
-                                        className="mb-4 p-4 bg-indigo-50 rounded-xl border border-indigo-200 max-w-lg w-full"
-                                    >
-                                        <p className="text-xs font-bold text-indigo-800 mb-2">About this test:</p>
-                                        <div className="space-y-2 text-xs">
-                                            <div className="bg-white/70 rounded-lg p-2">
-                                                <p className="text-indigo-600">This intelligent test adapts to your ability level in real-time, providing an accurate measurement of your aptitude across different reasoning areas.</p>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                )}
-
+                                </Button>
+                            </motion.div>
+                        </motion.div>
+                    ) : showSectionIntro && !error && !isSubmitting ? (
+                        <motion.div
+                            key={`section-intro-${currentSectionIndex}`}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="min-h-[600px] flex flex-col items-center justify-center text-center p-8 bg-gray-50"
+                        >
+                            <motion.div
+                                initial={{ scale: 0, rotate: -180 }}
+                                animate={{ scale: 1, rotate: 0 }}
+                                transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+                                className={`w-20 h-20 rounded-2xl bg-${currentSection.color}-100 flex items-center justify-center mb-6 shadow-lg`}
+                            >
+                                {currentSection.icon}
+                            </motion.div>
+                            <motion.h2
+                                initial={{ opacity: 0, y: 30 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ type: "spring", stiffness: 100, damping: 12, delay: 0.2 }}
+                                className="text-3xl font-bold text-gray-800 mb-4"
+                            >
+                                {currentSection.title}
+                            </motion.h2>
+                            {/* AI-Powered badge for after10/higher_secondary/after12/college grade levels */}
+                            {['after10', 'higher_secondary', 'after12', 'college'].includes(gradeLevel) && (
                                 <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    transition={{ delay: 0.5, duration: 0.3 }}
-                                    className="flex items-center gap-6 text-sm text-gray-500 mb-6"
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: 0.25, duration: 0.3 }}
+                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-xs font-semibold mb-4 shadow-md"
                                 >
-                                    <div className="flex items-center gap-2">
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                    <span>AI-Powered Questions</span>
+                                </motion.div>
+                            )}
+                            <motion.p
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ type: "spring", stiffness: 100, damping: 12, delay: 0.3 }}
+                                className="text-gray-600 mb-6 max-w-lg leading-relaxed text-lg"
+                            >
+                                {currentSection.description}
+                            </motion.p>
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ type: "spring", stiffness: 100, damping: 12, delay: 0.4 }}
+                                className="p-4 bg-indigo-50 rounded-xl border border-indigo-100 mb-6 max-w-lg w-full"
+                            >
+                                <p className="text-sm font-medium text-indigo-700">
+                                    {currentSection.instruction}
+                                </p>
+                            </motion.div>
+                            {/* Section type indicator */}
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 0.45, duration: 0.3 }}
+                                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full mb-4 ${currentSection.id === 'knowledge' || currentSection.id === 'aptitude'
+                                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                    : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                    }`}
+                            >
+                                {currentSection.id === 'knowledge' ? (
+                                    <>
+                                        <Code className="w-4 h-4" />
+                                        <span className="text-sm font-medium">Knowledge Test - Answers will be scored</span>
+                                    </>
+                                ) : currentSection.id === 'aptitude' ? (
+                                    <>
+                                        <Zap className="w-4 h-4" />
+                                        <span className="text-sm font-medium">Aptitude Test - Speed & accuracy matter</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle2 className="w-4 h-4" />
+                                        <span className="text-sm font-medium">There are no right or wrong answers.</span>
+                                    </>
+                                )}
+                            </motion.div>
+
+                            {/* Module breakdown for Aptitude section */}
+                            {currentSection.id === 'aptitude' && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.5, duration: 0.3 }}
+                                    className="mb-4 p-4 bg-amber-50 rounded-xl border border-amber-200 max-w-lg w-full"
+                                >
+                                    <p className="text-xs font-bold text-amber-800 mb-2">5 Modules in this section:</p>
+                                    <div className="grid grid-cols-1 gap-1 text-xs">
+                                        {aptitudeModules.map((mod) => (
+                                            <div key={mod.id} className="flex items-center justify-between text-amber-700">
+                                                <span>{mod.title}</span>
+                                                <span className="text-amber-500">{mod.questionCount} Qs</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </motion.div>
+                            )}
+
+                            {/* Module breakdown for Employability section */}
+                            {currentSection.id === 'employability' && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.5, duration: 0.3 }}
+                                    className="mb-4 p-4 bg-green-50 rounded-xl border border-green-200 max-w-lg w-full"
+                                >
+                                    <p className="text-xs font-bold text-green-800 mb-2">2 Parts in this section:</p>
+                                    <div className="space-y-2 text-xs">
+                                        <div className="bg-white/70 rounded-lg p-2">
+                                            <p className="font-semibold text-green-700">Part A: Self-Rating Skills (25 Qs)</p>
+                                            <p className="text-green-600 text-[10px]">Communication, Teamwork, Problem Solving, Adaptability, Leadership, Digital Fluency, Professionalism, Career Readiness</p>
+                                        </div>
+                                        <div className="bg-white/70 rounded-lg p-2">
+                                            <p className="font-semibold text-rose-700">Part B: Situational Judgement Test (6 Qs)</p>
+                                            <p className="text-rose-600 text-[10px]">Choose BEST and WORST response for workplace scenarios</p>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
+
+                            {/* Adaptive Aptitude Test info */}
+                            {currentSection?.isAdaptive && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.5, duration: 0.3 }}
+                                    className="mb-4 p-4 bg-indigo-50 rounded-xl border border-indigo-200 max-w-lg w-full"
+                                >
+                                    <p className="text-xs font-bold text-indigo-800 mb-2">About this test:</p>
+                                    <div className="space-y-2 text-xs">
+                                        <div className="bg-white/70 rounded-lg p-2">
+                                            <p className="text-indigo-600">This intelligent test adapts to your ability level in real-time, providing an accurate measurement of your aptitude across different reasoning areas.</p>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
+
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.5, duration: 0.3 }}
+                                className="flex items-center gap-6 text-sm text-gray-500 mb-6"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Target className="w-4 h-4" />
+                                    <span>Section {currentSectionIndex + 1} of {sections.length}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Users className="w-4 h-4" />
+                                    <span>{currentSection?.isAdaptive ? '18-22' : currentSection.questions.length} questions</span>
+                                </div>
+                                {currentSection?.isAdaptive && (
+                                    <div className="flex items-center gap-2 text-indigo-600 font-medium">
+                                        <Brain className="w-4 h-4" />
+                                        <span>Adaptive</span>
+                                    </div>
+                                )}
+                                {currentSection.isTimed && !currentSection?.isAdaptive && (
+                                    <div className="flex items-center gap-2 text-orange-600 font-medium">
+                                        <Clock className="w-4 h-4" />
+                                        <span>{currentSection.id === 'aptitude' ? '10 minutes' : '30 minutes'}</span>
+                                    </div>
+                                )}
+                            </motion.div>
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ type: "spring", stiffness: 100, damping: 12, delay: 0.6 }}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.98 }}
+                            >
+                                {/* Show loading state for AI sections with no questions */}
+                                {(currentSection.id === 'aptitude' || currentSection.id === 'knowledge') &&
+                                    currentSection.questions.length === 0 && !currentSection?.isAdaptive ? (
+                                    <div className="flex flex-col items-center gap-4">
+                                        {aiQuestionsLoading ? (
+                                            <>
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                                                <p className="text-gray-600">Loading AI-generated questions...</p>
+                                                <p className="text-sm text-gray-400">This may take up to 30 seconds</p>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <p className="text-red-600 font-medium">Failed to load questions</p>
+                                                <Button
+                                                    onClick={() => window.location.reload()}
+                                                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-3"
+                                                >
+                                                    Retry
+                                                </Button>
+                                            </>
+                                        )}
+                                    </div>
+                                ) : currentSection?.isAdaptive && adaptiveAptitude.loading ? (
+                                    <div className="flex flex-col items-center gap-4">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                                        <p className="text-gray-600">Preparing adaptive test...</p>
+                                        <p className="text-sm text-gray-400">Questions will adapt to your level</p>
+                                    </div>
+                                ) : (
+                                    <Button
+                                        onClick={handleStartSection}
+                                        disabled={currentSection?.isAdaptive && adaptiveAptitude.loading}
+                                        className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-10 py-6 text-lg shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 transform hover:-translate-y-1 active:scale-95 rounded-xl font-bold tracking-wide"
+                                    >
+                                        Start Section
+                                        <ChevronRight className="w-5 h-5 ml-2" />
+                                    </Button>
+                                )}
+                            </motion.div>
+                        </motion.div>
+                    ) : (
+                        <motion.div
+                            key={`questions-${currentSectionIndex}`}
+                            initial={{ opacity: 0, x: 100 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -100 }}
+                            transition={{ type: "spring", stiffness: 80, damping: 15 }}
+                            className="flex flex-col md:flex-row min-h-[600px]"
+                        >
+
+                            {/* Sidebar */}
+                            <div className="md:w-1/3 bg-gray-50 p-8 border-r border-gray-100">
+                                <div className="mb-8">
+                                    <div className={`w-12 h-12 rounded-xl bg-${currentSection.color}-100 flex items-center justify-center mb-4 shadow-sm`}>
+                                        {currentSection.icon}
+                                    </div>
+                                    <h2 className="text-2xl font-bold text-gray-800 mb-2">{currentSection.title}</h2>
+                                    <p className="text-base text-gray-500 leading-relaxed mb-4">{currentSection.description}</p>
+
+                                    {/* Module indicator for Aptitude section */}
+                                    {currentSection.id === 'aptitude' && currentQuestion?.moduleTitle && (
+                                        <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 mb-4">
+                                            <p className="text-sm font-bold text-amber-800 mb-1">{currentQuestion.moduleTitle}</p>
+                                            <p className="text-sm text-amber-600">
+                                                {(() => {
+                                                    const moduleInfo = getModuleQuestionIndex(currentQuestionIndex);
+                                                    return `Question ${moduleInfo.moduleIndex} of ${moduleInfo.moduleTotal} in this module`;
+                                                })()}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* Module progress for Aptitude */}
+                                    {currentSection.id === 'aptitude' && (
+                                        <div className="mb-4 space-y-1">
+                                            {aptitudeModules.map((mod) => {
+                                                const moduleInfo = getModuleQuestionIndex(currentQuestionIndex);
+                                                const isCurrentModule = moduleInfo.module.id === mod.id;
+                                                const moduleColors = {
+                                                    blue: 'bg-blue-500',
+                                                    green: 'bg-green-500',
+                                                    purple: 'bg-purple-500',
+                                                    orange: 'bg-orange-500',
+                                                    pink: 'bg-pink-500'
+                                                };
+                                                return (
+                                                    <div key={mod.id} className={`flex items-center gap-2 text-sm px-2 py-1 rounded ${isCurrentModule ? 'bg-amber-100 font-semibold' : 'opacity-60'}`}>
+                                                        <div className={`w-2 h-2 rounded-full ${moduleColors[mod.color]}`}></div>
+                                                        <span className="truncate">{mod.title}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+
+                                    {/* Module indicator for Employability section */}
+                                    {currentSection.id === 'employability' && (
+                                        <div className="p-3 bg-green-50 rounded-lg border border-green-200 mb-4">
+                                            {(() => {
+                                                const moduleInfo = getCurrentEmployabilityModule(currentQuestionIndex);
+                                                return (
+                                                    <>
+                                                        <p className="text-sm font-bold text-green-800 mb-1">{moduleInfo.partTitle}</p>
+                                                        <p className="text-sm text-green-700 font-medium">{moduleInfo.domain}</p>
+                                                        <p className="text-sm text-green-600">
+                                                            Question {moduleInfo.questionInDomain} of {moduleInfo.domainTotal}
+                                                        </p>
+                                                    </>
+                                                );
+                                            })()}
+                                        </div>
+                                    )}
+
+                                    {/* Module progress for Employability */}
+                                    {currentSection.id === 'employability' && (
+                                        <div className="mb-4 space-y-1">
+                                            {(() => {
+                                                const moduleInfo = getCurrentEmployabilityModule(currentQuestionIndex);
+                                                const partADomains = ['Communication', 'Teamwork', 'Problem Solving', 'Adaptability', 'Leadership', 'Digital Fluency', 'Professionalism', 'Career Readiness'];
+                                                const domainColors = ['blue', 'green', 'purple', 'orange', 'red', 'cyan', 'indigo', 'amber'];
+
+                                                return (
+                                                    <>
+                                                        <div className={`text-sm font-semibold px-2 py-1 ${moduleInfo.part === 'A' ? 'text-green-700' : 'text-gray-400'}`}>
+                                                            Part A: Self-Rating
+                                                        </div>
+                                                        {partADomains.map((domain, idx) => {
+                                                            const isCurrentDomain = moduleInfo.part === 'A' && moduleInfo.domain === domain;
+                                                            return (
+                                                                <div key={domain} className={`flex items-center gap-2 text-xs px-2 py-0.5 rounded ml-2 ${isCurrentDomain ? 'bg-green-100 font-semibold' : 'opacity-50'}`}>
+                                                                    <div className={`w-1.5 h-1.5 rounded-full bg-${domainColors[idx]}-500`}></div>
+                                                                    <span className="truncate text-[10px]">{domain}</span>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                        <div className={`text-sm font-semibold px-2 py-1 mt-1 ${moduleInfo.part === 'B' ? 'text-rose-700' : 'text-gray-400'}`}>
+                                                            Part B: SJT Scenarios
+                                                        </div>
+                                                    </>
+                                                );
+                                            })()}
+                                        </div>
+                                    )}
+
+                                    <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100 mb-4">
+                                        <p className="text-sm font-medium text-indigo-700">{currentSection.instruction}</p>
+                                    </div>
+
+                                    {/* Section type indicator */}
+                                    <div className={`flex items-center gap-2 text-sm px-3 py-2 rounded-lg ${currentSection.id === 'knowledge' || currentSection.id === 'aptitude'
+                                        ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                                        : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
+                                        }`}>
+                                        {currentSection.id === 'knowledge' || currentSection.id === 'aptitude' ? (
+                                            <>
+                                                <Code className="w-3.5 h-3.5" />
+                                                <span>Answers scored</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                                <span>There are no right or wrong answers.</span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="mt-auto space-y-4" data-tour="section-info">
+                                    <div className="flex items-center gap-3 text-sm text-gray-600">
                                         <Target className="w-4 h-4" />
                                         <span>Section {currentSectionIndex + 1} of {sections.length}</span>
                                     </div>
-                                    <div className="flex items-center gap-2">
+
+                                    <div className="flex items-center gap-3 text-sm text-gray-600">
                                         <Users className="w-4 h-4" />
-                                        <span>{currentSection?.isAdaptive ? '18-22' : currentSection.questions.length} questions</span>
-                                    </div>
-                                    {currentSection?.isAdaptive && (
-                                        <div className="flex items-center gap-2 text-indigo-600 font-medium">
-                                            <Brain className="w-4 h-4" />
-                                            <span>Adaptive</span>
-                                        </div>
-                                    )}
-                                    {currentSection.isTimed && !currentSection?.isAdaptive && (
-                                        <div className="flex items-center gap-2 text-orange-600 font-medium">
-                                            <Clock className="w-4 h-4" />
-                                            <span>{currentSection.id === 'aptitude' ? '10 minutes' : '30 minutes'}</span>
-                                        </div>
-                                    )}
-                                </motion.div>
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ type: "spring", stiffness: 100, damping: 12, delay: 0.6 }}
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.98 }}
-                                >
-                                    {/* Show loading state for AI sections with no questions */}
-                                    {(currentSection.id === 'aptitude' || currentSection.id === 'knowledge') &&
-                                        currentSection.questions.length === 0 && !currentSection?.isAdaptive ? (
-                                        <div className="flex flex-col items-center gap-4">
-                                            {aiQuestionsLoading ? (
-                                                <>
-                                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                                                    <p className="text-gray-600">Loading AI-generated questions...</p>
-                                                    <p className="text-sm text-gray-400">This may take up to 30 seconds</p>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <p className="text-red-600 font-medium">Failed to load questions</p>
-                                                    <Button
-                                                        onClick={() => window.location.reload()}
-                                                        className="bg-red-600 hover:bg-red-700 text-white px-6 py-3"
-                                                    >
-                                                        Retry
-                                                    </Button>
-                                                </>
-                                            )}
-                                        </div>
-                                    ) : currentSection?.isAdaptive && adaptiveAptitude.loading ? (
-                                        <div className="flex flex-col items-center gap-4">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                                            <p className="text-gray-600">Preparing adaptive test...</p>
-                                            <p className="text-sm text-gray-400">Questions will adapt to your level</p>
-                                        </div>
-                                    ) : (
-                                        <Button
-                                            onClick={handleStartSection}
-                                            disabled={currentSection?.isAdaptive && adaptiveAptitude.loading}
-                                            className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-10 py-6 text-lg shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 transform hover:-translate-y-1 active:scale-95 rounded-xl font-bold tracking-wide"
-                                        >
-                                            Start Section
-                                            <ChevronRight className="w-5 h-5 ml-2" />
-                                        </Button>
-                                    )}
-                                </motion.div>
-                            </motion.div>
-                        ) : (
-                            <motion.div
-                                key={`questions-${currentSectionIndex}`}
-                                initial={{ opacity: 0, x: 100 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -100 }}
-                                transition={{ type: "spring", stiffness: 80, damping: 15 }}
-                                className="flex flex-col md:flex-row min-h-[600px]"
-                            >
-
-                                {/* Sidebar */}
-                                <div className="md:w-1/3 bg-gray-50 p-8 border-r border-gray-100">
-                                    <div className="mb-8">
-                                        <div className={`w-12 h-12 rounded-xl bg-${currentSection.color}-100 flex items-center justify-center mb-4 shadow-sm`}>
-                                            {currentSection.icon}
-                                        </div>
-                                        <h2 className="text-2xl font-bold text-gray-800 mb-2">{currentSection.title}</h2>
-                                        <p className="text-base text-gray-500 leading-relaxed mb-4">{currentSection.description}</p>
-
-                                        {/* Module indicator for Aptitude section */}
-                                        {currentSection.id === 'aptitude' && currentQuestion?.moduleTitle && (
-                                            <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 mb-4">
-                                                <p className="text-sm font-bold text-amber-800 mb-1">{currentQuestion.moduleTitle}</p>
-                                                <p className="text-sm text-amber-600">
-                                                    {(() => {
-                                                        const moduleInfo = getModuleQuestionIndex(currentQuestionIndex);
-                                                        return `Question ${moduleInfo.moduleIndex} of ${moduleInfo.moduleTotal} in this module`;
-                                                    })()}
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        {/* Module progress for Aptitude */}
-                                        {currentSection.id === 'aptitude' && (
-                                            <div className="mb-4 space-y-1">
-                                                {aptitudeModules.map((mod) => {
-                                                    const moduleInfo = getModuleQuestionIndex(currentQuestionIndex);
-                                                    const isCurrentModule = moduleInfo.module.id === mod.id;
-                                                    const moduleColors = {
-                                                        blue: 'bg-blue-500',
-                                                        green: 'bg-green-500',
-                                                        purple: 'bg-purple-500',
-                                                        orange: 'bg-orange-500',
-                                                        pink: 'bg-pink-500'
-                                                    };
-                                                    return (
-                                                        <div key={mod.id} className={`flex items-center gap-2 text-sm px-2 py-1 rounded ${isCurrentModule ? 'bg-amber-100 font-semibold' : 'opacity-60'}`}>
-                                                            <div className={`w-2 h-2 rounded-full ${moduleColors[mod.color]}`}></div>
-                                                            <span className="truncate">{mod.title}</span>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-
-                                        {/* Module indicator for Employability section */}
-                                        {currentSection.id === 'employability' && (
-                                            <div className="p-3 bg-green-50 rounded-lg border border-green-200 mb-4">
-                                                {(() => {
-                                                    const moduleInfo = getCurrentEmployabilityModule(currentQuestionIndex);
-                                                    return (
-                                                        <>
-                                                            <p className="text-sm font-bold text-green-800 mb-1">{moduleInfo.partTitle}</p>
-                                                            <p className="text-sm text-green-700 font-medium">{moduleInfo.domain}</p>
-                                                            <p className="text-sm text-green-600">
-                                                                Question {moduleInfo.questionInDomain} of {moduleInfo.domainTotal}
-                                                            </p>
-                                                        </>
-                                                    );
-                                                })()}
-                                            </div>
-                                        )}
-
-                                        {/* Module progress for Employability */}
-                                        {currentSection.id === 'employability' && (
-                                            <div className="mb-4 space-y-1">
-                                                {(() => {
-                                                    const moduleInfo = getCurrentEmployabilityModule(currentQuestionIndex);
-                                                    const partADomains = ['Communication', 'Teamwork', 'Problem Solving', 'Adaptability', 'Leadership', 'Digital Fluency', 'Professionalism', 'Career Readiness'];
-                                                    const domainColors = ['blue', 'green', 'purple', 'orange', 'red', 'cyan', 'indigo', 'amber'];
-
-                                                    return (
-                                                        <>
-                                                            <div className={`text-sm font-semibold px-2 py-1 ${moduleInfo.part === 'A' ? 'text-green-700' : 'text-gray-400'}`}>
-                                                                Part A: Self-Rating
-                                                            </div>
-                                                            {partADomains.map((domain, idx) => {
-                                                                const isCurrentDomain = moduleInfo.part === 'A' && moduleInfo.domain === domain;
-                                                                return (
-                                                                    <div key={domain} className={`flex items-center gap-2 text-xs px-2 py-0.5 rounded ml-2 ${isCurrentDomain ? 'bg-green-100 font-semibold' : 'opacity-50'}`}>
-                                                                        <div className={`w-1.5 h-1.5 rounded-full bg-${domainColors[idx]}-500`}></div>
-                                                                        <span className="truncate text-[10px]">{domain}</span>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                            <div className={`text-sm font-semibold px-2 py-1 mt-1 ${moduleInfo.part === 'B' ? 'text-rose-700' : 'text-gray-400'}`}>
-                                                                Part B: SJT Scenarios
-                                                            </div>
-                                                        </>
-                                                    );
-                                                })()}
-                                            </div>
-                                        )}
-
-                                        <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100 mb-4">
-                                            <p className="text-sm font-medium text-indigo-700">{currentSection.instruction}</p>
-                                        </div>
-
-                                        {/* Section type indicator */}
-                                        <div className={`flex items-center gap-2 text-sm px-3 py-2 rounded-lg ${currentSection.id === 'knowledge' || currentSection.id === 'aptitude'
-                                            ? 'bg-blue-50 text-blue-600 border border-blue-100'
-                                            : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
-                                            }`}>
-                                            {currentSection.id === 'knowledge' || currentSection.id === 'aptitude' ? (
-                                                <>
-                                                    <Code className="w-3.5 h-3.5" />
-                                                    <span>Answers scored</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <CheckCircle2 className="w-3.5 h-3.5" />
-                                                    <span>There are no right or wrong answers.</span>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-auto space-y-4" data-tour="section-info">
-                                        <div className="flex items-center gap-3 text-sm text-gray-600">
-                                            <Target className="w-4 h-4" />
-                                            <span>Section {currentSectionIndex + 1} of {sections.length}</span>
-                                        </div>
-
-                                        <div className="flex items-center gap-3 text-sm text-gray-600">
-                                            <Users className="w-4 h-4" />
-                                            <span>Question {
+                                        <span>Question {
+                                            currentSection?.isAdaptive
+                                                ? `${(adaptiveAptitude.progress?.questionsAnswered || 0) + 1}`
+                                                : `${currentQuestionIndex + 1}`
+                                        } / {
                                                 currentSection?.isAdaptive
-                                                    ? `${(adaptiveAptitude.progress?.questionsAnswered || 0) + 1}`
-                                                    : `${currentQuestionIndex + 1}`
-                                            } / {
-                                                    currentSection?.isAdaptive
-                                                        ? `${adaptiveAptitude.progress?.estimatedTotalQuestions || 20}`
-                                                        : (gradeLevel === 'after12' && currentSection.id === 'aptitude') ? 50
-                                                            : (gradeLevel === 'after12' && currentSection.id === 'knowledge') ? 20
-                                                                : currentSection.questions.length
-                                                }</span>
-                                        </div>
-
-                                        {/* Adaptive section progress */}
-                                        {currentSection?.isAdaptive && adaptiveAptitude.progress && (
-                                            <div className="flex items-center gap-3 text-sm text-indigo-600 font-medium">
-                                                <Brain className="w-4 h-4" />
-                                                <span>{adaptiveAptitude.progress.completionPercentage}% Complete</span>
-                                            </div>
-                                        )}
-
-                                        {currentSection?.isTimed && !currentSection?.isAdaptive ? (
-                                            currentSection.isAptitude ? (
-                                                aptitudePhase === 'individual' ? (
-                                                    <div className="flex flex-col gap-2" data-tour="timer-display">
-                                                        <div className={`flex items-center gap-3 text-sm font-semibold ${aptitudeQuestionTimer <= 10 ? 'text-red-600' : 'text-orange-600'}`}>
-                                                            <Clock className="w-4 h-4" />
-                                                            <span>Question Time: {formatTime(aptitudeQuestionTimer)}</span>
-                                                        </div>
-                                                        <div className="text-xs text-gray-500">
-                                                            Q {currentQuestionIndex + 1}/{Math.min(currentSection.individualQuestionCount || 30, currentSection.questions.length)} (1 min each)
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex flex-col gap-2" data-tour="timer-display">
-                                                        <div className={`flex items-center gap-3 text-sm font-semibold ${timeRemaining !== null && timeRemaining <= 60 ? 'text-red-600' : 'text-orange-600'}`}>
-                                                            <Clock className="w-4 h-4" />
-                                                            <span>Time Left: {formatTime(timeRemaining || 0)}</span>
-                                                        </div>
-                                                        <div className="text-xs text-gray-500">
-                                                            Q {currentQuestionIndex + 1 - (currentSection.individualQuestionCount || 30)}/{currentSection.questions.length - (currentSection.individualQuestionCount || 30)} (15 min shared)
-                                                        </div>
-                                                    </div>
-                                                )
-                                            ) : timeRemaining !== null ? (
-                                                <div className="flex items-center gap-3 text-sm font-semibold text-orange-600" data-tour="timer-display">
-                                                    <Clock className="w-4 h-4" />
-                                                    <span>Time Left: {formatTime(timeRemaining)}</span>
-                                                </div>
-                                            ) : null
-                                        ) : (
-                                            <div className="flex items-center gap-3 text-sm font-medium text-emerald-600" data-tour="timer-display">
-                                                <Clock className="w-4 h-4" />
-                                                <span>Time: {formatElapsedTime(elapsedTime)}</span>
-                                            </div>
-                                        )}
+                                                    ? `${adaptiveAptitude.progress?.estimatedTotalQuestions || 20}`
+                                                    : (gradeLevel === 'after12' && currentSection.id === 'aptitude') ? 50
+                                                        : (gradeLevel === 'after12' && currentSection.id === 'knowledge') ? 20
+                                                            : currentSection.questions.length
+                                            }</span>
                                     </div>
+
+                                    {/* Adaptive section progress */}
+                                    {currentSection?.isAdaptive && adaptiveAptitude.progress && (
+                                        <div className="flex items-center gap-3 text-sm text-indigo-600 font-medium">
+                                            <Brain className="w-4 h-4" />
+                                            <span>{adaptiveAptitude.progress.completionPercentage}% Complete</span>
+                                        </div>
+                                    )}
+
+                                    {currentSection?.isTimed && !currentSection?.isAdaptive ? (
+                                        currentSection.isAptitude ? (
+                                            aptitudePhase === 'individual' ? (
+                                                <div className="flex flex-col gap-2" data-tour="timer-display">
+                                                    <div className={`flex items-center gap-3 text-sm font-semibold ${aptitudeQuestionTimer <= 10 ? 'text-red-600' : 'text-orange-600'}`}>
+                                                        <Clock className="w-4 h-4" />
+                                                        <span>Question Time: {formatTime(aptitudeQuestionTimer)}</span>
+                                                    </div>
+                                                    <div className="text-xs text-gray-500">
+                                                        Q {currentQuestionIndex + 1}/{Math.min(currentSection.individualQuestionCount || 30, currentSection.questions.length)} (1 min each)
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col gap-2" data-tour="timer-display">
+                                                    <div className={`flex items-center gap-3 text-sm font-semibold ${timeRemaining !== null && timeRemaining <= 60 ? 'text-red-600' : 'text-orange-600'}`}>
+                                                        <Clock className="w-4 h-4" />
+                                                        <span>Time Left: {formatTime(timeRemaining || 0)}</span>
+                                                    </div>
+                                                    <div className="text-xs text-gray-500">
+                                                        Q {currentQuestionIndex + 1 - (currentSection.individualQuestionCount || 30)}/{currentSection.questions.length - (currentSection.individualQuestionCount || 30)} (15 min shared)
+                                                    </div>
+                                                </div>
+                                            )
+                                        ) : timeRemaining !== null ? (
+                                            <div className="flex items-center gap-3 text-sm font-semibold text-orange-600" data-tour="timer-display">
+                                                <Clock className="w-4 h-4" />
+                                                <span>Time Left: {formatTime(timeRemaining)}</span>
+                                            </div>
+                                        ) : null
+                                    ) : (
+                                        <div className="flex items-center gap-3 text-sm font-medium text-emerald-600" data-tour="timer-display">
+                                            <Clock className="w-4 h-4" />
+                                            <span>Time: {formatElapsedTime(elapsedTime)}</span>
+                                        </div>
+                                    )}
                                 </div>
+                            </div>
 
-                                {/* Question Area */}
-                                <div className="md:w-2/3 p-8 flex flex-col relative">
-                                    <AnimatePresence mode="wait">
-                                        {error ? (
-                                            <motion.div
-                                                key="error"
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                exit={{ opacity: 0 }}
-                                                className="flex-1 flex flex-col items-center justify-center text-center"
-                                            >
-                                                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6">
-                                                    <AlertCircle className="w-8 h-8 text-red-600" />
-                                                </div>
-                                                <h3 className="text-xl font-bold text-gray-800 mb-2">Analysis Failed</h3>
-                                                <p className="text-red-600 mb-4 max-w-md">{error}</p>
-                                                <div className="flex gap-3">
-                                                    <Button
-                                                        onClick={() => {
-                                                            setError(null);
-                                                            handleSubmit();
-                                                        }}
-                                                        className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-lg transition-all duration-300 active:scale-95 px-6 py-2 rounded-lg font-medium"
-                                                    >
-                                                        Try Again
-                                                    </Button>
-                                                    <Button
-                                                        variant="outline"
-                                                        onClick={() => setError(null)}
-                                                    >
-                                                        Go Back
-                                                    </Button>
-                                                </div>
-                                            </motion.div>
-                                        ) : isSubmitting ? (
-                                            <motion.div
-                                                key="submitting"
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                exit={{ opacity: 0 }}
-                                                className="flex-1 flex flex-col items-center justify-center text-center"
-                                            >
-                                                <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-6"></div>
-                                                <h3 className="text-xl font-bold text-gray-800 mb-2">Analyzing your profile with AI...</h3>
-                                                <p className="text-gray-500">Rareminds is generating your personalized career roadmap.</p>
-                                            </motion.div>
-                                        ) : !currentQuestion ? (
-                                            <motion.div
-                                                key="loading-question"
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                className="flex-1 flex flex-col items-center justify-center text-center"
-                                            >
-                                                <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
-                                                <p className="text-gray-600">Loading question...</p>
-                                            </motion.div>
-                                        ) : (
-                                            <motion.div
-                                                key={currentSection?.isAdaptive ? `adaptive-${adaptiveAptitude.currentQuestion?.id}` : `${currentSectionIndex}-${currentQuestionIndex}`}
-                                                initial={{ opacity: 0, x: 30 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                exit={{ opacity: 0, x: -30 }}
-                                                transition={{ type: "spring", stiffness: 100, damping: 15 }}
-                                                className="flex-1 flex flex-col"
-                                            >
-                                                <div className="mb-6" data-tour="question-content">
-                                                    <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2 block">
-                                                        Question {
-                                                            currentSection?.isAdaptive
-                                                                ? `${(adaptiveAptitude.progress?.questionsAnswered || 0) + 1}`
-                                                                : `${currentQuestionIndex + 1}`
-                                                        } / {
-                                                            currentSection?.isAdaptive
-                                                                ? `${adaptiveAptitude.progress?.estimatedTotalQuestions || 20}`
-                                                                : (gradeLevel === 'after12' && currentSection.id === 'aptitude') ? 50
-                                                                    : (gradeLevel === 'after12' && currentSection.id === 'knowledge') ? 20
-                                                                        : currentSection.questions.length
-                                                        }
-                                                    </span>
-                                                    <h3 className="text-2xl md:text-3xl font-medium text-gray-800 leading-snug whitespace-pre-line">
-                                                        {currentQuestion?.text}
-                                                    </h3>
-                                                </div>
+                            {/* Question Area */}
+                            <div className="md:w-2/3 p-8 flex flex-col relative">
+                                <AnimatePresence mode="wait">
+                                    {error ? (
+                                        <motion.div
+                                            key="error"
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            className="flex-1 flex flex-col items-center justify-center text-center"
+                                        >
+                                            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6">
+                                                <AlertCircle className="w-8 h-8 text-red-600" />
+                                            </div>
+                                            <h3 className="text-xl font-bold text-gray-800 mb-2">Analysis Failed</h3>
+                                            <p className="text-red-600 mb-4 max-w-md">{error}</p>
+                                            <div className="flex gap-3">
+                                                <Button
+                                                    onClick={() => {
+                                                        setError(null);
+                                                        handleSubmit();
+                                                    }}
+                                                    className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-lg transition-all duration-300 active:scale-95 px-6 py-2 rounded-lg font-medium"
+                                                >
+                                                    Try Again
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => setError(null)}
+                                                >
+                                                    Go Back
+                                                </Button>
+                                            </div>
+                                        </motion.div>
+                                    ) : isSubmitting ? (
+                                        <motion.div
+                                            key="submitting"
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            className="flex-1 flex flex-col items-center justify-center text-center"
+                                        >
+                                            <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-6"></div>
+                                            <h3 className="text-xl font-bold text-gray-800 mb-2">Analyzing your profile with AI...</h3>
+                                            <p className="text-gray-500">Rareminds is generating your personalized career roadmap.</p>
+                                        </motion.div>
+                                    ) : !currentQuestion ? (
+                                        <motion.div
+                                            key="loading-question"
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            className="flex-1 flex flex-col items-center justify-center text-center"
+                                        >
+                                            <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+                                            <p className="text-gray-600">Loading question...</p>
+                                        </motion.div>
+                                    ) : (
+                                        <motion.div
+                                            key={currentSection?.isAdaptive ? `adaptive-${adaptiveAptitude.currentQuestion?.id}` : `${currentSectionIndex}-${currentQuestionIndex}`}
+                                            initial={{ opacity: 0, x: 30 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: -30 }}
+                                            transition={{ type: "spring", stiffness: 100, damping: 15 }}
+                                            className="flex-1 flex flex-col"
+                                        >
+                                            <div className="mb-6" data-tour="question-content">
+                                                <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2 block">
+                                                    Question {
+                                                        currentSection?.isAdaptive
+                                                            ? `${(adaptiveAptitude.progress?.questionsAnswered || 0) + 1}`
+                                                            : `${currentQuestionIndex + 1}`
+                                                    } / {
+                                                        currentSection?.isAdaptive
+                                                            ? `${adaptiveAptitude.progress?.estimatedTotalQuestions || 20}`
+                                                            : (gradeLevel === 'after12' && currentSection.id === 'aptitude') ? 50
+                                                                : (gradeLevel === 'after12' && currentSection.id === 'knowledge') ? 20
+                                                                    : currentSection.questions.length
+                                                    }
+                                                </span>
+                                                <h3 className="text-2xl md:text-3xl font-medium text-gray-800 leading-snug whitespace-pre-line">
+                                                    {currentQuestion?.text}
+                                                </h3>
+                                            </div>
 
-                                                <div className="space-y-3 mt-4">
-                                                    {/* Adaptive Aptitude Questions - Special handling */}
-                                                    {currentSection?.isAdaptive ? (
-                                                        <div className="space-y-4">
-                                                            {/* Adaptive test info badges with timer */}
-                                                            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                                                                <div className="flex flex-wrap gap-2">
-                                                                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 rounded-full text-xs font-medium text-purple-700">
-                                                                        <Target className="w-3 h-3" />
-                                                                        Level {adaptiveAptitude.session?.currentDifficulty || 3}
+                                            <div className="space-y-3 mt-4">
+                                                {/* Adaptive Aptitude Questions - Special handling */}
+                                                {currentSection?.isAdaptive ? (
+                                                    <div className="space-y-4">
+                                                        {/* Adaptive test info badges with timer */}
+                                                        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                                                            <div className="flex flex-wrap gap-2">
+                                                                <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 rounded-full text-xs font-medium text-purple-700">
+                                                                    <Target className="w-3 h-3" />
+                                                                    Level {adaptiveAptitude.session?.currentDifficulty || 3}
+                                                                </span>
+                                                                {currentQuestion?.subtag && (
+                                                                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-xs font-medium text-gray-600">
+                                                                        {currentQuestion.subtag.replace(/_/g, ' ')}
                                                                     </span>
-                                                                    {currentQuestion?.subtag && (
-                                                                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-xs font-medium text-gray-600">
-                                                                            {currentQuestion.subtag.replace(/_/g, ' ')}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                                {/* Per-question timer */}
-                                                                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold ${adaptiveQuestionTimer <= 10
-                                                                    ? 'bg-red-100 text-red-700 animate-pulse'
-                                                                    : adaptiveQuestionTimer <= 30
-                                                                        ? 'bg-amber-100 text-amber-700'
-                                                                        : 'bg-indigo-100 text-indigo-700'
-                                                                    }`}>
-                                                                    <Clock className="w-4 h-4" />
-                                                                    {Math.floor(adaptiveQuestionTimer / 60)}:{(adaptiveQuestionTimer % 60).toString().padStart(2, '0')}
-                                                                </div>
+                                                                )}
+                                                            </div>
+                                                            {/* Per-question timer */}
+                                                            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold ${adaptiveQuestionTimer <= 10
+                                                                ? 'bg-red-100 text-red-700 animate-pulse'
+                                                                : adaptiveQuestionTimer <= 30
+                                                                    ? 'bg-amber-100 text-amber-700'
+                                                                    : 'bg-indigo-100 text-indigo-700'
+                                                                }`}>
+                                                                <Clock className="w-4 h-4" />
+                                                                {Math.floor(adaptiveQuestionTimer / 60)}:{(adaptiveQuestionTimer % 60).toString().padStart(2, '0')}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Answer options for adaptive questions */}
+                                                        {currentQuestion?.options && ['A', 'B', 'C', 'D'].map((optionKey) => {
+                                                            const isSelected = adaptiveAptitudeAnswer === optionKey;
+                                                            return (
+                                                                <button
+                                                                    key={optionKey}
+                                                                    type="button"
+                                                                    onClick={() => setAdaptiveAptitudeAnswer(optionKey)}
+                                                                    className={`w-full border-2 rounded-xl p-4 transition-all text-left ${isSelected
+                                                                        ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/30'
+                                                                        : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                                                                        }`}
+                                                                >
+                                                                    <div className="flex items-start gap-3">
+                                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold transition-all ${isSelected
+                                                                            ? 'bg-indigo-500 text-white'
+                                                                            : 'bg-gray-100 text-gray-600'
+                                                                            }`}>
+                                                                            {optionKey}
+                                                                        </div>
+                                                                        <p className={`flex-1 font-medium text-lg ${isSelected ? 'text-indigo-700' : 'text-gray-700'
+                                                                            }`}>
+                                                                            {currentQuestion.options[optionKey]}
+                                                                        </p>
+                                                                    </div>
+                                                                </button>
+                                                            );
+                                                        })}
+
+                                                        {/* Loading state for adaptive questions */}
+                                                        {adaptiveAptitude.loading && !currentQuestion && (
+                                                            <div className="flex flex-col items-center justify-center py-8">
+                                                                <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-4" />
+                                                                <p className="text-gray-600">Loading next question...</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : /* SJT Questions - Select BEST and WORST */
+                                                    currentQuestion.partType === 'sjt' ? (
+                                                        <div className="space-y-4">
+                                                            <div className="p-3 bg-rose-50 rounded-lg border border-rose-200 mb-4">
+                                                                <p className="text-sm font-medium text-rose-700">
+                                                                    Select the <span className="font-bold text-green-700">BEST</span> response and the <span className="font-bold text-red-700">WORST</span> response for this scenario.
+                                                                </p>
                                                             </div>
 
-                                                            {/* Answer options for adaptive questions */}
-                                                            {currentQuestion?.options && ['A', 'B', 'C', 'D'].map((optionKey) => {
-                                                                const isSelected = adaptiveAptitudeAnswer === optionKey;
+                                                            {currentQuestion.options.map((option, idx) => {
+                                                                const optionLabel = currentQuestion.optionLabels?.[idx] || String.fromCharCode(97 + idx);
+                                                                const sjtAnswer = answers[questionId] || {};
+                                                                const isBest = sjtAnswer.best === option;
+                                                                const isWorst = sjtAnswer.worst === option;
+
                                                                 return (
-                                                                    <button
-                                                                        key={optionKey}
-                                                                        type="button"
-                                                                        onClick={() => setAdaptiveAptitudeAnswer(optionKey)}
-                                                                        className={`w-full border-2 rounded-xl p-4 transition-all text-left ${isSelected
-                                                                            ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/30'
-                                                                            : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                                                                    <div
+                                                                        key={idx}
+                                                                        className={`border rounded-xl p-4 transition-all ${isBest ? 'border-green-500 bg-green-50 ring-1 ring-green-500/30' :
+                                                                            isWorst ? 'border-red-500 bg-red-50 ring-1 ring-red-500/30' :
+                                                                                'border-gray-200 hover:bg-gray-50'
                                                                             }`}
                                                                     >
                                                                         <div className="flex items-start gap-3">
-                                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold transition-all ${isSelected
-                                                                                ? 'bg-indigo-500 text-white'
-                                                                                : 'bg-gray-100 text-gray-600'
+                                                                            <span className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-sm font-bold text-gray-600 shrink-0">
+                                                                                {optionLabel}
+                                                                            </span>
+                                                                            <p className="flex-1 text-gray-700 font-medium text-lg">{option}</p>
+                                                                        </div>
+                                                                        <div className="flex gap-2 mt-3 ml-9">
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    const current = answers[questionId] || {};
+                                                                                    // Can't select same option for both
+                                                                                    if (current.worst === option) return;
+                                                                                    // Toggle: if already selected as best, deselect it
+                                                                                    if (isBest) {
+                                                                                        const { best, ...rest } = current;
+                                                                                        handleAnswer(Object.keys(rest).length > 0 ? rest : undefined);
+                                                                                    } else {
+                                                                                        handleAnswer({ ...current, best: option });
+                                                                                    }
+                                                                                }}
+                                                                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${isBest
+                                                                                    ? 'bg-green-600 text-white shadow-md'
+                                                                                    : 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                                                    } ${isWorst ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                                                                disabled={isWorst}
+                                                                            >
+                                                                                ✓ BEST
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    const current = answers[questionId] || {};
+                                                                                    // Can't select same option for both
+                                                                                    if (current.best === option) return;
+                                                                                    // Toggle: if already selected as worst, deselect it
+                                                                                    if (isWorst) {
+                                                                                        const { worst, ...rest } = current;
+                                                                                        handleAnswer(Object.keys(rest).length > 0 ? rest : undefined);
+                                                                                    } else {
+                                                                                        handleAnswer({ ...current, worst: option });
+                                                                                    }
+                                                                                }}
+                                                                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${isWorst
+                                                                                    ? 'bg-red-600 text-white shadow-md'
+                                                                                    : 'bg-red-100 text-red-700 hover:bg-red-200'
+                                                                                    } ${isBest ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                                                                disabled={isBest}
+                                                                            >
+                                                                                ✗ WORST
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ) : currentQuestion.type === 'multiselect' ? (
+                                                        // Multi-select questions (Middle School)
+                                                        <div className="space-y-4" data-tour="answer-options">
+                                                            <div className="p-3 bg-green-50 rounded-lg border border-green-200 mb-4">
+                                                                <p className="text-sm font-medium text-green-700">
+                                                                    Select up to <span className="font-bold">{currentQuestion.maxSelections}</span> options that feel most like you
+                                                                    {answers[questionId]?.length > 0 && (
+                                                                        <span className="ml-2 text-green-600">
+                                                                            ({answers[questionId]?.length || 0}/{currentQuestion.maxSelections} selected)
+                                                                        </span>
+                                                                    )}
+                                                                </p>
+                                                            </div>
+
+                                                            {currentQuestion.options.map((option, idx) => {
+                                                                const selectedOptions = answers[questionId] || [];
+                                                                const isSelected = selectedOptions.includes(option);
+                                                                const canSelect = selectedOptions.length < currentQuestion.maxSelections || isSelected;
+
+                                                                return (
+                                                                    <button
+                                                                        key={idx}
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const current = answers[questionId] || [];
+                                                                            if (isSelected) {
+                                                                                // Deselect
+                                                                                const newSelection = current.filter(opt => opt !== option);
+                                                                                handleAnswer(newSelection.length > 0 ? newSelection : undefined);
+                                                                            } else if (current.length < currentQuestion.maxSelections) {
+                                                                                // Select
+                                                                                handleAnswer([...current, option]);
+                                                                            }
+                                                                        }}
+                                                                        disabled={!canSelect}
+                                                                        className={`w-full border rounded-xl p-4 transition-all text-left ${isSelected
+                                                                            ? 'border-green-500 bg-green-50 ring-2 ring-green-500/30'
+                                                                            : canSelect
+                                                                                ? 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                                                                                : 'border-gray-200 opacity-40 cursor-not-allowed'
+                                                                            }`}
+                                                                    >
+                                                                        <div className="flex items-start gap-3">
+                                                                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-all ${isSelected
+                                                                                ? 'bg-green-500 text-white'
+                                                                                : 'bg-gray-100 text-gray-400'
                                                                                 }`}>
-                                                                                {optionKey}
+                                                                                {isSelected && <CheckCircle2 className="w-4 h-4" />}
                                                                             </div>
-                                                                            <p className={`flex-1 font-medium text-lg ${isSelected ? 'text-indigo-700' : 'text-gray-700'
+                                                                            <p className={`flex-1 font-medium text-lg ${isSelected ? 'text-green-700' : 'text-gray-700'
                                                                                 }`}>
-                                                                                {currentQuestion.options[optionKey]}
+                                                                                {option}
                                                                             </p>
                                                                         </div>
                                                                     </button>
                                                                 );
                                                             })}
-
-                                                            {/* Loading state for adaptive questions */}
-                                                            {adaptiveAptitude.loading && !currentQuestion && (
-                                                                <div className="flex flex-col items-center justify-center py-8">
-                                                                    <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-4" />
-                                                                    <p className="text-gray-600">Loading next question...</p>
-                                                                </div>
-                                                            )}
                                                         </div>
-                                                    ) : /* SJT Questions - Select BEST and WORST */
-                                                        currentQuestion.partType === 'sjt' ? (
-                                                            <div className="space-y-4">
-                                                                <div className="p-3 bg-rose-50 rounded-lg border border-rose-200 mb-4">
-                                                                    <p className="text-sm font-medium text-rose-700">
-                                                                        Select the <span className="font-bold text-green-700">BEST</span> response and the <span className="font-bold text-red-700">WORST</span> response for this scenario.
-                                                                    </p>
-                                                                </div>
+                                                    ) : currentQuestion.type === 'singleselect' ? (
+                                                        // Single-select questions (Middle School - simpler UI)
+                                                        <div className="space-y-3" data-tour="answer-options">
+                                                            {currentQuestion.options.map((option, idx) => {
+                                                                const isSelected = answers[questionId] === option;
 
-                                                                {currentQuestion.options.map((option, idx) => {
-                                                                    const optionLabel = currentQuestion.optionLabels?.[idx] || String.fromCharCode(97 + idx);
-                                                                    const sjtAnswer = answers[questionId] || {};
-                                                                    const isBest = sjtAnswer.best === option;
-                                                                    const isWorst = sjtAnswer.worst === option;
-
-                                                                    return (
-                                                                        <div
-                                                                            key={idx}
-                                                                            className={`border rounded-xl p-4 transition-all ${isBest ? 'border-green-500 bg-green-50 ring-1 ring-green-500/30' :
-                                                                                isWorst ? 'border-red-500 bg-red-50 ring-1 ring-red-500/30' :
-                                                                                    'border-gray-200 hover:bg-gray-50'
-                                                                                }`}
-                                                                        >
-                                                                            <div className="flex items-start gap-3">
-                                                                                <span className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-sm font-bold text-gray-600 shrink-0">
-                                                                                    {optionLabel}
-                                                                                </span>
-                                                                                <p className="flex-1 text-gray-700 font-medium text-lg">{option}</p>
+                                                                return (
+                                                                    <button
+                                                                        key={idx}
+                                                                        type="button"
+                                                                        onClick={() => handleAnswer(option)}
+                                                                        className={`w-full border rounded-xl p-4 transition-all text-left ${isSelected
+                                                                            ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/30'
+                                                                            : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                                                                            }`}
+                                                                    >
+                                                                        <div className="flex items-start gap-3">
+                                                                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-all ${isSelected
+                                                                                ? 'bg-indigo-500 text-white'
+                                                                                : 'bg-gray-100 text-gray-400'
+                                                                                }`}>
+                                                                                {isSelected && <CheckCircle2 className="w-4 h-4" />}
                                                                             </div>
-                                                                            <div className="flex gap-2 mt-3 ml-9">
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={() => {
-                                                                                        const current = answers[questionId] || {};
-                                                                                        // Can't select same option for both
-                                                                                        if (current.worst === option) return;
-                                                                                        // Toggle: if already selected as best, deselect it
-                                                                                        if (isBest) {
-                                                                                            const { best, ...rest } = current;
-                                                                                            handleAnswer(Object.keys(rest).length > 0 ? rest : undefined);
-                                                                                        } else {
-                                                                                            handleAnswer({ ...current, best: option });
-                                                                                        }
-                                                                                    }}
-                                                                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${isBest
-                                                                                        ? 'bg-green-600 text-white shadow-md'
-                                                                                        : 'bg-green-100 text-green-700 hover:bg-green-200'
-                                                                                        } ${isWorst ? 'opacity-30 cursor-not-allowed' : ''}`}
-                                                                                    disabled={isWorst}
-                                                                                >
-                                                                                    ✓ BEST
-                                                                                </button>
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={() => {
-                                                                                        const current = answers[questionId] || {};
-                                                                                        // Can't select same option for both
-                                                                                        if (current.best === option) return;
-                                                                                        // Toggle: if already selected as worst, deselect it
-                                                                                        if (isWorst) {
-                                                                                            const { worst, ...rest } = current;
-                                                                                            handleAnswer(Object.keys(rest).length > 0 ? rest : undefined);
-                                                                                        } else {
-                                                                                            handleAnswer({ ...current, worst: option });
-                                                                                        }
-                                                                                    }}
-                                                                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${isWorst
-                                                                                        ? 'bg-red-600 text-white shadow-md'
-                                                                                        : 'bg-red-100 text-red-700 hover:bg-red-200'
-                                                                                        } ${isBest ? 'opacity-30 cursor-not-allowed' : ''}`}
-                                                                                    disabled={isBest}
-                                                                                >
-                                                                                    ✗ WORST
-                                                                                </button>
+                                                                            <p className={`flex-1 font-medium text-lg ${isSelected ? 'text-indigo-700' : 'text-gray-700'
+                                                                                }`}>
+                                                                                {option}
+                                                                            </p>
+                                                                        </div>
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ) : currentQuestion.type === 'rating' ? (
+                                                        // Rating questions (1-4 scale for middle school)
+                                                        <div className="space-y-4" data-tour="answer-options">
+                                                            <div className="flex justify-center gap-2 md:gap-4">
+                                                                {currentSection.responseScale.map((option) => (
+                                                                    <button
+                                                                        key={option.value}
+                                                                        type="button"
+                                                                        onClick={() => handleAnswer(option.value)}
+                                                                        className={`flex-1 max-w-[120px] border-2 rounded-xl p-4 transition-all ${answers[questionId] === option.value
+                                                                            ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-500/30 shadow-md'
+                                                                            : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                                                                            }`}
+                                                                    >
+                                                                        <div className="text-center">
+                                                                            <div className={`text-3xl font-bold mb-2 ${answers[questionId] === option.value ? 'text-amber-600' : 'text-gray-600'
+                                                                                }`}>
+                                                                                {option.value}
+                                                                            </div>
+                                                                            <div className={`text-xs font-medium ${answers[questionId] === option.value ? 'text-amber-700' : 'text-gray-600'
+                                                                                }`}>
+                                                                                {option.label}
                                                                             </div>
                                                                         </div>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        ) : currentQuestion.type === 'multiselect' ? (
-                                                            // Multi-select questions (Middle School)
-                                                            <div className="space-y-4" data-tour="answer-options">
-                                                                <div className="p-3 bg-green-50 rounded-lg border border-green-200 mb-4">
-                                                                    <p className="text-sm font-medium text-green-700">
-                                                                        Select up to <span className="font-bold">{currentQuestion.maxSelections}</span> options that feel most like you
-                                                                        {answers[questionId]?.length > 0 && (
-                                                                            <span className="ml-2 text-green-600">
-                                                                                ({answers[questionId]?.length || 0}/{currentQuestion.maxSelections} selected)
-                                                                            </span>
-                                                                        )}
-                                                                    </p>
-                                                                </div>
-
-                                                                {currentQuestion.options.map((option, idx) => {
-                                                                    const selectedOptions = answers[questionId] || [];
-                                                                    const isSelected = selectedOptions.includes(option);
-                                                                    const canSelect = selectedOptions.length < currentQuestion.maxSelections || isSelected;
-
-                                                                    return (
-                                                                        <button
-                                                                            key={idx}
-                                                                            type="button"
-                                                                            onClick={() => {
-                                                                                const current = answers[questionId] || [];
-                                                                                if (isSelected) {
-                                                                                    // Deselect
-                                                                                    const newSelection = current.filter(opt => opt !== option);
-                                                                                    handleAnswer(newSelection.length > 0 ? newSelection : undefined);
-                                                                                } else if (current.length < currentQuestion.maxSelections) {
-                                                                                    // Select
-                                                                                    handleAnswer([...current, option]);
-                                                                                }
-                                                                            }}
-                                                                            disabled={!canSelect}
-                                                                            className={`w-full border rounded-xl p-4 transition-all text-left ${isSelected
-                                                                                ? 'border-green-500 bg-green-50 ring-2 ring-green-500/30'
-                                                                                : canSelect
-                                                                                    ? 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
-                                                                                    : 'border-gray-200 opacity-40 cursor-not-allowed'
-                                                                                }`}
-                                                                        >
-                                                                            <div className="flex items-start gap-3">
-                                                                                <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-all ${isSelected
-                                                                                    ? 'bg-green-500 text-white'
-                                                                                    : 'bg-gray-100 text-gray-400'
-                                                                                    }`}>
-                                                                                    {isSelected && <CheckCircle2 className="w-4 h-4" />}
-                                                                                </div>
-                                                                                <p className={`flex-1 font-medium text-lg ${isSelected ? 'text-green-700' : 'text-gray-700'
-                                                                                    }`}>
-                                                                                    {option}
-                                                                                </p>
-                                                                            </div>
-                                                                        </button>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        ) : currentQuestion.type === 'singleselect' ? (
-                                                            // Single-select questions (Middle School - simpler UI)
-                                                            <div className="space-y-3" data-tour="answer-options">
-                                                                {currentQuestion.options.map((option, idx) => {
-                                                                    const isSelected = answers[questionId] === option;
-
-                                                                    return (
-                                                                        <button
-                                                                            key={idx}
-                                                                            type="button"
-                                                                            onClick={() => handleAnswer(option)}
-                                                                            className={`w-full border rounded-xl p-4 transition-all text-left ${isSelected
-                                                                                ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/30'
-                                                                                : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
-                                                                                }`}
-                                                                        >
-                                                                            <div className="flex items-start gap-3">
-                                                                                <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-all ${isSelected
-                                                                                    ? 'bg-indigo-500 text-white'
-                                                                                    : 'bg-gray-100 text-gray-400'
-                                                                                    }`}>
-                                                                                    {isSelected && <CheckCircle2 className="w-4 h-4" />}
-                                                                                </div>
-                                                                                <p className={`flex-1 font-medium text-lg ${isSelected ? 'text-indigo-700' : 'text-gray-700'
-                                                                                    }`}>
-                                                                                    {option}
-                                                                                </p>
-                                                                            </div>
-                                                                        </button>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        ) : currentQuestion.type === 'rating' ? (
-                                                            // Rating questions (1-4 scale for middle school)
-                                                            <div className="space-y-4" data-tour="answer-options">
-                                                                <div className="flex justify-center gap-2 md:gap-4">
-                                                                    {currentSection.responseScale.map((option) => (
-                                                                        <button
-                                                                            key={option.value}
-                                                                            type="button"
-                                                                            onClick={() => handleAnswer(option.value)}
-                                                                            className={`flex-1 max-w-[120px] border-2 rounded-xl p-4 transition-all ${answers[questionId] === option.value
-                                                                                ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-500/30 shadow-md'
-                                                                                : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
-                                                                                }`}
-                                                                        >
-                                                                            <div className="text-center">
-                                                                                <div className={`text-3xl font-bold mb-2 ${answers[questionId] === option.value ? 'text-amber-600' : 'text-gray-600'
-                                                                                    }`}>
-                                                                                    {option.value}
-                                                                                </div>
-                                                                                <div className={`text-xs font-medium ${answers[questionId] === option.value ? 'text-amber-700' : 'text-gray-600'
-                                                                                    }`}>
-                                                                                    {option.label}
-                                                                                </div>
-                                                                            </div>
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        ) : currentQuestion.type === 'text' ? (
-                                                            // Text input questions (open reflection)
-                                                            <div className="space-y-3">
-                                                                <textarea
-                                                                    value={answers[questionId] || ''}
-                                                                    onChange={(e) => handleAnswer(e.target.value)}
-                                                                    placeholder={currentQuestion.placeholder || 'Type your answer here...'}
-                                                                    className="w-full min-h-[150px] p-4 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all resize-none text-lg text-gray-700"
-                                                                />
-                                                                <p className="text-sm text-gray-500">
-                                                                    {answers[questionId]?.length || 0} characters
-                                                                </p>
-                                                            </div>
-                                                        ) : currentSection.responseScale ? (
-                                                            // Likert scale response (for After 12th assessments)
-                                                            <RadioGroup
-                                                                value={answers[questionId]?.toString() || ""}
-                                                                onValueChange={(val) => handleAnswer(parseInt(val))}
-                                                                className="space-y-3"
-                                                            >
-                                                                {currentSection.responseScale.map((option) => (
-                                                                    <div
-                                                                        key={option.value}
-                                                                        onClick={() => handleAnswer(option.value)}
-                                                                        className={`flex items-center space-x-3 border rounded-xl p-4 transition-all cursor-pointer hover:bg-gray-50 ${answers[questionId] === option.value
-                                                                            ? 'border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-600/20'
-                                                                            : 'border-gray-200'
-                                                                            }`}>
-                                                                        <RadioGroupItem value={option.value.toString()} id={`opt-${option.value}`} className="text-indigo-600" />
-                                                                        <Label htmlFor={`opt-${option.value}`} className="flex-1 cursor-pointer font-medium text-gray-700 text-lg">
-                                                                            {option.label}
-                                                                        </Label>
-                                                                    </div>
+                                                                    </button>
                                                                 ))}
-                                                            </RadioGroup>
-                                                        ) : (
-                                                            // MCQ response
-                                                            <RadioGroup
-                                                                value={answers[questionId] || ""}
-                                                                onValueChange={handleAnswer}
-                                                                className="space-y-3"
-                                                            >
-                                                                {currentQuestion.options.map((option, idx) => (
-                                                                    <div
-                                                                        key={idx}
-                                                                        onClick={() => handleAnswer(option)}
-                                                                        className={`flex items-center space-x-3 border rounded-xl p-4 transition-all cursor-pointer hover:bg-gray-50 ${answers[questionId] === option
-                                                                            ? 'border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-600/20'
-                                                                            : 'border-gray-200'
-                                                                            }`}>
-                                                                        <RadioGroupItem value={option} id={`opt-${idx}`} className="text-indigo-600" />
-                                                                        <Label htmlFor={`opt-${idx}`} className="flex-1 cursor-pointer font-medium text-gray-700 text-lg">
-                                                                            {option}
-                                                                        </Label>
-                                                                    </div>
-                                                                ))}
-                                                            </RadioGroup>
-                                                        )}
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-
-                                    {/* Navigation - only show when answering questions */}
-                                    {!isSubmitting && !showSectionComplete && !error && (
-                                        <div className="mt-8 flex justify-between items-center pt-6 border-t border-gray-100" data-tour="navigation-controls">
-                                            <Button
-                                                variant="ghost"
-                                                onClick={handlePrevious}
-                                                disabled={currentQuestionIndex === 0}
-                                                className="text-gray-600 hover:text-indigo-700 hover:bg-indigo-50 border-2 border-transparent hover:border-indigo-100 px-6 py-3 rounded-xl transition-all duration-200 font-medium"
-                                            >
-                                                <ChevronLeft className="w-4 h-4 mr-2" />
-                                                Previous
-                                            </Button>
-
-                                            <Button
-                                                onClick={handleNext}
-                                                disabled={!isCurrentAnswered || isSaving || adaptiveAptitude.submitting}
-                                                className={`bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-8 py-6 rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 font-bold tracking-wide ${(!isCurrentAnswered || isSaving || adaptiveAptitude.submitting) ? 'opacity-50 cursor-not-allowed grayscale shadow-none' : ''
-                                                    }`}
-                                            >
-                                                {(isSaving || adaptiveAptitude.submitting) ? (
-                                                    <>
-                                                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                                                        Saving...
-                                                    </>
-                                                ) : currentSection?.isAdaptive ? (
-                                                    // Adaptive section: always show "Next Question" - submission happens via section complete screen
-                                                    <>
-                                                        Next Question
-                                                        <ChevronRight className="w-5 h-5 ml-2" />
-                                                    </>
-                                                ) : currentSectionIndex === sections.length - 1 && currentQuestionIndex === currentSection.questions.length - 1 ? (
-                                                    <>
-                                                        Submit Assessment
-                                                        <CheckCircle2 className="w-5 h-5 ml-2" />
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        Next Question
-                                                        <ChevronRight className="w-5 h-5 ml-2" />
-                                                    </>
-                                                )}
-                                            </Button>
-                                        </div>
+                                                            </div>
+                                                        </div>
+                                                    ) : currentQuestion.type === 'text' ? (
+                                                        // Text input questions (open reflection)
+                                                        <div className="space-y-3">
+                                                            <textarea
+                                                                value={answers[questionId] || ''}
+                                                                onChange={(e) => handleAnswer(e.target.value)}
+                                                                placeholder={currentQuestion.placeholder || 'Type your answer here...'}
+                                                                className="w-full min-h-[150px] p-4 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all resize-none text-lg text-gray-700"
+                                                            />
+                                                            <p className="text-sm text-gray-500">
+                                                                {answers[questionId]?.length || 0} characters
+                                                            </p>
+                                                        </div>
+                                                    ) : currentSection.responseScale ? (
+                                                        // Likert scale response (for After 12th assessments)
+                                                        <RadioGroup
+                                                            value={answers[questionId]?.toString() || ""}
+                                                            onValueChange={(val) => handleAnswer(parseInt(val))}
+                                                            className="space-y-3"
+                                                        >
+                                                            {currentSection.responseScale.map((option) => (
+                                                                <div
+                                                                    key={option.value}
+                                                                    onClick={() => handleAnswer(option.value)}
+                                                                    className={`flex items-center space-x-3 border rounded-xl p-4 transition-all cursor-pointer hover:bg-gray-50 ${answers[questionId] === option.value
+                                                                        ? 'border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-600/20'
+                                                                        : 'border-gray-200'
+                                                                        }`}>
+                                                                    <RadioGroupItem value={option.value.toString()} id={`opt-${option.value}`} className="text-indigo-600" />
+                                                                    <Label htmlFor={`opt-${option.value}`} className="flex-1 cursor-pointer font-medium text-gray-700 text-lg">
+                                                                        {option.label}
+                                                                    </Label>
+                                                                </div>
+                                                            ))}
+                                                        </RadioGroup>
+                                                    ) : (
+                                                        // MCQ response
+                                                        <RadioGroup
+                                                            value={answers[questionId] || ""}
+                                                            onValueChange={handleAnswer}
+                                                            className="space-y-3"
+                                                        >
+                                                            {currentQuestion.options.map((option, idx) => (
+                                                                <div
+                                                                    key={idx}
+                                                                    onClick={() => handleAnswer(option)}
+                                                                    className={`flex items-center space-x-3 border rounded-xl p-4 transition-all cursor-pointer hover:bg-gray-50 ${answers[questionId] === option
+                                                                        ? 'border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-600/20'
+                                                                        : 'border-gray-200'
+                                                                        }`}>
+                                                                    <RadioGroupItem value={option} id={`opt-${idx}`} className="text-indigo-600" />
+                                                                    <Label htmlFor={`opt-${idx}`} className="flex-1 cursor-pointer font-medium text-gray-700 text-lg">
+                                                                        {option}
+                                                                    </Label>
+                                                                </div>
+                                                            ))}
+                                                        </RadioGroup>
+                                                    )}
+                                            </div>
+                                        </motion.div>
                                     )}
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </CardContent>
-            </Card>
-        </div>
-    );
+                                </AnimatePresence>
+
+                                {/* Navigation - only show when answering questions */}
+                                {!isSubmitting && !showSectionComplete && !error && (
+                                    <div className="mt-8 flex justify-between items-center pt-6 border-t border-gray-100" data-tour="navigation-controls">
+                                        <Button
+                                            variant="ghost"
+                                            onClick={handlePrevious}
+                                            disabled={currentQuestionIndex === 0}
+                                            className="text-gray-600 hover:text-indigo-700 hover:bg-indigo-50 border-2 border-transparent hover:border-indigo-100 px-6 py-3 rounded-xl transition-all duration-200 font-medium"
+                                        >
+                                            <ChevronLeft className="w-4 h-4 mr-2" />
+                                            Previous
+                                        </Button>
+
+                                        <Button
+                                            onClick={handleNext}
+                                            disabled={!isCurrentAnswered || isSaving || adaptiveAptitude.submitting}
+                                            className={`bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-8 py-6 rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 font-bold tracking-wide ${(!isCurrentAnswered || isSaving || adaptiveAptitude.submitting) ? 'opacity-50 cursor-not-allowed grayscale shadow-none' : ''
+                                                }`}
+                                        >
+                                            {(isSaving || adaptiveAptitude.submitting) ? (
+                                                <>
+                                                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                                    Saving...
+                                                </>
+                                            ) : currentSection?.isAdaptive ? (
+                                                // Adaptive section: always show "Next Question" - submission happens via section complete screen
+                                                <>
+                                                    Next Question
+                                                    <ChevronRight className="w-5 h-5 ml-2" />
+                                                </>
+                                            ) : currentSectionIndex === sections.length - 1 && currentQuestionIndex === currentSection.questions.length - 1 ? (
+                                                <>
+                                                    Submit Assessment
+                                                    <CheckCircle2 className="w-5 h-5 ml-2" />
+                                                </>
+                                            ) : (
+                                                <>
+                                                    Next Question
+                                                    <ChevronRight className="w-5 h-5 ml-2" />
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </CardContent>
+        </Card>
+    </div>
+);
 };
 
 export default AssessmentTest;

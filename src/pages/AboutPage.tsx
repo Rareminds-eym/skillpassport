@@ -1,4 +1,4 @@
-import AboutRareMinds from "@/components/AboutRareMinds"
+import { AboutRareMinds } from '@/shared/ui/marketing'
 
 export default function AboutPage() {
   return <AboutRareMinds />

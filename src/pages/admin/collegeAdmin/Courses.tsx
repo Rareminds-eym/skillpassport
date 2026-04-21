@@ -9,24 +9,24 @@ import {
   AcademicCapIcon
 } from '@heroicons/react/24/outline';
 
-import { Course } from '../../../types/educator/course';
-import { SKILL_CATEGORIES, CLASSES } from '../../../data/educator/mockCourses';
+import { Course } from '@/shared/types/educator/course';
+import { SKILL_CATEGORIES, CLASSES } from '@/features/educator';
 
-import CourseCard from '../../../components/educator/courses/CourseCard';
-import CourseFilters from '../../../components/educator/courses/CourseFilters';
-import CreateCourseModal from '../../../components/educator/courses/CreateCourseModal';
-import CourseDetailDrawer from '../../../components/educator/courses/CourseDetailDrawer';
+import { CourseCard } from '@/features/courses';
+import { CourseFilters } from '@/features/courses';
+import { CreateCourseModal } from '@/features/courses';
+import { CourseDetailDrawer } from '@/features/courses';
 
 import {
   getCoursesByEducator,
   getAllCourses,
   createCourse,
   updateCourse
-} from '../../../services/educator/coursesService';
+} from '@/features/educator';
 import toast from 'react-hot-toast';
-import { useUser, useIsAuthenticated } from '../../../stores';
-import { supabase } from '../../../lib/supabaseClient';
-import { getLogger } from '../../../config/logging';
+import { useUser, useIsAuthenticated } from '@/stores';
+import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('college-admin-courses');
 

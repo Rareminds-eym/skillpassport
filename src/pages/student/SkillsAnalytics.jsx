@@ -1,4 +1,4 @@
-import SkillsDashboard from '../../components/Students/components/SkillsDashboard';
+import { SkillsDashboard } from '@/features/student-profile';
 
 /**
  * Skills Analytics Page

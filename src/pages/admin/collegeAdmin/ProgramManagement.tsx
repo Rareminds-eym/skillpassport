@@ -10,9 +10,10 @@ import {
   ArrowPathIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-import { supabase } from "../../../lib/supabaseClient";
+import { supabase } from '@/shared/api/supabaseClient';
 import toast from "react-hot-toast";
-import { getLogger } from "../../../config/logging";
+import { getLogger } from '@/shared/config/logging';
+import { authSessionService } from '@/features/auth';
 
 interface Program {
   id: string;
@@ -51,7 +52,7 @@ const ProgramManagement: React.FC = () => {
 
   useEffect(() => {
     const fetchCollegeId = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       if (!user) return;
       
       try {
@@ -176,7 +177,7 @@ const ProgramManagement: React.FC = () => {
 
   const handleSaveProgram = async (data: Partial<Program>) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       
       if (selectedProgram) {
         // Update existing program

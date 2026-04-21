@@ -8,12 +8,13 @@
  * 4. If not logged in: redirects to login with return URL
  */
 
-import { memberInvitationService, OrganizationInvitation } from '@/services/organization/memberInvitationService';
-import { supabase } from '@/lib/supabaseClient';
+import { memberInvitationService, OrganizationInvitation } from '@/entities/organization';
+import { supabase } from '@/shared/api';
 import { AlertCircle, Building2, Check, Clock, LogIn, RefreshCw, UserPlus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { authSessionService } from '@/features/auth';
 
 type PageState = 'loading' | 'valid' | 'invalid' | 'expired' | 'accepted' | 'already_accepted' | 'error' | 'not_logged_in';
 
@@ -42,7 +43,7 @@ export default function AcceptInvitationPage() {
 
     try {
       // Check if user is logged in
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const { data: { user: currentUser } } = await authSessionService.getUser();
       setUser(currentUser);
 
       // Load invitation details

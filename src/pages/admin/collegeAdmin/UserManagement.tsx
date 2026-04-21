@@ -7,14 +7,15 @@ import {
   KeyIcon,
   ArrowUpTrayIcon,
 } from "@heroicons/react/24/outline";
-import { getLogger } from "../../../config/logging";
-import { useUsers } from "../../../hooks/college/useUsers";
-import { departmentService } from "../../../services/college";
-import { supabase } from "../../../lib/supabaseClient";
+import { getLogger } from '@/shared/config/logging';
+import { useUsers } from '@/entities/user';
+import { departmentService } from '@/features/college-admin';
+import { supabase } from '@/shared/api/supabaseClient';
 
-import UserFormModal from "./components/UserFormModal";
-import { ConfirmModal } from "../../../components/shared/ConfirmModal";
-import type { User } from "../../../types/college";
+import UserFormModal from "@/features/college-admin/ui/components/UserFormModal";
+import { ConfirmModal } from '@/shared/ui';
+import type { User } from '@/shared/types/college';
+import { authSessionService } from '@/features/auth';
 
 const UserManagement: React.FC = () => {
   const logger = getLogger('college-admin-user-management');
@@ -25,7 +26,7 @@ const UserManagement: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([]);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -41,7 +42,7 @@ const UserManagement: React.FC = () => {
     isOpen: false,
     title: "",
     message: "",
-    onConfirm: () => {},
+    onConfirm: () => { },
   });
 
   const { users, loading, error, createUser, updateUser, deactivateUser, resetPassword } = useUsers({
@@ -66,7 +67,7 @@ const UserManagement: React.FC = () => {
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
     const maxVisible = 5;
-    
+
     if (totalPages <= maxVisible) {
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
@@ -90,7 +91,7 @@ const UserManagement: React.FC = () => {
         pages.push(totalPages);
       }
     }
-    
+
     return pages;
   };
 
@@ -99,8 +100,8 @@ const UserManagement: React.FC = () => {
     const fetchDepartments = async () => {
       try {
         // Get college ID from current user
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        
+        const { data: { user: currentUser } } = await authSessionService.getUser();
+
         if (!currentUser?.email) {
           logger.error('No user logged in');
           return;
@@ -124,7 +125,7 @@ const UserManagement: React.FC = () => {
             .eq('organization_type', 'college')
             .eq('admin_id', currentUser.id)
             .maybeSingle();
-          
+
           if (orgByAdminId?.id) {
             collegeId = orgByAdminId.id;
           } else {
@@ -135,7 +136,7 @@ const UserManagement: React.FC = () => {
               .eq('organization_type', 'college')
               .eq('email', currentUser.email)
               .maybeSingle();
-            
+
             collegeId = orgByEmail?.id;
           }
         }
@@ -148,7 +149,7 @@ const UserManagement: React.FC = () => {
             .eq('organization_type', 'college')
             .limit(1)
             .maybeSingle();
-          
+
           collegeId = firstCollege?.id;
         }
 
@@ -180,11 +181,11 @@ const UserManagement: React.FC = () => {
   };
 
   const handleSubmitUser = async (userData: Partial<User>) => {
-    const result = await (selectedUser 
+    const result = await (selectedUser
       ? updateUser(selectedUser.id, userData)
       : createUser(userData)
     );
-    
+
     if (result.success) {
       if (!selectedUser && result.data?.metadata?.temporary_password) {
         setSuccessMessage(
@@ -195,7 +196,7 @@ const UserManagement: React.FC = () => {
       }
       setTimeout(() => setSuccessMessage(null), 10000);
     }
-    
+
     return result;
   };
 
@@ -309,7 +310,7 @@ const UserManagement: React.FC = () => {
               <ArrowUpTrayIcon className="h-5 w-5" />
               Bulk Import
             </button>
-            <button 
+            <button
               onClick={handleAddUser}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
             >
@@ -330,7 +331,7 @@ const UserManagement: React.FC = () => {
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          
+
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
@@ -440,32 +441,31 @@ const UserManagement: React.FC = () => {
                       </td>
                       <td className="px-4 py-3">
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            user.status === "active"
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${user.status === "active"
                               ? "bg-green-100 text-green-700"
                               : "bg-gray-100 text-gray-700"
-                          }`}
+                            }`}
                         >
                           {user.status || 'active'}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2">
-                          <button 
+                          <button
                             onClick={() => handleEditUser(user)}
                             className="p-1 text-blue-600 hover:bg-blue-50 rounded transition"
                             title="Edit user"
                           >
                             <PencilSquareIcon className="h-5 w-5" />
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleResetPassword(user.id)}
                             className="p-1 text-purple-600 hover:bg-purple-50 rounded transition"
                             title="Reset password"
                           >
                             <KeyIcon className="h-5 w-5" />
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleDeactivateUser(user.id)}
                             className="p-1 text-red-600 hover:bg-red-50 rounded transition"
                             title="Deactivate user"
@@ -515,11 +515,10 @@ const UserManagement: React.FC = () => {
                         <button
                           key={page}
                           onClick={() => setCurrentPage(page as number)}
-                          className={`px-3 py-1.5 text-sm rounded-lg transition ${
-                            currentPage === page
+                          className={`px-3 py-1.5 text-sm rounded-lg transition ${currentPage === page
                               ? 'bg-blue-600 text-white font-medium'
                               : 'border border-gray-300 hover:bg-gray-50'
-                          }`}
+                            }`}
                         >
                           {page}
                         </button>

@@ -1,4 +1,4 @@
-import type { ExamSlot, MarkEntry, Transcript } from '../../types/college';
+import type { ExamSlot, MarkEntry, Transcript } from '@/shared/types/college';
 
 // Mock Exam Slots
 export const mockExamSlots: ExamSlot[] = [

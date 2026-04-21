@@ -9,24 +9,25 @@ import {
   AcademicCapIcon
 } from '@heroicons/react/24/outline';
 
-import { Course } from '../../../types/educator/course';
-import { SKILL_CATEGORIES, CLASSES } from '../../../data/educator/mockCourses';
+import { Course } from '@/shared/types/educator/course';
+import { SKILL_CATEGORIES, CLASSES } from '@/features/educator';
 
-import CourseCard from '../../../components/educator/courses/CourseCard';
-import CourseFilters from '../../../components/educator/courses/CourseFilters';
-import CreateCourseModal from '../../../components/educator/courses/CreateCourseModal';
-import CourseDetailDrawer from '../../../components/educator/courses/CourseDetailDrawer';
-import AssignEducatorModal from '../../../components/educator/courses/AssignEducatorModal';
+import { CourseCard } from '@/features/courses';
+import { CourseFilters } from '@/features/courses';
+import { CreateCourseModal } from '@/features/courses';
+import { CourseDetailDrawer } from '@/features/courses';
+import { AssignEducatorModal } from '@/features/courses';
 
 import {
   getAllCourses,
   createCourse,
   updateCourse
-} from '../../../services/educator/coursesService';
+} from '@/features/educator';
 import toast from 'react-hot-toast'
-import { useUser, useIsAuthenticated } from '../../../stores'
-import { supabase } from '../../../lib/supabaseClient';
-import { getLogger } from '../../../config/logging';
+import { useUser, useIsAuthenticated } from '@/stores'
+import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+import { authSessionService } from '@/features/auth';
 
 const logger = getLogger('school-admin-courses');
 
@@ -89,7 +90,7 @@ const Courses: React.FC = () => {
         logger.info('User authenticated from AuthContext', { userId: user.id, email: user.email, role: user.role });
 
         // Verify Supabase session and use Supabase user ID
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await authSessionService.getSession();
         if (!session) {
           logger.error('No Supabase session found');
           setError('Authentication session expired. Please log in again.');
@@ -258,7 +259,7 @@ const Courses: React.FC = () => {
     }
 
     // Verify Supabase session before creating
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await authSessionService.getSession();
     if (!session) {
       logger.error('No Supabase session');
       setError('Authentication session expired. Please log in again.');

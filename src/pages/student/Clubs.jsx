@@ -11,10 +11,10 @@ import {
     AlertCircle,
     CheckCircle,
 } from "lucide-react";
-import { supabase } from "../../lib/supabaseClient";
-import * as clubsService from "../../services/clubsService";
-import * as competitionsService from "../../services/competitionsService";
-import { getLogger } from "../../config/logging";
+import { supabase } from '@/shared/api/supabaseClient';
+import * as clubsService from "@/features/college-admin";
+import * as competitionsService from "@/features/college-admin";
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('StudentClubs');
 

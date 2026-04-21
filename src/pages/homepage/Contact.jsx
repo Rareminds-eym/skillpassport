@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import Button from '../../components/Button';
+import Button from '@/shared/ui/Button';
 import { Mail, Phone, MapPin } from 'lucide-react';
 
 const Contact = () => {

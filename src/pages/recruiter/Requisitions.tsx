@@ -21,12 +21,12 @@ import {
 } from '@heroicons/react/24/outline';
 import { BriefcaseIcon as BriefcaseSolidIcon } from '@heroicons/react/24/solid';
 import React, { useEffect, useState } from 'react';
-import AdvancedRequisitionFilters from '../../components/Recruiter/components/AdvancedRequisitionFilters';
-import RequisitionImport from '../../components/Recruiter/RequisitionImport';
-import { useUser } from '../../stores';
-import { supabase } from '../../lib/supabaseClient';
-import { RequisitionFilters } from '../../types/recruiter';
-import { getLogger } from '../../config/logging';
+import { AdvancedRequisitionFilters } from '@/features/recruiter';
+import { RequisitionImport } from '@/features/recruiter';
+import { useUser } from '@/stores';
+import { supabase } from '@/shared/api/supabaseClient';
+import { RequisitionFilters } from '@/shared/types/recruiter';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('Requisitions');
 

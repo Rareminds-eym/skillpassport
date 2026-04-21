@@ -9,231 +9,35 @@ import {
     Search,
     Trash2
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import OpportunityCard from '../../components/Students/components/OpportunityCard';
-import OpportunityListItem from '../../components/Students/components/OpportunityListItem';
-import OpportunityPreview from '../../components/Students/components/OpportunityPreview';
-import { useUser } from '../../stores';
-import AppliedJobsService from '../../services/appliedJobsService';
-import SavedJobsService from '../../services/savedJobsService';
-import { getLogger } from '../../config/logging';
-
-const logger = getLogger('SavedJobs');
+import { OpportunityCard, OpportunityListItem, OpportunityPreview } from '@/widgets/student-dashboard';
+import { useUser } from '@/stores';
+import { useSavedJobs } from '@/features/opportunities';
 
 const SavedJobs = () => {
   const user = useUser();
-  const userEmail = localStorage.getItem('userEmail') || user?.email;
   const studentId = user?.id;
 
-  // State management
-  const [savedJobs, setSavedJobs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('newest');
-  const [viewMode, setViewMode] = useState('grid');
-  const [selectedOpportunity, setSelectedOpportunity] = useState(null);
-  const [appliedJobs, setAppliedJobs] = useState(new Set());
-  const [isApplying, setIsApplying] = useState(false);
-  const [showActiveOnly, setShowActiveOnly] = useState(true);
-
-  // Load saved jobs
-  useEffect(() => {
-    const loadSavedJobs = async () => {
-      if (!studentId) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        
-        const jobs = await SavedJobsService.getSavedJobsWithAppliedStatus(studentId);
-        
-        setSavedJobs(jobs);
-        
-        // Set applied jobs
-        const appliedSet = new Set(
-          jobs.filter(job => job.has_applied).map(job => job.id)
-        );
-        setAppliedJobs(appliedSet);
-        
-        setError(null);
-      } catch (err) {
-        logger.error('❌ Error loading saved jobs', err);
-        setError(err.message || 'Failed to load saved jobs');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadSavedJobs();
-  }, [studentId]);
-
-  // Filter and sort saved jobs
-  const filteredAndSortedJobs = useMemo(() => {
-    // First filter
-    let filtered = savedJobs.filter(job => {
-      const matchesSearch = 
-        job.job_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        job.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        job.company_name?.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesActiveOnly = !showActiveOnly || job.is_active;
-
-      return matchesSearch && matchesActiveOnly;
-    });
-
-    // Then sort
-    const sorted = [...filtered].sort((a, b) => {
-      switch (sortBy) {
-        case 'newest':
-          return new Date(b.saved_at) - new Date(a.saved_at);
-        case 'oldest':
-          return new Date(a.saved_at) - new Date(b.saved_at);
-        case 'deadline':
-          const aDeadline = a.deadline || '9999-12-31';
-          const bDeadline = b.deadline || '9999-12-31';
-          return new Date(aDeadline) - new Date(bDeadline);
-        default:
-          return 0;
-      }
-    });
-
-    return sorted;
-  }, [savedJobs, searchTerm, sortBy, showActiveOnly]);
-
-  // Handle unsave
-  const handleUnsave = async (opportunity) => {
-    if (!studentId) {
-      alert('Please log in to unsave jobs');
-      return;
-    }
-
-    const confirmUnsave = window.confirm(
-      `Remove "${opportunity.job_title || opportunity.title}" from saved jobs?`
-    );
-
-    if (!confirmUnsave) return;
-
-    try {
-      const result = await SavedJobsService.unsaveJob(studentId, opportunity.id);
-      
-      if (result.success) {
-        // Remove from local state
-        setSavedJobs(prev => prev.filter(job => job.id !== opportunity.id));
-        alert('Job removed from saved list');
-      } else {
-        alert(result.message);
-      }
-    } catch (error) {
-      logger.error('Error unsaving job', error);
-      alert('Failed to unsave job');
-    }
-  };
-
-  // Handle apply
-  const handleApply = async (opportunity) => {
-    if (!studentId) {
-      alert('Please log in to apply for jobs');
-      return;
-    }
-
-    if (appliedJobs.has(opportunity.id)) {
-      alert('You have already applied to this job');
-      return;
-    }
-
-    // If there's an external application link
-    if (opportunity.application_link) {
-      const confirmExternal = window.confirm(
-        'This will open an external application page. Would you also like to save this application to your profile?'
-      );
-      
-      if (confirmExternal) {
-        setIsApplying(true);
-        const result = await AppliedJobsService.applyToJob(studentId, opportunity.id);
-        setIsApplying(false);
-        
-        if (result.success) {
-          setAppliedJobs(prev => new Set([...prev, opportunity.id]));
-          
-          // Update local state to show applied
-          setSavedJobs(prev => prev.map(job => 
-            job.id === opportunity.id 
-              ? { ...job, has_applied: true, application_status: 'applied' }
-              : job
-          ));
-          
-          alert(result.message);
-        } else {
-          alert(result.message);
-        }
-      }
-      
-      window.open(opportunity.application_link, '_blank');
-      return;
-    }
-
-    // Internal application
-    const confirmApply = window.confirm(
-      `Apply to ${opportunity.job_title || opportunity.title} at ${opportunity.company_name}?`
-    );
-
-    if (!confirmApply) return;
-
-    setIsApplying(true);
-    const result = await AppliedJobsService.applyToJob(studentId, opportunity.id);
-    setIsApplying(false);
-
-    if (result.success) {
-      setAppliedJobs(prev => new Set([...prev, opportunity.id]));
-      
-      // Update local state
-      setSavedJobs(prev => prev.map(job => 
-        job.id === opportunity.id 
-          ? { ...job, has_applied: true, application_status: 'applied' }
-          : job
-      ));
-      
-      alert(result.message);
-    } else {
-      alert(result.message);
-    }
-  };
-
-  // Clear inactive jobs
-  const handleClearInactive = async () => {
-    if (!studentId) return;
-
-    const inactiveCount = savedJobs.filter(job => !job.is_active).length;
-    
-    if (inactiveCount === 0) {
-      alert('No inactive saved jobs to remove');
-      return;
-    }
-
-    const confirm = window.confirm(
-      `Remove ${inactiveCount} inactive/expired jobs from your saved list?`
-    );
-
-    if (!confirm) return;
-
-    try {
-      const result = await SavedJobsService.removeInactiveSavedJobs(studentId);
-      
-      if (result.success) {
-        setSavedJobs(prev => prev.filter(job => job.is_active));
-        alert(result.message);
-      } else {
-        alert(result.message);
-      }
-    } catch (error) {
-      logger.error('Error clearing inactive jobs', error);
-      alert('Failed to clear inactive jobs');
-    }
-  };
+  const {
+    savedJobs,
+    loading,
+    error,
+    searchTerm,
+    sortBy,
+    viewMode,
+    selectedOpportunity,
+    appliedJobs,
+    isApplying,
+    showActiveOnly,
+    filteredAndSortedJobs,
+    setSearchTerm,
+    setSortBy,
+    setViewMode,
+    setSelectedOpportunity,
+    setShowActiveOnly,
+    handleUnsave,
+    handleApply,
+  } = useSavedJobs({ studentId });
 
   return (
     <div className="min-h-screen bg-gray-50">

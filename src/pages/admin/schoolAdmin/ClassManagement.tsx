@@ -17,8 +17,8 @@ import {
 } from "@heroicons/react/24/outline"
 import { useEffect, useMemo, useState } from "react"
 import toast from "react-hot-toast"
-import { supabase } from "../../../lib/supabaseClient"
-import { getLogger } from "../../../config/logging"
+import { supabase } from '@/shared/api/supabaseClient'
+import { getLogger } from '@/shared/config/logging'
 
 const logger = getLogger('school-admin-class-management');
 
@@ -651,7 +651,7 @@ const ClassManagement = () => {
 
   const fetchSchoolId = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { user } } = await authSessionService.getUser()
       if (!user) {
         logger.warn("No user found")
         return
@@ -1462,7 +1462,8 @@ const ClassManagement = () => {
 }
 
 // Import modal components
-import { AssignEducatorModal as AssignEducatorModalComponent, ManageStudentsModal as ManageStudentsModalComponent } from "../../../components/admin/modals/ClassManagementModals"
-import Pagination from "../../../components/admin/Pagination"
+import { AssignEducatorModal as AssignEducatorModalComponent, ManageStudentsModal as ManageStudentsModalComponent } from '@/features/college-admin'
+import { Pagination } from '@/shared/ui'
+import { authSessionService } from '@/features/auth';
 
 export default ClassManagement

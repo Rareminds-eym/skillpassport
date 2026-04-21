@@ -14,16 +14,16 @@ import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 import { useEffect, useMemo, useState } from 'react';
 import ReactPaginate from 'react-paginate';
 import { useOutletContext } from 'react-router-dom';
-import { getLogger } from '../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('TalentPool');
-import SearchBar from '../../components/common/SearchBar';
-import { FeatureGate } from '../../components/Subscription/FeatureGate';
-import { useSearch } from '../../stores';
-import { useStudents } from '../../hooks/useStudents';
-import { createInterview } from '../../services/interviewService';
-import { createSavedSearch } from '../../services/savedSearchesService';
-import { addCandidateToShortlist, getShortlists } from '../../services/shortlistService';
+import { SearchBar } from '@/shared/ui';
+import { FeatureGate } from '@/features/subscription';
+import { useSearch } from '@/stores';
+import { useStudents } from '@/entities/student';
+import { createInterview } from '@/features/opportunities';
+import { createSavedSearch } from '@/features/opportunities';
+import { addCandidateToShortlist, getShortlists } from '@/features/opportunities';
 
 const FilterSection = ({ title, children, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);

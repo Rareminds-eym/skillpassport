@@ -1,9 +1,9 @@
-import { useUser } from "../../../stores";
-import { reportsService } from "@/services/college/reportsService";
+import { useUser } from '@/stores';
+import { reportsService } from "@/features/college-admin";
 import { ApexOptions } from "apexcharts";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { getLogger } from "../../../config/logging";
+import { getLogger } from '@/shared/config/logging';
 import {
     Activity,
     Award,
@@ -130,7 +130,7 @@ const ReportsAnalytics: React.FC = () => {
 
         // Fallback to Supabase auth
         if (user?.id) {
-          const { supabase } = await import('@/lib/supabaseClient');
+          const { supabase } = await import('@/shared/api/supabaseClient');
           
           // Query organizations table for college
           const { data: org } = await supabase

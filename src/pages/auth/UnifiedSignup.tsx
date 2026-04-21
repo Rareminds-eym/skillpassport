@@ -20,12 +20,13 @@ import {
   getTimeUntilFullRegOpens,
   isFullRegistrationOpen,
   FULL_REGISTRATION_START_DATE
-} from '../../config/registrationConfig';
+} from "@/shared/config/registrationConfig";
 // @ts-ignore - JS module without types
-import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
+import { sendOtp, verifyOtp as verifyOtpApi } from '@/features/auth/api';
 // @ts-ignore - JS module without types
-import DatePicker from '../../components/Subscription/shared/DatePicker';
-import { supabase } from '../../lib/supabaseClient';
+import { DatePicker } from '@/features/subscription';
+import { supabase } from '@/shared/api/supabaseClient';
+import { authSessionService } from '@/features/auth';
 
 type UserRole = 'school_student' | 'college_student' | 'learner' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
 
@@ -355,7 +356,6 @@ const UnifiedSignup = () => {
 
   // Check if OTP verification should be skipped (for localhost/development and production)
   const skipOtpVerification =
-    import.meta.env.VITE_SKIP_OTP_VERIFICATION === 'true' ||
     window.location.hostname === 'localhost' ||
     window.location.hostname === '127.0.0.1' ||
     window.location.origin === 'https://skillpassport.pages.dev';
@@ -415,7 +415,7 @@ const UnifiedSignup = () => {
     try {
       // Use the Pages Function API for signup with proper rollback support
       // This ensures no orphaned auth users are created
-      const { getPagesApiUrl } = await import('../../utils/pagesUrl');
+      const { getPagesApiUrl } = await import('@/shared/lib/pagesUrl');
       const USER_API_URL = getPagesApiUrl('user');
 
       const response = await fetch(`${USER_API_URL}/signup`, {
@@ -450,13 +450,13 @@ const UnifiedSignup = () => {
       // CRITICAL FIX: Auto-login after successful signup
       // This establishes a Supabase session so the user is authenticated
       console.log('🔐 Auto-logging in after signup...');
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: state.email,
-        password: state.password,
-      });
+      const { data: signInData, error: signInError } = await authSessionService.signInWithPassword(
+        state.email,
+        state.password
+      );
 
       if (signInError) {
-        console.error('⚠️ Auto-login failed:', signInError.message);
+        console.error('⚠️ Auto-login failed:', (signInError as any)?.message || signInError);
         // Even if auto-login fails, the account was created successfully
         // User can manually log in
       } else {

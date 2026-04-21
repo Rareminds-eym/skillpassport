@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import AddAttendanceSessionModal from "@/components/admin/modals/AddAttendanceSessionModal";
-import AttendanceDetailsModal from "@/components/admin/modals/AttendanceDetailsModal";
-import StudentHistoryModal from "@/components/admin/modals/StudentHistoryModal";
-import { supabase } from "@/lib/supabaseClient";
-import { AttendanceRecord, AttendanceSession, SubjectGroup, Student as AttendanceStudent } from "@/types/Attendance";
-import { Student as ProfileStudent } from "@/types/student";
-import { curriculumService } from "@/services/college/curriculumService";
+import { AddAttendanceSessionModal } from "@/features/admin";
+import { AttendanceDetailsModal } from "@/features/admin";
+import { StudentHistoryModal } from "@/features/admin";
+import { supabase } from "@/shared/api";
+import { AttendanceRecord, AttendanceSession, SubjectGroup, Student as AttendanceStudent } from "@/features/college-admin";
+import { Student as ProfileStudent } from "@/entities/student";
+import { curriculumService } from "@/features/college-admin";
 import toast from "react-hot-toast";
-import { getLogger } from "@/config/logging";
+import { getLogger } from "@/shared/config/logging";
 
 const logger = getLogger('college-admin-attendance-tracking');
 import {
@@ -35,9 +35,10 @@ import {
 } from "@heroicons/react/24/outline";
 import React, { useEffect, useMemo, useState } from "react";
 import ReactApexChart from "react-apexcharts";
-import KPICard from "../../../components/admin/KPICard";
-import Pagination from "../../../components/admin/Pagination";
-import SearchBar from "../../../components/common/SearchBar";
+import { KPICard } from '@/features/analytics';
+import { Pagination } from '@/shared/ui';
+import { SearchBar } from '@/shared/ui';
+import { authSessionService } from '@/features/auth';
 
 
 
@@ -487,7 +488,7 @@ const AttendanceTracking: React.FC = () => {
   const fetchFilterOptions = async () => {
     try {
       // Get current user's college_id first
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       let currentCollegeId = null;
       
       if (user) {
@@ -762,7 +763,7 @@ const AttendanceTracking: React.FC = () => {
   // useEffect hooks
   useEffect(() => {
     const fetchCollegeId = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       if (!user) return;
       
       try {
@@ -1148,7 +1149,7 @@ const AttendanceTracking: React.FC = () => {
 
     try {
       // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       if (!user) {
         alert("Please log in to create a session.");
         return;

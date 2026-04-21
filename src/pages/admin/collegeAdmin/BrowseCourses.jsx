@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '../../../components/Students/components/ui/card';
-import { Button } from '../../../components/Students/components/ui/button';
-import { Badge } from '../../../components/Students/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from '@/shared/ui';
 import {
   Search,
   BookOpen,
@@ -14,9 +12,9 @@ import {
   ChevronRight,
   ArrowDownAZ
 } from 'lucide-react';
-import { supabase } from '../../../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 import { motion } from 'framer-motion';
-import CourseDetailModal from '../../../components/student/courses/CourseDetailModal';
+import { CourseDetailModal } from '@/features/courses';
 
 const BrowseCourses = () => {
   const navigate = useNavigate();

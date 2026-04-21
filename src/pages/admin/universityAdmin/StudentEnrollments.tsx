@@ -12,13 +12,13 @@ import {
   PhoneIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
-import SearchBar from '../../../components/common/SearchBar';
-import Pagination from '../../../components/admin/Pagination';
-import StudentProfileDrawer from '@/components/shared/StudentProfileDrawer';
-import CareerPathDrawer from '@/components/admin/components/CareerPathDrawer';
-import { useStudents } from '../../../hooks/useAdminStudents';
-import { generateCareerPath, type CareerPathResponse, type StudentProfile } from '@/services/aiCareerPathService';
-import { getLogger } from '../../../config/logging';
+import { SearchBar } from '@/shared/ui';
+import { Pagination } from '@/shared/ui';
+import { StudentProfileDrawer } from '@/features/student-profile';
+import { CareerPathDrawer } from '@/features/admin';
+import { useStudents } from '@/entities/student';
+import { generateCareerPath, type CareerPathResponse, type StudentProfile } from '@/features/counselling';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('university-admin-student-enrollments');
 

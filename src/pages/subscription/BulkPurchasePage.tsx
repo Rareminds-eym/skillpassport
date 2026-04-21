@@ -8,11 +8,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import BulkPurchaseWizard, { PurchaseData } from '../../components/Subscription/Organization/BulkPurchaseWizard';
-import { useUser, useIsAuthenticated } from '../../stores';
-import { supabase } from '../../lib/supabaseClient';
-import { organizationMemberService } from '../../services/organization/organizationMemberService';
-import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
+import BulkPurchaseWizard from '@/features/subscription/ui/organization/BulkPurchaseWizard';
+import type { PurchaseData } from '@/features/subscription/ui/organization/BulkPurchaseWizard';
+import { useUser, useIsAuthenticated } from '@/stores';
+import { supabase } from '@/shared/api/supabaseClient';
+import { organizationMemberService } from '@/entities/organization';
+import { useSubscriptionPlansData } from '@/features/subscription/model';
 
 function BulkPurchasePage() {
   const navigate = useNavigate();
@@ -50,13 +51,16 @@ function BulkPurchasePage() {
     const fetchOrganizationId = async () => {
       console.log('[BulkPurchasePage] Fetching organization ID, user:', user);
 
+      // Type assertion for user with organization IDs
+      const userWithOrg = user as any;
+
       // First check user object
-      if (user?.school_id) { console.log('[BulkPurchasePage] Found school_id:', user.school_id); setOrganizationId(String(user.school_id)); return; }
-      if (user?.college_id) { console.log('[BulkPurchasePage] Found college_id:', user.college_id); setOrganizationId(String(user.college_id)); return; }
-      if (user?.university_id) { console.log('[BulkPurchasePage] Found university_id:', user.university_id); setOrganizationId(String(user.university_id)); return; }
-      if (user?.schoolId) { console.log('[BulkPurchasePage] Found schoolId:', user.schoolId); setOrganizationId(String(user.schoolId)); return; }
-      if (user?.collegeId) { console.log('[BulkPurchasePage] Found collegeId:', user.collegeId); setOrganizationId(String(user.collegeId)); return; }
-      if (user?.universityId) { console.log('[BulkPurchasePage] Found universityId:', user.universityId); setOrganizationId(String(user.universityId)); return; }
+      if (userWithOrg?.school_id) { console.log('[BulkPurchasePage] Found school_id:', userWithOrg.school_id); setOrganizationId(String(userWithOrg.school_id)); return; }
+      if (userWithOrg?.college_id) { console.log('[BulkPurchasePage] Found college_id:', userWithOrg.college_id); setOrganizationId(String(userWithOrg.college_id)); return; }
+      if (userWithOrg?.university_id) { console.log('[BulkPurchasePage] Found university_id:', userWithOrg.university_id); setOrganizationId(String(userWithOrg.university_id)); return; }
+      if (userWithOrg?.schoolId) { console.log('[BulkPurchasePage] Found schoolId:', userWithOrg.schoolId); setOrganizationId(String(userWithOrg.schoolId)); return; }
+      if (userWithOrg?.collegeId) { console.log('[BulkPurchasePage] Found collegeId:', userWithOrg.collegeId); setOrganizationId(String(userWithOrg.collegeId)); return; }
+      if (userWithOrg?.universityId) { console.log('[BulkPurchasePage] Found universityId:', userWithOrg.universityId); setOrganizationId(String(userWithOrg.universityId)); return; }
 
       // Fallback to localStorage
       const storedUser = localStorage.getItem('user');
@@ -178,8 +182,8 @@ function BulkPurchasePage() {
   });
 
   const availablePlans = useMemo(() => {
-    if (!dbPlans) return [];
-    return dbPlans.map((plan: any) => ({
+    if (!dbPlans || !Array.isArray(dbPlans)) return [];
+    return (dbPlans as any[]).map((plan: any) => ({
       id: plan.id,
       name: plan.name,
       price: plan.price ? parseInt(plan.price) : 0,
@@ -232,7 +236,7 @@ function BulkPurchasePage() {
     fetchMembers();
   }, [fetchMembers]);
 
-  const organizationName = user?.school_name || user?.college_name || user?.university_name || 'Your Organization';
+  const organizationName = (user as any)?.school_name || (user as any)?.college_name || (user as any)?.university_name || 'Your Organization';
 
   // Get base path for navigation
   const basePath = useMemo(() => {

@@ -8,20 +8,21 @@ import {
 } from '@heroicons/react/24/outline';
 import React, { useEffect, useMemo, useState } from 'react';
 
-import { CLASSES, SKILL_CATEGORIES } from '../../../data/educator/mockCourses';
-import { Course } from '../../../types/educator/course';
+import { CLASSES, SKILL_CATEGORIES } from '@/features/educator';
+import { Course } from '@/shared/types/educator/course';
 
-import CourseCard from '../../../components/educator/courses/CourseCard';
-import CourseDetailDrawer from '../../../components/educator/courses/CourseDetailDrawer';
-import CourseFilters from '../../../components/educator/courses/CourseFilters';
-import CreateCourseModal from '../../../components/educator/courses/CreateCourseModal';
+import { CourseCard } from '@/features/courses';
+import { CourseDetailDrawer } from '@/features/courses';
+import { CourseFilters } from '@/features/courses';
+import { CreateCourseModal } from '@/features/courses';
 
 import toast from 'react-hot-toast'
-import { useUser, useIsAuthenticated } from '../../../stores'
-import { getLogger } from '../../../config/logging';
+import { useUser, useIsAuthenticated } from '@/stores'
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('university-admin-courses');
-import { supabase } from '../../../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
+import { courseDetailsService } from '@/features/courses';
 
 const UniversityAdminCourses: React.FC = () => {
   const user = useUser();
@@ -74,9 +75,9 @@ const UniversityAdminCourses: React.FC = () => {
 
       // Fetch related data
       const [skillsResult, classesResult, modulesResult] = await Promise.allSettled([
-        supabase.from('course_skills').select('course_id, skill_name').in('course_id', courseIds),
-        supabase.from('course_classes').select('course_id, class_name').in('course_id', courseIds),
-        supabase.from('course_modules').select('*, lessons(*, lesson_resources(*))').in('course_id', courseIds).order('order_index', { ascending: true })
+        courseDetailsService.getCourseSkills(courseIds),
+        courseDetailsService.getCourseClasses(courseIds),
+        courseDetailsService.getCourseModules(courseIds)
       ]);
 
       // Build lookup maps
@@ -84,22 +85,22 @@ const UniversityAdminCourses: React.FC = () => {
       const classesMap: Record<string, string[]> = {};
       const modulesMap: Record<string, any[]> = {};
 
-      if (skillsResult.status === 'fulfilled' && skillsResult.value.data) {
-        skillsResult.value.data.forEach((s: any) => {
+      if (skillsResult.status === 'fulfilled' && skillsResult.value) {
+        skillsResult.value.forEach((s: any) => {
           if (!skillsMap[s.course_id]) skillsMap[s.course_id] = [];
           skillsMap[s.course_id].push(s.skill_name);
         });
       }
 
-      if (classesResult.status === 'fulfilled' && classesResult.value.data) {
-        classesResult.value.data.forEach((c: any) => {
+      if (classesResult.status === 'fulfilled' && classesResult.value) {
+        classesResult.value.forEach((c: any) => {
           if (!classesMap[c.course_id]) classesMap[c.course_id] = [];
           classesMap[c.course_id].push(c.class_name);
         });
       }
 
-      if (modulesResult.status === 'fulfilled' && modulesResult.value.data) {
-        modulesResult.value.data.forEach((m: any) => {
+      if (modulesResult.status === 'fulfilled' && modulesResult.value) {
+        modulesResult.value.forEach((m: any) => {
           if (!modulesMap[m.course_id]) modulesMap[m.course_id] = [];
           modulesMap[m.course_id].push(m);
         });

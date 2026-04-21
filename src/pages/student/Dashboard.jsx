@@ -40,10 +40,11 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { motion } from "motion/react";
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { useLocation, useNavigate } from "react-router-dom";
-import AchievementsTimeline from "../../components/Students/components/AchievementsTimeline";
-import AnalyticsView from "../../components/Students/components/AnalyticsView";
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('Dashboard');
 import {
   CertificatesEditModal,
   EducationEditModal,
@@ -51,26 +52,16 @@ import {
   ProjectsEditModal,
   SkillsEditModal,
   TrainingEditModal,
-} from "../../components/Students/components/ProfileEditModals";
-import TrainingRecommendations from "../../components/Students/components/TrainingRecommendations";
-import { Badge } from "../../components/Students/components/ui/badge";
-import { Button } from "../../components/Students/components/ui/button";
-import { getLogger } from "../../config/logging";
-
-const logger = getLogger('Dashboard');
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/Students/components/ui/card";
+} from '@/widgets/student-dashboard/ui/modals';
+import { AchievementsTimeline, AnalyticsView, TrainingRecommendations } from '@/widgets/student-dashboard';
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/ui';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "../../components/Students/components/ui/dropdown-menu";
-import { LampContainer } from "../../components/Students/components/ui/lamp";
+} from '@/shared/ui';
+import { LampContainer } from '@/shared/ui';
 import {
   educationData,
   experienceData,
@@ -78,30 +69,29 @@ import {
   suggestions,
   technicalSkills,
   trainingData,
-} from "../../components/Students/data/mockData";
-import { useAIRecommendations } from "../../hooks/useAIRecommendations";
-import { useAssessmentRecommendations } from "../../hooks/useAssessmentRecommendations";
-import { useUserRole } from "../../stores";
-import { useOpportunities } from "../../hooks/useOpportunities";
-import { useStudentAchievements } from "../../hooks/useStudentAchievements";
-import { useStudentCertificates } from "../../hooks/useStudentCertificates";
-import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
-import { useStudentEducation } from "../../hooks/useStudentEducation";
-import { useStudentExperience } from "../../hooks/useStudentExperience";
-import { useStudentTechnicalSkills, useStudentSoftSkills } from "../../hooks/useStudentSkills";
-import { useStudentLearning } from "../../hooks/useStudentLearning";
-import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
-import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
-import { useStudentProjects } from "../../hooks/useStudentProjects";
-import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
-import { supabase } from "../../lib/supabaseClient";
-import { isSchoolStudent, isCollegeStudent, isLearner } from '../../utils/studentType';
+} from "@/shared/lib/test/mockData";
+import { useAIRecommendations } from '@/features/ai-tutor';
+import { useAssessmentRecommendations } from '@/features/assessment/model/useAssessmentRecommendations';
+import { useUserRole } from "@/stores";
+import { useOpportunities } from '@/features/opportunities';
+import { useStudentProfile, useStudentPortfolio, useStudentActivity, useStudentMessages } from "@/features/student-profile";
+import { useStudentDataByEmail } from '@/entities/student';
+import { useStudentCertificates } from '@/entities/student';
+import { useStudentLearning } from '@/entities/student';
+import { useStudentProjects } from '@/entities/student';
+import { useStudentExperience } from '@/entities/student';
+import { useStudentEducation } from '@/entities/student';
+import { useStudentTechnicalSkills, useStudentSoftSkills } from '@/entities/student';
+import { useStudentMessageNotifications, useStudentUnreadCount } from '@/entities/student';
+import { useStudentAchievements } from '@/entities/student';
+import { useStudentRealtimeActivities } from '@/shared/lib/hooks';
+import { supabase } from '@/shared/api/supabaseClient';
+import { isSchoolStudent, isCollegeStudent, isLearner } from '@/entities/student/lib/studentType';
 // Debug utilities removed for production cleanliness
 
 // Import Tour Components - Now handled globally
 // Tours are managed by GlobalTourManager in App.tsx
 
-// Opportunities Card Content Component
 const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matchedJobs = [] }) => {
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -2820,20 +2810,6 @@ const StudentDashboard = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] py-6 px-4">
-
-      {/* Hot-toast notification container */}
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          style: {
-            zIndex: 60,
-          },
-          duration: 5000,
-        }}
-        containerStyle={{
-          zIndex: 60,
-        }}
-      />
 
       <div className="w-full mx-auto">
         {/* View Switcher Tabs */}

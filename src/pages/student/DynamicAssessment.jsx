@@ -11,10 +11,9 @@ import {
   AlertCircle,
   ChevronRight
 } from 'lucide-react';
-import { Button } from '../../components/Students/components/ui/button';
-import { Card, CardContent } from '../../components/Students/components/ui/card';
-import { RadioGroup, RadioGroupItem } from '../../components/Students/components/ui/radio-group';
-import { Label } from '../../components/Students/components/ui/label';
+import { Button, Card, CardContent } from '@/shared/ui';
+import { RadioGroup, RadioGroupItem } from '@/shared/ui';
+import { Label } from '@/shared/ui';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,16 +23,16 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '../../components/Students/components/ui/alert-dialog';
-import { generateAssessment, getCachedAssessment, cacheAssessment } from '../../services/assessmentGenerationService';
+} from '@/shared/ui';
+import { generateAssessment, getCachedAssessment, cacheAssessment } from '@/features/assessment/api/assessmentGenerationService';
 import {
   createAssessmentAttempt,
   updateAssessmentProgress,
   completeAssessment,
   checkAssessmentStatus
-} from '../../services/externalAssessmentService';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
-import { useUser } from '../../stores';
+} from '@/features/assessment/api/externalAssessmentService';
+import { useStudentProfile } from '@/features/student-profile';
+import { useAuth } from '@/features/auth';
 
 /**
  * Dynamic Assessment Component

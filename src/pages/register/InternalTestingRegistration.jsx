@@ -20,12 +20,11 @@ import {
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { signupStudent } from '../../services/studentAuthService';
-import { supabase } from '../../lib/supabaseClient';
+import { signupStudent } from '@/entities/user/api/userApiService';
+import { supabase } from '@/shared/api/supabaseClient';
 
-const EMAIL_API_URL = import.meta.env.DEV 
-  ? 'http://localhost:8788/api/email'
-  : 'https://skillpassport.rareminds.in/api/email';
+const EMAIL_API_URL = import.meta.env.VITE_EMAIL_API_URL || 
+  (import.meta.env.DEV ? '/api/email' : import.meta.env.VITE_PRODUCTION_EMAIL_API_URL || 'https://skillpassport.rareminds.in/api/email');
 
 const validateForm = (form) => {
   const errors = {};

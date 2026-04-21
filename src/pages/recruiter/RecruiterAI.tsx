@@ -1,5 +1,5 @@
-import { FeatureGate } from '../../components/Subscription/FeatureGate';
-import RecruiterCopilot from '../../features/recruiter-copilot/components/RecruiterCopilot';
+import { FeatureGate } from '@/features/subscription';
+import RecruiterCopilot from '@/features/recruiter-copilot/ui/RecruiterCopilot';
 
 /**
  * Recruitment Intelligence Page

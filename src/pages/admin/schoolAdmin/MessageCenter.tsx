@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useRef, useEffect } from "react";
-import { getLogger } from '../../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 import {
   ChatBubbleLeftRightIcon,
   PaperClipIcon,
@@ -12,6 +12,8 @@ import {
   VideoCameraIcon,
 } from "@heroicons/react/24/outline";
 import { CheckCheck, Send } from "lucide-react";
+import { validateFileSize } from "@/shared/lib/fileValidation";
+import { getFileSizeLimit } from "@/shared/config/fileSizeLimits";
 
 /* ==============================
    TYPES & INTERFACES
@@ -313,8 +315,11 @@ const MessageCenter: React.FC = () => {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
-      // Validate file size (max 5MB)
-      const validFiles = files.filter((file) => file.size <= 5 * 1024 * 1024);
+      // Validate file size using centralized validation
+      const validFiles = files.filter((file) => {
+        const validation = validateFileSize(file, { context: 'message_attachment' });
+        return validation.valid;
+      });
       setAttachments((prev) => [...prev, ...validFiles]);
     }
   };
@@ -477,7 +482,7 @@ const MessageCenter: React.FC = () => {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="flex-shrink-0 p-2.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                  title="Attach file (max 5MB, PDF/JPG only)"
+                  title={`Attach file (max ${getFileSizeLimit('message_attachment').displaySize}, PDF/JPG only)`}
                 >
                   <PaperClipIcon className="h-5 w-5" />
                 </button>

@@ -1,22 +1,15 @@
 import {
-    AcademicCapIcon,
-    ArchiveBoxIcon,
-    ArrowUturnLeftIcon,
-    ChatBubbleLeftRightIcon,
-    ChevronLeftIcon,
-    ChevronRightIcon,
-    ChevronDownIcon,
-    EllipsisVerticalIcon,
-    FaceSmileIcon,
-    MagnifyingGlassIcon,
-    PaperAirplaneIcon,
-    PaperClipIcon,
-    PhoneIcon,
-    TrashIcon,
-    UserGroupIcon,
-    UserIcon,
-    VideoCameraIcon,
-    XMarkIcon
+  AcademicCapIcon,
+  ArchiveBoxIcon,
+  ArrowUturnLeftIcon,
+  ChatBubbleLeftRightIcon,
+  ChevronRightIcon,
+  ChevronDownIcon,
+  MagnifyingGlassIcon,
+  PaperAirplaneIcon,
+  TrashIcon,
+  UserIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -24,21 +17,21 @@ import { formatDistanceToNow } from 'date-fns';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation } from 'react-router-dom';
-import DeleteConversationModal from '../../../components/messaging/DeleteConversationModal';
-import NewStudentConversationModalCollegeAdmin from '../../../components/messaging/NewStudentConversationModalCollegeAdmin';
-import NewCollegeAdminEducatorConversationModal from '../../../components/messaging/NewCollegeAdminEducatorConversationModal';
-import { useUser } from '../../../stores';
-import { useGlobalPresence } from '../../../stores';
-import { useCollegeAdminMessages } from '../../../hooks/useCollegeAdminMessages.js';
-import { useCollegeEducatorAdminConversationsForAdmin } from '../../../hooks/useCollegeEducatorAdminConversations.js';
-import { useCollegeEducatorAdminMessagesForAdmin } from '../../../hooks/useCollegeEducatorAdminMessages.js';
-import { useNotificationBroadcast } from '../../../hooks/useNotificationBroadcast';
-import { useRealtimePresence } from '../../../hooks/useRealtimePresence';
-import { useTypingIndicator } from '../../../hooks/useTypingIndicator';
-import { supabase } from '../../../lib/supabaseClient';
-import MessageService, { Conversation } from '../../../services/messageService';
-import { getLogger } from '../../../config/logging';
+import { DeleteConversationModal } from '@/features/messaging';
+import { NewStudentConversationModalCollegeAdmin } from '@/features/messaging';
+import { NewCollegeAdminEducatorConversationModal } from '@/features/college-admin';
+import { useUser } from '@/stores';
+import { useGlobalPresence } from '@/stores';
+import { useAdminMessages, useConversationActions } from '@/features/messaging';
+import { useCollegeEducatorAdminConversationsForAdmin } from '@/features/educator';
+import { useNotificationBroadcast } from '@/features/broadcast';
+import { useRealtimePresence } from '@/shared/lib/hooks';
+import { useTypingIndicator } from '@/shared/lib/hooks';
+import { supabase } from '@/shared/api/supabaseClient';
+import { MessageService, Conversation } from '@/features/messaging';
+import { getLogger } from '@/shared/config/logging';
 
+import { queryKeys } from '@/shared/lib/queryKeys';
 const StudentCollegeAdminCommunication = () => {
   const logger = getLogger('college-admin-communication');
   const location = useLocation();
@@ -47,10 +40,10 @@ const StudentCollegeAdminCommunication = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; conversationId: string | null; contactName: string }>({ 
-    isOpen: false, 
-    conversationId: null, 
-    contactName: '' 
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; conversationId: string | null; contactName: string }>({
+    isOpen: false,
+    conversationId: null,
+    contactName: ''
   });
   const [showNewConversationModal, setShowNewConversationModal] = useState(false);
   const [showTabDropdown, setShowTabDropdown] = useState(false);
@@ -58,29 +51,29 @@ const StudentCollegeAdminCommunication = () => {
   const markedAsReadRef = useRef<Set<string>>(new Set());
   const tabDropdownRef = useRef<HTMLDivElement>(null);
   const isSendingRef = useRef(false); // Local ref to prevent duplicate sends
-  
+
   // Tab management - students and college educators
   const [activeTab, setActiveTab] = useState<'students' | 'college_educators'>('students');
-  
+
   // Get college admin ID from auth
   const user = useUser();
   const collegeAdminId = user?.id;
   const collegeAdminName = user?.name || 'College Admin';
   const queryClient = useQueryClient();
-  
+
   // Handle navigation from student management page
-  const targetStudent = location.state as { 
-    targetStudentId?: string; 
-    targetStudentName?: string; 
-    targetStudentEmail?: string; 
+  const targetStudent = location.state as {
+    targetStudentId?: string;
+    targetStudentName?: string;
+    targetStudentEmail?: string;
   } | null;
-  
+
   // Get college ID for the current admin
   const { data: collegeData } = useQuery({
     queryKey: ['college-admin-college', collegeAdminId],
     queryFn: async () => {
       if (!collegeAdminId) return null;
-      
+
       // Try college_lecturers table first
       // Note: colleges table doesn't exist - fetch college name from organizations separately
       const { data: lecturerData, error: lecturerError } = await supabase
@@ -88,7 +81,7 @@ const StudentCollegeAdminCommunication = () => {
         .select('collegeId')
         .or(`user_id.eq.${collegeAdminId},email.eq.${user?.email}`)
         .maybeSingle();
-      
+
       if (!lecturerError && lecturerData?.collegeId) {
         // Fetch college name from organizations table
         const { data: orgData } = await supabase
@@ -96,13 +89,13 @@ const StudentCollegeAdminCommunication = () => {
           .select('id, name')
           .eq('id', lecturerData.collegeId)
           .maybeSingle();
-        
+
         return {
           college_id: lecturerData.collegeId,
           colleges: orgData
         };
       }
-      
+
       // Fallback: check organizations table for college owner
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
@@ -110,9 +103,9 @@ const StudentCollegeAdminCommunication = () => {
         .eq('organization_type', 'college')
         .eq('admin_id', collegeAdminId)
         .maybeSingle();
-      
+
       if (orgError) throw orgError;
-      
+
       return {
         college_id: orgData?.id,
         colleges: orgData
@@ -120,12 +113,12 @@ const StudentCollegeAdminCommunication = () => {
     },
     enabled: !!collegeAdminId,
   });
-  
+
   const collegeId = collegeData?.college_id;
-  
+
   // Fetch active conversations with students
   const { data: activeConversations = [], isLoading: loadingActive, refetch: refetchActive } = useQuery({
-    queryKey: ['college-admin-conversations', collegeId, 'active'],
+    queryKey: queryKeys.college.admin.conversations(collegeId, 'active'),
     queryFn: async () => {
       if (!collegeId) return [];
       // Note: colleges table doesn't exist - college info already available from collegeData
@@ -139,15 +132,15 @@ const StudentCollegeAdminCommunication = () => {
         .eq('conversation_type', 'student_college_admin')
         .eq('deleted_by_college_admin', false)
         .order('last_message_at', { ascending: false, nullsFirst: false });
-      
+
       if (error) throw error;
-      
+
       // Add college info from collegeData
       return (data || []).map(conv => ({
         ...conv,
         college: collegeData?.colleges || null
       }));
-      
+
       if (error) throw error;
       return data || [];
     },
@@ -161,7 +154,7 @@ const StudentCollegeAdminCommunication = () => {
 
   // Fetch archived conversations
   const { data: archivedConversations = [], isLoading: loadingArchived, refetch: refetchArchived } = useQuery({
-    queryKey: ['college-admin-conversations', collegeId, 'archived'],
+    queryKey: queryKeys.college.admin.conversations(collegeId, 'archived'),
     queryFn: async () => {
       if (!collegeId) return [];
       // Note: colleges table doesn't exist - college info already available from collegeData
@@ -175,9 +168,9 @@ const StudentCollegeAdminCommunication = () => {
         .eq('conversation_type', 'student_college_admin')
         .eq('status', 'archived')
         .order('last_message_at', { ascending: false, nullsFirst: false });
-      
+
       if (error) throw error;
-      
+
       // Add college info from collegeData
       return (data || []).map(conv => ({
         ...conv,
@@ -224,25 +217,28 @@ const StudentCollegeAdminCommunication = () => {
       return showArchived ? loadingArchivedEducators : loadingActiveEducators;
     }
   }, [activeTab, showArchived, loadingArchived, loadingActive, loadingArchivedEducators, loadingActiveEducators]);
-  
-  // Fetch messages for selected conversation - use appropriate hook based on tab
-  const studentMessages = useCollegeAdminMessages({
-    conversationId: activeTab === 'students' ? selectedConversationId : null,
-    enabled: !!selectedConversationId && activeTab === 'students',
-  });
 
-  const educatorMessages = useCollegeEducatorAdminMessagesForAdmin({
-    conversationId: activeTab === 'college_educators' ? selectedConversationId : null,
-    adminId: collegeAdminId,
-    enabled: !!selectedConversationId && activeTab === 'college_educators' && !!collegeAdminId,
-  });
+  // Fetch messages for selected conversation using the new unified hook
+  // The new hook handles both student and educator conversations based on conversation type
+  const { messages, isLoadingMessages: loadingMessages, sendMessage, isSending } = useAdminMessages(
+    collegeAdminId || '',
+    'college_admin',
+    {
+      conversationId: selectedConversationId,
+      enabled: !!selectedConversationId && !!collegeAdminId,
+      enableRealtime: true,
+    }
+  );
 
-  // Use the appropriate messages based on active tab
-  const { messages, isLoading: loadingMessages, sendMessage, isSending } = activeTab === 'students' ? studentMessages : educatorMessages;
+  // Use conversation actions hook for archive/delete operations
+  const { archiveConversation, unarchiveConversation, deleteConversation, restoreConversation } = useConversationActions({
+    userId: collegeAdminId || '',
+    userRole: 'college_admin',
+  });
 
   // Use shared global presence context
   const { isUserOnline: isUserOnlineGlobal } = useGlobalPresence();
-  
+
   // Debug presence system
   useEffect(() => {
     logger.info('Global presence system loaded');
@@ -284,7 +280,7 @@ const StudentCollegeAdminCommunication = () => {
       setShowTabDropdown(false);
     }
   }, []);
-  
+
   useEffect(() => {
     if (showTabDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
@@ -295,7 +291,7 @@ const StudentCollegeAdminCommunication = () => {
   // Subscribe to conversation updates
   useEffect(() => {
     if (!collegeId) return;
-    
+
     const subscription = MessageService.subscribeToUserConversations(
       collegeId,
       'college_admin',
@@ -303,29 +299,29 @@ const StudentCollegeAdminCommunication = () => {
         // Handle both student and educator conversations
         if (conversation.conversation_type === 'student_college_admin') {
           logger.info('Student conversation UPDATE:', conversation);
-          
+
           if (conversation.deleted_by_college_admin) {
             logger.info('Ignoring deleted student conversation:', conversation.id);
             return;
           }
-          
-          queryClient.invalidateQueries({ 
-            queryKey: ['college-admin-conversations', collegeId, 'active'],
+
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.college.admin.conversations(collegeId, 'active'),
             refetchType: 'active'
           });
-          queryClient.invalidateQueries({ 
-            queryKey: ['college-admin-conversations', collegeId, 'archived'],
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.college.admin.conversations(collegeId, 'archived'),
             refetchType: 'active'
           });
         } else if (conversation.conversation_type === 'college_educator_admin') {
           logger.info('Educator conversation UPDATE:', conversation);
-          
+
           if (conversation.deleted_by_college_admin) {
             logger.info('Ignoring deleted educator conversation:', conversation.id);
             return;
           }
-          
-          queryClient.invalidateQueries({ 
+
+          queryClient.invalidateQueries({
             queryKey: ['college-educator-admin-conversations', collegeAdminId, 'college_admin', collegeId],
             refetchType: 'active'
           });
@@ -337,7 +333,7 @@ const StudentCollegeAdminCommunication = () => {
       subscription.unsubscribe();
     };
   }, [collegeId, queryClient, collegeAdminId]);
-  
+
   // Auto-create conversation with target student from navigation
   useEffect(() => {
     const createConversationWithStudent = async () => {
@@ -347,19 +343,19 @@ const StudentCollegeAdminCommunication = () => {
 
       try {
         logger.info('Auto-creating conversation with student:', targetStudent);
-        
+
         // Check if conversation already exists
-        const existingConversation = activeConversations.find(conv => 
+        const existingConversation = activeConversations.find(conv =>
           conv.student_id === targetStudent.targetStudentId
         );
-        
+
         if (existingConversation) {
           logger.info('Found existing conversation:', existingConversation.id);
           setSelectedConversationId(existingConversation.id);
           toast.success(`Opened conversation with ${targetStudent.targetStudentName}`);
           return;
         }
-        
+
         // Create new conversation
         logger.info('Creating new conversation...');
         const conversation = await MessageService.getOrCreateStudentCollegeAdminConversation(
@@ -367,17 +363,17 @@ const StudentCollegeAdminCommunication = () => {
           collegeId,
           'General Discussion' // default subject
         );
-        
+
         logger.info('Conversation created:', conversation);
-        
+
         // Refresh conversations to include the new one
         await refetchActive();
-        
+
         // Select the new conversation
         setSelectedConversationId(conversation.id);
-        
+
         toast.success(`Started conversation with ${targetStudent.targetStudentName}`);
-        
+
       } catch (error) {
         logger.error('Error creating conversation:', error as Error);
         toast.error(`Failed to start conversation with ${targetStudent.targetStudentName}`);
@@ -386,38 +382,38 @@ const StudentCollegeAdminCommunication = () => {
 
     createConversationWithStudent();
   }, [targetStudent, collegeId, activeConversations, loadingConversations, refetchActive]);
-  
+
   // Mark messages as read when conversation is selected
   useEffect(() => {
     if (!selectedConversationId || !collegeAdminId) return;
-    
+
     const conversation = activeConversations.find(c => c.id === selectedConversationId);
     const hasUnread = (conversation?.college_admin_unread_count || 0) > 0;
-    
+
     if (!hasUnread) return;
-    
+
     const markKey = `${selectedConversationId}-${conversation?.college_admin_unread_count}`;
     if (markedAsReadRef.current.has(markKey)) return;
     markedAsReadRef.current.add(markKey);
-    
+
     // Optimistically update the UI
     queryClient.setQueryData<typeof activeConversations>(
       ['college-admin-conversations', collegeId, 'active'],
       (oldData) => {
         if (!oldData) return oldData;
-        return oldData.map(conv => 
-          conv.id === selectedConversationId 
+        return oldData.map(conv =>
+          conv.id === selectedConversationId
             ? { ...conv, college_admin_unread_count: 0 }
             : conv
         );
       }
     );
-    
+
     MessageService.markConversationAsRead(selectedConversationId, collegeAdminId)
       .then(() => {
         // Force cache invalidation after successful mark as read
-        queryClient.invalidateQueries({ 
-          queryKey: ['college-admin-conversations', collegeId, 'active'],
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.college.admin.conversations(collegeId, 'active'),
           refetchType: 'active'
         });
       })
@@ -427,31 +423,31 @@ const StudentCollegeAdminCommunication = () => {
         refetchActive();
       });
   }, [selectedConversationId, collegeAdminId, activeConversations, queryClient, refetchActive, collegeId]);
-  
+
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async ({ conversationId }: { conversationId: string }) => {
-      await MessageService.deleteConversationForUser(conversationId, collegeAdminId!, 'college_admin');
+      await deleteConversation(conversationId);
       return { conversationId };
     },
     onMutate: async ({ conversationId }) => {
-      await queryClient.cancelQueries({ queryKey: ['college-admin-conversations', collegeId] });
-      
+      await queryClient.cancelQueries({ queryKey: queryKeys.college.admin.all });
+
       const previousActive = queryClient.getQueryData(['college-admin-conversations', collegeId, 'active']);
       const previousArchived = queryClient.getQueryData(['college-admin-conversations', collegeId, 'archived']);
-      
+
       queryClient.setQueryData(['college-admin-conversations', collegeId, 'active'], (old: any) => {
         if (!old) return [];
-        return old.map((conv: any) => 
+        return old.map((conv: any) =>
           conv.id === conversationId ? { ...conv, _pendingDelete: true } : conv
         );
       });
-      
-      queryClient.invalidateQueries({ 
-        queryKey: ['college-admin-conversations', collegeId, 'active'],
+
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.college.admin.conversations(collegeId, 'active'),
         refetchType: 'none'
       });
-      
+
       return { previousActive, previousArchived, conversationId };
     },
     onError: () => {
@@ -464,18 +460,18 @@ const StudentCollegeAdminCommunication = () => {
         if (!old) return [];
         return old.filter((conv: any) => conv.id !== variables.conversationId);
       });
-      
-      queryClient.invalidateQueries({ 
-        queryKey: ['college-admin-conversations', collegeId, 'active'],
+
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.college.admin.conversations(collegeId, 'active'),
         refetchType: 'none'
       });
     }
   });
-  
+
   // Undo mutation
   const undoMutation = useMutation({
     mutationFn: async ({ conversationId }: { conversationId: string }) => {
-      await MessageService.restoreConversation(conversationId, collegeAdminId!, 'college_admin');
+      await restoreConversation(conversationId);
       return { conversationId };
     },
     onSuccess: () => {
@@ -484,21 +480,21 @@ const StudentCollegeAdminCommunication = () => {
       refetchArchived();
     }
   });
-  
+
   // Handle archive/unarchive
   const handleToggleArchive = useCallback(async (conversationId: string, isArchiving: boolean) => {
     setIsTransitioning(true);
-    
+
     try {
       if (selectedConversationId === conversationId) {
         setSelectedConversationId(null);
       }
-      
-      await (isArchiving 
-        ? MessageService.archiveConversation(conversationId)
-        : MessageService.unarchiveConversation(conversationId)
+
+      await (isArchiving
+        ? archiveConversation(conversationId)
+        : unarchiveConversation(conversationId)
       );
-      
+
       await Promise.all([refetchActive(), refetchArchived()]);
     } catch (error) {
       logger.error(`Error ${isArchiving ? 'archiving' : 'unarchiving'} conversation:`, error as Error);
@@ -507,20 +503,20 @@ const StudentCollegeAdminCommunication = () => {
     } finally {
       setTimeout(() => setIsTransitioning(false), 300);
     }
-  }, [selectedConversationId, refetchActive, refetchArchived]);
+  }, [selectedConversationId, refetchActive, refetchArchived, archiveConversation, unarchiveConversation]);
 
   // Handle new conversation creation
   const handleNewConversation = useCallback(async (studentId: string, subject: string, initialMessage?: string) => {
     if (!collegeId) return;
-    
+
     try {
       logger.info('Creating new conversation with student:', studentId, 'subject:', subject);
-      
+
       // Check if conversation already exists
-      const existingConversation = activeConversations.find(conv => 
+      const existingConversation = activeConversations.find(conv =>
         conv.student_id === studentId
       );
-      
+
       if (existingConversation) {
         logger.info('Found existing conversation:', existingConversation.id);
         setSelectedConversationId(existingConversation.id);
@@ -528,16 +524,16 @@ const StudentCollegeAdminCommunication = () => {
         toast.success('Opened existing conversation');
         return;
       }
-      
+
       // Create new conversation
       const conversation = await MessageService.getOrCreateStudentCollegeAdminConversation(
         studentId,
         collegeId,
         subject
       );
-      
+
       logger.info('New conversation created:', conversation);
-      
+
       // Send initial message if provided
       if (initialMessage && initialMessage.trim()) {
         await MessageService.sendMessage(
@@ -554,16 +550,16 @@ const StudentCollegeAdminCommunication = () => {
         );
         logger.info('Initial message sent to student');
       }
-      
+
       // Refresh conversations to include the new one
       await refetchActive();
-      
+
       // Select the new conversation
       setSelectedConversationId(conversation.id);
       setShowNewConversationModal(false);
-      
+
       toast.success('New conversation started');
-      
+
     } catch (error) {
       logger.error('Error creating conversation:', error as Error);
       toast.error('Failed to start conversation');
@@ -573,23 +569,23 @@ const StudentCollegeAdminCommunication = () => {
   // Handle delete conversation
   const handleDeleteConversation = useCallback(async () => {
     if (!deleteModal.conversationId || !collegeAdminId) return;
-    
+
     const conversationId = deleteModal.conversationId;
     const contactName = deleteModal.contactName;
-    
+
     if (selectedConversationId === conversationId) {
       setSelectedConversationId(null);
     }
-    
+
     setDeleteModal({ isOpen: false, conversationId: null, contactName: '' });
-    
+
     deleteMutation.mutate({ conversationId });
-    
+
     // Show undo toast
     toast.success(`Conversation with ${contactName} deleted`, {
       duration: 5000,
     });
-    
+
     // Add undo button functionality (simplified)
     setTimeout(() => {
       toast('Click here to undo', {
@@ -602,12 +598,12 @@ const StudentCollegeAdminCommunication = () => {
   const openDeleteModal = useCallback((conversationId: string, contactName: string) => {
     setDeleteModal({ isOpen: true, conversationId, contactName });
   }, []);
-  
+
   // Transform and filter conversations
   const filteredContacts = useMemo(() => {
     logger.info('Processing conversations for activeTab:', activeTab);
     logger.info('Raw conversations:', conversations);
-    
+
     const activeConversations = conversations.filter((conv: any) => !conv._pendingDelete);
     logger.info('Active conversations after filtering:', activeConversations);
 
@@ -620,13 +616,13 @@ const StudentCollegeAdminCommunication = () => {
         const studentBranch = conv.student?.branch_field || '';
         const subject = conv.subject || 'General Discussion';
         const collegeName = conv.college?.name || '';
-        
+
         // Build simplified role string with just subject and college name
         let role = subject;
         if (collegeName) {
           role += ` • ${collegeName}`;
         }
-        
+
         const isOnline = isUserOnlineGlobal(conv.student_id);
         logger.info('Student online check:', {
           studentId: conv.student_id,
@@ -634,7 +630,7 @@ const StudentCollegeAdminCommunication = () => {
           isOnline,
           checkedWith: 'isUserOnlineGlobal'
         });
-        
+
         return {
           id: conv.id,
           name: studentName,
@@ -642,7 +638,7 @@ const StudentCollegeAdminCommunication = () => {
           avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=3B82F6&color=fff`,
           lastMessage: conv.last_message_preview || 'No messages yet',
           online: isOnline,
-          time: conv.last_message_at 
+          time: conv.last_message_at
             ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })
             : 'No messages',
           unread: conv.college_admin_unread_count || 0,
@@ -658,15 +654,15 @@ const StudentCollegeAdminCommunication = () => {
       } else {
         // College educator conversations
         logger.info('Processing college educator conversation:', conv);
-        
-        const educatorName = conv.college_educator?.first_name && conv.college_educator?.last_name 
+
+        const educatorName = conv.college_educator?.first_name && conv.college_educator?.last_name
           ? `${conv.college_educator.first_name} ${conv.college_educator.last_name}`
           : conv.college_educator?.email || 'College Educator';
         const educatorEmail = conv.college_educator?.email || '';
         const department = conv.college_educator?.department || '';
         const specialization = conv.college_educator?.specialization || '';
         const subject = conv.subject || 'General Discussion';
-        
+
         // Build role string with department and specialization
         let role = subject;
         if (department) {
@@ -675,7 +671,7 @@ const StudentCollegeAdminCommunication = () => {
         if (specialization) {
           role += ` (${specialization})`;
         }
-        
+
         const isOnline = isUserOnlineGlobal(conv.college_educator?.user_id);
         console.log('🔍 [CollegeAdmin] Educator online check:', {
           educatorId: conv.educator_id,
@@ -686,7 +682,7 @@ const StudentCollegeAdminCommunication = () => {
           note: 'Fixed: Using user_id instead of educator_id for presence check',
           conversationData: conv.college_educator
         });
-        
+
         return {
           id: conv.id,
           name: educatorName,
@@ -694,7 +690,7 @@ const StudentCollegeAdminCommunication = () => {
           avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(educatorName)}&background=3B82F6&color=fff`,
           lastMessage: conv.last_message_preview || 'No messages yet',
           online: isOnline,
-          time: conv.last_message_at 
+          time: conv.last_message_at
             ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })
             : 'No messages',
           unread: conv.college_admin_unread_count || 0,
@@ -710,11 +706,11 @@ const StudentCollegeAdminCommunication = () => {
     });
 
     if (!searchQuery) return contacts;
-    
+
     const query = searchQuery.toLowerCase();
-    return contacts.filter(c => 
+    return contacts.filter(c =>
       // Basic info
-      c.name.toLowerCase().includes(query) || 
+      c.name.toLowerCase().includes(query) ||
       // Subject info
       c.role.toLowerCase().includes(query) ||
       c.subject.toLowerCase().includes(query) ||
@@ -735,46 +731,44 @@ const StudentCollegeAdminCommunication = () => {
     );
   }, [conversations, searchQuery, isUserOnlineGlobal, activeTab]);
 
-  const currentChat = useMemo(() => 
+  const currentChat = useMemo(() =>
     filteredContacts.find(c => c.id === selectedConversationId),
     [filteredContacts, selectedConversationId]
   );
 
   const handleSendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Basic validation
     if (!messageInput.trim() || !currentChat || !collegeAdminId) {
       return;
     }
-    
+
     // Check if already sending
     if (isSending || isSendingRef.current) {
       console.log('⚠️ Already sending message, ignoring duplicate call');
       return;
     }
-    
+
     // Set ref to prevent duplicate calls
     isSendingRef.current = true;
-    
+
     // Store the message text before clearing
     const messageToSend = messageInput.trim();
-    
+
     // Clear input immediately
     setMessageInput('');
-    
+
     try {
       if (activeTab === 'students') {
         // Send message to student
         await sendMessage({
-          senderId: collegeAdminId,
-          senderType: 'college_admin',
+          conversationId: selectedConversationId!,
           receiverId: currentChat.studentId,
           receiverType: 'student',
           messageText: messageToSend,
-          subject: currentChat.subject
         });
-        
+
         // Send notification to student
         try {
           await sendNotification(currentChat.studentId, {
@@ -783,20 +777,18 @@ const StudentCollegeAdminCommunication = () => {
             type: 'message',
             link: `/student/messages?tab=college_admin&conversation=${selectedConversationId}`
           });
-        } catch (notifError) {
+        } catch {
           // Silent fail
         }
       } else {
         // Send message to college educator
         await sendMessage({
-          senderId: collegeAdminId,
-          senderType: 'college_admin',
+          conversationId: selectedConversationId!,
           receiverId: currentChat.educatorId,
           receiverType: 'college_educator',
           messageText: messageToSend,
-          subject: currentChat.subject
         });
-        
+
         // Send notification to educator
         try {
           await sendNotification(currentChat.educatorId, {
@@ -805,17 +797,17 @@ const StudentCollegeAdminCommunication = () => {
             type: 'message',
             link: `/educator/messages?tab=college_admin&conversation=${selectedConversationId}`
           });
-        } catch (notifError) {
+        } catch {
           // Silent fail
         }
       }
-      
+
       setTyping(false);
     } catch (error) {
       const err = error as Error;
       logger.error('Error sending message', err);
       // Restore message on error (unless it was a duplicate)
-      if (error.message !== 'DUPLICATE_MESSAGE') {
+      if (err.message !== 'DUPLICATE_MESSAGE') {
         setMessageInput(messageToSend);
       }
     } finally {
@@ -837,7 +829,7 @@ const StudentCollegeAdminCommunication = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const displayMessages = useMemo(() => 
+  const displayMessages = useMemo(() =>
     messages.map((msg: any) => ({
       id: msg.id,
       text: msg.message_text,
@@ -868,7 +860,7 @@ const StudentCollegeAdminCommunication = () => {
             <div className="px-6 py-5 border-b border-gray-200">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-900">Messages</h2>
-                
+
                 <div className="flex items-center gap-3 ml-4">
                   {/* New Button */}
                   {!showArchived && (
@@ -885,7 +877,7 @@ const StudentCollegeAdminCommunication = () => {
                       New
                     </button>
                   )}
-                  
+
                   {/* Tab Dropdown */}
                   <div className="relative" ref={tabDropdownRef}>
                     <button
@@ -907,7 +899,7 @@ const StudentCollegeAdminCommunication = () => {
                       )}
                       <ChevronDownIcon className="w-4 h-4 text-blue-600" />
                     </button>
-                    
+
                     {/* Dropdown Menu */}
                     {showTabDropdown && (
                       <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
@@ -918,9 +910,8 @@ const StudentCollegeAdminCommunication = () => {
                             setSelectedConversationId(null);
                             setShowArchived(false);
                           }}
-                          className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center gap-3 ${
-                            activeTab === 'students' ? 'bg-blue-50 text-blue-900' : 'text-gray-700'
-                          }`}
+                          className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center gap-3 ${activeTab === 'students' ? 'bg-blue-50 text-blue-900' : 'text-gray-700'
+                            }`}
                         >
                           <AcademicCapIcon className="w-4 h-4" />
                           <div className="flex-1">
@@ -940,9 +931,8 @@ const StudentCollegeAdminCommunication = () => {
                             setSelectedConversationId(null);
                             setShowArchived(false);
                           }}
-                          className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center gap-3 border-t border-gray-100 ${
-                            activeTab === 'college_educators' ? 'bg-blue-50 text-blue-900' : 'text-gray-700'
-                          }`}
+                          className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center gap-3 border-t border-gray-100 ${activeTab === 'college_educators' ? 'bg-blue-50 text-blue-900' : 'text-gray-700'
+                            }`}
                         >
                           <UserIcon className="w-4 h-4" />
                           <div className="flex-1">
@@ -960,7 +950,7 @@ const StudentCollegeAdminCommunication = () => {
                   </div>
                 </div>
               </div>
-              
+
               {/* Search */}
               <div className="relative">
                 <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -991,31 +981,31 @@ const StudentCollegeAdminCommunication = () => {
             {/* Contacts List */}
             <div className="flex-1 overflow-y-auto relative">
               {/* Archived Button */}
-              {!showArchived && 
-               !loadingConversations && 
-               (activeTab === 'students' ? archivedConversations : archivedEducatorConversations).length > 0 && (
-                <button
-                  onClick={() => {
-                    setShowArchived(true);
-                    setIsTransitioning(true);
-                    setTimeout(() => setIsTransitioning(false), 300);
-                  }}
-                  className="w-full px-6 py-4 flex items-center justify-between border-b border-gray-200 hover:bg-gray-50 transition-colors group"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                      <ArchiveBoxIcon className="w-6 h-6 text-gray-600" />
+              {!showArchived &&
+                !loadingConversations &&
+                (activeTab === 'students' ? archivedConversations : archivedEducatorConversations).length > 0 && (
+                  <button
+                    onClick={() => {
+                      setShowArchived(true);
+                      setIsTransitioning(true);
+                      setTimeout(() => setIsTransitioning(false), 300);
+                    }}
+                    className="w-full px-6 py-4 flex items-center justify-between border-b border-gray-200 hover:bg-gray-50 transition-colors group"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                        <ArchiveBoxIcon className="w-6 h-6 text-gray-600" />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="font-bold text-gray-900 text-sm">Archived</h3>
+                        <p className="text-xs text-gray-500">
+                          {(activeTab === 'students' ? archivedConversations : archivedEducatorConversations).length} conversation{(activeTab === 'students' ? archivedConversations : archivedEducatorConversations).length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <h3 className="font-bold text-gray-900 text-sm">Archived</h3>
-                      <p className="text-xs text-gray-500">
-                        {(activeTab === 'students' ? archivedConversations : archivedEducatorConversations).length} conversation{(activeTab === 'students' ? archivedConversations : archivedEducatorConversations).length !== 1 ? 's' : ''}
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRightIcon className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-                </button>
-              )}
+                    <ChevronRightIcon className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                  </button>
+                )}
 
               {/* Loading indicator during transition */}
               {isTransitioning && (
@@ -1034,19 +1024,19 @@ const StudentCollegeAdminCommunication = () => {
                     <AcademicCapIcon className="w-8 h-8 text-gray-400" />
                   </div>
                   <p className="text-gray-600 text-sm font-medium">
-                    {showArchived 
-                      ? 'No archived conversations' 
-                      : searchQuery 
-                      ? `No conversations found for "${searchQuery}"` 
-                      : 'No student messages yet'
+                    {showArchived
+                      ? 'No archived conversations'
+                      : searchQuery
+                        ? `No conversations found for "${searchQuery}"`
+                        : 'No student messages yet'
                     }
                   </p>
                   <p className="text-gray-400 text-xs mt-2 mb-4">
-                    {showArchived 
-                      ? 'Archived conversations will appear here' 
-                      : searchQuery 
-                      ? 'Try searching by student name, email, subject, or university' 
-                      : 'Students will message you about college matters'
+                    {showArchived
+                      ? 'Archived conversations will appear here'
+                      : searchQuery
+                        ? 'Try searching by student name, email, subject, or university'
+                        : 'Students will message you about college matters'
                     }
                   </p>
                   {searchQuery && (
@@ -1084,11 +1074,10 @@ const StudentCollegeAdminCommunication = () => {
                 filteredContacts.map((contact) => (
                   <div
                     key={contact.id}
-                    className={`relative w-full flex items-center border-b border-gray-100 group transition-all duration-200 ${
-                      selectedConversationId === contact.id 
-                        ? 'bg-blue-50 border-l-4 border-l-blue-500' 
-                        : 'hover:bg-gray-50 border-l-4 border-l-transparent'
-                    }`}
+                    className={`relative w-full flex items-center border-b border-gray-100 group transition-all duration-200 ${selectedConversationId === contact.id
+                      ? 'bg-blue-50 border-l-4 border-l-blue-500'
+                      : 'hover:bg-gray-50 border-l-4 border-l-transparent'
+                      }`}
                   >
                     <button
                       onClick={() => setSelectedConversationId(contact.id)}
@@ -1126,7 +1115,7 @@ const StudentCollegeAdminCommunication = () => {
                         </div>
                       )}
                     </button>
-                    
+
                     {/* Quick Actions on Hover */}
                     <div className="flex items-center gap-1 pr-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       {/* Archive/Unarchive Button */}
@@ -1144,7 +1133,7 @@ const StudentCollegeAdminCommunication = () => {
                           <ArchiveBoxIcon className="w-4 h-4 text-gray-600" />
                         )}
                       </button>
-                      
+
                       {/* Delete Button */}
                       <button
                         onClick={(e) => {
@@ -1230,20 +1219,18 @@ const StudentCollegeAdminCommunication = () => {
                       >
                         <div className="max-w-[70%]">
                           <div
-                            className={`rounded-2xl px-4 py-2.5 shadow-sm ${
-                              message.sender === 'me'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-white text-gray-900 border border-gray-200'
-                            }`}
+                            className={`rounded-2xl px-4 py-2.5 shadow-sm ${message.sender === 'me'
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-white text-gray-900 border border-gray-200'
+                              }`}
                           >
                             <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                               {message.text}
                             </p>
                             <div className="flex items-center justify-end gap-2 mt-1">
                               <span
-                                className={`text-xs ${
-                                  message.sender === 'me' ? 'text-blue-100' : 'text-gray-400'
-                                }`}
+                                className={`text-xs ${message.sender === 'me' ? 'text-blue-100' : 'text-gray-400'
+                                  }`}
                               >
                                 {message.time}
                               </span>
@@ -1254,7 +1241,7 @@ const StudentCollegeAdminCommunication = () => {
                       </div>
                     ))
                   )}
-                  
+
                   {/* Typing indicator */}
                   {isAnyoneTyping && (
                     <div className="flex justify-start">
@@ -1270,7 +1257,7 @@ const StudentCollegeAdminCommunication = () => {
                       </div>
                     </div>
                   )}
-                  
+
                   <div ref={messagesEndRef} />
                 </div>
 
@@ -1375,7 +1362,7 @@ const StudentCollegeAdminCommunication = () => {
           onCreateConversation={async ({ adminId, educatorId, collegeId: cId, subject, initialMessage }) => {
             try {
               console.log('🚀 Creating college admin-educator conversation:', { adminId, educatorId, collegeId: cId, subject, initialMessage });
-              
+
               const conversation = await MessageService.getOrCreateCollegeEducatorAdminConversation(
                 educatorId,
                 cId,
@@ -1403,7 +1390,7 @@ const StudentCollegeAdminCommunication = () => {
               // Refetch conversations and select the new one
               await refetchActiveEducators();
               setSelectedConversationId(conversation.id);
-              
+
               toast.success('Conversation started with college educator!');
             } catch (error) {
               console.error('❌ Error creating college admin-educator conversation:', error);

@@ -21,18 +21,20 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import MessageService, { Conversation } from '../../../services/messageService';
-import { supabase } from '../../../lib/supabaseClient';
-import { useEducatorAdminMessages } from '../../../hooks/useEducatorAdminMessages.js';
+import MessageService, { Conversation } from '@/features/messaging';
+import { supabase } from '@/shared/api/supabaseClient';
+import { useEducatorAdminMessages } from '@/features/educator';
 import { formatDistanceToNow } from 'date-fns';
-import { useUser } from '../../../stores';
-import { useGlobalPresence } from '../../../stores';
-import { useRealtimePresence } from '../../../hooks/useRealtimePresence';
-import { useTypingIndicator } from '../../../hooks/useTypingIndicator';
-import { useNotificationBroadcast } from '../../../hooks/useNotificationBroadcast';
-import DeleteConversationModal from '../../../components/messaging/DeleteConversationModal';
-import { getLogger } from '../../../config/logging';
+import { useUser } from '@/stores';
+import { useGlobalPresence } from '@/stores';
+import { useRealtimePresence } from '@/shared/lib/hooks';
+import { useTypingIndicator } from '@/shared/lib/hooks';
+import { useNotificationBroadcast } from '@/features/broadcast';
+import { DeleteConversationModal } from '@/features/messaging';
+import { getLogger } from '@/shared/config/logging';
+import { authSessionService } from '@/features/auth';
 
+import { queryKeys } from '@/shared/lib/queryKeys';
 const logger = getLogger('school-admin-educator-communication');
 
 const EducatorCommunication = () => {
@@ -83,7 +85,7 @@ const EducatorCommunication = () => {
       }
       
       // Fallback: Check organizations table for school admins
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       if (user) {
         const { data: org } = await supabase
           .from('organizations')
@@ -106,7 +108,7 @@ const EducatorCommunication = () => {
   
   // Fetch active conversations with educators using the same pattern as student admin
   const { data: activeConversations = [], isLoading: loadingActive, refetch: refetchActive } = useQuery({
-    queryKey: ['school-admin-educator-conversations', schoolId, 'active'],
+    queryKey: queryKeys.educator.conversations.byEducator(schoolId, 'active'),
     queryFn: async () => {
       if (!schoolId) return [];
       const { data, error } = await supabase
@@ -133,7 +135,7 @@ const EducatorCommunication = () => {
 
   // Fetch archived conversations
   const { data: archivedConversations = [], isLoading: loadingArchived, refetch: refetchArchived } = useQuery({
-    queryKey: ['school-admin-educator-conversations', schoolId, 'archived'],
+    queryKey: queryKeys.educator.conversations.byEducator(schoolId, 'archived'),
     queryFn: async () => {
       if (!schoolId) return [];
       const { data, error } = await supabase
@@ -218,7 +220,7 @@ const EducatorCommunication = () => {
         }
         
         queryClient.invalidateQueries({ 
-          queryKey: ['school-admin-educator-conversations', schoolId],
+          queryKey: queryKeys.educator.conversations.all,
           refetchType: 'active'
         });
       }
@@ -319,7 +321,7 @@ const EducatorCommunication = () => {
       return { conversationId };
     },
     onMutate: async ({ conversationId }) => {
-      await queryClient.cancelQueries({ queryKey: ['school-admin-educator-conversations', schoolId] });
+      await queryClient.cancelQueries({ queryKey: queryKeys.educator.conversations.all });
       
       const previousActive = queryClient.getQueryData(['school-admin-educator-conversations', schoolId, 'active']);
       const previousArchived = queryClient.getQueryData(['school-admin-educator-conversations', schoolId, 'archived']);
@@ -332,7 +334,7 @@ const EducatorCommunication = () => {
       });
       
       queryClient.invalidateQueries({ 
-        queryKey: ['school-admin-educator-conversations', schoolId, 'active'],
+        queryKey: queryKeys.educator.conversations.byEducator(schoolId, 'active'),
         refetchType: 'none'
       });
       
@@ -350,7 +352,7 @@ const EducatorCommunication = () => {
       });
       
       queryClient.invalidateQueries({ 
-        queryKey: ['school-admin-educator-conversations', schoolId, 'active'],
+        queryKey: queryKeys.educator.conversations.byEducator(schoolId, 'active'),
         refetchType: 'none'
       });
     }

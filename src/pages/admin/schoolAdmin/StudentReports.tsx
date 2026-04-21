@@ -9,9 +9,10 @@ import {
 } from '@heroicons/react/24/outline';
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { getLogger } from '../../../config/logging';
-import { supabase } from '../../../lib/supabaseClient';
-import { attendanceService, studentReportService } from '../../../services/studentManagementService';
+import { getLogger } from '@/shared/config/logging';
+import { supabase } from '@/shared/api/supabaseClient';
+import { attendanceService, studentReportService } from '@/features/student-profile/api';
+import { authSessionService } from '@/features/auth';
 
 interface StudentReportData {
   id: string;
@@ -62,7 +63,7 @@ const StudentReports: React.FC = () => {
 
       // If not found in localStorage, try Supabase Auth (for educators/teachers)
       if (!currentSchoolId) {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await authSessionService.getUser();
         
         if (user) {
           // Check school_educators table - use maybeSingle() to avoid 406 error

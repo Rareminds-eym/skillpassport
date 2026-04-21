@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactApexChart from 'react-apexcharts';
-import { getLogger } from '../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('Dashboard');
 
@@ -22,15 +22,16 @@ import {
   FireIcon,
   BookOpenIcon,
 } from '@heroicons/react/24/outline';
-import KPICard from '../../components/educator/KPICard';
-import { 
-  dashboardApi, 
-  DashboardKPIs, 
-  RecentActivity, 
-  SkillAnalytics, 
-  Announcement 
-} from '../../services/educator/dashboardApi';
-import { supabase } from '../../lib/supabaseClient';
+import { KPICard } from '@/features/analytics';
+import {
+  dashboardApi,
+  DashboardKPIs,
+  RecentActivity,
+  SkillAnalytics,
+  Announcement
+} from '@/features/educator-copilot';
+import { supabase } from '@/shared/api/supabaseClient';
+import { authSessionService } from '@/features/auth';
 // import './Dashboard.css';
 
 const Dashboard = () => {
@@ -50,33 +51,40 @@ const Dashboard = () => {
 
   useEffect(() => {
     let mounted = true;
+    let authSubscription: { unsubscribe: () => void } | null = null;
 
     // Listen for auth changes first
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
+    const setupAuthListener = async () => {
+      const subscription = authSessionService.onAuthStateChange(async (event, session) => {
+        if (!mounted) return;
 
-      if (event === 'TOKEN_REFRESHED') {
-        logger.info('Token auto-refreshed by Supabase');
-      }
+        if (event === 'TOKEN_REFRESHED') {
+          logger.info('Token auto-refreshed by Supabase');
+        }
 
-      if (session?.user) {
-        logger.info('Auth state change - user authenticated');
-        setIsAuthenticated(true);
-        setError(null);
-        loadDashboardData();
-      } else {
-        logger.warn('Auth state change - no user');
-        setIsAuthenticated(false);
-        setLoading(false);
-        setError('Please log in to view the dashboard');
-      }
-    });
+        if (session?.user) {
+          logger.info('Auth state change - user authenticated');
+          setIsAuthenticated(true);
+          setError(null);
+          loadDashboardData();
+        } else {
+          logger.warn('Auth state change - no user');
+          setIsAuthenticated(false);
+          setLoading(false);
+          setError('Please log in to view the dashboard');
+        }
+      });
+      
+      authSubscription = subscription || null;
+    };
+
+    setupAuthListener();
 
     // Check current session immediately
     const checkCurrentSession = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
+        const { session, error } = await authSessionService.getSession();
+
         if (!mounted) return;
 
         if (error) {
@@ -117,16 +125,18 @@ const Dashboard = () => {
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
+      if (authSubscription) {
+        authSubscription.unsubscribe();
+      }
     };
   }, []); // Empty dependency array to run only once
 
   const loadDashboardData = useCallback(async () => {
     // Prevent multiple simultaneous loads
     if (loadingRef.current) return;
-    
+
     // Check session state again before loading data
-    const { data: { session } } = await supabase.auth.getSession();
+    const { session } = await authSessionService.getSession();
     if (!session?.user) {
       setError('Please log in to view the dashboard');
       setLoading(false);
@@ -137,9 +147,9 @@ const Dashboard = () => {
       loadingRef.current = true;
       setLoading(true);
       setError(null);
-      
+
       logger.info('Starting data load');
-      
+
       const [kpisData, activitiesData, analyticsData, announcementsData] = await Promise.all([
         dashboardApi.getKPIs(),
         dashboardApi.getRecentActivities(),
@@ -158,7 +168,7 @@ const Dashboard = () => {
       setAnnouncements(announcementsData);
     } catch (error) {
       logger.error('Failed to load dashboard data:', error);
-      
+
       // Check if it's an educator registration issue
       if (error instanceof Error && error.message.includes('not registered with any school')) {
         setError('You are not registered as an educator. Please contact your administrator or run the educator registration script.');
@@ -173,11 +183,11 @@ const Dashboard = () => {
 
   const handleSendAnnouncement = async () => {
     if (!newAnnouncement.trim()) return;
-    
+
     try {
       setSendingAnnouncement(true);
       const success = await dashboardApi.addAnnouncement(newAnnouncement);
-      
+
       if (success) {
         // Add to local state for immediate feedback
         const newAnnouncementObj: Announcement = {
@@ -324,11 +334,11 @@ const Dashboard = () => {
     if ((category === 'Assignment' || category === 'Attendance') && status === 'sent_to_admin') {
       return 'Submitted';
     }
-    
+
     if (category === 'Schedule' && status === 'sent_to_admin') {
       return 'Assigned';
     }
-    
+
     // Default status text mapping
     const statusTexts: { [key: string]: string } = {
       'pending': 'pending',
@@ -336,7 +346,7 @@ const Dashboard = () => {
       'approved': 'approved',
       'rejected': 'rejected'
     };
-    
+
     return statusTexts[status] || status;
   };
 
@@ -345,7 +355,7 @@ const Dashboard = () => {
     const now = new Date();
     const diffInMs = date.getTime() - now.getTime();
     const diffInDays = Math.round(diffInMs / (1000 * 60 * 60 * 24));
-    
+
     // Handle same day
     if (Math.abs(diffInDays) < 1) {
       const diffInHours = Math.round(diffInMs / (1000 * 60 * 60));
@@ -358,7 +368,7 @@ const Dashboard = () => {
       }
       return diffInHours < 0 ? `${Math.abs(diffInHours)}h ago` : `in ${diffInHours}h`;
     }
-    
+
     return new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(diffInDays, 'day');
   };
 
@@ -663,8 +673,8 @@ const Dashboard = () => {
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Skill Participation</h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  {skillAnalytics?.skillParticipation.length ? 
-                    `${skillAnalytics.skillParticipation.length} skills tracked` : 
+                  {skillAnalytics?.skillParticipation.length ?
+                    `${skillAnalytics.skillParticipation.length} skills tracked` :
                     'No data available'
                   }
                 </p>
@@ -703,8 +713,8 @@ const Dashboard = () => {
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Skill Categories</h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  {skillAnalytics?.skillDistribution.length ? 
-                    `${skillAnalytics.skillDistribution.length} categories` : 
+                  {skillAnalytics?.skillDistribution.length ?
+                    `${skillAnalytics.skillDistribution.length} categories` :
                     'No data available'
                   }
                 </p>
@@ -816,38 +826,38 @@ const Dashboard = () => {
                     </div>
                   ))}
                 </div>
-                  
+
                 {/* Show More / Show Less Button */}
                 {recentActivities.length > 5 && (
-                    <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
-                      <button
-                        onClick={handleShowMoreActivities}
-                        disabled={loadingMoreActivities}
-                        className="w-full flex items-center justify-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-50"
-                        data-testid="show-more-activities"
-                      >
-                        {loadingMoreActivities ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                            Loading more...
-                          </>
-                        ) : showAllActivities ? (
-                          <>
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                            </svg>
-                            Show Less
-                          </>
-                        ) : (
-                          <>
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                            Show More
-                          </>
-                        )}
-                      </button>
-                    </div>
+                  <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
+                    <button
+                      onClick={handleShowMoreActivities}
+                      disabled={loadingMoreActivities}
+                      className="w-full flex items-center justify-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-50"
+                      data-testid="show-more-activities"
+                    >
+                      {loadingMoreActivities ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          Loading more...
+                        </>
+                      ) : showAllActivities ? (
+                        <>
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                          </svg>
+                          Show Less
+                        </>
+                      ) : (
+                        <>
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                          Show More
+                        </>
+                      )}
+                    </button>
+                  </div>
                 )}
               </>
             )}
@@ -870,7 +880,7 @@ const Dashboard = () => {
                   rows={3}
                   onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendAnnouncement()}
                 />
-                <button 
+                <button
                   onClick={handleSendAnnouncement}
                   disabled={!newAnnouncement.trim() || sendingAnnouncement}
                   className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"

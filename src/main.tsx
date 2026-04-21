@@ -3,7 +3,18 @@ import { createRoot } from 'react-dom/client';
 import { HelmetProvider } from 'react-helmet-async';
 import App from './App.tsx';
 import './index.css';
-import { QueryProvider } from './providers/QueryProvider';
+import { QueryProvider } from './app/providers/QueryProvider';
+import { GlobalErrorBoundary } from './app/providers/GlobalErrorBoundary';
+import { validateFileSizeConfig } from './shared/config/fileSizeLimits';
+
+// Validate file size configuration at startup
+try {
+  validateFileSizeConfig();
+  console.log('✅ File size configuration validated successfully');
+} catch (error) {
+  console.error('❌ File size configuration validation failed:', error);
+  throw error; // Prevent application startup
+}
 
 // Initialize Zustand stores
 import { initializeStores } from './stores';
@@ -26,7 +37,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HelmetProvider>
       <QueryProvider>
-        <App />
+        <GlobalErrorBoundary>
+          <App />
+        </GlobalErrorBoundary>
       </QueryProvider>
     </HelmetProvider>
   </StrictMode>

@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import toast from 'react-hot-toast';
-import { supabase } from "../../../lib/supabaseClient";
-import { LibraryBook, LibraryBookIssue, libraryService, LibrarySetting, LibraryStats, OverdueBook } from "../../../services/libraryService";
-import { getLogger } from "../../../config/logging";
-import { 
-  LibraryHeader, 
-  LibraryStatsCards, 
-  LibraryTabs, 
+import { supabase } from '@/shared/api/supabaseClient';
+import { LibraryBook, LibraryBookIssue, libraryService, LibrarySetting, LibraryStats, OverdueBook } from "@/features/college-admin";
+import { getLogger } from '@/shared/config/logging';
+import { authSessionService } from '@/features/auth';
+import {
+  LibraryHeader,
+  LibraryStatsCards,
+  LibraryTabs,
   DashboardTab,
   AddBookModal,
   IssueBookModal,
@@ -14,7 +15,7 @@ import {
   DetailsTab,
   HistoryTab,
   OverdueTab,
-} from "./components/library";
+} from "@/features/college-admin/ui/components/library";
 
 export default function LibraryModule() {
   const logger = getLogger('college-admin-library');
@@ -43,10 +44,10 @@ export default function LibraryModule() {
   });
 
   // New book form state
-  const [newBook, setNewBook] = useState({ 
-    title: "", 
-    author: "", 
-    isbn: "", 
+  const [newBook, setNewBook] = useState({
+    title: "",
+    author: "",
+    isbn: "",
     total_copies: 1,
     category: "",
     publisher: "",
@@ -144,11 +145,11 @@ export default function LibraryModule() {
 
       const settings = await libraryService.getSettings();
       setLibrarySettings(settings);
-      
+
       const maxBooks = parseInt(settings.find(s => s.setting_key === 'max_books_per_student')?.setting_value || '3');
       const loanPeriod = parseInt(settings.find(s => s.setting_key === 'default_loan_period_days')?.setting_value || '14');
       const finePerDay = parseInt(settings.find(s => s.setting_key === 'fine_per_day')?.setting_value || '10');
-      
+
       setLibraryRules({
         maxBooksPerStudent: maxBooks,
         defaultLoanPeriodDays: loanPeriod,
@@ -176,9 +177,9 @@ export default function LibraryModule() {
       const searchTerm = filters?.search !== undefined ? filters.search : bookSearch;
       const statusFilter = filters?.status !== undefined ? filters.status : bookFilter;
       const pageNum = filters?.page !== undefined ? filters.page : currentPage;
-      
+
       const actualStatusFilter = statusFilter === 'all' ? undefined : statusFilter;
-      
+
       const { books: booksData, count } = await libraryService.getBooks({
         search: searchTerm || undefined,
         status: actualStatusFilter,
@@ -187,7 +188,7 @@ export default function LibraryModule() {
       });
       setBooks(booksData);
       setTotalBooksCount(count || 0);
-      
+
       if (filters?.search !== undefined) setBookSearch(filters.search);
       if (filters?.status !== undefined) setBookFilter(filters.status);
       if (filters?.page !== undefined) setCurrentPage(filters.page);
@@ -254,13 +255,13 @@ export default function LibraryModule() {
       let userRole: string | null = null;
       let userId: string | null = null;
       let universityId: string | null = null;
-      
+
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);
           userRole = userData.role;
-          
+
           if (userData.role === 'school_admin' && userData.schoolId) {
             schoolId = userData.schoolId;
           } else if (userData.role === 'college_admin' && userData.collegeId) {
@@ -272,21 +273,21 @@ export default function LibraryModule() {
           logger.error('Error parsing stored user:', e as Error);
         }
       }
-      
+
       if (!schoolId && !collegeId) {
-        const { data: { user } } = await supabase.auth.getUser();
-        
+        const { data: { user } } = await authSessionService.getUser();
+
         if (user) {
           userId = user.id;
-          
+
           const { data: userRecord } = await supabase
             .from('users')
             .select('role')
             .eq('id', user.id)
             .single();
-          
+
           userRole = userRecord?.role || null;
-          
+
           if (userRole === 'college_admin') {
             const { data: org } = await supabase
               .from('organizations')
@@ -294,7 +295,7 @@ export default function LibraryModule() {
               .eq('organization_type', 'college')
               .ilike('email', user.email || '')
               .maybeSingle();
-            
+
             if (org?.id) {
               collegeId = org.id;
             }
@@ -304,7 +305,7 @@ export default function LibraryModule() {
               .select('school_id')
               .eq('user_id', user.id)
               .single();
-            
+
             if (educator?.school_id) {
               schoolId = educator.school_id;
             } else {
@@ -314,13 +315,13 @@ export default function LibraryModule() {
                 .eq('organization_type', 'school')
                 .eq('email', user.email)
                 .maybeSingle();
-              
+
               schoolId = org?.id || null;
             }
           }
         }
       }
-      
+
       let query = supabase
         .from('students')
         .select('id, name, roll_number, enrollmentNumber, admission_number, contact_number, email, grade, section, course_name, semester')
@@ -328,7 +329,7 @@ export default function LibraryModule() {
         .or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,contact_number.ilike.%${searchTerm}%,grade.ilike.%${searchTerm}%,section.ilike.%${searchTerm}%,roll_number.ilike.%${searchTerm}%`)
         .order('name')
         .limit(10);
-      
+
       if (schoolId) {
         query = query.eq('school_id', schoolId);
       } else if (collegeId) {
@@ -336,17 +337,17 @@ export default function LibraryModule() {
       } else if (universityId) {
         query = query.eq('universityId', universityId);
       }
-      
+
       const { data: students, error } = await query;
-      
+
       if (error) {
         logger.error('Supabase query error:', error as Error);
         throw error;
       }
-      
+
       setStudentSearchResults(students || []);
       setShowStudentDropdown(students && students.length > 0);
-      
+
     } catch (err) {
       logger.error('Error searching students:', err as Error);
       setStudentSearchResults([]);
@@ -380,9 +381,9 @@ export default function LibraryModule() {
       if (currentCount >= LIBRARY_RULES.maxBooksPerStudent) {
         toast.error(`${student.name} has already issued ${currentCount} books (maximum: ${LIBRARY_RULES.maxBooksPerStudent}). Cannot issue more books.`);
       } else if (currentCount > 0) {
-        toast.success(`${student.name} currently has ${currentCount} book(s) issued.`, { 
+        toast.success(`${student.name} currently has ${currentCount} book(s) issued.`, {
           icon: 'ℹ️',
-          duration: 3000 
+          duration: 3000
         });
       }
     } catch (err) {
@@ -408,9 +409,9 @@ export default function LibraryModule() {
     });
     setStudentSearchResults([]);
     setShowStudentDropdown(false);
-    toast.success('Student selection cleared', { 
+    toast.success('Student selection cleared', {
       icon: 'ℹ️',
-      duration: 1500 
+      duration: 1500
     });
   };
 
@@ -419,22 +420,22 @@ export default function LibraryModule() {
       const issue = new Date(issueDate);
       const dueDate = new Date(issue);
       dueDate.setDate(dueDate.getDate() + LIBRARY_RULES.defaultLoanPeriodDays);
-      
+
       const ret = new Date(returnDate);
       const overdueDays = Math.max(0, Math.floor((ret.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
       const fine = overdueDays * LIBRARY_RULES.finePerDay;
-      
-      return { 
-        dueDate: dueDate.toISOString().split('T')[0], 
-        overdueDays, 
-        fine 
+
+      return {
+        dueDate: dueDate.toISOString().split('T')[0],
+        overdueDays,
+        fine
       };
     } catch (err) {
       logger.error('Error calculating fine:', err as Error);
-      return { 
-        dueDate: new Date().toISOString().split('T')[0], 
-        overdueDays: 0, 
-        fine: 0 
+      return {
+        dueDate: new Date().toISOString().split('T')[0],
+        overdueDays: 0,
+        fine: 0
       };
     }
   };
@@ -448,19 +449,19 @@ export default function LibraryModule() {
     try {
       setLoading(true);
       const loadingToast = toast.loading('Adding book to library...');
-      
+
       await libraryService.addBook({
         ...newBook,
         available_copies: newBook.total_copies,
         status: 'available' as const,
       });
-      
+
       toast.dismiss(loadingToast);
-      
-      setNewBook({ 
-        title: "", 
-        author: "", 
-        isbn: "", 
+
+      setNewBook({
+        title: "",
+        author: "",
+        isbn: "",
         total_copies: 1,
         category: "",
         publisher: "",
@@ -468,16 +469,16 @@ export default function LibraryModule() {
         description: "",
         location_shelf: ""
       });
-      
+
       toast.success("Book added successfully!", { duration: 3000 });
-      
+
       setBookSearch("");
       setBookFilter("all");
       setCurrentPage(1);
-      
+
       await loadBooks({ search: "", status: "all", page: 1 });
       await loadLibraryStats();
-      
+
       setActiveTab("details");
     } catch (err) {
       logger.error('Error adding book:', err as Error);
@@ -512,9 +513,9 @@ export default function LibraryModule() {
 
       toast.dismiss(loadingToast);
 
-      setIssueForm({ 
+      setIssueForm({
         studentId: "",
-        studentName: "", 
+        studentName: "",
         rollNumber: "",
         enrollmentNumber: "",
         admissionNumber: "",
@@ -522,19 +523,19 @@ export default function LibraryModule() {
         section: "",
         courseName: "",
         semester: "",
-        bookId: "", 
-        dueDate: "" 
+        bookId: "",
+        dueDate: ""
       });
       clearStudentSelection();
-      
+
       toast.success(`Book issued successfully to ${issueForm.studentName}!`, { duration: 4000 });
-      
+
       await Promise.all([
         loadBooks(),
         loadIssuedBooks(),
         loadLibraryStats(),
       ]);
-      
+
     } catch (err) {
       logger.error('Error issuing book:', err as Error);
       toast.error(err instanceof Error ? err.message : 'Failed to issue book');
@@ -552,7 +553,7 @@ export default function LibraryModule() {
     try {
       setLoading(true);
       const loadingToast = toast.loading('Searching for issued book...');
-      
+
       const issued = await libraryService.searchIssuedBook(
         returnForm.bookId || undefined,
         returnForm.studentId || undefined
@@ -563,7 +564,7 @@ export default function LibraryModule() {
       if (issued) {
         const today = new Date().toISOString().split('T')[0];
         const { dueDate, overdueDays, fine } = calculateFine(issued.issue_date, today);
-        
+
         setReturnForm({
           ...returnForm,
           bookId: issued.book_id,
@@ -576,7 +577,7 @@ export default function LibraryModule() {
           dueDate: dueDate,
           returnDate: new Date().toISOString().split('T')[0],
         });
-        
+
         if (overdueDays > 0) {
           toast.error(`Book found! This book is ${overdueDays} days overdue. Current fine: ₹${fine}`, {
             icon: '⚠️',
@@ -616,7 +617,7 @@ export default function LibraryModule() {
     try {
       setLoading(true);
       const loadingToast = toast.loading(`Processing return for ${returnForm.bookTitle}...`);
-      
+
       const issued = await libraryService.searchIssuedBook(returnForm.bookId, returnForm.studentId);
       if (!issued) {
         toast.dismiss(loadingToast);
@@ -632,24 +633,24 @@ export default function LibraryModule() {
 
       toast.dismiss(loadingToast);
 
-      const fineMessage = fine > 0 
-        ? `Overdue: ${overdueDays} days | Fine: ₹${fine} (@ ₹${LIBRARY_RULES.finePerDay}/day)` 
+      const fineMessage = fine > 0
+        ? `Overdue: ${overdueDays} days | Fine: ₹${fine} (@ ₹${LIBRARY_RULES.finePerDay}/day)`
         : "No fine. Returned on time.";
-      
+
       toast.success(`Book returned successfully!\n\nStudent: ${returnForm.studentName}\nBook: ${returnForm.bookTitle}\n${fineMessage}`, {
         duration: 6000,
       });
-      
-      setReturnForm({ 
-        bookId: "", 
-        studentId: "", 
-        studentName: "", 
-        rollNumber: "", 
-        class: "", 
-        bookTitle: "", 
-        issueDate: "", 
-        dueDate: "", 
-        returnDate: new Date().toISOString().split('T')[0] 
+
+      setReturnForm({
+        bookId: "",
+        studentId: "",
+        studentName: "",
+        rollNumber: "",
+        class: "",
+        bookTitle: "",
+        issueDate: "",
+        dueDate: "",
+        returnDate: new Date().toISOString().split('T')[0]
       });
 
       await Promise.all([
@@ -658,7 +659,7 @@ export default function LibraryModule() {
         loadLibraryStats(),
         loadOverdueBooks(),
       ]);
-      
+
     } catch (err) {
       logger.error('Error returning book:', err as Error);
       toast.error(err instanceof Error ? err.message : 'Failed to return book');

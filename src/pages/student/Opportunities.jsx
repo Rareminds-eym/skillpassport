@@ -30,29 +30,24 @@ import {
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import AdvancedFilters from '../../components/Students/components/AdvancedFilters';
-import OpportunityCard from '../../components/Students/components/OpportunityCard';
-import OpportunityListItem from '../../components/Students/components/OpportunityListItem';
-import OpportunityPreview from '../../components/Students/components/OpportunityPreview';
-import RecommendedJobs from '../../components/Students/components/RecommendedJobs';
-import IndustrialVisitPreview from '../../components/Students/components/IndustrialVisitPreview';
-import Pagination from '../../components/educator/Pagination';
-import { useUser } from '../../stores';
-import { useOpportunities } from '../../hooks/useOpportunities';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
-import { useProfileCompletion } from '../../hooks/useProfileCompletion';
-import AppliedJobsService from '../../services/appliedJobsService';
-import SavedJobsService from '../../services/savedJobsService';
-import factoryVisitsService from '../../services/factoryVisitsService';
-import { isSchoolStudent, isCollegeStudent, isLearner } from '../../utils/studentType';
-import { getLogger } from '../../config/logging';
+import { AdvancedFilters, OpportunityCard, OpportunityListItem, OpportunityPreview, RecommendedJobs, IndustrialVisitPreview } from '@/widgets/student-dashboard';
+import { Pagination } from '@/shared/ui';
+import { useUser } from '@/stores';
+import { useOpportunities } from '@/features/opportunities';
+import { useStudentProfile } from '@/features/student-profile';
+import { useStudentDataByEmail } from '@/entities/student';
+import { useProfileCompletion } from '@/features/student-profile';
+import { AppliedJobsService, SavedJobsService } from '@/features/opportunities';
+import { factoryVisitsService } from '@/features/college-admin';
+import { isSchoolStudent, isCollegeStudent, isLearner } from '@/entities/student/lib/studentType';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('Opportunities');
 
 // Import Applications component content
-import useMessageNotifications from '../../hooks/useMessageNotifications';
-import MessageService from '../../services/messageService';
-import StudentPipelineService from '../../services/studentPipelineService';
+import { useMessageNotifications } from '@/features/messaging';
+import { MessageService } from '@/features/messaging';
+import { studentPipelineService as StudentPipelineService } from '@/features/student-profile/api';
 
 // Helper function to check if institution details are complete
 const checkInstitutionDetailsComplete = (studentData) => {

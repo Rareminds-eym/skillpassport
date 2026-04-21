@@ -2,14 +2,13 @@ import { AlertCircle, Building2, Calendar, Check, ChevronDown, ChevronUp, Clock,
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import AddOnMarketplace from '../../components/Subscription/AddOnMarketplace';
-import { OrganizationPurchasePanel } from '../../components/Subscription/Organization';
-import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
+import { AddOnMarketplace, OrganizationPurchasePanel } from '@/features/subscription/ui';
+import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
+import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/stores';
+import { useSubscriptionAccess } from '@/stores';
 
-import { useUser, useUserRole, useIsAuthenticated, useAuthLoading, useSubscriptionAccess } from '../../stores';
-
-import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parseStudentType } from '../../utils/getEntityContent';
-import { calculateDaysRemaining, isActiveOrPaused } from '../../utils/subscriptionHelpers';
+import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parseStudentType } from "@/shared/lib/getEntityContent";
+import { calculateDaysRemaining, isActiveOrPaused } from '@/features/subscription';
 
 /**
  * Get the subscription manage path based on user role
@@ -623,7 +622,7 @@ function SubscriptionPlans() {
     });
   }, [setSearchParams]);
 
-  // Use Zustand auth hooks
+  // Use auth context
   const isAuthenticated = useIsAuthenticated();
   const user = useUser();
   const authLoading = useAuthLoading();

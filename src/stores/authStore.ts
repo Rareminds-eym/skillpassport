@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { supabase } from '../lib/supabaseClient';
-import { secureStorage } from '../lib/secureStorage';
+import { supabase } from '@/shared/api/supabaseClient';
+import { secureStorage } from '@/shared/lib/secureStorage';
 
 // Types
 interface ErrorNotification {
@@ -95,11 +95,22 @@ const getSpecificAdminRole = (sessionUser: any, storedUser: User | null): string
     sessionUser.user_metadata?.role ||
     'user';
 
-  // Handle legacy "admin" role
-  if (sessionRole === 'admin' && storedUser?.role) {
-    const specificRoles = ['school_admin', 'college_admin', 'university_admin'];
-    if (specificRoles.includes(storedUser.role)) {
-      return storedUser.role;
+  // Handle legacy "admin" role - resolve to specific admin type
+  if (sessionRole === 'admin') {
+    // Check stored user for specific role
+    if (storedUser?.role) {
+      const specificRoles = ['school_admin', 'college_admin', 'university_admin'];
+      if (specificRoles.includes(storedUser.role)) {
+        return storedUser.role;
+      }
+    }
+
+    // Infer from stored user context fields
+    if (storedUser) {
+      const s = storedUser as any;
+      if (s.collegeId || s.collegeName) return 'college_admin';
+      if (s.schoolId || s.schoolName) return 'school_admin';
+      if (s.universityId || s.universityName) return 'university_admin';
     }
   }
 
@@ -208,7 +219,15 @@ export const useAuthStore = create<AuthState>()(
           set((state) => {
             state.session = session;
             if (session?.user) {
+              const currentRole = state.role;
+              const specificRoles = ['school_admin', 'college_admin', 'university_admin'];
               const user = get().restoreUserFromStorage(session.user);
+
+              // Don't downgrade a specific admin role to generic 'admin'
+              if (currentRole && specificRoles.includes(currentRole) && user.role === 'admin') {
+                user.role = currentRole;
+              }
+
               state.user = user;
               state.isAuthenticated = true;
               state.role = user.role || null;
@@ -244,6 +263,7 @@ export const useAuthStore = create<AuthState>()(
 
         // Initialize auth state from Supabase
         initialize: async () => {
+          console.log('🔐 [AuthStore] initialize() called');
           set((state) => {
             state.loading = true;
           });
@@ -294,6 +314,7 @@ export const useAuthStore = create<AuthState>()(
           } catch (err) {
             console.error('Error initializing auth:', err);
           } finally {
+            console.log('🔐 [AuthStore] initialize() finished. Setting loading=false. user=', get().user?.id, 'isAuthenticated=', get().isAuthenticated, 'role=', get().role);
             set((state) => {
               state.loading = false;
             });
@@ -341,27 +362,33 @@ export const useAuthStore = create<AuthState>()(
 
         // Restore user from storage/session
         restoreUserFromStorage: (sessionUser) => {
-          const sessionRole = getSpecificAdminRole(sessionUser, get().user);
-
+          // First check localStorage for stored user with specific role
           const storedUser = localStorage.getItem('user');
+          let parsedStoredUser: User | null = null;
           if (storedUser) {
             try {
-              const parsedUser = JSON.parse(storedUser);
+              const parsed = JSON.parse(storedUser);
               const userMatches =
-                parsedUser.user_id === sessionUser.id ||
-                parsedUser.id === sessionUser.id ||
-                parsedUser.email === sessionUser.email;
-
+                parsed.user_id === sessionUser.id ||
+                parsed.id === sessionUser.id ||
+                parsed.email === sessionUser.email;
               if (userMatches) {
-                return {
-                  ...parsedUser,
-                  id: sessionUser.id,
-                  role: sessionRole,
-                };
+                parsedStoredUser = parsed;
               }
             } catch {
               // Ignore parse errors
             }
+          }
+
+          // Use stored user OR current state user for role resolution
+          const sessionRole = getSpecificAdminRole(sessionUser, parsedStoredUser || get().user);
+
+          if (parsedStoredUser) {
+            return {
+              ...parsedStoredUser,
+              id: sessionUser.id,
+              role: sessionRole,
+            };
           }
 
           // Create new user from session

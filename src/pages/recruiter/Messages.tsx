@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { getLogger } from '../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('RecruiterMessages');
 import { 
@@ -19,14 +19,16 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import MessageService, { Conversation } from '../../services/messageService';
-import { useMessages } from '../../hooks/useMessages';
+import { queryKeys } from '@/shared/lib/queryKeys';
+import { MessageService, Conversation } from '@/features/messaging';
+import { useMessages } from '@/features/messaging';
 import { formatDistanceToNow } from 'date-fns';
-import { useUser } from '../../stores';
-import { useRealtimePresence } from '../../hooks/useRealtimePresence';
-import { useTypingIndicator } from '../../hooks/useTypingIndicator';
-import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
-import DeleteConversationModal from '../../components/messaging/DeleteConversationModal';
+import { useUser } from '@/stores';
+import { useGlobalPresence } from '@/stores';
+import { useRealtimePresence } from '@/shared/lib/hooks';
+import { useTypingIndicator } from '@/features/messaging';
+import { useNotificationBroadcast } from '@/features/broadcast';
+import { DeleteConversationModal } from '@/features/messaging';
 
 const Messages = () => {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
@@ -52,7 +54,7 @@ const Messages = () => {
   
   // Fetch active conversations
   const { data: activeConversations = [], isLoading: loadingActive, refetch: refetchActive } = useQuery({
-    queryKey: ['recruiter-conversations', recruiterId, 'active'],
+    queryKey: queryKeys.recruiter.conversations.byRecruiter(recruiterId, 'active'),
     queryFn: async () => {
       if (!recruiterId) return [];
       return await MessageService.getUserConversations(recruiterId, 'recruiter', false);
@@ -67,7 +69,7 @@ const Messages = () => {
 
   // Fetch archived conversations count - always fetch for the badge
   const { data: archivedConversations = [], isLoading: loadingArchived, refetch: refetchArchived } = useQuery({
-    queryKey: ['recruiter-conversations', recruiterId, 'archived'],
+    queryKey: queryKeys.recruiter.conversations.byRecruiter(recruiterId, 'archived'),
     queryFn: async () => {
       if (!recruiterId) return [];
       const allConversations = await MessageService.getUserConversations(recruiterId, 'recruiter', true);
@@ -138,11 +140,11 @@ const Messages = () => {
         
         // Invalidate conversation queries and unread count for sidebar badge
         queryClient.invalidateQueries({ 
-          queryKey: ['recruiter-conversations', recruiterId],
+          queryKey: queryKeys.recruiter.conversations.all,
           refetchType: 'active'
         });
         queryClient.invalidateQueries({ 
-          queryKey: ['recruiter-unread-count', recruiterId],
+          queryKey: queryKeys.recruiter.messages.unread(recruiterId),
           refetchType: 'active'
         });
       }
@@ -169,7 +171,7 @@ const Messages = () => {
     
     // Optimistically update the UI immediately
     queryClient.setQueryData<typeof activeConversations>(
-      ['recruiter-conversations', recruiterId, 'active'],
+      queryKeys.recruiter.conversations.byRecruiter(recruiterId, 'active'),
       (oldData) => {
         if (!oldData) return oldData;
         return oldData.map(conv => 
@@ -209,14 +211,14 @@ const Messages = () => {
     },
     onMutate: async ({ conversationId }) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['recruiter-conversations', recruiterId] });
+      await queryClient.cancelQueries({ queryKey: queryKeys.recruiter.conversations.all });
       
       // Snapshot previous value
       const previousActive = queryClient.getQueryData(['recruiter-conversations', recruiterId, 'active']);
       const previousArchived = queryClient.getQueryData(['recruiter-conversations', recruiterId, 'archived']);
       
       // Optimistically update: mark as deleted
-      queryClient.setQueryData(['recruiter-conversations', recruiterId, 'active'], (old: any) => {
+      queryClient.setQueryData(queryKeys.recruiter.conversations.byRecruiter(recruiterId, 'active'), (old: any) => {
         if (!old) return [];
         return old.map((conv: any) => 
           conv.id === conversationId ? { ...conv, _pendingDelete: true } : conv
@@ -225,7 +227,7 @@ const Messages = () => {
       
       // CRITICAL: Invalidate to trigger immediate re-render
       queryClient.invalidateQueries({ 
-        queryKey: ['recruiter-conversations', recruiterId, 'active'],
+        queryKey: queryKeys.recruiter.conversations.byRecruiter(recruiterId, 'active'),
         refetchType: 'none' // Don't refetch, just notify subscribers
       });
       
@@ -245,14 +247,14 @@ const Messages = () => {
     },
     onSuccess: (data, variables, context) => {
       // Immediately remove from cache
-      queryClient.setQueryData(['recruiter-conversations', recruiterId, 'active'], (old: any) => {
+      queryClient.setQueryData(queryKeys.recruiter.conversations.byRecruiter(recruiterId, 'active'), (old: any) => {
         if (!old) return [];
         return old.filter((conv: any) => conv.id !== variables.conversationId);
       });
       
       // CRITICAL: Invalidate to ensure the query doesn't refetch from realtime updates
       queryClient.invalidateQueries({ 
-        queryKey: ['recruiter-conversations', recruiterId, 'active'],
+        queryKey: queryKeys.recruiter.conversations.byRecruiter(recruiterId, 'active'),
         refetchType: 'none' // Don't refetch, just notify
       });
       
@@ -268,7 +270,7 @@ const Messages = () => {
     },
     onMutate: async ({ conversationId }) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['recruiter-conversations', recruiterId] });
+      await queryClient.cancelQueries({ queryKey: queryKeys.recruiter.conversations.all });
       
       // Snapshot
       const previousActive = queryClient.getQueryData(['recruiter-conversations', recruiterId, 'active']);

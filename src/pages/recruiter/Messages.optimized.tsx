@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { getLogger } from '../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('RecruiterMessages');
 import { 
@@ -17,13 +17,14 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import MessageService, { Conversation } from '../../services/messageService';
-import { useMessages } from '../../hooks/useMessages';
+import { queryKeys } from '@/shared/lib/queryKeys';
+import { MessageService, Conversation } from '@/features/messaging';
+import { useMessages } from '@/features/messaging';
 import { formatDistanceToNow } from 'date-fns';
-import { useUser } from '../../stores';
-import { useGlobalPresence } from '../../stores';
-import { useTypingIndicator } from '../../hooks/useTypingIndicator';
-import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
+import { useUser } from '@/stores';
+import { useGlobalPresence } from '@/stores';
+import { useTypingIndicator } from '@/features/messaging';
+import { useNotificationBroadcast } from '@/features/broadcast';
 
 // Constants
 const AVATAR_BG_COLOR = '3B82F6';
@@ -94,7 +95,7 @@ const Messages = () => {
     isLoading: loadingActive, 
     refetch: refetchActive 
   } = useQuery({
-    queryKey: ['recruiter-conversations', recruiterId, 'active'],
+    queryKey: queryKeys.recruiter.conversations.byRecruiter(recruiterId, 'active'),
     queryFn: async () => {
       if (!recruiterId) return [];
       return await MessageService.getUserConversations(recruiterId, 'recruiter', false);
@@ -113,7 +114,7 @@ const Messages = () => {
     isLoading: loadingArchived, 
     refetch: refetchArchived 
   } = useQuery({
-    queryKey: ['recruiter-conversations', recruiterId, 'archived'],
+    queryKey: queryKeys.recruiter.conversations.byRecruiter(recruiterId, 'archived'),
     queryFn: async () => {
       if (!recruiterId) return [];
       const allConversations = await MessageService.getUserConversations(recruiterId, 'recruiter', true);

@@ -1,9 +1,11 @@
+import { authSessionService } from '@/features/auth';
+
 import { City, State } from 'country-state-city';
 import { AlertCircle, Building2, CheckCircle2, Eye, EyeOff, Gift, Globe, Languages, Loader2, MapPin, Phone, Shield, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { capitalizeFirstLetter } from '../../../../../components/Subscription/shared/signupValidation';
-import { supabase } from '../../../../../lib/supabaseClient';
+import { capitalizeFirstLetter } from '@/features/subscription';
+import { supabase } from '@/shared/api/supabaseClient';
 
 // Languages list
 const LANGUAGES = [
@@ -375,7 +377,7 @@ const SignupAdmin = () => {
       const lastName = capitalizeFirstLetter(formData.adminLastName);
 
       // Use the Pages Function API for signup with proper rollback support
-      const { getPagesApiUrl } = await import('../../../../../utils/pagesUrl');
+      const { getPagesApiUrl } = await import('@/shared/lib/pagesUrl');
       const USER_API_URL = getPagesApiUrl('user');
 
       const response = await fetch(`${USER_API_URL}/signup/recruiter-admin`, {
@@ -415,7 +417,7 @@ const SignupAdmin = () => {
       // CRITICAL FIX: Auto-login after successful signup
       // This establishes a Supabase session so the user is authenticated
       console.log('🔐 Auto-logging in after signup...');
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await authSessionService.signInWithPassword({
         email: formData.adminEmail,
         password: formData.password,
       });

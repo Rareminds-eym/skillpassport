@@ -20,11 +20,12 @@ import {
   Video,
 } from "lucide-react";
 import toast from 'react-hot-toast';
-import { supabase } from '@/lib/supabaseClient';
-import { opportunitiesService } from '@/services/opportunitiesService';
-import type { Opportunity } from '@/services/opportunitiesService';
-import { applicationTrackingService } from '@/services/applicationTrackingService';
-import type { ApplicationTrackingData, ApplicationStats } from '@/services/applicationTrackingService';
+import { supabase } from '@/shared/api';
+import { opportunitiesService } from '@/features/opportunities';
+import type { Opportunity } from '@/features/opportunities';
+import { applicationTrackingService } from '@/features/opportunities';
+import type { ApplicationTrackingData, ApplicationStats } from '@/features/opportunities';
+import { authSessionService } from '@/features/auth';
 
 const ApplicationTracking: React.FC = () => {
   const [applicationSearchTerm, setApplicationSearchTerm] = useState("");
@@ -112,7 +113,7 @@ const ApplicationTracking: React.FC = () => {
       setApplicationError(null);
 
       // Get current user's college ID
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await authSessionService.getUser();
       if (!user) {
         throw new Error('Not authenticated');
       }

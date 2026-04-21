@@ -10,16 +10,15 @@ import {
   SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { UserPlusIcon } from 'lucide-react';
-import { getLogger } from '../../../config/logging';
-import SearchBar from '../../../components/common/SearchBar';
-import Pagination from '../../../components/admin/Pagination';
-import StudentProfileDrawer from '@/components/shared/StudentProfileDrawer';
-import AddStudentModal from '../../../components/educator/modals/Addstudentmodal';
-import { AdmissionNoteModal } from '@/components/shared/StudentProfileDrawer/modals';
-import { useStudents } from '../../../hooks/useAdminStudents';
-import AssessmentReportDrawer from '@/components/shared/AssessmentReportDrawer';
+import { getLogger } from '@/shared/config/logging';
+import { SearchBar } from '@/shared/ui';
+import { Pagination } from '@/shared/ui';
+import { StudentProfileDrawer, AdmissionNoteModal } from '@/features/student-profile';
+import { AddStudentModal } from '@/features/college-admin';
+import { useStudents } from '@/entities/student';
+import { AssessmentReportDrawer } from '@/features/assessment';
 // @ts-ignore - JS file without types
-import { getLatestResult } from '../../../services/assessmentService';
+import { getLatestResult } from '@/features/assessment';
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);

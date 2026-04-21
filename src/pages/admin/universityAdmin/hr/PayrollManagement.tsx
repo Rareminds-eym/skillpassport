@@ -12,7 +12,7 @@ import {
   XCircleIcon,
   UsersIcon,
 } from '@heroicons/react/24/outline';
-import { getLogger } from '../../../../config/logging';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('university-admin-hr-payroll-management');
 import {
@@ -31,7 +31,7 @@ import {
   Clock,
   CheckCircle,
 } from 'lucide-react';
-import KPICard from '../../../../components/admin/KPICard';
+import { KPICard } from '@/features/analytics';
 
 interface PayrollRecord {
   id: string;

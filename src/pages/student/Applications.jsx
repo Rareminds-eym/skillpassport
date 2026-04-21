@@ -22,15 +22,16 @@ import {
   Bell,
   FileText
 } from 'lucide-react';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
-import AppliedJobsService from '../../services/appliedJobsService';
-import StudentPipelineService from '../../services/studentPipelineService';
-import MessageService from '../../services/messageService';
-import useMessageNotifications from '../../hooks/useMessageNotifications';
-import { supabase } from '../../lib/supabaseClient';
-import { useUser } from '../../stores';
 
-import { getLogger } from '../../config/logging';
+import { useStudentProfile } from '@/features/student-profile';
+import { AppliedJobsService } from '@/features/opportunities';
+import { studentPipelineService } from '@/features/student-profile/api';
+import { MessageService } from '@/features/messaging';
+import { useMessageNotifications } from '@/features/messaging';
+import { supabase } from '@/shared/api/supabaseClient';
+import { useUser } from '@/stores';
+
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('Applications');
 

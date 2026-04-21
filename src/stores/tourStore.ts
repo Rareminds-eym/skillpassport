@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { immer } from 'zustand/middleware/immer';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '@/shared/api/supabaseClient';
 
 // Types (from TourProvider)
 export type TourKey =

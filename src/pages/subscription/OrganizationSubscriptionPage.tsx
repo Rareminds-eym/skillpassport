@@ -8,15 +8,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import AssignToPoolModal from '../../components/Subscription/Organization/AssignToPoolModal';
-import CreatePoolModal, { PoolFormData } from '../../components/Subscription/Organization/CreatePoolModal';
-import DeletePoolModal from '../../components/Subscription/Organization/DeletePoolModal';
-import EditPoolModal, { PoolUpdateData } from '../../components/Subscription/Organization/EditPoolModal';
-import OrganizationSubscriptionDashboard from '../../components/Subscription/Organization/OrganizationSubscriptionDashboard';
-import PoolAssignmentsModal from '../../components/Subscription/Organization/PoolAssignmentsModal';
-import { useOrganizationSubscription } from '../../hooks/Subscription/useOrganizationSubscription';
-import { useUser, useIsAuthenticated } from '../../stores';
-import { supabase } from '../../lib/supabaseClient';
+import {
+  AssignToPoolModal,
+  CreatePoolModal,
+  DeletePoolModal,
+  EditPoolModal,
+  OrganizationSubscriptionDashboard,
+  PoolAssignmentsModal
+} from '@/features/subscription';
+import type { PoolFormData } from '@/features/subscription';
+import type { PoolUpdateData } from '@/features/subscription';
+import { useOrganizationSubscription } from '@/features/subscription/model';
+import { useUser } from '@/stores';
+import { supabase } from '@/shared/api/supabaseClient';
 
 interface OrganizationDetails {
   id?: string;
@@ -665,7 +669,7 @@ function OrganizationSubscriptionPage() {
     
     try {
       // Import the service dynamically to avoid circular dependencies
-      const { licenseManagementService } = await import('@/services/organization/licenseManagementService');
+      const { licenseManagementService } = await import('@/entities/organization');
       
       // Map member IDs to user IDs (the license system uses auth user IDs)
       const membersToAssignData = organizationMembers.filter(m => memberIds.includes(m.id) && !m.hasLicense);
@@ -711,7 +715,7 @@ function OrganizationSubscriptionPage() {
     try {
       toast.loading(`Unassigning licenses from ${memberIds.length} member(s)...`);
       
-      const { licenseManagementService } = await import('@/services/organization/licenseManagementService');
+      const { licenseManagementService } = await import('@/entities/organization');
       
       // Find the license assignments for these members
       const membersToUnassign = organizationMembers.filter(
@@ -764,7 +768,7 @@ function OrganizationSubscriptionPage() {
     try {
       toast.loading('Transferring license...');
       
-      const { licenseManagementService } = await import('@/services/organization/licenseManagementService');
+      const { licenseManagementService } = await import('@/entities/organization');
       
       // Find the source member to get their user_id and subscription
       const fromMember = organizationMembers.find(m => m.id === fromMemberId);
@@ -819,7 +823,7 @@ function OrganizationSubscriptionPage() {
     }
 
     try {
-      const { organizationMemberService } = await import('@/services/organization/organizationMemberService');
+      const { organizationMemberService } = await import('@/entities/organization');
       
       const result = await organizationMemberService.removeMember(
         memberId,

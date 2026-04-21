@@ -1,4 +1,4 @@
-// Zustand Stores - Barrel Export
+// Zustand Stores - Barrel Export (Re-exports from FSD locations)
 // All stores are self-contained and don't require React providers
 
 // ====================
@@ -9,7 +9,7 @@ export {
   useThemeStore,
   useTheme,
   useIsDark
-} from './themeStore';
+} from '@/shared/model/themeStore';
 
 export {
   useAuthStore,
@@ -39,7 +39,7 @@ export {
   useSearchActions,
   type SearchFilters,
   type SearchResult
-} from './searchStore';
+} from '@/shared/model/searchStore';
 
 export {
   usePortfolioStore,
@@ -85,7 +85,7 @@ export {
   type TourKey,
   type TourProgress,
   type TourState
-} from './tourStore';
+} from '@/shared/model/tourStore';
 
 export {
   useSubscriptionStore,
@@ -94,7 +94,9 @@ export {
   useUserEntitlements,
   useSubscriptionPurchase,
   useSubscription,
+  useSubscription as useSubscriptionContext, // Alias for backward compatibility
   ACCESS_REASONS,
+  WARNING_TYPES,
   type AccessReason,
   type WarningType,
   type Subscription,
@@ -116,7 +118,7 @@ export {
   useUserOnlineStatus,
   usePresenceActions,
   type OnlineUser
-} from './globalPresenceStore';
+} from '@/shared/model/globalPresenceStore';
 
 export {
   useTestStore,
@@ -161,16 +163,8 @@ export {
 } from './counsellingStore';
 
 export {
-  useMessageStore,
-  useMessages,
-  useConversations,
-  useCurrentConversationId,
-  useUnreadCount,
-  useMessageLoadingStates,
-  useCurrentConversation,
-  useUnreadMessagesCount,
-  type MessageState
-} from './useMessageStore';
+  useMessageStore
+} from '@/features/messaging/model/useMessageStore';
 
 // ====================
 // Store Utilities
@@ -179,9 +173,9 @@ export {
 // Helper to reset all stores (useful for logout)
 export const resetAllStores = async () => {
   const { useAuthStore } = await import('./authStore');
-  const { useSearchStore } = await import('./searchStore');
+  const { useSearchStore } = await import('@/shared/model/searchStore');
   const { usePortfolioStore } = await import('./portfolioStore');
-  const { useTourStore } = await import('./tourStore');
+  const { useTourStore } = await import('@/shared/model/tourStore');
   const { useAssessmentStore } = await import('./assessmentStore');
   const { useSubscriptionStore } = await import('./subscriptionStore');
 

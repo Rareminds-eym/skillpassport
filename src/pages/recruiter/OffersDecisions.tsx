@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import toast from 'react-hot-toast';
 import {
   DocumentTextIcon,
   ClockIcon,
@@ -20,71 +21,11 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon
 } from '@heroicons/react/24/outline';
-import { useOffers, Offer } from '../../hooks/useOffers.ts';
-import OfferAdvancedFilters, { OfferFilters, OfferSortOptions } from '../../components/Recruiter/filters/OfferAdvancedFilters';
-import OfferSortButton from '../../components/Recruiter/filters/OfferSortButton';
-import { getLogger } from '../../config/logging';
+import { useOffers, Offer } from '@/shared/lib/hooks';
+import { OfferAdvancedFilters, OfferFilters, OfferSortOptions, OfferSortButton } from '@/features/recruiter';
+import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('OffersDecisions');
-
-const Toast = ({
-  show,
-  message,
-  type = 'success',
-  onClose
-}: {
-  show: boolean;
-  message: string;
-  type?: 'success' | 'error' | 'info';
-  onClose: () => void;
-}) => {
-  if (!show) return null;
-
-  const getToastStyles = () => {
-    switch (type) {
-      case 'error':
-        return 'bg-red-50 border-red-200 text-red-800';
-      case 'info':
-        return 'bg-blue-50 border-blue-200 text-blue-800';
-      default:
-        return 'bg-green-50 border-green-200 text-green-800';
-    }
-  };
-
-  const getIcon = () => {
-    switch (type) {
-      case 'error':
-        return <XCircleIcon className="h-5 w-5 text-red-400" />;
-      case 'info':
-        return <ExclamationCircleIcon className="h-5 w-5 text-blue-400" />;
-      default:
-        return <CheckCircleIcon className="h-5 w-5 text-green-400" />;
-    }
-  };
-
-  return (
-    <div className="fixed top-4 right-4 z-50 max-w-sm w-full">
-      <div className={`rounded-lg border p-4 shadow-lg ${getToastStyles()}`}>
-        <div className="flex items-start">
-          <div className="flex-shrink-0">
-            {getIcon()}
-          </div>
-          <div className="ml-3 flex-1">
-            <p className="text-sm font-medium">{message}</p>
-          </div>
-          <div className="ml-4 flex-shrink-0">
-            <button
-              onClick={onClose}
-              className="inline-flex text-gray-400 hover:text-gray-600"
-            >
-              <XMarkIcon className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 
 const OfferDetailsDrawer = ({
@@ -1366,11 +1307,6 @@ const OffersDecisions = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(6);
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
-  const [toast, setToast] = useState<{
-    show: boolean;
-    message: string;
-    type: 'success' | 'error' | 'info';
-  }>({ show: false, message: '', type: 'success' });
 
   // Extract available filter options from offers
   const availableTemplates = useMemo(() => 
@@ -1392,10 +1328,9 @@ const OffersDecisions = () => {
   }, [offers]);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
-    setToast({ show: true, message, type });
-    setTimeout(() => {
-      setToast(prev => ({ ...prev, show: false }));
-    }, 4000);
+    if (type === 'error') toast.error(message);
+    else if (type === 'info') toast(message);
+    else toast.success(message);
   };
 
   const handleCreateOffer = async (newOfferData: Partial<Offer>) => {
@@ -1833,14 +1768,6 @@ const OffersDecisions = () => {
           setSelectedOffer(null);
         }}
         offer={selectedOffer}
-      />
-
-      {/* Toast Notification */}
-      <Toast
-        show={toast.show}
-        message={toast.message}
-        type={toast.type}
-        onClose={() => setToast(prev => ({ ...prev, show: false }))}
       />
     </div>
   );

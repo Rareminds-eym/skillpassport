@@ -1,0 +1,1 @@
+export { RecruiterDashboardWidget } from './RecruiterDashboardWidget';
