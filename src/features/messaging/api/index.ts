@@ -1,5 +1,5 @@
 // Export MessageService
-export { default as MessageService } from './messageService';
+export { default as MessageService } from '../../../shared/api/messageService';
 
 // Export all types from types.ts
 export type {
@@ -16,4 +16,4 @@ export type {
 } from './types';
 
 // Re-export everything from messageService for backward compatibility
-export * from './messageService';
+export * from '../../../shared/api/messageService';

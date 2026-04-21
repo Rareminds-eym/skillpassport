@@ -7,7 +7,7 @@ import { supabase } from '@/shared/api/supabaseClient';
 import toast from 'react-hot-toast';
 import { MessageSquare, X, User, Briefcase } from 'lucide-react';
 import { useMessageStore } from '@/stores';
-import type { Message } from '@/features/messaging/api/messageService';
+import type { Message } from '@/shared/api/messageService';
 interface UseStudentMessageNotificationsProps {
   studentId: string | null;
   enabled?: boolean;
