@@ -223,7 +223,11 @@ const TermsModal = ({ isOpen, onClose, onAccept, registrationFee }) => {
               <h4 className="text-gray-900 font-bold text-base sm:text-lg mb-2 sm:mb-3">Registration Terms</h4>
               <p className="text-gray-600 text-sm sm:text-base mb-3 sm:mb-4">By signing up, you agree to the following:</p>
               <ul className="text-gray-600 text-sm sm:text-base space-y-2 sm:space-y-3 mb-4 sm:mb-6">
-                <li>The registration fee is ₹{registrationFee} and cannot be refunded once paid.</li>
+                <li>
+                  {registrationFee < 499
+                    ? `The registration fee is ₹${registrationFee}. This is refundable within 7 days if you find it not useful.`
+                    : `The registration fee is ₹${registrationFee} and cannot be refunded once paid.`}
+                </li>
                 <li>Your personal details will be used only for registration and official communication.</li>
                 <li>You will receive emails about your registration status and upcoming updates/events.</li>
                 <li>Access to the platform will be provided after successful verification.</li>
@@ -902,6 +906,59 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                       </div>
                     </div>
                   </div>
+
+                  {/* UPSELL - between Registration Fee and line item */}
+                  <div
+                    onClick={() => setUpsell(v => !v)}
+                    className={`border-b cursor-pointer transition-all duration-200 p-4 ${
+                      upsell ? 'border-blue-200 bg-blue-50' : 'border-gray-100 bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex gap-3 items-start mb-3">
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-200 ${
+                        upsell ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
+                      }`}>
+                        {upsell && (
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                            <path d="M2.5 6l2.5 2.5 4.5-4.5" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-xs text-orange-500 font-bold uppercase tracking-wide mb-1">
+                          ⬇ Add This to Make It Work Better
+                        </div>
+                        <div className="text-sm font-bold text-gray-900">
+                          Yes, I want to track my progress with SkillPassport
+                        </div>
+                        <div className="flex gap-2 items-center mt-1">
+                          <span className="text-sm text-gray-400 line-through">₹4,999</span>
+                          <span className="text-lg font-bold text-blue-600">₹{COMBO_FEE_STUDENT}</span>
+                          <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-green-200">
+                            90% OFF
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="border-t border-blue-200 pt-3">
+                      <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+                        What You Get with SkillPassport
+                      </p>
+                      {[
+                        "400+ courses across in-demand skills",
+                        "Structured path + portfolio so you always have proof of work",
+                        "Exclusive job and internship opportunities based on your actual skills and progress"
+                      ].map((item, i) => (
+                        <div key={i} className="flex gap-2 mb-2 items-start">
+                          <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center mt-0.5 flex-shrink-0">
+                            <Check className="w-2.5 h-2.5 text-green-600" strokeWidth={3} />
+                          </div>
+                          <span className="text-sm text-gray-700 leading-relaxed">{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="p-4">
                     {upsell ? (
                       <div className="flex justify-between">
@@ -918,58 +975,6 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                   <div className="p-3 flex justify-between items-center border-t-2 border-blue-600 bg-blue-50">
                     <span className="text-sm font-semibold text-gray-700">Total Amount</span>
                     <span className="text-xl font-bold text-blue-600">₹{REGISTRATION_FEE}</span>
-                  </div>
-                </div>
-
-                {/* UPSELL */}
-                <div
-                  onClick={() => setUpsell(v => !v)}
-                  className={`border-2 rounded-xl p-4 mb-4 cursor-pointer transition-all duration-200 ${
-                    upsell ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-gray-50'
-                  }`}
-                >
-                  <div className="flex gap-3 items-start mb-3">
-                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-200 ${
-                      upsell ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
-                    }`}>
-                      {upsell && (
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                          <path d="M2.5 6l2.5 2.5 4.5-4.5" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-xs text-orange-500 font-bold uppercase tracking-wide mb-1">
-                        ⬇ Add This to Make It Work Better
-                      </div>
-                      <div className="text-sm font-bold text-gray-900">
-                        Yes, I want to track my progress with SkillPassport
-                      </div>
-                      <div className="flex gap-2 items-center mt-1">
-                        <span className="text-sm text-gray-400 line-through">₹4,999</span>
-                        <span className="text-lg font-bold text-blue-600">₹{COMBO_FEE_STUDENT}</span>
-                        <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-green-200">
-                          90% OFF
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="border-t border-blue-200 pt-3">
-                    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
-                      What You Get with SkillPassport
-                    </p>
-                    {[
-                      "400+ courses across in-demand skills",
-                      "Structured path + portfolio so you always have proof of work", 
-                      "Exclusive job opportunities based on your actual skills and progress"
-                    ].map((item, i) => (
-                      <div key={i} className="flex gap-2 mb-2 items-start">
-                        <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center mt-0.5 flex-shrink-0">
-                          <Check className="w-2.5 h-2.5 text-green-600" strokeWidth={3} />
-                        </div>
-                        <span className="text-sm text-gray-700 leading-relaxed">{item}</span>
-                      </div>
-                    ))}
                   </div>
                 </div>
 
