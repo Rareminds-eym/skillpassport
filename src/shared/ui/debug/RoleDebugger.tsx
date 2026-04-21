@@ -3,13 +3,29 @@ import { supabase } from "@/shared/api/supabaseClient";
 import { useUserRole } from '@/entities/user';
 import { useUser, useUserRole as useUserRoleFromStore } from '@/stores';
 
+interface UserInfo {
+  id?: string;
+  email?: string;
+  error?: string;
+}
+
+interface TeacherData {
+  role?: string;
+  email?: string;
+}
+
+interface EducatorData {
+  role?: string;
+  user_id?: string;
+}
+
 const RoleDebugger: React.FC = () => {
   const authUser = useUser();
   const { role: authRole } = useUserRoleFromStore();
-  const [userInfo, setUserInfo] = useState<any>(null);
-  const [teacherData, setTeacherData] = useState<any>(null);
-  const [educatorData, setEducatorData] = useState<any>(null);
-  const { role, permissions, loading } = useUserRole(authUser, authRole);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [teacherData, setTeacherData] = useState<TeacherData | null>(null);
+  const [educatorData, setEducatorData] = useState<EducatorData | null>(null);
+  const { role, permissions, loading } = useUserRole(authUser, authRole ?? undefined);
 
   const fetchDebugInfo = useCallback(async () => {
     try {

@@ -241,6 +241,7 @@ class AlertService {
    */
   private sendEmailAlert(alert: Alert): void {
     // TODO: Integrate with email service for structured alert logging
+    // Options: SendGrid, AWS SES, or similar. Use structured logging (e.g., Sentry, DataDog) for observability.
     // await emailService.sendAlert({
     //   to: 'admin@organization.com',
     //   subject: `[${alert.severity.toUpperCase()}] ${alert.message}`,
@@ -253,6 +254,7 @@ class AlertService {
    */
   private sendSlackAlert(alert: Alert): void {
     // TODO: Integrate with Slack webhook for structured alert logging
+    // Use SLACK_WEBHOOK_URL env variable. Add error handling for failed webhook requests.
     // await fetch(SLACK_WEBHOOK_URL, {
     //   method: 'POST',
     //   body: JSON.stringify({
