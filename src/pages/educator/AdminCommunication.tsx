@@ -28,6 +28,7 @@ import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/features/messaging';
 import { supabase } from '@/shared/api/supabaseClient';
 import { MessageService, Conversation } from '@/features/messaging';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 const AdminCommunication = () => {
   const location = useLocation();
@@ -73,7 +74,7 @@ const AdminCommunication = () => {
   
   // Fetch active conversations with school admins
   const { data: activeConversations = [], isLoading: loadingActive, refetch: refetchActive } = useQuery({
-    queryKey: ['educator-admin-conversations', educatorRecordId, 'active'],
+    queryKey: queryKeys.educator.admin.conversations(educatorRecordId || '', 'active'),
     queryFn: async () => {
       if (!educatorRecordId) return [];
       const { data, error } = await supabase
@@ -100,7 +101,7 @@ const AdminCommunication = () => {
 
   // Fetch archived conversations
   const { data: archivedConversations = [], isLoading: loadingArchived, refetch: refetchArchived } = useQuery({
-    queryKey: ['educator-admin-conversations', educatorRecordId, 'archived'],
+    queryKey: queryKeys.educator.admin.conversations(educatorRecordId || '', 'archived'),
     queryFn: async () => {
       if (!educatorRecordId) return [];
       const { data, error } = await supabase
@@ -229,11 +230,11 @@ const AdminCommunication = () => {
         }
         
         queryClient.invalidateQueries({ 
-          queryKey: ['educator-admin-conversations', educatorRecordId, 'active'],
+          queryKey: queryKeys.educator.admin.conversations(educatorRecordId || '', 'active'),
           refetchType: 'active'
         });
         queryClient.invalidateQueries({ 
-          queryKey: ['educator-admin-conversations', educatorRecordId, 'archived'],
+          queryKey: queryKeys.educator.admin.conversations(educatorRecordId || '', 'archived'),
           refetchType: 'active'
         });
       }
@@ -274,7 +275,7 @@ const AdminCommunication = () => {
       .then(() => {
         // Force cache invalidation after successful mark as read
         queryClient.invalidateQueries({ 
-          queryKey: ['educator-admin-conversations', educatorRecordId, 'active'],
+          queryKey: queryKeys.educator.admin.conversations(educatorRecordId || '', 'active'),
           refetchType: 'active'
         });
       })
@@ -292,7 +293,7 @@ const AdminCommunication = () => {
       return { conversationId };
     },
     onMutate: async ({ conversationId }) => {
-      await queryClient.cancelQueries({ queryKey: ['educator-admin-conversations', educatorRecordId] });
+      await queryClient.cancelQueries({ queryKey: queryKeys.educator.admin.all });
       
       const previousActive = queryClient.getQueryData(['educator-admin-conversations', educatorRecordId, 'active']);
       const previousArchived = queryClient.getQueryData(['educator-admin-conversations', educatorRecordId, 'archived']);
@@ -305,7 +306,7 @@ const AdminCommunication = () => {
       });
       
       queryClient.invalidateQueries({ 
-        queryKey: ['educator-admin-conversations', educatorRecordId, 'active'],
+        queryKey: queryKeys.educator.admin.conversations(educatorRecordId || '', 'active'),
         refetchType: 'none'
       });
       
@@ -323,7 +324,7 @@ const AdminCommunication = () => {
       });
       
       queryClient.invalidateQueries({ 
-        queryKey: ['educator-admin-conversations', educatorRecordId, 'active'],
+        queryKey: queryKeys.educator.admin.conversations(educatorRecordId || '', 'active'),
         refetchType: 'none'
       });
     }

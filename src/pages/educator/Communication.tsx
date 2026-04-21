@@ -35,6 +35,7 @@ import { supabase } from '@/shared/api/supabaseClient';
 import { NewStudentConversationModal } from '@/features/messaging';
 import { NewEducatorAdminConversationModal } from '@/features/messaging';
 import { getLogger } from '@/shared/config/logging';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 const logger = getLogger('educator-communication');
 
@@ -163,7 +164,7 @@ const Communication = () => {
 
   // Fetch active student conversations
   const { data: activeStudentConversations = [], isLoading: loadingActiveStudents, refetch: refetchActiveStudents } = useQuery({
-    queryKey: ['educator-conversations', educatorRecordId, 'active'],
+    queryKey: queryKeys.educator.conversations.byEducator(educatorRecordId || '', 'active'),
     queryFn: async () => {
       if (!educatorRecordId) return [];
       logger.info('🔍 Fetching student conversations for educator record ID:', educatorRecordId);
@@ -182,7 +183,7 @@ const Communication = () => {
 
   // Fetch archived student conversations
   const { data: archivedStudentConversations = [], isLoading: loadingArchivedStudents, refetch: refetchArchivedStudents } = useQuery({
-    queryKey: ['educator-conversations', educatorRecordId, 'archived'],
+    queryKey: queryKeys.educator.conversations.byEducator(educatorRecordId || '', 'archived'),
     queryFn: async () => {
       if (!educatorRecordId) return [];
       const allConversations = await MessageService.getUserConversations(educatorRecordId, 'educator', true);
@@ -200,7 +201,7 @@ const Communication = () => {
 
   // Fetch active admin conversations
   const { data: activeAdminConversations = [], isLoading: loadingActiveAdmin, refetch: refetchActiveAdmin } = useQuery({
-    queryKey: ['educator-admin-conversations', educatorRecordId, 'active'],
+    queryKey: queryKeys.educator.admin.conversations(educatorRecordId || '', 'active'),
     queryFn: async () => {
       logger.info('🔍 [EDUCATOR-ADMIN-CONVERSATIONS] === FETCH DEBUG START ===');
       logger.info('📋 Educator Record ID:', educatorRecordId);
@@ -278,7 +279,7 @@ const Communication = () => {
 
   // Fetch archived admin conversations
   const { data: archivedAdminConversations = [], isLoading: loadingArchivedAdmin, refetch: refetchArchivedAdmin } = useQuery({
-    queryKey: ['educator-admin-conversations', educatorRecordId, 'archived'],
+    queryKey: queryKeys.educator.admin.conversations(educatorRecordId || '', 'archived'),
     queryFn: async () => {
       logger.info('🔍 [EDUCATOR-ARCHIVED-ADMIN-CONVERSATIONS] === FETCH DEBUG START ===');
       logger.info('📋 Educator Record ID:', educatorRecordId);
@@ -637,11 +638,11 @@ const Communication = () => {
         }
 
         queryClient.invalidateQueries({
-          queryKey: ['educator-conversations', educatorRecordId, 'active'],
+          queryKey: queryKeys.educator.conversations.byEducator(educatorRecordId || '', 'active'),
           refetchType: 'active'
         });
         queryClient.invalidateQueries({
-          queryKey: ['educator-conversations', educatorRecordId, 'archived'],
+          queryKey: queryKeys.educator.conversations.byEducator(educatorRecordId || '', 'archived'),
           refetchType: 'active'
         });
       }
@@ -754,7 +755,7 @@ const Communication = () => {
       return { conversationId };
     },
     onMutate: async ({ conversationId }) => {
-      await queryClient.cancelQueries({ queryKey: ['educator-conversations', educatorRecordId] });
+      await queryClient.cancelQueries({ queryKey: queryKeys.educator.conversations.all });
 
       const previousActive = queryClient.getQueryData(['educator-conversations', educatorRecordId, 'active']);
       const previousArchived = queryClient.getQueryData(['educator-conversations', educatorRecordId, 'archived']);
@@ -767,7 +768,7 @@ const Communication = () => {
       });
 
       queryClient.invalidateQueries({
-        queryKey: ['educator-conversations', educatorRecordId, 'active'],
+        queryKey: queryKeys.educator.conversations.byEducator(educatorRecordId || '', 'active'),
         refetchType: 'none'
       });
 
@@ -784,7 +785,7 @@ const Communication = () => {
       });
 
       queryClient.invalidateQueries({
-        queryKey: ['educator-conversations', educatorRecordId, 'active'],
+        queryKey: queryKeys.educator.conversations.byEducator(educatorRecordId || '', 'active'),
         refetchType: 'none'
       });
     }

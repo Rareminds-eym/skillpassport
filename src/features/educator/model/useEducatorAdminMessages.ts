@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MessageService } from '@/features/messaging';
 import { supabase } from '@/shared/api/supabaseClient';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**
  * Hook for managing educator-admin messages
@@ -13,7 +14,7 @@ export const useEducatorAdminMessages = ({ conversationId, enabled = true }) => 
 
   // Fetch messages for the conversation
   const { data: messages = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['educator-admin-messages', conversationId],
+    queryKey: queryKeys.educator.admin.messages(conversationId || ''),
     queryFn: async () => {
       if (!conversationId) return [];
       return MessageService.getConversationMessages(conversationId, { useCache: false });
@@ -40,7 +41,7 @@ export const useEducatorAdminMessages = ({ conversationId, enabled = true }) => 
     }
 
     setIsSending(true);
-    
+
     try {
       console.log('📤 Sending educator-admin message:', {
         conversationId,
@@ -68,23 +69,23 @@ export const useEducatorAdminMessages = ({ conversationId, enabled = true }) => 
       console.log('✅ Educator-admin message sent:', message);
 
       // Optimistically update the messages list
-      queryClient.setQueryData(['educator-admin-messages', conversationId], (oldMessages) => {
+      queryClient.setQueryData(queryKeys.educator.admin.messages(conversationId), (oldMessages) => {
         if (!oldMessages) return [message];
         return [...oldMessages, message];
       });
 
       // Invalidate and refetch to ensure consistency
-      queryClient.invalidateQueries({ 
-        queryKey: ['educator-admin-messages', conversationId],
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.educator.admin.messages(conversationId),
         refetchType: 'active'
       });
 
       // Also invalidate conversation lists for both parties
-      queryClient.invalidateQueries({ 
-        queryKey: ['educator-conversations'],
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.educator.conversations.all,
         refetchType: 'active'
       });
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: ['school-admin-conversations'],
         refetchType: 'active'
       });
@@ -108,24 +109,24 @@ export const useEducatorAdminMessages = ({ conversationId, enabled = true }) => 
       conversationId,
       (newMessage) => {
         console.log('📨 New educator-admin message received:', newMessage);
-        
+
         // Update messages cache
-        queryClient.setQueryData(['educator-admin-messages', conversationId], (oldMessages) => {
+        queryClient.setQueryData(queryKeys.educator.admin.messages(conversationId), (oldMessages) => {
           if (!oldMessages) return [newMessage];
-          
+
           // Check if message already exists to avoid duplicates
           const exists = oldMessages.some(msg => msg.id === newMessage.id);
           if (exists) return oldMessages;
-          
+
           return [...oldMessages, newMessage];
         });
 
         // Invalidate conversation lists to update unread counts
-        queryClient.invalidateQueries({ 
-          queryKey: ['educator-conversations'],
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.educator.conversations.all,
           refetchType: 'active'
         });
-        queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({
           queryKey: ['school-admin-conversations'],
           refetchType: 'active'
         });

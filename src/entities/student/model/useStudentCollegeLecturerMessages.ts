@@ -5,6 +5,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import MessageService from '@/features/messaging/api/messageService';
+import { queryKeys } from '@/shared/lib/queryKeys';
 /**
  * Hook for managing student-college lecturer conversations
  */
@@ -19,7 +20,7 @@ export const useStudentCollegeLecturerConversations = (studentId, enabled = true
     error,
     refetch
   } = useQuery({
-    queryKey: ['student-college-lecturer-conversations', studentId || 'none'],
+    queryKey: queryKeys.student.conversations.byStudent(studentId || 'none', 'student_college_educator'),
     queryFn: async () => {
       if (!studentId) return [];
       // Only fetch student-college lecturer conversations
@@ -60,7 +61,7 @@ export const useStudentCollegeLecturerConversations = (studentId, enabled = true
 
         // Invalidate conversation queries
         queryClient.invalidateQueries({
-          queryKey: ['student-college-lecturer-conversations', studentId],
+          queryKey: queryKeys.student.conversations.byStudent(studentId, 'student_college_educator'),
           refetchType: 'active'
         });
       }
@@ -73,7 +74,7 @@ export const useStudentCollegeLecturerConversations = (studentId, enabled = true
 
   // Clear unread count function
   const clearUnreadCount = (conversationId) => {
-    queryClient.setQueryData(['student-college-lecturer-conversations', studentId || 'none'], (oldData) => {
+    queryClient.setQueryData(queryKeys.student.conversations.byStudent(studentId || 'none', 'student_college_educator'), (oldData) => {
       if (!oldData) return oldData;
       return oldData.map(conv =>
         conv.id === conversationId
@@ -113,7 +114,7 @@ export const useStudentCollegeLecturerMessages = ({
     error,
     refetch
   } = useQuery({
-    queryKey: ['student-college-lecturer-messages', conversationId || 'none'],
+    queryKey: queryKeys.student.messages.conversation(conversationId || 'none'),
     queryFn: async () => {
       if (!conversationId) return [];
       return await MessageService.getConversationMessages(conversationId, { useCache: true });
@@ -135,7 +136,7 @@ export const useStudentCollegeLecturerMessages = ({
         console.log('📨 [Student-College-Lecturer] New message received:', newMessage);
 
         // Add message to cache optimistically
-        queryClient.setQueryData(['student-college-lecturer-messages', conversationId], (oldMessages) => {
+        queryClient.setQueryData(queryKeys.student.messages.conversation(conversationId!), (oldMessages) => {
           if (!oldMessages) return [newMessage];
 
           // Check if message already exists (prevent duplicates)
@@ -147,7 +148,7 @@ export const useStudentCollegeLecturerMessages = ({
 
         // Update conversation list with new message preview
         queryClient.invalidateQueries({
-          queryKey: ['student-college-lecturer-conversations', studentId],
+          queryKey: queryKeys.student.conversations.byStudent(studentId, 'student_college_educator'),
           refetchType: 'active'
         });
       }
@@ -186,10 +187,10 @@ export const useStudentCollegeLecturerMessages = ({
     },
     onMutate: async (variables) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['student-college-lecturer-messages', conversationId] });
+      await queryClient.cancelQueries({ queryKey: queryKeys.student.messages.conversation(conversationId!) });
 
       // Snapshot previous value
-      const previousMessages = queryClient.getQueryData(['student-college-lecturer-messages', conversationId]);
+      const previousMessages = queryClient.getQueryData(queryKeys.student.messages.conversation(conversationId!));
 
       // Optimistically add the message
       const optimisticMessage = {
@@ -207,7 +208,7 @@ export const useStudentCollegeLecturerMessages = ({
         _optimistic: true
       };
 
-      queryClient.setQueryData(['student-college-lecturer-messages', conversationId], (old) => {
+      queryClient.setQueryData(queryKeys.student.messages.conversation(conversationId!), (old) => {
         return old ? [...old, optimisticMessage] : [optimisticMessage];
       });
 
@@ -216,13 +217,13 @@ export const useStudentCollegeLecturerMessages = ({
     onError: (err, variables, context) => {
       // Rollback on error
       if (context?.previousMessages) {
-        queryClient.setQueryData(['student-college-lecturer-messages', conversationId], context.previousMessages);
+        queryClient.setQueryData(queryKeys.student.messages.conversation(conversationId!), context.previousMessages);
       }
       console.error('❌ [Student-College-Lecturer] Failed to send message:', err);
     },
     onSuccess: (data, variables, context) => {
       // Replace optimistic message with real one
-      queryClient.setQueryData(['student-college-lecturer-messages', conversationId], (old) => {
+      queryClient.setQueryData(queryKeys.student.messages.conversation(conversationId!), (old) => {
         if (!old) return [data];
         return old.map(msg =>
           msg.id === context?.optimisticMessage?.id ? data : msg
@@ -231,7 +232,7 @@ export const useStudentCollegeLecturerMessages = ({
 
       // Update conversation list
       queryClient.invalidateQueries({
-        queryKey: ['student-college-lecturer-conversations', studentId],
+        queryKey: queryKeys.student.conversations.byStudent(studentId, 'student_college_educator'),
         refetchType: 'active'
       });
     }
@@ -272,7 +273,7 @@ export const useCreateStudentCollegeLecturerConversation = () => {
     onSuccess: (data, variables) => {
       // Invalidate conversations list to include new conversation
       queryClient.invalidateQueries({
-        queryKey: ['student-college-lecturer-conversations', variables.studentId],
+        queryKey: queryKeys.student.conversations.byStudent(variables.studentId, 'student_college_educator'),
         refetchType: 'active'
       });
     }

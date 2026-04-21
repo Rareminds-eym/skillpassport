@@ -17,6 +17,7 @@ import { useEffect, useCallback } from 'react';
 import { MessageService, Message } from '@/features/messaging';
 import { useMessageStore } from '@/features/messaging';
 import { supabase } from '@/shared/api/supabaseClient';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 export interface UseStudentMessagesOptions {
   studentId: string | null;
@@ -67,7 +68,7 @@ export const useStudentMessages = ({
     error: messagesError,
     refetch: refetchMessages
   } = useQuery({
-    queryKey: ['student-messages', conversationId || 'none'],
+    queryKey: queryKeys.student.messages.conversation(conversationId || 'none'),
     queryFn: async () => {
       if (!conversationId) return [];
       setIsLoadingMessages(true);
@@ -98,10 +99,10 @@ export const useStudentMessages = ({
     error: conversationsError,
     refetch: refetchConversations
   } = useQuery({
-    queryKey: ['student-conversations', studentId || 'none', conversationType],
+    queryKey: queryKeys.student.conversations.byStudent(studentId || 'none', conversationType),
     queryFn: async () => {
       if (!studentId) return [];
-      
+
       const allConversations = await MessageService.getUserConversations(
         studentId,
         'student',
@@ -109,7 +110,7 @@ export const useStudentMessages = ({
         true,
         conversationType === 'all' ? undefined : conversationType
       );
-      
+
       return allConversations;
     },
     enabled: enabled && !!studentId,
@@ -122,7 +123,7 @@ export const useStudentMessages = ({
 
   // Fetch unread count
   const { data: unreadCount = 0 } = useQuery({
-    queryKey: ['student-unread-count', studentId || 'none'],
+    queryKey: queryKeys.student.unread.count(studentId || 'none'),
     queryFn: async () => {
       if (!studentId) return 0;
       const count = await MessageService.getUnreadCount(studentId, 'student');
@@ -151,8 +152,8 @@ export const useStudentMessages = ({
         (payload) => {
           const newMessage = payload.new as Message;
           addMessage(newMessage);
-          queryClient.invalidateQueries({ 
-            queryKey: ['student-messages', conversationId],
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.student.messages.conversation(conversationId),
             refetchType: 'none'
           });
         }
@@ -233,13 +234,13 @@ export const useStudentMessages = ({
         },
         (payload) => {
           const updatedConv = payload.new as any;
-          
+
           if (updatedConv.deleted_by_student || updatedConv.deleted_by_recruiter) {
             return;
           }
-          
-          queryClient.invalidateQueries({ 
-            queryKey: ['student-conversations', studentId || 'none', conversationType],
+
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.student.conversations.byStudent(studentId || 'none', conversationType),
             refetchType: 'active'
           });
         }
@@ -287,7 +288,7 @@ export const useStudentMessages = ({
       subject?: string;
     }) => {
       if (!conversationId) throw new Error('No conversation selected');
-      
+
       return await MessageService.sendMessage(
         conversationId,
         senderId,
@@ -302,7 +303,7 @@ export const useStudentMessages = ({
       );
     },
     onMutate: async (variables) => {
-      await queryClient.cancelQueries({ queryKey: ['student-messages', conversationId] });
+      await queryClient.cancelQueries({ queryKey: queryKeys.student.messages.conversation(conversationId!) });
 
       const tempId = addOptimisticMessage({
         conversation_id: conversationId!,
@@ -333,18 +334,18 @@ export const useStudentMessages = ({
   // Clear unread count for a conversation
   const clearUnreadCount = useCallback((convId: string) => {
     const currentConversations = queryClient.getQueryData<any[]>(
-      ['student-conversations', studentId || 'none', conversationType]
+      queryKeys.student.conversations.byStudent(studentId || 'none', conversationType)
     ) || [];
-    
+
     const optimisticConversations = currentConversations.map(conv => {
       if (conv.id === convId) {
         return { ...conv, student_unread_count: 0 };
       }
       return conv;
     });
-    
+
     queryClient.setQueryData(
-      ['student-conversations', studentId || 'none', conversationType],
+      queryKeys.student.conversations.byStudent(studentId || 'none', conversationType),
       optimisticConversations
     );
   }, [studentId, conversationType, queryClient]);
@@ -362,24 +363,24 @@ export const useStudentMessages = ({
     sendMessage: sendMessageMutation.mutate,
     isSending: sendMessageMutation.isPending,
     refetchMessages,
-    
+
     // Conversations
     conversations,
     isLoadingConversations,
     conversationsError,
     refetchConversations,
     clearUnreadCount,
-    
+
     // Conversation helpers
     recruiterConversations: getConversationsByType('student_recruiter'),
     educatorConversations: getConversationsByType('student_educator'),
     adminConversations: getConversationsByType('student_admin'),
     collegeAdminConversations: getConversationsByType('student_college_admin'),
     collegeLecturerConversations: getConversationsByType('student_college_educator'),
-    
+
     // Notifications
     unreadCount,
-    
+
     // Loading states
     loading: isLoadingMessages || isLoadingConversations,
     error: messagesError || conversationsError

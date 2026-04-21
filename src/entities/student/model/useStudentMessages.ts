@@ -4,6 +4,7 @@ import { supabase } from '@/shared/api/supabaseClient';
 import { useMessageStore } from '@/stores';
 import MessageService from '@/features/messaging/api/messageService';
 import type { Message } from '@/features/messaging/api/messageService';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**
  * DEPENDENCY INJECTION PATTERN APPLIED
@@ -53,7 +54,7 @@ export const useStudentMessages = ({
     error,
     refetch
   } = useQuery({
-    queryKey: ['student-messages', conversationId || 'none'],
+    queryKey: queryKeys.student.messages.conversation(conversationId || 'none'),
     queryFn: async () => {
       if (!conversationId) return [];
       setIsLoadingMessages(true);
@@ -99,7 +100,7 @@ export const useStudentMessages = ({
 
           // Invalidate query to keep react-query in sync
           queryClient.invalidateQueries({
-            queryKey: ['student-messages', conversationId],
+            queryKey: queryKeys.student.messages.conversation(conversationId),
             refetchType: 'none'
           });
         }
@@ -160,7 +161,7 @@ export const useStudentMessages = ({
     },
     onMutate: async (variables) => {
       // Cancel outgoing queries
-      await queryClient.cancelQueries({ queryKey: ['student-messages', conversationId] });
+      await queryClient.cancelQueries({ queryKey: queryKeys.student.messages.conversation(conversationId!) });
 
       // Add optimistic message to zustand
       const tempId = addOptimisticMessage({
@@ -210,7 +211,7 @@ export const useStudentUnreadCount = (studentId: string | null, enabled = true) 
   const { setUnreadCount } = useMessageStore();
 
   const { data: unreadCount = 0, isLoading } = useQuery({
-    queryKey: ['student-unread-count', studentId || 'none'],
+    queryKey: queryKeys.student.unread.count(studentId || 'none'),
     queryFn: async () => {
       if (!studentId) return 0;
       const count = await MessageService.getUnreadCount(studentId, 'student');
@@ -280,7 +281,7 @@ export const useStudentConversations = (studentId: string | null, enabled = true
     error,
     refetch
   } = useQuery({
-    queryKey: ['student-conversations', studentId || 'none'],
+    queryKey: queryKeys.student.conversations.byStudent(studentId || 'none', 'student_recruiter'),
     queryFn: async () => {
       if (!studentId) return [];
       setIsLoadingConversations(true);
@@ -314,7 +315,7 @@ export const useStudentConversations = (studentId: string | null, enabled = true
 
     // Get current data from React Query cache
     const currentConversations = queryClient.getQueryData<any[]>(
-      ['student-conversations', studentId || 'none']
+      queryKeys.student.conversations.byStudent(studentId || 'none', 'student_recruiter')
     ) || [];
 
 
@@ -327,7 +328,7 @@ export const useStudentConversations = (studentId: string | null, enabled = true
 
     // Update React Query cache immediately
     queryClient.setQueryData(
-      ['student-conversations', studentId || 'none'],
+      queryKeys.student.conversations.byStudent(studentId || 'none', 'student_recruiter'),
       optimisticConversations
     );
 
@@ -360,7 +361,7 @@ export const useStudentConversations = (studentId: string | null, enabled = true
 
           // Invalidate and refetch to get updated data
           queryClient.invalidateQueries({
-            queryKey: ['student-conversations', studentId || 'none'],
+            queryKey: queryKeys.student.conversations.byStudent(studentId || 'none', 'student_recruiter'),
             refetchType: 'active' // Only refetch if query is active
           });
         }

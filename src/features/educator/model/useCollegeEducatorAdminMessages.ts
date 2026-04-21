@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import {MessageService} from '@/features/messaging';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**
  * Hook for managing messages in college educator ↔ admin conversations
@@ -17,7 +18,7 @@ export const useCollegeEducatorAdminMessages = ({
 
   // Fetch messages for the conversation
   const { data: messages = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['college-educator-admin-messages', conversationId],
+    queryKey: queryKeys.college.admin.messages(conversationId || ''),
     queryFn: async () => {
       if (!conversationId) return [];
 
@@ -69,14 +70,14 @@ export const useCollegeEducatorAdminMessages = ({
     },
     onSuccess: (newMessage) => {
       // Optimistically update the messages cache
-      queryClient.setQueryData(['college-educator-admin-messages', conversationId], (oldMessages) => {
+      queryClient.setQueryData(queryKeys.college.admin.messages(conversationId), (oldMessages) => {
         if (!oldMessages) return [newMessage];
         return [...oldMessages, newMessage];
       });
 
       // Invalidate conversations to update last message preview
       queryClient.invalidateQueries({ 
-        queryKey: ['college-educator-admin-conversations'],
+        queryKey: queryKeys.college.admin.conversations.all,
         refetchType: 'active'
       });
     },
@@ -102,7 +103,7 @@ export const useCollegeEducatorAdminMessages = ({
     onSuccess: () => {
       // Invalidate conversations to update unread counts
       queryClient.invalidateQueries({ 
-        queryKey: ['college-educator-admin-conversations'],
+        queryKey: queryKeys.college.admin.conversations.all,
         refetchType: 'active'
       });
     },
@@ -129,7 +130,7 @@ export const useCollegeEducatorAdminMessages = ({
         console.log('🔄 [useCollegeEducatorAdminMessages] Real-time message received:', newMessage);
 
         // Add new message to cache
-        queryClient.setQueryData(['college-educator-admin-messages', conversationId], (oldMessages) => {
+        queryClient.setQueryData(queryKeys.college.admin.messages(conversationId), (oldMessages) => {
           if (!oldMessages) return [newMessage];
           
           // Check if message already exists (avoid duplicates)
@@ -141,7 +142,7 @@ export const useCollegeEducatorAdminMessages = ({
 
         // Invalidate conversations to update last message preview and unread counts
         queryClient.invalidateQueries({ 
-          queryKey: ['college-educator-admin-conversations'],
+          queryKey: queryKeys.college.admin.conversations.all,
           refetchType: 'active'
         });
       }
