@@ -29,6 +29,10 @@ export { default as CareerAIToolsGrid } from './CareerAIToolsGrid';
 export { ConfirmModal } from './ConfirmModal';
 export { default as OTPInput } from './OTPInput';
 export { default as SEOHead } from './SEOHead';
+export { default as SuspenseWrapper } from './SuspenseWrapper';
+
+// Skeleton Components
+export * from './skeletons';
 export { SocialMediaLinks } from './SocialMediaLinks';
 
 // Marketing Components
