@@ -18,8 +18,13 @@ import {
 import { createClient } from '@supabase/supabase-js';
 import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
+// These are safe to expose in frontend - they're public configuration
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing required Supabase environment variables: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
+}
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: { persistSession: false }

@@ -4,6 +4,8 @@
   "type": "module",
   "dependencies": {
     "aws4fetch": "^1.0.20",
-    "@supabase/supabase-js": "^2.57.4"
+    "@supabase/supabase-js": "^2.57.4",
+    "pdf-lib": "^1.17.1",
+    "worker-mailer": "^1.0.0"
   }
 }

@@ -10,11 +10,8 @@
  * Uses the current origin (works in dev and production)
  */
 export function getPagesBaseUrl(): string {
-  // In development, check if we're running on localhost:3000 and need to proxy to 8788
-  if (window.location.origin === 'http://localhost:3000') {
-    // Check if proxy is working by testing if we can reach the API
-    return window.location.origin; // This will use the Vite proxy
-  }
+  // Always use current origin - works in both development and production
+  // Development proxy configuration handles routing to correct ports
   return window.location.origin;
 }
 

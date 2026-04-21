@@ -43,10 +43,9 @@ import { ShinyButton, Sparkles } from '@/shared/ui';
 // Fixed registration fee
 const REGISTRATION_FEE = 499;
 
-// Email API URL - Use the email-api worker with SMTP secrets configured
-const EMAIL_API_URL = import.meta.env.DEV 
-  ? 'http://localhost:8788/api/email'
-  : 'https://skillpassport.rareminds.in/api/email';
+// Email API URL - Use environment variable with proper fallback
+const EMAIL_API_URL = import.meta.env.VITE_EMAIL_API_URL || 
+  (import.meta.env.DEV ? '/api/email' : import.meta.env.VITE_PRODUCTION_EMAIL_API_URL || 'https://skillpassport.rareminds.in/api/email');
 
 // Generate 6-digit OTP
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
