@@ -10,6 +10,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+   
   },
   optimizeDeps: {
     exclude: ['lucide-react'],
@@ -27,6 +28,7 @@ export default defineConfig({
       'react-icons/bs',
       'react-icons/hi',
       'react-icons/fi',
+      '@tabler/icons-react',
     ],
   },
   build: {
