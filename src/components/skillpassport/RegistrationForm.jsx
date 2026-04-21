@@ -307,7 +307,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
   const [consentGiven, setConsentGiven] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [hasReadTerms, setHasReadTerms] = useState(false);
-  const [upsell, setUpsell] = useState(false);
+  const [upsell, setUpsell] = useState(true);
   const [whatsappOptIn, setWhatsappOptIn] = useState(true);
 
   // Calculate registration fee based on type and upsell
