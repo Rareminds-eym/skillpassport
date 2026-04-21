@@ -21,7 +21,8 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon
 } from '@heroicons/react/24/outline';
-import { useOffers, Offer } from '@/shared/lib/hooks';
+import { Offer } from '@/shared/lib/hooks';
+import { useOffers } from '@/features/recruiter/model/useOffers';
 import { OfferAdvancedFilters, OfferFilters, OfferSortOptions, OfferSortButton } from '@/features/recruiter';
 import { getLogger } from '@/shared/config/logging';
 

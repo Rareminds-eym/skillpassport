@@ -1,6 +1,6 @@
 import { AlertCircle, CheckCircle, FileText, Shield, Upload, X } from "lucide-react";
 import React, { useState } from "react";
-import RoleDebugger from '@/shared/ui/debug/RoleDebugger';
+import RoleDebugger from '@/features/debug/ui/RoleDebugger';
 import { useUser } from '@/stores';
 import { useUserRole } from "@/entities/user";
 import { supabase } from '@/shared/api/supabaseClient';
@@ -664,8 +664,8 @@ const TeacherOnboardingPage: React.FC = () => {
                     <div className="w-full bg-gray-200 rounded-full h-1.5">
                       <div
                         className={`h-1.5 rounded-full transition-all duration-300 ${progress.status === 'completed' ? 'bg-green-500' :
-                            progress.status === 'error' ? 'bg-red-500' :
-                              'bg-blue-500'
+                          progress.status === 'error' ? 'bg-red-500' :
+                            'bg-blue-500'
                           }`}
                         style={{ width: `${progress.progress}%` }}
                       ></div>
@@ -683,8 +683,8 @@ const TeacherOnboardingPage: React.FC = () => {
         {message && (
           <div
             className={`mb-6 p-4 rounded-lg ${message.type === "success"
-                ? "bg-green-50 text-green-800 border border-green-200"
-                : "bg-red-50 text-red-800 border border-red-200"
+              ? "bg-green-50 text-green-800 border border-green-200"
+              : "bg-red-50 text-red-800 border border-red-200"
               }`}
           >
             <div className="flex items-start gap-3">

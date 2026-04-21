@@ -1,4 +1,4 @@
-import type { UserRole, ConversationType } from '@/features/messaging/api/types';
+import type { UserRole, ConversationType } from '@/shared/types/messaging';
 
 /**
  * Query key factory for messaging system

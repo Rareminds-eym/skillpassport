@@ -848,8 +848,8 @@ const UnifiedProfileEditModal = ({
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-sm font-semibold text-blue-900">{skill.name}</span>
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${skill.type === 'technical'
-                              ? 'bg-purple-100 text-purple-700'
-                              : 'bg-green-100 text-green-700'
+                            ? 'bg-purple-100 text-purple-700'
+                            : 'bg-green-100 text-green-700'
                             }`}>
                             {skill.type === 'technical' ? 'Technical' : 'Soft Skill'}
                           </span>
@@ -862,8 +862,8 @@ const UnifiedProfileEditModal = ({
                                 <div
                                   key={level}
                                   className={`w-2 h-2 rounded-full ${level <= (skill.level || 3)
-                                      ? 'bg-blue-500'
-                                      : 'bg-gray-200'
+                                    ? 'bg-blue-500'
+                                    : 'bg-gray-200'
                                     }`}
                                 />
                               ))}
@@ -957,8 +957,8 @@ const UnifiedProfileEditModal = ({
                   onClick={addSkill}
                   disabled={!formData.newSkillName?.trim()}
                   className={`w-full py-2.5 px-4 rounded-lg text-sm font-semibold transition-all ${formData.newSkillName?.trim()
-                      ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md'
-                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     }`}
                 >
                   <Plus className="w-4 h-4 inline mr-2" />
@@ -1097,7 +1097,7 @@ const UnifiedProfileEditModal = ({
             <div className="flex flex-wrap gap-2 mt-3">
               {(() => {
                 let techArray = [];
-                
+
                 if (Array.isArray(item.technologies)) {
                   techArray = item.technologies;
                 } else if (Array.isArray(item.tech)) {
@@ -1466,8 +1466,8 @@ const UnifiedProfileEditModal = ({
             <AlertDialogAction
               onClick={confirmDialog.type === 'delete' ? handleConfirmDelete : handleConfirmToggle}
               className={`px-4 py-2 text-white rounded-lg ${confirmDialog.type === 'delete'
-                  ? 'bg-red-600 hover:bg-red-700'
-                  : 'bg-blue-600 hover:bg-blue-700'
+                ? 'bg-red-600 hover:bg-red-700'
+                : 'bg-blue-600 hover:bg-blue-700'
                 }`}
             >
               {confirmDialog.type === 'delete' && 'Delete'}

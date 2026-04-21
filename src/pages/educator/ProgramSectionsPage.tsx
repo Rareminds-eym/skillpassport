@@ -22,7 +22,7 @@ import { Pagination } from '@/shared/ui'
 import { useAuth } from "@/features/auth"
 import { ProgramSection } from "@/features/college-admin"
 import { ManageProgramStudentsModal } from '@/features/educator'
-import { usePermission } from '@/shared/lib/hooks'
+import { usePermission } from '@/entities/user/model/usePermissions'
 
 const StatusBadge = ({ status }: { status: string }) => {
   const config: Record<string, string> = {

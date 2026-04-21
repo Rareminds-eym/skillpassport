@@ -1,13 +1,14 @@
 import { Footer } from '@/shared/ui';
 import Header from '@/app/layouts/Header';
-import { HeroSection, WhatIsSection, WhoIsThisForSection, RegistrationForm, TimelineSection, WhatYouGetSection, AboutRaremindsSection, NeedHelpSection } from '@/shared/ui/marketing';
+import { HeroSection, WhatIsSection, WhoIsThisForSection, TimelineSection, WhatYouGetSection, AboutRaremindsSection, NeedHelpSection } from '@/shared/ui/marketing';
+import RegistrationForm from '@/features/marketing/ui/skillpassport/RegistrationForm';
 import { useLocation } from 'react-router-dom';
 
 export default function SkillPassportPreRegistration() {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <Header />
-       <RegistrationForm campaign="skill-passport" />
+      <RegistrationForm campaign="skill-passport" />
       {/* <HeroSection /> */}
       <WhatIsSection />
       <WhoIsThisForSection />

@@ -20,7 +20,7 @@ export { RadioGroup, RadioGroupItem } from './radio-group';
 
 export { default as Loader } from './Loader';
 export { default as ScrollToTop } from './ScrollToTop';
-export { default as ProtectedRoute } from './ProtectedRoute';
+// Note: ProtectedRoute moved to @/app/components (FSD compliance)
 export { default as SearchBar } from './SearchBar';
 export { default as Footer } from './Footer';
 export { default as ImageUpload } from './ImageUpload';

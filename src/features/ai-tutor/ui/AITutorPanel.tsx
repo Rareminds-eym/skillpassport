@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { useTutorChat } from '@/shared/lib/hooks';
+import { useTutorChat } from '@/features/ai-tutor/model/useTutorChat';
 import { useUser } from '@/stores';
 import { Link } from 'react-router-dom';
 

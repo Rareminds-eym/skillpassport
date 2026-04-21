@@ -6,7 +6,7 @@ import { usePortfolio } from '@/stores';
 import { useUserRole } from '@/stores';
 import { useAuth } from '@/features/auth';
 import { ProfileCompletionModal, ProfileCompletionErrorBoundary } from '@/features/digital-portfolio';
-import { useProfileCompletionPrompt } from '@/shared/lib/hooks';
+import { useProfileCompletionPrompt } from '@/features/student-profile';
 
 const PassportPage: React.FC = () => {
   const navigate = useNavigate();

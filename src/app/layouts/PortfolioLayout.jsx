@@ -3,7 +3,8 @@ import Header from './Header';
 import PromotionalBanner from '@/shared/ui/marketing/PromotionalBanner';
 import AssessmentPromotionalBanner from '@/shared/ui/marketing/AssessmentPromotionalBanner';
 import { useUserRole } from '@/entities/user';
-import { useCurrentPromotional, useAssessmentPromotional } from '@/shared/lib/hooks';
+import { useCurrentPromotional } from '@/shared/lib/hooks';
+import { useAssessmentPromotional } from '@/features/assessment/model';
 import { useAuth } from '@/features/auth';
 
 const PortfolioLayout = () => {

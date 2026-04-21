@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useStudentProfile, useStudentActivity, useStudentMessages } from '@/features/student-profile';
 import { useStudentDataByEmail, useStudentMessageNotifications, useStudentUnreadCount } from '@/entities/student';
-import { useStudentRealtimeActivities } from '@/shared/lib/hooks';
+import { useStudentRealtimeActivities } from '@/entities/student/model/useStudentRealtimeActivities';
 import { useUser, useTheme } from '@/stores';
 import { useAIJobMatching } from '@/features/opportunities';
 import { SuggestedNextSteps, RecentUpdatesCard } from '@/widgets/student-dashboard';

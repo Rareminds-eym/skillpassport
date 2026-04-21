@@ -16,11 +16,11 @@ export type { UseAssessmentTimerOptions, UseAssessmentTimerReturn } from './useA
 
 // Question navigation
 export { default as useQuestionNavigation } from './useQuestionNavigation';
-export type { 
-  UseQuestionNavigationOptions, 
+export type {
+  UseQuestionNavigationOptions,
   UseQuestionNavigationReturn,
   Question as NavigationQuestion,
-  Section as NavigationSection 
+  Section as NavigationSection
 } from './useQuestionNavigation';
 
 // Auto-save functionality
@@ -51,3 +51,6 @@ export { default as useAssessment } from './useAssessment';
 
 // Assessment context
 export { AssessmentProvider, useAssessmentContext } from './AssessmentContext';
+
+// Promotional events
+export { useAssessmentPromotional } from './useAssessmentPromotional';

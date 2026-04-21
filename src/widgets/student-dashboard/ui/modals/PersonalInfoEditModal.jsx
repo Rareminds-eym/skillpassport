@@ -12,13 +12,13 @@ import { searchUniversities, searchCollegesAndSchools } from "@/shared/lib/educa
 
 const logger = getLogger('PersonalInfoEditModal');
 
-const PersonalInfoEditModal = ({ 
-  isOpen, 
-  onClose, 
-  data, 
-  onSave 
+const PersonalInfoEditModal = ({
+  isOpen,
+  onClose,
+  data,
+  onSave
 }) => {
-  
+
   const [formData, setFormData] = useState({
     name: "",
     age: "",
@@ -41,7 +41,7 @@ const PersonalInfoEditModal = ({
     facebook_link: "",
     other_social_links: [],
   });
-  
+
   const [isSaving, setIsSaving] = useState(false);
 
   // Initialize form data when modal opens

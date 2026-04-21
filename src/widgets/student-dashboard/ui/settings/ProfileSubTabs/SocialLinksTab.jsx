@@ -1,7 +1,7 @@
 import React from "react";
 import { Globe, Save } from "lucide-react";
 import { Button } from '@/shared/ui/button';
-import { useFormValidation } from "@/shared/lib/hooks";
+import { useFormValidation } from '@/shared/lib/hooks';
 import FormField from "../FormField";
 
 const SocialLinksTab = ({ profileData, handleProfileChange, handleSaveProfile, isSaving }) => {

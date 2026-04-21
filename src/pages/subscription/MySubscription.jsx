@@ -30,7 +30,7 @@ import { supabase } from '@/shared/api/supabaseClient';
 import { getUserSubscriptions } from '@/features/subscription/api';
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '@/features/subscription';
 import { calculateDaysRemaining, calculateProgressPercentage, formatDate, getSubscriptionStatusChecks } from '@/features/subscription';
-import { useUsageStatistics } from '@/shared/lib/hooks';
+import { useUsageStatistics } from '@/features/analytics/model/useUsageStatistics';
 import { authSessionService } from '@/features/auth';
 
 /**

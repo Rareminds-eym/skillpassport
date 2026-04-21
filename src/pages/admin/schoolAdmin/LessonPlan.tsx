@@ -28,7 +28,7 @@ import {
 import { SearchBar } from '@/shared/ui';
 import { FileTextIcon } from "lucide-react";
 import toast from 'react-hot-toast';
-import { useCurriculum } from '@/shared/lib/hooks';
+import { useCurriculum } from '@/features/educator-copilot/model/useLessonPlans';
 import type { LessonPlan as LessonPlanType } from "@/features/educator-copilot";
 import { getSubjects, getClasses } from "@/features/educator-copilot";
 import { curriculumService } from "@/features/college-admin";

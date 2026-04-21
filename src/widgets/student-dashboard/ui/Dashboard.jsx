@@ -41,7 +41,7 @@ import {
   SkillsEditModal
 } from './modals';
 import { useStudentDataByEmail, useStudentCertificates } from '@/entities/student';
-import { useStudentRealtimeActivities } from '@/shared/lib/hooks';
+import { useStudentRealtimeActivities } from '@/entities/student/model/useStudentRealtimeActivities';
 console.log('🔍 [Dashboard] useStudentDataByEmail imported:', useStudentDataByEmail);
 console.log('🔍 [Dashboard] typeof useStudentDataByEmail:', typeof useStudentDataByEmail);
 

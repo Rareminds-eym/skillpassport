@@ -84,7 +84,7 @@ import { useStudentEducation } from '@/entities/student';
 import { useStudentTechnicalSkills, useStudentSoftSkills } from '@/entities/student';
 import { useStudentMessageNotifications, useStudentUnreadCount } from '@/entities/student';
 import { useStudentAchievements } from '@/entities/student';
-import { useStudentRealtimeActivities } from '@/shared/lib/hooks';
+import { useStudentRealtimeActivities } from '@/entities/student/model/useStudentRealtimeActivities';
 import { supabase } from '@/shared/api/supabaseClient';
 import { isSchoolStudent, isCollegeStudent, isLearner } from '@/entities/student/lib/studentType';
 // Debug utilities removed for production cleanliness

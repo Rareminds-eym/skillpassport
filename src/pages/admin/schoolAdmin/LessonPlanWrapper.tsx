@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import LessonPlan from "./LessonPlan";
-import { useLessonPlans, useSubjectsAndClasses } from '@/shared/lib/hooks';
+import { useLessonPlans, useSubjectsAndClasses } from '@/features/educator-copilot/model/useLessonPlans';
 import { useUser } from '@/stores';
 import { supabase } from '@/shared/api/supabaseClient';
 

@@ -1,6 +1,6 @@
 import { lazy } from "react";
 import { Navigate, Route } from "react-router-dom";
-import ProtectedRoute from "@/shared/ui/ProtectedRoute";
+import ProtectedRoute from "@/app/components/ProtectedRoute";
 import PublicLayout from "../layouts/PublicLayout";
 import PortfolioLayout from "../layouts/PortfolioLayout";
 
@@ -161,7 +161,7 @@ export const publicRoutes = [
     <Route path="/signin/school" element={<SignInSchool />} />
     <Route path="/signin/university" element={<SignInUniversity />} />
     <Route path="/signup/university-admin" element={<UniversityAdmin />} />
-    
+
     <Route path="/subscription/plans" element={<ProtectedRoute><SubscriptionPlans /></ProtectedRoute>} />
     <Route path="/subscription/plans/:type" element={<ProtectedRoute><SubscriptionPlans /></ProtectedRoute>} />
     <Route path="/subscription/plans/:type/:mode" element={<ProtectedRoute><SubscriptionPlans /></ProtectedRoute>} />

@@ -12,7 +12,7 @@ import {
   Ban,
   User
 } from 'lucide-react';
-import { usePermission } from '@/shared/lib/hooks';
+import { usePermission } from '@/entities/user/model/usePermissions';
 import { useUser } from '@/stores';
 import type { ClassSwapRequestWithDetails } from '@/shared/types/classSwap';
 

@@ -20,7 +20,7 @@ import { AITutorPanel, VideoLearningPanel } from '@/features/ai-tutor';
 import RestoreProgressModal from './RestoreProgressModal';
 import { Badge, Button, Card, CardContent } from '@/shared/ui';
 import { useUser, useUserRole } from '@/features/auth';
-import { useSessionRestore } from '@/shared/lib/hooks';
+import { useSessionRestore } from '@/features/courses/model/useSessionRestore';
 import { supabase } from '@/shared/api/supabaseClient';
 import { generateCourseCertificate } from '@/features/digital-portfolio';
 import { enrollmentService } from '@/features/courses';

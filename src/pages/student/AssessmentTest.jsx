@@ -59,7 +59,7 @@ import * as assessmentService from '@/features/assessment';
 import { useUser } from '@/stores';
 
 // Import adaptive aptitude hook for integrated adaptive testing
-import { useAdaptiveAptitude } from '@/shared/lib/hooks';
+import { useAdaptiveAptitude } from '@/features/assessment/model/useAdaptiveAptitude';
 
 import { supabase } from '@/shared/api/supabaseClient';
 

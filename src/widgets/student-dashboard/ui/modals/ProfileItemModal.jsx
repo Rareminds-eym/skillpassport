@@ -1,11 +1,11 @@
 import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
 import {
-    Briefcase,
-    Loader2,
-    Plus,
-    Save,
-    Trash2
+  Briefcase,
+  Loader2,
+  Plus,
+  Save,
+  Trash2
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from '@/shared/ui/button';
@@ -19,15 +19,15 @@ import { calculateDuration, calculateProgress, generateUuid, isValidUrl, parsePo
 
 const logger = getLogger('ProfileItemModal');
 
-const ProfileItemModal = ({ 
-  isOpen, 
-  onClose, 
+const ProfileItemModal = ({
+  isOpen,
+  onClose,
   type,
   item = null, // null for add, object for edit
   onSave
 }) => {
   const config = FIELD_CONFIGS[type];
-  
+
   const [formData, setFormData] = useState(() => {
     const defaults = config?.getDefaultValues?.() || {};
     // Ensure skillsList is always an array for skills_manager fields
@@ -42,10 +42,10 @@ const ProfileItemModal = ({
     if (item) {
       // Edit mode - populate form with existing data
       const editData = { ...config.getDefaultValues() };
-      
+
       // VERSIONING FIX: If item has pending edit data, use that for editing
       const sourceData = item._hasPendingEdit && item.pending_edit_data ? item : item;
-      
+
       // Copy all fields from the item, including id
       Object.keys(sourceData).forEach(key => {
         if (sourceData[key] !== undefined) {
@@ -57,7 +57,7 @@ const ProfileItemModal = ({
             } else if (typeof sourceData[key] === 'string' && sourceData[key].trim()) {
               skillsArray = sourceData[key].split(',').map(s => s.trim()).filter(s => s);
             }
-            
+
             // Convert to skillsList for the form, preserving skill object data
             editData.skillsList = skillsArray.map(skill => {
               // If skill is already an object with full data, preserve it
@@ -84,13 +84,13 @@ const ProfileItemModal = ({
               };
             });
           } else {
-            editData[key] = Array.isArray(sourceData[key]) 
-              ? sourceData[key].join(", ") 
+            editData[key] = Array.isArray(sourceData[key])
+              ? sourceData[key].join(", ")
               : sourceData[key];
           }
         }
       });
-      
+
       // Special field mapping for training data
       if (type === 'training') {
         // Ensure numeric fields are properly set
@@ -103,7 +103,7 @@ const ProfileItemModal = ({
         if (sourceData.hoursSpent !== undefined) {
           editData.hoursSpent = sourceData.hoursSpent || 0;
         }
-        
+
         // Ensure skills are properly loaded for training
         if (sourceData.skills && Array.isArray(sourceData.skills) && sourceData.skills.length > 0) {
           editData.skillsList = sourceData.skills.map(skill => {
@@ -132,7 +132,7 @@ const ProfileItemModal = ({
           editData.skillsList = [];
         }
       }
-      
+
       // Special handling for skills: ensure correct field mapping
       if (type === 'skills' || type === 'technicalSkills' || type === 'softSkills') {
         // If item has rating, use it for the rating field
@@ -144,7 +144,7 @@ const ProfileItemModal = ({
           editData.level = sourceData.level;
         }
       }
-      
+
       setFormData(editData);
     } else {
       // Add mode - reset to defaults
@@ -166,17 +166,17 @@ const ProfileItemModal = ({
 
   const handleInputChange = (field) => (e) => {
     const value = e.target.value;
-    
+
     // Additional validation for date fields
     if (e.target.type === 'date' && value) {
       const today = new Date().toISOString().split('T')[0];
-      
+
       // Validate start dates and issue dates cannot be in future
       if ((field === 'startDate' || field === 'start_date' || field === 'issuedOn') && value > today) {
         toast.error("Date cannot be in the future.");
         return; // Don't update the state
       }
-      
+
       // Validate end date is not before start date
       if (field === 'endDate' || field === 'end_date') {
         const startDateValue = formData.startDate || formData.start_date;
@@ -189,7 +189,7 @@ const ProfileItemModal = ({
           return; // Don't update the state
         }
       }
-      
+
       // Validate expiry date is not before issue date
       if (field === 'expiryDate') {
         const issuedOnValue = formData.issuedOn;
@@ -199,7 +199,7 @@ const ProfileItemModal = ({
         }
       }
     }
-    
+
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -212,7 +212,7 @@ const ProfileItemModal = ({
         return false;
       }
     }
-    
+
     // Validate URL fields
     const urlFields = config.fields.filter(f => f.type === "url");
     for (const field of urlFields) {
@@ -222,7 +222,7 @@ const ProfileItemModal = ({
         return false;
       }
     }
-    
+
     return true;
   };
 
@@ -253,7 +253,7 @@ const ProfileItemModal = ({
 
     setFormData(prev => {
       const newSkillsList = [...(prev.skillsList || []), newSkill];
-      
+
       return {
         ...prev,
         skillsList: newSkillsList,
@@ -269,7 +269,7 @@ const ProfileItemModal = ({
 
   const removeSkill = (index) => {
     const skillToRemove = formData.skillsList?.[index];
-    
+
     setFormData(prev => {
       const newSkillsList = prev.skillsList?.filter((_, i) => i !== index) || [];
       return {
@@ -287,7 +287,7 @@ const ProfileItemModal = ({
   // Process form data and return the processed item
   const processFormData = useCallback(() => {
     const processedData = { ...formData };
-    
+
     // Process special field types
     config.fields.forEach(field => {
       if (field.type === "tags" && typeof processedData[field.name] === "string") {
@@ -295,12 +295,12 @@ const ProfileItemModal = ({
       }
       if (field.type === "skills_manager") {
         // Send the full skillsList with type information, not just names
-        
+
         // Keep the full skill objects for the training update function
-        processedData.skills = Array.isArray(processedData.skillsList) 
-          ? processedData.skillsList 
+        processedData.skills = Array.isArray(processedData.skillsList)
+          ? processedData.skillsList
           : [];
-        
+
         // Set the field name to the full skills array
         processedData[field.name] = processedData.skills;
       }
@@ -315,7 +315,7 @@ const ProfileItemModal = ({
       if (processedData.rating) {
         processedData.level = parseInt(processedData.rating) || 3;
       }
-      
+
       // Map level text ("Intermediate", "Advanced") to proficiency_level field in database
       if (processedData.level && typeof processedData.level === 'string') {
         processedData.proficiency_level = processedData.level;
@@ -338,7 +338,7 @@ const ProfileItemModal = ({
       const completed = parsePositiveNumber(processedData.completedModules);
       const total = parsePositiveNumber(processedData.totalModules);
       processedData.progress = total > 0 ? calculateProgress(completed, total) : 0;
-      
+
       // Auto-determine status based on modules
       if (total > 0 && completed >= total) {
         processedData.status = "completed";
@@ -357,15 +357,15 @@ const ProfileItemModal = ({
 
     try {
       let savedItem;
-      
+
       if (item) {
         // Edit mode - ONLY send the fields we want to update
         // CRITICAL: Do NOT spread the old item - it may have invalid fields
-        
+
         // Define valid fields based on config
         const validFields = config.fields.map(f => f.name);
         const metadataFields = ['id', 'student_id', 'created_at', 'approval_status', 'enabled'];
-        
+
         // Build clean item with ONLY valid fields
         savedItem = {
           id: item.id,
@@ -375,14 +375,14 @@ const ProfileItemModal = ({
           ...processedData,
           updated_at: new Date().toISOString()
         };
-        
+
         // Remove any undefined values
         Object.keys(savedItem).forEach(key => {
           if (savedItem[key] === undefined) {
             delete savedItem[key];
           }
         });
-        
+
       } else {
         // Add mode - create new item
         savedItem = {
@@ -393,7 +393,7 @@ const ProfileItemModal = ({
           approval_status: 'pending', // New items need approval
           created_at: new Date().toISOString(),
         };
-        
+
       }
 
       await onSave(savedItem);
@@ -439,12 +439,12 @@ const ProfileItemModal = ({
       case "date":
         // Add date validation for start and end dates
         const dateProps = { ...commonProps };
-        
+
         // For start date: max is today (cannot select future dates)
         if (field.name === 'startDate' || field.name === 'start_date') {
           dateProps.max = new Date().toISOString().split('T')[0];
         }
-        
+
         // For end date: min is start date, max is today
         if (field.name === 'endDate' || field.name === 'end_date') {
           const startDateValue = formData.startDate || formData.start_date;
@@ -453,12 +453,12 @@ const ProfileItemModal = ({
           }
           dateProps.max = new Date().toISOString().split('T')[0];
         }
-        
+
         // For certificates: issuedOn cannot be in the future
         if (field.name === 'issuedOn') {
           dateProps.max = new Date().toISOString().split('T')[0];
         }
-        
+
         // For certificates: expiryDate must be after issuedOn
         if (field.name === 'expiryDate') {
           const issuedOnValue = formData.issuedOn;
@@ -467,7 +467,7 @@ const ProfileItemModal = ({
           }
           // Expiry date can be in the future (no max constraint)
         }
-        
+
         return <Input {...dateProps} type="date" />;
       case "number":
         return <Input {...commonProps} type="number" min="0" />;
@@ -493,11 +493,10 @@ const ProfileItemModal = ({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-sm font-semibold text-blue-900">{skill.name}</span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                            skill.type === 'technical' 
-                              ? 'bg-purple-100 text-purple-700' 
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${skill.type === 'technical'
+                              ? 'bg-purple-100 text-purple-700'
                               : 'bg-green-100 text-green-700'
-                          }`}>
+                            }`}>
                             {skill.type === 'technical' ? 'Technical' : 'Soft Skill'}
                           </span>
                         </div>
@@ -508,11 +507,10 @@ const ProfileItemModal = ({
                               {[1, 2, 3, 4, 5].map(level => (
                                 <div
                                   key={level}
-                                  className={`w-2 h-2 rounded-full ${
-                                    level <= (skill.level || 3) 
-                                      ? 'bg-blue-500' 
+                                  className={`w-2 h-2 rounded-full ${level <= (skill.level || 3)
+                                      ? 'bg-blue-500'
                                       : 'bg-gray-200'
-                                  }`}
+                                    }`}
                                 />
                               ))}
                             </div>
@@ -536,14 +534,14 @@ const ProfileItemModal = ({
                 </div>
               </div>
             )}
-            
+
             {/* Add New Skill Form */}
             <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 bg-gray-50/50 hover:bg-gray-50 transition-colors">
               <div className="flex items-center gap-2 mb-3">
                 <Plus className="w-4 h-4 text-gray-600" />
                 <div className="text-sm font-semibold text-gray-800">Add New Skill</div>
               </div>
-              
+
               <div className="space-y-3">
                 {/* Skill Name */}
                 <div>
@@ -556,7 +554,7 @@ const ProfileItemModal = ({
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   />
                 </div>
-                
+
                 {/* Type and Level Row */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -570,7 +568,7 @@ const ProfileItemModal = ({
                       <option value="technical">Technical</option>
                     </select>
                   </div>
-                  
+
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Proficiency Level</label>
                     <select
@@ -586,7 +584,7 @@ const ProfileItemModal = ({
                     </select>
                   </div>
                 </div>
-                
+
                 {/* Description */}
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Description (Optional)</label>
@@ -598,24 +596,23 @@ const ProfileItemModal = ({
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   />
                 </div>
-                
+
                 {/* Add Button */}
                 <button
                   type="button"
                   onClick={addSkill}
                   disabled={!formData.newSkillName?.trim()}
-                  className={`w-full py-2.5 px-4 rounded-lg text-sm font-semibold transition-all ${
-                    formData.newSkillName?.trim()
+                  className={`w-full py-2.5 px-4 rounded-lg text-sm font-semibold transition-all ${formData.newSkillName?.trim()
                       ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md'
                       : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  }`}
+                    }`}
                 >
                   <Plus className="w-4 h-4 inline mr-2" />
                   Add Skill
                 </button>
               </div>
             </div>
-            
+
             {/* Empty State */}
             {(!Array.isArray(formData.skillsList) || formData.skillsList.length === 0) && (
               <div className="text-center py-6 text-gray-500">
@@ -650,13 +647,13 @@ const ProfileItemModal = ({
                 <strong>Note:</strong> Your changes are saved but pending approval. The dashboard shows the verified version until approved.
               </div>
             )}
-            
+
             {/* Form Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {config.fields.map(field => {
                 const renderedField = renderField(field);
                 if (!renderedField) return null;
-                
+
                 return (
                   <div key={field.name} className={field.type === "textarea" || field.type === "tags" || field.type === "skills_manager" ? "md:col-span-2" : ""}>
                     <Label htmlFor={field.name} className="text-sm font-medium text-gray-700 mb-1.5 block">
@@ -692,8 +689,8 @@ const ProfileItemModal = ({
 
         {/* Fixed Action Buttons at Bottom */}
         <div className="flex-shrink-0 flex gap-3 pt-4 border-t border-gray-200 bg-white">
-          <Button 
-            onClick={handleSave} 
+          <Button
+            onClick={handleSave}
             disabled={isSaving}
             className="flex-1 bg-blue-600 hover:bg-blue-700 text-white h-11"
           >
@@ -709,9 +706,9 @@ const ProfileItemModal = ({
               </>
             )}
           </Button>
-          <Button 
-            variant="outline" 
-            onClick={onClose} 
+          <Button
+            variant="outline"
+            onClick={onClose}
             disabled={isSaving}
             className="px-6 h-11"
           >

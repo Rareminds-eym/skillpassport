@@ -34,7 +34,7 @@ import {
 import toast from 'react-hot-toast';
 import { useStudentMessageNotifications } from '@/entities/student';
 import { useStudentUnreadCount } from "@/entities/student";
-import { useStudentRealtimeActivities } from "@/shared/lib/hooks";
+import { useStudentRealtimeActivities } from '@/entities/student/model/useStudentRealtimeActivities';
 import ResumeParser from "../ResumeParser";
 import { mergeResumeData } from '@/features/digital-portfolio';
 import { safeSave } from '@/shared/lib/settingsErrorHandler';

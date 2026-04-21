@@ -30,6 +30,7 @@ export { useAuthenticatedStudent } from './model/useAuthenticatedStudent';
 export { useAdminStudents } from './model/useAdminStudents';
 
 export { useStudentTechnicalSkills, useStudentSoftSkills } from './model/useStudentSkills';
+export { useStudentRealtimeActivities } from './model/useStudentRealtimeActivities';
 
 export { default as StudentProfileDrawer } from './ui/StudentProfileDrawer';
 export * from './lib';

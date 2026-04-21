@@ -21,7 +21,7 @@ import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
 import { useSearch, useUser, useIsAuthenticated } from '@/stores';
 import { SearchBar } from '@/shared/ui';
 import { Pagination } from '@/shared/ui';
-import { usePermission } from '@/shared/lib/hooks';
+import { usePermission } from '@/entities/user/model/usePermissions';
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);

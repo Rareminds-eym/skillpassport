@@ -17,7 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { getDashboardData } from '@/features/analytics';
 import { ActivityFeed } from '@/features/recruiter';
-import { useRealtimeActivities } from '@/shared/lib/hooks';
+import { useRealtimeActivities } from '@/features/analytics/model/useRealtimeActivities';
 import { trackSearchUsage } from '@/features/opportunities';
 
 const KpiCard = ({ title, value, icon: Icon, trend, color = 'primary' }) => {

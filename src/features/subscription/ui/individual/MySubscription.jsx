@@ -30,7 +30,7 @@ import { supabase } from '@/shared/api/supabaseClient';
 import { getUserSubscriptions } from '@/features/subscription/api';
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '@/features/subscription';
 import { calculateDaysRemaining, calculateProgressPercentage, formatDate as formatDateUtil, getSubscriptionStatusChecks } from '@/features/subscription/lib';
-import { useUsageStatistics } from '@/shared/lib/hooks';
+import { useUsageStatistics } from '@/features/analytics/model/useUsageStatistics';
 
 /**
  * Get the settings path based on current URL path (more reliable than role)

@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useIsAuthenticated, useUserRole, useAuthLoading } from '@/stores';
-import Loader from './Loader';
+import Loader from '@/shared/ui/Loader';
 
 // Map specific roles to their general category for route protection
 const getRoleCategory = (role) => {
@@ -40,8 +40,8 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
 
   // Check if user's role (or its category) is in allowed roles
   const roleCategory = getRoleCategory(role);
-  const hasAccess = allowedRoles.length === 0 || 
-    allowedRoles.includes(role) || 
+  const hasAccess = allowedRoles.length === 0 ||
+    allowedRoles.includes(role) ||
     allowedRoles.includes(roleCategory);
 
   if (!hasAccess) {
