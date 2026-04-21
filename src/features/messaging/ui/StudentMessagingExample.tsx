@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Toaster } from 'react-hot-toast';
 import { MessageSquare, Send, Loader2 } from 'lucide-react';
 import { useStudentMessages } from '@/features/messaging';
 import { useMessageNotifications } from '@/features/messaging';
