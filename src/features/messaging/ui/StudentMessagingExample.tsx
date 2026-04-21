@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Toaster } from 'react-hot-toast';
 import { MessageSquare, Send, Loader2 } from 'lucide-react';
 import { useStudentMessages, useStudentUnreadCount, useStudentConversations } from '@/features/hooks/useStudentMessages';
 import { useStudentMessageNotifications } from '@/features/hooks/useStudentMessageNotifications';
@@ -77,8 +76,6 @@ export const StudentMessagingExample: React.FC<StudentMessagingExampleProps> = (
   
   return (
     <div className="flex flex-col h-screen bg-gray-50">
-      {/* Toaster for notifications */}
-      <Toaster position="top-right" />
       
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">

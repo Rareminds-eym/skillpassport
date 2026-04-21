@@ -9,13 +9,15 @@
 import React, { useState, useEffect } from 'react';
 import { AlertCircle, Save, X, Loader2 } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/ui';
-// @ts-ignore - JS hook without types
-import { useToast } from '@/shared/lib/hooks';
+import toast from 'react-hot-toast';
+import { getLogger } from '@/shared/config/logging';
 // @ts-ignore - JS hook without types
 import { useStudentSettings } from '@/features/student-profile';
 // @ts-ignore - JS hook without types
 import { useInstitutions } from '@/entities/institution/model/useInstitutions';
 import { isCollegeStudent as checkIsCollegeStudent, isSchoolStudent as checkIsSchoolStudent } from '@/entities/student/lib/studentType';
+
+const logger = getLogger('ProfileCompletionModal');
 
 interface ProfileCompletionModalProps {
   isOpen: boolean;
@@ -167,25 +169,25 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       });
 
       if (userRole === 'school_student') {
-        console.log('✅ Detected school_student from role');
+        logger.debug('Detected school_student from role');
         setStudentType('school');
       } else if (userRole === 'college_student') {
-        console.log('✅ Detected college_student from role');
+        logger.debug('Detected college_student from role');
         setStudentType('college');
       } else {
         // Fallback: Detect student type based on existing data
         const hasSchoolId = initialProfileData.school_id || initialProfileData.schoolId;
         const hasUniversityId = initialProfileData.university_college_id || initialProfileData.universityId;
 
-        console.log('⚠️ No role found, using fallback detection', { hasSchoolId, hasUniversityId });
+        logger.debug('No role found, using fallback detection', { hasSchoolId, hasUniversityId });
         if (hasSchoolId && !hasUniversityId) {
-          console.log('✅ Detected school student from school_id');
+          logger.debug('Detected school student from school_id');
           setStudentType('school');
         } else if (hasUniversityId && !hasSchoolId) {
-          console.log('✅ Detected college student from university_college_id');
+          logger.debug('Detected college student from university_college_id');
           setStudentType('college');
         } else {
-          console.log('❌ Could not determine student type');
+          logger.warn('Could not determine student type');
         }
       }
 
@@ -413,7 +415,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       if (profileData.semester) dataToSave.semester = profileData.semester;
       if (profileData.section) dataToSave.section = profileData.section;
 
-      console.log('💾 Saving profile data (institution fields only):', dataToSave);
+      logger.debug('Saving profile data (institution fields only)', dataToSave);
 
       // Pass only the fields being updated
       await updateProfile(dataToSave);
@@ -427,7 +429,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
 
       onComplete();
     } catch (error) {
-      console.error('Error updating profile:', error);
+      logger.error('Error updating profile', error);
       toast.error("Failed to update profile. Please try again.");
     } finally {
       setIsSaving(false);

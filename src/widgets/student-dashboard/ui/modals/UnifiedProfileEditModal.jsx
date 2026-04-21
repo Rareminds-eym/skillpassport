@@ -1,4 +1,5 @@
-import { useToast } from "@/shared/lib/hooks";
+import toast from 'react-hot-toast';
+import { getLogger } from '@/shared/config/logging';
 import {
   Award, Calendar,
   CheckCircle,
@@ -23,6 +24,8 @@ import { Textarea } from '@/shared/ui/textarea';
 import { FIELD_CONFIGS } from "./fieldConfigs";
 import { calculateDuration, calculateProgress, generateUuid, isValidUrl, parsePositiveNumber, parseSkills } from "./utils";
 import ProfileItemModal from "./ProfileItemModal";
+
+const logger = getLogger('UnifiedProfileEditModal');
 import {
   AlertDialog,
   AlertDialogAction,
@@ -193,7 +196,7 @@ const UnifiedProfileEditModal = ({
   }, [modalJustOpened, data, singleEditMode, config]);
 
   if (!config) {
-    console.error(`Unknown profile type: ${type}`);
+    logger.error('Unknown profile type', { type });
     return null;
   }
 
@@ -469,7 +472,7 @@ const UnifiedProfileEditModal = ({
         }
         toast.success(`${config.title} updated successfully.`);
       } catch (error) {
-        console.error('Error auto-saving:', error);
+        logger.error('Error auto-saving updated item', error);
         toast.error(`${config.title} updated. Click 'Save All Changes' to save to database.`);
       }
     } else {
@@ -495,7 +498,7 @@ const UnifiedProfileEditModal = ({
         }
         toast.success(`${config.title} added successfully.`);
       } catch (error) {
-        console.error('Error auto-saving:', error);
+        logger.error('Error auto-saving new item', error);
         toast.error(`${config.title} added. Click 'Save All Changes' to save to database.`);
       }
     }
@@ -525,10 +528,7 @@ const UnifiedProfileEditModal = ({
 
 
       if (!updatedItem.id) {
-        console.error('❌ CRITICAL: No ID found for item!');
-        console.error('❌ existingItem:', existingItem);
-        console.error('❌ formData:', formData);
-        console.error('❌ processedData:', processedData);
+        logger.error('CRITICAL: No ID found for item', { existingItem, formData, processedData });
         toast.error("Cannot save: Missing item ID. Please try again.");
         return;
       }
@@ -543,7 +543,7 @@ const UnifiedProfileEditModal = ({
         onClose();
       }, 300);
     } catch (error) {
-      console.error("Error saving:", error);
+      logger.error('Error saving item', error);
       toast.error("Failed to save. Please try again.");
     } finally {
       setIsSaving(false);
@@ -584,7 +584,7 @@ const UnifiedProfileEditModal = ({
       }
       toast.success(`${config.title} has been deleted successfully.`);
     } catch (error) {
-      console.error('Error deleting:', error);
+      logger.error('Error deleting item', error);
       toast.error("Failed to delete. Please try again.");
     }
   };
@@ -645,7 +645,7 @@ const UnifiedProfileEditModal = ({
 
       toast.success(`${config.title} ${newState ? 'is now visible' : 'is now hidden'} on your profile.`);
     } catch (error) {
-      console.error('Error toggling visibility:', error);
+      logger.error('Error toggling item visibility', error);
       toast.error("Failed to update visibility. Please try again.");
       // Restore original state on error
       setItems(items);
@@ -680,7 +680,7 @@ const UnifiedProfileEditModal = ({
         await onSave(updatedItems);
         toast.success(`${config.title} updated successfully.`);
       } catch (error) {
-        console.error('Error auto-saving:', error);
+        logger.error('Error auto-saving updated item (handleSaveItem)', error);
         toast.error(`${config.title} updated. Click 'Save All Changes' to save to database.`);
       }
     } else {
@@ -696,7 +696,7 @@ const UnifiedProfileEditModal = ({
         await onSave(updatedItems);
         toast.success(`${config.title} added successfully.`);
       } catch (error) {
-        console.error('Error auto-saving:', error);
+        logger.error('Error auto-saving new item (handleSaveItem)', error);
         toast.error(`${config.title} added. Click 'Save All Changes' to save to database.`);
       }
     }
@@ -752,7 +752,7 @@ const UnifiedProfileEditModal = ({
         onClose();
       }, 300);
     } catch (error) {
-      console.error("Error saving:", error);
+      logger.error('Error saving all items (handleSubmit)', error);
       toast.error("Failed to save. Please try again.");
     } finally {
       setIsSaving(false);

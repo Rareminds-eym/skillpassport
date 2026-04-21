@@ -26,7 +26,7 @@ import {
   Mail,
   Award
 } from 'lucide-react';
-import { useToast } from '@/shared/lib/hooks';
+import toast from 'react-hot-toast';
 import { supabase } from '@/shared/api';
 import { useUser } from '@/stores';
 import { CollegeAdminNotificationService } from '@/features/college-admin';

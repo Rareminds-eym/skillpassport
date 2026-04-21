@@ -40,7 +40,7 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { motion } from "motion/react";
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getLogger } from '@/shared/config/logging';
 
@@ -2810,20 +2810,6 @@ const StudentDashboard = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] py-6 px-4">
-
-      {/* Hot-toast notification container */}
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          style: {
-            zIndex: 60,
-          },
-          duration: 5000,
-        }}
-        containerStyle={{
-          zIndex: 60,
-        }}
-      />
 
       <div className="w-full mx-auto">
         {/* View Switcher Tabs */}
