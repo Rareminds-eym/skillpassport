@@ -5,9 +5,12 @@ import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { Textarea } from '@/shared/ui/textarea';
 import { Save, Loader2, User } from "lucide-react";
-import { useToast } from "@/shared/lib/hooks";
+import toast from 'react-hot-toast';
+import { getLogger } from '@/shared/config/logging';
 import { AutocompleteInput } from '@/shared/ui/autocomplete';
 import { searchUniversities, searchCollegesAndSchools } from "@/shared/lib/educationSearch";
+
+const logger = getLogger('PersonalInfoEditModal');
 
 const PersonalInfoEditModal = ({ 
   isOpen, 
@@ -146,7 +149,7 @@ const PersonalInfoEditModal = ({
         onClose();
       }, 500);
     } catch (error) {
-      console.error("❌ Error saving personal info:", error);
+      logger.error('Error saving personal info', error);
       toast.error("Failed to save personal information. Please try again.");
     } finally {
       setIsSaving(false);

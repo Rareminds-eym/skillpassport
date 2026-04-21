@@ -1,4 +1,5 @@
 import React from 'react';
+import toast from 'react-hot-toast';
 import {
   CheckIcon,
   MagnifyingGlassIcon,
@@ -16,7 +17,7 @@ interface PipelineQuickFiltersProps {
   totalAIRecommended: number;
   globalSearch: string;
   setGlobalSearch: (value: string) => void;
-  onShowToast: (type: 'success' | 'error' | 'warning' | 'info', title: string, message?: string) => void;
+  onShowToast?: (type: 'success' | 'error' | 'warning' | 'info', title: string, message?: string) => void;
 }
 
 export const PipelineQuickFilters: React.FC<PipelineQuickFiltersProps> = ({
@@ -26,7 +27,6 @@ export const PipelineQuickFilters: React.FC<PipelineQuickFiltersProps> = ({
   totalAIRecommended,
   globalSearch,
   setGlobalSearch,
-  onShowToast
 }) => {
   return (
     <div className="bg-white border-b border-gray-200 px-6 py-2">
@@ -35,38 +35,37 @@ export const PipelineQuickFilters: React.FC<PipelineQuickFiltersProps> = ({
         <button
           onClick={() => {
             setShowAIRecommendedOnly(false);
-            onShowToast('info', 'Filter', 'Showing all candidates');
+            toast('Showing all candidates');
           }}
           className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-            !showAIRecommendedOnly 
-              ? 'bg-primary-100 text-primary-700 border border-primary-200' 
+            !showAIRecommendedOnly
+              ? 'bg-primary-100 text-primary-700 border border-primary-200'
               : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
           }`}
         >
           <CheckIcon className="h-3 w-3 mr-1" />
           All Candidates ({totalCandidates})
         </button>
-        {/* AI Recommended Badge */}
         <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-700 border border-purple-200">
           <SparklesIcon className="h-3 w-3 mr-1 text-purple-500" />
           AI Recommended ({totalAIRecommended})
         </div>
         <button
-          onClick={() => onShowToast('info', 'Coming Soon', 'Overdue actions filter will be available soon')}
+          onClick={() => toast('Coming Soon: Overdue actions filter will be available soon')}
           className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 transition-colors"
         >
           <ClockIcon className="h-3 w-3 mr-1 text-orange-500" />
           Overdue Actions
         </button>
         <button
-          onClick={() => onShowToast('info', 'Coming Soon', 'Needs attention filter will be available soon')}
+          onClick={() => toast('Coming Soon: Needs attention filter will be available soon')}
           className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 transition-colors"
         >
           <ExclamationTriangleIcon className="h-3 w-3 mr-1 text-yellow-500" />
           Needs Attention
         </button>
         <button
-          onClick={() => onShowToast('info', 'Coming Soon', 'High priority filter will be available soon')}
+          onClick={() => toast('Coming Soon: High priority filter will be available soon')}
           className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 transition-colors"
         >
           <StarIcon className="h-3 w-3 mr-1 text-red-500" />

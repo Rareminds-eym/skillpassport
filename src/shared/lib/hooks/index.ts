@@ -1,6 +1,3 @@
-// Toast notifications
-export { useToast, toast } from './use-toast';
-
 // Responsive design
 export { useResponsive } from './useresponsive';
 

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { GraduationCap, Loader2 } from 'lucide-react';
 import { useAuth } from '@/features/auth';
 import { loginAdmin } from '@/features/auth/api';
-import { useToast } from '@/shared/lib/hooks';
+import toast from 'react-hot-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui';
 import { Label } from '@/shared/ui';
 import { Input } from '@/shared/ui';

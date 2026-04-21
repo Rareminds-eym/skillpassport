@@ -17,7 +17,6 @@ export type { ProjectTab } from './ui/projects/navigation/TabNavigation';
 export { CandidateQuickView } from './ui/CandidateQuickView';
 export { default as PipelineSortMenu } from './ui/PipelineSortMenu';
 export { PipelineStats, QuickStats } from './ui/PipelineStats';
-export { useToast } from './ui/Toast';
 export { default as ActivityFeed } from './ui/ActivityFeed';
 export { default as ChartDownloadButton } from './ui/ChartDownloadButton';
 

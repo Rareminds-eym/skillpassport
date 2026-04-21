@@ -1,4 +1,5 @@
-import { useToast } from "@/shared/lib/hooks";
+import toast from 'react-hot-toast';
+import { getLogger } from '@/shared/config/logging';
 import {
     Briefcase,
     Loader2,
@@ -15,6 +16,8 @@ import { Progress } from '@/shared/ui/progress';
 import { Textarea } from '@/shared/ui/textarea';
 import { FIELD_CONFIGS } from "./fieldConfigs";
 import { calculateDuration, calculateProgress, generateUuid, isValidUrl, parsePositiveNumber, parseSkills } from "./utils";
+
+const logger = getLogger('ProfileItemModal');
 
 const ProfileItemModal = ({ 
   isOpen, 
@@ -155,7 +158,7 @@ const ProfileItemModal = ({
   }, [item, isOpen, config, type]);
 
   if (!config) {
-    console.error(`Unknown profile type: ${type}`);
+    logger.error('Unknown profile type', { type });
     return null;
   }
 
@@ -397,7 +400,7 @@ const ProfileItemModal = ({
       toast.success(`${config.title} ${item ? 'updated' : 'added'} successfully.`);
       onClose();
     } catch (error) {
-      console.error("Error saving:", error);
+      logger.error('Error saving profile item', error);
       toast.error("Failed to save. Please try again.");
     } finally {
       setIsSaving(false);
