@@ -20,6 +20,9 @@ interface EducatorData {
 }
 
 const RoleDebugger: React.FC = () => {
+  // Guard BEFORE all hooks — safe for lint and future-proof
+  if (import.meta.env.PROD) return null;
+
   const authUser = useUser();
   const { role: authRole } = useUserRoleFromStore();
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
@@ -61,9 +64,6 @@ const RoleDebugger: React.FC = () => {
   useEffect(() => {
     fetchDebugInfo();
   }, [fetchDebugInfo]);
-
-  // Guard AFTER all hooks — do not render in production
-  if (import.meta.env.PROD) return null;
 
   if (loading) return <div>Loading role info...</div>;
 

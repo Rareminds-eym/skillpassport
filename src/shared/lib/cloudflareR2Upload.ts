@@ -64,7 +64,7 @@ export async function uploadToCloudflareR2(
     const randomString = Math.random().toString(36).substring(2, 15);
     const extensionMatch = file.name.includes('.') ? file.name.split('.').pop() : undefined;
 
-    if (!extensionMatch) {
+    if (!extensionMatch || extensionMatch.trim().length === 0) {
       return {
         success: false,
         error: 'File must have a valid extension (e.g. .jpg, .png, .webp)'
