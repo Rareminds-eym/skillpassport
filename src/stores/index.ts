@@ -52,7 +52,7 @@ export {
   useIsViewingOtherStudent,
   type PortfolioSettings,
   type DisplayPreferences
-} from './portfolioStore';
+} from '../features/digital-portfolio/model/portfolioStore';
 
 export {
   useAssessmentStore,
@@ -102,7 +102,7 @@ export {
   type Subscription,
   type Entitlement,
   type SubscriptionCost
-} from './subscriptionStore';
+} from '../features/subscription/model/subscriptionStore';
 
 // ====================
 // Additional Feature Stores
@@ -129,7 +129,7 @@ export {
   useTestProgress,
   useTestActions,
   type Question
-} from './testStore';
+} from '../features/assessment/model/testStore';
 
 export {
   usePromotionalStore,
@@ -138,7 +138,7 @@ export {
   usePromotionalActions,
   type PromotionalEvent,
   type TimeRemaining
-} from './promotionalStore';
+} from '../features/promotional/model/promotionalStore';
 
 export {
   useCareerAssistantStore,
@@ -174,10 +174,10 @@ export {
 export const resetAllStores = async () => {
   const { useAuthStore } = await import('./authStore');
   const { useSearchStore } = await import('@/shared/model/searchStore');
-  const { usePortfolioStore } = await import('./portfolioStore');
+  const { usePortfolioStore } = await import('../features/digital-portfolio/model/portfolioStore');
   const { useTourStore } = await import('@/shared/model/tourStore');
   const { useAssessmentStore } = await import('./assessmentStore');
-  const { useSubscriptionStore } = await import('./subscriptionStore');
+  const { useSubscriptionStore } = await import('../features/subscription/model/subscriptionStore');
 
   // Reset individual stores
   useAuthStore.getState().logout();

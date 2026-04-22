@@ -277,3 +277,6 @@ export { TRAIT_COLORS } from './lib/config/assessmentResultConstants';
 export { default as Question } from './ui/QuestionNavigation';
 
 export { calculateStreamRecommendations } from './lib/streamMatchingEngine';
+
+// Store exports
+export * from './model/testStore';

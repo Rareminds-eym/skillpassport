@@ -174,9 +174,5 @@ export { formatDate } from './lib/subscriptionHelpers';
 
 export { default as addOnPaymentService } from './api/addOnPaymentService';
 
-/**
- * @deprecated Use useSubscriptionAccess from @/stores directly instead.
- * This re-export will be removed in the next major version.
- * Import directly: import { useSubscriptionAccess } from '@/stores';
- */
-export { useSubscriptionAccess } from '@/stores';
+// Store exports
+export * from './model/subscriptionStore';

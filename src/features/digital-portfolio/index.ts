@@ -32,4 +32,5 @@ export type { default as AIPersonaLayout } from './ui/portfolio/layouts/AIPerson
 export type { default as SplitScreenLayout } from './ui/portfolio/layouts/SplitScreenLayout';
 export type { ProfileCompletionErrorBoundary } from './ui/shared/ProfileCompletionErrorBoundary';
 
-export { usePortfolio } from '@/stores';
+// Store exports
+export * from './model/portfolioStore';
