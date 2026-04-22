@@ -1,13 +1,20 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, Cloud, CloudOff, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useOfflineSync } from '@/features/courses/model/useOfflineSync';
 
 /**
  * Sync Status Indicator Component
  * Shows online/offline status and pending sync items
+ * 
+ * @param {Object} props
+ * @param {Function} props.useOfflineSync - Hook for offline sync (injected dependency)
+ * @param {string} props.className - Additional CSS classes
+ * 
+ * @example
+ * import { useOfflineSync } from '@/features/courses';
+ * <SyncStatusIndicator useOfflineSync={useOfflineSync} />
  */
-const SyncStatusIndicator = ({ className = '' }) => {
+const SyncStatusIndicator = ({ useOfflineSync, className = '' }) => {
   const { isOnline, pendingCount, syncInProgress, forceSync, lastSyncEvent } = useOfflineSync();
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');

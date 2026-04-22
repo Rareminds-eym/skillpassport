@@ -1,6 +1,6 @@
 import React from 'react';
 import { ExternalLinkIcon, LinkIcon } from 'lucide-react';
-import { Project } from '@/features/student-profile/model';
+import { Project } from '@/shared/types';
 import StatusBadge from '@/shared/ui/StatusBadge';
 
 interface ProjectCardProps {

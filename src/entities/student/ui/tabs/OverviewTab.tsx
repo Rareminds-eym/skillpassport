@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
-import { Student } from '@/features/student-profile/model';
+import { Student } from '@/shared/types';
 import {
   BriefcaseIcon,
   AcademicCapIcon,
