@@ -11,7 +11,6 @@ export * from './studentService';
 export * from './studentSettingsService';
 
 // Student profile CRUD operations (entity-level operations on student data)
-// Re-exported from feature's studentDataService so entity hooks don't import from features
 export {
     getCompleteStudentData,
     updateStudentProfile,
@@ -30,4 +29,4 @@ export {
     addSoftSkill,
     updateSoftSkill,
     deleteSoftSkill
-} from '@/features/student-profile/api/studentDataService';
+} from './studentDataService';
