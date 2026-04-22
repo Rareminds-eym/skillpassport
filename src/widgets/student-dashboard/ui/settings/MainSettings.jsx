@@ -30,7 +30,7 @@ import {
   ExperienceEditModal, 
   CertificatesEditModal, 
   ProjectsEditModal 
-} from '../modals';
+} from '@/features/student-profile';
 import toast from 'react-hot-toast';
 import { useStudentMessageNotifications } from '@/entities/student';
 import { useStudentUnreadCount } from "@/entities/student";

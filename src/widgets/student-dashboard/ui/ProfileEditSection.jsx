@@ -9,7 +9,7 @@ import {
   ExperienceEditModal,
   SkillsEditModal,
   PersonalInfoEditModal
-} from './modals';
+} from '@/features/student-profile';
 import { useStudentDataByEmail } from '@/entities/student';
 import { useUser } from '@/stores';
 import PersonalInfoSummary from './PersonalInfoSummary';

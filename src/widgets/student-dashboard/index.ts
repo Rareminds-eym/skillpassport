@@ -50,9 +50,6 @@ export { default as SuggestedNextSteps } from './ui/SuggestedNextSteps';
 export { default as TopSkillsInDemand } from './ui/TopSkillsInDemand';
 export { default as TrainingRecommendations } from './ui/TrainingRecommendations';
 
-// Modals
-export * from './ui/modals';
-
 // Settings Components
 export { default as FormField } from './ui/settings/FormField';
 export { default as MainSettings } from './ui/settings/MainSettings';

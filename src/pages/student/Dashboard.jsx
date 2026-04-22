@@ -52,7 +52,7 @@ import {
   ProjectsEditModal,
   SkillsEditModal,
   TrainingEditModal,
-} from '@/widgets/student-dashboard/ui/modals';
+} from '@/features/student-profile';
 import { AchievementsTimeline, AnalyticsView, TrainingRecommendations } from '@/widgets/student-dashboard';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/ui';
 import {

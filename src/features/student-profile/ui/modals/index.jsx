@@ -1,17 +1,24 @@
-// Unified Profile Edit Modal System
-// This provides both the new unified modal and backward-compatible named exports
+import React from 'react';
 
-import UnifiedProfileEditModal from "./UnifiedProfileEditModal";
-import PersonalInfoEditModalComponent from "./PersonalInfoEditModal";
-export { FIELD_CONFIGS } from "./fieldConfigs";
-export * from "./utils";
+export { default as AdmissionNoteModal } from './AdmissionNoteModal';
+export { default as SchoolAdmissionNoteModal } from './SchoolAdmissionNoteModal';
+export { default as MessageModal } from './MessageModal';
+export { default as ExportModal } from '@/entities/student/ui/modals/ExportModal';
+export { default as ApprovalModal } from './ApprovalModal';
+export { default as PromotionModal } from './PromotionModal';
+export { default as GraduationModal } from './GraduationModal';
+export { default as DocumentsModal } from './DocumentsModal';
 
-// Export the unified modal
-export { default as UnifiedProfileEditModal } from "./UnifiedProfileEditModal";
+// Profile edit modals - moved from widgets to features
+import UnifiedProfileEditModal from './UnifiedProfileEditModal';
+import PersonalInfoEditModalComponent from './PersonalInfoEditModal';
 
-// Backward-compatible wrapper components
-// These allow existing code to continue working without changes
+export { default as UnifiedProfileEditModal } from './UnifiedProfileEditModal';
+export { default as ProfileItemModal } from './ProfileItemModal';
+export { FIELD_CONFIGS } from './fieldConfigs';
+export * from './utils';
 
+// Backward-compatible wrapper components for profile editing
 export const EducationEditModal = ({ isOpen, onClose, data, onSave }) => (
   <UnifiedProfileEditModal
     isOpen={isOpen}
@@ -101,6 +108,3 @@ export const PersonalInfoEditModal = ({ isOpen, onClose, data, onSave }) => (
     onSave={onSave}
   />
 );
-
-// Default export for convenience
-export default UnifiedProfileEditModal;

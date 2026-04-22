@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Pagination } from '@/shared/ui';
 import { LearningAnalyticsDashboard, ModernLearningCard, SelectCourseModal } from '@/widgets/student-dashboard';
-import { TrainingEditModal } from '@/widgets/student-dashboard/ui/modals';
+import { TrainingEditModal } from '@/features/student-profile';
 import { Button, Card, CardContent } from '@/shared/ui';
 import { useAuth } from "@/features/auth";
 import { useUser } from "@/stores";
