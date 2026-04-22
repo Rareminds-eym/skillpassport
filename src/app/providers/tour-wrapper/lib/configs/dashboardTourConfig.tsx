@@ -1,4 +1,4 @@
-import { TourStep } from '@/features/student-profile/model';
+import { TourStep } from '@/shared/types';
 
 /**
  * Student Dashboard Tour Configuration - Professional Solution
@@ -27,8 +27,8 @@ export const DASHBOARD_TOUR_STEPS: TourStep[] = [
     placement: 'center',
     disableBeacon: true,
     styles: {
-     tooltip: {
-       width: '450px', 
+      tooltip: {
+        width: '450px',
       },
     },
   },
@@ -267,8 +267,8 @@ export const DASHBOARD_TOUR_STEPS: TourStep[] = [
           Training
         </h3>
         <p className="text-gray-600 text-md mb-3">
-          Your personalized training hub featuring AI-recommended courses based on your assessment results and career goals. 
-          Track your learning progress, view enrolled courses, and discover new training opportunities tailored specifically for you. 
+          Your personalized training hub featuring AI-recommended courses based on your assessment results and career goals.
+          Track your learning progress, view enrolled courses, and discover new training opportunities tailored specifically for you.
         </p>
         <p className="text-sm text-blue-600 font-medium">
           Next Action: Click the eye icon to view all your learning activities or "Add Training" to log new courses
@@ -291,7 +291,7 @@ export const DASHBOARD_TOUR_STEPS: TourStep[] = [
           Opportunities
         </h3>
         <p className="text-gray-600 text-md mb-3">
-          Discover job openings, internships, and career opportunities available to you. 
+          Discover job openings, internships, and career opportunities available to you.
           Browse through various positions across different industries and find roles that match your skills and career interests.
         </p>
         <p className="text-sm text-blue-600 font-medium">
@@ -477,7 +477,7 @@ export const DASHBOARD_TOUR_STEPS: TourStep[] = [
   },
 
   // Tour Complete
-{
+  {
     target: 'body',
     content: (
       <div>
@@ -485,7 +485,7 @@ export const DASHBOARD_TOUR_STEPS: TourStep[] = [
           🎉 Tour Complete - You're Ready!
         </h3>
         <p className="text-gray-600 mb-3">
-          Congratulations! You now know how to navigate and use all the key features of your dashboard. 
+          Congratulations! You now know how to navigate and use all the key features of your dashboard.
           You're ready to build an amazing professional profile.
         </p>
         <div className="bg-blue-50 rounded-lg p-3 mb-3">
@@ -559,7 +559,7 @@ export const DASHBOARD_TOUR_STYLES = {
     color: '#374151',
     whiteSpace: 'pre-line' as const, // This allows \n to create line breaks
   },
-buttonNext: {
+  buttonNext: {
     backgroundColor: '#3B82F6',
     borderRadius: '8px',
     color: '#fff',

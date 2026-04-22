@@ -22,6 +22,7 @@ export { default as Loader } from './Loader';
 export { default as ScrollToTop } from './ScrollToTop';
 // Note: ProtectedRoute moved to @/app/components (FSD compliance)
 export { default as SearchBar } from './SearchBar';
+export { default as Header } from './Header';
 export { default as Footer } from './Footer';
 export { default as ImageUpload } from './ImageUpload';
 export { default as DemoModal } from './DemoModal';

@@ -1,4 +1,4 @@
-import { TourStep } from '@/features/student-profile/model';
+import { TourStep } from '@/shared/types';
 
 /**
  * AFTER-12 Assessment Result Tour Configuration

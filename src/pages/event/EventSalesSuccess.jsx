@@ -6,7 +6,7 @@
 import { ArrowLeft, ArrowRight, Check, CheckCircle, Copy, Eye, EyeOff, Key, Mail, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import Header from '@/app/layouts/Header';
+import { Header } from '@/shared/ui';
 import { supabase } from '@/shared/api/supabaseClient';
 
 export default function EventSalesSuccess() {
@@ -61,7 +61,7 @@ export default function EventSalesSuccess() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      
+
       <div className="py-12 px-4">
         <div className="max-w-lg mx-auto">
           {/* Back Button */}

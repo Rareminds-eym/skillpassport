@@ -17,7 +17,7 @@ import {
   experienceData,
   technicalSkills,
   softSkills
-} from '@/widgets/student-dashboard/model/mockData';
+} from '@/shared/config/mockData';
 
 // Helper function to get active tab from pathname
 const getActiveTabFromPath = (pathname) => {

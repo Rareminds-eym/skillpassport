@@ -108,7 +108,14 @@ const StudentPublicViewer = lazy(() =>
   import("@/features/student-profile/ui/StudentPublicViewer")
 );
 
+const OrganizationSetupPage = lazy(() =>
+  import("@/pages/onboarding/OrganizationSetupPage")
+);
+
 export const publicRoutes = [
+  // Organization Setup (for admins without organization)
+  <Route key="organization-setup" path="/organization-setup" element={<OrganizationSetupPage />} />,
+
   // Skill Passport Pre-Registration
   <Route key="register-student" path="/register/student" element={<SkillPassportPreRegistration />} />,
   <Route key="register-corporate" path="/register/corporate" element={<SkillPassportPreRegistration />} />,

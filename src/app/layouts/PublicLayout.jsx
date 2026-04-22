@@ -1,13 +1,11 @@
 import { Outlet, useLocation } from 'react-router-dom';
-import Header from './Header';
-import Footer from '@/shared/ui/Footer';
+import { Header, Footer } from '@/shared/ui';
 import PromotionalBanner from '@/shared/ui/marketing/PromotionalBanner';
 import AssessmentPromotionalBanner from '@/shared/ui/marketing/AssessmentPromotionalBanner';
 import { useAssessmentPromotional, useCurrentPromotional } from '@/stores';
 import { useIsAuthenticated, useUserRole, useUser, useSubscriptionAccess } from '@/stores';
 import { useAuth } from '@/features/auth';
-import { useSubscriptionQuery } from '@/features/subscription/model';
-import { isActiveOrPaused } from '@/features/subscription';
+import { useSubscriptionQuery, isActiveOrPaused } from '@/features/subscription';
 
 // Import role-specific headers
 import { Header as StudentHeader } from '@/widgets/student-dashboard';

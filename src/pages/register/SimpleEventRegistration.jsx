@@ -34,17 +34,14 @@ import {
   PRE_REGISTRATION_END_DATE
 } from "@/shared/config/registrationConfig";
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { Footer } from '@/shared/ui';
-import { OTPInput } from '@/shared/ui';
-import Header from '@/app/layouts/Header';
+import { Footer, Header, OTPInput, ShinyButton, Sparkles } from '@/shared/ui';
 import { paymentsApiService } from '@/features/subscription';
-import { ShinyButton, Sparkles } from '@/shared/ui';
 
 // Fixed registration fee
 const REGISTRATION_FEE = 499;
 
 // Email API URL - Use environment variable with proper fallback
-const EMAIL_API_URL = import.meta.env.VITE_EMAIL_API_URL || 
+const EMAIL_API_URL = import.meta.env.VITE_EMAIL_API_URL ||
   (import.meta.env.DEV ? '/api/email' : import.meta.env.VITE_PRODUCTION_EMAIL_API_URL || 'https://skillpassport.rareminds.in/api/email');
 
 // Generate 6-digit OTP
@@ -260,11 +257,10 @@ const TermsModal = ({ isOpen, onClose, onAccept }) => {
                   }
                 }}
                 disabled={!hasScrolledToBottom}
-                className={`w-full py-4 font-bold rounded-2xl transition-all shadow-lg ${
-                  hasScrolledToBottom
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-xl cursor-pointer'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
+                className={`w-full py-4 font-bold rounded-2xl transition-all shadow-lg ${hasScrolledToBottom
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-xl cursor-pointer'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
               >
                 {hasScrolledToBottom ? 'Accept' : 'Scroll to Accept'}
               </button>
@@ -689,14 +685,14 @@ export default function SimpleEventRegistration() {
                     src="https://lottie.host/1689bbd3-291d-4b13-9da5-2882f580c526/7rNvhtQCvu.lottie"
                     loop
                     autoplay
-                    style={{ 
-                      width: '32px', 
+                    style={{
+                      width: '32px',
                       height: '32px',
                     }}
                   />
                 </div>
               </div>
-              
+
               {/* Text */}
               <span className="text-gray-900 text-base font-semibold">
                 For Students Only
@@ -839,7 +835,7 @@ export default function SimpleEventRegistration() {
               <div className="relative overflow-hidden rounded-2xl bg-white border border-grey-200 shadow-md hover:shadow-lg transition-all duration-300 group">
                 {/* Subtle blue overlay on hover */}
                 <div className="absolute inset-0 bg-grey-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                
+
                 <div className="relative p-5">
                   {/* Top Row: Icon + Title */}
                   <div className="flex items-center gap-3 mb-3">
@@ -920,11 +916,10 @@ export default function SimpleEventRegistration() {
               transition={{ delay: 0.4 }}
               className="mt-6"
             >
-              <label className={`flex items-start gap-3 p-4 rounded-xl border border-gray-200 transition-all duration-200 bg-white ${
-                hasReadTerms 
-                  ? 'cursor-pointer group hover:border-blue-300 hover:bg-blue-50/30' 
-                  : 'cursor-not-allowed opacity-60'
-              }`}>
+              <label className={`flex items-start gap-3 p-4 rounded-xl border border-gray-200 transition-all duration-200 bg-white ${hasReadTerms
+                ? 'cursor-pointer group hover:border-blue-300 hover:bg-blue-50/30'
+                : 'cursor-not-allowed opacity-60'
+                }`}>
                 <div className="relative mt-0.5">
                   <input
                     type="checkbox"
@@ -1059,9 +1054,9 @@ export default function SimpleEventRegistration() {
       <Footer />
 
       {/* Terms Modal */}
-      <TermsModal 
-        isOpen={showTerms} 
-        onClose={() => setShowTerms(false)} 
+      <TermsModal
+        isOpen={showTerms}
+        onClose={() => setShowTerms(false)}
         onAccept={() => {
           setHasReadTerms(true);
           setConsentGiven(true);

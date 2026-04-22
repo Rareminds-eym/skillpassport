@@ -1,5 +1,4 @@
-import { Footer } from '@/shared/ui';
-import Header from '@/app/layouts/Header';
+import { Footer, Header } from '@/shared/ui';
 import { HeroSection, WhatIsSection, WhoIsThisForSection, TimelineSection, WhatYouGetSection, AboutRaremindsSection, NeedHelpSection } from '@/shared/ui/marketing';
 import RegistrationForm from '@/features/marketing/ui/skillpassport/RegistrationForm';
 import { useLocation } from 'react-router-dom';
