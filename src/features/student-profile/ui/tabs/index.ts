@@ -1,4 +1,4 @@
-export { default as OverviewTab } from '../StudentProfileDrawer/tabs/OverviewTab';
+export { default as OverviewTab } from '../../../../entities/student/ui/tabs/OverviewTab';
 export { default as AcademicTab } from './AcademicTab';
 export { default as CoursesTab } from './CoursesTab';
 export { default as ProjectsTab } from './ProjectsTab';
@@ -8,5 +8,5 @@ export { default as CurriculumTab } from './CurriculumTab';
 export { default as ClubsCompetitionsTab } from './ClubsCompetitionsTab';
 export { default as ExamResultsTab } from './ExamResultsTab';
 export { default as NotesTab } from './NotesTab';
-export { default as EventsTab } from '../StudentProfileDrawer/tabs/EventsTab';
+export { default as EventsTab } from '../../../../entities/student/ui/tabs/EventsTab';
 export { default as DocumentsTab } from './DocumentsTab';

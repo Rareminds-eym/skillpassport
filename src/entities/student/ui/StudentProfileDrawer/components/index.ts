@@ -1,7 +1,7 @@
-// Re-exported from canonical source: features/student-profile
-export { default as Badge } from '@/features/student-profile/ui/StudentProfileDrawer/components/Badge';
-export { default as StatusBadge } from '@/features/student-profile/ui/StudentProfileDrawer/components/StatusBadge';
-export { default as TabButton } from '@/features/student-profile/ui/StudentProfileDrawer/components/TabButton';
+// Entity-level components - now in correct location
+export { Badge } from '@/shared/ui/badge';
+export { default as StatusBadge } from '@/shared/ui/StatusBadge';
+export { default as TabButton } from '@/shared/ui/TabButton';
 export { default as LessonSection } from './LessonSection';
-export { default as ProjectCard } from '@/features/student-profile/ui/StudentProfileDrawer/components/ProjectCard';
-export { default as CertificateCard } from '@/features/student-profile/ui/StudentProfileDrawer/components/CertificateCard';
+export { default as ProjectCard } from '../../ProjectCard';
+export { default as CertificateCard } from '../../CertificateCard';

@@ -1,6 +1,6 @@
-// Re-exported from canonical source: features/student-profile
-export { default as OverviewTab } from '@/features/student-profile/ui/StudentProfileDrawer/tabs/OverviewTab';
-export { default as EventsTab } from '@/features/student-profile/ui/StudentProfileDrawer/tabs/EventsTab';
+// Entity-level tabs - now in correct location
+export { default as OverviewTab } from '../../tabs/OverviewTab';
+export { default as EventsTab } from '../../tabs/EventsTab';
 export { default as AcademicTab } from './AcademicTab';
 export { default as CoursesTab } from './CoursesTab';
 export { default as ProjectsTab } from './ProjectsTab';
