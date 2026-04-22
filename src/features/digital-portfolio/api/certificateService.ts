@@ -4,9 +4,9 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
-import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
+import { getApiUrl } from '@/shared/api/apiUtils';
 
-const STORAGE_API_URL = getPagesApiUrl('storage');
+const STORAGE_API_URL = getApiUrl('storage');
 
 const generateCredentialId = () => {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -200,8 +200,7 @@ export const generateCourseCertificate = async (studentId, studentName, courseId
 };
 
 export const downloadCertificate = async (certificateUrl, courseName) => {
-  const { getPagesApiUrl } = await import('@/shared/lib/pagesUrl');
-  const STORAGE_API_URL = getPagesApiUrl('storage');
+  const STORAGE_API_URL = getApiUrl('storage');
 
   try {
     // If it's a data URL, download directly
@@ -261,7 +260,7 @@ export const downloadCertificate = async (certificateUrl, courseName) => {
  * @param {string} mode - 'inline' for viewing in browser, 'download' for downloading
  */
 export const getCertificateProxyUrl = (certificateUrl: string, mode: 'inline' | 'download' = 'inline'): string | null => {
-  const STORAGE_API_URL = getPagesApiUrl('storage');
+  const STORAGE_API_URL = getApiUrl('storage');
 
   if (!certificateUrl) return null;
 

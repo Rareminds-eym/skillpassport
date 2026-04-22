@@ -3,13 +3,13 @@
  * Handles image uploads to Cloudflare R2 via storage-api worker
  */
 
-import { getPagesApiUrl } from './pagesUrl';
+import { getApiUrl } from '@/shared/api/apiUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { validateFileSize } from './utils/fileValidation';
 import { getFileSizeLimit } from '@/shared/config/fileSizeLimits';
 
 // Storage API worker URL
-const STORAGE_API_URL = getPagesApiUrl('storage');
+const STORAGE_API_URL = getApiUrl('storage');
 
 interface R2UploadResponse {
   success: boolean;

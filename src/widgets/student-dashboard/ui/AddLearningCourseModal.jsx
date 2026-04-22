@@ -218,8 +218,8 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
         }
       }
 
-      const { getPagesApiUrl } = await import('@/shared/lib/pagesUrl');
-      const workerUrl = getPagesApiUrl('fetch-certificate');
+      const { getApiUrl } = await import('@/shared/api/apiUtils');
+      const workerUrl = getApiUrl('fetch-certificate');
 
       const response = await fetch(workerUrl, {
         method: 'POST',

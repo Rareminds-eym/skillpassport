@@ -6,7 +6,7 @@
  * This file is kept for backward compatibility only.
  */
 
-import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
+import { getApiUrl } from '@/shared/api/apiUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 
 interface UploadResponse {
@@ -42,7 +42,7 @@ class StorageService {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = getPagesApiUrl('storage');
+    this.baseUrl = getApiUrl('storage');
   }
 
   /**

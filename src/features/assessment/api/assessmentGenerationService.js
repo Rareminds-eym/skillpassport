@@ -154,8 +154,8 @@ export async function generateAssessment(courseName, level = 'Intermediate', que
 
     // Call backend API (Cloudflare Worker) to generate assessment
     // Use unified question generation API
-    const { getPagesApiUrl } = await import('@/shared/lib/pagesUrl');
-    const apiUrl = `${getPagesApiUrl('question-generation')}/generate`;
+    const { getApiUrl } = await import('@/shared/api/apiUtils');
+    const apiUrl = `${getApiUrl('question-generation')}/generate`;
 
     console.log('📡 Calling backend API:', apiUrl);
 

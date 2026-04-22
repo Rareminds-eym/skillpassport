@@ -1,11 +1,11 @@
 import { supabase } from '@/shared/api/supabaseClient';
-import { getPagesApiUrl, getAuthHeaders } from '@/shared/lib/pagesUrl';
+import { getApiUrl, getAuthHeaders } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('video-summarizer');
 
 // ==================== API URL CONFIGURATION ====================
-const API_URL = getPagesApiUrl('course');
+const API_URL = getApiUrl('course');
 
 // ==================== INTERFACES ====================
 

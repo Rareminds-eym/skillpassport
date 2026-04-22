@@ -3,9 +3,9 @@
  * Connects to Cloudflare Pages Function
  */
 
-import { getPagesApiUrl, getAuthHeaders } from '@/shared/lib/pagesUrl';
+import { getApiUrl, getAuthHeaders } from '@/shared/api/apiUtils';
 
-const API_URL = getPagesApiUrl('streak');
+const API_URL = getApiUrl('streak');
 
 async function getAuthToken(): Promise<string> {
   try {

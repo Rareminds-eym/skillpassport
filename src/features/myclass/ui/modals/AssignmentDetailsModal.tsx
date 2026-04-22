@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Loader2, AlertCircle, Paperclip, FileText, CheckCircle2, Upload } from 'lucide-react';
-import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
+import { getApiUrl } from '@/shared/api/apiUtils';
 
 interface AssignmentDetailsModalProps {
   isOpen: boolean;
@@ -28,7 +28,7 @@ const AssignmentDetailsModal: React.FC<AssignmentDetailsModalProps> = ({
   if (!isOpen) return null;
 
   const openFile = (fileUrl: string) => {
-    const storageApiUrl = getPagesApiUrl('storage');
+    const storageApiUrl = getApiUrl('storage');
     const accessibleUrl = fileUrl.includes('/document-access')
       ? fileUrl
       : `${storageApiUrl}/document-access?url=${encodeURIComponent(fileUrl)}&mode=inline`;

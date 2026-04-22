@@ -3,10 +3,10 @@
  * Handles parallel generation of multiple embeddings
  */
 
-import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
+import { getApiUrl } from '@/shared/api/apiUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 
-const EMBEDDING_API_URL = getPagesApiUrl('career');
+const EMBEDDING_API_URL = getApiUrl('career');
 
 /**
  * Generate multiple embeddings in parallel

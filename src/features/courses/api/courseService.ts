@@ -6,10 +6,10 @@
  * - courseApiService.ts (AI tutor, video summarization, file URLs)
  */
 
-import { getPagesApiUrl, getAuthHeaders } from '@/shared/lib/pagesUrl';
+import { getApiUrl, getAuthHeaders } from '@/shared/api/apiUtils';
 
-const API_URL = getPagesApiUrl('course');
-const STORAGE_API_URL = getPagesApiUrl('storage');
+const API_URL = getApiUrl('course');
+const STORAGE_API_URL = getApiUrl('storage');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FILE MANAGEMENT

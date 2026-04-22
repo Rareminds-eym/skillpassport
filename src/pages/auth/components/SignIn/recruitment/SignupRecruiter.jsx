@@ -111,8 +111,8 @@ export default function SignupRecruiter() {
       const lastName = capitalizeFirstLetter(formData.lastName);
 
       // Use the Pages Function API for signup with proper rollback support
-      const { getPagesApiUrl } = await import('@/shared/lib/pagesUrl');
-      const USER_API_URL = getPagesApiUrl('user');
+      const { getApiUrl } = await import('@/shared/api/apiUtils');
+      const USER_API_URL = getApiUrl('user');
 
       const response = await fetch(`${USER_API_URL}/signup/recruiter`, {
         method: 'POST',

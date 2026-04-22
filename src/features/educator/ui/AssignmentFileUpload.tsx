@@ -8,7 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { uploadInstructionFile, deleteInstructionFile } from '@/features/college-admin';
 import { useUser } from '@/stores';
-import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
+import { getApiUrl } from '@/shared/api/apiUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import ConfirmationModal from '@/shared/ui/ConfirmationModal';
 import NotificationModal from '@/shared/ui/NotificationModal';
@@ -422,7 +422,7 @@ const AssignmentFileUpload = React.forwardRef<
                 <a
                   href={file.file_url.includes('/document-access') 
                     ? file.file_url 
-                    : `${getPagesApiUrl('storage')}/document-access?url=${encodeURIComponent(file.file_url)}&mode=inline`}
+                    : `${getApiUrl('storage')}/document-access?url=${encodeURIComponent(file.file_url)}&mode=inline`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="p-1 hover:bg-blue-100 rounded transition-colors text-blue-600"

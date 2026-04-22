@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useUser } from '@/stores';
 import { useStudentDataByEmail } from '@/entities/student';
-import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
+import { getApiUrl } from '@/shared/api/apiUtils';
 import { useStudentProfile } from '@/features/student-profile';
 import { supabase } from '@/shared/api/supabaseClient';
 import { useClassInfo } from '../model/useClassInfo';

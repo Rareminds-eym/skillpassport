@@ -35,7 +35,7 @@ import { curriculumService } from "@/features/college-admin";
 import { supabase } from '@/shared/api/supabaseClient';
 import { uploadFile, validateFile } from '@/shared/api';
 import { deleteFile } from '@/shared/api/storageApiService';
-import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
+import { getApiUrl } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
 import { authSessionService } from '@/features/auth';
 
@@ -461,7 +461,7 @@ const ViewLessonPlanModal = ({
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <button
                               onClick={() => {
-                                const storageApiUrl = getPagesApiUrl('storage');
+                                const storageApiUrl = getApiUrl('storage');
                                 let viewUrl;
                                 let method = 'unknown';
 
@@ -502,7 +502,7 @@ const ViewLessonPlanModal = ({
                               onClick={() => {
                                 logger.info('Download button clicked', { fileName: file.name, fileType: file.type });
 
-                                const storageApiUrl = getPagesApiUrl('storage');
+                                const storageApiUrl = getApiUrl('storage');
                                 let downloadUrl;
                                 let method = 'unknown';
 
@@ -1949,7 +1949,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                                   <div className="flex items-center gap-1">
                                     <button
                                       onClick={() => {
-                                        const storageApiUrl = getPagesApiUrl('storage');
+                                        const storageApiUrl = getApiUrl('storage');
                                         let viewUrl;
                                         let method = 'unknown';
 
@@ -1990,7 +1990,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                                       onClick={() => {
                                         logger.info('Download button clicked', { fileName: file.name, fileType: file.type });
 
-                                        const storageApiUrl = getPagesApiUrl('storage');
+                                        const storageApiUrl = getApiUrl('storage');
                                         let downloadUrl;
                                         let method = 'unknown';
 

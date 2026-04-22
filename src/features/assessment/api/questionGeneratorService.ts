@@ -8,7 +8,7 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
-import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
+import { getApiUrl } from '@/shared/api/apiUtils';
 import {
   Question,
   GradeLevel,
@@ -22,7 +22,7 @@ import {
 // CLOUDFLARE PAGES FUNCTION API CONFIGURATION
 // =============================================================================
 
-const API_URL = getPagesApiUrl('question-generation');
+const API_URL = getApiUrl('question-generation');
 
 /**
  * Makes a request to the Cloudflare Pages Function API

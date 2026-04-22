@@ -115,8 +115,8 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
   }
 
   // Use unified question generation API
-  const { getPagesApiUrl } = await import('@/shared/lib/pagesUrl');
-  const apiUrl = getPagesApiUrl('question-generation');
+  const { getApiUrl } = await import('@/shared/api/apiUtils');
+  const apiUrl = getApiUrl('question-generation');
   const maxRetries = 3;
   
   // Request extra questions to account for validation failures and duplicates
@@ -268,8 +268,8 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
   console.log('🎯 Generating aptitude questions for stream:', streamId, 'gradeLevel:', gradeLevel);
 
   // Use unified question generation API
-  const { getPagesApiUrl } = await import('@/shared/lib/pagesUrl');
-  const apiUrl = getPagesApiUrl('question-generation');
+  const { getApiUrl } = await import('@/shared/api/apiUtils');
+  const apiUrl = getApiUrl('question-generation');
   const maxRetries = 3;
   const questionsPerCategory = Math.ceil(questionCount / APTITUDE_CATEGORIES.length); // 10 per category for 50 total
   

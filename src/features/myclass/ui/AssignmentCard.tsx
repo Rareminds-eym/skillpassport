@@ -13,7 +13,7 @@ import {
   CheckSquare,
   Star
 } from 'lucide-react';
-import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
+import { getApiUrl } from '@/shared/api/apiUtils';
 
 export interface Assignment {
   assignment_id: string;
@@ -210,7 +210,7 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
   const openFile = (fileUrl: string, fileName: string = 'file') => {
     console.log(`Opening ${fileName}:`, fileUrl);
     
-    const storageApiUrl = getPagesApiUrl('storage');
+    const storageApiUrl = getApiUrl('storage');
     
     // Generate proxy URL
     const accessibleUrl = fileUrl.includes('/document-access') 

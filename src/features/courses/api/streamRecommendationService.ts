@@ -7,10 +7,10 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
-import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
+import { getApiUrl } from '@/shared/api/apiUtils';
 
 // API URL for stream recommendation endpoint
-const CAREER_API_URL = getPagesApiUrl('career');
+const CAREER_API_URL = getApiUrl('career');
 
 // Subject to stream mapping for scoring
 const SUBJECT_STREAM_WEIGHTS = {

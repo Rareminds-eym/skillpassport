@@ -23,7 +23,7 @@ import { NotificationModal } from '@/shared/ui';
 import { useAuth } from '@/features/auth';
 import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
 import { supabase } from '@/shared/api/supabaseClient';
-import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
+import { getApiUrl } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
 import { useUser, useIsAuthenticated } from '@/stores';
 
@@ -1597,7 +1597,7 @@ const Assessments = () => {
                                                         <a
                                                             href={file.file_url.includes('/document-access') 
                                                               ? file.file_url 
-                                                              : `${getPagesApiUrl('storage')}/document-access?url=${encodeURIComponent(file.file_url)}&mode=inline`}
+                                                              : `${getApiUrl('storage')}/document-access?url=${encodeURIComponent(file.file_url)}&mode=inline`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             className="p-1 hover:bg-blue-200 rounded transition-colors"

@@ -458,8 +458,8 @@ const CoursePlayer = () => {
 
       // Update student streak after completing lesson
       try {
-        const { getPagesApiUrl } = await import('@/shared/lib/pagesUrl');
-        const STREAK_API_URL = getPagesApiUrl('streak');
+        const { getApiUrl } = await import('@/shared/api/apiUtils');
+        const STREAK_API_URL = getApiUrl('streak');
         const response = await fetch(`${STREAK_API_URL}/${user.id}/complete`, {
           method: 'POST',
           headers: {

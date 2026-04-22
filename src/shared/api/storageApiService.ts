@@ -3,10 +3,10 @@
  * Connects to Cloudflare Pages Function for file storage API calls
  */
 
-import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
+import { getApiUrl } from '@/shared/api/apiUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 
-const API_URL = getPagesApiUrl('storage');
+const API_URL = getApiUrl('storage');
 
 /**
  * Get authentication token from current session

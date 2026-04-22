@@ -3,9 +3,9 @@
  * Frontend service to generate AI-powered career paths for degree programs
  */
 
-import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
+import { getApiUrl } from '@/shared/api/apiUtils';
 
-const API_URL = getPagesApiUrl('analyze-assessment');
+const API_URL = getApiUrl('analyze-assessment');
 
 export interface CareerPath {
   role: string;

@@ -3,9 +3,9 @@
  * Connects to Cloudflare Pages Function
  */
 
-import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
+import { getApiUrl } from '@/shared/api/apiUtils';
 
-const API_URL = getPagesApiUrl('otp');
+const API_URL = getApiUrl('otp');
 
 interface OtpResponse {
   success: boolean;

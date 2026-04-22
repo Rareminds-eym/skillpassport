@@ -66,3 +66,83 @@ export function formatFileSize(bytes: number): string {
   
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
+
+
+// ==================== API URL UTILITIES ====================
+// Migrated from src/shared/lib/pagesUrl.ts (FSD architecture compliance)
+
+/**
+ * Get the base URL for API endpoints
+ * Uses the current origin (works in both development and production)
+ * 
+ * @returns The base URL (e.g., 'http://localhost:5173' or 'https://example.com')
+ * 
+ * @example
+ * const base = getApiBaseUrl();
+ * // Returns: 'http://localhost:5173' (in dev) or 'https://example.com' (in prod)
+ */
+export function getApiBaseUrl(): string {
+  // Always use current origin - works in both development and production
+  // Development proxy configuration handles routing to correct ports
+  return window.location.origin;
+}
+
+/**
+ * Get the full URL for a specific API endpoint
+ * Constructs URLs for Cloudflare Pages Functions or any API path
+ * 
+ * @param apiPath - The API path (e.g., 'assessment', 'career', 'course', 'otp')
+ * @returns Full URL to the API endpoint
+ * 
+ * @example
+ * const url = getApiUrl('career');
+ * // Returns: 'http://localhost:5173/api/career'
+ * 
+ * @example
+ * const url = getApiUrl('/assessment');
+ * // Returns: 'http://localhost:5173/api/assessment' (leading slash is handled)
+ */
+export function getApiUrl(apiPath: string): string {
+  const base = getApiBaseUrl();
+  const cleanPath = apiPath.startsWith('/') ? apiPath.slice(1) : apiPath;
+  return `${base}/api/${cleanPath}`;
+}
+
+/**
+ * Get authentication headers for API calls
+ * Creates standard headers with optional Bearer token authentication
+ * 
+ * @param token - Optional JWT or authentication token
+ * @returns Headers object with Content-Type and optional Authorization
+ * 
+ * @example
+ * const headers = getAuthHeaders();
+ * // Returns: { 'Content-Type': 'application/json' }
+ * 
+ * @example
+ * const headers = getAuthHeaders('eyJhbGc...');
+ * // Returns: { 'Content-Type': 'application/json', 'Authorization': 'Bearer eyJhbGc...' }
+ */
+export function getAuthHeaders(token?: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  return headers;
+}
+
+// Legacy function names for backward compatibility
+// TODO: Remove these aliases after migration is complete
+/**
+ * @deprecated Use getApiBaseUrl() instead
+ */
+export const getPagesBaseUrl = getApiBaseUrl;
+
+/**
+ * @deprecated Use getApiUrl() instead
+ */
+export const getPagesApiUrl = getApiUrl;

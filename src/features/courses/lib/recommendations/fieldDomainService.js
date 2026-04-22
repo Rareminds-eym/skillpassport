@@ -6,9 +6,9 @@
  * Now uses career-api worker instead of calling OpenRouter directly
  */
 
-import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
+import { getApiUrl } from '@/shared/api/apiUtils';
 
-const CAREER_API_URL = getPagesApiUrl('career');
+const CAREER_API_URL = getApiUrl('career');
 
 /**
  * Generate domain-specific keywords for a field of study using AI
