@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import jsPDF from 'jspdf';
-import { Student } from '@/features/student-profile/model';
+import { Student } from '@/shared/types';
 
 interface ExportModalProps {
   isOpen: boolean;

@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { ExternalLinkIcon } from 'lucide-react';
-import { Certificate } from '@/features/student-profile/model';
+import { Certificate } from '@/shared/types';
 import StatusBadge from '@/shared/ui/StatusBadge';
 
 interface CertificateCardProps {
