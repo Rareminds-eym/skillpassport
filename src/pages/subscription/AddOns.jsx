@@ -11,7 +11,8 @@ import { useCallback, useMemo } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AddOnCheckout } from '@/features/subscription';
 import { AddOnMarketplace } from '@/features/subscription';
-import { useUser } from '@/stores';
+import { useUser } from '@/shared/model/authStore';
+
 
 /**
  * Get the base path for subscription routes based on current location

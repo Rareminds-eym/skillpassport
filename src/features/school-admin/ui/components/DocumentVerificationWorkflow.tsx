@@ -4,9 +4,10 @@ import {
   AlertCircle, Clock, User, Mail, Phone 
 } from 'lucide-react';
 import { getTeachers, updateTeacherStatus } from '@/entities/teacher';
-import { useUser } from '@/stores';
+
 import { useUserRole } from "@/entities/user";
 
+import { useUser } from '@/shared/model/authStore';
 interface PendingTeacher {
   id: string;
   teacher_id: string;

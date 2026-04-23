@@ -49,8 +49,8 @@ export const callOpenRouterAssessment = async (assessmentData) => {
     aptitudeScores: assessmentData.aptitudeScores
   });
 
-  const { getPagesApiUrl } = await import('@/shared/lib/pagesUrl');
-  const API_URL = getPagesApiUrl('analyze-assessment');
+  const { getApiUrl } = await import('@/shared/api/apiUtils');
+  const API_URL = getApiUrl('analyze-assessment');
 
   // Get auth token
   updateProgress('sending', 'Authenticating...');

@@ -20,7 +20,7 @@ import { AITutorPanel, VideoLearningPanel } from '@/features/ai-tutor';
 import { RestoreProgressModal } from '@/features/courses';
 import { Badge, Button, Card, CardContent } from '@/shared/ui';
 import { useUser } from '@/features/auth';
-import { useSessionRestore } from '@/shared/lib/hooks';
+import { useSessionRestore } from '@/features/courses/model/useSessionRestore';
 import { supabase } from '@/shared/api/supabaseClient';
 import { generateCourseCertificate } from '@/features/digital-portfolio';
 import { enrollmentService as courseEnrollmentService } from '@/features/courses/api';
@@ -607,8 +607,8 @@ const CoursePlayer = () => {
 
       // Update student streak after completing lesson
       try {
-        const { getPagesApiUrl } = await import('@/shared/lib/pagesUrl');
-        const STREAK_API_URL = getPagesApiUrl('streak');
+        const { getApiUrl } = await import('@/shared/api/apiUtils');
+        const STREAK_API_URL = getApiUrl('streak');
         const response = await fetch(`${STREAK_API_URL}/${user.id}/complete`, {
           method: 'POST',
           headers: {

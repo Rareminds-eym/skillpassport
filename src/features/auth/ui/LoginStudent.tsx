@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import studentIllustration from "@/assets/images/auth/Student-illustration.jpg";
-import { useAuthActions } from "@/stores";
+
 
 // Lucide icons
 import {
@@ -19,6 +19,7 @@ import {
 import { loginStudent } from "@/features/auth/api";
 import { FeatureCard } from "@/shared/ui";
 
+import { useAuthActions } from '@/shared/model/authStore';
 export default function LoginStudent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

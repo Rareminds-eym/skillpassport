@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { useTutorChat } from '@/shared/lib/hooks';
+import { useTutorChat } from '@/features/ai-tutor/model/useTutorChat';
 import {
     TranscriptSegment,
     VideoSummary,

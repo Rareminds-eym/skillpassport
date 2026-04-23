@@ -22,7 +22,7 @@ import {
   PanelLeft
 } from 'lucide-react';
 import { streamCareerChat } from '@/features/career-assistant';
-import { useUser } from '@/stores';
+
 import { useCareerConversations, ConversationMessage } from '@/features/career-assistant/hooks/useCareerConversations';
 import { useAIFeedback, AIFeedback } from '@/features/career-assistant/hooks/useAIFeedback';
 import { ConversationSidebar } from './ConversationSidebar';
@@ -35,8 +35,10 @@ import { useSmartScroll } from '@/features/career-assistant/hooks/useSmartScroll
 import { useConversationSwitcher } from '@/features/career-assistant/hooks/useConversationSwitcher';
 import { VirtualMessage } from '@/features/career-assistant/hooks/useVirtualMessage';
 
+import { useCareerAssistant } from '@/features/career-assistant/model/careerAssistantStore';
+import { useUser } from '@/shared/model/authStore';
 // Import Context Provider
-import { useCareerAssistant } from '@/stores';
+;
 
 // Import constants
 import {

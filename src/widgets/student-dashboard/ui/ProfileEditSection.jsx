@@ -9,12 +9,13 @@ import {
   ExperienceEditModal,
   SkillsEditModal,
   PersonalInfoEditModal
-} from './modals';
+} from '@/features/student-profile';
 import { useStudentDataByEmail } from '@/entities/student';
-import { useUser } from '@/stores';
+
 import PersonalInfoSummary from './PersonalInfoSummary';
 import ResumeParser from './ResumeParser';
 import { mergeResumeData } from '@/features/digital-portfolio';
+import { useUser } from '@/shared/model/authStore';
 import {
   educationData,
   trainingData,

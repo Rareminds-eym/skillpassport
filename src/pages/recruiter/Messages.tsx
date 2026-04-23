@@ -23,13 +23,14 @@ import { queryKeys } from '@/shared/lib/queryKeys';
 import { MessageService, Conversation } from '@/features/messaging';
 import { useMessages } from '@/features/messaging';
 import { formatDistanceToNow } from 'date-fns';
-import { useUser } from '@/stores';
-import { useGlobalPresence } from '@/stores';
+
 import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/features/messaging';
 import { useNotificationBroadcast } from '@/features/broadcast';
 import { DeleteConversationModal } from '@/features/messaging';
 
+import { useUser } from '@/shared/model/authStore';
+import { useGlobalPresence } from '@/shared/model/globalPresenceStore';
 const Messages = () => {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [messageInput, setMessageInput] = useState('');

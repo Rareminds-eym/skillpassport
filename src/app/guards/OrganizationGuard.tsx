@@ -1,8 +1,9 @@
 import { Loader2 } from 'lucide-react';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { OrganizationType, useOrganizationCheck } from '@/entities/organization/model/useOrganizationCheck';
-import OrganizationSetup from '@/features/onboarding/ui/OrganizationSetup';
-import { useUser } from '@/stores';
+import { useUser } from '@/shared/model/authStore';
+
 
 interface OrganizationGuardProps {
   organizationType: OrganizationType;
@@ -15,8 +16,8 @@ interface OrganizationGuardProps {
  * 
  * Flow:
  * 1. Check if user has an organization linked to their account
- * 2. If no organization exists, show the OrganizationSetup form
- * 3. Once organization is created, show the dashboard (children)
+ * 2. If no organization exists, redirect to the organization setup page
+ * 3. Once organization is created, allow access to the dashboard (children)
  * 
  * This provides an industrial-grade onboarding experience for new admins.
  */
@@ -25,8 +26,8 @@ const OrganizationGuard: React.FC<OrganizationGuardProps> = ({
   children
 }) => {
   const user = useUser();
-  const { loading, hasOrganization, refetch, error } = useOrganizationCheck(organizationType, user);
-  const [setupComplete, setSetupComplete] = useState(false);
+  const location = useLocation();
+  const { loading, hasOrganization, error } = useOrganizationCheck(organizationType, user);
 
   // Debug logging for redirect loop investigation
   useEffect(() => {
@@ -34,16 +35,9 @@ const OrganizationGuard: React.FC<OrganizationGuardProps> = ({
       organizationType,
       loading,
       hasOrganization,
-      setupComplete,
       error,
     });
-  }, [organizationType, loading, hasOrganization, setupComplete, error]);
-
-  const handleSetupComplete = useCallback(async () => {
-    // Refetch organization data after setup
-    await refetch();
-    setSetupComplete(true);
-  }, [refetch]);
+  }, [organizationType, loading, hasOrganization, error]);
 
   // Show loading state while checking organization status
   if (loading) {
@@ -57,17 +51,18 @@ const OrganizationGuard: React.FC<OrganizationGuardProps> = ({
     );
   }
 
-  // If no organization exists and setup is not complete, show the setup form
-  if (!hasOrganization && !setupComplete) {
+  // If no organization exists, redirect to setup page
+  if (!hasOrganization) {
     return (
-      <OrganizationSetup
-        organizationType={organizationType}
-        onComplete={handleSetupComplete}
+      <Navigate
+        to={`/organization-setup?type=${organizationType}`}
+        state={{ from: location }}
+        replace
       />
     );
   }
 
-  // Organization exists or setup just completed - render the dashboard
+  // Organization exists - render the dashboard
   return <>{children}</>;
 };
 

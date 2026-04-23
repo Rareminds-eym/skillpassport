@@ -28,8 +28,9 @@ import {
     type PricingBreakdown,
 } from '@/entities/organization';
 import { useCallback, useEffect, useState } from 'react';
+import { useUser } from '@/shared/model/authStore';
 // @ts-ignore - useUser is from Zustand store
-import { useUser } from '@/stores';
+
 
 interface UseOrganizationSubscriptionOptions {
   organizationId: string;

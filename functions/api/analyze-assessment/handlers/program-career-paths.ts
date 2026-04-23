@@ -160,14 +160,10 @@ export async function handleGenerateProgramCareerPaths(
   env: PagesEnv
 ): Promise<Response> {
   try {
-    // Optional authentication (allow unauthenticated for public program exploration)
-    const authHeader = request.headers.get('authorization');
-    if (authHeader) {
-      try {
-        await authenticateUser(request, env as unknown as Record<string, string>);
-      } catch (authError) {
-        console.log('⚠️ Authentication failed, proceeding without auth');
-      }
+    // Authenticate user
+    const authResult = await authenticateUser(request, env as unknown as Record<string, string>);
+    if (!authResult) {
+      return jsonResponse({ error: 'Unauthorized' }, 401);
     }
 
     // Parse request body

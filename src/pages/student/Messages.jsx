@@ -23,7 +23,7 @@ import { useSearchParams } from 'react-router-dom';
 import { DeleteConversationModal, ConversationModal, NewEducatorConversationModal, NewAdminConversationModal, NewEducatorAdminConversationModal, NewSchoolAdminEducatorConversationModal } from '@/features/messaging';
 import { NewCollegeAdminConversationModal } from '@/features/college-admin';
 import { useAuth } from '@/features/auth';
-import { useUser } from '@/stores';
+
 import { isLearner } from '@/entities/student/lib/studentType';
 import { useGlobalPresence } from '@/shared/model/globalPresenceStore';
 import { useNotificationBroadcast } from '@/features/broadcast';
@@ -41,6 +41,7 @@ import { useTypingIndicator } from '@/features/messaging';
 import { supabase } from '@/shared/api/supabaseClient';
 import { MessageService } from '@/features/messaging';
 
+import { useUser } from '@/shared/model/authStore';
 const Messages = () => {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();

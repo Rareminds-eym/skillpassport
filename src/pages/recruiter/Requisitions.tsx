@@ -23,11 +23,12 @@ import { BriefcaseIcon as BriefcaseSolidIcon } from '@heroicons/react/24/solid';
 import React, { useEffect, useState } from 'react';
 import { AdvancedRequisitionFilters } from '@/features/recruiter';
 import { RequisitionImport } from '@/features/recruiter';
-import { useUser } from '@/stores';
+
 import { supabase } from '@/shared/api/supabaseClient';
 import { RequisitionFilters } from '@/shared/types/recruiter';
 import { getLogger } from '@/shared/config/logging';
 
+import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('Requisitions');
 
 interface Opportunity {

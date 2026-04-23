@@ -10,12 +10,13 @@ import {
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import toast from 'react-hot-toast';
-import { useUser } from '@/stores';
+
 import { useUserRole } from "@/entities/user";
 import { supabase } from '@/shared/api/supabaseClient';
 import { timetableSlotsService } from "@/features/school-admin";
 import { authSessionService } from '@/features/auth';
 
+import { useUser } from '@/shared/model/authStore';
 interface Teacher {
   id: string;
   teacher_id: string;

@@ -16,9 +16,10 @@ import {
   useNotifications,
   NotificationType,
 } from '@/features/notifications';
-import { useUser } from "@/stores";
+
 import { useNavigate } from "react-router-dom";
 
+import { useUser } from '@/shared/model/authStore';
 interface NotificationPanelProps {
   isOpen: boolean;
   onClose: () => void;

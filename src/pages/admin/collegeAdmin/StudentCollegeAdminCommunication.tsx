@@ -20,8 +20,8 @@ import { useLocation } from 'react-router-dom';
 import { DeleteConversationModal } from '@/features/messaging';
 import { NewStudentConversationModalCollegeAdmin } from '@/features/messaging';
 import { NewCollegeAdminEducatorConversationModal } from '@/features/college-admin';
-import { useUser } from '@/stores';
-import { useGlobalPresence } from '@/stores';
+
+
 import { useAdminMessages, useConversationActions } from '@/features/messaging';
 import { useCollegeEducatorAdminConversationsForAdmin } from '@/features/educator';
 import { useNotificationBroadcast } from '@/features/broadcast';
@@ -32,6 +32,8 @@ import { MessageService, Conversation } from '@/features/messaging';
 import { getLogger } from '@/shared/config/logging';
 
 import { queryKeys } from '@/shared/lib/queryKeys';
+import { useUser } from '@/shared/model/authStore';
+import { useGlobalPresence } from '@/shared/model/globalPresenceStore';
 const StudentCollegeAdminCommunication = () => {
   const logger = getLogger('college-admin-communication');
   const location = useLocation();

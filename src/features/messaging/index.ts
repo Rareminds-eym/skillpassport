@@ -56,7 +56,7 @@ export { useUnreadMessagesCount } from './model/useUnreadMessagesCount';
 // ============================================================================
 // Services
 // ============================================================================
-export { default as MessageService } from './api/messageService';
+export { default as MessageService } from '../../shared/api/messageService';
 
 // ============================================================================
 // Types

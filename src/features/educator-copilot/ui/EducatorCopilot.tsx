@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Plus, ArrowDown, Square } from 'lucide-react';
 import { educatorIntelligenceEngine } from '@/features/educator-copilot';
 import { educatorWelcomeConfig, educatorChatConfig } from '@/features/educator-copilot';
-import { useUser } from '@/stores';
+
 import { StudentInsightCard } from './EducatorCards';
 
+import { useUser } from '@/shared/model/authStore';
 interface Message {
   id: string;
   role: 'user' | 'assistant';

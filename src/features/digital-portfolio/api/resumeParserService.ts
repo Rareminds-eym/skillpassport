@@ -45,8 +45,8 @@ export const parseResumeWithAI = async (resumeText) => {
  */
 const parseWithClaude = async (resumeText) => {
   try {
-    const { getPagesApiUrl } = await import('@/shared/lib/pagesUrl');
-    const API_URL = getPagesApiUrl('career');
+    const { getApiUrl } = await import('@/shared/api/apiUtils');
+    const API_URL = getApiUrl('career');
 
     // Get current session for auth token
     const { supabase } = await import('@/shared/api/supabaseClient');

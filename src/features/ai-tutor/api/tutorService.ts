@@ -1,8 +1,8 @@
 import { supabase } from '@/shared/api/supabaseClient';
-import { getPagesApiUrl, getAuthHeaders } from '@/shared/lib/pagesUrl';
+import { getApiUrl, getAuthHeaders } from '@/shared/api/apiUtils';
 
 // ==================== API URL CONFIGURATION ====================
-const API_URL = getPagesApiUrl('course');
+const API_URL = getApiUrl('course');
 
 // ==================== TYPES ====================
 
@@ -188,7 +188,7 @@ export async function getConversations(courseId: string): Promise<Conversation[]
     lessonId: conv.lesson_id,
     createdAt: new Date(conv.created_at),
     updatedAt: new Date(conv.updated_at),
-    messages: (conv.messages || []).map((m: any) => ({
+    messages: (conv.messages || []).map((m: MessageData) => ({
       id: m.id,
       role: m.role,
       content: m.content,
@@ -222,7 +222,7 @@ export async function getConversation(conversationId: string): Promise<Conversat
     lessonId: data.lesson_id,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
-    messages: (data.messages || []).map((m: any) => ({
+    messages: (data.messages || []).map((m: MessageData) => ({
       id: m.id,
       role: m.role,
       content: m.content,

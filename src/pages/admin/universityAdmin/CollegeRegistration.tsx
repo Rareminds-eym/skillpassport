@@ -14,10 +14,11 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { Pagination } from '@/shared/ui';
 import { SearchBar } from '@/shared/ui';
-import { useUser } from '@/stores';
+
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
+import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('university-admin-college-registration');
 
 import {

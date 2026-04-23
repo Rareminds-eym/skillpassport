@@ -5,7 +5,7 @@
 
 import { AlertTriangle, ArrowLeft, HelpCircle, RefreshCw, XCircle } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
-import Header from '@/app/layouts/Header';
+import { Header } from '@/shared/ui';
 
 export default function EventSalesFailure() {
   const [searchParams] = useSearchParams();
@@ -56,7 +56,7 @@ export default function EventSalesFailure() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      
+
       <div className="py-12 px-4">
         <div className="max-w-lg mx-auto">
           {/* Failure Card */}

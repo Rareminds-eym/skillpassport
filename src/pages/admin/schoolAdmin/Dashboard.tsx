@@ -9,10 +9,11 @@ import React, { useEffect, useState } from "react";
 import ReactApexChart from "react-apexcharts";
 import { useNavigate } from "react-router-dom";
 import { KPIDashboard } from '@/widgets/kpi-dashboard';
-import { useUser } from "@/stores";
+
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
+import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('school-admin-dashboard');
 
 interface CourseStats {

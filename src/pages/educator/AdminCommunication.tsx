@@ -21,7 +21,7 @@ import toast from 'react-hot-toast';
 import { useLocation } from 'react-router-dom';
 import { DeleteConversationModal } from '@/features/messaging';
 import { useAuth } from '@/features/auth';
-import { useGlobalPresence } from '@/stores';
+
 import { useEducatorMessages, useConversationActions } from '@/features/messaging';
 import { useNotificationBroadcast } from '@/features/broadcast';
 import { useRealtimePresence } from '@/shared/lib/hooks';
@@ -30,6 +30,7 @@ import { supabase } from '@/shared/api/supabaseClient';
 import { MessageService, Conversation } from '@/features/messaging';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
+import { useGlobalPresence } from '@/shared/model/globalPresenceStore';
 const AdminCommunication = () => {
   const location = useLocation();
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);

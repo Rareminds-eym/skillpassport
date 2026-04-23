@@ -5,10 +5,11 @@ import { supabase } from '@/shared/api/supabaseClient';
 import { EyeIcon, ChatBubbleLeftIcon, MagnifyingGlassIcon, FunnelIcon, ArrowDownTrayIcon, UsersIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon, SparklesIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { MessageModal } from '@/features/messaging';
 import { useMessageNotifications } from '@/features/messaging';
-import { useUser } from '@/stores';
+
 import { recruiterInsights } from '@/features/recruiter-copilot';
 import { getLogger } from '@/shared/config/logging';
 
+import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('ApplicantsList');
 
 interface Student {

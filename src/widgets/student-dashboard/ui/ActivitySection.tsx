@@ -1,7 +1,7 @@
 import React from 'react';
 import { Activity } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui';
-import { useStudentRealtimeActivities } from '@/shared/lib/hooks';
+import { useStudentRealtimeActivities } from '@/entities/student/model/useStudentRealtimeActivities';
 
 interface ActivitySectionProps {
   studentId: string;

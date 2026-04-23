@@ -1,9 +1,10 @@
 import { Download, FileText, Save } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePortfolio } from '@/stores';
+
 import { exportAsJSON, exportResume } from '@/features/digital-portfolio';
 
+import { usePortfolio } from '@/features/digital-portfolio/model/portfolioStore';
 const ExportSettings: React.FC = () => {
   const navigate = useNavigate();
   const { student, settings } = usePortfolio();

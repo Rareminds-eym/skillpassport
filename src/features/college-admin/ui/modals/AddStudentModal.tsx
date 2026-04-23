@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '@/shared/api/supabaseClient'
 import storageService from '@/shared/api/storageService'
 import userApiService from '@/entities/user/api/userApiService'
-import { usePermission } from '@/shared/lib/hooks'
+import { usePermission } from '@/entities/user/model/usePermissions'
 import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/utils/fileValidation'
 import { getFileSizeLimit } from '@/shared/config/fileSizeLimits'
 

@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Plus, ArrowDown, Square } from 'lucide-react';
 import { recruiterIntelligenceEngine } from '@/features/recruiter-copilot';
 import { recruiterWelcomeConfig, recruiterChatConfig } from '@/features/recruiter-copilot';
-import { useUser } from '@/stores';
+
 import { CandidateInsightCard } from './RecruiterCards';
 
+import { useUser } from '@/shared/model/authStore';
 interface Message {
   id: string;
   role: 'user' | 'assistant';

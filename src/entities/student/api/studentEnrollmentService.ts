@@ -33,7 +33,7 @@ export const studentEnrollmentService = {
     program_id?: string;
     semester?: number;
     search?: string;
-  }): Promise<{ success: boolean; data?: EnrolledStudentView[]; error?: any }> {
+  }): Promise<{ success: boolean; data?: EnrolledStudentView[]; error?: string }> {
     try {
       let query = supabase
         .from('students')
@@ -111,14 +111,12 @@ export const studentEnrollmentService = {
       }
 
       return { success: true, data: filteredData };
-    } catch (error: any) {
-      logger.error('Error fetching enrolled students', error, { filters });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      logger.error('Error fetching enrolled students', error instanceof Error ? error : new Error(String(error)), { filters });
       return {
         success: false,
-        error: {
-          code: 'FETCH_ERROR',
-          message: error.message || 'Failed to fetch enrolled students',
-        },
+        error: errorMessage,
       };
     }
   },
@@ -131,7 +129,7 @@ export const studentEnrollmentService = {
     program_id: string;
     section?: string;
     semester: number;
-  }): Promise<{ success: boolean; data?: any; error?: any }> {
+  }): Promise<{ success: boolean; data?: { id: string; program_id: string; semester: number; section?: string; enrollmentDate: string }; error?: string }> {
     try {
       const { data: student, error } = await supabase
         .from('students')
@@ -148,14 +146,12 @@ export const studentEnrollmentService = {
       if (error) throw error;
 
       return { success: true, data: student };
-    } catch (error: any) {
-      logger.error('Error enrolling student', error, { studentId: data.student_id, programId: data.program_id });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      logger.error('Error enrolling student', error instanceof Error ? error : new Error(String(error)), { studentId: data.student_id, programId: data.program_id });
       return {
         success: false,
-        error: {
-          code: 'ENROLL_ERROR',
-          message: error.message || 'Failed to enroll student',
-        },
+        error: errorMessage,
       };
     }
   },
@@ -168,26 +164,24 @@ export const studentEnrollmentService = {
     program_id: string;
     section?: string;
     semester: number;
-  }>): Promise<{ success: boolean; data?: any[]; error?: any }> {
+  }>): Promise<{ success: boolean; data?: { id: string; program_id: string; semester: number; section?: string; enrollmentDate: string }[]; error?: string }> {
     try {
       const results = [];
       
       for (const enrollment of enrollments) {
         const result = await this.enrollStudent(enrollment);
-        if (result.success) {
+        if (result.success && result.data) {
           results.push(result.data);
         }
       }
 
       return { success: true, data: results };
-    } catch (error: any) {
-      logger.error('Error bulk enrolling students', error, { count: enrollments.length });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      logger.error('Error bulk enrolling students', error instanceof Error ? error : new Error(String(error)), { count: enrollments.length });
       return {
         success: false,
-        error: {
-          code: 'BULK_ENROLL_ERROR',
-          message: error.message || 'Failed to bulk enroll students',
-        },
+        error: errorMessage,
       };
     }
   },
@@ -202,7 +196,7 @@ export const studentEnrollmentService = {
       semester?: number;
       program_id?: string;
     }
-  ): Promise<{ success: boolean; data?: any; error?: any }> {
+  ): Promise<{ success: boolean; data?: { id: string; program_id?: string; semester?: number; section?: string }; error?: string }> {
     try {
       const { data, error } = await supabase
         .from('students')
@@ -214,14 +208,12 @@ export const studentEnrollmentService = {
       if (error) throw error;
 
       return { success: true, data };
-    } catch (error: any) {
-      logger.error('Error updating enrollment', error, { studentId, updates });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      logger.error('Error updating enrollment', error instanceof Error ? error : new Error(String(error)), { studentId, updates });
       return {
         success: false,
-        error: {
-          code: 'UPDATE_ERROR',
-          message: error.message || 'Failed to update enrollment',
-        },
+        error: errorMessage,
       };
     }
   },
@@ -229,7 +221,7 @@ export const studentEnrollmentService = {
   /**
    * Get unenrolled students (students without program_id)
    */
-  async getUnenrolledStudents(): Promise<{ success: boolean; data?: any[]; error?: any }> {
+  async getUnenrolledStudents(): Promise<{ success: boolean; data?: { id: string; name: string; roll_number: string; email: string; contact_number: string; college_id: string }[]; error?: string }> {
     try {
       const { data, error } = await supabase
         .from('students')
@@ -240,14 +232,12 @@ export const studentEnrollmentService = {
       if (error) throw error;
 
       return { success: true, data: data || [] };
-    } catch (error: any) {
-      logger.error('Error fetching unenrolled students', error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      logger.error('Error fetching unenrolled students', error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
-        error: {
-          code: 'FETCH_ERROR',
-          message: error.message || 'Failed to fetch unenrolled students',
-        },
+        error: errorMessage,
       };
     }
   },
@@ -258,7 +248,7 @@ export const studentEnrollmentService = {
   async getEnrollmentStats(filters?: {
     department_id?: string;
     program_id?: string;
-  }): Promise<{ success: boolean; data?: any; error?: any }> {
+  }): Promise<{ success: boolean; data?: { total: number; byProgram: Record<string, number>; bySemester: Record<number, number> }; error?: string }> {
     try {
       let query = supabase
         .from('students')
@@ -316,14 +306,12 @@ export const studentEnrollmentService = {
       }
 
       return { success: true, data: stats };
-    } catch (error: any) {
-      logger.error('Error fetching enrollment stats', error, { filters });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      logger.error('Error fetching enrollment stats', error instanceof Error ? error : new Error(String(error)), { filters });
       return {
         success: false,
-        error: {
-          code: 'FETCH_ERROR',
-          message: error.message || 'Failed to fetch enrollment statistics',
-        },
+        error: errorMessage,
       };
     }
   },

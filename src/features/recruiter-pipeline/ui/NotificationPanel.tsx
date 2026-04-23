@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useUser } from '@/shared/model/authStore';
 import {
   BellIcon,
   CheckIcon,
@@ -14,7 +15,7 @@ import {
   useNotifications,
   NotificationType,
 } from '@/features/notifications';
-import { useUser } from "@/stores";
+
 
 interface NotificationPanelProps {
   isOpen: boolean;

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useUser } from "@/stores";
+import { useUser } from '@/shared/model/authStore';
+
 
 // Type assertion for AuthContext
 interface AuthUser {

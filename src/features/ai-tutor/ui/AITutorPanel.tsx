@@ -18,10 +18,11 @@ import {
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { useTutorChat } from '@/shared/lib/hooks';
-import { useUser } from '@/stores';
+import { useTutorChat } from '@/features/ai-tutor/model/useTutorChat';
+
 import { Link } from 'react-router-dom';
 
+import { useUser } from '@/shared/model/authStore';
 interface LessonContext {
   lessonId?: string;
   lessonTitle?: string;

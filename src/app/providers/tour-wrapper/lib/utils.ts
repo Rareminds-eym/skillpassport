@@ -1,4 +1,4 @@
-import { TourProgress, TourKey } from '@/features/student-profile/model';
+import { TourProgress, TourKey } from '@/shared/types';
 import { TOUR_STORAGE_KEY } from './constants';
 
 /**
@@ -52,7 +52,7 @@ export const isTourCompleted = (tourKey: TourKey, progress: TourProgress): boole
  */
 export const markTourCompleted = (tourKey: TourKey, progress: TourProgress): TourProgress => {
   const updatedProgress = { ...progress };
-  
+
   switch (tourKey) {
     case 'dashboard':
       updatedProgress.dashboard_completed = true;
@@ -67,10 +67,10 @@ export const markTourCompleted = (tourKey: TourKey, progress: TourProgress): Tou
       updatedProgress.assessment_result_after12_completed = true;
       break;
   }
-  
+
   updatedProgress.last_completed_tour = tourKey;
   updatedProgress.completed_at = new Date().toISOString();
-  
+
   return updatedProgress;
 };
 
@@ -84,26 +84,26 @@ export const isEligibleForTour = (tourKey: TourKey, progress: TourProgress): boo
   if (isTourCompleted(tourKey, progress)) {
     return false;
   }
-  
+
   // Dashboard tour - always eligible if not completed (route check in TourWrapper)
   if (tourKey === 'dashboard') {
     return true;
   }
-  
+
   // Assessment test tour - eligible if dashboard completed or direct access
   if (tourKey === 'assessment_test') {
     return progress.dashboard_completed === true || true; // Allow direct access
   }
-  
+
   // All assessment result tours - eligible if previous tours completed or direct access
-  if (tourKey === 'assessment_result' || 
-      tourKey === 'assessment_result_after12' || 
-      tourKey === 'assessment_result_generic') {
-    return progress.dashboard_completed === true || 
-           progress.assessment_test_completed === true || 
-           true; // Allow direct access
+  if (tourKey === 'assessment_result' ||
+    tourKey === 'assessment_result_after12' ||
+    tourKey === 'assessment_result_generic') {
+    return progress.dashboard_completed === true ||
+      progress.assessment_test_completed === true ||
+      true; // Allow direct access
   }
-  
+
   return false;
 };
 
@@ -119,11 +119,11 @@ export const waitForElement = (selector: string, timeout = 5000): Promise<Elemen
       resolve(element);
       return;
     }
-    
+
     console.log(`⏳ Waiting for element: ${selector} (timeout: ${timeout}ms)`);
-    
+
     let timeoutId: NodeJS.Timeout;
-    
+
     const observer = new MutationObserver(() => {
       const element = document.querySelector(selector);
       if (element) {
@@ -133,12 +133,12 @@ export const waitForElement = (selector: string, timeout = 5000): Promise<Elemen
         resolve(element);
       }
     });
-    
+
     observer.observe(document.body, {
       childList: true,
       subtree: true,
     });
-    
+
     // Timeout fallback
     timeoutId = setTimeout(() => {
       console.warn(`⏰ Timeout waiting for element: ${selector}`);
@@ -154,10 +154,10 @@ export const waitForElement = (selector: string, timeout = 5000): Promise<Elemen
 export const isElementReady = (selector: string): boolean => {
   const element = document.querySelector(selector);
   if (!element) return false;
-  
+
   const rect = element.getBoundingClientRect();
   const style = window.getComputedStyle(element);
-  
+
   return (
     rect.width > 0 &&
     rect.height > 0 &&
@@ -181,7 +181,7 @@ let scrollbarWidth = 0;
  */
 const getScrollbarWidth = (): number => {
   if (scrollbarWidth > 0) return scrollbarWidth;
-  
+
   // Create temporary elements to measure scrollbar width
   const outer = document.createElement('div');
   outer.style.visibility = 'hidden';
@@ -194,7 +194,7 @@ const getScrollbarWidth = (): number => {
 
   scrollbarWidth = outer.offsetWidth - inner.offsetWidth;
   document.body.removeChild(outer);
-  
+
   return scrollbarWidth;
 };
 
@@ -216,18 +216,18 @@ const preventAccidentalScroll = (e: Event) => {
  */
 export const lockScroll = (): void => {
   if (isScrollLocked) return;
-  
+
   // Store current scroll position
   scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
-  
+
   // Calculate scrollbar width to prevent layout shift
   const scrollbarWidthPx = getScrollbarWidth();
-  
+
   // Prevent scroll events
   document.addEventListener('wheel', preventAccidentalScroll, { passive: false });
   document.addEventListener('touchmove', preventAccidentalScroll, { passive: false });
   document.addEventListener('scroll', preventAccidentalScroll, { passive: false });
-  
+
   // Hide scrollbar and fix position
   document.body.style.overflow = 'hidden';
   document.body.style.position = 'fixed';
@@ -235,10 +235,10 @@ export const lockScroll = (): void => {
   document.body.style.width = '100%';
   document.body.style.paddingRight = `${scrollbarWidthPx}px`; // Prevent layout shift
   document.documentElement.style.overflow = 'hidden';
-  
+
   // Add class for additional styling if needed
   document.body.classList.add('tour-scroll-locked');
-  
+
   isScrollLocked = true;
 };
 
@@ -247,12 +247,12 @@ export const lockScroll = (): void => {
  */
 export const unlockScroll = (): void => {
   if (!isScrollLocked) return;
-  
+
   // Remove event listeners
   document.removeEventListener('wheel', preventAccidentalScroll);
   document.removeEventListener('touchmove', preventAccidentalScroll);
   document.removeEventListener('scroll', preventAccidentalScroll);
-  
+
   // Restore body styles
   document.body.style.overflow = '';
   document.body.style.position = '';
@@ -260,13 +260,13 @@ export const unlockScroll = (): void => {
   document.body.style.width = '';
   document.body.style.paddingRight = '';
   document.documentElement.style.overflow = '';
-  
+
   // Remove class
   document.body.classList.remove('tour-scroll-locked');
-  
+
   // Restore scroll position
   window.scrollTo(0, scrollPosition);
-  
+
   isScrollLocked = false;
   console.log('🔓 Tour scroll lock disabled');
 };
@@ -280,7 +280,7 @@ export const forceUnlockScroll = (): void => {
   document.removeEventListener('wheel', preventAccidentalScroll);
   document.removeEventListener('touchmove', preventAccidentalScroll);
   document.removeEventListener('scroll', preventAccidentalScroll);
-  
+
   // Reset any CSS that might be blocking scroll
   document.body.style.overflow = '';
   document.body.style.position = '';
@@ -288,16 +288,16 @@ export const forceUnlockScroll = (): void => {
   document.body.style.width = '';
   document.body.style.paddingRight = '';
   document.documentElement.style.overflow = '';
-  
+
   // Remove any scroll lock classes
   document.body.classList.remove('tour-scroll-locked');
-  
+
   // Restore scroll position if it was stored
   if (scrollPosition > 0) {
     window.scrollTo(0, scrollPosition);
     scrollPosition = 0;
   }
-  
+
   isScrollLocked = false;
 };
 
@@ -325,17 +325,17 @@ export const temporaryUnlockForScroll = (callback: () => void): void => {
     callback();
     return;
   }
-  
+
   // Temporarily unlock
   const wasLocked = isScrollLocked;
   const savedPosition = scrollPosition;
-  
+
   // Unlock scroll
   unlockScroll();
-  
+
   // Execute callback (programmatic scroll)
   callback();
-  
+
   // Re-lock if it was locked before
   if (wasLocked) {
     // Small delay to allow scroll to complete

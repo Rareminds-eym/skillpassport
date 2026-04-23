@@ -2,6 +2,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { jsonResponse } from '../../../../src/functions-lib/response';
+import { authenticateUser } from '../../shared/auth';
 
 export interface CareerAction {
   id: string;
@@ -116,21 +117,12 @@ async function getStudentGradeLevel(supabase: SupabaseClient, studentId: string)
 
 export async function handleGetActions(request: Request, env: any): Promise<Response> {
   try {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
+    // Authenticate user using shared auth
+    const authResult = await authenticateUser(request, env as unknown as Record<string, string>);
+    if (!authResult) {
       return jsonResponse({ error: 'Unauthorized' }, 401);
     }
-
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: authHeader } }
-    });
-
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return jsonResponse({ error: 'Unauthorized' }, 401);
-    }
+    const { user, supabase } = authResult;
 
     // Get student's grade level
     const gradeLevel = await getStudentGradeLevel(supabase, user.id);

@@ -11,9 +11,10 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { OpportunityCard, OpportunityListItem, OpportunityPreview } from '@/widgets/student-dashboard';
-import { useUser } from '@/stores';
+
 import { useSavedJobs } from '@/features/opportunities';
 
+import { useUser } from '@/shared/model/authStore';
 const SavedJobs = () => {
   const user = useUser();
   const studentId = user?.id;

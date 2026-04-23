@@ -38,3 +38,12 @@ export type {
 } from './student';
 
 export * from './analytics';
+
+// Tour types (used by app providers and features)
+export type {
+    TourStep,
+    TourConfig,
+    TourProgress,
+    TourState,
+    TourKey
+} from './tour';

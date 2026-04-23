@@ -1,11 +1,5 @@
 /**
- * Placeholder hook for assessment promotional events
- * Returns empty/false values to prevent build errors
+ * Hook for assessment promotional events
+ * Re-exports from promotional feature for FSD compliance
  */
-export const useAssessmentPromotional = () => {
-  return {
-    showBanner: false,
-    dismissBanner: () => {},
-    getTimeRemaining: () => null
-  };
-};
+export { useAssessmentPromotional } from '@/features/promotional/model/promotionalStore';

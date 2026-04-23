@@ -14,10 +14,11 @@ import {
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useUser } from '@/stores';
+
 import { useStudentDataByEmail } from '@/entities/student';
 import { isLearner } from '@/entities/student/lib/studentType';
 
+import { useUser } from '@/shared/model/authStore';
 // Menu item interface
 interface SideDrawerMenuItem {
   id: string;

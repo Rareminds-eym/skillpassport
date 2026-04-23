@@ -3,9 +3,9 @@
  * Connects to Cloudflare Pages Function for user management and signup API calls
  */
 
-import { getPagesApiUrl, getAuthHeaders } from '@/shared/lib/pagesUrl';
+import { getApiUrl, getAuthHeaders } from '@/shared/api/apiUtils';
 
-const API_URL = getPagesApiUrl('user');
+const API_URL = getApiUrl('user');
 
 // ==================== SIGNUP ENDPOINTS (No Auth Required) ====================
 

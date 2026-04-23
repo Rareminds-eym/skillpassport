@@ -1,7 +1,7 @@
-import { mockStudents, Student } from '@/features/data/educator/mockStudents';
-import { mockActivities, Activity } from '@/features/data/educator/mockActivities';
-import { mockMediaAssets, MediaAsset } from '@/features/data/educator/mockMedia';
-import { mockClasses, Class } from '@/features/data/educator/mockClasses';
+import { mockStudents, Student } from '@/features/educator/model/mockStudents';
+import { mockActivities, Activity } from '@/features/educator/model/mockActivities';
+import { mockMediaAssets, MediaAsset } from '@/features/educator/model/mockMedia';
+import { mockClasses, Class } from '@/features/educator/model/mockClasses';
 import { mockApiCall } from '@/features/hooks/educator/useMockApi';
 
 /**

@@ -30,7 +30,7 @@ import {
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('school-admin-verifications');
-import { useUser } from '@/stores';
+
 import { SchoolAdminNotificationService } from '@/features/school-admin';
 import { 
   TrainingDetailsModal, 
@@ -39,6 +39,7 @@ import {
 } from '@/features/school-admin';
 import { supabase } from '@/shared/api/supabaseClient';
 
+import { useUser } from '@/shared/model/authStore';
 const Verifications: React.FC = () => {
   const user = useUser();
   const [activeTab, setActiveTab] = useState<"trainings" | "experiences" | "certificates" | "projects">("trainings");

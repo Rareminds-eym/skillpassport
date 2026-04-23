@@ -13,9 +13,10 @@ import type {
   SwapStatistics,
   SwapRequestStatus 
 } from '@/shared/types/classSwap';
-import { useUser } from "@/stores";
+
 import { supabase } from '@/shared/api/supabaseClient';
 
+import { useUser } from '@/shared/model/authStore';
 interface SwapRequestsManagementProps {
   collegeId: string | null;
 }

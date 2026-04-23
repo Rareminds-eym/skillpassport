@@ -5,7 +5,7 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
-import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
+import { getApiUrl } from '@/shared/api/apiUtils';
 
 /**
  * Match student profile with opportunities using AI
@@ -31,7 +31,7 @@ export async function matchJobsWithAI(studentProfile, topN = 3, forceRefresh = f
     throw new Error('Student profile is required');
   }
 
-  const API_URL = getPagesApiUrl('career');
+  const API_URL = getApiUrl('career');
 
   // Get auth token from existing supabase client
   const { data: { session } } = await supabase.auth.getSession();

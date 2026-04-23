@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2, Download, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabase } from '@/shared/api/supabaseClient';
-import Header from '../app/layouts/Header';
+import Header from '../shared/ui/Header';
 import { Footer } from '@/shared/ui';
 import { jsPDF } from 'jspdf';
 
@@ -52,7 +52,7 @@ export default function Receipt() {
           .select('*')
           .eq('id', orderId)
           .maybeSingle();
-        
+
         data = uuidResult.data;
         fetchError = uuidResult.error;
         console.log('[Receipt] Query by id result:', { data, error: fetchError });
@@ -62,7 +62,7 @@ export default function Receipt() {
         console.error('[Receipt] Supabase error:', fetchError);
         throw fetchError;
       }
-      
+
       if (!data) {
         console.error('[Receipt] No data found for order ID:', orderId);
         throw new Error('Receipt not found. Please check your order ID or contact support.');
@@ -88,15 +88,15 @@ export default function Receipt() {
 
     try {
       const doc = new jsPDF();
-      
+
       // Header
       doc.setFontSize(24);
       doc.setFont('helvetica', 'bold');
       doc.text('SKILL PASSPORT', 105, 20, { align: 'center' });
-      
+
       doc.setFontSize(18);
       doc.text('Registration Receipt', 105, 30, { align: 'center' });
-      
+
       // Order details
       doc.setFontSize(12);
       doc.setFont('helvetica', 'normal');
@@ -106,7 +106,7 @@ export default function Receipt() {
         month: 'long',
         year: 'numeric'
       })}`, 20, 58);
-      
+
       // Registration details
       doc.setFont('helvetica', 'bold');
       doc.text('Registration Details', 20, 75);
@@ -114,7 +114,7 @@ export default function Receipt() {
       doc.text(`Name: ${receiptData.full_name}`, 20, 85);
       doc.text(`Email: ${receiptData.email}`, 20, 93);
       doc.text(`Phone: ${receiptData.phone}`, 20, 101);
-      
+
       // Payment information
       doc.setFont('helvetica', 'bold');
       doc.text('Payment Information', 20, 118);
@@ -122,17 +122,17 @@ export default function Receipt() {
       doc.text(`Amount Paid: Rs. 499`, 20, 128);
       doc.text(`Payment Status: ${receiptData.payment_status || 'Completed'}`, 20, 136);
       doc.text(`Payment Method: Razorpay`, 20, 144);
-      
+
       // Footer
       doc.setFontSize(10);
       doc.text('Thank you for registering with Skill Passport!', 20, 170);
       doc.text('For any queries, contact: marketing@rareminds.in', 20, 178);
       doc.text('Phone: +91 9562481100', 20, 186);
-      
+
       doc.setFontSize(8);
       doc.text('This is a computer-generated receipt.', 20, 200);
       doc.text(`© ${new Date().getFullYear()} Skill Passport by Rareminds. All rights reserved.`, 20, 206);
-      
+
       // Download
       const filename = `SkillPassport_Receipt_${orderId}.pdf`;
       console.log('[Receipt] Saving PDF as:', filename);
@@ -205,7 +205,7 @@ export default function Receipt() {
                   </p>
                 </div>
               )}
-              
+
               <div className="mb-8">
                 <h2 className="text-sm font-semibold text-gray-500 uppercase mb-4">Order Information</h2>
                 <div className="space-y-3">

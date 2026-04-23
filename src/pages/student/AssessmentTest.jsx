@@ -56,16 +56,17 @@ import { loadCareerAssessmentQuestions, STREAM_KNOWLEDGE_PROMPTS, normalizeStrea
 // Import database services
 import { useAssessment } from '@/features/assessment';
 import * as assessmentService from '@/features/assessment';
-import { useUser } from '@/stores';
+
 
 // Import adaptive aptitude hook for integrated adaptive testing
-import { useAdaptiveAptitude } from '@/shared/lib/hooks';
+import { useAdaptiveAptitude } from '@/features/assessment/model/useAdaptiveAptitude';
 
 import { supabase } from '@/shared/api/supabaseClient';
 
 // Import centralized student type detection
 import { isCollegeStudent as checkIsCollegeStudent } from '@/entities/student/lib/studentType';
 
+import { useUser } from '@/shared/model/authStore';
 // Import centralized assessment utilities and components
 import {
     getGradeLevelFromGrade,

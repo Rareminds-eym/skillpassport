@@ -3,10 +3,10 @@
  * Connects to Cloudflare Pages Function for career-related API calls
  */
 
-import { getPagesApiUrl, getAuthHeaders } from '@/shared/lib/pagesUrl';
+import { getApiUrl, getAuthHeaders } from '@/shared/api/apiUtils';
 import { getGlobalCareerApiInterceptor } from './careerApiInterceptor';
 
-const API_URL = getPagesApiUrl('career');
+const API_URL = getApiUrl('career');
 
 function getInterceptor() {
   return getGlobalCareerApiInterceptor();

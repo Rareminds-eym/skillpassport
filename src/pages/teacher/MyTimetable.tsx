@@ -18,7 +18,7 @@ import { useNavigate } from "react-router-dom";
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { SwapRequestModal } from '@/features/college-admin';
 import { supabase } from '@/shared/api/supabaseClient';
-import { usePermission } from '@/shared/lib/hooks';
+import { usePermission } from '@/entities/user/model/usePermissions';
 import {
     createSwapRequest,
     getAvailableSlotsForSwap,
@@ -28,7 +28,8 @@ import {
 import type { ClassSwapRequest, CreateSwapRequestPayload, SlotInfo } from '@/shared/types/classSwap';
 import SwapRequestsDashboard from "./SwapRequestsDashboard";
 import { authSessionService } from '@/features/auth';
-import { useUser, useIsAuthenticated } from '@/stores';
+import { useUser, useIsAuthenticated } from '@/shared/model/authStore';
+
 import {
   getWeekDates,
   formatDate,

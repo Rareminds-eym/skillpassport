@@ -16,11 +16,12 @@ import {
   MapPin,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useUser, useAuthLoading } from '@/stores';
+
 import { useStudentProfile } from '@/features/student-profile';
 import { useStudentDataByEmail } from '@/entities/student';
 import { getLogger } from '@/shared/config/logging';
 
+import { useUser, useAuthLoading } from '@/shared/model/authStore';
 const logger = getLogger('TimelinePage');
 
 /**

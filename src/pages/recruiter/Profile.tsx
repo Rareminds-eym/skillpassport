@@ -11,10 +11,11 @@ import {
     XCircle,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { useUser } from "@/stores";
+
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
+import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('RecruiterProfile');
 
 function formatDate(isoLike: string) {

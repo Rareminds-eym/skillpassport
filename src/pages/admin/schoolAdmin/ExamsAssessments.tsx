@@ -17,12 +17,13 @@ import {
 import { SearchBar } from '@/shared/ui';
 import toast from 'react-hot-toast';
 import { useExams, UIExam, UIStudentMark } from '@/features/exams';
-import { useUser } from "@/stores";
+
 import { supabase } from '@/shared/api/supabaseClient';
 
 // Import components
 import { StatsCard, TypeBadge, ModalWrapper, ExamCard, CreateExamForm, ExamWorkflowManager, PerformanceTrends, EXAM_STATUSES } from '@/features/exams';
 
+import { useUser } from '@/shared/model/authStore';
 // Types
 type StudentMark = UIStudentMark;
 type Exam = UIExam;

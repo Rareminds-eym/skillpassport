@@ -12,7 +12,8 @@ import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from '@/shared/ui';
 import { Label } from '@/shared/ui';
 import { ProfileCompletionModal } from './ProfileCompletionModal';
-import { useUser } from '@/stores';
+import { useUser } from '@/shared/model/authStore';
+
 
 /**
  * @typedef {Object} GradeSelectionScreenProps

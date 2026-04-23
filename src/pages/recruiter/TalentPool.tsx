@@ -19,12 +19,13 @@ import { getLogger } from '@/shared/config/logging';
 const logger = getLogger('TalentPool');
 import { SearchBar } from '@/shared/ui';
 import { FeatureGate } from '@/features/subscription';
-import { useSearch } from '@/stores';
+
 import { useStudents } from '@/entities/student';
 import { createInterview } from '@/features/opportunities';
 import { createSavedSearch } from '@/features/opportunities';
 import { addCandidateToShortlist, getShortlists } from '@/features/opportunities';
 
+import { useSearch } from '@/shared/model/searchStore';
 const FilterSection = ({ title, children, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   

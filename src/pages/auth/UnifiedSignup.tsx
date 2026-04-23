@@ -415,8 +415,8 @@ const UnifiedSignup = () => {
     try {
       // Use the Pages Function API for signup with proper rollback support
       // This ensures no orphaned auth users are created
-      const { getPagesApiUrl } = await import('@/shared/lib/pagesUrl');
-      const USER_API_URL = getPagesApiUrl('user');
+      const { getApiUrl } = await import('@/shared/api/apiUtils');
+      const USER_API_URL = getApiUrl('user');
 
       const response = await fetch(`${USER_API_URL}/signup`, {
         method: 'POST',

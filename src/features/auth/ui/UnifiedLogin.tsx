@@ -1,11 +1,12 @@
 import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, UserCircle } from 'lucide-react';
 import { ChangeEvent, FormEvent, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuthActions } from '@/stores';
+
 import { getUserRole } from '@/features/auth/api';
 import { signIn, UserRole } from '@/features/auth/api';
 import { redirectToRoleDashboard } from '@/features/auth/lib';
 
+import { useAuthActions } from '@/shared/model/authStore';
 interface LoginState {
   email: string;
   password: string;

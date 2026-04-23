@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, Cloud, CloudOff, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useOfflineSync } from '@/shared/lib/hooks';
+import { useOfflineSync } from '@/features/courses/model/useOfflineSync';
 
 /**
  * Sync Status Indicator Component

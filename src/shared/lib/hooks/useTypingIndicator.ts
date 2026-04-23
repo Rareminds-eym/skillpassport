@@ -10,9 +10,6 @@ interface UseTypingIndicatorProps {
 
 /**
  * @deprecated This hook is deprecated and will be removed in a future version.
- * Please use `useTypingIndicator` from @/features/messaging/model instead.
- * 
- * @see {@link useTypingIndicator} from @/features/messaging
  */
 export const useTypingIndicator = ({
   conversationId,

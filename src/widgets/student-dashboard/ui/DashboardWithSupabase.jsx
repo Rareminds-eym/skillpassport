@@ -23,7 +23,7 @@ import {
   TrainingEditModal,
   ExperienceEditModal,
   SkillsEditModal
-} from './modals';
+} from '@/features/student-profile';
 
 /**
  * Dashboard Component with Supabase Integration

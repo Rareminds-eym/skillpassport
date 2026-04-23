@@ -7,10 +7,11 @@ import {
   XMarkIcon,
   ChevronDownIcon,
 } from "@heroicons/react/24/outline";
-import { useUser, useAuthActions } from "@/stores";
+
 import NotificationPanel from "./NotificationPanel";
 import { useAdminNotifications } from '@/features/notifications';
 
+import { useUser, useAuthActions } from '@/shared/model/authStore';
 interface HeaderProps {
   onMenuToggle: () => void;
   showMobileMenu: boolean;

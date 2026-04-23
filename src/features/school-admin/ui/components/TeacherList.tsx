@@ -2,9 +2,10 @@ import { CheckCircle, Clock, Eye, Filter, Grid3X3, List, Mail, Phone, Search, Us
 import React, { useEffect, useState } from "react";
 import { KPICard } from '@/features/analytics';
 import { DocumentViewerModal } from '@/features/school-admin';
-import { useUser } from "@/stores";
+
 import { supabase } from '@/shared/api/supabaseClient';
 
+import { useUser } from '@/shared/model/authStore';
 interface Teacher {
   id: string;
   teacher_id: string;

@@ -19,9 +19,10 @@ import {
 import type { PoolFormData } from '@/features/subscription';
 import type { PoolUpdateData } from '@/features/subscription';
 import { useOrganizationSubscription } from '@/features/subscription/model';
-import { useUser } from '@/stores';
+
 import { supabase } from '@/shared/api/supabaseClient';
 
+import { useUser } from '@/shared/model/authStore';
 interface OrganizationDetails {
   id?: string;
   name?: string;

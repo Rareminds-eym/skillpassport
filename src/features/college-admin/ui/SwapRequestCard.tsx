@@ -12,10 +12,11 @@ import {
   Ban,
   User
 } from 'lucide-react';
-import { usePermission } from '@/shared/lib/hooks';
-import { useUser } from '@/stores';
+import { usePermission } from '@/entities/user/model/usePermissions';
+
 import type { ClassSwapRequestWithDetails } from '@/shared/types/classSwap';
 
+import { useUser } from '@/shared/model/authStore';
 interface SwapRequestCardProps {
   request: ClassSwapRequestWithDetails;
   viewMode: 'sent' | 'received' | 'history';

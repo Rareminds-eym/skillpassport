@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useUser } from '@/shared/model/authStore';
 import {
   BookOpen,
   Calendar,
@@ -18,7 +19,7 @@ import {
   Filter,
   Search
 } from 'lucide-react';
-import { useUser } from '@/stores';
+
 
 // Mock data for UI preview
 const MOCK_ASSIGNMENTS = [

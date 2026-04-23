@@ -30,11 +30,12 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/shared/ui';
-import { useUser } from '@/stores';
+
 import { supabase } from '@/shared/api/supabaseClient';
 import { downloadCertificate, getCertificateProxyUrl } from '@/features/digital-portfolio';
 import { enrollmentService as courseEnrollmentService } from '@/features/courses';
 
+import { useUser } from '@/shared/model/authStore';
 const Courses = () => {
   const navigate = useNavigate();
   const user = useUser();

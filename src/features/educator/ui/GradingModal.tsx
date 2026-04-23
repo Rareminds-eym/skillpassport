@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { getAssignmentStudents, gradeAssignment } from '@/features/educator';
 import { supabase } from '@/shared/api/supabaseClient';
-import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
+import { getApiUrl } from '@/shared/api/apiUtils';
 import {
     ChatBubbleBottomCenterTextIcon,
     XMarkIcon,
@@ -24,7 +24,7 @@ const extractFileKey = (fileUrl: string): string | null => {
 
 // Helper function to generate accessible file URL
 const getAccessibleFileUrl = (fileUrl: string) => {
-  const storageApiUrl = getPagesApiUrl('storage');
+  const storageApiUrl = getApiUrl('storage');
   
   // Extract file key and use key parameter for better reliability
   const fileKey = extractFileKey(fileUrl);

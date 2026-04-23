@@ -11,8 +11,9 @@ import {
   ProductWalkthrough,
   AssessmentPromotionalModal,
 } from '@/pages/homepage';
-import { useAssessmentPromotional } from '@/stores';
+
 import SEOHead from '@/shared/ui/SEOHead';
+import { useAssessmentPromotional } from '@/features/promotional/model/promotionalStore';
 const Home = () => {
   const {
     showModal: showAssessmentModal,

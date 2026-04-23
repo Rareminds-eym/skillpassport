@@ -3,8 +3,9 @@ import { ArrowLeft, ArrowRight, BookOpen, CheckCircle, Sparkles, User } from 'lu
 import React, { useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { BackgroundRippleEffect } from '@/features/digital-portfolio';
-import { usePortfolio } from '@/stores';
-import { useUserRole } from '@/stores';
+import { usePortfolio } from '@/features/digital-portfolio/model/portfolioStore';
+import { useUserRole } from '@/shared/model/authStore';
+
 
 const HomePage: React.FC = () => {
   const location = useLocation();

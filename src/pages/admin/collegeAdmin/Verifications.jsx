@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/shared/api';
-import { useUser } from '@/stores';
+
 import { CollegeAdminNotificationService } from '@/features/college-admin';
 import { 
   TrainingDetailsModal, 
@@ -37,6 +37,7 @@ import {
 } from '@/features/school-admin';
 import { getLogger } from '@/shared/config/logging';
 
+import { useUser } from '@/shared/model/authStore';
 const CollegeVerifications = () => {
   const logger = getLogger('college-admin-verifications');
   const [activeTab, setActiveTab] = useState('trainings');

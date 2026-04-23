@@ -5,7 +5,8 @@
 
 import { useState, useCallback } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
-import { useUser } from '@/stores';
+import { useUser } from '@/shared/model/authStore';
+
 
 export interface AIFeedback {
   conversationId: string;

@@ -17,13 +17,14 @@ import { CourseFilters } from '@/features/courses';
 import { CreateCourseModal } from '@/features/courses';
 
 import toast from 'react-hot-toast'
-import { useUser, useIsAuthenticated } from '@/stores'
+
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('university-admin-courses');
 import { supabase } from '@/shared/api/supabaseClient';
 import { courseDetailsService } from '@/features/courses';
 
+import { useUser, useIsAuthenticated } from '@/shared/model/authStore';
 const UniversityAdminCourses: React.FC = () => {
   const user = useUser();
   const isAuthenticated = useIsAuthenticated();

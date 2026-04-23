@@ -15,6 +15,7 @@ import { createClient } from '@supabase/supabase-js';
 import { isValidUUID } from '../../shared/auth';
 import { checkRateLimit } from '../utils/rate-limit';
 import { getOpenRouterKey } from '../[[path]]';
+import { API_CONFIG, AI_MODELS } from '../../shared/ai-config';
 
 const RECOMMEND_CONFIG = {
   MATCH_THRESHOLD: 0.01,
@@ -38,7 +39,7 @@ async function generateEmbeddingFromText(
   }
 
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/embeddings', {
+    const response = await fetch(API_CONFIG.OPENROUTER.embeddingEndpoint, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openRouterKey}`,
@@ -47,7 +48,7 @@ async function generateEmbeddingFromText(
         'X-Title': 'SkillPassport Embedding',
       },
       body: JSON.stringify({
-        model: 'openai/text-embedding-3-small',
+        model: AI_MODELS.EMBEDDING_SMALL,
         input: text.slice(0, 8000),
       }),
     });

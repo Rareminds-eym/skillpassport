@@ -1,9 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/stores';
+
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { isActiveOrPaused, isManageable } from '@/features/subscription/lib';
 
+import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/shared/model/authStore';
 /**
  * Get the subscription manage path based on user role
  * Returns null if role is unknown to prevent wrong redirects

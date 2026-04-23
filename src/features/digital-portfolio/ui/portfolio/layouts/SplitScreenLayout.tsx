@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Github, Linkedin, Twitter, Mail, Phone, MapPin, ExternalLink, Code, Briefcase, GraduationCap, ChevronRight, Moon, Sun, User, FolderOpen } from 'lucide-react';
 import { Student, AnimationType, DisplayPreferences } from '@/shared/types/student';
-import { useTheme } from '@/stores';
+import { useTheme } from '@/shared/model/themeStore';
+
 
 interface SplitScreenLayoutProps {
   student: Student;

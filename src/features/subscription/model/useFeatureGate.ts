@@ -6,10 +6,11 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useUser, useUserEntitlements } from '@/stores';
 import { addOnCatalogService } from '@/features/subscription';
 import { entitlementService } from '@/features/subscription';
 
+import { useUserEntitlements } from '@/features/subscription/model/subscriptionStore';
+import { useUser } from '@/shared/model/authStore';
 // Cache for feature access checks
 const accessCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes

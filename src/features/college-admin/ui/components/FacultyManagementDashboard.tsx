@@ -8,7 +8,7 @@ import {
   Users
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { useUser } from "@/stores";
+
 import { supabase } from '@/shared/api/supabaseClient';
 import { getFacultyStatistics } from '@/features/college-admin';
 import FacultyLeaveManagement from '@/features/college-admin/ui/FacultyLeaveManagement';
@@ -19,6 +19,7 @@ import FacultyOnboarding from './FacultyOnboarding';
 import FacultyPerformanceAnalytics from './FacultyPerformanceAnalytics';
 import SwapRequestsManagement from './SwapRequestsManagement';
 
+import { useUser } from '@/shared/model/authStore';
 const FacultyManagementDashboard: React.FC = () => {
   const user = useUser();
   const [activeTab, setActiveTab] = useState<'list' | 'onboarding' | 'timetable' | 'analytics' | 'leave' | 'import' | 'swaps'>('list');

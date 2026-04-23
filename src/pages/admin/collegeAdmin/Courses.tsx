@@ -24,10 +24,11 @@ import {
   updateCourse
 } from '@/features/educator';
 import toast from 'react-hot-toast';
-import { useUser, useIsAuthenticated } from '@/stores';
+
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
+import { useUser, useIsAuthenticated } from '@/shared/model/authStore';
 const logger = getLogger('college-admin-courses');
 
 const CollegeAdminCourses: React.FC = () => {

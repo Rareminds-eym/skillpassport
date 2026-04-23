@@ -29,10 +29,11 @@ import { studentPipelineService } from '@/features/student-profile/api';
 import { MessageService } from '@/features/messaging';
 import { useMessageNotifications } from '@/features/messaging';
 import { supabase } from '@/shared/api/supabaseClient';
-import { useUser } from '@/stores';
+
 
 import { getLogger } from '@/shared/config/logging';
 
+import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('Applications');
 
 const Applications = () => {

@@ -13,11 +13,12 @@ import {
 import React, { useEffect, useMemo, useState } from 'react';
 import { SearchBar } from '@/shared/ui';
 import { AssessmentReportDrawer } from '@/features/assessment';
-import { useUser } from '@/stores';
+
 import { supabase } from '@/shared/api/supabaseClient';
 import { formatStreamId } from '@/shared/lib/utils/formatters';
 import { getLogger } from '@/shared/config/logging';
 
+import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('school-admin-assessment-results');
 
 // Types

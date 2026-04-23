@@ -15,7 +15,7 @@ import {
   Pencil
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { useTutorChat } from '@/shared/lib/hooks';
+import { useTutorChat } from '@/features/ai-tutor/model/useTutorChat';
 import { ChatMessage } from '@/features/ai-tutor';
 
 interface AITutorChatProps {

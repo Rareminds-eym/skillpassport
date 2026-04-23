@@ -7,13 +7,14 @@ import {
   TrashIcon
 } from '@heroicons/react/24/outline';
 import { uploadInstructionFile, deleteInstructionFile } from '@/features/educator-copilot';
-import { useUser } from '@/stores';
-import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
+
+import { getApiUrl } from '@/shared/api/apiUtils';
 import { supabase } from '@/shared/api/supabase';
 import { ConfirmationModal, NotificationModal } from '@/shared/ui';
 import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/fileValidation';
 import { getFileSizeLimit } from '@/shared/config/fileSizeLimits';
 
+import { useUser } from '@/shared/model/authStore';
 interface FileUploadProps {
   assignmentId?: string;
   existingFiles?: any[];
@@ -329,7 +330,7 @@ const AssignmentFileUpload = React.forwardRef<
                 <a
                   href={file.file_url.includes('/document-access')
                     ? file.file_url
-                    : `${getPagesApiUrl('storage')}/document-access?url=${encodeURIComponent(file.file_url)}&mode=inline`}
+                    : `${getApiUrl('storage')}/document-access?url=${encodeURIComponent(file.file_url)}&mode=inline`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="p-1 hover:bg-blue-100 rounded transition-colors text-blue-600"

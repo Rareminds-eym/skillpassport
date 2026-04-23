@@ -1,12 +1,13 @@
 import { AlertCircle, CheckCircle, FileText, Loader2, Upload, X } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { useUser } from "@/stores";
+
 import { supabase } from '@/shared/api/supabaseClient';
 import { uploadFile, uploadMultipleFiles, validateFile } from '@/shared/api';
 // @ts-ignore - userApiService is a .js file
 import { userApiService } from '@/entities/user';
 import { authSessionService } from '@/features/auth';
 
+import { useUser } from '@/shared/model/authStore';
 // Global flag to prevent redirects during faculty onboarding
 declare global {
   interface Window {

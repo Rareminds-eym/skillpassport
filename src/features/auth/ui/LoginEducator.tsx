@@ -12,10 +12,11 @@ import {
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import educatorIllustration from "/login/yyu.png";
-import { useAuthActions } from "@/stores";
+
 import { supabase } from "@/shared/api";
 import { FeatureCard } from "@/shared/ui";
 
+import { useAuthActions } from '@/shared/model/authStore';
 export default function LoginEducator() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

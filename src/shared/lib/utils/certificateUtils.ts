@@ -1,11 +1,11 @@
-import { getPagesApiUrl } from '@/shared/lib/pagesUrl';
+import { getApiUrl } from '@/shared/api/apiUtils';
 
 /**
  * Get the viewable/downloadable URL for a certificate.
  * Converts direct R2 URLs to proxy URLs that work without public bucket access.
  */
 export const getCertificateProxyUrl = (certificateUrl: string, mode: 'inline' | 'download' = 'inline'): string | null => {
-    const STORAGE_API_URL = getPagesApiUrl('storage');
+    const STORAGE_API_URL = getApiUrl('storage');
 
     if (!certificateUrl) return null;
 
@@ -24,7 +24,7 @@ export const getCertificateProxyUrl = (certificateUrl: string, mode: 'inline' | 
  * Download a certificate file to the user's device.
  */
 export const downloadCertificate = async (certificateUrl: string, courseName: string): Promise<void> => {
-    const STORAGE_API_URL = getPagesApiUrl('storage');
+    const STORAGE_API_URL = getApiUrl('storage');
 
     if (certificateUrl.startsWith('data:')) {
         const link = document.createElement('a');

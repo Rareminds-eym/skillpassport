@@ -15,15 +15,21 @@
 // ============================================================================
 
 export { StudentProfileDrawer } from './ui';
-export { AdmissionNoteModal, SchoolAdmissionNoteModal, MessageModal, ExportModal } from './ui/modals';
 export {
+  AdmissionNoteModal,
+  SchoolAdmissionNoteModal,
+  MessageModal,
+  ExportModal,
   CertificatesEditModal,
   EducationEditModal,
   TrainingEditModal,
   ExperienceEditModal,
   ProjectsEditModal,
-  SkillsEditModal
-} from '@/widgets/student-dashboard/ui/modals';
+  SkillsEditModal,
+  SoftSkillsEditModal,
+  TechnicalSkillsEditModal,
+  PersonalInfoEditModal
+} from './ui/modals';
 
 // Default export for Header component
 

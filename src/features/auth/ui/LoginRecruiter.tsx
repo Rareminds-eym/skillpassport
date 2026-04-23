@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import loginIllustration from "@/assets/images/auth/Recruiter-illustration.png";
-import { useAuthActions } from "@/stores";
+
 
 import {
     AlertCircle,
@@ -17,6 +17,7 @@ import {
 import { loginRecruiter } from "@/features/auth/api";
 import { FeatureCard } from "@/shared/ui";
 
+import { useAuthActions } from '@/shared/model/authStore';
 export default function LoginRecruiter() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

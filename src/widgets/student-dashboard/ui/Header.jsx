@@ -16,7 +16,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useUser, useAuthActions } from "@/stores";
+
 import { useNotifications } from '@/features/notifications';
 import { useStudentDataByEmail } from '@/entities/student';
 import { isLearner } from '@/entities/student/lib/studentType';
@@ -25,6 +25,7 @@ import NotificationPanel from "./NotificationPanel";
 import NavButton from "./NavButton";
 import { PROFILE_MENU_ITEMS } from "../config/profileMenuItems";
 
+import { useUser, useAuthActions } from '@/shared/model/authStore';
 const ICON_MAP = {
   BookmarkIcon,
   Cog6ToothIcon,

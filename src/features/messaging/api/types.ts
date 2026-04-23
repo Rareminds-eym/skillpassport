@@ -10,14 +10,7 @@
 /**
  * All supported user roles in the messaging system
  */
-export type UserRole =
-    | 'student'
-    | 'recruiter'
-    | 'educator'
-    | 'college_educator'
-    | 'school_admin'
-    | 'college_admin'
-    | 'university_admin';
+export type { UserRole } from '@/shared/types/messaging';
 
 /**
  * Admin-specific roles (require special unread count handling)
@@ -37,15 +30,7 @@ export type CollegeLecturer = 'college_educator';
 /**
  * All supported conversation types between users
  */
-export type ConversationType =
-    | 'student_recruiter'
-    | 'student_educator'
-    | 'educator_recruiter'
-    | 'student_admin'
-    | 'student_college_admin'
-    | 'student_college_educator'
-    | 'educator_admin'
-    | 'college_educator_admin';
+export type { ConversationType } from '@/shared/types/messaging';
 
 // ============================================================================
 // Message Interface

@@ -5,7 +5,7 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { MessageService } from '../api/messageService';
+import { MessageService } from '../../../shared/api/messageService';
 import { messagesKeys } from '@/shared/lib/queryKeys/messages';
 import type { UserRole } from '../api/types';
 import { supabase } from '@/shared/api/supabase';

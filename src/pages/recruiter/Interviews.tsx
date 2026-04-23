@@ -21,8 +21,9 @@ import {
 } from '@heroicons/react/24/outline';
 import { supabase } from '@/shared/api/supabaseClient';
 import { createInterview, sendReminder } from '@/features/opportunities';
+import { useUser } from '@/shared/model/authStore';
 import { createNotification } from '@/features/notifications'; // ✅ Import notification service
-import { useUser } from '@/stores';
+
 
 // Define TypeScript interfaces
 interface Scorecard {

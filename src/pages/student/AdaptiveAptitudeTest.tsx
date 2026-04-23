@@ -34,13 +34,14 @@ import {
   AlertDialogTitle,
 } from '@/shared/ui';
 import { useAdaptiveAptitude } from '@/features/assessment/model/useAdaptiveAptitude';
-import { useUser } from '@/stores';
+
 import { useStudentProfile } from '@/features/student-profile';
 import { useStudentDataByEmail } from '@/entities/student';
 import { useAntiCheating } from '@/shared/lib/hooks';
 import { GradeLevel, TestPhase, Subtag, DifficultyLevel, ConfidenceTag } from '@/shared/types/adaptiveAptitude';
 import { getLogger } from '@/shared/config/logging';
 
+import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('AdaptiveAptitudeTest');
 
 // =============================================================================

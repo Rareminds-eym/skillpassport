@@ -3,7 +3,7 @@
  * Consolidated student services following FSD architecture
  */
 
-// Student data operations
+// Student data operations - re-exported from entities layer
 export {
   getCompleteStudentData,
   updateStudentProfile,
@@ -22,7 +22,7 @@ export {
   addSoftSkill,
   updateSoftSkill,
   deleteSoftSkill
-} from './studentDataService';
+} from '@/entities/student/api';
 
 // Re-export from existing services until migration is complete
 export { 

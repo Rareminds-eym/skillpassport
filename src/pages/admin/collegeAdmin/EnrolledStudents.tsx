@@ -11,12 +11,13 @@ import {
 } from "@heroicons/react/24/outline";
 import { supabase } from '@/shared/api/supabaseClient';
 import { studentEnrollmentService, type EnrolledStudentView } from "@/features/student-profile/api";
-import { useUser } from '@/stores';
+
 import toast from "react-hot-toast";
 import { Pagination } from '@/shared/ui';
 import { SearchBar } from '@/shared/ui';
 import { getLogger } from '@/shared/config/logging';
 
+import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('college-admin-enrolled-students');
 
 const ITEMS_PER_PAGE = 10;

@@ -21,8 +21,6 @@ import { MessageService, Conversation } from '@/features/messaging';
 import { supabase } from '@/shared/api/supabaseClient';
 import { useAdminMessages } from '@/features/messaging';
 import { formatDistanceToNow } from 'date-fns';
-import { useUser } from '@/stores';
-import { useGlobalPresence } from '@/stores';
 import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/shared/lib/hooks';
 import { useNotificationBroadcast } from '@/features/broadcast';
@@ -32,6 +30,8 @@ import { NewSchoolAdminEducatorConversationModal } from '@/features/messaging';
 import { authSessionService } from '@/features/auth';
 
 import { queryKeys } from '@/shared/lib/queryKeys';
+import { useUser } from '@/shared/model/authStore';
+import { useGlobalPresence } from '@/shared/model/globalPresenceStore';
 const logger = getLogger('school-admin-student-communication');
 
 const StudentCommunication = () => {

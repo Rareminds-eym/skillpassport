@@ -1,7 +1,7 @@
 import { Briefcase, GraduationCap, Plus, Edit, Eye, EyeOff, Trash2, CheckCircle, Clock, Save } from "lucide-react";
 import { Button } from '@/shared/ui/button';
 import { Badge } from '@/shared/ui/badge';
-import { useFormValidation } from "@/shared/lib/hooks";
+import { useFormValidation } from '@/shared/lib/hooks';
 import { isLearner } from '@/entities/student/lib/studentType';
 import FormField from "../FormField";
 

@@ -6,10 +6,11 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useUser } from '@/stores';
+
 import { supabase } from '@/shared/api/supabaseClient';
 import * as assessmentService from '@/features/assessment';
 
+import { useUser } from '@/shared/model/authStore';
 export const useAssessment = () => {
   const user = useUser();
   const [loading, setLoading] = useState(true);

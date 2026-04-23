@@ -13,7 +13,7 @@ import {
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
-import { useUser } from "@/stores";
+
 import { useStudentSettings } from '@/entities/student';
 import { useStudentDataByEmail } from '@/entities/student';
 import { useStudentCertificates } from '@/entities/student';
@@ -30,11 +30,11 @@ import {
   ExperienceEditModal, 
   CertificatesEditModal, 
   ProjectsEditModal 
-} from '../modals';
+} from '@/features/student-profile';
 import toast from 'react-hot-toast';
 import { useStudentMessageNotifications } from '@/entities/student';
 import { useStudentUnreadCount } from "@/entities/student";
-import { useStudentRealtimeActivities } from "@/shared/lib/hooks";
+import { useStudentRealtimeActivities } from '@/entities/student/model/useStudentRealtimeActivities';
 import ResumeParser from "../ResumeParser";
 import { mergeResumeData } from '@/features/digital-portfolio';
 import { safeSave } from '@/shared/lib/settingsErrorHandler';
@@ -45,6 +45,7 @@ import SecurityTab from "./SecurityTab";
 import NotificationsTab from "./NotificationsTab";
 import PrivacyTab from "./PrivacyTab";
 
+import { useUser } from '@/shared/model/authStore';
 const MainSettings = () => {
   const user = useUser();
   const location = useLocation();

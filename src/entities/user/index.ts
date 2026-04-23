@@ -81,3 +81,6 @@ export {
 // UI exports
 export { UserAvatar, UserCard } from './ui';
 export { default as userApiService } from './api/userApiService';
+
+// Permissions
+export { usePermissions, usePermission } from './model/usePermissions';

@@ -1,9 +1,10 @@
-import { useUser } from '@/stores';
+
 import { ChevronDownIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
 import { supabase } from '@/shared/api/supabaseClient';
 import { departmentService } from '@/features/college-admin';
 
+import { useUser } from '@/shared/model/authStore';
 interface Faculty {
   id: string;
   name: string;

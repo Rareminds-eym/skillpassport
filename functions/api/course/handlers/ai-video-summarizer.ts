@@ -15,6 +15,7 @@
 import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
 import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import { jsonResponse } from '../../../../src/functions-lib/response';
+import { authenticateUser } from '../../shared/auth';
 import { transcribeVideo } from '../utils/transcription';
 import { 
   generateVideoSummary, 
@@ -59,6 +60,15 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
   try {
     const { request, env, waitUntil } = context;
 
+    // Authenticate user (required)
+    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
+    if (!auth) {
+      return jsonResponse({ error: 'Authentication required' }, 401);
+    }
+
+    const { user } = auth;
+    const userId = user.id;
+
     // Parse request body
     let body: VideoSummarizerRequestBody;
     try {
@@ -81,7 +91,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
       return jsonResponse({ error: 'Video URL is required' }, 400);
     }
 
-    // Create Supabase admin client (no auth required for this endpoint)
+    // Create Supabase admin client for database operations
     const supabase = createSupabaseAdminClient(env);
 
     // Check cache for existing completed summary

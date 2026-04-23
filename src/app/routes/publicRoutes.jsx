@@ -1,6 +1,6 @@
 import { lazy } from "react";
 import { Navigate, Route } from "react-router-dom";
-import ProtectedRoute from "@/shared/ui/ProtectedRoute";
+import ProtectedRoute from "@/app/components/ProtectedRoute";
 import PublicLayout from "../layouts/PublicLayout";
 import PortfolioLayout from "../layouts/PortfolioLayout";
 
@@ -108,7 +108,14 @@ const StudentPublicViewer = lazy(() =>
   import("@/features/student-profile/ui/StudentPublicViewer")
 );
 
+const OrganizationSetupPage = lazy(() =>
+  import("@/pages/onboarding/OrganizationSetupPage")
+);
+
 export const publicRoutes = [
+  // Organization Setup (for admins without organization)
+  <Route key="organization-setup" path="/organization-setup" element={<OrganizationSetupPage />} />,
+
   // Skill Passport Pre-Registration
   <Route key="register-student" path="/register/student" element={<SkillPassportPreRegistration />} />,
   <Route key="register-corporate" path="/register/corporate" element={<SkillPassportPreRegistration />} />,
@@ -161,7 +168,7 @@ export const publicRoutes = [
     <Route path="/signin/school" element={<SignInSchool />} />
     <Route path="/signin/university" element={<SignInUniversity />} />
     <Route path="/signup/university-admin" element={<UniversityAdmin />} />
-    
+
     <Route path="/subscription/plans" element={<ProtectedRoute><SubscriptionPlans /></ProtectedRoute>} />
     <Route path="/subscription/plans/:type" element={<ProtectedRoute><SubscriptionPlans /></ProtectedRoute>} />
     <Route path="/subscription/plans/:type/:mode" element={<ProtectedRoute><SubscriptionPlans /></ProtectedRoute>} />

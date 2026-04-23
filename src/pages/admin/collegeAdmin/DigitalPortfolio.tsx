@@ -11,10 +11,11 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Pagination } from '@/shared/ui';
 import { SearchBar } from '@/shared/ui';
-import { useUser } from '@/stores';
+
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
+import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('college-admin-digital-portfolio');
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {

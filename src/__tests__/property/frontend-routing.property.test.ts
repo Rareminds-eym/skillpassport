@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { getPagesApiUrl, getPagesBaseUrl } from '@/shared/lib/pagesUrl';
+import { getApiUrl, getApiBaseUrl } from '@/shared/api/apiUtils';
 
 // Service configuration
 interface ServiceConfig {
@@ -99,7 +99,7 @@ describe('Property 8: Frontend Routing', () => {
 
   it('should generate correct API URLs using getPagesApiUrl', () => {
     SERVICES.forEach(service => {
-      const apiUrl = getPagesApiUrl(service.name);
+      const apiUrl = getApiUrl(service.name);
       
       // Should include the service path
       expect(apiUrl).toContain(`/api/${service.name}`);
@@ -112,17 +112,17 @@ describe('Property 8: Frontend Routing', () => {
   });
 
   it('should use consistent base URL across all services', () => {
-    const baseUrl = getPagesBaseUrl();
+    const baseUrl = getApiBaseUrl();
     
     SERVICES.forEach(service => {
-      const apiUrl = getPagesApiUrl(service.name);
+      const apiUrl = getApiUrl(service.name);
       expect(apiUrl).toContain(baseUrl);
     });
   });
 
   it('should construct valid full URLs for all endpoints', () => {
     SERVICES.forEach(service => {
-      const apiUrl = getPagesApiUrl(service.name);
+      const apiUrl = getApiUrl(service.name);
       
       service.endpoints.forEach(endpoint => {
         // Replace path parameters with example values
@@ -155,7 +155,7 @@ describe('Property 8: Frontend Routing', () => {
 
   it('should use same-origin URLs (no CORS issues)', () => {
     SERVICES.forEach(service => {
-      const apiUrl = getPagesApiUrl(service.name);
+      const apiUrl = getApiUrl(service.name);
       
       // In browser, should use window.location.origin
       // In test, should use a consistent base

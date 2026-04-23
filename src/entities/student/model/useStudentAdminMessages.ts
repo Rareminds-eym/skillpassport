@@ -5,7 +5,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
-import MessageService from '@/features/messaging/api/messageService';
+import MessageService from '@/shared/api/messageService';
 import { queryKeys } from '@/shared/lib/queryKeys';
 /**
  * @deprecated This hook is deprecated and will be removed in a future version.
