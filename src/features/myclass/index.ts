@@ -41,7 +41,7 @@ export * from './lib/supabaseHelpers';
 
 export type { SchoolTimetableSlot } from './ui/tabs/TimetableViewTab';
 
-export { getTodaySchedule } from './api/studentClassService';
+export { getTodaySchedule } from '@/features/student-profile/api/studentClassService';
 
 export { formatClubName } from './lib/stringHelpers';
 
@@ -55,13 +55,13 @@ export type { SchoolActivity } from './ui/tabs/CoCurricularsTab';
 
 export { validateStorageConfig } from './lib/supabaseHelpers';
 
-export { getClassTimetable } from './api/studentClassService';
+export { getClassTimetable } from '@/features/student-profile/api/studentClassService';
 
 export type { AssignmentStats } from './ui/tabs/OverviewTab';
 
 export type { SchoolCertificate } from './ui/tabs/CoCurricularsTab';
 
-export { getClassmates } from './api/studentClassService';
+export { getClassmates } from '@/features/student-profile/api/studentClassService';
 
 export { getAuthSession } from './lib/supabaseHelpers';
 
@@ -75,7 +75,7 @@ export type { SchoolGroupedExam } from './ui/tabs/ExamsTab';
 
 export type { SchoolClub } from './ui/tabs/CoCurricularsTab';
 
-export { getStudentClassInfo } from './api/studentClassService';
+export { getStudentClassInfo } from '@/features/student-profile/api/studentClassService';
 
 export { getUploadErrorMessage } from './lib/errorHandlers';
 

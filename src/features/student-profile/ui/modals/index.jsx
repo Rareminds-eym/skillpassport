@@ -1,13 +1,13 @@
 import React from 'react';
 
-export { default as AdmissionNoteModal } from './AdmissionNoteModal';
-export { default as SchoolAdmissionNoteModal } from './SchoolAdmissionNoteModal';
-export { default as MessageModal } from './MessageModal';
+export { default as AdmissionNoteModal } from '../StudentProfileDrawer/modals/AdmissionNoteModal';
+export { default as SchoolAdmissionNoteModal } from '../StudentProfileDrawer/modals/SchoolAdmissionNoteModal';
+export { default as MessageModal } from '../StudentProfileDrawer/modals/MessageModal';
 export { default as ExportModal } from '@/entities/student/ui/modals/ExportModal';
-export { default as ApprovalModal } from './ApprovalModal';
-export { default as PromotionModal } from './PromotionModal';
-export { default as GraduationModal } from './GraduationModal';
-export { default as DocumentsModal } from './DocumentsModal';
+export { default as ApprovalModal } from '../StudentProfileDrawer/modals/ApprovalModal';
+export { default as PromotionModal } from '../StudentProfileDrawer/modals/PromotionModal';
+export { default as GraduationModal } from '../StudentProfileDrawer/modals/GraduationModal';
+export { default as DocumentsModal } from '../StudentProfileDrawer/modals/DocumentsModal';
 
 // Profile edit modals - moved from widgets to features
 import UnifiedProfileEditModal from './UnifiedProfileEditModal';

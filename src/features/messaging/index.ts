@@ -13,16 +13,16 @@
 // ============================================================================
 // UI Components
 // ============================================================================
-export { default as MessageModal } from './ui/MessageModal';
+export { default as MessageModal } from './ui/modals/MessageModal';
 export { default as ConversationModal } from './ui/ConversationModal';
-export { default as DeleteConversationModal } from './ui/DeleteConversationModal';
-export { default as NewStudentConversationModal } from './ui/NewStudentConversationModal';
-export { default as NewStudentConversationModalEducator } from './ui/NewStudentConversationModalEducator';
-export { default as NewStudentConversationModalCollegeAdmin } from './ui/NewStudentConversationModalCollegeAdmin';
-export { default as NewEducatorAdminConversationModal } from './ui/NewEducatorAdminConversationModal';
-export { default as NewEducatorConversationModal } from './ui/NewEducatorConversationModal';
-export { default as NewAdminConversationModal } from './ui/NewAdminConversationModal';
-export { default as NewSchoolAdminEducatorConversationModal } from './ui/NewSchoolAdminEducatorConversationModal';
+export { default as DeleteConversationModal } from './ui/modals/DeleteConversationModal';
+export { default as NewStudentConversationModal } from './ui/modals/NewStudentConversationModal';
+export { default as NewStudentConversationModalEducator } from './ui/modals/NewStudentConversationModalEducator';
+export { default as NewStudentConversationModalCollegeAdmin } from './ui/modals/NewStudentConversationModalCollegeAdmin';
+export { default as NewEducatorAdminConversationModal } from './ui/modals/NewEducatorAdminConversationModal';
+export { default as NewEducatorConversationModal } from './ui/modals/NewEducatorConversationModal';
+export { default as NewAdminConversationModal } from './ui/modals/NewAdminConversationModal';
+export { default as NewSchoolAdminEducatorConversationModal } from './ui/modals/NewSchoolAdminEducatorConversationModal';
 
 // ============================================================================
 // Hooks - New Unified API

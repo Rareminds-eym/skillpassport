@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { supabase } from '@/shared/api/supabaseClient';
 import { AnalyticsTab } from "./components/AnalyticsTab";
 import { CalendarTab } from "./components/CalendarTab";
-import { ConfirmModal } from "./components/ConfirmModal";
+import { ConfirmModal } from "@/shared/ui/ConfirmModal";
 import { EventFormModal } from "./components/EventFormModal";
 import { EventStatsCards } from "./components/EventStatsCards";
 import { EventsTab } from "./components/EventsTab";
@@ -43,7 +43,7 @@ const EventManagement: React.FC = () => {
     isOpen: false,
     title: "",
     message: "",
-    onConfirm: () => {},
+    onConfirm: () => { },
   });
 
   // Fetch college ID from organizations table

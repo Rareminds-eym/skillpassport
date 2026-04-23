@@ -37,7 +37,7 @@ export * from './ui/pipeline/types';
 
 // Services
 export * from './api/skillsAnalyticsService';
-export { default as FloatingRecruiterAIButton } from './ui/FloatingRecruiterAIButton';
+export { default as FloatingRecruiterAIButton } from '@/shared/ui/FloatingRecruiterAIButton';
 
 export { addCandidateToPipeline } from './api/pipelineService';
 

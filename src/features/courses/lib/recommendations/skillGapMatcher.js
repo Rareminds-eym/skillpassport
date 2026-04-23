@@ -4,10 +4,10 @@
  */
 
 import { cosineSimilarity } from '@/shared/lib/vectorUtils';
-import { generateSkillEmbedding } from './embeddingService';
+import { generateSkillEmbedding } from '../../api/embeddingService';
 import { fetchCoursesWithEmbeddings, fetchCoursesBySkillName } from './courseRepository';
 import { calculateRelevanceScore, generateWhyThisCourse } from './utils';
-import { MAX_COURSES_PER_SKILL_GAP, SKILL_SIMILARITY_THRESHOLD } from './config';
+import { MAX_COURSES_PER_SKILL_GAP, SKILL_SIMILARITY_THRESHOLD } from '../../api/config';
 
 /**
  * Get courses that directly match a skill via the course_skills table.
@@ -39,7 +39,7 @@ export const getSemanticSkillMatches = async (skillName, allCoursesWithEmbedding
 
     // Get courses with embeddings
     const courses = allCoursesWithEmbeddings || await fetchCoursesWithEmbeddings();
-    
+
     if (courses.length === 0) {
       return [];
     }
@@ -141,16 +141,16 @@ export const getCoursesForSkillGap = async (skillGap, allCoursesWithEmbeddings =
   try {
     // Step 1: Try direct matching via course_skills table (Requirement 5.2)
     const directMatches = await getDirectSkillMatches(skillName);
-    
+
     // Step 2: Get semantic matches via embedding similarity (Requirement 5.2)
     const semanticMatches = await getSemanticSkillMatches(skillName, allCoursesWithEmbeddings);
-    
+
     // Step 3: Combine and deduplicate results
     const combinedCourses = combineAndRankCourses(directMatches, semanticMatches, skillLower);
-    
+
     // Step 4: Limit to 1-3 courses (Requirement 5.1)
     const limitedCourses = combinedCourses.slice(0, MAX_COURSES_PER_SKILL_GAP);
-    
+
     // Step 5: Generate "Why this course" explanations (Requirement 5.4)
     const coursesWithExplanations = limitedCourses.map(course => ({
       ...course,
@@ -180,7 +180,7 @@ export const getCoursesForMultipleSkillGaps = async (skillGaps) => {
   try {
     // Fetch all courses with embeddings once
     const allCourses = await fetchCoursesWithEmbeddings();
-    
+
     // Process each skill gap
     const results = {};
     for (const skillGap of skillGaps) {
@@ -188,7 +188,7 @@ export const getCoursesForMultipleSkillGaps = async (skillGaps) => {
         results[skillGap.skill] = await getCoursesForSkillGap(skillGap, allCourses);
       }
     }
-    
+
     return results;
   } catch (error) {
     console.error('Error getting courses for multiple skill gaps:', error);
