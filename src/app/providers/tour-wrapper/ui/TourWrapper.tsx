@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { useUser, useTourStore } from '@/stores';
+
 import { useLocation } from 'react-router-dom';
 import After10AssessmentResultTour from './components/After10AssessmentResultTour';
 import After12AssessmentResultTour from './components/After12AssessmentResultTour';
@@ -7,6 +7,8 @@ import GenericAssessmentResultTour from './components/GenericAssessmentResultTou
 import AssessmentTestTour from './components/AssessmentTestTour';
 import StudentDashboardTour from './components/StudentDashboardTour';
 
+import { useUser } from '@/shared/model/authStore';
+import { useTourStore } from '@/shared/model/tourStore';
 /**
  * TourWrapper Component - Optimized
  * 

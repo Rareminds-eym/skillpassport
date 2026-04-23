@@ -32,7 +32,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AdvancedFilters, OpportunityCard, OpportunityListItem, OpportunityPreview, RecommendedJobs, IndustrialVisitPreview } from '@/widgets/student-dashboard';
 import { Pagination } from '@/shared/ui';
-import { useUser } from '@/stores';
+
 import { useOpportunities } from '@/features/opportunities';
 import { useStudentProfile } from '@/features/student-profile';
 import { useStudentDataByEmail } from '@/entities/student';
@@ -49,6 +49,7 @@ import { useMessageNotifications } from '@/features/messaging';
 import { MessageService } from '@/features/messaging';
 import { studentPipelineService as StudentPipelineService } from '@/features/student-profile/api';
 
+import { useUser } from '@/shared/model/authStore';
 // Helper function to check if institution details are complete
 const checkInstitutionDetailsComplete = (studentData) => {
   if (!studentData) return false;

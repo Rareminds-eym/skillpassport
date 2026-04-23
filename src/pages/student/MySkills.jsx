@@ -14,7 +14,7 @@ import {
 import { useStudentProfile, useStudentActivity, useStudentMessages } from '@/features/student-profile';
 import { useStudentDataByEmail, useStudentMessageNotifications, useStudentUnreadCount } from '@/entities/student';
 import { useStudentRealtimeActivities } from '@/entities/student/model/useStudentRealtimeActivities';
-import { useUser, useTheme } from '@/stores';
+
 import { useAIJobMatching } from '@/features/opportunities';
 import { SuggestedNextSteps, RecentUpdatesCard } from '@/widgets/student-dashboard';
 import {
@@ -22,6 +22,8 @@ import {
 } from "@/shared/lib/test/mockData";
 import { showProfileUpdateToast, showProfileErrorToast, PROFILE_UPDATE_MESSAGES } from '@/features/student-profile';
 
+import { useUser } from '@/shared/model/authStore';
+import { useTheme } from '@/shared/model/themeStore';
 const MySkills = () => {
   const user = useUser();
   const { theme } = useTheme();

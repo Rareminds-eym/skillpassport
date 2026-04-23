@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Search, Eye, CheckCircle, Clock, XCircle, FileText } from "lucide-react";
 import { supabase } from '@/shared/api/supabaseClient';
-import { useUser } from "@/stores";
+
 import { FacultyDocumentViewerModal } from '@/features/college-admin';
 
+import { useUser } from '@/shared/model/authStore';
 interface Faculty {
   id: string;
   userId?: string;

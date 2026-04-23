@@ -29,7 +29,7 @@ import { FileText, Rocket, Sprout, Star, Wrench } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useUser, useUserRole } from "@/stores";
+
 import { useStudentDataByEmail } from '@/entities/student';
 import { supabase } from "@/shared/api/supabaseClient";
 import { generateBadges } from "@/features/digital-portfolio";
@@ -43,6 +43,7 @@ import { Badge } from '@/shared/ui/badge';
 import { Card, CardContent } from '@/shared/ui/card';
 import { FloatingDock } from "@/shared/ui/floating-dock";
 
+import { useUser, useUserRole } from '@/shared/model/authStore';
 // Helper to get level display with icon
 const getLevelDisplay = (level, label) => {
   const iconClass = "w-4 h-4 inline-block mr-1";

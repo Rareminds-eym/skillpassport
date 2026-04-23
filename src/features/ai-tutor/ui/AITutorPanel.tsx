@@ -19,9 +19,10 @@ import {
 import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useTutorChat } from '@/features/ai-tutor/model/useTutorChat';
-import { useUser } from '@/stores';
+
 import { Link } from 'react-router-dom';
 
+import { useUser } from '@/shared/model/authStore';
 interface LessonContext {
   lessonId?: string;
   lessonTitle?: string;

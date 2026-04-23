@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useStudentDataById } from '@/entities/student';
 import { useNavigate, useParams } from "react-router-dom";
-import { useUser } from "@/stores";
+
 import toast from 'react-hot-toast';
 import {
   generateResumePDF,
@@ -30,6 +30,7 @@ import {
 import { generateBadges, getBadgeProgress } from "@/features/digital-portfolio";
 import { capitalizeName } from '@/shared/lib/helpers';
 
+import { useUser } from '@/shared/model/authStore';
 function safeParse(jsonLike) {
   if (!jsonLike) return {};
   if (typeof jsonLike === "object") return jsonLike;

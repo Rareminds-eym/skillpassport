@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '@/stores';
+
 import { X, Loader2 } from 'lucide-react';
 
+import { useUser } from '@/shared/model/authStore';
 /**
  * Embedded Assessment Component
  * Integrates the RM_Assessment platform into the main application

@@ -6,7 +6,7 @@ import { LearningAnalyticsDashboard, ModernLearningCard, SelectCourseModal } fro
 import { TrainingEditModal } from '@/features/student-profile';
 import { Button, Card, CardContent } from '@/shared/ui';
 import { useAuth } from "@/features/auth";
-import { useUser } from "@/stores";
+
 import { useStudentProfile, useStudentMessages } from "@/features/student-profile";
 import { useStudentPortfolio } from "@/features/student-profile";
 import { useStudentDataByEmail } from '@/entities/student';
@@ -15,6 +15,7 @@ import { useStudentMessageNotifications } from '@/entities/student';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
+import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('MyLearning');
 
 const StatCardSkeleton = () => (

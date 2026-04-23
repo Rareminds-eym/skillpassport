@@ -28,7 +28,8 @@ import {
 import { TrophyIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useUserRole, useUser } from "@/stores";
+import { useUserRole, useUser } from '@/shared/model/authStore';
+
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");

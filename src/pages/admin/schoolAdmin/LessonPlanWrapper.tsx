@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import LessonPlan from "./LessonPlan";
 import { useLessonPlans, useSubjectsAndClasses } from '@/features/educator-copilot/model/useLessonPlans';
-import { useUser } from '@/stores';
+
 import { supabase } from '@/shared/api/supabaseClient';
 
+import { useUser } from '@/shared/model/authStore';
 /**
  * Wrapper component that connects the LessonPlan UI to the backend
  * This component handles data fetching and state management

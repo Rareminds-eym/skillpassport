@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GraduationCap, Briefcase, Award, Code, Trophy, MapPin, Calendar, Github, ExternalLink, ChevronRight, BookOpen } from 'lucide-react';
-import { usePortfolio } from '@/stores';
+
 import type { Student, AnimationType, DisplayPreferences } from '@/features/types/student';
 
+import { usePortfolio } from '@/features/digital-portfolio/model/portfolioStore';
 interface JourneyMapLayoutProps {
   student?: Student;
   primaryColor?: string;

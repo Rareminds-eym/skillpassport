@@ -10,9 +10,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
-import { useUser } from '@/stores';
+
 import { CONVERSATIONS_PER_PAGE, MAX_MESSAGES_PER_CONVERSATION } from '../constants';
 
+import { useUser } from '@/shared/model/authStore';
 export interface ConversationMessage {
   id: string;
   role: 'user' | 'assistant';

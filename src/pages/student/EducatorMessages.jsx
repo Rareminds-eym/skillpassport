@@ -19,12 +19,13 @@ import {
   GraduationCap
 } from 'lucide-react';
 import { useStudentProfile, useStudentMessages } from '@/features/student-profile';
-import { useGlobalPresence } from '@/stores';
+
 import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/features/messaging';
 import { useNotificationBroadcast } from '@/features/broadcast';
 import { DeleteConversationModal } from '@/features/messaging';
 
+import { useGlobalPresence } from '@/shared/model/globalPresenceStore';
 const EducatorMessages = () => {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();

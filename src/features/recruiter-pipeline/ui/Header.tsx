@@ -7,10 +7,11 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline'
 import { HeaderProps } from '@/shared/types/recruiter'
-import { useUser, useAuthActions } from '@/stores'
+
 import { useNotifications } from '@/features/notifications'
 import NotificationPanel from './NotificationPanel'
 
+import { useUser, useAuthActions } from '@/shared/model/authStore';
 const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
   const [showNotifications, setShowNotifications] = useState<boolean>(false)
   const [showProfileMenu, setShowProfileMenu] = useState<boolean>(false)

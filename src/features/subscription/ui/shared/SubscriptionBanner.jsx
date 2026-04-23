@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+
 import { 
   XMarkIcon, 
   ExclamationTriangleIcon, 
@@ -14,7 +15,7 @@ import {
   PauseCircleIcon,
   ExclamationCircleIcon,
 } from '@heroicons/react/24/outline';
-import { WARNING_TYPES } from '@/stores';
+
 
 /**
  * Get the base path for subscription routes based on current location

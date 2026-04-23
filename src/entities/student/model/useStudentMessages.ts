@@ -1,11 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useCallback, useState, useMemo } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
-import { useMessageStore } from '@/stores';
+
 import MessageService from '@/shared/api/messageService';
 import type { Message } from '@/shared/api/messageService';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
+import { useMessageStore } from '@/features/messaging/model/useMessageStore';
 /**
  * @deprecated This hook is deprecated and will be removed in a future version.
  * Please migrate to the new unified messaging hooks from @/features/messaging:

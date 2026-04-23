@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { useErrorNotification, useAuthActions } from '@/stores';
+import { useErrorNotification, useAuthActions } from '@/shared/model/authStore';
+
 
 /**
  * TokenRefreshErrorNotification Component

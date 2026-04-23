@@ -28,7 +28,8 @@ import {
 import type { ClassSwapRequest, CreateSwapRequestPayload, SlotInfo } from '@/shared/types/classSwap';
 import SwapRequestsDashboard from "./SwapRequestsDashboard";
 import { authSessionService } from '@/features/auth';
-import { useUser, useIsAuthenticated } from '@/stores';
+import { useUser, useIsAuthenticated } from '@/shared/model/authStore';
+
 import {
   getWeekDates,
   formatDate,

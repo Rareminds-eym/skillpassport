@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { useUser } from '@/stores';
+
 import { useStudentDataByEmail } from '@/entities/student';
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { useStudentProfile } from '@/features/student-profile';
@@ -30,6 +30,7 @@ import TabNavigation from './modals/TabNavigation';
 import AssignmentUploadModal from './modals/AssignmentUploadModal';
 import AssignmentDetailsModal from './modals/AssignmentDetailsModal';
 
+import { useUser } from '@/shared/model/authStore';
 // Skeleton Loaders
 
 import {

@@ -1,7 +1,8 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { useIsAuthenticated, useUserRole, useAuthLoading } from '@/stores';
+
 import Loader from '@/shared/ui/Loader';
 
+import { useIsAuthenticated, useUserRole, useAuthLoading } from '@/shared/model/authStore';
 // Map specific roles to their general category for route protection
 const getRoleCategory = (role) => {
   const roleMap = {

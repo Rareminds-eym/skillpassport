@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useUser } from "@/stores";
+import { useUser } from '@/shared/model/authStore';
 import { useStudentDataByEmail } from '@/entities/student';
 import { supabase } from "@/shared/api/supabaseClient";
 import { downloadCertificate, getCertificateProxyUrl } from "@/features/digital-portfolio";

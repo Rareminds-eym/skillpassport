@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Joyride, { CallBackProps, STATUS } from 'react-joyride';
-import { useTour } from '@/stores';
+
 import { TOUR_KEYS } from '@/app/providers/tour-wrapper/lib/constants';
 import { waitForElement } from '@/shared/lib/utils';
 import { supabase } from '@/shared/api/supabaseClient';
+import { useTour } from '@/shared/model/tourStore';
 import {
   AFTER12_TOUR_STEPS,
   AFTER12_TOUR_OPTIONS,

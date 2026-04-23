@@ -16,10 +16,11 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
-import { useUserEntitlements, useUser } from "@/stores";
 import addOnCatalogService from '../api/addOnCatalogService';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
+import { useUserEntitlements } from '@/features/subscription/model/subscriptionStore';
+import { useUser } from '@/shared/model/authStore';
 // Cache times
 const STALE_TIME = 5 * 60 * 1000; // 5 minutes
 const CACHE_TIME = 10 * 60 * 1000; // 10 minutes

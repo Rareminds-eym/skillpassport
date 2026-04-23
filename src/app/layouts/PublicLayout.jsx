@@ -2,8 +2,8 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Header, Footer } from '@/shared/ui';
 import PromotionalBanner from '@/shared/ui/marketing/PromotionalBanner';
 import AssessmentPromotionalBanner from '@/shared/ui/marketing/AssessmentPromotionalBanner';
-import { useAssessmentPromotional, useCurrentPromotional } from '@/stores';
-import { useIsAuthenticated, useUserRole, useUser, useSubscriptionAccess } from '@/stores';
+
+
 import { useAuth } from '@/features/auth';
 import { useSubscriptionQuery, isActiveOrPaused } from '@/features/subscription';
 
@@ -15,6 +15,9 @@ import { Header as RecruiterHeader } from '@/features/recruiter-pipeline';
 import { SubscriptionPurchaseHeader } from '@/features/subscription';
 import { useState } from 'react';
 
+import { useAssessmentPromotional, useCurrentPromotional } from '@/features/promotional/model/promotionalStore';
+import { useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
+import { useIsAuthenticated, useUserRole, useUser } from '@/shared/model/authStore';
 const PublicLayoutContent = () => {
   const location = useLocation();
   const isAuthenticated = useIsAuthenticated();

@@ -24,12 +24,13 @@ import toast from "react-hot-toast"
 import { ManageStudentsModal } from '@/features/educator'
 import { Pagination } from '@/shared/ui'
 import { useAuth } from "@/features/auth"
-import { useUser, useIsAuthenticated } from "@/stores"
+
 import { supabase } from '@/shared/api/supabaseClient'
 import { createClass, EducatorClass, updateClass } from "@/features/college-admin"
 import ProgramSectionsPage from "./ProgramSectionsPage"
 import { getLogger } from '@/shared/config/logging'
 
+import { useUser, useIsAuthenticated } from '@/shared/model/authStore';
 const logger = getLogger('EducatorClassesPage')
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {

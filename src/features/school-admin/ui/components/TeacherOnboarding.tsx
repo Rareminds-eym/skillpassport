@@ -1,7 +1,7 @@
 import { AlertCircle, CheckCircle, FileText, Shield, Upload, X } from "lucide-react";
 import React, { useState } from "react";
 import RoleDebugger from '@/features/debug/ui/RoleDebugger';
-import { useUser } from '@/stores';
+
 import { useUserRole } from "@/entities/user";
 import { supabase } from '@/shared/api/supabaseClient';
 import { storageService } from '@/shared/api';
@@ -9,6 +9,7 @@ import { createTeacher } from '@/features/educator-copilot';
 import { validateDocument } from "@/entities/user/lib/teacherValidation";
 import { authSessionService } from '@/features/auth';
 
+import { useUser } from '@/shared/model/authStore';
 interface SubjectExpertise {
   name: string;
   proficiency: "beginner" | "intermediate" | "advanced" | "expert";

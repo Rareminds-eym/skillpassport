@@ -15,13 +15,14 @@ import {
 } from "@heroicons/react/24/outline";
 import toast from 'react-hot-toast';
 import { supabase } from '@/shared/api/supabaseClient';
-import { useUser } from "@/stores";
+
 import { getLogger } from '@/shared/config/logging';
 import { useMentorAllocation } from '@/features/college-admin/model/useMentorAllocation';
 import { findAllocationId, updateMentorAllocation } from "@/features/college-admin";
 import { SearchBar } from '@/shared/ui';
 import { KPICard } from '@/features/analytics';
 import { Pagination } from '@/shared/ui';
+import { useUser } from '@/shared/model/authStore';
 import {
   StudentSelectionModal,
   MentorSelectionModal,

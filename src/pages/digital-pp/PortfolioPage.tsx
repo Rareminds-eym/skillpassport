@@ -9,9 +9,9 @@ import {
   ModernLayout,
   SplitScreenLayout
 } from '@/features/digital-portfolio';
-import { usePortfolio } from '@/stores';
 import { exportAsHTML, exportAsPDF } from '@/features/digital-portfolio';
 
+import { usePortfolio } from '@/features/digital-portfolio/model/portfolioStore';
 const PortfolioPage: React.FC = () => {
   const navigate = useNavigate();
   const { student, settings, isLoading, isManuallySet, viewerRole, loadStudentByEmail } = usePortfolio();

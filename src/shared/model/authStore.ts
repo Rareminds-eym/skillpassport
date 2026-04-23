@@ -487,3 +487,13 @@ export const useTokenRefreshErrorNotification = () => {
 
 // Export store for direct access
 export default useAuthStore;
+
+/**
+ * Initialize all stores
+ * Called once at app startup to initialize auth state
+ */
+export const initializeStores = async () => {
+  console.log('🔧 [initializeStores] Initializing all stores...');
+  await useAuthStore.getState().initialize();
+  console.log('🔧 [initializeStores] All stores initialized');
+};

@@ -2,7 +2,8 @@ import { Loader2 } from 'lucide-react';
 import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { OrganizationType, useOrganizationCheck } from '@/entities/organization/model/useOrganizationCheck';
-import { useUser } from '@/stores';
+import { useUser } from '@/shared/model/authStore';
+
 
 interface OrganizationGuardProps {
   organizationType: OrganizationType;

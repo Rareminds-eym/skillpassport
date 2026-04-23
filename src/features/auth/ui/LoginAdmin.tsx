@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GraduationCap, Loader2 } from 'lucide-react';
-import { useAuthActions } from '@/stores';
+
 import { loginAdmin } from '@/features/auth/api';
 import toast from 'react-hot-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
@@ -9,6 +9,7 @@ import { Label } from '@/shared/ui/label';
 import { Input } from '@/shared/ui/input';
 import Button from '@/shared/ui/Button';
 
+import { useAuthActions } from '@/shared/model/authStore';
 const LoginAdmin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

@@ -14,7 +14,8 @@
  */
 
 import { Link, useLocation } from 'react-router-dom';
-import { useSubscriptionAccess } from '@/stores';
+import { useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
+
 
 // Plan hierarchy for access-control comparisons (lowest → highest).
 // Must match plan_code values in the Supabase subscription_plans table.

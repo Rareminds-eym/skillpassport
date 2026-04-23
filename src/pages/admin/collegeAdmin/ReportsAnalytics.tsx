@@ -1,4 +1,4 @@
-import { useUser } from '@/stores';
+
 import { reportsService } from "@/features/college-admin";
 import { ApexOptions } from "apexcharts";
 import jsPDF from 'jspdf';
@@ -28,6 +28,7 @@ import ReactApexChart from "react-apexcharts";
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 
+import { useUser } from '@/shared/model/authStore';
 interface FilterState {
   dateRange: string;
   department: string;

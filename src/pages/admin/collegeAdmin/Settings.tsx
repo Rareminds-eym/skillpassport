@@ -31,9 +31,10 @@ import {
   type ModuleAccess,
   type ScopeRule
 } from '@/shared/api';
-import { useUser, useIsAuthenticated, useUserRole } from "@/stores";
+
 import toast from 'react-hot-toast';
 
+import { useUser, useIsAuthenticated, useUserRole } from '@/shared/model/authStore';
 /* ==============================
    TYPES & INTERFACES
    ============================== */

@@ -16,11 +16,12 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { SubscriptionRouteGuard } from '@/features/subscription';
 import { useSubscription } from '@/features/subscription/model';
-import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/stores';
+
 import { supabase } from '@/shared/api/supabaseClient';
 import { initiateRazorpayPayment } from '@/features/subscription/api';
 import { authSessionService } from '@/features/auth';
 
+import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/shared/model/authStore';
 /**
  * Get the subscription manage path based on user role
  * Returns null if role is unknown to prevent wrong redirects

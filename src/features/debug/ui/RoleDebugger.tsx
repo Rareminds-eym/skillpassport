@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from "@/shared/api/supabaseClient";
 // Note: This debug component imports from higher layers - consider moving to features/debug
 import { useUserRole } from '@/entities/user';
-import { useUser, useUserRole as useUserRoleFromStore } from '@/stores';
+import { useUser, useUserRole as useUserRoleFromStore } from '@/shared/model/authStore';
+
 
 const RoleDebugger: React.FC = () => {
   const authUser = useUser();

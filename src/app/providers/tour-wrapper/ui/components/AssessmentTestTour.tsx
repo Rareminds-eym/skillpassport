@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Joyride, { CallBackProps, STATUS } from 'react-joyride';
-import { useTour } from '@/stores';
+
 import { TOUR_KEYS } from '@/app/providers/tour-wrapper/lib/constants';
 import { waitForElement } from '@/shared/lib/utils';
+import { useTour } from '@/shared/model/tourStore';
 import {
   ASSESSMENT_TEST_TOUR_STEPS,
   ASSESSMENT_TEST_TOUR_OPTIONS,

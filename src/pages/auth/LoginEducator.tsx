@@ -12,11 +12,12 @@ import {
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import educatorIllustration from "../../../public/login/yyu.png";
-import { useAuthActions } from "@/stores";
+
 import { supabase } from '@/shared/api/supabaseClient';
 import FeatureCard from "@/features/auth/ui/FeatureCard";
 import { authSessionService } from '@/features/auth';
 
+import { useAuthActions } from '@/shared/model/authStore';
 export default function LoginEducator() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

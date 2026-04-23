@@ -2,12 +2,13 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Award, Book, Briefcase, Camera, CheckCircle, ChevronLeft, ChevronRight, Code, Coffee, Dumbbell, Gamepad2, Globe, Mountain, Music, Palette, Plane, Shield, Star, Target, Users, XCircle } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePortfolio } from '@/stores';
-import { useUserRole } from '@/stores';
+
 import { useAuth } from '@/features/auth';
 import { ProfileCompletionModal, ProfileCompletionErrorBoundary } from '@/features/digital-portfolio';
 import { useProfileCompletionPrompt } from '@/features/student-profile';
 
+import { usePortfolio } from '@/features/digital-portfolio/model/portfolioStore';
+import { useUserRole } from '@/shared/model/authStore';
 const PassportPage: React.FC = () => {
   const navigate = useNavigate();
   const { student, isLoading, loadStudentByEmail } = usePortfolio();

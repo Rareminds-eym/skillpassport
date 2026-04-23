@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
-import { GlobalPresenceProvider } from '@/stores';
+
 import { Header, Sidebar, MobileTabBar, CandidateProfileDrawer } from '@/features/recruiter-pipeline';
-import { useUser } from '@/stores';
+
 import { FloatingRecruiterAIButton } from '@/features/recruiter-pipeline';
 import { useResponsive } from '@/shared/lib/hooks';
 import { Candidate } from '@/entities/recruiter';
 import { useUnreadMessagesCount } from '@/features/messaging';
 
+import { useUser } from '@/shared/model/authStore';
 const RecruiterLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();

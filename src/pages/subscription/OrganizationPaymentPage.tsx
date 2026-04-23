@@ -22,10 +22,11 @@ import {
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useUser } from '@/stores';
+
 import { OrganizationPurchaseData } from '@/features/subscription';
 import { initiateOrganizationPayment } from '@/entities/organization/api/organizationPaymentService';
 
+import { useUser } from '@/shared/model/authStore';
 interface OrganizationConfig {
   organizationType: 'school' | 'college' | 'university';
   seatCount: number;

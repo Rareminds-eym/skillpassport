@@ -25,10 +25,11 @@ import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
-import { useUser, useIsAuthenticated } from '@/stores';
+
 
 const logger = getLogger('EducatorAssessments');
 import { authSessionService } from '@/features/auth';
+import { useUser, useIsAuthenticated } from '@/shared/model/authStore';
 import {
     assignTaskToStudents,
     createCollegeAssignment,

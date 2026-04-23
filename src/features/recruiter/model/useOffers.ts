@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from '@/shared/api/supabaseClient';
-import { useUser } from "@/stores";
+
 import { NotificationType } from "./useNotifications";
 import { createNotification } from '@/features/notifications/api/notificationService';
 
+import { useUser } from '@/shared/model/authStore';
 // -------------------- OFFER TYPES --------------------
 export interface Offer {
   id: string;

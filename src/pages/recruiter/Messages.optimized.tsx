@@ -21,11 +21,12 @@ import { queryKeys } from '@/shared/lib/queryKeys';
 import { MessageService, Conversation } from '@/features/messaging';
 import { useMessages } from '@/features/messaging';
 import { formatDistanceToNow } from 'date-fns';
-import { useUser } from '@/stores';
-import { useGlobalPresence } from '@/stores';
+
 import { useTypingIndicator } from '@/features/messaging';
 import { useNotificationBroadcast } from '@/features/broadcast';
 
+import { useUser } from '@/shared/model/authStore';
+import { useGlobalPresence } from '@/shared/model/globalPresenceStore';
 // Constants
 const AVATAR_BG_COLOR = '3B82F6';
 const MESSAGE_PREVIEW_LENGTH = 50;

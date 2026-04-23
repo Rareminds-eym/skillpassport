@@ -15,11 +15,12 @@
 import { ArrowRight, ExternalLink, Lock, Sparkles, X, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useSubscription } from '@/stores';
+
 import { clearFeatureAccessCache } from '@/features/subscription';
 import addOnPaymentService from '@/features/subscription/api/addOnPaymentService';
 import { loadRazorpayScript } from '@/features/subscription/api';
 
+import { useSubscription } from '@/features/subscription/model/subscriptionStore';
 /**
  * Get the base path for subscription routes based on current location
  */

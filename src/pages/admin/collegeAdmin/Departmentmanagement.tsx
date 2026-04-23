@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useUser } from '@/stores';
+
 import { departmentService, DepartmentWithStats, Faculty } from '@/features/college-admin';
 import {
     AcademicCapIcon,
@@ -41,6 +41,7 @@ import {
 import { ConfirmationModal } from '@/shared/ui';
 
 import { queryKeys } from '@/shared/lib/queryKeys';
+import { useUser } from '@/shared/model/authStore';
 // Types
 interface Course {
   id: number;

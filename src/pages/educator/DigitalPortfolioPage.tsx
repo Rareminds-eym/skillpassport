@@ -18,11 +18,13 @@ import {
 } from '@heroicons/react/24/outline';
 import { useStudents } from '@/entities/student';
 import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
-import { useSearch, useUser, useIsAuthenticated } from '@/stores';
+
 import { SearchBar } from '@/shared/ui';
 import { Pagination } from '@/shared/ui';
 import { usePermission } from '@/entities/user/model/usePermissions';
 
+import { useUser, useIsAuthenticated } from '@/shared/model/authStore';
+import { useSearch } from '@/shared/model/searchStore';
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 

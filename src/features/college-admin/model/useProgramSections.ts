@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useUser } from "@/stores"
+
+import { useUser } from '@/shared/model/authStore';
 import { 
   getCollegeLecturerProgramSections, 
   getCollegeDepartments,

@@ -9,7 +9,7 @@
 
 import React, { createContext, useContext, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '@/stores';
+
 import { useAssessment } from '@/features/assessment';
 import { useAdaptiveAptitude } from '@/features/assessment/model/useAdaptiveAptitude';
 import { useAssessmentFlow, type FlowScreen } from '../model/useAssessmentFlow';
@@ -19,6 +19,7 @@ import { getSectionsForGrade } from '../lib/config/sections';
 import type { GradeLevel } from '../model/types';
 import { getAdaptiveGradeLevel } from '../lib/gradeUtils';
 
+import { useUser } from '@/shared/model/authStore';
 // Types
 interface Section {
   id: string;

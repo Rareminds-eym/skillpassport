@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Target, FileText, Loader2, AlertCircle, X, Upload, Paperclip } from 'lucide-react';
-import { useUser } from '@/stores';
+
 import { useStudentDataByEmail } from '@/entities/student/model/useStudentDataByEmail';
 
 // Import shared components
@@ -33,6 +33,7 @@ import {
 import { Assignment } from '@/features/myclass';
 import { supabase } from '@/shared/api/supabaseClient';
 
+import { useUser } from '@/shared/model/authStore';
 type CollegeTabType = 'overview' | 'classmates' | 'assignments';
 
 /**

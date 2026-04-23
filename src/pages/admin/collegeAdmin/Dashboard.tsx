@@ -21,9 +21,10 @@ import {
 import { KPICard } from '@/features/analytics';
 import { useNavigate } from "react-router-dom";
 import { supabase } from '@/shared/api/supabaseClient';
-import { useUser } from "@/stores";
+
 import { getLogger } from '@/shared/config/logging';
 
+import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('college-admin-dashboard');
 
 interface DashboardStats {

@@ -7,7 +7,7 @@ import {
   TrashIcon 
 } from '@heroicons/react/24/outline';
 import { uploadInstructionFile, deleteInstructionFile } from '@/features/college-admin';
-import { useUser } from '@/stores';
+
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import ConfirmationModal from '@/shared/ui/ConfirmationModal';
@@ -15,6 +15,7 @@ import NotificationModal from '@/shared/ui/NotificationModal';
 import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/utils/fileValidation';
 import { getFileSizeLimit } from '@/shared/config/fileSizeLimits';
 
+import { useUser } from '@/shared/model/authStore';
 interface FileUploadProps {
   assignmentId?: string; // If provided, files will be uploaded immediately
   existingFiles?: any[]; // Existing files for edit mode

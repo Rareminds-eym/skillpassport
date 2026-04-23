@@ -22,12 +22,13 @@ import {
     UserIcon
 } from '@heroicons/react/24/outline';
 import React, { useState, useRef, useEffect } from 'react';
-import { useUser, useUserRole } from '@/stores';
+
 import { supabase } from '@/shared/api/supabaseClient';
 import { validateFile, uploadFile, getDocumentUrl } from '@/shared/api';
 import { storageService } from '@/shared/api';
 // @ts-ignore - JSX file without declaration
 import { SubscriptionSettingsSection } from '@/features/subscription';
+import { useUser, useUserRole } from '@/shared/model/authStore';
 interface SettingsState {
   fullName: string;
   email: string;

@@ -1,5 +1,5 @@
 /**
  * Hook for assessment promotional events
- * Re-exports from stores for FSD compliance
+ * Re-exports from promotional feature for FSD compliance
  */
-export { useAssessmentPromotional } from '@/stores';
+export { useAssessmentPromotional } from '@/features/promotional/model/promotionalStore';

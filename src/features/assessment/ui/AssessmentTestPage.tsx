@@ -20,7 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 
 // Auth & Database
-import { useUser, useTour } from '@/stores';
+
 // @ts-ignore - JS file without type declarations
 import { useAssessment } from '@/features/assessment';
 import { useAdaptiveAptitude } from '@/features/assessment/model/useAdaptiveAptitude';
@@ -89,6 +89,8 @@ import {
 } from '@/features/assessment/model/questions';
 import { supabase } from '@/shared/api';
 
+import { useUser } from '@/shared/model/authStore';
+import { useTour } from '@/shared/model/tourStore';
 /**
  * Get icon image path for a section based on section ID
  */

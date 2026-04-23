@@ -8,11 +8,12 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useUser } from '@/stores';
+
 import { supabase } from '@/shared/api/supabaseClient';
 import { getActiveSubscription } from '../api/subscriptionService';
 import { paymentsApiService } from '@/features/subscription';
 
+import { useUser } from '@/shared/model/authStore';
 /**
  * Format subscription data for UI
  */

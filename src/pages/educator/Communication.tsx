@@ -25,7 +25,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { MessageService, Conversation, NewStudentConversationModalEducator } from '@/features/messaging';
 import { useEducatorMessages, useConversationActions } from '@/features/messaging';
 import { formatDistanceToNow } from 'date-fns';
-import { useGlobalPresence, useUser } from '@/stores';
+
 import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/features/messaging';
 import { useNotificationBroadcast } from '@/features/broadcast';
@@ -36,6 +36,8 @@ import { NewEducatorAdminConversationModal } from '@/features/messaging';
 import { getLogger } from '@/shared/config/logging';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
+import { useUser } from '@/shared/model/authStore';
+import { useGlobalPresence } from '@/shared/model/globalPresenceStore';
 const logger = getLogger('educator-communication');
 
 const Communication = () => {

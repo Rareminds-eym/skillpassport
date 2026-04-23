@@ -13,7 +13,7 @@ import {
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
-import { useUser } from "@/stores";
+
 import { useStudentSettings } from '@/entities/student';
 import { useStudentDataByEmail } from '@/entities/student';
 import { useStudentCertificates } from '@/entities/student';
@@ -45,6 +45,7 @@ import SecurityTab from "./SecurityTab";
 import NotificationsTab from "./NotificationsTab";
 import PrivacyTab from "./PrivacyTab";
 
+import { useUser } from '@/shared/model/authStore';
 const MainSettings = () => {
   const user = useUser();
   const location = useLocation();

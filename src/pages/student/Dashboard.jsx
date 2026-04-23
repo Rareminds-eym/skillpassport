@@ -72,7 +72,7 @@ import {
 } from "@/shared/lib/test/mockData";
 import { useAIRecommendations } from '@/features/ai-tutor';
 import { useAssessmentRecommendations } from '@/features/assessment/model/useAssessmentRecommendations';
-import { useUserRole } from "@/stores";
+
 import { useOpportunities } from '@/features/opportunities';
 import { useStudentProfile, useStudentPortfolio, useStudentActivity, useStudentMessages } from "@/features/student-profile";
 import { useStudentDataByEmail } from '@/entities/student';
@@ -87,6 +87,7 @@ import { useStudentAchievements } from '@/entities/student';
 import { useStudentRealtimeActivities } from '@/entities/student/model/useStudentRealtimeActivities';
 import { supabase } from '@/shared/api/supabaseClient';
 import { isSchoolStudent, isCollegeStudent, isLearner } from '@/entities/student/lib/studentType';
+import { useUserRole } from '@/shared/model/authStore';
 // Debug utilities removed for production cleanliness
 
 // Import Tour Components - Now handled globally

@@ -4,12 +4,14 @@ import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AddOnMarketplace, OrganizationPurchasePanel } from '@/features/subscription/ui';
 import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
-import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/stores';
-import { useSubscriptionAccess } from '@/stores';
+
+
 
 import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parseStudentType } from "@/shared/lib/getEntityContent";
 import { calculateDaysRemaining, isActiveOrPaused } from '@/features/subscription';
 
+import { useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
+import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/shared/model/authStore';
 /**
  * Get the subscription manage path based on user role
  */

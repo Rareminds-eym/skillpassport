@@ -17,7 +17,7 @@ try {
 }
 
 // Initialize Zustand stores
-import { initializeStores } from './stores';
+import { initializeStores } from '@/shared/model/authStore';
 
 // Initialize stores before rendering
 initializeStores().then(() => {

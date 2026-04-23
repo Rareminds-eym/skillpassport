@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useUser } from '@/stores';
+
 import { prefetchSubscriptionData } from '@/features/subscription/model';
 import { queryLogger } from '@/shared/lib/debug/queryLogger';
 
+import { useUser } from '@/shared/model/authStore';
 /**
  * Subscription Prefetch Component
  * Automatically prefetches subscription data when user is authenticated

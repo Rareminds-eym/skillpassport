@@ -6,7 +6,7 @@ import {
     Users
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { useUser } from "@/stores";
+
 import { useUserRole } from "@/entities/user";
 import { supabase } from '@/shared/api/supabaseClient';
 import { getTeacherStatistics } from '@/entities/teacher';
@@ -16,6 +16,7 @@ import TeacherOnboarding from './TeacherOnboarding';
 import TeacherPerformanceAnalytics from './TeacherPerformanceAnalytics';
 import TimetableBuilderEnhanced from './TimetableBuilderEnhanced';
 
+import { useUser } from '@/shared/model/authStore';
 const TeacherManagementDashboard: React.FC = () => {
   const { role, canAddTeacher } = useUserRole(user, user?.role);
   const user = useUser();

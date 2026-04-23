@@ -702,3 +702,6 @@ export const useSubscription = () => {
     ...purchase,
   };
 };
+
+// Alias for backward compatibility (was previously a context hook)
+export const useSubscriptionContext = useSubscription;

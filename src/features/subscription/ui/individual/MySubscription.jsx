@@ -25,13 +25,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { SubscriptionDashboard } from '@/features/subscription';
 import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
-import { useUser, useUserRole, useAuthLoading } from '@/stores';
+
 import { supabase } from '@/shared/api/supabaseClient';
 import { getUserSubscriptions } from '@/features/subscription/api';
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '@/features/subscription';
 import { calculateDaysRemaining, calculateProgressPercentage, formatDate as formatDateUtil, getSubscriptionStatusChecks } from '@/features/subscription/lib';
 import { useUsageStatistics } from '@/features/analytics/model/useUsageStatistics';
 
+import { useUser, useUserRole, useAuthLoading } from '@/shared/model/authStore';
 /**
  * Get the settings path based on current URL path (more reliable than role)
  */

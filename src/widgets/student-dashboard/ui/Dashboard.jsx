@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '@/stores';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Badge } from '@/shared/ui/badge';
@@ -42,6 +42,7 @@ import {
 } from '@/features/student-profile';
 import { useStudentDataByEmail, useStudentCertificates } from '@/entities/student';
 import { useStudentRealtimeActivities } from '@/entities/student/model/useStudentRealtimeActivities';
+import { useUser } from '@/shared/model/authStore';
 console.log('🔍 [Dashboard] useStudentDataByEmail imported:', useStudentDataByEmail);
 console.log('🔍 [Dashboard] typeof useStudentDataByEmail:', typeof useStudentDataByEmail);
 

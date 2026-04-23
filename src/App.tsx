@@ -6,8 +6,8 @@ import { TokenRefreshErrorNotification } from './app/providers/token-refresh-not
 import AppRoutes from './app/routes/AppRoutes';
 
 // Zustand stores - state management migrated from Context
-import { initializeStores, useUser } from './stores';
-import { useSubscriptionStore } from '@/stores';
+import { initializeStores, useUser } from '@/shared/model/authStore';
+import { useSubscriptionStore } from '@/features/subscription/model/subscriptionStore';
 
 /**
  * SubscriptionInitializer

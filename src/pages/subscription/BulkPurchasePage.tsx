@@ -10,11 +10,12 @@ import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import BulkPurchaseWizard from '@/features/subscription/ui/organization/BulkPurchaseWizard';
 import type { PurchaseData } from '@/features/subscription/ui/organization/BulkPurchaseWizard';
-import { useUser, useIsAuthenticated } from '@/stores';
+
 import { supabase } from '@/shared/api/supabaseClient';
 import { organizationMemberService } from '@/entities/organization';
 import { useSubscriptionPlansData } from '@/features/subscription/model';
 
+import { useUser, useIsAuthenticated } from '@/shared/model/authStore';
 function BulkPurchasePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();

@@ -25,8 +25,8 @@ import MessageService, { Conversation } from '@/features/messaging';
 import { supabase } from '@/shared/api/supabaseClient';
 import { useEducatorAdminMessages } from '@/features/educator';
 import { formatDistanceToNow } from 'date-fns';
-import { useUser } from '@/stores';
-import { useGlobalPresence } from '@/stores';
+
+
 import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/shared/lib/hooks';
 import { useNotificationBroadcast } from '@/features/broadcast';
@@ -35,6 +35,8 @@ import { getLogger } from '@/shared/config/logging';
 import { authSessionService } from '@/features/auth';
 
 import { queryKeys } from '@/shared/lib/queryKeys';
+import { useUser } from '@/shared/model/authStore';
+import { useGlobalPresence } from '@/shared/model/globalPresenceStore';
 const logger = getLogger('school-admin-educator-communication');
 
 const EducatorCommunication = () => {

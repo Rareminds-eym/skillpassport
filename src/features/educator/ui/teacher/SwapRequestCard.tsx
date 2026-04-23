@@ -13,9 +13,10 @@ import {
   User
 } from 'lucide-react';
 import { usePermission } from '@/entities/user/model/usePermissions';
-import { useUser } from '@/stores';
+
 import type { ClassSwapRequestWithDetails } from '@/shared/types/classSwap';
 
+import { useUser } from '@/shared/model/authStore';
 interface SwapRequestCardProps {
   request: ClassSwapRequestWithDetails;
   viewMode: 'sent' | 'received' | 'history';

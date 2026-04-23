@@ -1,11 +1,12 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
-import { useUser } from '@/stores';
+
 import { getActiveSubscription } from '@/features/subscription/api';
 import { queryLogger } from '@/shared/lib/debug/queryLogger';
 import { isActiveOrPaused } from '@/features/subscription/lib';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
+import { useUser } from '@/shared/model/authStore';
 /**
  * React Query configuration for subscription
  */

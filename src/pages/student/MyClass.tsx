@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/features/auth';
-import { useUser } from '@/stores';
+
 import { useStudentProfile } from '@/features/student-profile/model/useStudentProfile';
 import { useStudentDataByEmail } from '@/entities/student';
 
@@ -17,6 +17,7 @@ import { SchoolMyClass } from '@/features/myclass';
 // Import College Components  
 import { CollegeMyClass } from '@/features/myclass';
 
+import { useUser } from '@/shared/model/authStore';
 /**
  * MyClass - Smart Router Component
  * 

@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { Outlet, useParams, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
 import { useStudentProfile } from '@/features/student-profile';
-import { useUser } from '@/stores';
+
 import { Header, ProfileHeroEdit } from '@/widgets/student-dashboard';
 import { FloatingAIButton } from '@/features/career-assistant';
+import { useUser } from '@/shared/model/authStore';
 import {
   EducationEditModal,
   TrainingEditModal,

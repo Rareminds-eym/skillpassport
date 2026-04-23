@@ -12,9 +12,10 @@ import {
     School
 } from 'lucide-react';
 import React, { useState } from 'react';
-import { useUser } from '@/stores';
+
 import { supabase } from '@/shared/api/supabaseClient';
 
+import { useUser } from '@/shared/model/authStore';
 interface OrganizationFormData {
   name: string;
   address: string;

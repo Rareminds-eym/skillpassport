@@ -30,9 +30,8 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useSubscriptionContext } from '@/stores';
 import { entitlementService } from '@/features/subscription';
-
+import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
 /**
  * Get the base path for subscription routes based on current location
  */
