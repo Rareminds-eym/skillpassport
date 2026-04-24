@@ -15,7 +15,7 @@ import {
   Clock
 } from 'lucide-react';
 import { useStudentDataByEmail } from '@/entities/student';
-import { Badge } from '@/shared/ui/badge';
+import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/ButtonNew';
 import { capitalizeName } from '@/shared/lib/helpers';
 

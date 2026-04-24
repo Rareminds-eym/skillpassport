@@ -13,7 +13,7 @@ import {
   Briefcase
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { Badge } from '@/shared/ui/badge';
+import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/ButtonNew';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/ui/DialogNew';
 import { Input } from '@/shared/ui/Input';

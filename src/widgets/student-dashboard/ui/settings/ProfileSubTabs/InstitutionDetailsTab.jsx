@@ -1,6 +1,6 @@
 import React from "react";
 import { Briefcase, Save } from "lucide-react";
-import { Badge } from '@/shared/ui/badge';
+import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/ButtonNew';
 
 const InstitutionDetailsTab = ({

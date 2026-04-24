@@ -11,7 +11,7 @@ import ReactApexChart from 'react-apexcharts';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/shared/api/supabaseClient';
 import TopSkillsInDemand from './TopSkillsInDemand';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('AnalyticsView');

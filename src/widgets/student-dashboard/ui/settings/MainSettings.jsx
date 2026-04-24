@@ -10,9 +10,9 @@ import {
   Shield,
   User
 } from "lucide-react";
-import { Badge } from '@/shared/ui/badge';
+import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/ButtonNew';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 
 import { useStudentSettings } from '@/entities/student';
 import { useStudentDataByEmail } from '@/entities/student';

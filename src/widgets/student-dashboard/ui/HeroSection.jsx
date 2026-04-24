@@ -1,7 +1,7 @@
 import React from 'react';
 import { GraduationCap, Building2, CreditCard, Award, CheckCircle, Clock } from 'lucide-react';
-import { Card, CardContent } from '@/shared/ui/card';
-import { Badge } from '@/shared/ui/badge';
+import { Card, CardContent } from '@/shared/ui/Card';
+import { Badge } from '@/shared/ui/Badge';
 import { Progress } from '@/shared/ui/progress';
 import { studentData } from '../model/mockData';
 

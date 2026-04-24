@@ -12,7 +12,7 @@ import {
   GraduationCap,
   Trophy,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 import { useNavigate } from "react-router-dom";
 
 // Helper function to get icon based on type

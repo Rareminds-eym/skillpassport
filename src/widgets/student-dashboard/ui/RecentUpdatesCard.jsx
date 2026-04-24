@@ -1,5 +1,5 @@
 import React from "react";
-import { CardHeader, CardContent, CardTitle } from '@/shared/ui/card';
+import { CardHeader, CardContent, CardTitle } from '@/shared/ui/Card';
 import { Button } from '@/shared/ui/ButtonNew';
 import { BellIcon } from "@heroicons/react/24/outline";
 

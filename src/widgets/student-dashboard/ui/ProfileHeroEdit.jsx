@@ -39,8 +39,8 @@ import {
 } from '@/shared/lib/employabilityCalculator';
 import { capitalizeName } from '@/shared/lib/helpers';
 import EmployabilityScoreCard from "./EmployabilityScoreCard";
-import { Badge } from '@/shared/ui/badge';
-import { Card, CardContent } from '@/shared/ui/card';
+import { Badge } from '@/shared/ui/Badge';
+import { Card, CardContent } from '@/shared/ui/Card';
 import { FloatingDock } from "@/shared/ui/FloatingDock";
 
 import { useUser, useUserRole } from '@/shared/model/authStore';

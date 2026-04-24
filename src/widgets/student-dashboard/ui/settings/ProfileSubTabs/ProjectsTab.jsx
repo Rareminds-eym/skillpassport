@@ -1,7 +1,7 @@
 import React from "react";
 import { FolderGit2, Plus, Edit, Calendar, ExternalLink, Github, Globe, Code, CheckCircle, Clock } from "lucide-react";
 import { Button } from '@/shared/ui/ButtonNew';
-import { Badge } from '@/shared/ui/badge';
+import { Badge } from '@/shared/ui/Badge';
 
 const ProjectsTab = ({ 
   projectsData, 

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { User, FileText, Briefcase, Shield, Globe, Upload, Save, CheckCircle, Award, FolderGit2 } from "lucide-react";
 import { Button } from '@/shared/ui/ButtonNew';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 import { isLearner } from '@/entities/student/lib/studentType';
 
 // Import sub-components

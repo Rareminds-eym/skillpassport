@@ -1,7 +1,7 @@
 import React from "react";
 import { Briefcase, Plus, Edit, Calendar, Building2, Clock, CheckCircle } from "lucide-react";
 import { Button } from '@/shared/ui/ButtonNew';
-import { Badge } from '@/shared/ui/badge';
+import { Badge } from '@/shared/ui/Badge';
 
 const ExperienceTab = ({ 
   experienceData, 
