@@ -230,8 +230,7 @@ export interface UnifiedSignupRequest {
   lastName: string;
   role: 'school_admin' | 'school_educator' | 'school_student' | 
         'college_admin' | 'college_educator' | 'college_student' |
-        'university_admin' | 'university_educator' | 'university_student' |
-        'recruiter_admin' | 'recruiter';
+        'university_admin' | 'company_admin' | 'recruiter';
   phone?: string;
   dateOfBirth?: string;
   country?: string;

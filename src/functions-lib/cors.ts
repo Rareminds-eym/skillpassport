@@ -10,13 +10,14 @@
  * Add your production and development domains here
  */
 const ALLOWED_ORIGINS = [
-  // Development origins - always include for Workers compatibility
-  'http://localhost:5173',
-  'http://localhost:3000', 
-  'http://localhost:8788',
-  // Production domains from environment variables
-  'https://skillpassport.rareminds.in',
-  'https://app.skillpassport.rareminds.in',
+  'http://localhost:5173', // Vite dev server
+  'http://localhost:3000', // Alternative dev port
+  'http://localhost:8788', // Pages dev server
+  'http://127.0.0.1:8788', // Pages dev server (IP variant)
+  'http://127.0.0.1:5173', // Vite dev server (IP variant)
+  // Add production domains:
+  // 'https://yourdomain.com',
+  // 'https://app.yourdomain.com',
 ];
 
 /**

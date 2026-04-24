@@ -61,17 +61,22 @@ export function calculateAge(dateOfBirth: string): number | null {
 
 /**
  * Check if email exists in Supabase Auth
+ * Uses getUserByEmail (admin) which is a direct lookup, not a full list scan
  */
 export async function checkEmailExists(supabase: any, email: string): Promise<boolean> {
   try {
-    const { data, error } = await supabase.auth.admin.listUsers();
-    
+    const { data, error } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email.toLowerCase())
+      .maybeSingle();
+
     if (error) {
-      console.error('Error listing users:', error);
+      console.error('Error checking email:', error);
       return false;
     }
-    
-    return data.users.some((user: any) => user.email === email.toLowerCase());
+
+    return !!data;
   } catch (error) {
     console.error('Check email exists error:', error);
     return false;

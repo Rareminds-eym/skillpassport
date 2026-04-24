@@ -61,22 +61,6 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
       );
     }
 
-    // Pre-check: Verify email doesn't exist in users table
-    const { data: existingUser } = await supabaseAdmin
-      .from('users')
-      .select('id')
-      .eq('email', email)
-      .maybeSingle();
-
-    if (existingUser) {
-      return jsonResponse(
-        {
-          error: 'This email is already registered. Please login instead.',
-        },
-        400
-      );
-    }
-
     // Pre-check: Verify phone doesn't exist in users table (if provided)
     if (body.phone) {
       const { data: existingPhone } = await supabaseAdmin
@@ -114,6 +98,7 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
       return jsonResponse(
         {
           error: authError?.message || 'Failed to create account',
+          step: 'auth_create',
         },
         500
       );
@@ -148,14 +133,18 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
       });
 
       if (userError) {
-        throw new Error(`Failed to create user record: ${userError.message}`);
+        throw new Error(`[users_insert] ${userError.message} (code: ${userError.code})`);
       }
 
       // 3. Create role-specific record
       await createRoleSpecificRecord(supabaseAdmin, userId, email, fullName, firstName, lastName, body);
 
-      // 4. Send welcome email
-      await sendWelcomeEmail(env, email, fullName, body.password, body.role, '');
+      // 4. Send welcome email (non-fatal)
+      try {
+        await sendWelcomeEmail(env, email, fullName, body.password, body.role, '');
+      } catch (emailErr) {
+        console.error('Welcome email failed (non-fatal):', emailErr);
+      }
 
       return jsonResponse({
         success: true,
@@ -200,9 +189,8 @@ async function createRoleSpecificRecord(
 
   switch (role) {
     case 'school_student':
-    case 'college_student':
-    case 'learner': {
-      const studentType = role === 'school_student' ? 'school' : role === 'college_student' ? 'college' : 'learner';
+    case 'college_student': {
+      const studentType = role === 'school_student' ? 'school' : 'college';
       const { error } = await supabaseAdmin.from('students').insert({
         user_id: userId,
         name: fullName,
@@ -210,7 +198,7 @@ async function createRoleSpecificRecord(
         contact_number: phone,
         date_of_birth: dateOfBirth || null,
         student_type: studentType,
-        approval_status: role === 'learner' ? 'approved' : 'pending', // Auto-approve learners
+        approval_status: 'pending',
       });
       if (error) {
         throw new Error(`Failed to create student record: ${error.message}`);
@@ -247,6 +235,7 @@ async function createRoleSpecificRecord(
     case 'school_admin':
     case 'college_admin':
     case 'university_admin':
+    case 'company_admin':
       // No additional record needed - organization will be created via OrganizationSetup
       break;
 
