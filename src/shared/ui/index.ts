@@ -1,7 +1,7 @@
 export { Badge, badgeVariants } from './Badge';
 export { BoltStyleChat } from './BoltStyleChat';
 export { Button, buttonVariants } from './ButtonNew';
-export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './card';
+export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './Card';
 export { CareerPathConnector, CareerPathEffect } from './CareerPathEffect';
 export { default as ConfirmationModal } from './ConfirmationModal';
 export { FeatureCard } from './FeatureCard';
