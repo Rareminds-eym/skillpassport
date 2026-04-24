@@ -13,14 +13,14 @@ import {
   Briefcase
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { Badge } from '@/shared/ui/badge';
-import { Button } from '@/shared/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/ui/dialog';
-import { Input } from '@/shared/ui/input';
-import { Label } from '@/shared/ui/label';
-import { Progress } from '@/shared/ui/progress';
+import { Badge } from '@/shared/ui/Badge';
+import { Button } from '@/shared/ui/ButtonNew';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/ui/DialogNew';
+import { Input } from '@/shared/ui/Input';
+import { Label } from '@/shared/ui/Label';
+import { Progress } from '@/shared/ui/Progress';
 import { supabase } from "@/shared/api";
-import { Textarea } from '@/shared/ui/textarea';
+import { Textarea } from '@/shared/ui/Textarea';
 import { FIELD_CONFIGS } from "./fieldConfigs";
 import { calculateDuration, calculateProgress, generateUuid, isValidUrl, parsePositiveNumber, parseSkills } from "./utils";
 import ProfileItemModal from "./ProfileItemModal";
@@ -35,7 +35,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/shared/ui/alert-dialog';
+} from '@/shared/ui/AlertDialog';
 
 const UnifiedProfileEditModal = ({
   isOpen,

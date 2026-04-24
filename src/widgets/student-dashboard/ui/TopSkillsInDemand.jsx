@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
-import { Badge } from '@/shared/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
+import { Badge } from '@/shared/ui/Badge';
 import { Award, TrendingUp, Briefcase, RefreshCw } from 'lucide-react';
 import { SkillsAnalyticsService } from '@/features/analytics';
 

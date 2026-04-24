@@ -12,8 +12,8 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
-import { Badge } from '@/shared/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
+import { Badge } from '@/shared/ui/Badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 
 const SkillTrackerExpanded = ({ studentId, email }) => {
   const [techSkills, setTechSkills] = useState([]);

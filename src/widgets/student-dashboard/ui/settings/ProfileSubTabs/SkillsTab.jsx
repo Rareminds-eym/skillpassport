@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { CheckCircle, Heart, Code } from "lucide-react";
-import { Button } from '@/shared/ui/button';
+import { Button } from '@/shared/ui/ButtonNew';
 
 // Import the individual skill components
 import SoftSkillsTab from "./SoftSkillsTab";

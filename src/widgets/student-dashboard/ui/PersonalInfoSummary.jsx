@@ -1,6 +1,6 @@
 import React from 'react';
-import { Card, CardContent } from '@/shared/ui/card';
-import { Badge } from '@/shared/ui/badge';
+import { Card, CardContent } from '@/shared/ui/Card';
+import { Badge } from '@/shared/ui/Badge';
 import {
   User,
   Mail,

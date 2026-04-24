@@ -1,8 +1,8 @@
 // import React from 'react';
 // import { MapPin, Briefcase, X, ExternalLink, Star, Bookmark, Clock, Users, TrendingUp, Award, CheckCircle2, Calendar } from 'lucide-react';
-// import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
+// import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 // import { Button } from '@/shared/ui/button';
-// import { Badge } from '@/shared/ui/badge';
+// import { Badge } from '@/shared/ui/Badge';
 
 // const OpportunityPreview = ({ 
 //   opportunity, 
@@ -461,9 +461,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { MapPin, Briefcase, X, ExternalLink, Star, Bookmark, Clock, Users, TrendingUp, Award, CheckCircle2, Calendar, AlertCircle, Send } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
-import { Button } from '@/shared/ui/button';
-import { Badge } from '@/shared/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
+import { Button } from '@/shared/ui/ButtonNew';
+import { Badge } from '@/shared/ui/Badge';
 
 // Application Confirmation Modal Component
 const ApplicationConfirmationModal = ({ 

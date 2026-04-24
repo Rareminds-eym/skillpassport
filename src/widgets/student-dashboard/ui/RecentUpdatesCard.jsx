@@ -1,6 +1,6 @@
 import React from "react";
-import { CardHeader, CardContent, CardTitle } from '@/shared/ui/card';
-import { Button } from '@/shared/ui/button';
+import { CardHeader, CardContent, CardTitle } from '@/shared/ui/Card';
+import { Button } from '@/shared/ui/ButtonNew';
 import { BellIcon } from "@heroicons/react/24/outline";
 
 const RecentUpdatesCard = React.forwardRef(

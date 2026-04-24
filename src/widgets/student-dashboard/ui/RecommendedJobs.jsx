@@ -1,4 +1,4 @@
-import { WavyBackground } from '@/shared/ui/wavy-background';
+import { WavyBackground } from '@/shared/ui/WavyBackground';
 import { motion } from 'framer-motion';
 import {
     AlertCircle,

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Upload, FileText, CheckCircle, AlertCircle, Loader2, X, Database } from 'lucide-react';
-import { Button } from '@/shared/ui/button';
-import { Card, CardContent } from '@/shared/ui/card';
-import { Badge } from '@/shared/ui/badge';
+import { Button } from '@/shared/ui/ButtonNew';
+import { Card, CardContent } from '@/shared/ui/Card';
+import { Badge } from '@/shared/ui/Badge';
 import { parseResumeWithAI } from '@/features/digital-portfolio';
 import { saveResumeToTables } from '@/features/digital-portfolio';
 import { supabase } from '@/shared/api/supabaseClient';

@@ -1,6 +1,6 @@
 import React from "react";
 import { Globe, Save } from "lucide-react";
-import { Button } from '@/shared/ui/button';
+import { Button } from '@/shared/ui/ButtonNew';
 import { useFormValidation } from '@/shared/lib/hooks';
 import FormField from "../FormField";
 

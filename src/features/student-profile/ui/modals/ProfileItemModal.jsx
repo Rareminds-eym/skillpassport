@@ -8,12 +8,12 @@ import {
   Trash2
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { Button } from '@/shared/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/ui/dialog';
-import { Input } from '@/shared/ui/input';
-import { Label } from '@/shared/ui/label';
-import { Progress } from '@/shared/ui/progress';
-import { Textarea } from '@/shared/ui/textarea';
+import { Button } from '@/shared/ui/ButtonNew';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/ui/DialogNew';
+import { Input } from '@/shared/ui/Input';
+import { Label } from '@/shared/ui/Label';
+import { Progress } from '@/shared/ui/Progress';
+import { Textarea } from '@/shared/ui/Textarea';
 import { FIELD_CONFIGS } from "./fieldConfigs";
 import { calculateDuration, calculateProgress, generateUuid, isValidUrl, parsePositiveNumber, parseSkills } from "./utils";
 

@@ -1,7 +1,7 @@
 import React from "react";
 import { Code, Plus, Edit, Star, Zap, Eye, EyeOff, CheckCircle, Clock } from "lucide-react";
-import { Button } from '@/shared/ui/button';
-import { Badge } from '@/shared/ui/badge';
+import { Button } from '@/shared/ui/ButtonNew';
+import { Badge } from '@/shared/ui/Badge';
 
 const TechnicalSkillsTab = ({ 
   technicalSkillsData, 

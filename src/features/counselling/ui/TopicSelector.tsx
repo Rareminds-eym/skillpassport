@@ -9,7 +9,7 @@ import {
   Heart, 
   MessageSquare 
 } from 'lucide-react';
-import { Card, CardContent } from '@/shared/ui/card';
+import { Card, CardContent } from '@/shared/ui/Card';
 import { cn } from '@/shared/lib/utils';
 
 interface TopicOption {

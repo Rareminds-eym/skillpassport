@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, SlidersHorizontal } from 'lucide-react';
-import { Button } from '@/shared/ui/button';
+import { Button } from '@/shared/ui/ButtonNew';
 
 const AdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
   const [isOpen, setIsOpen] = useState(false);

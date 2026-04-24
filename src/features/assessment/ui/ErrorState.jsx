@@ -1,6 +1,6 @@
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Card, CardContent } from '@/shared/ui';
-import { Button } from "@/shared/ui/button";
+import { Button } from "@/shared/ui/ButtonNew";
 
 /**
  * Error State Component
