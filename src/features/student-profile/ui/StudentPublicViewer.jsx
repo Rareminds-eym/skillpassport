@@ -26,7 +26,7 @@ import toast from 'react-hot-toast';
 import {
   generateResumePDF,
   prepareStudentDataForResume,
-} from "./Generateresumepdf";
+} from "@/widgets/student-dashboard/ui/Generateresumepdf";
 import { generateBadges, getBadgeProgress } from "@/features/digital-portfolio";
 import { capitalizeName } from "@/shared/lib/helpers";
 
@@ -113,9 +113,8 @@ function SkillBadge({ skill, type = "technical" }) {
         {[1, 2, 3, 4, 5].map((i) => (
           <Star
             key={i}
-            className={`w-4 h-4 sm:w-5 sm:h-5 ${
-              i <= level ? "text-[#FFD700] fill-[#FFD700]" : "text-gray-300"
-            } transition-colors duration-200`}
+            className={`w-4 h-4 sm:w-5 sm:h-5 ${i <= level ? "text-[#FFD700] fill-[#FFD700]" : "text-gray-300"
+              } transition-colors duration-200`}
           />
         ))}
       </div>
@@ -258,9 +257,8 @@ export default function StudentPublicViewer() {
   const badgeProgress = useMemo(() => getBadgeProgress(studentDataForBadges), [studentDataForBadges]);
 
   useEffect(() => {
-    document.title = `${
-      profile.name || profile.fullName || "Student"
-    } • Profile`;
+    document.title = `${profile.name || profile.fullName || "Student"
+      } • Profile`;
   }, [profile.name, profile.fullName]);
 
   const phone =
@@ -772,7 +770,7 @@ export default function StudentPublicViewer() {
           <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-8 flex flex-col md:flex-row items-center md:items-start gap-6">
             {/* Avatar Skeleton */}
             <div className="w-24 h-24 bg-gray-200 rounded-xl"></div>
-            
+
             {/* Profile Info Skeleton */}
             <div className="flex-1 space-y-4 text-center md:text-left">
               <div className="space-y-2">
@@ -784,7 +782,7 @@ export default function StudentPublicViewer() {
                 <div className="h-6 bg-gray-200 rounded-full w-24"></div>
               </div>
             </div>
-            
+
             {/* QR Code Skeleton */}
             <div className="w-32 h-32 bg-gray-200 rounded-lg"></div>
           </div>
@@ -977,9 +975,9 @@ export default function StudentPublicViewer() {
 
   // Check if user has permission to view this student profile
   const hasAccess = isStudent || // Students can view all student profiles
-                   isRecruiter || // Recruiters can view all student profiles
-                   isEducator || // Educators can view student profiles (TODO: add institution check)
-                   isAdmin; // Admins can view student profiles (TODO: add institution check)
+    isRecruiter || // Recruiters can view all student profiles
+    isEducator || // Educators can view student profiles (TODO: add institution check)
+    isAdmin; // Admins can view student profiles (TODO: add institution check)
 
   if (!hasAccess) {
     return (
@@ -1243,11 +1241,10 @@ export default function StudentPublicViewer() {
                       if (e.key === "ArrowRight") focusNextTab(idx);
                       if (e.key === "ArrowLeft") focusPrevTab(idx);
                     }}
-                    className={`flex-shrink-0 px-4 sm:px-5 py-2.5 rounded-xl text-sm sm:text-base font-semibold whitespace-nowrap transition-all duration-200 ${
-                      activeTab === t
+                    className={`flex-shrink-0 px-4 sm:px-5 py-2.5 rounded-xl text-sm sm:text-base font-semibold whitespace-nowrap transition-all duration-200 ${activeTab === t
                         ? "bg-indigo-600 text-white shadow-sm" // 🟦 flat indigo, no gradient
                         : "text-gray-700 hover:bg-gray-100"
-                    }`}
+                      }`}
                   >
                     {t}
                   </button>
@@ -1462,12 +1459,12 @@ export default function StudentPublicViewer() {
                         const techList = Array.isArray(project.tech)
                           ? project.tech
                           : Array.isArray(project.technologies)
-                          ? project.technologies
-                          : Array.isArray(project.techStack)
-                          ? project.techStack
-                          : Array.isArray(project.skills)
-                          ? project.skills
-                          : [];
+                            ? project.technologies
+                            : Array.isArray(project.techStack)
+                              ? project.techStack
+                              : Array.isArray(project.skills)
+                                ? project.skills
+                                : [];
                         const projectLink =
                           project.link ||
                           project.github;
@@ -1688,11 +1685,10 @@ export default function StudentPublicViewer() {
                             {/* Status */}
                             {ed.status && (
                               <span
-                                className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
-                                  ed.status === "completed"
+                                className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ed.status === "completed"
                                     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                     : "bg-amber-50 text-amber-700 border-amber-200"
-                                }`}
+                                  }`}
                               >
                                 {ed.status === "completed"
                                   ? "Completed"
@@ -1851,13 +1847,12 @@ export default function StudentPublicViewer() {
 
                               {/* Status Badge */}
                               <div
-                                className={`px-3 py-1 rounded-full text-xs font-semibold text-center whitespace-nowrap ${
-                                  t.status === "completed"
+                                className={`px-3 py-1 rounded-full text-xs font-semibold text-center whitespace-nowrap ${t.status === "completed"
                                     ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                                     : t.status === "ongoing"
-                                    ? "bg-blue-50 text-blue-700 border border-blue-200"
-                                    : "bg-gray-50 text-gray-700 border border-gray-200"
-                                }`}
+                                      ? "bg-blue-50 text-blue-700 border border-blue-200"
+                                      : "bg-gray-50 text-gray-700 border border-gray-200"
+                                  }`}
                               >
                                 {t.status || "Enrolled"}
                               </div>
@@ -1879,11 +1874,10 @@ export default function StudentPublicViewer() {
                                     (_, idx) => (
                                       <div
                                         key={idx}
-                                        className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-                                          idx < filledSegments
+                                        className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${idx < filledSegments
                                             ? "bg-gradient-to-r from-indigo-500 to-purple-500"
                                             : "bg-gray-200"
-                                        }`}
+                                          }`}
                                       />
                                     )
                                   )}

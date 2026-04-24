@@ -10,16 +10,16 @@ import { buildProfileText } from './profileBuilder';
 import { generateEmbedding } from './embeddingService';
 import { generateProfileAndSkillEmbeddings } from './embeddingBatch';
 import { fetchCoursesWithEmbeddings, fetchCoursesBySkillType, fetchBasicCourses } from './courseRepository';
-import { getDomainKeywordsWithCache } from './fieldDomainService.js';
-import { 
-  calculateRelevanceScore, 
-  generateMatchReasons, 
-  identifySkillGapsAddressed 
+import { getDomainKeywordsWithCache } from './fieldDomainService';
+import {
+  calculateRelevanceScore,
+  generateMatchReasons,
+  identifySkillGapsAddressed
 } from './utils';
-import { 
-  MAX_RECOMMENDATIONS, 
+import {
+  MAX_RECOMMENDATIONS,
   MIN_SIMILARITY_THRESHOLD,
-  DEFAULT_FALLBACK_SCORE 
+  DEFAULT_FALLBACK_SCORE
 } from './config';
 
 /**
@@ -36,7 +36,7 @@ export const fallbackKeywordMatching = async (assessmentResults) => {
     // Extract keywords from assessment results
     const keywords = [];
     const fieldKeywords = []; // High-priority field-specific keywords
-    
+
     // Add AI-generated field-specific keywords (highest priority)
     const stream = assessmentResults.stream || assessmentResults.branch_field;
     if (stream) {
@@ -51,14 +51,14 @@ export const fallbackKeywordMatching = async (assessmentResults) => {
         console.warn('Failed to get AI keywords for fallback, using pattern matching');
       }
     }
-    
+
     // Add skill gap keywords
     const skillGap = assessmentResults.skillGap;
     if (skillGap) {
       (skillGap.priorityA || []).forEach(s => s.skill && keywords.push(s.skill));
       (skillGap.priorityB || []).forEach(s => s.skill && keywords.push(s.skill));
     }
-    
+
     // Add career cluster keywords
     const careerFit = assessmentResults.careerFit;
     if (careerFit && careerFit.clusters) {
@@ -67,7 +67,7 @@ export const fallbackKeywordMatching = async (assessmentResults) => {
         if (c.domains) keywords.push(...c.domains);
       });
     }
-    
+
     if (keywords.length === 0 && fieldKeywords.length === 0) {
       return [];
     }
@@ -82,28 +82,28 @@ export const fallbackKeywordMatching = async (assessmentResults) => {
     // Score courses by keyword matches with field-specific boosting
     const scoredCourses = courses.map(course => {
       const courseText = `${course.title} ${course.description || ''} ${(course.skills || []).join(' ')}`.toLowerCase();
-      
+
       let matchCount = 0;
       let fieldMatchCount = 0;
-      
+
       // Count field-specific keyword matches (weighted 2x)
       fieldKeywords.forEach(keyword => {
         if (courseText.includes(keyword.toLowerCase())) {
           fieldMatchCount++;
         }
       });
-      
+
       // Count general keyword matches
       keywords.forEach(keyword => {
         if (courseText.includes(keyword.toLowerCase())) {
           matchCount++;
         }
       });
-      
+
       // Calculate weighted match score (field keywords count double)
       const totalMatches = (fieldMatchCount * 2) + matchCount;
       const totalKeywords = (fieldKeywords.length * 2) + keywords.length;
-      
+
       return {
         course_id: course.course_id,
         title: course.title,
@@ -176,7 +176,7 @@ export const getRecommendedCourses = async (assessmentResults) => {
 
     // Step 3: Fetch courses with embeddings (Requirement 3.3 - Active only)
     const courses = await fetchCoursesWithEmbeddings();
-    
+
     if (courses.length === 0) {
       return [];
     }
@@ -187,7 +187,7 @@ export const getRecommendedCourses = async (assessmentResults) => {
       .map(course => {
         const similarity = cosineSimilarity(profileEmbedding, course.embedding);
         const relevanceScore = calculateRelevanceScore(similarity);
-        
+
         return {
           course_id: course.course_id,
           title: course.title,

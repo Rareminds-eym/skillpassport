@@ -25,7 +25,7 @@ export {
 } from '@/entities/student/api';
 
 // Re-export from existing services until migration is complete
-export { 
+export {
   getStudentByEmail,
   getStudentById,
   updateEducationByEmail,
@@ -52,12 +52,12 @@ export * from './studentDocumentService';
 export * from './studentManagementService';
 export * from './studentEnrollmentService';
 export * from './studentExamService';
-export { 
+export {
   addCourseEnrollmentActivity,
   notifyAllStudentsNewCourse,
   getStudentRecentActivity,
   logProfileUpdate
-} from './studentActivityService';
+} from '../../../shared/api/studentActivityService';
 export { default as studentNotificationService } from './studentNotificationService';
 export { default as studentPipelineService } from './studentPipelineService';
 export * from './studentClassService';

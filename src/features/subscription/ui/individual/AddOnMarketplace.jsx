@@ -20,8 +20,8 @@ import { useAddOnCatalog } from '@/features/subscription/model/useAddOnCatalog';
 import { clearFeatureAccessCache } from '@/features/subscription';
 import { addOnPaymentService } from '@/features/subscription';
 import { loadRazorpayScript } from '@/features/subscription/api';
-import { AddOnCard } from './AddOnCard';
-import { BundleCard } from './BundleCard';
+import { AddOnCard } from '../AddOnCard';
+import { BundleCard } from '../BundleCard';
 
 import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
 /**
@@ -47,13 +47,13 @@ export function AddOnMarketplace({
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
 
-  const { 
-    addOns, 
-    bundles, 
-    categories, 
+  const {
+    addOns,
+    bundles,
+    categories,
     addOnsByCategory,
     isLoading,
-    searchAddOns 
+    searchAddOns
   } = useAddOnCatalog({ role });
 
   const { purchaseAddOn, purchaseBundle, isPurchasing, refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscriptionContext();
@@ -63,11 +63,11 @@ export function AddOnMarketplace({
   const isAddOnOwned = useCallback((featureKey) => {
     if (!activeEntitlements) return false;
     const now = new Date();
-    return activeEntitlements.some(ent => 
-      ent.feature_key === featureKey && 
-      (ent.status === 'active' || 
-       ent.status === 'grace_period' ||
-       (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now))
+    return activeEntitlements.some(ent =>
+      ent.feature_key === featureKey &&
+      (ent.status === 'active' ||
+        ent.status === 'grace_period' ||
+        (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now))
     );
   }, [activeEntitlements]);
 
@@ -80,11 +80,11 @@ export function AddOnMarketplace({
   // Filter add-ons based on search and category
   const filteredAddOns = useMemo(() => {
     let result = searchTerm ? searchAddOns(searchTerm) : addOns;
-    
+
     if (selectedCategory) {
       result = result.filter(a => a.category === selectedCategory);
     }
-    
+
     return result;
   }, [addOns, searchTerm, selectedCategory, searchAddOns]);
 
@@ -92,20 +92,20 @@ export function AddOnMarketplace({
   const handlePurchaseAddOn = async (featureKey, period) => {
     try {
       setPurchaseError(null);
-      
+
       // Frontend duplicate check
       if (isAddOnOwned(featureKey)) {
         setPurchaseError('You already own this add-on. Access is active until your subscription expires.');
         return;
       }
-      
+
       // Load Razorpay script first
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
         setPurchaseError('Failed to load payment system. Please refresh and try again.');
         return;
       }
-      
+
       const orderData = await purchaseAddOn(featureKey, period);
       if (orderData && window.Razorpay) {
         initializeRazorpay(orderData, 'addon');
@@ -125,24 +125,24 @@ export function AddOnMarketplace({
   const handlePurchaseBundle = async (bundleId, period) => {
     try {
       setPurchaseError(null);
-      
+
       // Get bundle to check features
       const bundle = bundles.find(b => b.id === bundleId);
       const bundleFeatureKeys = bundle?.bundle_features?.map(bf => bf.feature_key) || [];
-      
+
       // Frontend duplicate check
       if (isBundleFullyOwned(bundleFeatureKeys)) {
         setPurchaseError('You already own all features in this bundle.');
         return;
       }
-      
+
       // Load Razorpay script first
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
         setPurchaseError('Failed to load payment system. Please refresh and try again.');
         return;
       }
-      
+
       const orderData = await purchaseBundle(bundleId, period);
       if (orderData && window.Razorpay) {
         initializeRazorpay(orderData, 'bundle');
@@ -167,13 +167,13 @@ export function AddOnMarketplace({
       name: 'SkillPassport',
       description: orderData.addOnName || orderData.bundleName,
       order_id: orderData.orderId,
-      handler: async function(response) {
+      handler: async function (response) {
         // Payment successful - verify and create entitlement
         console.log('[AddOnMarketplace] Payment successful, verifying...', response);
-        
+
         try {
           let verifyResult;
-          
+
           if (type === 'bundle') {
             // Use bundle verification endpoint
             verifyResult = await addOnPaymentService.verifyBundlePayment(
@@ -191,9 +191,9 @@ export function AddOnMarketplace({
               response.razorpay_signature
             );
           }
-          
+
           console.log('[AddOnMarketplace] Verification result:', verifyResult);
-          
+
           if (verifyResult.success) {
             console.log('[AddOnMarketplace] Payment verified and entitlement created!');
             // Clear feature access cache to force re-check
@@ -218,15 +218,15 @@ export function AddOnMarketplace({
         }
       }
     };
-    
+
     const rzp = new window.Razorpay(options);
-    
+
     // Handle payment failure
     rzp.on('payment.failed', (response) => {
       console.error('[AddOnMarketplace] Payment failed:', response.error);
       setPurchaseError(`Payment failed: ${response.error.description || 'Unknown error'}. Please try again.`);
     });
-    
+
     rzp.open();
   };
 
@@ -244,7 +244,7 @@ export function AddOnMarketplace({
           </div>
           <div className="flex-1">
             <p className="text-red-900 font-medium">{purchaseError}</p>
-            <button 
+            <button
               onClick={() => setPurchaseError(null)}
               className="text-red-600 text-sm font-semibold underline mt-2 hover:text-red-800 transition-colors"
             >
@@ -253,7 +253,7 @@ export function AddOnMarketplace({
           </div>
         </div>
       )}
-      
+
       {/* Header - conditionally rendered */}
       {showHeader && (
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -270,21 +270,19 @@ export function AddOnMarketplace({
           <div className="flex items-center gap-2 bg-white rounded-2xl p-1.5 shadow-lg border border-slate-200">
             <button
               onClick={() => setBillingPeriod('monthly')}
-              className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all ${
-                billingPeriod === 'monthly'
+              className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all ${billingPeriod === 'monthly'
                   ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-lg'
                   : 'text-slate-600 hover:text-slate-900'
-              }`}
+                }`}
             >
               Monthly
             </button>
             <button
               onClick={() => setBillingPeriod('annual')}
-              className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all ${
-                billingPeriod === 'annual'
+              className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all ${billingPeriod === 'annual'
                   ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-lg'
                   : 'text-slate-600 hover:text-slate-900'
-              }`}
+                }`}
             >
               Annual
               <span className="ml-2 text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-bold">Save 20%</span>
@@ -299,21 +297,19 @@ export function AddOnMarketplace({
           <div className="flex items-center gap-2 bg-white rounded-2xl p-1.5 shadow-lg border border-slate-200">
             <button
               onClick={() => setBillingPeriod('monthly')}
-              className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all ${
-                billingPeriod === 'monthly'
+              className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all ${billingPeriod === 'monthly'
                   ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-lg'
                   : 'text-slate-600 hover:text-slate-900'
-              }`}
+                }`}
             >
               Monthly
             </button>
             <button
               onClick={() => setBillingPeriod('annual')}
-              className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all ${
-                billingPeriod === 'annual'
+              className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all ${billingPeriod === 'annual'
                   ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-lg'
                   : 'text-slate-600 hover:text-slate-900'
-              }`}
+                }`}
             >
               Annual
               <span className="ml-2 text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-bold">Save 20%</span>
@@ -349,11 +345,10 @@ export function AddOnMarketplace({
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`px-5 py-3.5 border-2 rounded-2xl flex items-center gap-2 font-semibold transition-all shadow-lg ${
-                showFilters || selectedCategory
+              className={`px-5 py-3.5 border-2 rounded-2xl flex items-center gap-2 font-semibold transition-all shadow-lg ${showFilters || selectedCategory
                   ? 'border-slate-900 bg-slate-900 text-white'
                   : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
+                }`}
             >
               <Filter className="w-4 h-4" />
               Filters
@@ -387,11 +382,10 @@ export function AddOnMarketplace({
         <div className="flex flex-wrap gap-3 p-6 bg-gradient-to-br from-slate-50 to-slate-100 rounded-3xl border border-slate-200">
           <button
             onClick={() => setSelectedCategory(null)}
-            className={`px-5 py-2.5 rounded-2xl text-sm font-semibold transition-all shadow-lg ${
-              !selectedCategory
+            className={`px-5 py-2.5 rounded-2xl text-sm font-semibold transition-all shadow-lg ${!selectedCategory
                 ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-lg'
                 : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
-            }`}
+              }`}
           >
             All
           </button>
@@ -399,11 +393,10 @@ export function AddOnMarketplace({
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-5 py-2.5 rounded-2xl text-sm font-semibold capitalize transition-all shadow-lg ${
-                selectedCategory === category
+              className={`px-5 py-2.5 rounded-2xl text-sm font-semibold capitalize transition-all shadow-lg ${selectedCategory === category
                   ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-lg'
                   : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
-              }`}
+                }`}
             >
               {category.replace(/_/g, ' ')}
             </button>
@@ -449,7 +442,7 @@ export function AddOnMarketplace({
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <h2 className="text-3xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
-              {selectedCategory 
+              {selectedCategory
                 ? `${selectedCategory.replace(/_/g, ' ')} Add-ons`
                 : 'All Add-ons'
               }

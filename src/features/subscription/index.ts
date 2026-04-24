@@ -143,7 +143,7 @@ export {
   getFeatureAccessLevel
 } from './lib/featureGating';
 
-export { default as generatePDFReceipt } from './lib/pdfReceiptGenerator';
+export { default as generatePDFReceipt } from './api/pdfReceiptGenerator';
 
 // Types (re-export from model if needed)
 export type {

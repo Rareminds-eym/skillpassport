@@ -3,7 +3,7 @@
  * Builds composite text representation of student profile from assessment results.
  */
 
-import { getDomainKeywordsWithCache } from './fieldDomainService.js';
+import { getDomainKeywordsWithCache } from './fieldDomainService';
 
 /**
  * Build a composite text representation of the student's profile
@@ -29,7 +29,7 @@ export const buildProfileText = async (assessmentResults) => {
   const stream = assessmentResults.stream || assessmentResults.branch_field;
   if (stream) {
     parts.push(`Student Field of Study: ${stream}`);
-    
+
     // Generate domain-specific keywords using AI service
     // This works for ALL fields, not just hardcoded ones
     try {

@@ -12,7 +12,7 @@ export { default as DeleteStudentModal } from './modals/DeleteStudentModal';
 export { default as DepartmentDetailsDrawer } from './DepartmentDetailsDrawer';
 export { default as EditDepartmentModal } from './EditDepartmentModal';
 export { default as EditStudentModal } from './modals/EditStudentModal';
-// export { default as EnrollStudentModal } from './EnrollStudentModal'; // File missing
+// EnrollStudentModal was deleted (empty file)
 export { default as FacultyAssignmentModal } from './FacultyAssignmentModal';
 export { default as HODAssignmentModal } from './HODAssignmentModal';
 export { default as InterventionFeedbackModal } from './InterventionFeedbackModal';
@@ -23,8 +23,8 @@ export { default as MentorCapacityModal } from './MentorCapacityModal';
 export { default as MentorDetailsModal } from './MentorDetailsModal';
 export { default as MentorResponseModal } from './modals/MentorResponseModal';
 export { default as MentorSelectionModal } from './MentorSelectionModal';
-export { default as NewCollegeAdminConversationModal } from './NewCollegeAdminConversationModal';
-export { default as NewCollegeAdminEducatorConversationModal } from './NewCollegeAdminEducatorConversationModal';
+export { default as NewCollegeAdminConversationModal } from '@/features/messaging/ui/modals/NewCollegeAdminConversationModal';
+export { default as NewCollegeAdminEducatorConversationModal } from '@/features/messaging/ui/modals/NewCollegeAdminEducatorConversationModal';
 export { default as ReassignModal } from './ReassignModal';
 export { default as StudentSelectionModal } from './StudentSelectionModal';
 export { default as SwapRequestCard } from './SwapRequestCard';

@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 import { MessageSquare, X, User, Briefcase } from 'lucide-react';
 
 import type { Message } from '@/shared/api/messageService';
-import { useMessageStore } from '@/features/messaging/model/useMessageStore';
+import { useMessageStore } from '@/shared/model/useMessageStore';
 interface UseStudentMessageNotificationsProps {
   studentId: string | null;
   enabled?: boolean;
