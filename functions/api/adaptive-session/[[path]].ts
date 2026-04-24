@@ -19,6 +19,7 @@
 
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { jsonResponse } from '../../../src/functions-lib/response';
+import { withAuth } from '../../_middleware';
 import { initializeHandler } from './handlers/initialize';
 import { nextQuestionHandler } from './handlers/next-question';
 import { submitAnswerHandler } from './handlers/submit-answer';
@@ -28,11 +29,18 @@ import { resumeHandler, findInProgressHandler } from './handlers/resume';
 import { abandonHandler } from './handlers/abandon';
 import { onRequestPost as linkToAttemptHandler } from './link-to-attempt';
 
-export const onRequest: PagesFunction = async (context) => {
+// All adaptive session endpoints require authentication
+export const onRequest: PagesFunction = withAuth(async (context) => {
   const { request } = context;
   const url = new URL(request.url);
   const path = url.pathname.replace('/api/adaptive-session', '');
   const method = request.method;
+
+  // Verify user is authenticated (set by withAuth middleware)
+  const user = context.data?.user;
+  if (!user) {
+    return jsonResponse({ error: 'Unauthorized' }, 401);
+  }
 
   try {
     // POST /initialize - Start new test session
@@ -97,4 +105,4 @@ export const onRequest: PagesFunction = async (context) => {
       500
     );
   }
-};
+});

@@ -2,8 +2,7 @@ import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, UserCircle } from 'lucid
 import { ChangeEvent, FormEvent, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthActions } from '@/stores';
-import { getUserRole } from '@/features/auth/api';
-import { signIn, UserRole } from '@/features/auth/api';
+import { UserRole } from '@/features/auth/api';
 import { redirectToRoleDashboard } from '@/features/auth/lib';
 
 interface LoginState {
@@ -101,76 +100,39 @@ const UnifiedLogin = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      // Step 1: Authenticate user
-      const authResult = await signIn(state.email, state.password);
+      // Step 1: Authenticate user with SSO
+      const loginResult = await login(state.email, state.password);
 
-      if (!authResult.success || !authResult.user) {
+      if (!loginResult.success) {
         setState(prev => ({
           ...prev,
           loading: false,
-          error: authResult.error || 'Authentication failed'
+          error: loginResult.error || 'Authentication failed'
         }));
         return;
       }
 
-      // Step 2: Determine user roles
-      const roleLookup = await getUserRole(authResult.user.id, authResult.user.email);
-
-      console.log('🔍 Role lookup result:', roleLookup);
-
-      // Handle error - no roles found
-      if (roleLookup.error || (!roleLookup.role && (!roleLookup.roles || roleLookup.roles.length === 0))) {
-        console.error('❌ Role lookup error:', roleLookup.error);
+      // Step 2: Verify role matches selection (if role selection is required)
+      // Note: SSO currently returns a single role based on user's products
+      // TODO: Enhance SSO to support multiple roles/products for role selection
+      if (state.selectedRole && loginResult.role !== state.selectedRole) {
         setState(prev => ({
           ...prev,
           loading: false,
-          error: roleLookup.error || 'Account not properly configured. Contact support'
+          error: `Your account is configured for ${getRoleDisplayName(loginResult.role as UserRole)} access. Please select the correct role or contact support.`
         }));
         return;
       }
 
-      // Step 3: Check if user has the selected role
-      let userHasSelectedRole = false;
-      let userDataForRole = null;
-
-      if (roleLookup.roles && roleLookup.roles.length > 0 && roleLookup.allUserData) {
-        // Multiple roles
-        const roleIndex = roleLookup.roles.indexOf(state.selectedRole);
-        if (roleIndex !== -1) {
-          userHasSelectedRole = true;
-          userDataForRole = roleLookup.allUserData[roleIndex];
-        }
-      } else if (roleLookup.role === state.selectedRole && roleLookup.userData) {
-        // Single role matches
-        userHasSelectedRole = true;
-        userDataForRole = roleLookup.userData;
-      }
-
-      if (!userHasSelectedRole || !state.selectedRole) {
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: `Not authorized. You do not have access to the ${state.selectedRole ? getRoleDisplayName(state.selectedRole) : 'selected'} role.`
-        }));
-        return;
-      }
-
-      // Step 4: Store user data in auth context
-      const userData = {
-        ...userDataForRole,
-        role: state.selectedRole,
-        user_id: authResult.user.id
-      };
-
-      login(userData);
-
-      // Step 5: Check for return URL (invitation flow) or redirect to role-specific dashboard
+      // Step 3: Check for return URL (invitation flow) or redirect to role-specific dashboard
+      const roleToUse = (loginResult.role || state.selectedRole) as UserRole;
+      
       if (returnUrl) {
         // Clear the stored return URL
         sessionStorage.removeItem('invitation_return_url');
         navigate(returnUrl);
       } else {
-        redirectToRoleDashboard(state.selectedRole, navigate);
+        redirectToRoleDashboard(roleToUse, navigate);
       }
 
     } catch (error) {

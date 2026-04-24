@@ -19,7 +19,6 @@ import type {
 import { DEFAULT_ADAPTIVE_TEST_CONFIG } from '../types';
 import { dbSessionToTestSession, dbResponseToResponse } from '../utils/converters';
 import { AdaptiveEngine } from '../utils/adaptive-engine';
-import { authenticateUser } from '../../shared/auth';
 
 /**
  * Submits an answer for the current question
@@ -28,20 +27,21 @@ import { authenticateUser } from '../../shared/auth';
  * - Records response with timing
  * - Calculates next difficulty
  * - Checks phase completion and stop conditions
- * - Requires authentication and session ownership verification
+ * - Requires authentication (handled by withAuth middleware)
  */
 export const submitAnswerHandler: PagesFunction = async (context) => {
   const { request, env } = context;
 
   try {
-    // Authenticate user
-    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!auth) {
-      console.error('❌ [SubmitAnswerHandler] Authentication required');
+    // Get authenticated user from context (set by withAuth middleware)
+    const user = context.data?.user;
+    if (!user) {
+      console.error('❌ [SubmitAnswerHandler] No user in context');
       return jsonResponse({ error: 'Authentication required' }, 401);
     }
 
-    console.log('✅ [SubmitAnswerHandler] User authenticated:', auth.user.id);
+    const userId = user.sub; // SSO JWT uses 'sub' for user ID
+    console.log('✅ [SubmitAnswerHandler] User authenticated:', userId);
 
     // Parse request body
     const body = await request.json() as SubmitAnswerOptions;
@@ -101,10 +101,10 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
       );
     }
 
-    if (studentData.user_id !== auth.user.id) {
+    if (studentData.user_id !== userId) {
       console.error('❌ [SubmitAnswerHandler] Session ownership verification failed', {
         studentUserId: studentData.user_id,
-        authUserId: auth.user.id
+        authUserId: userId
       });
       return jsonResponse(
         { error: 'Unauthorized: You do not own this session' },

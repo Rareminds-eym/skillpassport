@@ -22,7 +22,7 @@
 
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
-import { authenticateUser, AuthResult } from '../shared/auth';
+import { withAuth } from '../../_middleware';
 import { createAuthenticationError } from './utils/error-handling';
 
 // Import all handlers
@@ -49,21 +49,9 @@ function isPublicEndpoint(path: string): boolean {
   return PUBLIC_ENDPOINTS.includes(path);
 }
 
-// Extended context type with authentication
-export interface AuthenticatedContext {
-  request: Request;
-  env: any;
-  params?: Record<string, string>;
-  waitUntil?: (promise: Promise<any>) => void;
-  next?: () => Promise<Response>;
-  data?: Record<string, any>;
-  user?: AuthResult['user'];
-  supabase?: AuthResult['supabase'];
-  supabaseAdmin?: AuthResult['supabaseAdmin'];
-}
-
+// Main router - wraps protected routes with withAuth
 export const onRequest: PagesFunction = async (context) => {
-  const { request, env } = context;
+  const { request } = context;
 
   // Handle CORS preflight
   if (request.method === 'OPTIONS') {
@@ -73,56 +61,79 @@ export const onRequest: PagesFunction = async (context) => {
   const url = new URL(request.url);
   const path = url.pathname.replace('/api/storage', '');
 
-  try {
-    // Create authenticated context
-    let authenticatedContext: AuthenticatedContext = { ...context };
+  // Public endpoints - no auth required
+  if (isPublicEndpoint(path)) {
+    return handlePublicRoutes(context, path);
+  }
 
-    // Check if endpoint requires authentication
-    if (!isPublicEndpoint(path)) {
-      // Attempt authentication for protected endpoints
-      const authResult = await authenticateUser(request, env as unknown as Record<string, string>);
-      
-      if (!authResult) {
-        // Authentication failed - return 401 with standardized error
-        return createAuthenticationError(path, 'missing_token');
-      }
+  // Protected endpoints - require SSO authentication
+  return withAuth(handleProtectedRoutes)(context);
+};
 
-      // Attach user context to the request
-      authenticatedContext = {
-        ...context,
-        user: authResult.user,
-        supabase: authResult.supabase,
-        supabaseAdmin: authResult.supabaseAdmin,
-      };
+/**
+ * Handle public routes (no authentication required)
+ */
+async function handlePublicRoutes(context: any, path: string): Promise<Response> {
+  const { request } = context;
+
+  // Health check
+  if (!path || path === '/') {
+    if (request.method === 'GET') {
+      return jsonResponse({
+        status: 'ok',
+        service: 'storage-api',
+        endpoints: [
+          '/upload',
+          '/delete',
+          '/presigned',
+          '/confirm',
+          '/get-url',
+          '/get-file-url',
+          '/document-access (LEGACY)',
+          '/signed-url',
+          '/signed-urls',
+          '/get-authenticated-url (SECURE)',
+          '/media-proxy (SECURE)',
+          '/upload-payment-receipt',
+          '/payment-receipt',
+          '/course-certificate',
+          '/extract-content',
+          '/files/:courseId/:lessonId',
+        ],
+        timestamp: new Date().toISOString(),
+      });
     }
+  }
 
-    // Health check
-    if (!path || path === '/') {
-      if (request.method === 'GET') {
-        return jsonResponse({
-          status: 'ok',
-          service: 'storage-api',
-          endpoints: [
-            '/upload',
-            '/delete',
-            '/presigned',
-            '/confirm',
-            '/get-url',
-            '/get-file-url',
-            '/document-access (LEGACY)',
-            '/signed-url',
-            '/signed-urls',
-            '/get-authenticated-url (SECURE)',
-            '/media-proxy (SECURE)',
-            '/upload-payment-receipt',
-            '/payment-receipt',
-            '/course-certificate',
-            '/extract-content',
-            '/files/:courseId/:lessonId',
-          ],
-          timestamp: new Date().toISOString(),
-        });
-      }
+  switch (path) {
+    case '/course-certificate':
+      return handleCourseCertificate(context);
+
+    case '/extract-content':
+      return handleExtractContent(context);
+
+    case '/media-proxy':
+      return handleMediaProxy(context);
+
+    default:
+      return jsonResponse({ error: 'Not found' }, 404);
+  }
+}
+
+/**
+ * Handle protected routes (SSO authentication required)
+ * User is available in context.data.user (set by withAuth middleware)
+ */
+async function handleProtectedRoutes(context: any): Promise<Response> {
+  const { request } = context;
+  const url = new URL(request.url);
+  const path = url.pathname.replace('/api/storage', '');
+
+  try {
+    // User is authenticated - available in context.data.user
+    const user = context.data?.user;
+    if (!user) {
+      return createAuthenticationError(path, 'missing_token');
     }
 
     // Check for /files/:courseId/:lessonId pattern
@@ -130,58 +141,49 @@ export const onRequest: PagesFunction = async (context) => {
     if (filesMatch) {
       const [, courseId, lessonId] = filesMatch;
       return handleListFiles({
-        ...authenticatedContext,
+        ...context,
         params: { courseId, lessonId },
-      } as any);
+      });
     }
 
     // Route to handlers based on path
     switch (path) {
       case '/upload':
-        return handleUpload(authenticatedContext as any);
+        return handleUpload(context);
 
       case '/delete':
-        return handleDelete(authenticatedContext as any);
+        return handleDelete(context);
 
       case '/presigned':
-        return handlePresigned(authenticatedContext as any);
+        return handlePresigned(context);
 
       case '/confirm':
-        return handleConfirm(authenticatedContext as any);
+        return handleConfirm(context);
 
       case '/get-url':
       case '/get-file-url':
-        return handleGetFileUrl(authenticatedContext as any);
+        return handleGetFileUrl(context);
 
       case '/document-access':
-        return handleDocumentAccess(authenticatedContext as any);
+        return handleDocumentAccess(context);
 
       case '/signed-url':
-        return handleSignedUrl(authenticatedContext as any);
+        return handleSignedUrl(context);
 
       case '/signed-urls':
-        return handleSignedUrls(authenticatedContext as any);
+        return handleSignedUrls(context);
 
       case '/upload-payment-receipt':
-        return handleUploadPaymentReceipt(authenticatedContext as any);
+        return handleUploadPaymentReceipt(context);
 
       case '/payment-receipt/presigned':
-        return handleGetPaymentReceiptPresigned(authenticatedContext as any);
+        return handleGetPaymentReceiptPresigned(context);
 
       case '/payment-receipt':
-        return handleGetPaymentReceipt(authenticatedContext as any);
-
-      case '/course-certificate':
-        return handleCourseCertificate(authenticatedContext as any);
-
-      case '/extract-content':
-        return handleExtractContent(authenticatedContext as any);
+        return handleGetPaymentReceipt(context);
 
       case '/get-authenticated-url':
         return handleGetAuthenticatedUrl(context);
-
-      case '/media-proxy':
-        return handleMediaProxy(context);
 
       default:
         return jsonResponse(
@@ -219,4 +221,4 @@ export const onRequest: PagesFunction = async (context) => {
       500
     );
   }
-};
+}

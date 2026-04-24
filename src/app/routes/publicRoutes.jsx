@@ -82,8 +82,8 @@ const InternalTestingRegistration = lazy(() =>
 );
 
 const Register = lazy(() => import("@/pages/auth/components/SignIn/Register"));
-const UnifiedLogin = lazy(() => import("@/pages/auth/UnifiedLogin"));
-const UnifiedSignup = lazy(() => import("@/pages/auth/UnifiedSignup"));
+const UnifiedLogin = lazy(() => import("@/features/auth/ui/UnifiedLogin"));
+const UnifiedSignup = lazy(() => import("@/features/auth/ui/UnifiedSignup"));
 const UnifiedForgotPassword = lazy(() => import("@/features/auth/ui/UnifiedForgotPassword"));
 const PasswordReset = lazy(() => import("@/features/auth/ui/PasswordReset"));
 const TokenPasswordReset = lazy(() => import("@/pages/auth/TokenPasswordReset"));

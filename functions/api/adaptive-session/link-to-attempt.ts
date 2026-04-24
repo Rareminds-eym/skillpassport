@@ -9,20 +9,20 @@
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { jsonResponse } from '../../../src/functions-lib/response';
 import { createSupabaseAdminClient } from '../../../src/functions-lib/supabase';
-import { authenticateUser } from '../shared/auth';
 
 export const onRequestPost: PagesFunction = async (context) => {
   const { request, env } = context;
 
   try {
-    // Authenticate user
-    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!auth) {
-      console.error('❌ [LinkToAttemptHandler] Authentication required');
+    // Get authenticated user from context (set by withAuth middleware)
+    const user = context.data?.user;
+    if (!user) {
+      console.error('❌ [LinkToAttemptHandler] No user in context');
       return jsonResponse({ error: 'Authentication required' }, 401);
     }
 
-    console.log('✅ [LinkToAttemptHandler] User authenticated:', auth.user.id);
+    const userId = user.sub; // SSO JWT uses 'sub' for user ID
+    console.log('✅ [LinkToAttemptHandler] User authenticated:', userId);
 
     // Parse request body
     const body = await request.json() as { attemptId: string; sessionId: string };
@@ -47,7 +47,7 @@ export const onRequestPost: PagesFunction = async (context) => {
     const { data: studentData, error: studentError } = await supabase
       .from('students')
       .select('id')
-      .eq('user_id', auth.user.id)
+      .eq('user_id', userId)
       .single();
 
     if (studentError || !studentData) {

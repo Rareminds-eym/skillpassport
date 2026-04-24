@@ -25,7 +25,6 @@ import {
   classifyPath 
 } from '../utils/analytics';
 import { AdaptiveEngine } from '../utils/adaptive-engine';
-import { authenticateUser } from '../../shared/auth';
 
 /**
  * Completes the test and calculates final results
@@ -35,7 +34,7 @@ import { authenticateUser } from '../../shared/auth';
  * - Calculates final aptitude level and confidence tag
  * - Generates analytics (accuracy by difficulty, by subtag)
  * - Stores results in database
- * - Requires authentication and session ownership verification
+ * - Requires authentication (handled by withAuth middleware)
  */
 export const completeHandler: PagesFunction = async (context) => {
   const { request, env } = context;
@@ -48,14 +47,15 @@ export const completeHandler: PagesFunction = async (context) => {
   }
 
   try {
-    // Authenticate user
-    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!auth) {
-      console.error('❌ [CompleteHandler] Authentication required');
+    // Get authenticated user from context (set by withAuth middleware)
+    const user = context.data?.user;
+    if (!user) {
+      console.error('❌ [CompleteHandler] No user in context');
       return jsonResponse({ error: 'Authentication required' }, 401);
     }
 
-    console.log('✅ [CompleteHandler] User authenticated:', auth.user.id);
+    const userId = user.sub; // SSO JWT uses 'sub' for user ID
+    console.log('✅ [CompleteHandler] User authenticated:', userId);
     console.log('🏁 [CompleteHandler] completeTest called:', { sessionId });
 
     const supabase = createSupabaseAdminClient(env);
@@ -98,10 +98,10 @@ export const completeHandler: PagesFunction = async (context) => {
       );
     }
 
-    if (studentData.user_id !== auth.user.id) {
+    if (studentData.user_id !== userId) {
       console.error('❌ [CompleteHandler] Session ownership verification failed', {
         studentUserId: studentData.user_id,
-        authUserId: auth.user.id
+        authUserId: userId
       });
       return jsonResponse(
         { error: 'Unauthorized: You do not own this session' },

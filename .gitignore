@@ -37,6 +37,9 @@ dist-ssr
 .dev.vars.*
 !.dev.vars.example
 
+# NPM configuration with tokens - DO NOT COMMIT
+.npmrc
+
 # Keep only the template and schema
 !.env.example
 !.env.schema

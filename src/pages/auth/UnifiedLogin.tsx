@@ -1,10 +1,7 @@
-import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, UserCircle } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
 import { ChangeEvent, FormEvent, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuthActions } from '@/stores';
-import { getUserRole } from '@/features/auth';
-import { signIn, UserRole } from '@/features/auth/api';
-import { redirectToRoleDashboard } from '@/features/auth/lib';
+import { useAuthStore } from '@/stores';
 
 interface LoginState {
   email: string;
@@ -12,173 +9,70 @@ interface LoginState {
   showPassword: boolean;
   loading: boolean;
   error: string;
-  selectedRole: UserRole | null;
 }
 
 const UnifiedLogin = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login } = useAuthActions();
-  
+  const login = useAuthStore((state) => state.login);
+
   // Get return URL from query params or session storage (for invitation flow)
   const returnUrl = searchParams.get('returnUrl') || sessionStorage.getItem('invitation_return_url');
-  
+
   const [state, setState] = useState<LoginState>({
     email: '',
     password: '',
     showPassword: false,
     loading: false,
     error: '',
-    selectedRole: null
   });
-
-  const allRoles: UserRole[] = [
-    'student',
-    'recruiter',
-    'educator',
-    'school_admin',
-    'college_admin',
-    'university_admin'
-  ];
-
-  const getRoleDisplayName = (role: UserRole): string => {
-    const roleNames: Record<UserRole, string> = {
-      student: 'Student/Learner',
-      recruiter: 'Recruiter',
-      educator: 'Educator',
-      school_admin: 'School Administrator',
-      college_admin: 'College Administrator',
-      university_admin: 'University Administrator'
-    };
-    return roleNames[role];
-  };
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setState(prev => ({
-      ...prev,
-      [name]: value,
-      error: ''
-    }));
-  };
-
-  const handleRoleChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    setState(prev => ({
-      ...prev,
-      selectedRole: e.target.value as UserRole,
-      error: ''
-    }));
+    setState(prev => ({ ...prev, [name]: value, error: '' }));
   };
 
   const togglePasswordVisibility = () => {
-    setState(prev => ({
-      ...prev,
-      showPassword: !prev.showPassword
-    }));
+    setState(prev => ({ ...prev, showPassword: !prev.showPassword }));
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Validate inputs
     if (!state.email || !state.password) {
-      setState(prev => ({
-        ...prev,
-        error: 'Please enter both email and password'
-      }));
-      return;
-    }
-
-    // Validate role selection
-    if (!state.selectedRole) {
-      setState(prev => ({
-        ...prev,
-        error: 'Please select a role'
-      }));
+      setState(prev => ({ ...prev, error: 'Please enter both email and password' }));
       return;
     }
 
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      // Step 1: Authenticate user
-      const authResult = await signIn(state.email, state.password);
+      const result = await login(state.email, state.password);
 
-      if (!authResult.success || !authResult.user) {
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: authResult.error || 'Authentication failed'
-        }));
-        return;
-      }
+      if (result.success) {
+        const role = result.role;
 
-      // Step 2: Determine user roles
-      const roleLookup = await getUserRole(authResult.user.id, authResult.user.email);
-
-      console.log('🔍 Role lookup result:', roleLookup);
-
-      // Handle error - no roles found
-      if (roleLookup.error || (!roleLookup.role && (!roleLookup.roles || roleLookup.roles.length === 0))) {
-        console.error('❌ Role lookup error:', roleLookup.error);
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: roleLookup.error || 'Account not properly configured. Contact support'
-        }));
-        return;
-      }
-
-      // Step 3: Check if user has the selected role
-      let userHasSelectedRole = false;
-      let userDataForRole = null;
-
-      if (roleLookup.roles && roleLookup.roles.length > 0 && roleLookup.allUserData) {
-        // Multiple roles
-        const roleIndex = roleLookup.roles.indexOf(state.selectedRole);
-        if (roleIndex !== -1) {
-          userHasSelectedRole = true;
-          userDataForRole = roleLookup.allUserData[roleIndex];
+        // Handle return URL (invitation flow)
+        if (returnUrl) {
+          sessionStorage.removeItem('invitation_return_url');
+          navigate(returnUrl);
+          return;
         }
-      } else if (roleLookup.role === state.selectedRole && roleLookup.userData) {
-        // Single role matches
-        userHasSelectedRole = true;
-        userDataForRole = roleLookup.userData;
-      }
 
-      if (!userHasSelectedRole || !state.selectedRole) {
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: `Not authorized. You do not have access to the ${state.selectedRole ? getRoleDisplayName(state.selectedRole) : 'selected'} role.`
-        }));
-        return;
-      }
-
-      // Step 4: Store user data in auth context
-      const userData = {
-        ...userDataForRole,
-        role: state.selectedRole,
-        user_id: authResult.user.id
-      };
-
-      login(userData);
-
-      // Step 5: Check for return URL (invitation flow) or redirect to role-specific dashboard
-      if (returnUrl) {
-        // Clear the stored return URL
-        sessionStorage.removeItem('invitation_return_url');
-        navigate(returnUrl);
+        // Navigate based on role from SSO
+        if (role === 'student')           navigate('/student/dashboard');
+        else if (role === 'recruiter')    navigate('/recruiter/dashboard');
+        else if (role === 'educator')     navigate('/educator/dashboard');
+        else if (role?.includes('admin')) navigate('/admin/dashboard');
+        else                              navigate('/dashboard');
       } else {
-        redirectToRoleDashboard(state.selectedRole, navigate);
+        setState(prev => ({ ...prev, loading: false, error: result.error || 'Login failed' }));
       }
-
-    } catch (error) {
-      console.error('Login error:', error);
+    } catch {
       setState(prev => ({
         ...prev,
         loading: false,
-        error: 'An unexpected error occurred. Please try again'
+        error: 'An unexpected error occurred. Please try again',
       }));
     }
   };
@@ -192,11 +86,10 @@ const UnifiedLogin = () => {
       <div className="w-full lg:mx-4 lg:my-8 xl:mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 h-screen lg:h-[700px] overflow-hidden">
         {/* LEFT SIDE - Illustration */}
         <div className="hidden lg:flex relative p-10 text-white flex-col justify-between rounded-3xl shadow-lg bg-gradient-to-br from-[#0a6aba] to-[#09277f] overflow-hidden">
-          {/* Background Image */}
           <div className="absolute inset-0 z-0">
-            <img 
-              src="/login/login.jpg" 
-              alt="Login background" 
+            <img
+              src="/login/login.jpg"
+              alt="Login background"
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 "></div>
@@ -211,15 +104,7 @@ const UnifiedLogin = () => {
             </p>
           </div>
 
-          <div className="relative z-10 flex justify-center items-center h-full">
-            {/* <div className="text-center">
-              <div className="inline-flex items-center justify-center w-32 h-32 rounded-full bg-white/10 backdrop-blur-sm mb-6">
-                <UserCircle className="w-20 h-20 text-white" />
-              </div>
-              <h3 className="text-2xl font-semibold mb-2">Secure Login</h3>
-              <p className="text-white/80">Access your personalized dashboard</p>
-            </div> */}
-          </div>
+          <div className="relative z-10 flex justify-center items-center h-full" />
         </div>
 
         {/* RIGHT SIDE - Login Form */}
@@ -314,42 +199,6 @@ const UnifiedLogin = () => {
                       )}
                     </button>
                   </div>
-                </div>
-
-                {/* Role Selection */}
-                <div>
-                  <label htmlFor="role" className="block text-sm font-medium text-white lg:text-gray-700 mb-2">
-                    Select Role
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <UserCircle className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <select
-                      id="role"
-                      name="role"
-                      value={state.selectedRole || ''}
-                      onChange={handleRoleChange}
-                      disabled={state.loading}
-                      required
-                      className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500 transition-colors appearance-none bg-white"
-                    >
-                      <option value="">Choose your role...</option>
-                      {allRoles.map((role) => (
-                        <option key={role} value={role}>
-                          {getRoleDisplayName(role)}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                  </div>
-                  <p className="mt-1 text-xs text-white/70 lg:text-gray-500">
-                    Select the role you want to log in as
-                  </p>
                 </div>
 
                 {/* Forgot Password Link */}

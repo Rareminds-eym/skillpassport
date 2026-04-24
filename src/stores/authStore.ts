@@ -1,10 +1,21 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { supabase } from '@/shared/api/supabaseClient';
 import { secureStorage } from '@/shared/lib/secureStorage';
+import {
+  ssoClient,
+  ssoSignIn,
+  ssoSignOut,
+  ssoGetMe,
+  ssoInitSession,
+  ssoForgotPassword,
+  ssoResetPassword,
+} from '@/features/auth/api/ssoAuthService';
 
-// Types
+// ============================================================================
+// TYPES
+// ============================================================================
+
 interface ErrorNotification {
   title: string;
   message: string;
@@ -24,6 +35,7 @@ export interface User {
   isDemoMode?: boolean;
 }
 
+// Session type kept for backward compatibility with exports
 export interface Session {
   access_token: string;
   refresh_token?: string;
@@ -31,46 +43,10 @@ export interface Session {
   expires_at?: number;
 }
 
-interface AuthState {
-  // User data
-  user: User | null;
-  session: Session | null;
-  loading: boolean;
-  isAuthenticated: boolean;
+// ============================================================================
+// ROLE HELPERS
+// ============================================================================
 
-  // Role helpers
-  role: string | null;
-  isStudent: boolean;
-  isEducator: boolean;
-  isAdmin: boolean;
-  isRecruiter: boolean;
-  isLearner: boolean;
-
-  // Error notifications
-  errorNotification: ErrorNotification | null;
-
-  // Auth actions
-  login: (userData: User, sessionData?: Session) => void;
-  logout: () => Promise<void>;
-  updateUser: (userData: Partial<User>) => void;
-  setUser: (user: User | null) => void;
-  setSession: (session: Session | null) => void;
-  setLoading: (loading: boolean) => void;
-
-  // Error notification actions
-  showErrorNotification: (notification: ErrorNotification) => void;
-  dismissErrorNotification: () => void;
-
-  // Session management
-  initialize: () => Promise<void>;
-  refreshSession: () => Promise<boolean>;
-  checkSessionValidity: () => Promise<Session | null>;
-
-  // Utilities
-  restoreUserFromStorage: (sessionUser: any) => User;
-}
-
-// Role checks
 const isStudentRole = (role: string | null | undefined): boolean =>
   role === 'student' || role === 'school_student' || role === 'college_student';
 
@@ -89,33 +65,52 @@ const isRecruiterRole = (role: string | null | undefined): boolean =>
 const isLearnerRole = (role: string | null | undefined): boolean =>
   role === 'learner';
 
-// Helper to get specific admin role from storage
-const getSpecificAdminRole = (sessionUser: any, storedUser: User | null): string => {
-  const sessionRole = sessionUser.user_metadata?.user_role ||
-    sessionUser.user_metadata?.role ||
-    'user';
+// ============================================================================
+// STATE INTERFACE
+// ============================================================================
 
-  // Handle legacy "admin" role - resolve to specific admin type
-  if (sessionRole === 'admin') {
-    // Check stored user for specific role
-    if (storedUser?.role) {
-      const specificRoles = ['school_admin', 'college_admin', 'university_admin'];
-      if (specificRoles.includes(storedUser.role)) {
-        return storedUser.role;
-      }
-    }
+interface AuthState {
+  // User data
+  user: User | null;
+  loading: boolean;
+  isAuthenticated: boolean;
 
-    // Infer from stored user context fields
-    if (storedUser) {
-      const s = storedUser as any;
-      if (s.collegeId || s.collegeName) return 'college_admin';
-      if (s.schoolId || s.schoolName) return 'school_admin';
-      if (s.universityId || s.universityName) return 'university_admin';
-    }
-  }
+  // Role helpers
+  role: string | null;
+  isStudent: boolean;
+  isEducator: boolean;
+  isAdmin: boolean;
+  isRecruiter: boolean;
+  isLearner: boolean;
 
-  return sessionRole;
-};
+  // Error notifications
+  errorNotification: ErrorNotification | null;
+
+  // Auth actions
+  login: (email: string, password: string) => Promise<{ success: boolean; role?: string; error?: string }>;
+  logout: () => Promise<void>;
+  updateUser: (userData: Partial<User>) => void;
+  setUser: (user: User | null) => void;
+  setLoading: (loading: boolean) => void;
+
+  // Error notification actions
+  showErrorNotification: (notification: ErrorNotification) => void;
+  dismissErrorNotification: () => void;
+
+  // Session management
+  initialize: () => Promise<void>;
+  refreshUser: () => Promise<void>;
+  forgotPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  resetPassword: (token: string, password: string) => Promise<{ success: boolean; error?: string }>;
+}
+
+// ============================================================================
+// STORE
+// ============================================================================
+
+// Module-level variable to store the unsubscribe function for auth state listener
+// This prevents duplicate listener registration when initialize() is called multiple times
+let authStateUnsubscribe: (() => void) | null = null;
 
 export const useAuthStore = create<AuthState>()(
   immer(
@@ -123,7 +118,6 @@ export const useAuthStore = create<AuthState>()(
       (set, get) => ({
         // Initial state
         user: null,
-        session: null,
         loading: true,
         isAuthenticated: false,
         role: null,
@@ -134,40 +128,110 @@ export const useAuthStore = create<AuthState>()(
         isLearner: false,
         errorNotification: null,
 
-        // Login
-        login: (userData, sessionData) => {
-          set((state) => {
-            state.user = { ...state.user, ...userData };
-            if (sessionData) {
-              state.session = sessionData;
-            }
-            state.isAuthenticated = true;
-            state.role = userData.role || null;
-            state.isStudent = isStudentRole(userData.role);
-            state.isEducator = isEducatorRole(userData.role);
-            state.isAdmin = isAdminRole(userData.role);
-            state.isRecruiter = isRecruiterRole(userData.role);
-            state.isLearner = isLearnerRole(userData.role);
-          });
+        // Initialize — called on app load via initializeStores()
+        // Checks for existing SSO refresh cookie and restores session silently
+        initialize: async () => {
+          set((state) => { state.loading = true; });
 
-          // Persist to localStorage (legacy compatibility)
-          localStorage.setItem('user', JSON.stringify(userData));
-          if (userData.email) {
-            localStorage.setItem('userEmail', userData.email);
+          try {
+            const result = await ssoInitSession();
+
+            if (result.authenticated && result.user) {
+              const u = result.user;
+              set((state) => {
+                state.user = { id: u.id, email: u.email, role: u.role };
+                state.isAuthenticated = true;
+                state.role = u.role;
+                state.isStudent = isStudentRole(u.role);
+                state.isEducator = isEducatorRole(u.role);
+                state.isAdmin = isAdminRole(u.role);
+                state.isRecruiter = isRecruiterRole(u.role);
+                state.isLearner = isLearnerRole(u.role);
+                state.loading = false;
+              });
+            } else {
+              set((state) => {
+                state.user = null;
+                state.isAuthenticated = false;
+                state.role = null;
+                state.isStudent = false;
+                state.isEducator = false;
+                state.isAdmin = false;
+                state.isRecruiter = false;
+                state.isLearner = false;
+                state.loading = false;
+              });
+            }
+          } catch {
+            set((state) => {
+              state.user = null;
+              state.isAuthenticated = false;
+              state.loading = false;
+            });
+          }
+
+          // Unsubscribe previous listener if it exists to prevent duplicates
+          if (authStateUnsubscribe) {
+            authStateUnsubscribe();
+          }
+
+          // Listen for auth state changes from auth-client (multi-tab sync)
+          authStateUnsubscribe = ssoClient.onAuthStateChange(async (event) => {
+            if (event === 'LOGOUT') {
+              set((state) => {
+                state.user = null;
+                state.isAuthenticated = false;
+                state.role = null;
+                state.isStudent = false;
+                state.isEducator = false;
+                state.isAdmin = false;
+                state.isRecruiter = false;
+                state.isLearner = false;
+              });
+            }
+            if (event === 'LOGIN' || event === 'REFRESH') {
+              await get().refreshUser();
+            }
+          });
+        },
+
+        // Login — called by UnifiedLogin on form submit
+        login: async (email: string, password: string) => {
+          try {
+            const signInResult = await ssoSignIn(email, password);
+            if (!signInResult.success) {
+              return { success: false, error: signInResult.error || 'Login failed' };
+            }
+
+            const meResult = await ssoGetMe();
+            if (!meResult.success || !meResult.user) {
+              return { success: false, error: 'Failed to get user info' };
+            }
+
+            const u = meResult.user;
+            set((state) => {
+              state.user = { id: u.id, email: u.email, role: u.role };
+              state.isAuthenticated = true;
+              state.role = u.role;
+              state.isStudent = isStudentRole(u.role);
+              state.isEducator = isEducatorRole(u.role);
+              state.isAdmin = isAdminRole(u.role);
+              state.isRecruiter = isRecruiterRole(u.role);
+              state.isLearner = isLearnerRole(u.role);
+              state.loading = false;
+            });
+
+            return { success: true, role: u.role };
+          } catch (error: any) {
+            return { success: false, error: error.message || 'Something went wrong' };
           }
         },
 
-        // Logout
+        // Logout — clears store and revokes SSO session
         logout: async () => {
-          try {
-            await supabase.auth.signOut();
-          } catch (err) {
-            console.error('Error signing out:', err);
-          }
-
+          await ssoSignOut();
           set((state) => {
             state.user = null;
-            state.session = null;
             state.isAuthenticated = false;
             state.role = null;
             state.isStudent = false;
@@ -176,13 +240,38 @@ export const useAuthStore = create<AuthState>()(
             state.isRecruiter = false;
             state.isLearner = false;
           });
-
-          localStorage.removeItem('user');
-          localStorage.removeItem('userEmail');
-          localStorage.removeItem('pendingUser');
         },
 
-        // Update user
+        // Refresh user — re-fetches user from SSO server
+        refreshUser: async () => {
+          const result = await ssoGetMe();
+          if (result.success && result.user) {
+            const u = result.user;
+            set((state) => {
+              state.user = { id: u.id, email: u.email, role: u.role };
+              state.isAuthenticated = true;
+              state.role = u.role;
+              state.isStudent = isStudentRole(u.role);
+              state.isEducator = isEducatorRole(u.role);
+              state.isAdmin = isAdminRole(u.role);
+              state.isRecruiter = isRecruiterRole(u.role);
+              state.isLearner = isLearnerRole(u.role);
+            });
+          } else {
+            set((state) => {
+              state.user = null;
+              state.isAuthenticated = false;
+              state.role = null;
+              state.isStudent = false;
+              state.isEducator = false;
+              state.isAdmin = false;
+              state.isRecruiter = false;
+              state.isLearner = false;
+            });
+          }
+        },
+
+        // Update user — merges partial user data into store
         updateUser: (userData) => {
           set((state) => {
             if (state.user) {
@@ -195,7 +284,6 @@ export const useAuthStore = create<AuthState>()(
                 state.isRecruiter = isRecruiterRole(userData.role);
                 state.isLearner = isLearnerRole(userData.role);
               }
-              localStorage.setItem('user', JSON.stringify(state.user));
             }
           });
         },
@@ -214,233 +302,49 @@ export const useAuthStore = create<AuthState>()(
           });
         },
 
-        // Set session
-        setSession: (session) => {
-          set((state) => {
-            state.session = session;
-            if (session?.user) {
-              const currentRole = state.role;
-              const specificRoles = ['school_admin', 'college_admin', 'university_admin'];
-              const user = get().restoreUserFromStorage(session.user);
-
-              // Don't downgrade a specific admin role to generic 'admin'
-              if (currentRole && specificRoles.includes(currentRole) && user.role === 'admin') {
-                user.role = currentRole;
-              }
-
-              state.user = user;
-              state.isAuthenticated = true;
-              state.role = user.role || null;
-              state.isStudent = isStudentRole(user.role);
-              state.isEducator = isEducatorRole(user.role);
-              state.isAdmin = isAdminRole(user.role);
-              state.isRecruiter = isRecruiterRole(user.role);
-              state.isLearner = isLearnerRole(user.role);
-              localStorage.setItem('user', JSON.stringify(user));
-            }
-          });
-        },
-
         // Set loading
         setLoading: (loading) => {
-          set((state) => {
-            state.loading = loading;
-          });
+          set((state) => { state.loading = loading; });
+        },
+
+        // Forgot password
+        forgotPassword: async (email: string) => {
+          return await ssoForgotPassword(email);
+        },
+
+        // Reset password
+        resetPassword: async (token: string, password: string) => {
+          return await ssoResetPassword(token, password);
         },
 
         // Error notifications
         showErrorNotification: (notification) => {
-          set((state) => {
-            state.errorNotification = notification;
-          });
+          set((state) => { state.errorNotification = notification; });
         },
 
         dismissErrorNotification: () => {
-          set((state) => {
-            state.errorNotification = null;
-          });
-        },
-
-        // Initialize auth state from Supabase
-        initialize: async () => {
-          console.log('🔐 [AuthStore] initialize() called');
-          set((state) => {
-            state.loading = true;
-          });
-
-          try {
-            const { data: { session }, error } = await supabase.auth.getSession();
-
-            if (error) {
-              console.error('Error getting session:', error);
-              set((state) => {
-                state.loading = false;
-              });
-              return;
-            }
-
-            if (session?.user) {
-              const userData = get().restoreUserFromStorage(session.user);
-              set((state) => {
-                state.user = userData;
-                state.session = session as Session;
-                state.isAuthenticated = true;
-                state.role = userData.role || null;
-                state.isStudent = isStudentRole(userData.role);
-                state.isEducator = isEducatorRole(userData.role);
-                state.isAdmin = isAdminRole(userData.role);
-                state.isRecruiter = isRecruiterRole(userData.role);
-                state.isLearner = isLearnerRole(userData.role);
-              });
-              localStorage.setItem('user', JSON.stringify(userData));
-            } else {
-              // Check for demo users in localStorage
-              const storedUser = localStorage.getItem('user');
-              if (storedUser) {
-                try {
-                  const parsedUser = JSON.parse(storedUser);
-                  if (parsedUser.isDemoMode || parsedUser.id?.includes('-001')) {
-                    set((state) => {
-                      state.user = parsedUser;
-                      state.isAuthenticated = true;
-                      state.role = parsedUser.role || null;
-                    });
-                  }
-                } catch {
-                  // Invalid stored user
-                }
-              }
-            }
-          } catch (err) {
-            console.error('Error initializing auth:', err);
-          } finally {
-            console.log('🔐 [AuthStore] initialize() finished. Setting loading=false. user=', get().user?.id, 'isAuthenticated=', get().isAuthenticated, 'role=', get().role);
-            set((state) => {
-              state.loading = false;
-            });
-          }
-        },
-
-        // Refresh session
-        refreshSession: async () => {
-          try {
-            const { data, error } = await supabase.auth.refreshSession();
-
-            if (error) {
-              console.warn('Session refresh failed:', error.message);
-              return false;
-            }
-
-            if (data?.session) {
-              get().setSession(data.session as Session);
-              return true;
-            }
-
-            return false;
-          } catch (err) {
-            console.error('Session refresh error:', err);
-            return false;
-          }
-        },
-
-        // Check session validity
-        checkSessionValidity: async () => {
-          try {
-            const { data: { session }, error } = await supabase.auth.getSession();
-
-            if (error) {
-              console.error('Session check error:', error);
-              return null;
-            }
-
-            return session as Session | null;
-          } catch (err) {
-            console.error('Session validity check failed:', err);
-            return null;
-          }
-        },
-
-        // Restore user from storage/session
-        restoreUserFromStorage: (sessionUser) => {
-          // First check localStorage for stored user with specific role
-          const storedUser = localStorage.getItem('user');
-          let parsedStoredUser: User | null = null;
-          if (storedUser) {
-            try {
-              const parsed = JSON.parse(storedUser);
-              const userMatches =
-                parsed.user_id === sessionUser.id ||
-                parsed.id === sessionUser.id ||
-                parsed.email === sessionUser.email;
-              if (userMatches) {
-                parsedStoredUser = parsed;
-              }
-            } catch {
-              // Ignore parse errors
-            }
-          }
-
-          // Use stored user OR current state user for role resolution
-          const sessionRole = getSpecificAdminRole(sessionUser, parsedStoredUser || get().user);
-
-          if (parsedStoredUser) {
-            return {
-              ...parsedStoredUser,
-              id: sessionUser.id,
-              role: sessionRole,
-            };
-          }
-
-          // Create new user from session
-          return {
-            id: sessionUser.id,
-            email: sessionUser.email,
-            role: sessionRole,
-            name: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name,
-            user_metadata: sessionUser.user_metadata,
-          };
+          set((state) => { state.errorNotification = null; });
         },
       }),
       {
         name: 'auth-storage',
-        storage: secureStorage as any, // Use secure storage for auth data
+        storage: secureStorage as any,
         partialize: (state) => ({
           user: state.user,
           role: state.role,
-          isAuthenticated: state.isAuthenticated,
-          // Don't persist error notifications
         }),
       }
     )
   )
 );
 
-// Setup Supabase auth state change listener
-if (typeof window !== 'undefined') {
-  supabase.auth.onAuthStateChange((event, session) => {
-    const store = useAuthStore.getState();
+// ============================================================================
+// CONVENIENCE HOOKS — kept identical so all existing imports still work
+// ============================================================================
 
-    console.log('Auth state changed:', event, session?.user?.id);
-
-    if (event === 'SIGNED_IN' && session?.user) {
-      store.setSession(session as Session);
-    } else if (event === 'SIGNED_OUT') {
-      store.setUser(null);
-      localStorage.removeItem('user');
-      localStorage.removeItem('userEmail');
-    } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-      store.setSession(session as Session);
-    } else if (event === 'USER_UPDATED' && session?.user) {
-      const userData = store.restoreUserFromStorage(session.user);
-      store.setUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
-    }
-  });
-}
-
-// Convenience hooks
 export const useUser = () => useAuthStore((state) => state.user);
-export const useSession = () => useAuthStore((state) => state.session);
+// useSession kept as null-returning stub so existing imports don't break
+export const useSession = () => null;
 export const useIsAuthenticated = () => useAuthStore((state) => state.isAuthenticated);
 export const useAuthLoading = () => useAuthStore((state) => state.loading);
 export const useErrorNotification = () => useAuthStore((state) => state.errorNotification);
@@ -452,7 +356,6 @@ export const useUserRole = () => {
   const isAdmin = useAuthStore((state) => state.isAdmin);
   const isRecruiter = useAuthStore((state) => state.isRecruiter);
   const isLearner = useAuthStore((state) => state.isLearner);
-
   return { role, isStudent, isEducator, isAdmin, isRecruiter, isLearner };
 };
 
@@ -461,7 +364,6 @@ export const useAuthActions = () => {
   const logout = useAuthStore((state) => state.logout);
   const updateUser = useAuthStore((state) => state.updateUser);
   const initialize = useAuthStore((state) => state.initialize);
-  const refreshSession = useAuthStore((state) => state.refreshSession);
   const showErrorNotification = useAuthStore((state) => state.showErrorNotification);
   const dismissErrorNotification = useAuthStore((state) => state.dismissErrorNotification);
 
@@ -470,20 +372,15 @@ export const useAuthActions = () => {
     logout,
     updateUser,
     initialize,
-    refreshSession,
     showErrorNotification,
     dismissErrorNotification,
   };
 };
 
-// Token Refresh Error Notification
 export const useTokenRefreshErrorNotification = () => {
   const showErrorNotification = useAuthStore((state) => state.showErrorNotification);
   const dismissErrorNotification = useAuthStore((state) => state.dismissErrorNotification);
-
   return { showErrorNotification, dismissErrorNotification };
 };
 
-
-// Export store for direct access
 export default useAuthStore;

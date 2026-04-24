@@ -25,7 +25,7 @@ import {
 import { sendOtp, verifyOtp as verifyOtpApi } from '@/features/auth/api';
 // @ts-ignore - JS module without types
 import { DatePicker } from '@/features/subscription';
-import { supabase } from '@/shared/api';
+import { ssoClient } from '@/features/auth/api/ssoAuthService';
 
 type UserRole = 'school_student' | 'college_student' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
 
@@ -412,19 +412,34 @@ const UnifiedSignup = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      // Use the Pages Function API for signup with proper rollback support
-      // This ensures no orphaned auth users are created
+      // Step 1: Create user account via SSO
+      console.log('🔐 Creating SSO account...');
+      const ssoResult = await ssoClient.signup({
+        email: state.email,
+        password: state.password,
+        org_name: 'SkillPassport', // All users belong to SkillPassport organization
+        redirect_url: import.meta.env.VITE_APP_URL || window.location.origin,
+      });
+
+      console.log('✅ SSO account created:', ssoResult.user);
+
+      const userId = ssoResult.user.id;
+
+      // Step 2: Store additional profile data in backend
+      // This is NOT for authentication - only for storing user profile
+      console.log('💾 Storing user profile data...');
       const { getPagesApiUrl } = await import('@/shared/lib/pagesUrl');
+      const { ssoFetch } = await import('@/shared/api/ssoFetch');
       const USER_API_URL = getPagesApiUrl('user');
 
-      const response = await fetch(`${USER_API_URL}/signup`, {
+      const profileResponse = await ssoFetch(`${USER_API_URL}/profile`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          userId: userId,
           email: state.email,
-          password: state.password,
           firstName: state.firstName,
           lastName: state.lastName,
           phone: state.phone || undefined,
@@ -438,28 +453,12 @@ const UnifiedSignup = () => {
         }),
       });
 
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to create account');
-      }
-
-      const userId = result.data.userId;
-
-      // CRITICAL FIX: Auto-login after successful signup
-      // This establishes a Supabase session so the user is authenticated
-      console.log('🔐 Auto-logging in after signup...');
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: state.email,
-        password: state.password,
-      });
-
-      if (signInError) {
-        console.error('⚠️ Auto-login failed:', signInError.message);
-        // Even if auto-login fails, the account was created successfully
-        // User can manually log in
+      if (!profileResponse.ok) {
+        const errorData = await profileResponse.json().catch(() => ({}));
+        console.warn('⚠️ Profile creation failed:', errorData);
+        // Continue anyway - user is authenticated via SSO
       } else {
-        console.log('✅ Auto-login successful, session established');
+        console.log('✅ Profile data stored');
       }
 
       // Map role to entity type for subscription plans
@@ -501,6 +500,7 @@ const UnifiedSignup = () => {
         });
       }
     } catch (error: unknown) {
+      console.error('❌ Signup error:', error);
       const errorMessage = error instanceof Error ? error.message : 'An error occurred during signup';
       setState(prev => ({ ...prev, loading: false, error: errorMessage }));
     }
@@ -762,7 +762,9 @@ const UnifiedSignup = () => {
                     value={state.dateOfBirth}
                     onChange={handleInputChange}
                     placeholder="Select date"
+                    minDate={null}
                     maxDate={new Date().toISOString().split('T')[0]}
+                    error={null}
                   />
                 </div>
 

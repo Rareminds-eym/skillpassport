@@ -16,7 +16,6 @@ import type {
   Subtag,
   ConfidenceTag
 } from '../types';
-import { authenticateUser } from '../../shared/auth';
 
 /**
  * Gets test results for a session
@@ -24,7 +23,7 @@ import { authenticateUser } from '../../shared/auth';
  * Requirements: Results retrieval
  * - Fetches results from adaptive_aptitude_results table
  * - Returns TestResults object or null if not found
- * - Requires authentication and session ownership verification
+ * - Requires authentication (handled by withAuth middleware)
  */
 export const getResultsHandler: PagesFunction = async (context) => {
   const { request, env } = context;
@@ -37,14 +36,15 @@ export const getResultsHandler: PagesFunction = async (context) => {
   }
 
   try {
-    // Authenticate user
-    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!auth) {
-      console.error('❌ [GetResultsHandler] Authentication required');
+    // Get authenticated user from context (set by withAuth middleware)
+    const user = context.data?.user;
+    if (!user) {
+      console.error('❌ [GetResultsHandler] No user in context');
       return jsonResponse({ error: 'Authentication required' }, 401);
     }
 
-    console.log('✅ [GetResultsHandler] User authenticated:', auth.user.id);
+    const userId = user.sub; // SSO JWT uses 'sub' for user ID
+    console.log('✅ [GetResultsHandler] User authenticated:', userId);
     console.log('📊 [GetResultsHandler] getTestResults called:', { sessionId });
 
     const supabase = createSupabaseAdminClient(env);
@@ -75,10 +75,10 @@ export const getResultsHandler: PagesFunction = async (context) => {
       );
     }
 
-    if (studentData.user_id !== auth.user.id) {
+    if (studentData.user_id !== userId) {
       console.error('❌ [GetResultsHandler] Session ownership verification failed', {
         studentUserId: studentData.user_id,
-        authUserId: auth.user.id
+        authUserId: userId
       });
       return jsonResponse(
         { error: 'Unauthorized: You do not own this session' },
@@ -135,7 +135,7 @@ export const getResultsHandler: PagesFunction = async (context) => {
  * - Fetches all results for student from adaptive_aptitude_results table
  * - Orders by completion date (most recent first)
  * - Returns array of TestResults objects
- * - Requires authentication and student ID verification
+ * - Requires authentication (handled by withAuth middleware)
  */
 export const getStudentResultsHandler: PagesFunction = async (context) => {
   const { request, env } = context;
@@ -148,18 +148,38 @@ export const getStudentResultsHandler: PagesFunction = async (context) => {
   }
 
   try {
-    // Authenticate user
-    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!auth) {
-      console.error('❌ [GetStudentResultsHandler] Authentication required');
+    // Get authenticated user from context (set by withAuth middleware)
+    const user = context.data?.user;
+    if (!user) {
+      console.error('❌ [GetStudentResultsHandler] No user in context');
       return jsonResponse({ error: 'Authentication required' }, 401);
     }
 
-    console.log('✅ [GetStudentResultsHandler] User authenticated:', auth.user.id);
+    const userId = user.sub; // SSO JWT uses 'sub' for user ID
+    console.log('✅ [GetStudentResultsHandler] User authenticated:', userId);
 
-    // Verify student ID matches authenticated user
-    if (studentId !== auth.user.id) {
-      console.error('❌ [GetStudentResultsHandler] Student ID verification failed');
+    const supabase = createSupabaseAdminClient(env);
+
+    // Verify student ownership by checking if the student's user_id matches the authenticated user
+    const { data: studentData, error: studentError } = await supabase
+      .from('students')
+      .select('user_id')
+      .eq('id', studentId)
+      .single();
+
+    if (studentError || !studentData) {
+      console.error('❌ [GetStudentResultsHandler] Failed to fetch student:', studentError);
+      return jsonResponse(
+        { error: 'Student not found' },
+        404
+      );
+    }
+
+    if (studentData.user_id !== userId) {
+      console.error('❌ [GetStudentResultsHandler] Student ownership verification failed', {
+        studentUserId: studentData.user_id,
+        authUserId: userId
+      });
       return jsonResponse(
         { error: 'Unauthorized: You can only access your own results' },
         403
@@ -167,8 +187,6 @@ export const getStudentResultsHandler: PagesFunction = async (context) => {
     }
 
     console.log('📊 [GetStudentResultsHandler] getStudentTestResults called:', { studentId });
-
-    const supabase = createSupabaseAdminClient(env);
 
     const { data, error } = await supabase
       .from('adaptive_aptitude_results')
