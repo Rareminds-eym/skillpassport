@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Plus, ArrowDown, Square, Bot, User, Sparkles } from 'lucide-react';
 import { universityCounsellingService } from '../api/counsellingService';
 import { universityAIConfig } from '../lib/config/universityAIConfig';
-import { Message, CounsellingTopic, StudentContext } from '@/features/student-profile/model';
+import { Message, CounsellingTopic, StudentContext } from '../model';
 
 const UniversityCounselling: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -14,7 +14,7 @@ const UniversityCounselling: React.FC = () => {
   const [userScrolledUp, setUserScrolledUp] = useState(false);
   const [currentTopic, setCurrentTopic] = useState<CounsellingTopic>('general');
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -51,26 +51,26 @@ const UniversityCounselling: React.FC = () => {
   const handleScroll = () => {
     const container = messagesContainerRef.current;
     if (!container) return;
-    
+
     const currentScrollTop = container.scrollTop;
     const scrollingUp = currentScrollTop < lastScrollTopRef.current;
     lastScrollTopRef.current = currentScrollTop;
-    
+
     const isScrollable = container.scrollHeight > container.clientHeight;
-    
+
     if (isTyping) {
       userInteractedRef.current = true;
       isScrollingRef.current = true;
-      
+
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
       }
-      
+
       scrollTimeoutRef.current = window.setTimeout(() => {
         isScrollingRef.current = false;
       }, 150);
     }
-    
+
     if (isScrollable && isUserAtBottom()) {
       setUserScrolledUp(false);
     } else if (isScrollable && scrollingUp && !isUserAtBottom()) {
@@ -118,7 +118,7 @@ const UniversityCounselling: React.FC = () => {
 
     try {
       const id = (Date.now() + 1).toString();
-      
+
       // Create empty assistant message for streaming
       const aiMessage: Message = {
         id,
@@ -127,7 +127,7 @@ const UniversityCounselling: React.FC = () => {
         timestamp: new Date().toISOString(),
         topic: detectedTopic
       };
-      
+
       setMessages(prev => [...prev, aiMessage]);
       setLoading(false);
       setIsTyping(true);
@@ -140,10 +140,10 @@ const UniversityCounselling: React.FC = () => {
         messages,
         (chunk: string) => {
           // Update message content as chunks arrive
-          setMessages(prev => prev.map(m => 
+          setMessages(prev => prev.map(m =>
             m.id === id ? { ...m, content: m.content + chunk } : m
           ));
-          
+
           // Auto-scroll if user hasn't scrolled up
           if (!userInteractedRef.current && !isScrollingRef.current) {
             requestAnimationFrame(() => {
@@ -159,14 +159,14 @@ const UniversityCounselling: React.FC = () => {
       }
     } catch (error) {
       console.error('University AI Error:', error);
-      
+
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: "I'm sorry, I encountered an error. Please make sure your OpenAI API key is configured correctly in your .env file.",
         timestamp: new Date().toISOString()
       };
-      
+
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setLoading(false);
@@ -188,7 +188,7 @@ const UniversityCounselling: React.FC = () => {
   return (
     <div className="flex flex-col h-full max-w-7xl mx-auto bg-white relative">
       {/* Messages Area */}
-      <div 
+      <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-8"
@@ -210,8 +210,8 @@ const UniversityCounselling: React.FC = () => {
               >
                 <Bot className="w-10 h-10 text-white" />
               </motion.div>
-              
-              <motion.h1 
+
+              <motion.h1
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
@@ -220,7 +220,7 @@ const UniversityCounselling: React.FC = () => {
                 {universityAIConfig.welcome.title}
                 <Sparkles className="w-8 h-8 text-yellow-500" />
               </motion.h1>
-              <motion.p 
+              <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
@@ -230,7 +230,7 @@ const UniversityCounselling: React.FC = () => {
               </motion.p>
             </div>
 
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
@@ -283,9 +283,8 @@ const UniversityCounselling: React.FC = () => {
                 >
                   <div className={`flex gap-3 max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
                     {/* Avatar */}
-                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                      message.role === 'user' ? 'bg-blue-500' : 'bg-purple-500'
-                    }`}>
+                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${message.role === 'user' ? 'bg-blue-500' : 'bg-purple-500'
+                      }`}>
                       {message.role === 'user' ? (
                         <User className="w-5 h-5 text-white" />
                       ) : (
@@ -295,15 +294,13 @@ const UniversityCounselling: React.FC = () => {
 
                     {/* Message Content */}
                     <div
-                      className={`rounded-2xl px-6 py-4 shadow-sm ${
-                        message.role === 'user' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'
-                      }`}
+                      className={`rounded-2xl px-6 py-4 shadow-sm ${message.role === 'user' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'
+                        }`}
                     >
                       <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                      
-                      <p className={`text-xs mt-2 ${
-                        message.role === 'user' ? 'text-gray-400' : 'text-gray-500'
-                      }`}>
+
+                      <p className={`text-xs mt-2 ${message.role === 'user' ? 'text-gray-400' : 'text-gray-500'
+                        }`}>
                         {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         {message.topic && (
                           <span className="ml-2">• {message.topic} counselling</span>
@@ -421,7 +418,7 @@ const UniversityCounselling: React.FC = () => {
               disabled={loading || isTyping}
               className="w-full px-5 py-4 pr-16 text-gray-900 placeholder-gray-500 bg-gray-50 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
             />
-            
+
             <div className="absolute right-2 top-1/2 -translate-y-1/2">
               <button
                 onClick={handleSend}

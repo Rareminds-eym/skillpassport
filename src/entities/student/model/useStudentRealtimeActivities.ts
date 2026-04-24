@@ -6,7 +6,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
-import { getStudentRecentActivity } from '@/features/student-profile/api/studentActivityService';
+import { getStudentRecentActivity } from '@/shared/api/studentActivityService';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**

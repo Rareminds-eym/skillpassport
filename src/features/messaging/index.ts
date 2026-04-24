@@ -47,8 +47,8 @@ export type {
 export { useMessageNotifications } from './model/useMessageNotifications';
 export { default as useTypingIndicator } from './model/useTypingIndicator';
 
-// Store
-export { useMessageStore } from './model/useMessageStore';
+// Store - Re-export from shared
+export { useMessageStore } from '@/shared/model/useMessageStore';
 
 // Deprecated - kept for backward compatibility during migration
 export { useUnreadMessagesCount } from './model/useUnreadMessagesCount';

@@ -1,0 +1,133 @@
+# Implementation Plan
+
+- [ ] 1. Write bug condition exploration test
+  - **Property 1: Bug Condition** - Entity Layer Upward Dependencies
+  - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: This test encodes the expected behavior - it will validate the fix when it passes after implementation
+  - **GOAL**: Surface all upward dependencies from entity layer to features layer
+  - **Scoped PBT Approach**: Use static analysis to find all import violations in entity layer files
+  - Test implementation: Use ripgrep to search for `import.*from '@/features/` in `src/entities/student/**/*.{ts,tsx}` files
+  - The test should find violations in: StudentProfileDrawer.tsx, tabs/index.ts, index.ts, components/index.ts
+  - Run test on UNFIXED code
+  - **EXPECTED OUTCOME**: Test FAILS (this is correct - it proves the bug exists)
+  - Document all counterexamples found:
+    - StudentProfileDrawer.tsx imports useStudentData and useStudentActions from features
+    - tabs/index.ts imports 6 tab components from features (EventsTab, AcademicTab, ClubsCompetitionsTab, ExamResultsTab, NotesTab, DocumentsTab)
+    - index.ts re-exports hooks from features
+    - components/index.ts imports LessonSection from features
+  - Mark task complete when test is written, run, and all violations are documented
+  - _Requirements: 2.1, 2.2, 2.3, 2.4_
+
+- [ ] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - Functionality Preservation
+  - **IMPORTANT**: Follow observation-first methodology
+  - Observe behavior on UNFIXED code for all StudentProfileDrawer usages
+  - Write manual test cases capturing observed behavior patterns:
+    - StudentProfileDrawer renders all tabs correctly for school students
+    - StudentProfileDrawer renders all tabs correctly for college students
+    - Assessment data loads correctly in Assessments tab
+    - Curriculum data loads correctly in Curriculum tab
+    - Courses, projects, certificates load correctly in their respective tabs
+    - Tab switching works correctly
+    - Modals (Export, Message, Admission Note) open and function correctly
+    - Approval action works for pending college students
+    - Promotion action works for approved college students
+    - Graduation action works for final semester students
+    - Build compiles successfully with `npm run build:dev`
+  - Create a preservation test checklist document to track manual testing
+  - Run tests on UNFIXED code
+  - **EXPECTED OUTCOME**: All tests PASS (this confirms baseline behavior to preserve)
+  - Mark task complete when test checklist is created and verified on unfixed code
+  - _Requirements: 3.1, 3.2, 3.3, 3.4_
+
+- [ ] 3. Fix FSD entity layer violations
+
+  - [ ] 3.1 Phase 1: Refactor StudentProfileDrawer to accept dependencies via props
+    - File: `src/entities/student/ui/StudentProfileDrawer/StudentProfileDrawer.tsx`
+    - Remove direct imports of `useStudentData` and `useStudentActions` from features layer
+    - Extend `StudentProfileDrawerProps` interface to accept `studentData` and `studentActions` as props
+    - Add `studentData` prop with fields: assessmentResults, curriculumData, lessonPlans, courses, projects, certificates, admissionNotes, studentAcademicYear, and loading states
+    - Add `studentActions` prop with fields: actionLoading, getCurrentSemester, getTotalSemesters, needsVerification, canPromote, canGraduate, handleApprovalAction, handlePromotion, handleGraduation
+    - Update component body to destructure data and actions from props instead of calling hooks directly
+    - _Bug_Condition: isBugCondition(import) where import.source_file = "src/entities/student/ui/StudentProfileDrawer/StudentProfileDrawer.tsx" AND import.target_path MATCHES "@/features/**"_
+    - _Expected_Behavior: All imports in StudentProfileDrawer.tsx target only @/shared/** or @/entities/** layers_
+    - _Preservation: StudentProfileDrawer continues to render all tabs correctly with same visual appearance and functionality_
+    - _Requirements: 2.1, 3.1, 3.2_
+
+  - [ ] 3.2 Phase 2: Remove feature tab imports from entity layer
+    - File: `src/entities/student/ui/StudentProfileDrawer/tabs/index.ts`
+    - Remove all exports that import from `@/features/student-profile/ui/tabs/*`
+    - Remove exports: EventsTab, AcademicTab, ClubsCompetitionsTab, ExamResultsTab, NotesTab, DocumentsTab
+    - Keep entity-level tab exports: OverviewTab, CoursesTab, ProjectsTab, CertificatesTab, AssessmentsTab, CurriculumTab
+    - Update StudentProfileDrawer.tsx to import feature tabs directly where needed (not through entity index)
+    - _Bug_Condition: isBugCondition(import) where import.source_file = "src/entities/student/ui/StudentProfileDrawer/tabs/index.ts" AND import.target_path MATCHES "@/features/student-profile/ui/tabs/*"_
+    - _Expected_Behavior: tabs/index.ts only exports entity-level tabs, no imports from features layer_
+    - _Preservation: All tabs continue to render correctly in StudentProfileDrawer_
+    - _Requirements: 2.2, 3.1_
+
+  - [ ] 3.3 Phase 3: Clean up entity public API
+    - File: `src/entities/student/ui/StudentProfileDrawer/index.ts`
+    - Remove hook re-exports: `export * from '@/features/student-profile/ui/StudentProfileDrawer/hooks';`
+    - Remove feature tab re-exports
+    - Keep only entity-level exports: types, modals, entity-level components
+    - _Bug_Condition: isBugCondition(import) where import.source_file = "src/entities/student/ui/StudentProfileDrawer/index.ts" AND import.target_path MATCHES "@/features/**"_
+    - _Expected_Behavior: index.ts only exports entity-level code, no re-exports from features layer_
+    - _Preservation: Entity public API remains functional for valid entity-level exports_
+    - _Requirements: 2.3, 3.1_
+
+  - [ ] 3.4 Phase 4: Remove LessonSection import from entity layer
+    - File: `src/entities/student/ui/StudentProfileDrawer/components/index.ts`
+    - Remove: `export { default as LessonSection } from '@/features/student-profile/ui/StudentProfileDrawer/components/LessonSection';`
+    - If LessonSection is truly entity-level, move it to entity layer; otherwise import directly where needed
+    - _Bug_Condition: isBugCondition(import) where import.source_file = "src/entities/student/ui/StudentProfileDrawer/components/index.ts" AND import.target_path MATCHES "@/features/student-profile/ui/StudentProfileDrawer/components/LessonSection"_
+    - _Expected_Behavior: components/index.ts does not import from features layer_
+    - _Preservation: LessonSection continues to render correctly where used_
+    - _Requirements: 2.4, 3.1_
+
+  - [ ] 3.5 Phase 5: Create feature-layer wrapper component
+    - File: `src/features/student-profile/ui/StudentProfileDrawerContainer.tsx` (new file)
+    - Create container component that imports StudentProfileDrawer from entity layer
+    - Import and call useStudentData and useStudentActions hooks in container
+    - Pass studentData and studentActions as props to StudentProfileDrawer
+    - Maintain same interface as original component for backward compatibility
+    - Update feature index to export the container as main component
+    - _Expected_Behavior: Container component orchestrates dependency injection, keeping entity layer pure_
+    - _Preservation: Container provides same interface as original component_
+    - _Requirements: 3.2, 3.3_
+
+  - [ ] 3.6 Phase 6: Update all consumers to use feature-layer container
+    - Find all files that import StudentProfileDrawer from `@/entities/student`
+    - Update import paths to use `@/features/student-profile` container instead
+    - Verify no prop changes needed (container maintains backward compatibility)
+    - Test each consumer to ensure functionality is preserved
+    - _Expected_Behavior: All consumers work with new container without breaking changes_
+    - _Preservation: All existing usages continue to work exactly as before_
+    - _Requirements: 3.3, 3.4_
+
+  - [ ] 3.7 Verify bug condition exploration test now passes
+    - **Property 1: Expected Behavior** - No Upward Dependencies
+    - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
+    - The test from task 1 encodes the expected behavior
+    - Run: `rg "from ['\"]@/features/" src/entities/student/` (should return no results)
+    - Verify all entity layer files only import from @/shared/** or @/entities/** layers
+    - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
+    - _Requirements: 2.1, 2.2, 2.3, 2.4_
+
+  - [ ] 3.8 Verify preservation tests still pass
+    - **Property 2: Preservation** - Functionality Intact
+    - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
+    - Run through preservation test checklist from task 2
+    - Test StudentProfileDrawer rendering for school and college students
+    - Test all data fetching (assessments, curriculum, courses, projects, certificates, notes)
+    - Test all user interactions (tab switching, modals, actions)
+    - Run `npm run build:dev` to verify build succeeds
+    - **EXPECTED OUTCOME**: All tests PASS (confirms no regressions)
+    - Confirm all functionality works exactly as before the refactoring
+
+- [ ] 4. Checkpoint - Ensure all tests pass
+  - Run bug condition test: `rg "from ['\"]@/features/" src/entities/student/` (should return no results)
+  - Run preservation tests: verify all functionality from task 2 checklist still works
+  - Run build: `npm run build:dev` (should compile successfully)
+  - If any issues arise, investigate and fix before marking complete
+  - Ask user if questions arise or manual testing assistance is needed

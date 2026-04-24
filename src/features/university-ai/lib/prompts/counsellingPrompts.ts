@@ -1,4 +1,4 @@
-import { CounsellingTopic, StudentContext } from '@/features/student-profile/model';
+import { CounsellingTopic, StudentContext } from '../model';
 
 /**
  * System prompts for different counselling topics
@@ -66,26 +66,26 @@ Be encouraging and help students make informed decisions.`
  */
 export function buildStudentContextPrompt(context?: StudentContext): string {
   if (!context) return '';
-  
+
   let prompt = `\n\n=== Student Information ===\n`;
-  
+
   if (context.name) prompt += `Name: ${context.name}\n`;
   if (context.department) prompt += `Department: ${context.department}\n`;
   if (context.year) prompt += `Year: ${context.year}\n`;
   if (context.gpa) prompt += `GPA: ${context.gpa}\n`;
-  
+
   if (context.courses && context.courses.length > 0) {
     prompt += `Enrolled Courses: ${context.courses.join(', ')}\n`;
   }
-  
+
   if (context.interests && context.interests.length > 0) {
     prompt += `Interests: ${context.interests.join(', ')}\n`;
   }
-  
+
   if (context.goals && context.goals.length > 0) {
     prompt += `Goals: ${context.goals.join(', ')}\n`;
   }
-  
+
   prompt += `========================\n\n`;
   return prompt;
 }
@@ -121,6 +121,6 @@ export function getFollowUpSuggestions(topic: CounsellingTopic): string[] {
       'What extracurriculars would complement my major?'
     ]
   };
-  
+
   return suggestions[topic] || [];
 }
