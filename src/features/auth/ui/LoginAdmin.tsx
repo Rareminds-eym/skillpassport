@@ -4,10 +4,10 @@ import { GraduationCap, Loader2 } from 'lucide-react';
 
 import { loginAdmin } from '@/features/auth/api';
 import toast from 'react-hot-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
-import { Label } from '@/shared/ui/label';
-import { Input } from '@/shared/ui/input';
-import Button from '@/shared/ui/Button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/Card';
+import { Label } from '@/shared/ui/Label';
+import { Input } from '@/shared/ui/Input';
+import { Button } from '@/shared/ui/ButtonNew';
 
 import { useAuthActions } from '@/shared/model/authStore';
 const LoginAdmin = () => {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Upload, FileText, CheckCircle, AlertCircle, Loader2, X, Database } from 'lucide-react';
-import { Button } from '@/shared/ui/button';
+import { Button } from '@/shared/ui/ButtonNew';
 import { Card, CardContent } from '@/shared/ui/card';
 import { Badge } from '@/shared/ui/badge';
 import { parseResumeWithAI } from '@/features/digital-portfolio';

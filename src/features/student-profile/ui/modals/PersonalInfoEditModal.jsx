@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/ui/dialog';
-import { Button } from '@/shared/ui/button';
-import { Input } from '@/shared/ui/input';
-import { Label } from '@/shared/ui/label';
-import { Textarea } from '@/shared/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/ui/DialogNew';
+import { Button } from '@/shared/ui/ButtonNew';
+import { Input } from '@/shared/ui/Input';
+import { Label } from '@/shared/ui/Label';
+import { Textarea } from '@/shared/ui/Textarea';
 import { Save, Loader2, User } from "lucide-react";
 import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
-import { AutocompleteInput } from '@/shared/ui/autocomplete';
+import { AutocompleteInput } from '@/shared/ui/Autocomplete';
 import { searchUniversities, searchCollegesAndSchools } from "@/shared/lib/educationSearch";
 
 const logger = getLogger('PersonalInfoEditModal');

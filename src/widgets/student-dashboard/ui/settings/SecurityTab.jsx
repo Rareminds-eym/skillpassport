@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Lock, Mail, Eye, EyeOff } from "lucide-react";
-import { Button } from '@/shared/ui/button';
+import { Button } from '@/shared/ui/ButtonNew';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 
 const SecurityTab = ({

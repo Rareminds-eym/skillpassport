@@ -5,6 +5,7 @@
 export * from './studentEnrollmentService';
 export * from './studentManagementService';
 export * from './studentService';
+export * from './studentSettingsService';
 
 // Student profile CRUD operations (entity-level operations on student data)
 export {

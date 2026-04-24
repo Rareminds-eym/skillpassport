@@ -25,3 +25,20 @@ export {
   buildProfileText
 } from './profileBuilder';
 
+export {
+  generateEmbedding,
+  generateSkillEmbedding
+} from '../../api/embeddingService';
+
+export {
+  generateDomainKeywords,
+  getDomainKeywordsWithCache,
+  clearKeywordCache
+} from '../../api/fieldDomainService';
+
+export {
+  MAX_RECOMMENDATIONS,
+  MIN_SIMILARITY_THRESHOLD,
+  MAX_COURSES_PER_SKILL_GAP,
+  SKILL_SIMILARITY_THRESHOLD
+} from '../../api/config';

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { User, MapPin, AlertCircle, Save } from "lucide-react";
-import { Button } from '@/shared/ui/button';
+import { Button } from '@/shared/ui/ButtonNew';
 
 const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, isSaving }) => {
   const [errors, setErrors] = useState({});

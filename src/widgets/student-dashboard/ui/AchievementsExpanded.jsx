@@ -20,7 +20,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
-import { Button } from '@/shared/ui/button';
+import { Button } from '@/shared/ui/ButtonNew';
 import { Badge } from '@/shared/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs';
 import { useStudentAchievements } from '@/entities/student';

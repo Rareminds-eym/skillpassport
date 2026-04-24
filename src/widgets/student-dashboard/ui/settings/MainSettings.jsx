@@ -11,7 +11,7 @@ import {
   User
 } from "lucide-react";
 import { Badge } from '@/shared/ui/badge';
-import { Button } from '@/shared/ui/button';
+import { Button } from '@/shared/ui/ButtonNew';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 
 import { useStudentSettings } from '@/entities/student';

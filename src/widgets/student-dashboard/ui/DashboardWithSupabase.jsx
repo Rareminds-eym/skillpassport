@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
-import { Button } from '@/shared/ui/button';
+import { Button } from '@/shared/ui/ButtonNew';
 import { Badge } from '@/shared/ui/badge';
 import { Progress } from '@/shared/ui/progress';
 import { 

@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { ArrowLeft, ChevronRight, Loader2 } from 'lucide-react';
-import { Button } from "@/shared/ui/button";
+import { Button } from "@/shared/ui/ButtonNew";
 import { Card, CardContent } from '@/shared/ui';
 import { Label } from '@/shared/ui';
 import { STREAMS_BY_CATEGORY, STREAM_CATEGORIES, AFTER10_STREAMS_BY_CATEGORY } from '../lib/config/config';

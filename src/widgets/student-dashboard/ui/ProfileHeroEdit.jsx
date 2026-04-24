@@ -41,7 +41,7 @@ import { capitalizeName } from '@/shared/lib/helpers';
 import EmployabilityScoreCard from "./EmployabilityScoreCard";
 import { Badge } from '@/shared/ui/badge';
 import { Card, CardContent } from '@/shared/ui/card';
-import { FloatingDock } from "@/shared/ui/floating-dock";
+import { FloatingDock } from "@/shared/ui/FloatingDock";
 
 import { useUser, useUserRole } from '@/shared/model/authStore';
 // Helper to get level display with icon

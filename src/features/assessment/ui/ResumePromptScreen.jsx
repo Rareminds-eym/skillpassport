@@ -8,7 +8,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, PlayCircle, RefreshCw, ArrowLeft } from 'lucide-react';
-import { Button } from "@/shared/ui/button";
+import { Button } from "@/shared/ui/ButtonNew";
 import { Card, CardContent } from '@/shared/ui';
 import { STREAMS_BY_CATEGORY, STREAM_CATEGORIES } from '../lib/config/config';
 

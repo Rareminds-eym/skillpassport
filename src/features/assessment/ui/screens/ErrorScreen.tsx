@@ -20,7 +20,7 @@ import {
   ChevronUp,
   Mail
 } from 'lucide-react';
-import { Button } from "@/shared/ui/button";
+import { Button } from "@/shared/ui/ButtonNew";
 
 export type ErrorType = 'network' | 'server' | 'session' | 'loading' | 'generic';
 

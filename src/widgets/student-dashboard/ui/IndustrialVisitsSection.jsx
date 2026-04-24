@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Factory, MapPin, Calendar, Tag, Eye, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Badge } from '@/shared/ui/badge';
-import { Button } from '@/shared/ui/button';
+import { Button } from '@/shared/ui/ButtonNew';
 import { factoryVisitsService } from '@/features/college-admin';
 
 const IndustrialVisitsSection = () => {

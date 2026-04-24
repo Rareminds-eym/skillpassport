@@ -1,6 +1,6 @@
 import React from "react";
 import { Heart, Plus, Edit, Star, Eye, EyeOff, CheckCircle, Clock } from "lucide-react";
-import { Button } from '@/shared/ui/button';
+import { Button } from '@/shared/ui/ButtonNew';
 import { Badge } from '@/shared/ui/badge';
 
 const SoftSkillsTab = ({ 

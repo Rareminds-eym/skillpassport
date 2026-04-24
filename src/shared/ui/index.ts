@@ -1,22 +1,22 @@
-export { Badge, badgeVariants } from './badge';
-export { BoltStyleChat } from './bolt-style-chat';
-export { Button, buttonVariants } from './button';
+export { Badge, badgeVariants } from './Badge';
+export { BoltStyleChat } from './BoltStyleChat';
+export { Button, buttonVariants } from './ButtonNew';
 export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './card';
-export { CareerPathConnector, CareerPathEffect } from './career-path-effect';
+export { CareerPathConnector, CareerPathEffect } from './CareerPathEffect';
 export { default as ConfirmationModal } from './ConfirmationModal';
 export { FeatureCard } from './FeatureCard';
-export { Label } from './label';
+export { Label } from './Label';
 export { default as Modal } from './Modal';
 export { default as NotificationModal } from './NotificationModal';
-export { PulseBeams } from './pulse-beams';
-export { ShinyButton } from './shiny-button';
-export { default as ShinyButtonDemo } from './shiny-button-demo';
+export { PulseBeams } from './PulseBeams';
+export { ShinyButton } from './ShinyButton';
+export { default as ShinyButtonDemo } from './ShinyButtonDemo';
 
-export { Sparkles } from './sparkles';
+export { Sparkles } from './Sparkles';
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
-export { TextGenerateEffect, TextGenerateEffectOnce } from './text-generate-effect';
-export { AlertDialog, AlertDialogPortal, AlertDialogOverlay, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogAction } from './alert-dialog';
-export { RadioGroup, RadioGroupItem } from './radio-group';
+export { TextGenerateEffect, TextGenerateEffectOnce } from './TextGenerateEffect';
+export { AlertDialog, AlertDialogPortal, AlertDialogOverlay, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogAction } from './AlertDialog';
+export { RadioGroup, RadioGroupItem } from './RadioGroup';
 
 export { default as Loader } from './Loader';
 export { default as ScrollToTop } from './ScrollToTop';
@@ -50,8 +50,8 @@ export {
   PaginationEllipsis,
 } from './Pagination';
 
-export { LampContainer } from './lamp';
-export { Input } from './input';
+export { LampContainer } from './Lamp';
+export { Input } from './Input';
 
 // Dropdown Menu Components
 export {
@@ -70,4 +70,4 @@ export {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuRadioGroup,
-} from './dropdown-menu';
+} from './DropdownMenu';

@@ -8,7 +8,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, AlertCircle, Target, ArrowLeft } from 'lucide-react';
-import { Button } from "@/shared/ui/button";
+import { Button } from "@/shared/ui/ButtonNew";
 import { ASSESSMENT_RESTRICTION } from '../lib/config/config';
 
 /**

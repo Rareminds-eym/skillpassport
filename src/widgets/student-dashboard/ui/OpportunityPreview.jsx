@@ -462,7 +462,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import { MapPin, Briefcase, X, ExternalLink, Star, Bookmark, Clock, Users, TrendingUp, Award, CheckCircle2, Calendar, AlertCircle, Send } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
-import { Button } from '@/shared/ui/button';
+import { Button } from '@/shared/ui/ButtonNew';
 import { Badge } from '@/shared/ui/badge';
 
 // Application Confirmation Modal Component

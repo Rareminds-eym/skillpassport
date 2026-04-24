@@ -17,13 +17,13 @@ import {
     TrendingUp,
     ChevronRight
 } from 'lucide-react';
-import { Button } from "@/shared/ui/button";
+import { Button } from "@/shared/ui/ButtonNew";
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
-} from "@/shared/ui/dialog";
+} from "@/shared/ui/DialogNew";
 
 // Import modular components
 import {
@@ -43,7 +43,7 @@ import {
 import CareerTrackModal from './CareerTrackModal';
 
 // Import UI effects
-import { TextGenerateEffect } from '@/shared/ui/text-generate-effect';
+import { TextGenerateEffect } from '@/shared/ui/TextGenerateEffect';
 
 // Import constants and hooks
 import { RIASEC_NAMES, RIASEC_COLORS, TRAIT_NAMES, TRAIT_COLORS, PRINT_STYLES } from '@/features/assessment';

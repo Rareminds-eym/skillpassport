@@ -1,6 +1,6 @@
 import React from "react";
 import { Award, Plus, Edit, Calendar, ExternalLink, Shield, Clock, CheckCircle } from "lucide-react";
-import { Button } from '@/shared/ui/button';
+import { Button } from '@/shared/ui/ButtonNew';
 import { Badge } from '@/shared/ui/badge';
 
 const CertificatesTab = ({ 

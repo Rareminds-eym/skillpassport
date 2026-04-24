@@ -5,9 +5,9 @@ import type { CounsellingMessage } from '../model/types';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import { Send, Loader2, StopCircle, Bot, User } from 'lucide-react';
-import { Button } from '@/shared/ui/button';
-import { Textarea } from '@/shared/ui/textarea';
-import { ScrollArea } from '@/shared/ui/scroll-area';
+import { Button } from '@/shared/ui/ButtonNew';
+import { Textarea } from '@/shared/ui/Textarea';
+import { ScrollArea } from '@/shared/ui/ScrollArea';
 import { cn } from '@/shared/lib/utils';
 
 interface ChatWindowProps {

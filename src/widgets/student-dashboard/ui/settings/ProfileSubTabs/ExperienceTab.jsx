@@ -1,6 +1,6 @@
 import React from "react";
 import { Briefcase, Plus, Edit, Calendar, Building2, Clock, CheckCircle } from "lucide-react";
-import { Button } from '@/shared/ui/button';
+import { Button } from '@/shared/ui/ButtonNew';
 import { Badge } from '@/shared/ui/badge';
 
 const ExperienceTab = ({ 

@@ -1,6 +1,6 @@
 import React from "react";
 import { Shield, Globe, Briefcase, Lock, Mail, Phone, MapPin, Save } from "lucide-react";
-import { Button } from '@/shared/ui/button';
+import { Button } from '@/shared/ui/ButtonNew';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 
 const PrivacyTab = ({

@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Award, AlertCircle, ChevronRight, Clock, Loader2, Sparkles } from 'lucide-react';
-import { Button } from "@/shared/ui/button";
+import { Button } from "@/shared/ui/ButtonNew";
 import { Card, CardContent } from '@/shared/ui';
 import { Label } from '@/shared/ui';
 import { ProfileCompletionModal } from './ProfileCompletionModal';

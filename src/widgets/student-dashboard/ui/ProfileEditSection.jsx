@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Edit3, BookOpen, Code, Briefcase, MessageCircle, Award, User, Upload } from 'lucide-react';
-import { Button } from '@/shared/ui/button';
+import { Button } from '@/shared/ui/ButtonNew';
 import { Card, CardContent } from '@/shared/ui/card';
 import { Badge } from '@/shared/ui/badge';
 import {
