@@ -26,9 +26,9 @@ export { default as StudentProfileDrawer } from './ui/StudentProfileDrawer';
 export { default as AddAttendanceSessionModal } from './ui/modals/AddAttendanceSessionModal';
 export { default as AttendanceDetailsModal } from './ui/modals/AttendanceDetailsModal';
 export { default as CompanyStatusModal } from './ui/modals/CompanyStatusModal';
-export { default as CourseDetailModal } from './ui/modals/CourseDetailModal';
+export { default as CourseDetailModal } from '@/features/courses/ui/CourseDetailModal';
 export { default as CoursePurchaseModal } from './ui/modals/CoursePurchaseModal';
-export { default as DocumentViewerModal } from './ui/modals/DocumentViewerModal';
+export { default as DocumentViewerModal } from '@/features/school-admin/ui/modals/DocumentViewerModal';
 export { default as FacultyDocumentViewerModal } from './ui/modals/FacultyDocumentViewerModal';
 export { default as StudentHistoryModal } from './ui/modals/StudentHistoryModal';
 

@@ -5,7 +5,7 @@
  * Works with your existing students table structure
  */
 
-import { supabase } from './api';
+import { supabase } from '@/shared/lib/supabase';
 
 /**
  * Fetch student data by email from Supabase
@@ -39,7 +39,7 @@ export async function getStudentByEmail(email) {
       };
     }
 
-    
+
     return {
       success: true,
       data: data,
@@ -72,34 +72,34 @@ export function transformStudentData(studentRecord) {
     department: studentRecord.branch_field || studentRecord.course || 'Not specified',
     university: studentRecord.university || studentRecord.college_school_name || '',
     passportId: studentRecord.registration_number?.toString() || 'N/A',
-    
+
     // Contact Info
-    phone: studentRecord.contact_number ? 
+    phone: studentRecord.contact_number ?
       `+${studentRecord.contact_number_dial_code || 91} ${studentRecord.contact_number}` : '',
     alternatePhone: studentRecord.alternate_number?.toString() || '',
-    
+
     // Academic Info
     cgpa: 'N/A', // Not in your data
     yearOfPassing: 'N/A', // Not in your data
     age: studentRecord.age || 0,
     dateOfBirth: studentRecord.date_of_birth || '',
     district: studentRecord.district_name || '',
-    
+
     // Training/Course Info
     course: studentRecord.course || '',
     skill: studentRecord.skill || '',
     trainerName: studentRecord.trainer_name || '',
     nmId: studentRecord.nm_id || '',
     registrationNumber: studentRecord.registration_number || '',
-    
+
     // Profile data (if exists as JSONB)
     profile: studentRecord.profile || {},
-    
+
     // Metadata
     verified: true,
     employabilityScore: 75, // Default
     photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(studentRecord.name || 'Student')}&size=200`,
-    
+
     // Education (construct from available data)
     education: [
       {
@@ -111,7 +111,7 @@ export function transformStudentData(studentRecord) {
         achievements: []
       }
     ],
-    
+
     // Training (construct from skill data)
     training: studentRecord.skill ? [
       {
@@ -122,10 +122,10 @@ export function transformStudentData(studentRecord) {
         trainer: studentRecord.trainer_name || 'Assigned Trainer'
       }
     ] : [],
-    
+
     // Experience
     experience: [],
-    
+
     // Skills
     technicalSkills: studentRecord.skill ? [
       {
@@ -136,7 +136,7 @@ export function transformStudentData(studentRecord) {
         icon: '📚'
       }
     ] : [],
-    
+
     softSkills: [
       {
         id: 1,
@@ -151,7 +151,7 @@ export function transformStudentData(studentRecord) {
         type: 'skill'
       }
     ],
-    
+
     // Recent Updates
     recentUpdates: [
       {
@@ -167,7 +167,7 @@ export function transformStudentData(studentRecord) {
         type: 'progress'
       }
     ],
-    
+
     // Suggestions
     suggestions: [
       {
@@ -183,7 +183,7 @@ export function transformStudentData(studentRecord) {
         isActive: true
       }
     ],
-    
+
     // Opportunities
     opportunities: [
       {
@@ -206,7 +206,7 @@ export async function getCurrentStudentData() {
   try {
     // Get current Supabase user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
+
     if (userError || !user) {
       return {
         success: false,
@@ -217,14 +217,14 @@ export async function getCurrentStudentData() {
 
     // Fetch student by email
     const result = await getStudentByEmail(user.email);
-    
+
     if (!result.success || !result.data) {
       return result;
     }
 
     // Transform data for Dashboard
     const transformedData = transformStudentData(result.data);
-    
+
     return {
       success: true,
       data: transformedData,

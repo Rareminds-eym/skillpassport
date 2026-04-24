@@ -11,7 +11,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Import subscription feature components and services
-import { 
+import {
   SubscriptionPlans,
   SubscriptionDashboard,
   AddOnMarketplace,
@@ -45,16 +45,16 @@ import {
   isFeatureEnabled,
 } from '../lib/featureGating';
 
-import { generatePDFReceipt } from '../lib/pdfReceiptGenerator';
+import { generatePDFReceipt } from '../api/pdfReceiptGenerator';
 
 describe('Subscription Feature Validation', () => {
-  
+
   describe('25.1 Test subscription plan selection', () => {
     /**
      * Validates: Requirements 5.10, 15.1
      * Tests that users can view and select subscription plans
      */
-    
+
     it('should export SubscriptionPlans component', () => {
       expect(SubscriptionPlans).toBeDefined();
       expect(typeof SubscriptionPlans).toBe('function');
@@ -77,7 +77,7 @@ describe('Subscription Feature Validation', () => {
      * Validates: Requirements 5.11, 15.2, 16.1-16.9
      * Tests payment initiation, Razorpay integration, and payment success
      */
-    
+
     it('should export razorpayService with payment methods', () => {
       expect(razorpayService).toBeDefined();
       expect(razorpayService.createOrder).toBeDefined();
@@ -107,7 +107,7 @@ describe('Subscription Feature Validation', () => {
      * Validates: Requirements 5.12, 15.3
      * Tests payment signature verification and subscription status update
      */
-    
+
     it('should export payment verification methods', () => {
       expect(paymentVerificationService.verifyPayment).toBeDefined();
       expect(typeof paymentVerificationService.verifyPayment).toBe('function');
@@ -124,7 +124,7 @@ describe('Subscription Feature Validation', () => {
      * Validates: Requirements 5.13, 15.4
      * Tests viewing current subscription and transaction history
      */
-    
+
     it('should export SubscriptionDashboard component', () => {
       expect(SubscriptionDashboard).toBeDefined();
       expect(typeof SubscriptionDashboard).toBe('function');
@@ -147,7 +147,7 @@ describe('Subscription Feature Validation', () => {
      * Validates: Requirements 5.14, 15.5
      * Tests browsing and purchasing add-ons
      */
-    
+
     it('should export AddOnMarketplace component', () => {
       expect(AddOnMarketplace).toBeDefined();
       expect(typeof AddOnMarketplace).toBe('function');
@@ -165,7 +165,7 @@ describe('Subscription Feature Validation', () => {
      * Validates: Requirements 5.15, 15.6
      * Tests creating organization subscription and viewing dashboard
      */
-    
+
     it('should export OrganizationSubscriptionDashboard component', () => {
       expect(OrganizationSubscriptionDashboard).toBeDefined();
       expect(typeof OrganizationSubscriptionDashboard).toBe('function');
@@ -189,7 +189,7 @@ describe('Subscription Feature Validation', () => {
      * Validates: Requirements 5.16, 15.7
      * Tests creating, editing, and deleting license pools
      */
-    
+
     it('should export LicensePoolManager component', () => {
       expect(LicensePoolManager).toBeDefined();
       expect(typeof LicensePoolManager).toBe('function');
@@ -211,7 +211,7 @@ describe('Subscription Feature Validation', () => {
      * Validates: Requirements 5.17, 15.8
      * Tests bulk purchase wizard and license allocation
      */
-    
+
     it('should export BulkPurchaseWizard component', () => {
       expect(BulkPurchaseWizard).toBeDefined();
       expect(typeof BulkPurchaseWizard).toBe('function');
@@ -229,7 +229,7 @@ describe('Subscription Feature Validation', () => {
      * Validates: Requirements 5.18, 15.9
      * Tests sending invitations, accepting, and activating licenses
      */
-    
+
     it('should export InvitationManager component', () => {
       expect(InvitationManager).toBeDefined();
       expect(typeof InvitationManager).toBe('function');
@@ -249,7 +249,7 @@ describe('Subscription Feature Validation', () => {
      * Validates: Requirements 5.19, 15.11
      * Tests feature access based on subscription and protected routes
      */
-    
+
     it('should export SubscriptionGate component', () => {
       expect(SubscriptionGate).toBeDefined();
       expect(typeof SubscriptionGate).toBe('function');
@@ -278,7 +278,7 @@ describe('Subscription Feature Validation', () => {
      * Validates: Requirements 5.12, 15.12
      * Tests PDF receipt generation and content verification
      */
-    
+
     it('should export generatePDFReceipt function', () => {
       expect(generatePDFReceipt).toBeDefined();
       expect(typeof generatePDFReceipt).toBe('function');
@@ -295,7 +295,7 @@ describe('Subscription Feature Validation', () => {
      * Validates: Requirements 5.20, 15.14
      * Tests viewing billing history and transaction details
      */
-    
+
     it('should export BillingDashboard component', () => {
       expect(BillingDashboard).toBeDefined();
       expect(typeof BillingDashboard).toBe('function');
@@ -313,7 +313,7 @@ describe('Subscription Feature Validation', () => {
      * Validates that all components, hooks, and services are properly exported
      * through the feature's public API (index.ts)
      */
-    
+
     it('should export all individual subscription components', () => {
       expect(SubscriptionPlans).toBeDefined();
       expect(SubscriptionDashboard).toBeDefined();
@@ -360,7 +360,7 @@ describe('Subscription Feature Validation', () => {
     /**
      * Validates that imports work correctly from the new FSD structure
      */
-    
+
     it('should allow importing from @/features/subscription', () => {
       // This test passing means the imports at the top of this file work
       expect(SubscriptionPlans).toBeDefined();

@@ -8,5 +8,5 @@ export { default as CurriculumTab } from './CurriculumTab';
 export { default as ClubsCompetitionsTab } from './ClubsCompetitionsTab';
 export { default as ExamResultsTab } from './ExamResultsTab';
 export { default as NotesTab } from './NotesTab';
-export { default as EventsTab } from '../../../../entities/student/ui/tabs/EventsTab';
+export { default as EventsTab } from '../../../../features/student-profile/ui/tabs/EventsTab';
 export { default as DocumentsTab } from './DocumentsTab';

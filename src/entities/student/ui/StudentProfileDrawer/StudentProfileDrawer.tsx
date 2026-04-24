@@ -19,7 +19,7 @@ import { isCollegeStudent as checkIsCollegeStudent, isSchoolStudent as checkIsSc
 import { StudentProfileDrawerProps, TabConfig, ActionConfig } from '@/shared/types';
 
 // Hooks
-import { useStudentData, useStudentActions } from './hooks';
+import { useStudentData, useStudentActions } from '@/features/student-profile/ui/hooks';
 
 // Components
 import { Badge, TabButton } from './components';

@@ -48,7 +48,7 @@ import {
   NotesTab,
   EventsTab,
   DocumentsTab,
-} from './tabs';
+} from '../tabs';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 
 const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({

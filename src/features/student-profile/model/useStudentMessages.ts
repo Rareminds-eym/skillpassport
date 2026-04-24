@@ -15,7 +15,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useCallback } from 'react';
 import { MessageService, Message } from '@/features/messaging';
-import { useMessageStore } from '@/features/messaging';
+import { useMessageStore } from '@/shared/model/useMessageStore';
 import { supabase } from '@/shared/api/supabaseClient';
 import { queryKeys } from '@/shared/lib/queryKeys';
 

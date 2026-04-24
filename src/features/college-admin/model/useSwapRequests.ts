@@ -8,7 +8,7 @@ import {
   cancelSwapRequest,
   getSwapStatistics,
 } from '../api';
-import type { ClassSwapRequestWithDetails, SwapStatistics } from '../model/class-swap-types';
+import type { ClassSwapRequestWithDetails, SwapStatistics } from '@/shared/types/classSwap';
 
 type TabType = 'received' | 'sent' | 'history';
 
@@ -22,7 +22,7 @@ interface UseSwapRequestsReturn {
   isCollegeEducator: boolean;
   statistics: SwapStatistics | null;
   filteredRequests: ClassSwapRequestWithDetails[];
-  
+
   // Actions
   setActiveTab: (tab: TabType) => void;
   setSearchQuery: (query: string) => void;
@@ -94,7 +94,7 @@ export const useSwapRequests = (): UseSwapRequestsReturn => {
     setLoading(true);
     try {
       const { data } = await getSwapRequests(educatorId);
-      
+
       if (data) {
         // Load detailed information for each request
         const detailedRequests = await Promise.all(
@@ -182,7 +182,7 @@ export const useSwapRequests = (): UseSwapRequestsReturn => {
 
   const filteredRequests = requests.filter(req => {
     if (!searchQuery.trim()) return true;
-    
+
     const query = searchQuery.toLowerCase();
     return (
       req.requester_slot?.subject_name.toLowerCase().includes(query) ||
