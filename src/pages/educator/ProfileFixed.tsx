@@ -118,7 +118,7 @@ const ProfileFixed = () => {
         const userData = JSON.parse(storedUser);
         return userData.email || storedEmail;
       } catch (e) {
-        logger.error('Error parsing stored user', e as Error);
+        logger.error('Error parsing stored user', e instanceof Error ? e : new Error(String(e)));
       }
     }
     

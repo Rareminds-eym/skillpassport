@@ -46,7 +46,7 @@ import CareerTrackModal from './CareerTrackModal';
 import { TextGenerateEffect } from '@/shared/ui/TextGenerateEffect';
 
 // Import constants and hooks
-import { RIASEC_NAMES, RIASEC_COLORS, TRAIT_NAMES, TRAIT_COLORS, PRINT_STYLES } from '@/features/assessment';
+import { RIASEC_NAMES,TRAIT_NAMES, PRINT_STYLES } from '@/features/assessment';
 import { useAssessmentResults } from '../model/useAssessmentResults';
 
 // Import course matching engine

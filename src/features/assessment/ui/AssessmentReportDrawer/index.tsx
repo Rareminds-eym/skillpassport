@@ -432,7 +432,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                         fitType: 'HIGH FIT',
                         specificRoles: topRoles.map(role => ({
                             name: role.name,
-                            salary: getSalaryObject(role.salaryRange) // Ensure getSalaryObject has proper overloads or type guards
+                           salary: getSalaryObject(role.salaryRange) as { min: number; max: number }// Ensure getSalaryObject has proper overloads or type guards
                         }))
                     };
                 });
@@ -458,7 +458,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
             hasStudentInfo: !!studentInfo,
             hasAssessmentData: !!assessmentData
         });
-    }, [isOpen, assessmentId, studentUserId]); // Use stable extracted IDs to prevent unnecessary re-renders
+    }, [isOpen, assessmentId, studentUserId, assessmentResult, student]);  // Use stable extracted IDs to prevent unnecessary re-renders
 
     // Handle opening career track modal
     const handleViewTrack = useCallback((track: CareerTrack) => {
