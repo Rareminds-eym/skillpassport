@@ -179,7 +179,7 @@ export class RefreshCoordinator {
 
     // All retries exhausted - log final failure
     this.currentAttempt = 0;
-    logger.error('Refresh failed after max retry attempts', undefined, {
+    logger.error('Refresh failed after max retry attempts', new Error('Refresh failed after max retry attempts'), {
       maxRetries: this.config.maxRetries,
       lastError,
       retryable,

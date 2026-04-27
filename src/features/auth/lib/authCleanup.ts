@@ -13,6 +13,7 @@ const logger = getLogger('auth-cleanup');
  * Call this when user is not authenticated or session is invalid
  */
 export const clearStaleAuthData = (): void => {
+  logger.info('Clearing stale auth data from localStorage');
   localStorage.removeItem('user');
   localStorage.removeItem('userEmail');
   localStorage.removeItem('pendingUser');

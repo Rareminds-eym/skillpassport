@@ -197,7 +197,7 @@ export const logAuthEvent = (level: string, message: string, details: Record<str
   }
 
   if (normalizedLevel === 'error') {
-    logger.error(message, undefined, details);
+    logger.error(message, new Error(message), details);
     return;
   }
 
