@@ -74,7 +74,7 @@ const AnalyticsView = ({ studentId, userEmail }) => {
     } finally {
       setLoading(false);
     }
-  }, [studentId]);
+  }, []);
 
   // Calculate analytics data
   const analytics = useMemo(() => {

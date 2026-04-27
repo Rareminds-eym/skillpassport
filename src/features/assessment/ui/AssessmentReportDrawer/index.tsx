@@ -425,7 +425,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                         fitType: 'HIGH FIT',
                         specificRoles: topRoles.map(role => ({
                             name: role.name,
-                            salary: getSalaryObject(role.salaryRange as unknown)
+                            salary: getSalaryObject(role.salaryRange) // Ensure getSalaryObject has proper overloads or type guards
                         }))
                     };
                 });
@@ -547,7 +547,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                 
                 // Otherwise, construct from database fields
                 let scores: Record<string, number> = {};
-                if (dbRiasecScores && isValidObject(dbRiasecScores)) {
+                if ( isValidObject(dbRiasecScores)) {
                     // If it's already an object with R, I, A, S, E, C keys
                     if ('R' in dbRiasecScores) {
                         const rValue = dbRiasecScores.R;
