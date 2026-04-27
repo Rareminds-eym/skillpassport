@@ -54,3 +54,6 @@ export const initializeRechartsWarningsSuppression = () => {
     suppressRechartsWarnings();
   }
 };
+
+// Auto-initialize in development
+initializeRechartsWarningsSuppression();

@@ -12,36 +12,53 @@ import {
     Heart
 } from 'lucide-react';
 import { Button } from '@/shared/ui';
-// @ts-ignore - JS file without types
+// @ts-ignore - JS file without types (TODO: Add TypeScript definitions for useAssessmentRecommendations hook)
 import { useAssessmentRecommendations } from '@/features/assessment';
-// @ts-ignore - JS file without types
+// @ts-ignore - JS file without types (TODO: Add TypeScript definitions for course recommendation service)
 import { getStudentPreGeneratedCourses, getAllCoursesFlat } from "@/services/courseRecommendation/preGeneratedCoursesService";
 // Import CareerTrackModal
-// @ts-ignore - JS file without types
+// @ts-ignore - JS file without types (TODO: Add TypeScript definitions for CareerTrackModal component)
 import { CareerTrackModal } from '@/features/assessment';
 // Import PrintView and constants for PDF download
-// @ts-ignore - JS file without types
+// @ts-ignore - JS file without types (TODO: Add TypeScript definitions for PrintView component)
 import { PrintView } from '@/features/assessment';
-// @ts-ignore - JS file without types
+// @ts-ignore - JS file without types (TODO: Add TypeScript definitions for assessment constants)
 import { RIASEC_NAMES, RIASEC_COLORS, TRAIT_NAMES, TRAIT_COLORS, PRINT_STYLES } from '@/features/assessment';
 
 // Development logging utility
-const devLog = (...args: any[]) => {
+const devLog = (...args: unknown[]): void => {
     if (import.meta.env.DEV) {
         console.log(...args);
     }
 };
 
 // Development warning utility
-const devWarn = (...args: any[]) => {
+const devWarn = (...args: unknown[]): void => {
     if (import.meta.env.DEV) {
         console.warn(...args);
     }
 };
 
 // Development error utility (always show errors)
-const devError = (...args: any[]) => {
+const devError = (...args: unknown[]): void => {
     console.error(...args);
+};
+
+// Type guard for salary range objects
+interface SalaryRangeObject {
+    min: number;
+    max: number;
+}
+
+const isSalaryRangeObject = (value: unknown): value is SalaryRangeObject => {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        'min' in value &&
+        'max' in value &&
+        typeof (value as SalaryRangeObject).min === 'number' &&
+        typeof (value as SalaryRangeObject).max === 'number'
+    );
 };
 
 interface AssessmentReportDrawerProps {
@@ -320,8 +337,8 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                     let salaryRange = career.salary || career.salaryRange;
                                     
                                     // Convert object salary to string format if needed
-                                    if (typeof salaryRange === 'object' && salaryRange && (salaryRange as any)?.min && (salaryRange as any)?.max) {
-                                        salaryRange = `₹${(salaryRange as any).min}L - ₹${(salaryRange as any).max}L`;
+                                    if (isSalaryRangeObject(salaryRange)) {
+                                        salaryRange = `₹${salaryRange.min}L - ₹${salaryRange.max}L`;
                                     }
                                     
                                     // If no salary provided, generate realistic one
@@ -351,8 +368,8 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                             let salaryRange = career.salary || career.salaryRange;
                                             
                                             // Convert object salary to string format if needed
-                                            if (typeof salaryRange === 'object' && salaryRange && (salaryRange as any)?.min && (salaryRange as any)?.max) {
-                                                salaryRange = `₹${(salaryRange as any).min}L - ₹${(salaryRange as any).max}L`;
+                                            if (isSalaryRangeObject(salaryRange)) {
+                                                salaryRange = `₹${salaryRange.min}L - ₹${salaryRange.max}L`;
                                             }
                                             
                                             // If no salary provided, generate realistic one
@@ -445,8 +462,8 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                             name: role.name,
                             salary: typeof role.salaryRange === 'string' 
                                 ? { min: 3, max: 15 } // Default when string format
-                                : (role.salaryRange as any)?.min && (role.salaryRange as any)?.max
-                                    ? { min: (role.salaryRange as any).min, max: (role.salaryRange as any).max }
+                                : isSalaryRangeObject(role.salaryRange)
+                                    ? { min: role.salaryRange.min, max: role.salaryRange.max }
                                     : { min: 3, max: 15 } // Default salary range
                         }))
                     };
@@ -1185,8 +1202,8 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                                                                     <span className="text-green-400 font-semibold text-base">
                                                                                         {typeof role?.salaryRange === 'string' 
                                                                                             ? role.salaryRange 
-                                                                                            : (role?.salaryRange as any)?.min && (role?.salaryRange as any)?.max
-                                                                                                ? `₹${(role.salaryRange as any).min}L - ₹${(role.salaryRange as any).max}L`
+                                                                                            : isSalaryRangeObject(role?.salaryRange)
+                                                                                                ? `₹${role.salaryRange.min}L - ₹${role.salaryRange.max}L`
                                                                                                 : 'Competitive'
                                                                                         }
                                                                                     </span>
