@@ -167,7 +167,7 @@ export const handleAuthError = async (error: any, context: Record<string, any> =
       logger.warn('Session invalid, user needs to re-authenticate');
       return { success: false, error: 'Session expired. Please log in again.' };
     } catch (e) {
-      logger.error('Error checking session', e as Error);
+      logger.error('Error checking session', e instanceof Error ? e : new Error(String(e)));
       return { success: false, error: 'Authentication error. Please log in again.' };
     }
   }
@@ -197,7 +197,9 @@ export const logAuthEvent = (level: string, message: string, details: Record<str
   }
 
   if (normalizedLevel === 'error') {
-    logger.error(message, new Error(message), details);
+    const detailsError = details.error;
+    const errorToLog = detailsError instanceof Error ? detailsError : new Error(message);
+    logger.error(message, errorToLog, details);
     return;
   }
 

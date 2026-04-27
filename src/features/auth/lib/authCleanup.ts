@@ -38,7 +38,7 @@ export const validateLocalStorageUser = async (): Promise<boolean> => {
           if (parsedUser.isDemoMode || parsedUser.id?.includes('-001')) {
             return true;
           }
-        } catch {
+        } catch (_e) {
           // Parse error - clear data
         }
         clearStaleAuthData();
@@ -62,7 +62,7 @@ export const validateLocalStorageUser = async (): Promise<boolean> => {
           clearStaleAuthData();
           return false;
         }
-      } catch {
+      } catch (_e) {
         clearStaleAuthData();
         return false;
       }
@@ -70,7 +70,7 @@ export const validateLocalStorageUser = async (): Promise<boolean> => {
 
     return true;
   } catch (error) {
-    logger.error('Error validating localStorage user', error as Error);
+    logger.error('Error validating localStorage user', error instanceof Error ? error : new Error(String(error)));
     return true; // Don't clear on error
   }
 };
@@ -90,7 +90,7 @@ export const userExistsInDatabase = async (userId: string): Promise<boolean> => 
     
     return !error && !!data;
   } catch (error) {
-    logger.error('Error checking user in database', error as Error);
+    logger.error('Error checking user in database', error instanceof Error ? error : new Error(String(error)));
     return false;
   }
 };

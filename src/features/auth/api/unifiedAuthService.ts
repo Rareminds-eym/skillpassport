@@ -52,7 +52,7 @@ export const signIn = async (email: string, password: string): Promise<AuthResul
     });
 
     if (error) {
-      logger.error('Authentication error', error as Error);
+      logger.error('Authentication error', error instanceof Error ? error : new Error(String(error)));
       
       // Return user-friendly error messages
       if (error.message.includes('Invalid login credentials')) {
@@ -91,7 +91,7 @@ export const signIn = async (email: string, password: string): Promise<AuthResul
       }
     };
   } catch (error) {
-    logger.error('Unexpected authentication error', error as Error);
+    logger.error('Unexpected authentication error', error instanceof Error ? error : new Error(String(error)));
     return {
       success: false,
       error: 'Network error. Please try again'
@@ -108,7 +108,7 @@ export const signOut = async (): Promise<{ success: boolean; error?: string }> =
     const { error } = await supabase.auth.signOut();
 
     if (error) {
-      logger.error('Sign out error', error as Error);
+      logger.error('Sign out error', error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
         error: error.message
@@ -119,7 +119,7 @@ export const signOut = async (): Promise<{ success: boolean; error?: string }> =
       success: true
     };
   } catch (error) {
-    logger.error('Unexpected sign out error', error as Error);
+    logger.error('Unexpected sign out error', error instanceof Error ? error : new Error(String(error)));
     return {
       success: false,
       error: 'Failed to sign out'
@@ -143,7 +143,7 @@ export const sendPasswordResetOTP = async (email: string): Promise<{ success: bo
 
     return await sendOTP(email);
   } catch (error) {
-    logger.error('Password reset OTP error', error as Error);
+    logger.error('Password reset OTP error', error instanceof Error ? error : new Error(String(error)));
     return {
       success: false,
       error: 'Network error. Please try again'
@@ -187,7 +187,7 @@ export const verifyOTPAndResetPassword = async (
 
     return await verifyOTP(email, otp, newPassword);
   } catch (error) {
-    logger.error('OTP verification error', error as Error);
+    logger.error('OTP verification error', error instanceof Error ? error : new Error(String(error)));
     return {
       success: false,
       error: 'Network error. Please try again'
@@ -224,7 +224,7 @@ export const updatePassword = async (newPassword: string): Promise<{ success: bo
     });
 
     if (error) {
-      logger.error('Password update error', error as Error);
+      logger.error('Password update error', error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
         error: 'Failed to update password'
@@ -235,7 +235,7 @@ export const updatePassword = async (newPassword: string): Promise<{ success: bo
       success: true
     };
   } catch (error) {
-    logger.error('Unexpected password update error', error as Error);
+    logger.error('Unexpected password update error', error instanceof Error ? error : new Error(String(error)));
     return {
       success: false,
       error: 'Failed to update password'

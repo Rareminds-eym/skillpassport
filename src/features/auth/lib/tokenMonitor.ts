@@ -73,7 +73,7 @@ export class TokenMonitor {
 
       return parsed.exp;
     } catch (error) {
-      logger.error('Error extracting token expiry', error as Error);
+      logger.error('Error extracting token expiry', error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }
@@ -94,8 +94,7 @@ export class TokenMonitor {
     // Decode base64
     try {
       return atob(base64);
-    } catch (error) {
-      void error;
+    } catch (_error) {
       throw new Error('Failed to decode base64url string');
     }
   }
@@ -259,7 +258,7 @@ export class TokenMonitor {
       try {
         callback();
       } catch (error) {
-        logger.error('Error in refresh callback', error as Error);
+        logger.error('Error in refresh callback', error instanceof Error ? error : new Error(String(error)));
       }
     });
   }
