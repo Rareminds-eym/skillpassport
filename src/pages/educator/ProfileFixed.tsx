@@ -106,7 +106,7 @@ const ProfileFixed = () => {
         const userData = JSON.parse(storedUser);
         return userData.email || storedEmail;
       } catch (e) {
-        logger.error('Error parsing stored user', e);
+        logger.error('Error parsing stored user', e as Error);
       }
     }
     
@@ -282,7 +282,7 @@ const ProfileFixed = () => {
         full_name: 'Educator',
       });
     } catch (error) {
-      logger.error('Failed to load profile', error);
+      logger.error('Failed to load profile', error as Error);
       // Create fallback profile
       setProfile({
         id: '',
@@ -311,21 +311,6 @@ const ProfileFixed = () => {
     }
   }, [initialized, getUserEmail, loadProfile, navigate]);
 
-  // Helper function to check if value is null or 'null' string
-  const isNullValue = (val: unknown): boolean => val === null || val === 'null';
-
-  // Helper function to safely clean profile fields
-  const cleanProfileField = <T extends Record<string, unknown>>(
-    obj: T,
-    key: keyof T
-  ): T => {
-    const value = obj[key];
-    if (isNullValue(value)) {
-      return { ...obj, [key]: '' };
-    }
-    return obj;
-  };
-
   const handleEdit = () => {
     setEditing(true);
     
@@ -335,7 +320,7 @@ const ProfileFixed = () => {
       const value = profile?.[typedKey];
       
       // Convert null or 'null' string to empty string
-      if (isNullValue(value)) {
+      if (value === null || value === 'null') {
         return { ...acc, [typedKey]: '' };
       }
       
@@ -413,25 +398,22 @@ const ProfileFixed = () => {
         updated_at: new Date().toISOString(),
       };
 
-      // Remove any undefined values
-      Object.keys(updateData).forEach(key => {
-        const typedKey = key as keyof typeof updateData;
-        if (updateData[typedKey] === undefined) {
-          delete (updateData as any)[typedKey];
-        }
-      });
+      // Remove any undefined values using Object.fromEntries
+      const cleanedUpdateData = Object.fromEntries(
+        Object.entries(updateData).filter(([_, value]) => value !== undefined)
+      ) as typeof updateData;
 
-      logger.info('Saving profile', { updateData });
+      logger.info('Saving profile', { updateData: cleanedUpdateData });
       logger.info('Photo URL debug', {
         'formData.photo_url': formData.photo_url,
         'profile.photo_url': profile.photo_url,
         'hasOwnProperty': formData.hasOwnProperty('photo_url'),
-        'final_photo_url': updateData.photo_url
+        'final_photo_url': cleanedUpdateData.photo_url
       });
 
       const { error } = await supabase
         .from('school_educators')
-        .update(updateData)
+        .update(cleanedUpdateData)
         .eq('email', profile.email);
 
       if (error) {
@@ -451,15 +433,18 @@ const ProfileFixed = () => {
       alert('Profile saved successfully!');
       logger.info('Profile saved successfully');
     } catch (error) {
-      logger.error('Save error', error);
+      logger.error('Save error', error as Error);
       alert(`Failed to save: ${(error as Error).message}`);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleInputChange = (field: keyof EducatorProfile, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const handleInputChange = (field: keyof EducatorProfile, value: string | number | string[] | undefined | null) => {
+    // Validate value type matches expected field type
+    if (value !== null && value !== undefined) {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
   };
 
   const formatDate = (dateString?: string) => {

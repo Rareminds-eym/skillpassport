@@ -6,7 +6,7 @@ import {
     Target,
     TrendingUp
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import ReactApexChart from 'react-apexcharts';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/shared/api/supabaseClient';
@@ -15,12 +15,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('AnalyticsView');
+const IS_DEBUG_MODE = import.meta.env.DEV;
 
 const AnalyticsView = ({ studentId, userEmail }) => {
   const navigate = useNavigate();
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const IS_DEBUG_MODE = import.meta.env.DEV;
 
   // Debug logging
   const debugLog = (message, data = null) => {
@@ -34,9 +34,9 @@ const AnalyticsView = ({ studentId, userEmail }) => {
     if (studentId) {
       fetchApplicationData();
     }
-  }, [studentId]);
+  }, [studentId, fetchApplicationData]);
 
-  const fetchApplicationData = async () => {
+  const fetchApplicationData = useCallback(async () => {
     try {
       debugLog('Fetching application data...');
       setLoading(true);
@@ -71,7 +71,7 @@ const AnalyticsView = ({ studentId, userEmail }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [studentId]);
 
   // Calculate analytics data
   const analytics = useMemo(() => {

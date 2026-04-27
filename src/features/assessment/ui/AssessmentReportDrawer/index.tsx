@@ -12,73 +12,28 @@ import {
     Heart
 } from 'lucide-react';
 import { Button } from '@/shared/ui';
-// @ts-expect-error - JS file without types (TODO: Add TypeScript definitions for useAssessmentRecommendations hook - Issue #TBD)
+// useAssessmentRecommendations is a legacy JS module without TypeScript definitions.
+// TODO: Create type definitions file or migrate to TypeScript for proper type safety.
+// This import is from a legacy JS module that needs TypeScript migration.
 import { useAssessmentRecommendations } from '@/features/assessment';
-// @ts-expect-error - JS file without types (TODO: Add TypeScript definitions for course recommendation service - Issue #TBD)
-import { getStudentPreGeneratedCourses, getAllCoursesFlat } from "@/services/courseRecommendation/preGeneratedCoursesService";
-// Import CareerTrackModal
-// @ts-expect-error - JS file without types (TODO: Add TypeScript definitions for CareerTrackModal component - Issue #TBD)
+// CareerTrackModal is a legacy JS component without TypeScript definitions.
+// TODO: Add proper TypeScript definitions or migrate component to TypeScript.
 import { CareerTrackModal } from '@/features/assessment';
-// Import PrintView and constants for PDF download
-// @ts-expect-error - JS file without types (TODO: Add TypeScript definitions for PrintView component - Issue #TBD)
+// PrintView is a legacy JS component without TypeScript definitions.
+// TODO: Add proper TypeScript definitions or migrate component to TypeScript.
 import { PrintView } from '@/features/assessment';
-// @ts-expect-error - JS file without types (TODO: Add TypeScript definitions for assessment constants - Issue #TBD)
-import { RIASEC_NAMES, RIASEC_COLORS, TRAIT_NAMES, TRAIT_COLORS, PRINT_STYLES } from '@/features/assessment';
-
-// Development logging utility
-const devLog = (...args: unknown[]): void => {
-    if (import.meta.env.DEV) {
-        console.log(...args);
-    }
-};
-
-// Development warning utility
-const devWarn = (...args: unknown[]): void => {
-    if (import.meta.env.DEV) {
-        console.warn(...args);
-    }
-};
-
-// Development error utility (always show errors)
-const devError = (...args: unknown[]): void => {
-    console.error(...args);
-};
-
-// Type guard for salary range objects
-interface SalaryRangeObject {
-    min: number;
-    max: number;
-}
-
-const isSalaryRangeObject = (value: unknown): value is SalaryRangeObject => {
-    return (
-        typeof value === 'object' &&
-        value !== null &&
-        'min' in value &&
-        'max' in value &&
-        typeof (value as Record<string, unknown>).min === 'number' &&
-        typeof (value as Record<string, unknown>).max === 'number'
-    );
-};
-
-// Helper function to format salary range
-const formatSalaryRange = (salaryRange: unknown): string => {
-    if (typeof salaryRange === 'string') {
-        return salaryRange;
-    }
-    if (isSalaryRangeObject(salaryRange)) {
-        return `₹${salaryRange.min}L - ₹${salaryRange.max}L`;
-    }
-    return 'Competitive';
-};
-
-// Helper function to get salary object
-const getSalaryObject = (salaryRange: unknown): { min: number; max: number } => {
-    if (isSalaryRangeObject(salaryRange)) {
-        return { min: salaryRange.min, max: salaryRange.max };
-    }
-    return { min: 3, max: 15 }; // Default
-};
+// Assessment constants from legacy JS module. Consider creating a proper types file.
+import { RIASEC_NAMES, TRAIT_NAMES, PRINT_STYLES } from '@/features/assessment';
+// Import utility functions from shared lib
+import {
+    devLog,
+    devWarn,
+    devError,
+    isValidObject,
+    formatSalaryRange,
+    getSalaryObject,
+    hasProperty
+} from '@/shared/lib/utils';
 
 interface AssessmentReportDrawerProps {
     isOpen: boolean;
@@ -259,6 +214,10 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
     const [assessmentData, setAssessmentData] = useState<any>(null);
     const [selectedTrack, setSelectedTrack] = useState<any>(null);
 
+    // Extract stable IDs to prevent unnecessary re-renders
+    const assessmentId = assessmentResult?.id;
+    const studentUserId = student?.user_id;
+
     // Use the assessment recommendations hook (for compatibility)
     const {
         loading: recommendationsLoading
@@ -282,9 +241,10 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
         setError(null);
         
         // Process assessment data when drawer opens
-        
-        devLog("studentInfo: ", studentInfo);
-        devLog("assessmentResult: ", assessmentResult);
+        devLog('[AssessmentReportDrawer] Processing passed data...');
+        devLog('Student:', student);
+        devLog('Assessment Result:', assessmentResult);
+        devLog('Provided Student Info:', providedStudentInfo);
         devLog("assessment data", assessmentData);
         devLog('[AssessmentReportDrawer] Processing passed data...');
         devLog('Student:', student);
@@ -343,7 +303,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                         console.log('[AssessmentReportDrawer] 🔍 Found specificOptions:', careerFitData.specificOptions);
                         
                         // Map track index to fit level
-                        const fitLevelMapping = ['highFit', 'mediumFit', 'exploreLater'];
+                        const fitLevelMapping = ['highFit', 'mediumFit', 'exploreLater'] as const;
                         const targetFitLevel = fitLevelMapping[index];
                         
                         if (targetFitLevel && careerFitData.specificOptions[targetFitLevel]) {
@@ -355,16 +315,10 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                     const roleName = career.name || career.title;
                                     const rawSalaryRange = career.salary || career.salaryRange;
                                     
-                                    // Convert to string format using helper
-                                    let salaryRangeStr: string;
-                                    if (isSalaryRangeObject(rawSalaryRange)) {
-                                        salaryRangeStr = `₹${rawSalaryRange.min}L - ₹${rawSalaryRange.max}L`;
-                                    } else if (typeof rawSalaryRange === 'string' && rawSalaryRange !== 'Competitive') {
-                                        salaryRangeStr = rawSalaryRange;
-                                    } else {
-                                        // Generate realistic salary if not provided
-                                        salaryRangeStr = generateSalaryRange(roleName, cluster.title, 'entry');
-                                    }
+                                    // Use formatSalaryRange helper for consistent formatting
+                                    const salaryRangeStr = formatSalaryRange(rawSalaryRange) === 'Competitive'
+                                        ? generateSalaryRange(roleName, cluster.title, 'entry')
+                                        : formatSalaryRange(rawSalaryRange);
                                     
                                     topRoles.push({
                                         name: roleName,
@@ -387,16 +341,10 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                             const roleName = career.name || career.title;
                                             const rawSalaryRange = career.salary || career.salaryRange;
                                             
-                                            // Convert to string format using helper
-                                            let salaryRangeStr: string;
-                                            if (isSalaryRangeObject(rawSalaryRange)) {
-                                                salaryRangeStr = `₹${rawSalaryRange.min}L - ₹${rawSalaryRange.max}L`;
-                                            } else if (typeof rawSalaryRange === 'string' && rawSalaryRange !== 'Competitive') {
-                                                salaryRangeStr = rawSalaryRange;
-                                            } else {
-                                                // Generate realistic salary if not provided
-                                                salaryRangeStr = generateSalaryRange(roleName, cluster.title, 'entry');
-                                            }
+                                            // Use formatSalaryRange helper for consistent formatting
+                                            const salaryRangeStr = formatSalaryRange(rawSalaryRange) === 'Competitive'
+                                                ? generateSalaryRange(roleName, cluster.title, 'entry')
+                                                : formatSalaryRange(rawSalaryRange);
                                             
                                             topRoles.push({
                                                 name: roleName,
@@ -481,7 +429,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                         fitType: 'HIGH FIT',
                         specificRoles: topRoles.map(role => ({
                             name: role.name,
-                            salary: getSalaryObject(role.salaryRange)
+                            salary: getSalaryObject(role.salaryRange as unknown)
                         }))
                     };
                 });
@@ -507,7 +455,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
             hasStudentInfo: !!studentInfo,
             hasAssessmentData: !!assessmentData
         });
-    }, [isOpen, assessmentResult?.id, student?.id, student?.user_id]); // Only depend on essential IDs
+    }, [isOpen, assessmentId, studentUserId]); // Use stable extracted IDs
 
     // Handle opening career track modal
     const handleViewTrack = useCallback((track: CareerTrack) => {
@@ -603,25 +551,25 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                 
                 // Otherwise, construct from database fields
                 let scores: Record<string, number> = {};
-                if (dbRiasecScores) {
-                    // Handle different possible formats of riasec_scores
-                    if (typeof dbRiasecScores === 'object') {
-                        // If it's already an object with R, I, A, S, E, C keys
-                        if (dbRiasecScores.R !== undefined) {
-                            scores = { ...dbRiasecScores } as Record<string, number>;
-                        }
-                        // If it's in a different format, try to extract scores
-                        else if (dbRiasecScores.scores) {
-                            scores = { ...dbRiasecScores.scores } as Record<string, number>;
-                        }
-                        // If it has individual letter properties
-                        else {
-                            (['R', 'I', 'A', 'S', 'E', 'C'] as const).forEach(letter => {
-                                if ((dbRiasecScores as any)[letter] !== undefined) {
-                                    scores[letter] = (dbRiasecScores as any)[letter];
+                if (dbRiasecScores && isValidObject(dbRiasecScores)) {
+                    // If it's already an object with R, I, A, S, E, C keys
+                    if ('R' in dbRiasecScores && typeof dbRiasecScores.R === 'number') {
+                        scores = { ...dbRiasecScores } as Record<string, number>;
+                    }
+                    // If it's in a different format, try to extract scores
+                    else if (hasProperty(dbRiasecScores, 'scores') && isValidObject(dbRiasecScores.scores)) {
+                        scores = { ...dbRiasecScores.scores } as Record<string, number>;
+                    }
+                    // If it has individual letter properties
+                    else {
+                        (['R', 'I', 'A', 'S', 'E', 'C'] as const).forEach(letter => {
+                            if (letter in dbRiasecScores) {
+                                const value = dbRiasecScores[letter];
+                                if (typeof value === 'number') {
+                                    scores[letter] = value;
                                 }
-                            });
-                        }
+                            }
+                        });
                     }
                 }
                 
@@ -675,15 +623,15 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                 // Priority: gemini > database > default
                 
                 // If gemini has proper work values, use it
-                if (geminiWorkValues && (geminiWorkValues.topThree || geminiWorkValues.scores)) {
+                if (isValidObject(geminiWorkValues) && (hasProperty(geminiWorkValues, 'topThree') || hasProperty(geminiWorkValues, 'scores'))) {
                     console.log('✅ Using gemini work values:', geminiWorkValues);
                     return geminiWorkValues;
                 }
                 
                 // If database has work values, structure them properly
-                if (dbWorkValues && typeof dbWorkValues === 'object' && Object.keys(dbWorkValues).length > 0) {
+                if (isValidObject(dbWorkValues) && Object.keys(dbWorkValues).length > 0) {
                     // If it's already structured with topThree
-                    if (dbWorkValues.topThree) {
+                    if (hasProperty(dbWorkValues, 'topThree')) {
                         console.log('✅ Using structured db work values:', dbWorkValues);
                         return dbWorkValues;
                     }
@@ -692,9 +640,16 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                     const workValuesResult = {
                         scores: dbWorkValues,
                         topThree: Object.entries(dbWorkValues)
-                            .sort(([,a], [,b]) => (b as number) - (a as number))
+                            .sort(([,a], [,b]): number => {
+                                const numA = typeof a === 'number' ? a : 0;
+                                const numB = typeof b === 'number' ? b : 0;
+                                return numB - numA;
+                            })
                             .slice(0, 3)
-                            .map(([key, score]) => ({ value: key, score: score as number }))
+                            .map(([key, score]) => ({ 
+                                value: key, 
+                                score: typeof score === 'number' ? score : 0 
+                            }))
                     };
                     console.log('✅ Structured work values from db:', workValuesResult);
                     return workValuesResult;
@@ -1217,7 +1172,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                                                                         {role?.name || `Role ${roleIndex + 1}`}
                                                                                     </span>
                                                                                     <span className="text-green-400 font-semibold text-base">
-                                                                                        {formatSalaryRange(role?.salaryRange)}
+                                                                                        {role?.salaryRange || 'Competitive'}
                                                                                     </span>
                                                                                 </div>
                                                                             ))}
@@ -1294,6 +1249,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                 riasecNames={RIASEC_NAMES}
                                 traitNames={TRAIT_NAMES}
                                 courseRecommendations={assessmentData?.platform_courses || []}
+                                streamRecommendation={{}}
                                 studentAcademicData={{
                                     subjectMarks: [],
                                     projects: [],
@@ -1393,6 +1349,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                     }}
                     skillGap={assessmentData?.skill_gap}
                     roadmap={assessmentData?.roadmap}
+                    attemptId={assessmentData?.id || null}
                     results={{
                         riasec: assessmentData?.riasec_scores ? {
                             scores: assessmentData.riasec_scores,
