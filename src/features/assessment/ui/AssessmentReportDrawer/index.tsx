@@ -458,7 +458,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
             hasStudentInfo: !!studentInfo,
             hasAssessmentData: !!assessmentData
         });
-    }, [isOpen, assessmentId, studentUserId, assessmentResult, student]);  // Use stable extracted IDs to prevent unnecessary re-renders
+   }, [isOpen, assessmentId, studentUserId]); // Use stable extracted IDs to prevent unnecessary re-renders
 
     // Handle opening career track modal
     const handleViewTrack = useCallback((track: CareerTrack) => {
