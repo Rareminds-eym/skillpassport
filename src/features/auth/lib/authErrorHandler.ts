@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('auth-error-handler');
 
 // ============================================================================
 // CONSTANTS
@@ -149,22 +152,22 @@ interface AuthErrorHandlerResult {
 export const handleAuthError = async (error: any, context: Record<string, any> = {}): Promise<AuthErrorHandlerResult> => {
   // Check if it's a JWT expiry error
   if (isJwtExpiryError(error)) {
-    console.warn('JWT expired detected, checking session validity...');
+    logger.warn('JWT expired detected, checking session validity');
     
     // Check if session is still valid (Supabase may have auto-refreshed)
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
-        console.log('✅ Session is valid after JWT expiry check');
+        logger.info('Session is valid after JWT expiry check');
         return { success: true, session };
       }
       
       // Session is truly invalid - user needs to re-authenticate
-      console.warn('❌ Session invalid, user needs to re-authenticate');
+      logger.warn('Session invalid, user needs to re-authenticate');
       return { success: false, error: 'Session expired. Please log in again.' };
     } catch (e) {
-      console.error('Error checking session:', e);
+      logger.error('Error checking session', e as Error);
       return { success: false, error: 'Authentication error. Please log in again.' };
     }
   }
@@ -181,10 +184,24 @@ export const handleAuthError = async (error: any, context: Record<string, any> =
 // ============================================================================
 
 export const logAuthEvent = (level: string, message: string, details: Record<string, any> = {}): void => {
-  // Simple console logging for now, could be enhanced
-  if (import.meta.env.DEV) {
-    console.log(`[AUTH] [${level.toUpperCase()}] ${message}`, details);
+  const normalizedLevel = level.toLowerCase();
+
+  if (normalizedLevel === 'debug') {
+    logger.debug(message, details);
+    return;
   }
+
+  if (normalizedLevel === 'warn' || normalizedLevel === 'warning') {
+    logger.warn(message, details);
+    return;
+  }
+
+  if (normalizedLevel === 'error') {
+    logger.error(message, undefined, details);
+    return;
+  }
+
+  logger.info(message, details);
 };
 
 export const generateCorrelationId = (): string => {

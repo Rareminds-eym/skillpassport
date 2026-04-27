@@ -5,6 +5,8 @@
  * Integrates with Supabase authentication to proactively monitor token validity.
  */
 
+import { getLogger } from '@/shared/config/logging';
+
 export interface TokenMonitorConfig {
   /** Time before expiry to trigger refresh (in milliseconds). Default: 5 minutes */
   refreshWindowMs?: number;
@@ -21,6 +23,8 @@ export interface TokenInfo {
 }
 
 type RefreshNeededCallback = () => void;
+
+const logger = getLogger('token-monitor');
 
 const DEFAULT_REFRESH_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 const DEFAULT_CHECK_INTERVAL_MS = 60 * 1000; // 60 seconds
@@ -52,7 +56,7 @@ export class TokenMonitor {
       // JWT format: header.payload.signature
       const parts = token.split('.');
       if (parts.length !== 3) {
-        console.warn('[TokenMonitor] Invalid JWT format: expected 3 parts');
+        logger.warn('Invalid JWT format: expected 3 parts');
         return null;
       }
 
@@ -63,13 +67,13 @@ export class TokenMonitor {
 
       // Extract exp claim
       if (typeof parsed.exp !== 'number') {
-        console.warn('[TokenMonitor] Missing or invalid exp claim in JWT');
+        logger.warn('Missing or invalid exp claim in JWT');
         return null;
       }
 
       return parsed.exp;
     } catch (error) {
-      console.error('[TokenMonitor] Error extracting token expiry:', error);
+      logger.error('Error extracting token expiry', error as Error);
       return null;
     }
   }
@@ -90,7 +94,7 @@ export class TokenMonitor {
     // Decode base64
     try {
       return atob(base64);
-    } catch (error) {
+    } catch {
       throw new Error('Failed to decode base64url string');
     }
   }
@@ -107,7 +111,7 @@ export class TokenMonitor {
 
     const expiresAt = this.extractExpiry(token);
     if (expiresAt === null) {
-      console.warn('[TokenMonitor] Failed to extract expiry from token');
+      logger.warn('Failed to extract expiry from token');
       this.currentToken = null;
       return;
     }
@@ -173,7 +177,7 @@ export class TokenMonitor {
 
     const interval = intervalMs ?? this.config.checkIntervalMs;
 
-    console.log(`[TokenMonitor] Starting monitoring with ${interval}ms interval`);
+    logger.info('Starting token monitoring', { intervalMs: interval });
 
     // Perform immediate check
     this.performCheck();
@@ -189,7 +193,7 @@ export class TokenMonitor {
    */
   stopMonitoring(): void {
     if (this.intervalId !== null) {
-      console.log('[TokenMonitor] Stopping monitoring');
+      logger.info('Stopping token monitoring');
       window.clearInterval(this.intervalId);
       this.intervalId = null;
     }
@@ -209,7 +213,7 @@ export class TokenMonitor {
     const isActive = this.config.isSessionActive ? this.config.isSessionActive() : true;
     
     if (!isActive) {
-      console.log('[TokenMonitor] Session inactive, skipping proactive refresh check');
+      logger.debug('Session inactive, skipping proactive refresh check');
       return;
     }
 
@@ -217,9 +221,10 @@ export class TokenMonitor {
     // This ensures tokens are always fresh during active sessions
     if (this.needsRefresh()) {
       const timeUntilExpiry = this.getTimeUntilExpiry();
-      console.log(
-        `[TokenMonitor] Proactive refresh triggered (expires in ${timeUntilExpiry}s, session active)`
-      );
+      logger.info('Proactive refresh triggered', {
+        expiresInSeconds: timeUntilExpiry,
+        sessionActive: true,
+      });
       this.emitRefreshNeeded();
     }
   }
@@ -253,7 +258,7 @@ export class TokenMonitor {
       try {
         callback();
       } catch (error) {
-        console.error('[TokenMonitor] Error in refresh callback:', error);
+        logger.error('Error in refresh callback', error as Error);
       }
     });
   }

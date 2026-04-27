@@ -6,7 +6,10 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 import { getGlobalTokenRefreshErrorHandler, TokenRefreshErrorHandler } from './tokenRefreshErrorHandler';
+
+const logger = getLogger('refresh-coordinator');
 
 export interface RefreshCoordinatorConfig {
   /** Maximum number of retry attempts. Default: 3 */
@@ -80,7 +83,7 @@ export class RefreshCoordinator {
   async refreshToken(): Promise<RefreshResult> {
     // Deduplication: if refresh is in progress, return existing promise
     if (this.isRefreshing && this.currentRefreshPromise) {
-      console.log('[RefreshCoordinator] Refresh already in progress, waiting...');
+      logger.debug('Refresh already in progress, waiting');
       return this.currentRefreshPromise;
     }
 
@@ -112,15 +115,16 @@ export class RefreshCoordinator {
       this.currentAttempt = attempt + 1;
 
       try {
-        console.log(
-          `[RefreshCoordinator] Refresh attempt ${attempt + 1}/${this.config.maxRetries}`
-        );
+        logger.debug('Refresh attempt started', {
+          attempt: attempt + 1,
+          maxRetries: this.config.maxRetries,
+        });
 
         // Execute refresh with timeout
         const result = await this.executeRefreshWithTimeout();
 
         if (result.success) {
-          console.log('[RefreshCoordinator] Refresh successful');
+          logger.info('Refresh successful');
           this.lastRefreshTime = Date.now();
           this.currentAttempt = 0;
           return result;
@@ -140,20 +144,20 @@ export class RefreshCoordinator {
 
         // Don't retry if error is not retryable
         if (!retryable) {
-          console.warn(
-            `[RefreshCoordinator] Non-retryable error: ${lastError}, aborting`
-          );
+          logger.warn('Non-retryable refresh error, aborting', {
+            error: lastError,
+          });
           break;
         }
 
         // Calculate exponential backoff delay
         if (attempt < this.config.maxRetries - 1) {
           const delay = this.config.initialRetryDelayMs * Math.pow(2, attempt);
-          console.log(`[RefreshCoordinator] Retrying in ${delay}ms...`);
+          logger.debug('Retrying refresh after backoff', { delayMs: delay });
           await this.sleep(delay);
         }
       } catch (error) {
-        console.error('[RefreshCoordinator] Unexpected error during refresh:', error);
+        logger.error('Unexpected error during refresh', error as Error);
         lastError = 'unknown';
         retryable = true;
 
@@ -175,9 +179,11 @@ export class RefreshCoordinator {
 
     // All retries exhausted - log final failure
     this.currentAttempt = 0;
-    console.error(
-      `[RefreshCoordinator] Refresh failed after ${this.config.maxRetries} attempts`
-    );
+    logger.error('Refresh failed after max retry attempts', undefined, {
+      maxRetries: this.config.maxRetries,
+      lastError,
+      retryable,
+    });
 
     this.errorHandler.logFailure(
       lastError,
@@ -263,7 +269,7 @@ export class RefreshCoordinator {
         expiresAt,
       };
     } catch (error: any) {
-      console.error('[RefreshCoordinator] Refresh error:', error);
+      logger.error('Refresh execution error', error as Error);
 
       // Categorize error
       if (error.message?.includes('network') || error.message?.includes('fetch')) {
@@ -303,7 +309,9 @@ export class RefreshCoordinator {
 
       return parsed.exp || 0;
     } catch (error) {
-      console.error('[RefreshCoordinator] Error extracting token expiry:', error);
+      logger.warn('Error extracting token expiry', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       return 0;
     }
   }
@@ -368,9 +376,9 @@ export class RefreshCoordinator {
       return;
     }
 
-    console.log(
-      `[RefreshCoordinator] Processing ${this.requestQueue.length} queued requests`
-    );
+    logger.debug('Processing queued refresh requests', {
+      queueLength: this.requestQueue.length,
+    });
 
     // Resolve all queued requests with the same result
     const queue = [...this.requestQueue];
@@ -380,7 +388,7 @@ export class RefreshCoordinator {
       try {
         request.resolve(result);
       } catch (error) {
-        console.error('[RefreshCoordinator] Error processing queued request:', error);
+        logger.error('Error processing queued refresh request', error as Error);
       }
     });
   }

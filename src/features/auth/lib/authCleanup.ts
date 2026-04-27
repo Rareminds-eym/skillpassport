@@ -4,13 +4,15 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('auth-cleanup');
 
 /**
  * Clear all stale authentication data from localStorage
  * Call this when user is not authenticated or session is invalid
  */
 export const clearStaleAuthData = (): void => {
-  console.log('🧹 Clearing stale auth data from localStorage');
   localStorage.removeItem('user');
   localStorage.removeItem('userEmail');
   localStorage.removeItem('pendingUser');
@@ -35,7 +37,7 @@ export const validateLocalStorageUser = async (): Promise<boolean> => {
           if (parsedUser.isDemoMode || parsedUser.id?.includes('-001')) {
             return true;
           }
-        } catch (e) {
+        } catch {
           // Parse error - clear data
         }
         clearStaleAuthData();
@@ -55,11 +57,11 @@ export const validateLocalStorageUser = async (): Promise<boolean> => {
           parsedUser.email === session.user.email;
         
         if (!userMatches) {
-          console.warn('⚠️ localStorage user does not match session user');
+          logger.warn('localStorage user does not match session user');
           clearStaleAuthData();
           return false;
         }
-      } catch (e) {
+      } catch {
         clearStaleAuthData();
         return false;
       }
@@ -67,7 +69,7 @@ export const validateLocalStorageUser = async (): Promise<boolean> => {
 
     return true;
   } catch (error) {
-    console.error('Error validating localStorage user:', error);
+    logger.error('Error validating localStorage user', error as Error);
     return true; // Don't clear on error
   }
 };
@@ -87,7 +89,7 @@ export const userExistsInDatabase = async (userId: string): Promise<boolean> => 
     
     return !error && !!data;
   } catch (error) {
-    console.error('Error checking user in database:', error);
+    logger.error('Error checking user in database', error as Error);
     return false;
   }
 };
