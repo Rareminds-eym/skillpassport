@@ -160,6 +160,7 @@ export class RefreshCoordinator {
         const errorObj = error instanceof Error ? error : new Error(String(error));
         logger.error('Unexpected error during refresh', errorObj, {
           attempt: attempt + 1,
+          originalError: error,
         });
         lastError = 'unknown';
         retryable = true;
@@ -182,8 +183,7 @@ export class RefreshCoordinator {
 
     // All retries exhausted - log final failure
     this.currentAttempt = 0;
-    const error = new Error('Refresh failed after max retry attempts');
-    logger.error('Refresh failed after max retry attempts', error, {
+    logger.error('Refresh failed after max retry attempts', new Error('Refresh failed after max retry attempts'), {
       maxRetries: this.config.maxRetries,
       lastError,
       retryable,
@@ -276,6 +276,7 @@ export class RefreshCoordinator {
       const errorObj = error instanceof Error ? error : new Error(String(error));
       logger.error('Refresh execution error', errorObj, {
         type: typeof error,
+        originalError: error,
       });
 
       // Categorize error
@@ -398,6 +399,7 @@ export class RefreshCoordinator {
         const errorObj = error instanceof Error ? error : new Error(String(error));
         logger.error('Error processing queued refresh request', errorObj, {
           queueIndex: queue.indexOf(request),
+          originalError: error,
         });
       }
     });
