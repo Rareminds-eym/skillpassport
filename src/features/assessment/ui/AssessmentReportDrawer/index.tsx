@@ -12,18 +12,23 @@ import {
     Heart
 } from 'lucide-react';
 import { Button } from '@/shared/ui';
+
 // useAssessmentRecommendations is a legacy JS module without TypeScript definitions.
 // TODO: Create type definitions file or migrate to TypeScript for proper type safety.
 // This import is from a legacy JS module that needs TypeScript migration.
 import { useAssessmentRecommendations } from '@/features/assessment';
+
 // CareerTrackModal is a legacy JS component without TypeScript definitions.
 // TODO: Add proper TypeScript definitions or migrate component to TypeScript.
 import { CareerTrackModal } from '@/features/assessment';
+
 // PrintView is a legacy JS component without TypeScript definitions.
 // TODO: Add proper TypeScript definitions or migrate component to TypeScript.
 import { PrintView } from '@/features/assessment';
+
 // Assessment constants from legacy JS module. Consider creating a proper types file.
-import { RIASEC_NAMES, TRAIT_NAMES, PRINT_STYLES } from '@/features/assessment';// Verify RIASEC_COLORS is not used before removing. If unused, document the removal.
+import { RIASEC_NAMES, TRAIT_NAMES, PRINT_STYLES } from '@/features/assessment';
+
 // Import utility functions from shared lib
 import {
     devLog,
@@ -32,7 +37,8 @@ import {
     isValidObject,
     formatSalaryRange,
     getSalaryObject,
-    hasProperty
+    hasProperty,
+    isCompleteRiasecScores
 } from '@/shared/lib/utils';
 
 interface AssessmentReportDrawerProps {
@@ -299,8 +305,9 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                         console.log('[AssessmentReportDrawer] 🔍 Found specificOptions:', careerFitData.specificOptions);
                         
                         // Map track index to fit level
+                        // Using 'as const' creates a readonly tuple for type safety
                         const fitLevelMapping = ['highFit', 'mediumFit', 'exploreLater'] as const;
-                        const targetFitLevel = fitLevelMapping[index];
+                        const targetFitLevel = fitLevelMapping[index]; // Safe: index is 0-2 from slice(0, 3)
                         
                         if (targetFitLevel && careerFitData.specificOptions[targetFitLevel]) {
                             console.log(`[AssessmentReportDrawer] ✅ Using ${targetFitLevel} for track ${index + 1}`);
@@ -547,19 +554,17 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                 
                 // Otherwise, construct from database fields
                 let scores: Record<string, number> = {};
-                if ( isValidObject(dbRiasecScores)) {
-                    // If it's already an object with R, I, A, S, E, C keys
-                    if ('R' in dbRiasecScores) {
-                        const rValue = dbRiasecScores.R;
-                        if (typeof rValue === 'number') {
-                            scores = { ...dbRiasecScores } as Record<string, number>;
-                        }
+                if (dbRiasecScores && isValidObject(dbRiasecScores)) {
+                    // If it's already an object with all RIASEC letters as numbers
+                    if (isCompleteRiasecScores(dbRiasecScores)) {
+                        // Type guard ensures all letters are present and are numbers
+                        scores = { ...dbRiasecScores };
                     }
                     // If it's in a different format, try to extract scores
                     else if (hasProperty(dbRiasecScores, 'scores') && isValidObject(dbRiasecScores.scores)) {
                         scores = { ...dbRiasecScores.scores } as Record<string, number>;
                     }
-                    // If it has individual letter properties
+                    // If it has individual letter properties (partial data)
                     else {
                         (['R', 'I', 'A', 'S', 'E', 'C'] as const).forEach(letter => {
                             if (letter in dbRiasecScores) {
@@ -1250,6 +1255,8 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                 riasecNames={RIASEC_NAMES}
                                 traitNames={TRAIT_NAMES}
                                 courseRecommendations={assessmentData?.platform_courses || []}
+                                // streamRecommendation: PrintView component should handle null values gracefully
+                                // Falls back to null if stream_recommendation is not available
                                 streamRecommendation={assessmentData?.stream_recommendation || null}
                                 studentAcademicData={{
                                     subjectMarks: [],
@@ -1350,6 +1357,8 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                     }}
                     skillGap={assessmentData?.skill_gap}
                     roadmap={assessmentData?.roadmap}
+                    // attemptId: CareerTrackModal should handle empty string as fallback
+                    // Tries assessmentData.id first, then assessmentResult.id, finally empty string
                     attemptId={assessmentData?.id || assessmentResult?.id || ''}
                     results={{
                         riasec: assessmentData?.riasec_scores ? {

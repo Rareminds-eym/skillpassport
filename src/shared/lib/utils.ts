@@ -50,6 +50,21 @@ export const hasProperty = <T extends string>(
   return isValidObject(obj) && prop in obj;
 };
 
+/**
+ * Type guard to check if an object has all RIASEC letters as numeric properties
+ * @param obj - The object to check
+ * @returns True if object has all RIASEC letters (R, I, A, S, E, C) as numbers
+ */
+export const isCompleteRiasecScores = (obj: unknown): obj is Record<'R' | 'I' | 'A' | 'S' | 'E' | 'C', number> => {
+  if (!isValidObject(obj)) {
+    return false;
+  }
+  const riasecLetters = ['R', 'I', 'A', 'S', 'E', 'C'] as const;
+  return riasecLetters.every(letter => 
+    letter in obj && typeof obj[letter] === 'number'
+  );
+};
+
 // Salary range utilities
 export interface SalaryRangeObject {
   min: number;
