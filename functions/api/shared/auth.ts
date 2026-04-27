@@ -1,7 +1,11 @@
-// Authentication utilities for Cloudflare Pages Functions
+// Utility functions for Cloudflare Pages Functions
 // Shared across all APIs
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+
+// ============================================================================
+// LEGACY SUPABASE AUTHENTICATION (TEMPORARY - For unmigrated routes)
+// ============================================================================
 
 export interface AuthUser {
   id: string;
@@ -15,8 +19,10 @@ export interface AuthResult {
 }
 
 /**
- * Authenticate user from Authorization header
- * SECURITY: Uses Supabase's built-in JWT verification for production-grade security
+ * @deprecated Use withAuth() middleware and context.data.user instead
+ * 
+ * TEMPORARY: This function is kept for unmigrated routes only.
+ * Migrated routes should use withAuth() from _middleware.ts
  */
 export async function authenticateUser(
   request: Request,
@@ -27,7 +33,6 @@ export async function authenticateUser(
 
   const token = authHeader.replace('Bearer ', '');
 
-  // Get Supabase URL with fallback
   const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
   const supabaseAnonKey = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;
   
@@ -36,8 +41,6 @@ export async function authenticateUser(
     return null;
   }
 
-  // SECURITY: Use Supabase's getUser() which validates JWT signature
-  // This prevents token forgery attacks
   try {
     const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
     const { data: { user: authUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
@@ -52,7 +55,6 @@ export async function authenticateUser(
     
     console.log(`✓ Auth: User authenticated - ${userId}`);
 
-    // Create Supabase clients
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -68,27 +70,23 @@ export async function authenticateUser(
   }
 }
 
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
 /**
  * Sanitize user input to prevent XSS, injection attacks, and limit length
- * SECURITY: Enhanced validation for production use
  */
 export function sanitizeInput(input: string, maxLength: number = 2000): string {
   if (typeof input !== 'string') return '';
   
   return input
-    // Remove HTML tags
     .replace(/<[^>]*>/g, '')
-    // Remove angle brackets
     .replace(/[<>]/g, '')
-    // Remove control characters except newline, tab, carriage return
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-    // Normalize Unicode to prevent homograph attacks
     .normalize('NFKC')
-    // Remove null bytes
     .replace(/\0/g, '')
-    // Trim whitespace
     .trim()
-    // Limit length
     .slice(0, maxLength);
 }
 
@@ -102,7 +100,6 @@ export function generateConversationTitle(message: string): string {
 
 /**
  * Validate UUID format
- * SECURITY: Strict validation to prevent injection attacks
  */
 export function isValidUUID(uuid: string): boolean {
   if (typeof uuid !== 'string') return false;
@@ -112,11 +109,10 @@ export function isValidUUID(uuid: string): boolean {
 
 /**
  * Validate request body size to prevent memory exhaustion attacks
- * SECURITY: Enforce maximum request size
  */
 export async function validateRequestSize(
   request: Request,
-  maxSizeBytes: number = 1048576 // 1MB default
+  maxSizeBytes: number = 1048576
 ): Promise<{ valid: boolean; error?: string }> {
   const contentLength = request.headers.get('content-length');
   
@@ -131,4 +127,30 @@ export async function validateRequestSize(
   }
   
   return { valid: true };
+}
+
+/**
+ * Return a JSON error response
+ */
+export function jsonError(message: string, status: number = 400): Response {
+  return new Response(
+    JSON.stringify({ error: message }),
+    {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
+}
+
+/**
+ * Return a JSON success response
+ */
+export function jsonSuccess<T = unknown>(data: T, status: number = 200): Response {
+  return new Response(
+    JSON.stringify(data),
+    {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
 }
