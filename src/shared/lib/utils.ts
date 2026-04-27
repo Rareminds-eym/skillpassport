@@ -99,5 +99,7 @@ export const devWarn = (...args: unknown[]): void => {
 };
 
 export const devError = (...args: unknown[]): void => {
-  console.error(...args);
+  if (import.meta.env.DEV) {
+    console.error(...args);
+  }
 };

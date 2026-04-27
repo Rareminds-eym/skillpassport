@@ -22,15 +22,10 @@ const AnalyticsView = ({ studentId, userEmail }) => {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Debug logging
-  const debugLog = (message, data = null) => {
-    if (IS_DEBUG_MODE) {
-      logger.info(`${message}`, data || '');
-    }
-  };
-
   useEffect(() => {
-    debugLog('AnalyticsView mounted', { studentId, userEmail });
+    if (IS_DEBUG_MODE) {
+      logger.info('AnalyticsView mounted', { studentId, userEmail });
+    }
     if (studentId) {
       fetchApplicationData();
     }
@@ -38,7 +33,9 @@ const AnalyticsView = ({ studentId, userEmail }) => {
 
   const fetchApplicationData = useCallback(async () => {
     try {
-      debugLog('Fetching application data...');
+      if (IS_DEBUG_MODE) {
+        logger.info('Fetching application data...');
+      }
       setLoading(true);
       const { data: appliedJobs, error: jobsError } = await supabase
         .from('applied_jobs')
@@ -60,13 +57,19 @@ const AnalyticsView = ({ studentId, userEmail }) => {
         .order('applied_at', { ascending: false });
 
       if (!jobsError) {
-        debugLog(`Fetched ${appliedJobs?.length || 0} applications`);
+        if (IS_DEBUG_MODE) {
+          logger.info(`Fetched ${appliedJobs?.length || 0} applications`);
+        }
         setApplications(appliedJobs || []);
       } else {
-        debugLog('Error fetching applications:', jobsError);
+        if (IS_DEBUG_MODE) {
+          logger.error('Error fetching applications:', jobsError);
+        }
       }
     } catch (error) {
-      debugLog('Error in fetchApplicationData:', error);
+      if (IS_DEBUG_MODE) {
+        logger.error('Error in fetchApplicationData:', error);
+      }
       logger.error('Error in fetchApplicationData:', error);
     } finally {
       setLoading(false);

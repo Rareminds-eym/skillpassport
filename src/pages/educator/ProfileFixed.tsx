@@ -55,7 +55,19 @@ interface EducatorProfile {
   school_name?: string;
   full_name?: string;
   // Metadata
-  metadata?: Record<string, unknown>;
+  metadata?: EducatorMetadata;
+}
+
+// Define specific metadata structure for type safety
+interface EducatorMetadata {
+  lastLogin?: string;
+  preferences?: {
+    theme?: string;
+    notifications?: boolean;
+  };
+  certifications?: string[];
+  achievements?: string[];
+  [key: string]: unknown; // Allow additional properties
 }
 
 const ProfileFixed = () => {
@@ -441,10 +453,9 @@ const ProfileFixed = () => {
   };
 
   const handleInputChange = (field: keyof EducatorProfile, value: string | number | string[] | undefined | null) => {
-    // Validate value type matches expected field type
-    if (value !== null && value !== undefined) {
-      setFormData(prev => ({ ...prev, [field]: value }));
-    }
+    // Allow null/undefined to clear fields by converting to empty string
+    const sanitizedValue = value === null || value === undefined ? '' : value;
+    setFormData(prev => ({ ...prev, [field]: sanitizedValue }));
   };
 
   const formatDate = (dateString?: string) => {

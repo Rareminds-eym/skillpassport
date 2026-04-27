@@ -23,7 +23,7 @@ import { CareerTrackModal } from '@/features/assessment';
 // TODO: Add proper TypeScript definitions or migrate component to TypeScript.
 import { PrintView } from '@/features/assessment';
 // Assessment constants from legacy JS module. Consider creating a proper types file.
-import { RIASEC_NAMES, TRAIT_NAMES, PRINT_STYLES } from '@/features/assessment';
+import { RIASEC_NAMES, TRAIT_NAMES, PRINT_STYLES } from '@/features/assessment';// Verify RIASEC_COLORS is not used before removing. If unused, document the removal.
 // Import utility functions from shared lib
 import {
     devLog,
@@ -241,15 +241,11 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
         setError(null);
         
         // Process assessment data when drawer opens
-        devLog('[AssessmentReportDrawer] Processing passed data...');
-        devLog('Student:', student);
-        devLog('Assessment Result:', assessmentResult);
-        devLog('Provided Student Info:', providedStudentInfo);
-        devLog("assessment data", assessmentData);
-        devLog('[AssessmentReportDrawer] Processing passed data...');
-        devLog('Student:', student);
-        devLog('Assessment Result:', assessmentResult);
-        devLog('Provided Student Info:', providedStudentInfo);
+        devLog('[AssessmentReportDrawer] Processing passed data...', {
+            student,
+            assessmentResult,
+            providedStudentInfo
+        });
 
         // Process student information from passed props
         if (student || providedStudentInfo || assessmentResult) {
@@ -455,7 +451,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
             hasStudentInfo: !!studentInfo,
             hasAssessmentData: !!assessmentData
         });
-    }, [isOpen, assessmentId, studentUserId]); // Use stable extracted IDs
+    }, [isOpen, assessmentId, studentUserId]); // Use stable extracted IDs to prevent unnecessary re-renders
 
     // Handle opening career track modal
     const handleViewTrack = useCallback((track: CareerTrack) => {
@@ -553,8 +549,11 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                 let scores: Record<string, number> = {};
                 if (dbRiasecScores && isValidObject(dbRiasecScores)) {
                     // If it's already an object with R, I, A, S, E, C keys
-                    if ('R' in dbRiasecScores && typeof dbRiasecScores.R === 'number') {
-                        scores = { ...dbRiasecScores } as Record<string, number>;
+                    if ('R' in dbRiasecScores) {
+                        const rValue = dbRiasecScores.R;
+                        if (typeof rValue === 'number') {
+                            scores = { ...dbRiasecScores } as Record<string, number>;
+                        }
                     }
                     // If it's in a different format, try to extract scores
                     else if (hasProperty(dbRiasecScores, 'scores') && isValidObject(dbRiasecScores.scores)) {
@@ -565,6 +564,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                         (['R', 'I', 'A', 'S', 'E', 'C'] as const).forEach(letter => {
                             if (letter in dbRiasecScores) {
                                 const value = dbRiasecScores[letter];
+                                // Explicit type guard before assignment
                                 if (typeof value === 'number') {
                                     scores[letter] = value;
                                 }
@@ -643,13 +643,14 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                             .sort(([,a], [,b]): number => {
                                 const numA = typeof a === 'number' ? a : 0;
                                 const numB = typeof b === 'number' ? b : 0;
-                                return numB - numA;
+                                return numB - numA; // Safe: both are guaranteed to be numbers
                             })
                             .slice(0, 3)
-                            .map(([key, score]) => ({ 
-                                value: key, 
-                                score: typeof score === 'number' ? score : 0 
-                            }))
+                            .map(([key, score]) => {
+                                // Validate score is a number before creating object
+                                const validScore = typeof score === 'number' ? score : 0;
+                                return { value: key, score: validScore };
+                            })
                     };
                     console.log('✅ Structured work values from db:', workValuesResult);
                     return workValuesResult;
@@ -1249,7 +1250,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                 riasecNames={RIASEC_NAMES}
                                 traitNames={TRAIT_NAMES}
                                 courseRecommendations={assessmentData?.platform_courses || []}
-                                streamRecommendation={{}}
+                                streamRecommendation={assessmentData?.stream_recommendation || null}
                                 studentAcademicData={{
                                     subjectMarks: [],
                                     projects: [],
@@ -1349,7 +1350,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                     }}
                     skillGap={assessmentData?.skill_gap}
                     roadmap={assessmentData?.roadmap}
-                    attemptId={assessmentData?.id || null}
+                    attemptId={assessmentData?.id || assessmentResult?.id || ''}
                     results={{
                         riasec: assessmentData?.riasec_scores ? {
                             scores: assessmentData.riasec_scores,
