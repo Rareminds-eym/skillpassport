@@ -222,8 +222,7 @@ export class TokenMonitor {
     if (this.needsRefresh()) {
       const timeUntilExpiry = this.getTimeUntilExpiry();
       logger.info('Proactive refresh triggered', {
-        expiresInSeconds: timeUntilExpiry,
-        sessionActive: true,
+        timeUntilExpirySeconds: timeUntilExpiry,
       });
       this.emitRefreshNeeded();
     }

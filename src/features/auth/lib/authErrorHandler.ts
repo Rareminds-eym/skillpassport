@@ -151,7 +151,7 @@ interface AuthErrorHandlerResult {
  */
 export const handleAuthError = async (error: any, context: Record<string, any> = {}): Promise<AuthErrorHandlerResult> => {
   // Check if it's a JWT expiry error
-  if (isJwtExpiryError(error)) {
+  if (error && isJwtExpiryError(error)) {
     logger.warn('JWT expired detected, checking session validity');
     
     // Check if session is still valid (Supabase may have auto-refreshed)
@@ -197,7 +197,7 @@ export const logAuthEvent = (level: string, message: string, details: Record<str
   }
 
   if (normalizedLevel === 'error') {
-    const detailsError = details.error;
+    const detailsError = details?.error;
     const errorToLog = detailsError instanceof Error ? detailsError : new Error(message);
     logger.error(message, errorToLog, details);
     return;

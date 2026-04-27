@@ -38,7 +38,8 @@ export const validateLocalStorageUser = async (): Promise<boolean> => {
           if (parsedUser.isDemoMode || parsedUser.id?.includes('-001')) {
             return true;
           }
-        } catch (_e) {
+        } catch (error) {
+          logger.error('Error parsing localStorage user', error instanceof Error ? error : new Error(String(error)));
           // Parse error - clear data
         }
         clearStaleAuthData();
@@ -52,7 +53,7 @@ export const validateLocalStorageUser = async (): Promise<boolean> => {
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
-        const userMatches = 
+        const userMatches =
           parsedUser.id === session.user.id ||
           parsedUser.user_id === session.user.id ||
           parsedUser.email === session.user.email;
@@ -62,7 +63,8 @@ export const validateLocalStorageUser = async (): Promise<boolean> => {
           clearStaleAuthData();
           return false;
         }
-      } catch (_e) {
+      } catch (error) {
+        logger.error('Error parsing localStorage user', error instanceof Error ? error : new Error(String(error)));
         clearStaleAuthData();
         return false;
       }
