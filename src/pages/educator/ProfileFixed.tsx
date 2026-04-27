@@ -55,7 +55,7 @@ interface EducatorProfile {
   school_name?: string;
   full_name?: string;
   // Metadata
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 const ProfileFixed = () => {
@@ -1101,7 +1101,7 @@ const ProfileFixed = () => {
           </div>
 
           {/* Debug Information (Development Only) */}
-          {import.meta.env.DEV && (
+          {!import.meta.env.PROD && (
             <div className="mb-8 p-4 bg-gray-50 rounded-lg border">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Debug Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">

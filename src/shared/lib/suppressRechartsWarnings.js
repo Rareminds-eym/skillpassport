@@ -48,7 +48,9 @@ export const restoreWarnings = () => {
   isSuppressionActive = false;
 };
 
-// Auto-suppress in development
-if (import.meta.env.DEV) {
-  suppressRechartsWarnings();
-}
+// Export initialization function for deferred execution
+export const initializeRechartsWarningsSuppression = () => {
+  if (import.meta.env.DEV) {
+    suppressRechartsWarnings();
+  }
+};
