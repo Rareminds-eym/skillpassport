@@ -52,7 +52,12 @@ export const signIn = async (email: string, password: string): Promise<AuthResul
     });
 
     if (error) {
-      logger.error('Authentication error', new Error(error.message || String(error)), {
+      const errorMessage =
+        typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string'
+          ? error.message
+          : String(error);
+
+      logger.error('Authentication error', new Error(errorMessage), {
         originalError: error,
       });
       

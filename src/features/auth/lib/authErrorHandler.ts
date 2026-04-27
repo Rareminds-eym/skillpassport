@@ -149,7 +149,7 @@ interface AuthErrorHandlerResult {
  * Handles authentication errors by checking session validity
  * Returns true if session is valid, false if user needs to re-authenticate
  */
-export const handleAuthError = async (error: any, context: Record<string, any> = {}): Promise<AuthErrorHandlerResult> => {
+export const handleAuthError = async (error: unknown, context: Record<string, any> = {}): Promise<AuthErrorHandlerResult> => {
   // Check if it's a JWT expiry error
   if (isJwtExpiryError(error)) {
     logger.warn('JWT expired detected, checking session validity');
@@ -173,8 +173,13 @@ export const handleAuthError = async (error: any, context: Record<string, any> =
   }
 
   // Generic error return for non-fatal errors
+  const originalErrorMessage =
+    typeof error === 'object' && error !== null && 'message' in error && typeof (error as { message?: unknown }).message === 'string'
+      ? (error as { message: string }).message
+      : String(error);
+
   return buildErrorResponse(mapSupabaseError(error), { 
-    originalError: error.message,
+    originalError: originalErrorMessage,
     ...context 
   });
 };
@@ -200,7 +205,7 @@ export const logAuthEvent = (level: string, message: string, details: Record<str
     const detailsError = details?.error;
     const errorToLog = detailsError instanceof Error
       ? detailsError
-      : detailsError
+      : detailsError !== undefined && detailsError !== null
         ? new Error(String(detailsError))
         : undefined;
     logger.error(message, errorToLog, {

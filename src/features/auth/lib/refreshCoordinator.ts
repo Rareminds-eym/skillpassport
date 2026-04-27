@@ -277,7 +277,9 @@ export class RefreshCoordinator {
       const errorObj = error instanceof Error ? error : new Error(String(error));
       const errorRecord =
         typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : undefined;
-      const status = typeof errorRecord?.status === 'number' ? errorRecord.status : undefined;
+      const status =
+        errorRecord && typeof errorRecord.status === 'number' ? errorRecord.status : undefined;
+      const errorMessage = errorObj.message || '';
 
       logger.error('Refresh execution error', errorObj, {
         type: typeof error,
@@ -285,13 +287,13 @@ export class RefreshCoordinator {
       });
 
       // Categorize error
-      if (errorObj.message.includes('network') || errorObj.message.includes('fetch')) {
+      if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
         return { success: false, error: 'network_error', retryable: true };
       }
 
       if (
-        errorObj.message.includes('refresh') ||
-        errorObj.message.includes('invalid') ||
+        errorMessage.includes('refresh') ||
+        errorMessage.includes('invalid') ||
         status === 401 ||
         status === 403
       ) {
