@@ -52,7 +52,9 @@ export const signIn = async (email: string, password: string): Promise<AuthResul
     });
 
     if (error) {
-      logger.error('Authentication error', error instanceof Error ? error : new Error(String(error)));
+      logger.error('Authentication error', new Error(error.message || String(error)), {
+        originalError: error,
+      });
       
       // Return user-friendly error messages
       if (error.message.includes('Invalid login credentials')) {

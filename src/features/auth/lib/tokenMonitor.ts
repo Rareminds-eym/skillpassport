@@ -94,7 +94,7 @@ export class TokenMonitor {
     // Decode base64
     try {
       return atob(base64);
-    } catch (_error) {
+    } catch {
       throw new Error('Failed to decode base64url string');
     }
   }

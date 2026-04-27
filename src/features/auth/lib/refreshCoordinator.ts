@@ -160,6 +160,7 @@ export class RefreshCoordinator {
         const errorObj = error instanceof Error ? error : new Error(String(error));
         logger.error('Unexpected error during refresh', errorObj, {
           attempt: attempt + 1,
+          errorType: typeof error,
           originalError: error,
         });
         lastError = 'unknown';
@@ -183,7 +184,7 @@ export class RefreshCoordinator {
 
     // All retries exhausted - log final failure
     this.currentAttempt = 0;
-    logger.error('Refresh failed after max retry attempts', new Error('Refresh failed after max retry attempts'), {
+    logger.error('Refresh failed after max retry attempts', new Error(lastError), {
       maxRetries: this.config.maxRetries,
       lastError,
       retryable,
@@ -272,23 +273,27 @@ export class RefreshCoordinator {
         token,
         expiresAt,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
+      const errorRecord =
+        typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : undefined;
+      const status = typeof errorRecord?.status === 'number' ? errorRecord.status : undefined;
+
       logger.error('Refresh execution error', errorObj, {
         type: typeof error,
         originalError: error,
       });
 
       // Categorize error
-      if (error.message?.includes('network') || error.message?.includes('fetch')) {
+      if (errorObj.message.includes('network') || errorObj.message.includes('fetch')) {
         return { success: false, error: 'network_error', retryable: true };
       }
 
       if (
-        error.message?.includes('refresh') ||
-        error.message?.includes('invalid') ||
-        error.status === 401 ||
-        error.status === 403
+        errorObj.message.includes('refresh') ||
+        errorObj.message.includes('invalid') ||
+        status === 401 ||
+        status === 403
       ) {
         return {
           success: false,
