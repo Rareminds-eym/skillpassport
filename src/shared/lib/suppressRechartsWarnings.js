@@ -48,7 +48,12 @@ export const restoreWarnings = () => {
   isSuppressionActive = false;
 };
 
-// Export initialization function for deferred execution
+/**
+ * Initialize Recharts warnings suppression in development mode.
+ * This function is called automatically when the module is imported.
+ * 
+ * @returns {void}
+ */
 export const initializeRechartsWarningsSuppression = () => {
   if (import.meta.env.DEV) {
     suppressRechartsWarnings();
@@ -56,4 +61,6 @@ export const initializeRechartsWarningsSuppression = () => {
 };
 
 // Auto-initialize in development
+// Note: This is a module-level side effect that runs on import
+// to suppress Recharts dimension warnings during chart initialization
 initializeRechartsWarningsSuppression();

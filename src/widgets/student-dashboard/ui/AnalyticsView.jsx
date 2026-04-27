@@ -20,11 +20,11 @@ const AnalyticsView = ({ studentId, userEmail }) => {
   const navigate = useNavigate();
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const debugMode = import.meta.env.DEV;
+  const IS_DEBUG_MODE = import.meta.env.DEV;
 
   // Debug logging
   const debugLog = (message, data = null) => {
-    if (debugMode) {
+    if (IS_DEBUG_MODE) {
       logger.info(`${message}`, data || '');
     }
   };

@@ -311,28 +311,36 @@ const ProfileFixed = () => {
     }
   }, [initialized, getUserEmail, loadProfile, navigate]);
 
+  // Helper function to check if value is null or 'null' string
+  const isNullValue = (val: unknown): boolean => val === null || val === 'null';
+
+  // Helper function to safely clean profile fields
+  const cleanProfileField = <T extends Record<string, unknown>>(
+    obj: T,
+    key: keyof T
+  ): T => {
+    const value = obj[key];
+    if (isNullValue(value)) {
+      return { ...obj, [key]: '' };
+    }
+    return obj;
+  };
+
   const handleEdit = () => {
     setEditing(true);
-    // Clean the profile data for form editing
-    const cleanedProfile = { ...profile };
     
-    // Convert null dates to empty strings for form inputs
-    if (cleanedProfile.dob === null || cleanedProfile.dob === 'null') {
-      cleanedProfile.dob = '';
-    }
-    if (cleanedProfile.date_of_joining === null || cleanedProfile.date_of_joining === 'null') {
-      cleanedProfile.date_of_joining = '';
-    }
-    
-    // Convert null strings to empty strings
-    Object.keys(cleanedProfile).forEach(key => {
-      const typedKey = key as keyof typeof cleanedProfile;
-      const value = cleanedProfile[typedKey];
-      if (value === null || value === 'null') {
-        // Type-safe assignment using Record utility type
-        (cleanedProfile as Record<string, unknown>)[typedKey] = '';
+    // Clean the profile data for form editing using reduce for immutability
+    const cleanedProfile = Object.keys(profile || {}).reduce((acc, key) => {
+      const typedKey = key as keyof EducatorProfile;
+      const value = profile?.[typedKey];
+      
+      // Convert null or 'null' string to empty string
+      if (isNullValue(value)) {
+        return { ...acc, [typedKey]: '' };
       }
-    });
+      
+      return { ...acc, [typedKey]: value };
+    }, {} as EducatorProfile);
     
     setFormData(cleanedProfile);
   };

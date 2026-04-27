@@ -12,17 +12,17 @@ import {
     Heart
 } from 'lucide-react';
 import { Button } from '@/shared/ui';
-// @ts-ignore - JS file without types (TODO: Add TypeScript definitions for useAssessmentRecommendations hook)
+// @ts-expect-error - JS file without types (TODO: Add TypeScript definitions for useAssessmentRecommendations hook - Issue #TBD)
 import { useAssessmentRecommendations } from '@/features/assessment';
-// @ts-ignore - JS file without types (TODO: Add TypeScript definitions for course recommendation service)
+// @ts-expect-error - JS file without types (TODO: Add TypeScript definitions for course recommendation service - Issue #TBD)
 import { getStudentPreGeneratedCourses, getAllCoursesFlat } from "@/services/courseRecommendation/preGeneratedCoursesService";
 // Import CareerTrackModal
-// @ts-ignore - JS file without types (TODO: Add TypeScript definitions for CareerTrackModal component)
+// @ts-expect-error - JS file without types (TODO: Add TypeScript definitions for CareerTrackModal component - Issue #TBD)
 import { CareerTrackModal } from '@/features/assessment';
 // Import PrintView and constants for PDF download
-// @ts-ignore - JS file without types (TODO: Add TypeScript definitions for PrintView component)
+// @ts-expect-error - JS file without types (TODO: Add TypeScript definitions for PrintView component - Issue #TBD)
 import { PrintView } from '@/features/assessment';
-// @ts-ignore - JS file without types (TODO: Add TypeScript definitions for assessment constants)
+// @ts-expect-error - JS file without types (TODO: Add TypeScript definitions for assessment constants - Issue #TBD)
 import { RIASEC_NAMES, RIASEC_COLORS, TRAIT_NAMES, TRAIT_COLORS, PRINT_STYLES } from '@/features/assessment';
 
 // Development logging utility
@@ -56,9 +56,28 @@ const isSalaryRangeObject = (value: unknown): value is SalaryRangeObject => {
         value !== null &&
         'min' in value &&
         'max' in value &&
-        typeof (value as SalaryRangeObject).min === 'number' &&
-        typeof (value as SalaryRangeObject).max === 'number'
+        typeof (value as Record<string, unknown>).min === 'number' &&
+        typeof (value as Record<string, unknown>).max === 'number'
     );
+};
+
+// Helper function to format salary range
+const formatSalaryRange = (salaryRange: unknown): string => {
+    if (typeof salaryRange === 'string') {
+        return salaryRange;
+    }
+    if (isSalaryRangeObject(salaryRange)) {
+        return `₹${salaryRange.min}L - ₹${salaryRange.max}L`;
+    }
+    return 'Competitive';
+};
+
+// Helper function to get salary object
+const getSalaryObject = (salaryRange: unknown): { min: number; max: number } => {
+    if (isSalaryRangeObject(salaryRange)) {
+        return { min: salaryRange.min, max: salaryRange.max };
+    }
+    return { min: 3, max: 15 }; // Default
 };
 
 interface AssessmentReportDrawerProps {
@@ -334,21 +353,22 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                             careers.slice(0, 3).forEach((career: any) => {
                                 if (career && (career.name || career.title)) {
                                     const roleName = career.name || career.title;
-                                    let salaryRange = career.salary || career.salaryRange;
+                                    const rawSalaryRange = career.salary || career.salaryRange;
                                     
-                                    // Convert object salary to string format if needed
-                                    if (isSalaryRangeObject(salaryRange)) {
-                                        salaryRange = `₹${salaryRange.min}L - ₹${salaryRange.max}L`;
-                                    }
-                                    
-                                    // If no salary provided, generate realistic one
-                                    if (!salaryRange || salaryRange === 'Competitive') {
-                                        salaryRange = generateSalaryRange(roleName, cluster.title, 'entry');
+                                    // Convert to string format using helper
+                                    let salaryRangeStr: string;
+                                    if (isSalaryRangeObject(rawSalaryRange)) {
+                                        salaryRangeStr = `₹${rawSalaryRange.min}L - ₹${rawSalaryRange.max}L`;
+                                    } else if (typeof rawSalaryRange === 'string' && rawSalaryRange !== 'Competitive') {
+                                        salaryRangeStr = rawSalaryRange;
+                                    } else {
+                                        // Generate realistic salary if not provided
+                                        salaryRangeStr = generateSalaryRange(roleName, cluster.title, 'entry');
                                     }
                                     
                                     topRoles.push({
                                         name: roleName,
-                                        salaryRange: salaryRange,
+                                        salaryRange: salaryRangeStr,
                                         fit: targetFitLevel === 'highFit' ? 'High' : targetFitLevel === 'mediumFit' ? 'Medium' : 'Explore'
                                     });
                                 }
@@ -365,21 +385,22 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                     careers.slice(0, 3).forEach((career: any) => {
                                         if (career && (career.name || career.title) && topRoles.length < 3) {
                                             const roleName = career.name || career.title;
-                                            let salaryRange = career.salary || career.salaryRange;
+                                            const rawSalaryRange = career.salary || career.salaryRange;
                                             
-                                            // Convert object salary to string format if needed
-                                            if (isSalaryRangeObject(salaryRange)) {
-                                                salaryRange = `₹${salaryRange.min}L - ₹${salaryRange.max}L`;
-                                            }
-                                            
-                                            // If no salary provided, generate realistic one
-                                            if (!salaryRange || salaryRange === 'Competitive') {
-                                                salaryRange = generateSalaryRange(roleName, cluster.title, 'entry');
+                                            // Convert to string format using helper
+                                            let salaryRangeStr: string;
+                                            if (isSalaryRangeObject(rawSalaryRange)) {
+                                                salaryRangeStr = `₹${rawSalaryRange.min}L - ₹${rawSalaryRange.max}L`;
+                                            } else if (typeof rawSalaryRange === 'string' && rawSalaryRange !== 'Competitive') {
+                                                salaryRangeStr = rawSalaryRange;
+                                            } else {
+                                                // Generate realistic salary if not provided
+                                                salaryRangeStr = generateSalaryRange(roleName, cluster.title, 'entry');
                                             }
                                             
                                             topRoles.push({
                                                 name: roleName,
-                                                salaryRange: salaryRange,
+                                                salaryRange: salaryRangeStr,
                                                 fit: fitLevel === 'highFit' ? 'High' : fitLevel === 'mediumFit' ? 'Medium' : 'Explore'
                                             });
                                         }
@@ -460,11 +481,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                         fitType: 'HIGH FIT',
                         specificRoles: topRoles.map(role => ({
                             name: role.name,
-                            salary: typeof role.salaryRange === 'string' 
-                                ? { min: 3, max: 15 } // Default when string format
-                                : isSalaryRangeObject(role.salaryRange)
-                                    ? { min: role.salaryRange.min, max: role.salaryRange.max }
-                                    : { min: 3, max: 15 } // Default salary range
+                            salary: getSalaryObject(role.salaryRange)
                         }))
                     };
                 });
@@ -1200,12 +1217,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                                                                         {role?.name || `Role ${roleIndex + 1}`}
                                                                                     </span>
                                                                                     <span className="text-green-400 font-semibold text-base">
-                                                                                        {typeof role?.salaryRange === 'string' 
-                                                                                            ? role.salaryRange 
-                                                                                            : isSalaryRangeObject(role?.salaryRange)
-                                                                                                ? `₹${role.salaryRange.min}L - ₹${role.salaryRange.max}L`
-                                                                                                : 'Competitive'
-                                                                                        }
+                                                                                        {formatSalaryRange(role?.salaryRange)}
                                                                                     </span>
                                                                                 </div>
                                                                             ))}
