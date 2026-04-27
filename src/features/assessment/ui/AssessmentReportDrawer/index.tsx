@@ -27,14 +27,14 @@ import { RIASEC_NAMES, RIASEC_COLORS, TRAIT_NAMES, TRAIT_COLORS, PRINT_STYLES } 
 
 // Development logging utility
 const devLog = (...args: any[]) => {
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
         console.log(...args);
     }
 };
 
 // Development warning utility
 const devWarn = (...args: any[]) => {
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
         console.warn(...args);
     }
 };
