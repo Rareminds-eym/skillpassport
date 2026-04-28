@@ -27,14 +27,14 @@ import { RIASEC_NAMES, RIASEC_COLORS, TRAIT_NAMES, TRAIT_COLORS, PRINT_STYLES } 
 
 // Development logging utility
 const devLog = (...args: any[]) => {
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
         console.log(...args);
     }
 };
 
 // Development warning utility
 const devWarn = (...args: any[]) => {
-    if (process.env.NODE_ENV === 'development') {
+                if (import.meta.env.DEV) {
         console.warn(...args);
     }
 };
@@ -1265,6 +1265,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                 riasecNames={RIASEC_NAMES}
                                 traitNames={TRAIT_NAMES}
                                 courseRecommendations={assessmentData?.platform_courses || []}
+                                streamRecommendation={assessmentData?.gemini_results?.streamRecommendation || {}}
                                 studentAcademicData={{
                                     subjectMarks: [],
                                     projects: [],
@@ -1377,6 +1378,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                         },
                         platformCourses: assessmentData?.platform_courses || []
                     }}
+                    attemptId={assessmentData?.id || null}
                 />
             )}
         </>
