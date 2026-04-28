@@ -356,37 +356,6 @@ const ProfileFixed = () => {
     }
   }, [initialized, getUserEmail, loadProfile, navigate]);
 
-  // Type-safe helper function using TypeScript's built-in type inference
-  // This approach leverages the EducatorProfile interface directly
-  const assignProfileField = <K extends keyof EducatorProfile>(
-    target: Partial<EducatorProfile>,
-    key: K,
-    value: unknown
-  ): void => {
-    // Handle null or 'null' string - convert to empty string for string fields only
-    if (value === null || value === 'null') {
-      // Check if the field type in EducatorProfile is string | undefined
-      // We do this by checking the actual profile structure
-      if (typeof profile?.[key] === 'string' || profile?.[key] === undefined || profile?.[key] === null) {
-        target[key] = '' as EducatorProfile[K];
-      }
-      return;
-    }
-
-    // Runtime type validation before assignment
-    if (typeof value === 'string') {
-      target[key] = value as EducatorProfile[K];
-    } else if (typeof value === 'number') {
-      target[key] = value as EducatorProfile[K];
-    } else if (Array.isArray(value)) {
-      target[key] = value as EducatorProfile[K];
-    } else if (typeof value === 'object' && value !== null) {
-      target[key] = value as EducatorProfile[K];
-    } else if (value !== undefined) {
-      target[key] = value as EducatorProfile[K];
-    }
-  };
-
   const handleEdit = () => {
     setEditing(true);
     
@@ -395,14 +364,31 @@ const ProfileFixed = () => {
       return;
     }
     
-    // Clean the profile data for form editing with type-safe validation
-    const cleanedProfile: Partial<EducatorProfile> = {};
-    
-    // Type-safe iteration using the helper function
-    (Object.keys(profile) as Array<keyof EducatorProfile>).forEach(key => {
-      const value = profile[key];
-      assignProfileField(cleanedProfile, key, value);
-    });
+    // Clean the profile data for form editing
+    // Create a new object with cleaned values
+    const cleanedProfile: Partial<EducatorProfile> = {
+      ...profile,
+      // Convert null/'null' to empty string for string fields
+      first_name: profile.first_name === null || profile.first_name === 'null' ? '' : profile.first_name,
+      last_name: profile.last_name === null || profile.last_name === 'null' ? '' : profile.last_name,
+      phone_number: profile.phone_number === null || profile.phone_number === 'null' ? '' : profile.phone_number,
+      dob: profile.dob === null || profile.dob === 'null' ? '' : profile.dob,
+      gender: profile.gender === null || profile.gender === 'null' ? '' : profile.gender,
+      address: profile.address === null || profile.address === 'null' ? '' : profile.address,
+      city: profile.city === null || profile.city === 'null' ? '' : profile.city,
+      state: profile.state === null || profile.state === 'null' ? '' : profile.state,
+      country: profile.country === null || profile.country === 'null' ? '' : profile.country,
+      pincode: profile.pincode === null || profile.pincode === 'null' ? '' : profile.pincode,
+      employee_id: profile.employee_id === null || profile.employee_id === 'null' ? '' : profile.employee_id,
+      specialization: profile.specialization === null || profile.specialization === 'null' ? '' : profile.specialization,
+      qualification: profile.qualification === null || profile.qualification === 'null' ? '' : profile.qualification,
+      designation: profile.designation === null || profile.designation === 'null' ? '' : profile.designation,
+      department: profile.department === null || profile.department === 'null' ? '' : profile.department,
+      date_of_joining: profile.date_of_joining === null || profile.date_of_joining === 'null' ? '' : profile.date_of_joining,
+      resume_url: profile.resume_url === null || profile.resume_url === 'null' ? '' : profile.resume_url,
+      id_proof_url: profile.id_proof_url === null || profile.id_proof_url === 'null' ? '' : profile.id_proof_url,
+      photo_url: profile.photo_url === null || profile.photo_url === 'null' ? '' : profile.photo_url,
+    };
     
     setFormData(cleanedProfile);
   };
