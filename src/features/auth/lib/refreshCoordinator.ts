@@ -11,6 +11,43 @@ import { getGlobalTokenRefreshErrorHandler, TokenRefreshErrorHandler } from './t
 
 const logger = getLogger('refresh-coordinator');
 
+interface ErrorWithStatus {
+  status?: number | string;
+  message?: string;
+}
+
+interface ErrorWithMessage {
+  message?: string;
+}
+
+function isErrorWithStatus(err: unknown): err is ErrorWithStatus {
+  return typeof err === 'object' && err !== null && 'status' in err;
+}
+
+function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
+  return typeof err === 'object' && err !== null && 'message' in err;
+}
+
+function extractErrorStatus(err: unknown): number | undefined {
+  if (!isErrorWithStatus(err)) return undefined;
+  const status = err.status;
+  if (typeof status === 'number') return status;
+  if (typeof status === 'string') {
+    const parsed = parseInt(status, 10);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+  return undefined;
+}
+
+function extractErrorMessage(err: unknown): string {
+  if (isErrorWithMessage(err) && typeof err.message === 'string') {
+    return err.message.toLowerCase();
+  }
+  if (err instanceof Error) return err.message.toLowerCase();
+  if (typeof err === 'string') return err.toLowerCase();
+  return '';
+}
+
 export interface RefreshCoordinatorConfig {
   /** Maximum number of retry attempts. Default: 3 */
   maxRetries?: number;
@@ -226,13 +263,15 @@ export class RefreshCoordinator {
         // Check if there's an error indicating invalid refresh token
         if (response?.error) {
           const error = response.error;
+          const errorMsg = extractErrorMessage(error);
+          const errorStatus = extractErrorStatus(error);
 
           // Categorize error
           if (
-            error.message?.includes('refresh') ||
-            error.message?.includes('invalid') ||
-            error.status === 401 ||
-            error.status === 403
+            errorMsg.includes('refresh') ||
+            errorMsg.includes('invalid') ||
+            errorStatus === 401 ||
+            errorStatus === 403
           ) {
             return {
               success: false,
@@ -241,7 +280,7 @@ export class RefreshCoordinator {
             };
           }
 
-          if (error.message?.includes('network') || error.status === 0) {
+          if (errorMsg.includes('network') || errorStatus === 0) {
             return { success: false, error: 'network_error', retryable: true };
           }
         }
@@ -275,13 +314,8 @@ export class RefreshCoordinator {
       };
     } catch (error: unknown) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
-      const errorRecord =
-        typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : undefined;
-      const status =
-        errorRecord && 'status' in errorRecord && typeof errorRecord.status === 'number'
-          ? (errorRecord.status as number)
-          : undefined;
-      const errorMessage = errorObj.message || '';
+      const errorMsg = extractErrorMessage(error);
+      const errorStatus = extractErrorStatus(error);
 
       logger.error('Refresh execution error', errorObj, {
         type: typeof error,
@@ -289,15 +323,15 @@ export class RefreshCoordinator {
       });
 
       // Categorize error
-      if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+      if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
         return { success: false, error: 'network_error', retryable: true };
       }
 
       if (
-        errorMessage.includes('refresh') ||
-        errorMessage.includes('invalid') ||
-        status === 401 ||
-        status === 403
+        errorMsg.includes('refresh') ||
+        errorMsg.includes('invalid') ||
+        errorStatus === 401 ||
+        errorStatus === 403
       ) {
         return {
           success: false,
