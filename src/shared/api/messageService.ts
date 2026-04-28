@@ -599,8 +599,9 @@ export class MessageService {
         .single();
 
       if (error) {
-        logger.error('Failed to send message', new Error(error.message), { conversationId });
-        throw new Error(`Failed to send message: ${error.message}`);
+        const messageError = new Error(`Failed to send message: ${error.message}`);
+        logger.error('Failed to send message', messageError, { conversationId, code: error.code });
+        throw messageError;
       }
 
       // Clear caches after sending message
@@ -636,18 +637,21 @@ export class MessageService {
         .maybeSingle();
 
       if (convError && convError.code !== 'PGRST116') {
-        logger.error('Error fetching conversation', new Error(convError.message), { conversationId });
-        throw new Error(`Conversation not found: ${convError.message}`);
+        const fetchError = new Error(`Error fetching conversation: ${convError.message}`);
+        logger.error('Error fetching conversation', fetchError, { conversationId, code: convError.code });
+        throw fetchError;
       }
 
       if (!conversation) {
-        logger.error('Conversation not found', undefined, { conversationId });
-        throw new Error('Conversation not found');
+        const notFoundError = new Error('Conversation not found');
+        logger.error('Conversation not found', notFoundError, { conversationId });
+        throw notFoundError;
       }
 
       if (!conversation?.educator_id) {
-        logger.error('No educator found in conversation', undefined, { conversationId });
-        throw new Error('Educator not found in conversation');
+        const noEducatorError = new Error('Educator not found in conversation');
+        logger.error('No educator found in conversation', noEducatorError, { conversationId });
+        throw noEducatorError;
       }
 
       return this.sendMessage(
@@ -664,7 +668,7 @@ export class MessageService {
         attachments
       );
     } catch (error) {
-      logger.error('Error in sendStudentEducatorMessage', error instanceof Error ? error : new Error(String(error)));
+      logger.error('Error in sendStudentEducatorMessage', error instanceof Error ? error : new Error(String(error)), { conversationId, studentId });
       throw error;
     }
   }
@@ -708,7 +712,7 @@ export class MessageService {
         const { data, error } = await query;
 
         if (error) {
-          logger.error('Failed to fetch conversation messages', error, { conversationId });
+          logger.error('Failed to fetch conversation messages', new Error(error.message), { conversationId, code: error.code });
           throw error;
         }
 
@@ -1306,6 +1310,9 @@ export class MessageService {
             .then(() => {
               // Clear conversation cache after update
               this.clearConversationCache(userId);
+            })
+            .catch((error) => {
+              logger.error('Failed to update conversation unread count', error instanceof Error ? error : new Error(String(error)), { conversationId, updateField });
             });
         }
       }

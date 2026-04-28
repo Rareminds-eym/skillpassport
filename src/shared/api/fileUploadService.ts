@@ -152,7 +152,7 @@ export const deleteFile = async (fileUrl: string): Promise<boolean> => {
     const token = await getAuthToken();
 
     if (!token) {
-      logger.error('Authentication required to delete file');
+      logger.error('Authentication required to delete file', new Error('No auth token available'));
       return false;
     }
 
@@ -168,7 +168,7 @@ export const deleteFile = async (fileUrl: string): Promise<boolean> => {
     if (!response.ok) {
       // Handle authentication errors
       if (response.status === 401) {
-        logger.error('Authentication failed. Please refresh the page and log in again.');
+        logger.error('Authentication failed. Please refresh the page and log in again.', new Error('HTTP 401 Unauthorized'), { fileUrl });
         return false;
       }
 
