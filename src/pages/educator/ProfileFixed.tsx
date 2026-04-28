@@ -55,7 +55,19 @@ interface EducatorProfile {
   school_name?: string;
   full_name?: string;
   // Metadata
-  metadata?: any;
+  metadata?: EducatorMetadata;
+}
+
+// Define specific metadata structure for type safety
+interface EducatorMetadata {
+  lastLogin?: string;
+  preferences?: {
+    theme?: string;
+    notifications?: boolean;
+  };
+  certifications?: string[];
+  achievements?: string[];
+  [key: string]: unknown; // Allow additional properties
 }
 
 const ProfileFixed = () => {
@@ -106,7 +118,7 @@ const ProfileFixed = () => {
         const userData = JSON.parse(storedUser);
         return userData.email || storedEmail;
       } catch (e) {
-        logger.error('Error parsing stored user', e);
+        logger.error('Error parsing stored user', e instanceof Error ? e : new Error(String(e)));
       }
     }
     
@@ -282,7 +294,7 @@ const ProfileFixed = () => {
         full_name: 'Educator',
       });
     } catch (error) {
-      logger.error('Failed to load profile', error);
+      logger.error('Failed to load profile', error instanceof Error ? error : new Error(String(error)));
       // Create fallback profile
       setProfile({
         id: '',
@@ -313,22 +325,24 @@ const ProfileFixed = () => {
 
   const handleEdit = () => {
     setEditing(true);
+    
+    if (!profile) {
+      setFormData({});
+      return;
+    }
+    
     // Clean the profile data for form editing
-    const cleanedProfile = { ...profile };
+    const cleanedProfile: Partial<EducatorProfile> = {};
     
-    // Convert null dates to empty strings for form inputs
-    if (cleanedProfile.dob === null || cleanedProfile.dob === 'null') {
-      cleanedProfile.dob = '';
-    }
-    if (cleanedProfile.date_of_joining === null || cleanedProfile.date_of_joining === 'null') {
-      cleanedProfile.date_of_joining = '';
-    }
-    
-    // Convert null strings to empty strings
-    Object.keys(cleanedProfile).forEach(key => {
-      const typedKey = key as keyof typeof cleanedProfile;
-      if (cleanedProfile[typedKey] === null || cleanedProfile[typedKey] === 'null') {
-        (cleanedProfile as any)[typedKey] = '';
+    // Iterate through profile keys and clean values
+    (Object.keys(profile) as Array<keyof EducatorProfile>).forEach(key => {
+      const value = profile[key];
+      
+      // Convert null or 'null' string to empty string for form inputs
+      if (value === null || value === 'null') {
+        cleanedProfile[key] = '' as any;
+      } else {
+        cleanedProfile[key] = value as any;
       }
     });
     
@@ -403,25 +417,25 @@ const ProfileFixed = () => {
         updated_at: new Date().toISOString(),
       };
 
-      // Remove any undefined values
-      Object.keys(updateData).forEach(key => {
-        const typedKey = key as keyof typeof updateData;
-        if (updateData[typedKey] === undefined) {
-          delete (updateData as any)[typedKey];
+      // Remove any undefined values using reduce for type safety
+      const cleanedUpdateData = Object.entries(updateData).reduce((acc, [key, value]) => {
+        if (value !== undefined) {
+          acc[key as keyof typeof updateData] = value;
         }
-      });
+        return acc;
+      }, {} as Partial<typeof updateData>);
 
-      logger.info('Saving profile', { updateData });
+      logger.info('Saving profile', { updateData: cleanedUpdateData });
       logger.info('Photo URL debug', {
         'formData.photo_url': formData.photo_url,
         'profile.photo_url': profile.photo_url,
         'hasOwnProperty': formData.hasOwnProperty('photo_url'),
-        'final_photo_url': updateData.photo_url
+        'final_photo_url': cleanedUpdateData.photo_url
       });
 
       const { error } = await supabase
         .from('school_educators')
-        .update(updateData)
+        .update(cleanedUpdateData)
         .eq('email', profile.email);
 
       if (error) {
@@ -441,15 +455,19 @@ const ProfileFixed = () => {
       alert('Profile saved successfully!');
       logger.info('Profile saved successfully');
     } catch (error) {
-      logger.error('Save error', error);
-      alert(`Failed to save: ${(error as Error).message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      logger.error('Save error', error instanceof Error ? error : new Error(String(error)));
+      alert(`Failed to save: ${errorMessage}`);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleInputChange = (field: keyof EducatorProfile, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const handleInputChange = (field: keyof EducatorProfile, value: string | number | string[] | undefined | null) => {
+    // Convert null/undefined to empty string for consistent form handling
+    // This allows clearing fields while maintaining type safety
+    const sanitizedValue = value === null || value === undefined ? '' : value;
+    setFormData(prev => ({ ...prev, [field]: sanitizedValue }));
   };
 
   const formatDate = (dateString?: string) => {
@@ -1101,7 +1119,7 @@ const ProfileFixed = () => {
           </div>
 
           {/* Debug Information (Development Only) */}
-          {process.env.NODE_ENV === 'development' && (
+          {import.meta.env.DEV && (
             <div className="mb-8 p-4 bg-gray-50 rounded-lg border">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Debug Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
