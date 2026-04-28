@@ -32,6 +32,7 @@ import {
   createAuthorizationError,
   logErrorSafely,
 } from '../utils/error-handling';
+import { getLogger } from '../../../../src/shared/config/logging';
 
 /**
  * Validate ownership of a file based on its path pattern
@@ -78,6 +79,7 @@ async function validateOwnership(
  */
 export const handleDelete: PagesFunction = async (context: AuthenticatedContext) => {
   const { request, env, user, supabaseAdmin } = context;
+  const logger = getLogger('storage-delete');
 
   // Require authentication
   if (!user) {
@@ -117,7 +119,10 @@ export const handleDelete: PagesFunction = async (context: AuthenticatedContext)
       }, 400);
     }
 
-    console.log('🗑️  Deleting file:', { originalUrl: url, fileKey, userId: user.id });
+    logger.info('Initiating file deletion', {
+      fileKey,
+      userId: user.id,
+    });
 
     // Validate ownership
     const ownership = await validateOwnership(fileKey, user.id, supabaseAdmin);
@@ -144,7 +149,7 @@ export const handleDelete: PagesFunction = async (context: AuthenticatedContext)
     // Delete from R2
     await r2.delete(fileKey);
 
-    console.log('✅ File deleted successfully from R2:', fileKey);
+    logger.info('File deleted successfully from R2', { fileKey });
 
     return jsonResponse({
       success: true,

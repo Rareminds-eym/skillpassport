@@ -9,6 +9,7 @@
 import type { PagesFunction } from '../../../../src/functions-lib/types';
 import { jsonResponse } from '../../../../src/functions-lib';
 import { R2Client } from '../utils/r2-client';
+import { getLogger } from '../../../../src/shared/config/logging';
 
 /**
  * Example handler showing R2Client usage
@@ -16,6 +17,7 @@ import { R2Client } from '../utils/r2-client';
  */
 export const handleExampleUpload: PagesFunction = async (context) => {
   const { request, env } = context;
+  const logger = getLogger('example-upload');
 
   try {
     // Create R2 client instance
@@ -49,7 +51,7 @@ export const handleExampleUpload: PagesFunction = async (context) => {
       filename,
     });
   } catch (error) {
-    console.error('Upload error:', error);
+    logger.error('Failed to upload file', error as Error);
     return jsonResponse({
       error: (error as Error).message || 'Upload failed',
     }, 500);
@@ -61,6 +63,7 @@ export const handleExampleUpload: PagesFunction = async (context) => {
  */
 export const handleExamplePresigned: PagesFunction = async (context) => {
   const { request, env } = context;
+  const logger = getLogger('example-presigned');
 
   try {
     const r2 = new R2Client(env);
@@ -98,7 +101,7 @@ export const handleExamplePresigned: PagesFunction = async (context) => {
       headers,
     });
   } catch (error) {
-    console.error('Presigned URL error:', error);
+    logger.error('Failed to generate presigned URL', error as Error);
     return jsonResponse({
       error: (error as Error).message || 'Failed to generate presigned URL',
     }, 500);
@@ -110,6 +113,7 @@ export const handleExamplePresigned: PagesFunction = async (context) => {
  */
 export const handleExampleDelete: PagesFunction = async (context) => {
   const { request, env } = context;
+  const logger = getLogger('example-delete');
 
   try {
     const r2 = new R2Client(env);
@@ -139,7 +143,7 @@ export const handleExampleDelete: PagesFunction = async (context) => {
       key: fileKey,
     });
   } catch (error) {
-    console.error('Delete error:', error);
+    logger.error('Failed to delete file', error as Error);
     return jsonResponse({
       error: (error as Error).message || 'Delete failed',
     }, 500);
@@ -151,6 +155,7 @@ export const handleExampleDelete: PagesFunction = async (context) => {
  */
 export const handleExampleList: PagesFunction = async (context) => {
   const { env } = context;
+  const logger = getLogger('example-list');
 
   try {
     const r2 = new R2Client(env);
@@ -172,7 +177,7 @@ export const handleExampleList: PagesFunction = async (context) => {
       count: filesWithUrls.length,
     });
   } catch (error) {
-    console.error('List error:', error);
+    logger.error('Failed to list files', error as Error);
     return jsonResponse({
       error: (error as Error).message || 'List failed',
     }, 500);

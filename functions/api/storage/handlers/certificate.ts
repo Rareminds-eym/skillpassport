@@ -9,6 +9,7 @@ import type { PagesFunction } from '../../../../src/functions-lib/types';
 import { jsonResponse } from '../../../../src/functions-lib';
 import { corsHeaders } from '../../../../src/functions-lib/cors';
 import { R2Client } from '../utils/r2-client';
+import { getLogger } from '../../../../src/shared/config/logging';
 
 /**
  * Get course certificate file
@@ -16,6 +17,8 @@ import { R2Client } from '../utils/r2-client';
  * Default mode is 'inline' for viewing in browser
  */
 export const handleCourseCertificate: PagesFunction = async ({ request, env }) => {
+  const logger = getLogger('course-certificate');
+
   if (request.method !== 'GET') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
@@ -79,7 +82,7 @@ export const handleCourseCertificate: PagesFunction = async ({ request, env }) =
       },
     });
   } catch (error) {
-    console.error('[CourseCertificate] Error:', error);
+    logger.error('Failed to retrieve course certificate', error as Error);
     return jsonResponse(
       {
         error: 'Failed to get certificate',

@@ -8,6 +8,7 @@
 import type { PagesFunction } from '../../../../src/functions-lib/types';
 import { jsonResponse } from '../../../../src/functions-lib';
 import { createSupabaseClient } from '../../../../src/functions-lib/supabase';
+import { getLogger } from '../../../../src/shared/config/logging';
 
 interface ExtractContentRequestBody {
   resourceId?: string;
@@ -29,6 +30,8 @@ interface ExtractionResult {
  * Supports single resource, multiple resources, or all resources in a lesson
  */
 export const handleExtractContent: PagesFunction = async ({ request, env }) => {
+  const logger = getLogger('extract-content');
+
   if (request.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
@@ -39,7 +42,7 @@ export const handleExtractContent: PagesFunction = async ({ request, env }) => {
     try {
       body = (await request.json()) as ExtractContentRequestBody;
     } catch (parseError) {
-      console.error('[ExtractContent] Failed to parse request body:', parseError);
+      logger.error('Failed to parse request body', parseError as Error);
       return jsonResponse({ error: 'Invalid JSON body' }, 400);
     }
 
@@ -71,11 +74,11 @@ export const handleExtractContent: PagesFunction = async ({ request, env }) => {
     const { data: resources, error } = await query;
 
     if (error || !resources) {
-      console.error('[ExtractContent] Failed to fetch resources:', error);
+      logger.error('Failed to fetch resources', error instanceof Error ? error : new Error(String(error)));
       return jsonResponse({ error: 'Resources not found' }, 404);
     }
 
-    console.log(`[ExtractContent] Processing ${resources.length} resources`);
+    logger.info('Processing resources', { resourceCount: resources.length });
 
     // Process each resource
     const results: ExtractionResult[] = [];
@@ -95,7 +98,7 @@ export const handleExtractContent: PagesFunction = async ({ request, env }) => {
       try {
         // Fetch PDF content
         const pdfUrl = resource.url;
-        console.log(`[ExtractContent] Fetching PDF from: ${pdfUrl}`);
+        logger.info('Fetching PDF resource', { resourceId: resource.resource_id });
 
         const pdfResponse = await fetch(pdfUrl);
 
@@ -118,9 +121,10 @@ export const handleExtractContent: PagesFunction = async ({ request, env }) => {
           throw new Error(`Failed to update: ${updateError.message}`);
         }
 
-        console.log(
-          `[ExtractContent] Successfully processed: ${resource.name} (${textContent.length} chars)`
-        );
+        logger.info('Successfully extracted content', {
+          resourceId: resource.resource_id,
+          contentLength: textContent.length,
+        });
 
         results.push({
           resourceId: resource.resource_id,
@@ -129,7 +133,9 @@ export const handleExtractContent: PagesFunction = async ({ request, env }) => {
           contentLength: textContent.length,
         });
       } catch (err) {
-        console.error(`[ExtractContent] Error processing ${resource.name}:`, err);
+        logger.error('Error processing resource', err as Error, {
+          resourceId: resource.resource_id,
+        });
         results.push({
           resourceId: resource.resource_id,
           name: resource.name,
@@ -139,14 +145,14 @@ export const handleExtractContent: PagesFunction = async ({ request, env }) => {
       }
     }
 
-    console.log(`[ExtractContent] Completed: ${results.length} resources processed`);
+    logger.info('Content extraction completed', { processedCount: results.length });
 
     return jsonResponse({
       processed: results.length,
       results,
     });
   } catch (error) {
-    console.error('[ExtractContent] Error:', error);
+    logger.error('Failed to extract content', error as Error);
     return jsonResponse(
       {
         error: 'Failed to extract content',

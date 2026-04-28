@@ -24,6 +24,7 @@ import type { PagesFunction } from '../../../src/functions-lib/types';
 import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
 import { authenticateUser, AuthResult } from '../shared/auth';
 import { createAuthenticationError } from './utils/error-handling';
+import { getLogger } from '../../../src/shared/config/logging';
 
 // Import all handlers
 import { handleUpload } from './handlers/upload';
@@ -64,6 +65,7 @@ export interface AuthenticatedContext {
 
 export const onRequest: PagesFunction = async (context) => {
   const { request, env } = context;
+  const logger = getLogger('storage-api');
 
   // Handle CORS preflight
   if (request.method === 'OPTIONS') {
@@ -211,7 +213,10 @@ export const onRequest: PagesFunction = async (context) => {
         );
     }
   } catch (error) {
-    console.error('Storage API Error:', error);
+    logger.error('Storage API error', error as Error, {
+      path,
+      method: request.method,
+    });
     return jsonResponse(
       {
         error: (error as Error).message || 'Internal server error',
