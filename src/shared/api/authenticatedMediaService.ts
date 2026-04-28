@@ -7,6 +7,9 @@
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { getBrowserFingerprint, getDeviceContext } from "@/shared/lib/fingerprint";
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('auth-media');
 
 interface AuthenticatedUrlResponse {
   success: boolean;
@@ -33,7 +36,7 @@ export async function getAuthenticatedMediaUrl(
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.access_token) {
-      console.error('[AuthMedia] No active session');
+      logger.error('No active session');
       return null;
     }
 
@@ -60,14 +63,14 @@ export async function getAuthenticatedMediaUrl(
 
     if (!response.ok) {
       const error = await response.json();
-      console.error('[AuthMedia] Failed to get authenticated URL:', error);
+      logger.error('Failed to get authenticated URL', undefined, { statusCode: response.status, error });
       return null;
     }
 
     const data: AuthenticatedUrlResponse = await response.json();
     
     if (!data.success || !data.url) {
-      console.error('[AuthMedia] Invalid response:', data);
+      logger.error('Invalid response from authenticated URL endpoint', undefined, { response: data });
       return null;
     }
 
@@ -75,7 +78,7 @@ export async function getAuthenticatedMediaUrl(
     const urlWithFp = `${data.url}&fp=${encodeURIComponent(fingerprint)}`;
     return urlWithFp;
   } catch (error) {
-    console.error('[AuthMedia] Error getting authenticated URL:', error);
+    logger.error('Error getting authenticated URL', error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }
@@ -184,7 +187,7 @@ export function extractFileKey(url: string): string | null {
 
     return null;
   } catch (error) {
-    console.error('[AuthMedia] Error extracting file key:', error);
+    logger.error('Error extracting file key', error instanceof Error ? error : new Error(String(error)), { url });
     return null;
   }
 }
