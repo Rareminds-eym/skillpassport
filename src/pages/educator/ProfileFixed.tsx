@@ -359,35 +359,40 @@ const ProfileFixed = () => {
   const handleEdit = () => {
     setEditing(true);
     
+    // Early return if no profile - TypeScript narrows the type after this
     if (!profile) {
       setFormData({});
       return;
     }
     
+    // At this point, TypeScript knows profile is not null
+    // Use a const assertion to help TypeScript understand the type flow
+    const currentProfile = profile; // Type: EducatorProfile (not null)
+    
     // Clean the profile data for form editing
     // Create a new object with cleaned values
     const cleanedProfile: Partial<EducatorProfile> = {
-      ...profile,
+      ...currentProfile,
       // Convert null/'null' to empty string for string fields
-      first_name: profile.first_name === null || profile.first_name === 'null' ? '' : profile.first_name,
-      last_name: profile.last_name === null || profile.last_name === 'null' ? '' : profile.last_name,
-      phone_number: profile.phone_number === null || profile.phone_number === 'null' ? '' : profile.phone_number,
-      dob: profile.dob === null || profile.dob === 'null' ? '' : profile.dob,
-      gender: profile.gender === null || profile.gender === 'null' ? '' : profile.gender,
-      address: profile.address === null || profile.address === 'null' ? '' : profile.address,
-      city: profile.city === null || profile.city === 'null' ? '' : profile.city,
-      state: profile.state === null || profile.state === 'null' ? '' : profile.state,
-      country: profile.country === null || profile.country === 'null' ? '' : profile.country,
-      pincode: profile.pincode === null || profile.pincode === 'null' ? '' : profile.pincode,
-      employee_id: profile.employee_id === null || profile.employee_id === 'null' ? '' : profile.employee_id,
-      specialization: profile.specialization === null || profile.specialization === 'null' ? '' : profile.specialization,
-      qualification: profile.qualification === null || profile.qualification === 'null' ? '' : profile.qualification,
-      designation: profile.designation === null || profile.designation === 'null' ? '' : profile.designation,
-      department: profile.department === null || profile.department === 'null' ? '' : profile.department,
-      date_of_joining: profile.date_of_joining === null || profile.date_of_joining === 'null' ? '' : profile.date_of_joining,
-      resume_url: profile.resume_url === null || profile.resume_url === 'null' ? '' : profile.resume_url,
-      id_proof_url: profile.id_proof_url === null || profile.id_proof_url === 'null' ? '' : profile.id_proof_url,
-      photo_url: profile.photo_url === null || profile.photo_url === 'null' ? '' : profile.photo_url,
+      first_name: currentProfile.first_name === null || currentProfile.first_name === 'null' ? '' : currentProfile.first_name,
+      last_name: currentProfile.last_name === null || currentProfile.last_name === 'null' ? '' : currentProfile.last_name,
+      phone_number: currentProfile.phone_number === null || currentProfile.phone_number === 'null' ? '' : currentProfile.phone_number,
+      dob: currentProfile.dob === null || currentProfile.dob === 'null' ? '' : currentProfile.dob,
+      gender: currentProfile.gender === null || currentProfile.gender === 'null' ? '' : currentProfile.gender,
+      address: currentProfile.address === null || currentProfile.address === 'null' ? '' : currentProfile.address,
+      city: currentProfile.city === null || currentProfile.city === 'null' ? '' : currentProfile.city,
+      state: currentProfile.state === null || currentProfile.state === 'null' ? '' : currentProfile.state,
+      country: currentProfile.country === null || currentProfile.country === 'null' ? '' : currentProfile.country,
+      pincode: currentProfile.pincode === null || currentProfile.pincode === 'null' ? '' : currentProfile.pincode,
+      employee_id: currentProfile.employee_id === null || currentProfile.employee_id === 'null' ? '' : currentProfile.employee_id,
+      specialization: currentProfile.specialization === null || currentProfile.specialization === 'null' ? '' : currentProfile.specialization,
+      qualification: currentProfile.qualification === null || currentProfile.qualification === 'null' ? '' : currentProfile.qualification,
+      designation: currentProfile.designation === null || currentProfile.designation === 'null' ? '' : currentProfile.designation,
+      department: currentProfile.department === null || currentProfile.department === 'null' ? '' : currentProfile.department,
+      date_of_joining: currentProfile.date_of_joining === null || currentProfile.date_of_joining === 'null' ? '' : currentProfile.date_of_joining,
+      resume_url: currentProfile.resume_url === null || currentProfile.resume_url === 'null' ? '' : currentProfile.resume_url,
+      id_proof_url: currentProfile.id_proof_url === null || currentProfile.id_proof_url === 'null' ? '' : currentProfile.id_proof_url,
+      photo_url: currentProfile.photo_url === null || currentProfile.photo_url === 'null' ? '' : currentProfile.photo_url,
     };
     
     setFormData(cleanedProfile);
@@ -496,7 +501,18 @@ const ProfileFixed = () => {
       alert('Profile saved successfully!');
       logger.info('Profile saved successfully');
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      // Comprehensive error message extraction with proper type checking
+      let errorMessage = 'Unknown error occurred';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage = String(error.message);
+      }
+      
+      // Log the error with proper Error object
       logger.error('Save error', error instanceof Error ? error : new Error(String(error)));
       alert(`Failed to save: ${errorMessage}`);
     } finally {
