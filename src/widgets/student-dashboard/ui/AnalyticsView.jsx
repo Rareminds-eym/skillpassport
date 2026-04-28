@@ -67,14 +67,13 @@ const AnalyticsView = ({ studentId, userEmail }) => {
         }
       }
     } catch (error) {
-      if (IS_DEBUG_MODE) {
-        logger.error('Error in fetchApplicationData:', error);
-      }
+      // Always log errors regardless of environment
       logger.error('Error in fetchApplicationData:', error);
     } finally {
       setLoading(false);
     }
-  }, [studentId]);
+  }, // eslint-disable-next-line react-hooks/exhaustive-deps
+  []);
 
   // Calculate analytics data
   const analytics = useMemo(() => {
