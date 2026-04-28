@@ -26,21 +26,21 @@ import { PrintView } from '@/features/assessment';
 import { RIASEC_NAMES, RIASEC_COLORS, TRAIT_NAMES, TRAIT_COLORS, PRINT_STYLES } from '@/features/assessment';
 
 // Development logging utility
-const devLog = (...args: any[]) => {
+const devLog = (...args: unknown[]): void => {
     if (import.meta.env.DEV) {
         console.log(...args);
     }
 };
 
 // Development warning utility
-const devWarn = (...args: any[]) => {
-                if (import.meta.env.DEV) {
+const devWarn = (...args: unknown[]): void => {
+    if (import.meta.env.DEV) {
         console.warn(...args);
     }
 };
 
 // Development error utility (always show errors)
-const devError = (...args: any[]) => {
+const devError = (...args: unknown[]): void => {
     console.error(...args);
 };
 
@@ -1265,7 +1265,9 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                 riasecNames={RIASEC_NAMES}
                                 traitNames={TRAIT_NAMES}
                                 courseRecommendations={assessmentData?.platform_courses || []}
-                                streamRecommendation={assessmentData?.gemini_results?.streamRecommendation || {}}
+                                // Type-safe streamRecommendation: Use null instead of empty object
+                                // PrintView component should handle null values gracefully
+                                streamRecommendation={assessmentData?.gemini_results?.streamRecommendation || null}
                                 studentAcademicData={{
                                     subjectMarks: [],
                                     projects: [],
@@ -1378,7 +1380,9 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                         },
                         platformCourses: assessmentData?.platform_courses || []
                     }}
-                    attemptId={assessmentData?.id || null}
+                    // Type-safe attemptId: Provide empty string as fallback instead of null
+                    // CareerTrackModal expects string type for attemptId prop
+                    attemptId={assessmentData?.id || assessmentResult?.id || ''}
                 />
             )}
         </>
