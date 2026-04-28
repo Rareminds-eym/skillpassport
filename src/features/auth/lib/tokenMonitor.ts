@@ -94,7 +94,11 @@ export class TokenMonitor {
     // Decode base64
     try {
       return atob(base64);
-    } catch {
+    } catch (error) {
+      const decodeError = error instanceof Error ? error : new Error(String(error));
+      logger.error('Failed to decode base64url string', decodeError, {
+        originalError: error,
+      });
       throw new Error('Failed to decode base64url string');
     }
   }

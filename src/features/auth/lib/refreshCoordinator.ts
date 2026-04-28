@@ -278,7 +278,9 @@ export class RefreshCoordinator {
       const errorRecord =
         typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : undefined;
       const status =
-        errorRecord && typeof errorRecord.status === 'number' ? errorRecord.status : undefined;
+        errorRecord && 'status' in errorRecord && typeof errorRecord.status === 'number'
+          ? (errorRecord.status as number)
+          : undefined;
       const errorMessage = errorObj.message || '';
 
       logger.error('Refresh execution error', errorObj, {
