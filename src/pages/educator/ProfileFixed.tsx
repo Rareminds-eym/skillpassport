@@ -485,8 +485,11 @@ const ProfileFixed = () => {
         .eq('email', profile.email);
 
       if (error) {
-        // Convert Supabase error to proper Error object for consistent error handling
-        throw new Error(error.message || 'Database update failed');
+        // Type-safe Supabase error handling with proper validation
+        const errorMsg = error && typeof error.message === 'string' && error.message.trim() !== '' 
+          ? error.message 
+          : 'Database update failed';
+        throw new Error(errorMsg);
       }
 
       // Update local state
@@ -502,16 +505,27 @@ const ProfileFixed = () => {
       alert('Profile saved successfully!');
       logger.info('Profile saved successfully');
     } catch (error) {
-      // Comprehensive error message extraction with proper type guards
+      // Comprehensive error message extraction with proper type narrowing (no 'as' assertions)
       let errorMessage = 'Unknown error occurred';
       
       if (error instanceof Error) {
+        // Standard Error object
         errorMessage = error.message;
       } else if (typeof error === 'string') {
+        // String error
         errorMessage = error;
       } else if (error && typeof error === 'object' && 'message' in error) {
-        // Handle objects with message property (e.g., Supabase errors)
-        errorMessage = String((error as { message: unknown }).message);
+        // Object with message property - use proper type narrowing
+        const errorObj = error as Record<string, unknown>;
+        const msgValue = errorObj.message;
+        
+        // Validate message is actually a string before using it
+        if (typeof msgValue === 'string' && msgValue.trim() !== '') {
+          errorMessage = msgValue;
+        } else if (msgValue !== null && msgValue !== undefined) {
+          // Fallback: convert non-string message to string
+          errorMessage = String(msgValue);
+        }
       }
       
       // Log the error - convert to Error object if needed for proper stack traces
