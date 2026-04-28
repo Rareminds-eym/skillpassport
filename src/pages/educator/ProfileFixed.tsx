@@ -1107,7 +1107,7 @@ const ProfileFixed = () => {
                 </label>
                 <textarea
                   value={formData.subjects_handled ? formData.subjects_handled.join(', ') : ''}
-                  onChange={(e) => handleInputChange('subjects_handled', e.target.value.split(', ').filter(s => s.trim()))}
+                  onChange={(e) => handleInputChange('subjects_handled', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Enter subjects separated by commas (e.g., Mathematics, Physics, Chemistry)"
                   rows={2}
