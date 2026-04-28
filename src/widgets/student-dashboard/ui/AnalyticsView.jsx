@@ -22,15 +22,7 @@ const AnalyticsView = ({ studentId, userEmail }) => {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (IS_DEBUG_MODE) {
-      logger.info('AnalyticsView mounted', { studentId, userEmail });
-    }
-    if (studentId) {
-      fetchApplicationData();
-    }
-  }, [studentId]);
-
+  // Define fetchApplicationData with proper dependencies BEFORE useEffect
   const fetchApplicationData = useCallback(async () => {
     try {
       if (IS_DEBUG_MODE) {
@@ -72,8 +64,17 @@ const AnalyticsView = ({ studentId, userEmail }) => {
     } finally {
       setLoading(false);
     }
-  }, // eslint-disable-next-line react-hooks/exhaustive-deps
-  []);
+  }, [studentId]); // Proper dependency: studentId
+
+  // useEffect with complete dependencies
+  useEffect(() => {
+    if (IS_DEBUG_MODE) {
+      logger.info('AnalyticsView mounted', { studentId, userEmail });
+    }
+    if (studentId) {
+      fetchApplicationData();
+    }
+  }, [studentId, fetchApplicationData]); // Complete dependencies
 
   // Calculate analytics data
   const analytics = useMemo(() => {
