@@ -55,19 +55,7 @@ interface EducatorProfile {
   school_name?: string;
   full_name?: string;
   // Metadata
-  metadata?: EducatorMetadata;
-}
-
-// Define specific metadata structure for type safety
-interface EducatorMetadata {
-  lastLogin?: string;
-  preferences?: {
-    theme?: string;
-    notifications?: boolean;
-  };
-  certifications?: string[];
-  achievements?: string[];
-  [key: string]: unknown; // Allow additional properties
+  metadata?: any;
 }
 
 const ProfileFixed = () => {
@@ -426,27 +414,25 @@ const ProfileFixed = () => {
         updated_at: new Date().toISOString(),
       };
 
-      // Remove any undefined values using reduce for type safety
-      const cleanedUpdateData = Object.entries(updateData).reduce((acc, [key, value]) => {
-        // Only add the key if it exists in updateData type and value is defined
-        if (value !== undefined && key in updateData) {
-          const typedKey = key as keyof typeof updateData;
-          acc[typedKey] = value as typeof updateData[typeof typedKey];
+      // Remove any undefined values
+      Object.keys(updateData).forEach(key => {
+        const typedKey = key as keyof typeof updateData;
+        if (updateData[typedKey] === undefined) {
+          delete (updateData as any)[typedKey];
         }
-        return acc;
-      }, {} as Partial<typeof updateData>);
+      });
 
-      logger.info('Saving profile', { updateData: cleanedUpdateData });
+      logger.info('Saving profile', { updateData });
       logger.info('Photo URL debug', {
         'formData.photo_url': formData.photo_url,
         'profile.photo_url': profile.photo_url,
         'hasOwnProperty': formData.hasOwnProperty('photo_url'),
-        'final_photo_url': cleanedUpdateData.photo_url
+        'final_photo_url': updateData.photo_url
       });
 
       const { error } = await supabase
         .from('school_educators')
-        .update(cleanedUpdateData)
+        .update(updateData)
         .eq('email', profile.email);
 
       if (error) {
@@ -466,9 +452,8 @@ const ProfileFixed = () => {
       alert('Profile saved successfully!');
       logger.info('Profile saved successfully');
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      logger.error('Save error', error instanceof Error ? error : new Error(String(error)));
-      alert(`Failed to save: ${errorMessage}`);
+      logger.error('Save error', error as Error);
+      alert(`Failed to save: ${(error as Error).message}`);
     } finally {
       setSaving(false);
     }
