@@ -103,6 +103,25 @@ interface EducatorUpdatePayload {
   updated_at?: string;
 }
 
+// Helper to normalize null/'null' string values to empty strings
+const normalizeField = (value: string | undefined | null): string => {
+  if (value === null || value === undefined || value === 'null' || value.trim() === '') {
+    return '';
+  }
+  return value;
+};
+
+// Type guard for error objects with message property
+const hasMessageProperty = (error: unknown): error is { message: string } => {
+  return (
+    error !== null &&
+    error !== undefined &&
+    typeof error === 'object' &&
+    'message' in error &&
+    typeof (error as { message: unknown }).message === 'string'
+  );
+};
+
 const ProfileFixed = () => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<EducatorProfile | null>(null);
@@ -369,30 +388,29 @@ const ProfileFixed = () => {
     // Use a const assertion to help TypeScript understand the type flow
     const currentProfile = profile; // Type: EducatorProfile (not null)
     
-    // Clean the profile data for form editing
-    // Create a new object with cleaned values
+    // Clean the profile data for form editing using the normalizeField helper
     const cleanedProfile: Partial<EducatorProfile> = {
       ...currentProfile,
-      // Convert null/'null' to empty string for string fields
-      first_name: currentProfile.first_name === null || currentProfile.first_name === 'null' ? '' : currentProfile.first_name,
-      last_name: currentProfile.last_name === null || currentProfile.last_name === 'null' ? '' : currentProfile.last_name,
-      phone_number: currentProfile.phone_number === null || currentProfile.phone_number === 'null' ? '' : currentProfile.phone_number,
-      dob: currentProfile.dob === null || currentProfile.dob === 'null' ? '' : currentProfile.dob,
-      gender: currentProfile.gender === null || currentProfile.gender === 'null' ? '' : currentProfile.gender,
-      address: currentProfile.address === null || currentProfile.address === 'null' ? '' : currentProfile.address,
-      city: currentProfile.city === null || currentProfile.city === 'null' ? '' : currentProfile.city,
-      state: currentProfile.state === null || currentProfile.state === 'null' ? '' : currentProfile.state,
-      country: currentProfile.country === null || currentProfile.country === 'null' ? '' : currentProfile.country,
-      pincode: currentProfile.pincode === null || currentProfile.pincode === 'null' ? '' : currentProfile.pincode,
-      employee_id: currentProfile.employee_id === null || currentProfile.employee_id === 'null' ? '' : currentProfile.employee_id,
-      specialization: currentProfile.specialization === null || currentProfile.specialization === 'null' ? '' : currentProfile.specialization,
-      qualification: currentProfile.qualification === null || currentProfile.qualification === 'null' ? '' : currentProfile.qualification,
-      designation: currentProfile.designation === null || currentProfile.designation === 'null' ? '' : currentProfile.designation,
-      department: currentProfile.department === null || currentProfile.department === 'null' ? '' : currentProfile.department,
-      date_of_joining: currentProfile.date_of_joining === null || currentProfile.date_of_joining === 'null' ? '' : currentProfile.date_of_joining,
-      resume_url: currentProfile.resume_url === null || currentProfile.resume_url === 'null' ? '' : currentProfile.resume_url,
-      id_proof_url: currentProfile.id_proof_url === null || currentProfile.id_proof_url === 'null' ? '' : currentProfile.id_proof_url,
-      photo_url: currentProfile.photo_url === null || currentProfile.photo_url === 'null' ? '' : currentProfile.photo_url,
+      // Use helper function to normalize all string fields
+      first_name: normalizeField(currentProfile.first_name),
+      last_name: normalizeField(currentProfile.last_name),
+      phone_number: normalizeField(currentProfile.phone_number),
+      dob: normalizeField(currentProfile.dob),
+      gender: normalizeField(currentProfile.gender),
+      address: normalizeField(currentProfile.address),
+      city: normalizeField(currentProfile.city),
+      state: normalizeField(currentProfile.state),
+      country: normalizeField(currentProfile.country),
+      pincode: normalizeField(currentProfile.pincode),
+      employee_id: normalizeField(currentProfile.employee_id),
+      specialization: normalizeField(currentProfile.specialization),
+      qualification: normalizeField(currentProfile.qualification),
+      designation: normalizeField(currentProfile.designation),
+      department: normalizeField(currentProfile.department),
+      date_of_joining: normalizeField(currentProfile.date_of_joining),
+      resume_url: normalizeField(currentProfile.resume_url),
+      id_proof_url: normalizeField(currentProfile.id_proof_url),
+      photo_url: normalizeField(currentProfile.photo_url),
     };
     
     setFormData(cleanedProfile);
@@ -467,9 +485,19 @@ const ProfileFixed = () => {
       };
 
       // Type-safe filtering: Remove undefined values while preserving null for database
-      const cleanedUpdateData = Object.fromEntries(
-        Object.entries(updateData).filter(([_, value]) => value !== undefined)
-      ) as Partial<EducatorUpdatePayload>;
+      // Use reduce with explicit key typing for type safety
+      const cleanedUpdateData = Object.keys(updateData).reduce<Partial<EducatorUpdatePayload>>((acc, key) => {
+        const typedKey = key as keyof EducatorUpdatePayload;
+        const value = updateData[typedKey];
+        
+        // Only include defined values (null is valid for database)
+        if (value !== undefined) {
+          // Type assertion is safe here because we're filtering from a typed source
+          (acc as Record<string, unknown>)[typedKey] = value;
+        }
+        
+        return acc;
+      }, {});
 
       logger.info('Saving profile', { updateData: cleanedUpdateData });
       logger.info('Photo URL debug', {
@@ -485,8 +513,8 @@ const ProfileFixed = () => {
         .eq('email', profile.email);
 
       if (error) {
-        // Type-safe Supabase error handling with proper validation
-        const errorMsg = error && typeof error.message === 'string' && error.message.trim() !== '' 
+        // Type-safe Supabase error handling using type guard
+        const errorMsg = hasMessageProperty(error) && error.message.trim() !== ''
           ? error.message 
           : 'Database update failed';
         throw new Error(errorMsg);
@@ -505,31 +533,28 @@ const ProfileFixed = () => {
       alert('Profile saved successfully!');
       logger.info('Profile saved successfully');
     } catch (error) {
-      // Comprehensive error message extraction with proper type narrowing (no 'as' assertions)
+      // Comprehensive error message extraction with proper type guards
       let errorMessage = 'Unknown error occurred';
       
       if (error instanceof Error) {
-        // Standard Error object
+        // Standard Error object - preserve it
         errorMessage = error.message;
+        logger.error('Save error', error);
       } else if (typeof error === 'string') {
         // String error
         errorMessage = error;
-      } else if (error && typeof error === 'object' && 'message' in error) {
-        // Object with message property - use proper type narrowing
-        const errorObj = error as Record<string, unknown>;
-        const msgValue = errorObj.message;
-        
-        // Validate message is actually a string before using it
-        if (typeof msgValue === 'string' && msgValue.trim() !== '') {
-          errorMessage = msgValue;
-        } else if (msgValue !== null && msgValue !== undefined) {
-          // Fallback: convert non-string message to string
-          errorMessage = String(msgValue);
-        }
+        logger.error('Save error', new Error(error));
+      } else if (hasMessageProperty(error)) {
+        // Object with message property - use type guard
+        errorMessage = error.message.trim() !== '' ? error.message : 'Unknown error occurred';
+        // Preserve original error context by logging it with proper Error wrapper
+        logger.error('Save error', new Error(errorMessage));
+      } else {
+        // Unknown error type - convert to string
+        errorMessage = 'An unexpected error occurred';
+        logger.error('Save error', new Error(`Unexpected error type: ${typeof error}`));
       }
       
-      // Log the error - convert to Error object if needed for proper stack traces
-      logger.error('Save error', error instanceof Error ? error : new Error(errorMessage));
       alert(`Failed to save: ${errorMessage}`);
     } finally {
       setSaving(false);
@@ -548,8 +573,24 @@ const ProfileFixed = () => {
       const numValue = typeof value === 'number' ? value : (typeof value === 'string' ? parseInt(value) || 0 : 0);
       setFormData(prev => ({ ...prev, [field]: numValue }));
     } else if (field === 'subjects_handled') {
-      // Array field - validate and convert
-      const arrayValue = Array.isArray(value) ? value : [];
+      // Array field - handle both array and comma-separated string inputs
+      let arrayValue: string[];
+      
+      if (Array.isArray(value)) {
+        // Already an array - use as is
+        arrayValue = value;
+      } else if (typeof value === 'string') {
+        // String input - parse as comma-separated values
+        arrayValue = value
+          .split(',')
+          .map(s => s.trim())
+          .filter(s => s.length > 0);
+      } else {
+        // Unexpected type - default to empty array
+        logger.warn(`Unexpected value type for subjects_handled: ${typeof value}`);
+        arrayValue = [];
+      }
+      
       setFormData(prev => ({ ...prev, [field]: arrayValue }));
     } else if (field === 'metadata') {
       // Object field - should not be handled by this function
