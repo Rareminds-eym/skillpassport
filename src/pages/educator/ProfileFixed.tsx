@@ -475,14 +475,10 @@ const ProfileFixed = () => {
         updated_at: new Date().toISOString(),
       };
 
-      // Type-safe filtering: Build update payload with proper typing
-      const cleanedUpdateData = Object.entries(updateData).reduce<Partial<EducatorUpdatePayload>>((acc, [key, value]) => {
-        if (value !== undefined) {
-          // Type-safe assignment using index signature
-          acc[key as keyof EducatorUpdatePayload] = value as any;
-        }
-        return acc;
-      }, {});
+      // Type-safe filtering: Remove undefined values while preserving null for database
+      const cleanedUpdateData = Object.fromEntries(
+        Object.entries(updateData).filter(([_, value]) => value !== undefined)
+      ) as Partial<EducatorUpdatePayload>;
 
       logger.info('Saving profile', { updateData: cleanedUpdateData });
       logger.info('Photo URL debug', {
