@@ -331,18 +331,27 @@ const ProfileFixed = () => {
       return;
     }
     
-    // Clean the profile data for form editing
+    // Clean the profile data for form editing with proper type safety
     const cleanedProfile: Partial<EducatorProfile> = {};
     
-    // Iterate through profile keys and clean values
+    // Type-safe iteration through profile keys
     (Object.keys(profile) as Array<keyof EducatorProfile>).forEach(key => {
       const value = profile[key];
       
       // Convert null or 'null' string to empty string for form inputs
+      // Handle each type explicitly for type safety
       if (value === null || value === 'null') {
-        cleanedProfile[key] = '' as any;
+        // For form inputs, empty string is the safe default
+        cleanedProfile[key] = '' as EducatorProfile[typeof key];
+      } else if (typeof value === 'string' || typeof value === 'number' || Array.isArray(value)) {
+        // Preserve valid values with proper typing
+        cleanedProfile[key] = value as EducatorProfile[typeof key];
+      } else if (typeof value === 'object' && value !== null) {
+        // Handle metadata objects
+        cleanedProfile[key] = value as EducatorProfile[typeof key];
       } else {
-        cleanedProfile[key] = value as any;
+        // For any other type, preserve as-is
+        cleanedProfile[key] = value as EducatorProfile[typeof key];
       }
     });
     
@@ -419,8 +428,10 @@ const ProfileFixed = () => {
 
       // Remove any undefined values using reduce for type safety
       const cleanedUpdateData = Object.entries(updateData).reduce((acc, [key, value]) => {
-        if (value !== undefined) {
-          acc[key as keyof typeof updateData] = value;
+        // Only add the key if it exists in updateData type and value is defined
+        if (value !== undefined && key in updateData) {
+          const typedKey = key as keyof typeof updateData;
+          acc[typedKey] = value as typeof updateData[typeof typedKey];
         }
         return acc;
       }, {} as Partial<typeof updateData>);
@@ -466,7 +477,7 @@ const ProfileFixed = () => {
   const handleInputChange = (field: keyof EducatorProfile, value: string | number | string[] | undefined | null) => {
     // Convert null/undefined to empty string for consistent form handling
     // This allows clearing fields while maintaining type safety
-    const sanitizedValue = value === null || value === undefined ? '' : value;
+    const sanitizedValue: string | number | string[] = value === null || value === undefined ? '' : value;
     setFormData(prev => ({ ...prev, [field]: sanitizedValue }));
   };
 
