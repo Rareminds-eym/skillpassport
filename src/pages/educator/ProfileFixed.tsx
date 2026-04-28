@@ -485,7 +485,8 @@ const ProfileFixed = () => {
         .eq('email', profile.email);
 
       if (error) {
-        throw error;
+        // Convert Supabase error to proper Error object for consistent error handling
+        throw new Error(error.message || 'Database update failed');
       }
 
       // Update local state
@@ -501,7 +502,7 @@ const ProfileFixed = () => {
       alert('Profile saved successfully!');
       logger.info('Profile saved successfully');
     } catch (error) {
-      // Comprehensive error message extraction with proper type checking
+      // Comprehensive error message extraction with proper type guards
       let errorMessage = 'Unknown error occurred';
       
       if (error instanceof Error) {
@@ -509,33 +510,42 @@ const ProfileFixed = () => {
       } else if (typeof error === 'string') {
         errorMessage = error;
       } else if (error && typeof error === 'object' && 'message' in error) {
-        errorMessage = String(error.message);
+        // Handle objects with message property (e.g., Supabase errors)
+        errorMessage = String((error as { message: unknown }).message);
       }
       
-      // Log the error with proper Error object
-      logger.error('Save error', error instanceof Error ? error : new Error(String(error)));
+      // Log the error - convert to Error object if needed for proper stack traces
+      logger.error('Save error', error instanceof Error ? error : new Error(errorMessage));
       alert(`Failed to save: ${errorMessage}`);
     } finally {
       setSaving(false);
     }
   };
 
-  // Type-safe input change handler with explicit type validation
+  // Type-safe input change handler with explicit field type validation
   const handleInputChange = (
     field: keyof EducatorProfile,
     value: string | number | string[]
   ): void => {
-    // Validate value type matches field expectations
+    // Explicit type validation for each field type to prevent data corruption
+    
     if (field === 'experience_years') {
-      // Number field - ensure it's a number
+      // Number field - validate and convert
       const numValue = typeof value === 'number' ? value : (typeof value === 'string' ? parseInt(value) || 0 : 0);
       setFormData(prev => ({ ...prev, [field]: numValue }));
     } else if (field === 'subjects_handled') {
-      // Array field - ensure it's an array
+      // Array field - validate and convert
       const arrayValue = Array.isArray(value) ? value : [];
       setFormData(prev => ({ ...prev, [field]: arrayValue }));
+    } else if (field === 'metadata') {
+      // Object field - should not be handled by this function
+      // This prevents accidental type coercion of complex objects to strings
+      logger.warn(`handleInputChange called with metadata field - this field requires dedicated handler`);
+      return;
     } else {
-      // String fields - ensure it's a string
+      // String fields - validate and convert
+      // All remaining fields in EducatorProfile are strings or string | undefined
+      // This is safe because we've explicitly handled all non-string fields above
       const stringValue = typeof value === 'string' ? value : String(value);
       setFormData(prev => ({ ...prev, [field]: stringValue }));
     }
