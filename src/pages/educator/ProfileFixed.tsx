@@ -55,7 +55,52 @@ interface EducatorProfile {
   school_name?: string;
   full_name?: string;
   // Metadata
-  metadata?: any;
+  metadata?: EducatorMetadata;
+}
+
+// Define specific metadata structure for type safety
+interface EducatorMetadata {
+  lastLogin?: string;
+  preferences?: {
+    theme?: string;
+    notifications?: boolean;
+  };
+  certifications?: string[];
+  achievements?: string[];
+  [key: string]: unknown; // Allow additional properties
+}
+
+// Database update payload interface - only fields that can be updated
+interface EducatorUpdatePayload {
+  // Personal Information
+  first_name?: string | null;
+  last_name?: string | null;
+  phone_number?: string | null;
+  dob?: string | null;
+  gender?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  pincode?: string | null;
+  
+  // Professional Information
+  employee_id?: string | null;
+  specialization?: string | null;
+  qualification?: string | null;
+  experience_years?: number | null;
+  designation?: string | null;
+  department?: string | null;
+  date_of_joining?: string | null;
+  subjects_handled?: string[] | null;
+  
+  // Documents
+  resume_url?: string | null;
+  id_proof_url?: string | null;
+  photo_url?: string | null;
+  
+  // System fields
+  updated_at?: string;
 }
 
 const ProfileFixed = () => {
@@ -311,6 +356,37 @@ const ProfileFixed = () => {
     }
   }, [initialized, getUserEmail, loadProfile, navigate]);
 
+  // Type-safe helper function using TypeScript's built-in type inference
+  // This approach leverages the EducatorProfile interface directly
+  const assignProfileField = <K extends keyof EducatorProfile>(
+    target: Partial<EducatorProfile>,
+    key: K,
+    value: unknown
+  ): void => {
+    // Handle null or 'null' string - convert to empty string for string fields only
+    if (value === null || value === 'null') {
+      // Check if the field type in EducatorProfile is string | undefined
+      // We do this by checking the actual profile structure
+      if (typeof profile?.[key] === 'string' || profile?.[key] === undefined || profile?.[key] === null) {
+        target[key] = '' as EducatorProfile[K];
+      }
+      return;
+    }
+
+    // Runtime type validation before assignment
+    if (typeof value === 'string') {
+      target[key] = value as EducatorProfile[K];
+    } else if (typeof value === 'number') {
+      target[key] = value as EducatorProfile[K];
+    } else if (Array.isArray(value)) {
+      target[key] = value as EducatorProfile[K];
+    } else if (typeof value === 'object' && value !== null) {
+      target[key] = value as EducatorProfile[K];
+    } else if (value !== undefined) {
+      target[key] = value as EducatorProfile[K];
+    }
+  };
+
   const handleEdit = () => {
     setEditing(true);
     
@@ -319,28 +395,13 @@ const ProfileFixed = () => {
       return;
     }
     
-    // Clean the profile data for form editing with proper type safety
+    // Clean the profile data for form editing with type-safe validation
     const cleanedProfile: Partial<EducatorProfile> = {};
     
-    // Type-safe iteration through profile keys
+    // Type-safe iteration using the helper function
     (Object.keys(profile) as Array<keyof EducatorProfile>).forEach(key => {
       const value = profile[key];
-      
-      // Convert null or 'null' string to empty string for form inputs
-      // Handle each type explicitly for type safety
-      if (value === null || value === 'null') {
-        // For form inputs, empty string is the safe default
-        cleanedProfile[key] = '' as EducatorProfile[typeof key];
-      } else if (typeof value === 'string' || typeof value === 'number' || Array.isArray(value)) {
-        // Preserve valid values with proper typing
-        cleanedProfile[key] = value as EducatorProfile[typeof key];
-      } else if (typeof value === 'object' && value !== null) {
-        // Handle metadata objects
-        cleanedProfile[key] = value as EducatorProfile[typeof key];
-      } else {
-        // For any other type, preserve as-is
-        cleanedProfile[key] = value as EducatorProfile[typeof key];
-      }
+      assignProfileField(cleanedProfile, key, value);
     });
     
     setFormData(cleanedProfile);
@@ -382,7 +443,7 @@ const ProfileFixed = () => {
         return isNaN(parsed) ? null : parsed;
       };
 
-      const updateData = {
+      const updateData: EducatorUpdatePayload = {
         // Personal Information
         first_name: formatStringForDB(formData.hasOwnProperty('first_name') ? formData.first_name : profile.first_name),
         last_name: formatStringForDB(formData.hasOwnProperty('last_name') ? formData.last_name : profile.last_name),
@@ -414,25 +475,26 @@ const ProfileFixed = () => {
         updated_at: new Date().toISOString(),
       };
 
-      // Remove any undefined values
-      Object.keys(updateData).forEach(key => {
-        const typedKey = key as keyof typeof updateData;
-        if (updateData[typedKey] === undefined) {
-          delete (updateData as any)[typedKey];
+      // Type-safe filtering: Build update payload with proper typing
+      const cleanedUpdateData = Object.entries(updateData).reduce<Partial<EducatorUpdatePayload>>((acc, [key, value]) => {
+        if (value !== undefined) {
+          // Type-safe assignment using index signature
+          acc[key as keyof EducatorUpdatePayload] = value as any;
         }
-      });
+        return acc;
+      }, {});
 
-      logger.info('Saving profile', { updateData });
+      logger.info('Saving profile', { updateData: cleanedUpdateData });
       logger.info('Photo URL debug', {
         'formData.photo_url': formData.photo_url,
         'profile.photo_url': profile.photo_url,
         'hasOwnProperty': formData.hasOwnProperty('photo_url'),
-        'final_photo_url': updateData.photo_url
+        'final_photo_url': cleanedUpdateData.photo_url
       });
 
       const { error } = await supabase
         .from('school_educators')
-        .update(updateData)
+        .update(cleanedUpdateData)
         .eq('email', profile.email);
 
       if (error) {
@@ -452,18 +514,33 @@ const ProfileFixed = () => {
       alert('Profile saved successfully!');
       logger.info('Profile saved successfully');
     } catch (error) {
-      logger.error('Save error', error as Error);
-      alert(`Failed to save: ${(error as Error).message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      logger.error('Save error', error instanceof Error ? error : new Error(String(error)));
+      alert(`Failed to save: ${errorMessage}`);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleInputChange = (field: keyof EducatorProfile, value: string | number | string[] | undefined | null) => {
-    // Convert null/undefined to empty string for consistent form handling
-    // This allows clearing fields while maintaining type safety
-    const sanitizedValue: string | number | string[] = value === null || value === undefined ? '' : value;
-    setFormData(prev => ({ ...prev, [field]: sanitizedValue }));
+  // Type-safe input change handler with explicit type validation
+  const handleInputChange = (
+    field: keyof EducatorProfile,
+    value: string | number | string[]
+  ): void => {
+    // Validate value type matches field expectations
+    if (field === 'experience_years') {
+      // Number field - ensure it's a number
+      const numValue = typeof value === 'number' ? value : (typeof value === 'string' ? parseInt(value) || 0 : 0);
+      setFormData(prev => ({ ...prev, [field]: numValue }));
+    } else if (field === 'subjects_handled') {
+      // Array field - ensure it's an array
+      const arrayValue = Array.isArray(value) ? value : [];
+      setFormData(prev => ({ ...prev, [field]: arrayValue }));
+    } else {
+      // String fields - ensure it's a string
+      const stringValue = typeof value === 'string' ? value : String(value);
+      setFormData(prev => ({ ...prev, [field]: stringValue }));
+    }
   };
 
   const formatDate = (dateString?: string) => {
