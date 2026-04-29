@@ -70,11 +70,12 @@ function sanitizeError(err: unknown): SanitizedError {
   }
 
   if (typeof err === 'object' && err !== null) {
-    if ('message' in err && typeof (err as any).message === 'string') {
+    const obj = err as Record<string, unknown>;
+    if ('message' in err && typeof obj.message === 'string') {
       return {
-        message: (err as any).message,
+        message: obj.message,
         type: err.constructor.name || 'object',
-        stack: 'stack' in err && typeof (err as any).stack === 'string' ? (err as any).stack : undefined,
+        stack: 'stack' in err && typeof obj.stack === 'string' ? obj.stack : undefined,
       };
     }
 
@@ -242,10 +243,6 @@ export class RefreshCoordinator {
         logger.error('Unexpected error during refresh', errorObj, {
           attempt: attempt + 1,
           errorType: sanitized.type,
-          sanitizedError: {
-            message: sanitized.message,
-            type: sanitized.type,
-          },
         });
         lastError = 'unknown';
         retryable = true;
@@ -366,11 +363,7 @@ export class RefreshCoordinator {
       const sanitized = sanitizeError(error);
 
       logger.error('Refresh execution error', errorObj, {
-        type: sanitized.type,
-        sanitizedError: {
-          message: sanitized.message,
-          type: sanitized.type,
-        },
+        errorType: sanitized.type,
       });
 
       // Categorize error
@@ -494,10 +487,7 @@ export class RefreshCoordinator {
         const sanitized = sanitizeError(error);
         logger.error('Error processing queued refresh request', errorObj, {
           queueIndex: queue.indexOf(request),
-          sanitizedError: {
-            message: sanitized.message,
-            type: sanitized.type,
-          },
+          errorType: sanitized.type,
         });
       }
     });
