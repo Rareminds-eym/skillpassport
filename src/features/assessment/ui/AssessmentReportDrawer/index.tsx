@@ -26,21 +26,21 @@ import { PrintView } from '@/features/assessment';
 import { RIASEC_NAMES, RIASEC_COLORS, TRAIT_NAMES, TRAIT_COLORS, PRINT_STYLES } from '@/features/assessment';
 
 // Development logging utility
-const devLog = (...args: unknown[]): void => {
+const devLog = (...args: readonly unknown[]): void => {
     if (import.meta.env.DEV) {
         console.log(...args);
     }
 };
 
 // Development warning utility
-const devWarn = (...args: unknown[]): void => {
+const devWarn = (...args: readonly unknown[]): void => {
     if (import.meta.env.DEV) {
         console.warn(...args);
     }
 };
 
 // Development error utility (always show errors)
-const devError = (...args: unknown[]): void => {
+const devError = (...args: readonly unknown[]): void => {
     console.error(...args);
 };
 
