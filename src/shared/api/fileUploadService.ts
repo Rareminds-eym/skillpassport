@@ -18,13 +18,14 @@ async function getAuthToken(): Promise<string | null> {
     const { data: { session }, error } = await supabase.auth.getSession();
 
     if (error) {
-      logger.error('Failed to get session', error instanceof Error ? error : new Error(String(error)));
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      logger.error('Failed to get session', errorObj, { code: (error as { code?: string })?.code });
       return null;
     }
-
     return session?.access_token || null;
   } catch (error) {
-    logger.error('Error retrieving auth token', error instanceof Error ? error : new Error(String(error)));
+    const errorObj = error instanceof Error ? error : new Error(String(error));
+    logger.error('Error retrieving auth token', errorObj);
     return null;
   }
 }
@@ -104,7 +105,8 @@ export const uploadFile = async (
       filename: result.filename,
     };
   } catch (error) {
-    logger.error('File upload error', error instanceof Error ? error : new Error(String(error)));
+    const errorObj = error instanceof Error ? error : new Error(String(error));
+    logger.error('File upload error', errorObj, { folder, fileName: file.name });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Upload failed',
@@ -150,9 +152,9 @@ export const deleteFile = async (fileUrl: string): Promise<boolean> => {
   try {
     // Get authentication token
     const token = await getAuthToken();
-
     if (!token) {
-      logger.error('Authentication required to delete file');
+      const errorObj = new Error('Authentication required to delete file');
+      logger.error('Authentication required to delete file', errorObj, { fileUrl });
       return false;
     }
 
@@ -166,19 +168,19 @@ export const deleteFile = async (fileUrl: string): Promise<boolean> => {
     });
 
     if (!response.ok) {
-      // Handle authentication errors
       if (response.status === 401) {
-        logger.error('Authentication failed. Please refresh the page and log in again.');
+        const errorObj = new Error('Authentication failed during file deletion');
+        logger.error('Authentication failed. Please refresh the page and log in again.', errorObj, { status: response.status, fileUrl });
         return false;
       }
-
       throw new Error(`Delete failed: ${response.status}`);
     }
 
     const result = await response.json();
     return result.success;
   } catch (error) {
-    logger.error('File delete error', error instanceof Error ? error : new Error(String(error)));
+    const errorObj = error instanceof Error ? error : new Error(String(error));
+    logger.error('File delete error', errorObj, { fileUrl });
     return false;
   }
 };

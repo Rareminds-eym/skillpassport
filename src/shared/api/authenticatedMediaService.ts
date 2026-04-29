@@ -36,7 +36,8 @@ export async function getAuthenticatedMediaUrl(
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.access_token) {
-      logger.error('No active session');
+      const errorObj = new Error('No active session found');
+      logger.error('No active session', errorObj, { fileUrl, courseId, lessonId });
       return null;
     }
 
@@ -63,14 +64,16 @@ export async function getAuthenticatedMediaUrl(
 
     if (!response.ok) {
       const error = await response.json();
-      logger.error('Failed to get authenticated URL', undefined, { statusCode: response.status, error });
+      const errorObj = new Error(`Failed to get authenticated URL: ${JSON.stringify(error)}`);
+      logger.error('Failed to get authenticated URL', errorObj, { statusCode: response.status, url: fileUrl });
       return null;
     }
 
     const data: AuthenticatedUrlResponse = await response.json();
-    
+
     if (!data.success || !data.url) {
-      logger.error('Invalid response from authenticated URL endpoint', undefined, { response: data });
+      const errorObj = new Error(`Invalid response from authenticated URL endpoint: ${data.error || 'No URL provided'}`);
+      logger.error('Invalid response from authenticated URL endpoint', errorObj, { hasUrl: !!data.url, success: data.success, courseId, fileUrl });
       return null;
     }
 
@@ -78,7 +81,8 @@ export async function getAuthenticatedMediaUrl(
     const urlWithFp = `${data.url}&fp=${encodeURIComponent(fingerprint)}`;
     return urlWithFp;
   } catch (error) {
-    logger.error('Error getting authenticated URL', error instanceof Error ? error : new Error(String(error)));
+    const errorObj = error instanceof Error ? error : new Error(String(error));
+    logger.error('Error getting authenticated URL', errorObj, { fileUrl, courseId, lessonId });
     return null;
   }
 }
@@ -187,7 +191,8 @@ export function extractFileKey(url: string): string | null {
 
     return null;
   } catch (error) {
-    logger.error('Error extracting file key', error instanceof Error ? error : new Error(String(error)), { url });
+    const errorObj = error instanceof Error ? error : new Error(String(error));
+    logger.error('Error extracting file key', errorObj, { url });
     return null;
   }
 }

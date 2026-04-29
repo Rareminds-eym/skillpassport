@@ -421,7 +421,11 @@ export class MessageService {
         return cached.data;
       }
     }
-    
+
+    if (pendingRequests.has(cacheKey)) {
+      return pendingRequests.get(cacheKey)!;
+    }
+
     const request = this._getOrCreateStudentCollegeLecturerConversationInternal(
       studentId,
       collegeLecturerId,
@@ -429,18 +433,21 @@ export class MessageService {
       programSectionId,
       subject
     );
-    
-    // Cache the promise result
-    request.then(result => {
+
+    pendingRequests.set(cacheKey, request);
+
+    try {
+      const result = await request;
       conversationCache.set(cacheKey, { data: result, timestamp: Date.now() });
-      
-      // Clear cache after duration
+
       setTimeout(() => {
         conversationCache.delete(cacheKey);
       }, CACHE_DURATION);
-    });
-    
-    return request;
+
+      return result;
+    } finally {
+      pendingRequests.delete(cacheKey);
+    }
   }
 
   private static async _getOrCreateStudentCollegeLecturerConversationInternal(
@@ -611,7 +618,8 @@ export class MessageService {
       
       return data;
     } catch (error) {
-      logger.error('Error in sendMessage', error instanceof Error ? error : new Error(String(error)));
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      logger.error('Error in sendMessage', errorObj, { conversationId, senderId, receiverId });
       throw error;
     }
   }
@@ -734,7 +742,8 @@ export class MessageService {
 
         return messages;
       } catch (error) {
-        logger.error('Error in getConversationMessages', error instanceof Error ? error : new Error(String(error)));
+        const errorObj = error instanceof Error ? error : new Error(String(error));
+        logger.error('Error in getConversationMessages', errorObj, { conversationId, limit, offset });
         throw error;
       }
     })();
@@ -1300,23 +1309,21 @@ export class MessageService {
           }
         } else {
           // Handle regular conversations
-          const updateField = isStudent ? 'student_unread_count' : 
-                              isRecruiter ? 'recruiter_unread_count' : 
+          const updateField = isStudent ? 'student_unread_count' :
+                              isRecruiter ? 'recruiter_unread_count' :
                               'educator_unread_count';
-          
-          // Update unread count without awaiting (fire and forget for speed)
-          supabase
-            .from('conversations')
-            .update({ [updateField]: 0 })
-            .eq('id', conversationId)
-            .then(() => {
-              // Clear conversation cache after update
-              this.clearConversationCache(userId);
-            })
-            .catch((error: unknown) => {
-              const errorObj = error instanceof Error ? error : new Error(String(error));
-              logger.error('Failed to update conversation unread count', errorObj, { conversationId, updateField });
-            });
+
+          try {
+            await supabase
+              .from('conversations')
+              .update({ [updateField]: 0 })
+              .eq('id', conversationId);
+
+            this.clearConversationCache(userId);
+          } catch (error) {
+            const errorObj = error instanceof Error ? error : new Error(String(error));
+            logger.error('Failed to update conversation unread count', errorObj, { conversationId, updateField, userId });
+          }
         }
       }
       
@@ -1726,7 +1733,6 @@ export class MessageService {
    */
   static async permanentlyDeleteConversation(conversationId: string): Promise<void> {
     try {
-      // Messages will be cascade deleted due to foreign key constraint
       const { error } = await supabase
         .from('conversations')
         .delete()
@@ -1734,8 +1740,8 @@ export class MessageService {
 
       if (error) {
         const errorObj = error instanceof Error ? error : new Error(String(error));
-        logger.error('Error permanently deleting conversation', errorObj, { conversationId, code: (error as { code?: string })?.code });
-        throw error;
+        logger.error('Failed to permanently delete conversation', errorObj, { conversationId, code: (error as { code?: string })?.code });
+        throw errorObj;
       }
     } catch (error) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
@@ -1782,7 +1788,6 @@ export class MessageService {
     subject?: string
   ): Promise<Conversation> {
     try {
-      // Use the database function for consistency
       const { data, error } = await supabase
         .rpc('get_or_create_student_college_admin_conversation', {
           p_student_id: studentId,
@@ -1790,7 +1795,11 @@ export class MessageService {
           p_subject: subject || 'General Discussion'
         });
 
-      if (error) throw error;
+      if (error) {
+        const errorObj = error instanceof Error ? error : new Error(String(error));
+        logger.error('Error executing get_or_create_student_college_admin_conversation RPC', errorObj, { studentId, collegeId, code: (error as { code?: string })?.code });
+        throw error;
+      }
       
       if (!data || data.length === 0) {
         const noDataError = new Error('Failed to create student-college_admin conversation');
@@ -1882,7 +1891,7 @@ export class MessageService {
 
       if (error) {
         const errorObj = error instanceof Error ? error : new Error(String(error));
-        logger.error('Error executing get_or_create_educator_admin_conversation RPC', errorObj, { educatorId });
+        logger.error('Error executing get_or_create_educator_admin_conversation RPC', errorObj, { educatorId, schoolId, code: (error as { code?: string })?.code });
         throw error;
       }
 
@@ -1958,7 +1967,7 @@ export class MessageService {
 
       if (error) {
         const errorObj = error instanceof Error ? error : new Error(String(error));
-        logger.error('Error executing get_or_create_college_educator_admin_conversation RPC', errorObj, { educatorId });
+        logger.error('Error executing get_or_create_college_educator_admin_conversation RPC', errorObj, { educatorId, collegeId, code: (error as { code?: string })?.code });
         throw error;
       }
 
