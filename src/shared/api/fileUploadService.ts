@@ -61,13 +61,15 @@ async function getAuthToken(): Promise<string | null> {
 
     if (error) {
       const errorCode = extractErrorCode(error);
-      logger.error('Failed to get session', ensureErrorObject(error), { code: errorCode });
+      const errorObj = ensureErrorObject(error);
+      logger.error('Failed to get session', errorObj, { code: errorCode });
       return null;
     }
     return session?.access_token || null;
   } catch (error) {
     const errorMsg = extractErrorMessage(error);
-    logger.error('Error retrieving auth token', ensureErrorObject(error), { message: errorMsg });
+    const errorObj = ensureErrorObject(error);
+    logger.error('Error retrieving auth token', errorObj, { message: errorMsg });
     return null;
   }
 }
@@ -87,10 +89,14 @@ export interface UploadProgress {
 
 /**
  * Upload a single file to R2 storage
+ * @param file - The file to upload
+ * @param folder - The destination folder in R2 (default: 'documents')
+ * @param onProgress - Optional callback for upload progress tracking
  */
 export const uploadFile = async (
   file: File,
-  folder: string = 'documents'
+  folder: string = 'documents',
+  onProgress?: (progress: UploadProgress) => void
 ): Promise<UploadResult> => {
   try {
     // Get authentication token
@@ -113,6 +119,11 @@ export const uploadFile = async (
     const formData = new FormData();
     formData.append('file', file);
     formData.append('filename', filename);
+
+    // Use XHR when progress tracking is needed, fetch otherwise
+    if (onProgress) {
+      return await uploadFileWithProgress(formData, token, file, folder, onProgress);
+    }
 
     // Upload to Cloudflare Worker
     const response = await fetch(`${STORAGE_API_URL}/upload`, {
@@ -148,7 +159,8 @@ export const uploadFile = async (
     };
   } catch (error) {
     const errorMsg = extractErrorMessage(error);
-    logger.error('File upload error', ensureErrorObject(error), { folder, fileName: file.name, message: errorMsg });
+    const errorObj = ensureErrorObject(error);
+    logger.error('File upload error', errorObj, { folder, fileName: file.name, message: errorMsg });
     return {
       success: false,
       error: errorMsg,
@@ -157,17 +169,98 @@ export const uploadFile = async (
 };
 
 /**
- * Upload multiple files
+ * Internal helper: upload using XMLHttpRequest to support progress tracking
+ */
+function uploadFileWithProgress(
+  formData: FormData,
+  token: string,
+  file: File,
+  folder: string,
+  onProgress: (progress: UploadProgress) => void
+): Promise<UploadResult> {
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+
+    xhr.upload.addEventListener('progress', (event) => {
+      if (event.lengthComputable) {
+        onProgress({
+          loaded: event.loaded,
+          total: event.total,
+          percentage: Math.round((event.loaded / event.total) * 100),
+        });
+      }
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status === 401) {
+        resolve({
+          success: false,
+          error: 'Authentication failed. Please refresh the page and log in again.',
+        });
+        return;
+      }
+
+      if (xhr.status < 200 || xhr.status >= 300) {
+        let errorMsg = `Upload failed: ${xhr.status}`;
+        try {
+          const errorData = JSON.parse(xhr.responseText);
+          errorMsg = extractErrorMessage(errorData) || errorMsg;
+        } catch {
+          // ignore parse errors
+        }
+        resolve({ success: false, error: errorMsg });
+        return;
+      }
+
+      try {
+        const result = JSON.parse(xhr.responseText);
+        if (!result.success) {
+          const errorMsg = extractErrorMessage(result) || 'Upload failed';
+          resolve({ success: false, error: errorMsg });
+          return;
+        }
+        resolve({ success: true, url: result.url, filename: result.filename });
+      } catch {
+        resolve({ success: false, error: 'Invalid response from server' });
+      }
+    });
+
+    xhr.addEventListener('error', () => {
+      const errorMsg = 'Network error during upload';
+      logger.error('File upload network error', new Error(errorMsg), { folder, fileName: file.name });
+      resolve({ success: false, error: errorMsg });
+    });
+
+    xhr.addEventListener('abort', () => {
+      resolve({ success: false, error: 'Upload was aborted' });
+    });
+
+    xhr.open('POST', `${STORAGE_API_URL}/upload`);
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.send(formData);
+  });
+}
+
+/**
+ * Upload multiple files sequentially
+ * @param files - Array of files to upload
+ * @param folder - The destination folder in R2 (default: 'documents')
+ * @param onProgress - Optional callback for per-file progress tracking.
+ *                     Receives the zero-based file index and the current progress.
  */
 export const uploadMultipleFiles = async (
   files: File[],
-  folder: string = 'documents'
+  folder: string = 'documents',
+  onProgress?: (fileIndex: number, progress: UploadProgress) => void
 ): Promise<UploadResult[]> => {
   const results: UploadResult[] = [];
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
-    const result = await uploadFile(file, folder);
+    const fileProgressCallback = onProgress
+      ? (progress: UploadProgress) => onProgress(i, progress)
+      : undefined;
+    const result = await uploadFile(file, folder, fileProgressCallback);
     results.push(result);
   }
 

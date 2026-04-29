@@ -456,16 +456,19 @@ export class MessageService {
     subject?: string
   ): Promise<Conversation> {
     const cacheKey = `student_college_lecturer_${studentId}_${collegeLecturerId}_${subject || 'general'}`;
-    
+
+    // Check pending requests FIRST to prevent race conditions where multiple
+    // callers slip past the cache check before the first request completes.
+    if (pendingRequests.has(cacheKey)) {
+      return pendingRequests.get(cacheKey)!;
+    }
+
+    // Only consult the cache after confirming no in-flight request exists.
     if (conversationCache.has(cacheKey)) {
       const cached = conversationCache.get(cacheKey);
       if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
         return cached.data;
       }
-    }
-
-    if (pendingRequests.has(cacheKey)) {
-      return pendingRequests.get(cacheKey)!;
     }
 
     const request = this._getOrCreateStudentCollegeLecturerConversationInternal(
@@ -1363,7 +1366,16 @@ export class MessageService {
               .update({ [updateField]: 0 })
               .eq('id', conversationId);
 
-            this.clearConversationCache(userId);
+            try {
+              this.clearConversationCache(userId);
+            } catch (cacheError) {
+              // Cache clearing is best-effort; log but don't fail the read operation
+              logger.warn('Failed to clear conversation cache after marking as read', {
+                userId,
+                conversationId,
+                error: getErrorMessage(cacheError),
+              });
+            }
           } catch (error) {
             logger.error('Failed to update conversation unread count', ensureErrorObject(error), { conversationId, updateField, userId });
           }
