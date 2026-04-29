@@ -10,6 +10,9 @@ const logger = getLogger('file-upload');
 
 const STORAGE_API_URL = 'https://storage-api.dark-mode-d021.workers.dev';
 
+/** Fallback message used when no structured error information can be extracted. */
+const UNKNOWN_ERROR_MESSAGE = 'Unknown error occurred';
+
 interface ErrorWithCode {
   code: string | number;
 }
@@ -48,9 +51,9 @@ function extractErrorMessage(err: unknown): string {
   if (typeof err === 'string') return err;
   // Last resort: safe serialization guarded against circular references
   try {
-    return JSON.stringify(err) ?? 'Unknown error occurred';
+    return JSON.stringify(err) ?? UNKNOWN_ERROR_MESSAGE;
   } catch {
-    return 'Unknown error occurred';
+    return UNKNOWN_ERROR_MESSAGE;
   }
 }
 
@@ -67,13 +70,16 @@ async function getAuthToken(): Promise<string | null> {
   try {
     const { data: { session }, error } = await supabase.auth.getSession();
 
-    if (error) {
+    // Supabase returns a typed AuthError object when the session call fails.
+    // We only enter this branch when error is a truthy AuthError, so
+    // ensureErrorObject always receives a real object — never undefined.
+    if (error != null) {
       const errorCode = extractErrorCode(error);
       const errorObj = ensureErrorObject(error);
       logger.error('Failed to get session', errorObj, { code: errorCode });
       return null;
     }
-    return session?.access_token || null;
+    return session?.access_token ?? null;
   } catch (error) {
     const errorMsg = extractErrorMessage(error);
     const errorObj = ensureErrorObject(error);
@@ -184,8 +190,9 @@ export const uploadFile = async (
  *   - HTTP-level failures (4xx/5xx) → resolve with { success: false }
  *   - Successful upload → resolve with { success: true }
  *
- * The outer uploadFile() try/catch converts any rejection into { success: false }
- * so callers always receive a well-typed UploadResult regardless of path.
+ * IMPORTANT: This function is only ever called from inside uploadFile()'s top-level
+ * try/catch, which converts any rejection into { success: false }. Do not call this
+ * function directly from outside this module.
  */
 function uploadFileWithProgress(
   formData: FormData,
@@ -221,7 +228,7 @@ function uploadFileWithProgress(
         try {
           const errorData = JSON.parse(xhr.responseText) as unknown;
           const parsed = extractErrorMessage(errorData);
-          if (parsed && parsed !== 'Unknown error occurred') errorMsg = parsed;
+          if (parsed && parsed !== UNKNOWN_ERROR_MESSAGE) errorMsg = parsed;
         } catch {
           // responseText is not JSON — keep the status-based message
         }
@@ -229,17 +236,39 @@ function uploadFileWithProgress(
         return;
       }
 
+      // Parse and validate the success response shape at runtime before
+      // accessing any properties — JSON.parse returns `any` and the server
+      // response is untrusted input.
+      let parsed: unknown;
       try {
-        const result = JSON.parse(xhr.responseText) as { success?: boolean; url?: string; filename?: string };
-        if (!result.success) {
-          const errorMsg = extractErrorMessage(result);
-          resolve({ success: false, error: errorMsg });
-          return;
-        }
-        resolve({ success: true, url: result.url, filename: result.filename });
+        parsed = JSON.parse(xhr.responseText) as unknown;
       } catch {
         resolve({ success: false, error: 'Invalid response from server' });
+        return;
       }
+
+      if (
+        parsed === null ||
+        typeof parsed !== 'object' ||
+        !('success' in parsed)
+      ) {
+        resolve({ success: false, error: 'Unexpected response shape from server' });
+        return;
+      }
+
+      const result = parsed as Record<string, unknown>;
+
+      if (!result.success) {
+        const errorMsg = extractErrorMessage(result);
+        resolve({ success: false, error: errorMsg });
+        return;
+      }
+
+      resolve({
+        success: true,
+        url: typeof result.url === 'string' ? result.url : undefined,
+        filename: typeof result.filename === 'string' ? result.filename : undefined,
+      });
     });
 
     // 'error' fires on network-level failures (no response received at all).
@@ -277,11 +306,13 @@ export const uploadMultipleFiles = async (
   const results: UploadResult[] = [];
 
   for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    const fileProgressCallback = onProgress
-      ? (progress: UploadProgress) => onProgress(i, progress)
-      : undefined;
-    const result = await uploadFile(file, folder, fileProgressCallback);
+    // Bind the current index into the progress callback so each file reports
+    // its own slot. When onProgress is omitted the upload runs without tracking.
+    const result = await uploadFile(
+      files[i],
+      folder,
+      onProgress ? (progress) => onProgress(i, progress) : undefined,
+    );
     results.push(result);
   }
 

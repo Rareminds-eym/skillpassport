@@ -548,7 +548,7 @@ export class MessageService {
             .maybeSingle();
 
           if (restoreError) {
-            logger.warn('Could not restore student-college lecturer conversation, using as-is', { conversationId: existing.id });
+            logger.warn('Could not restore student-college lecturer conversation, using as-is', { conversationId: existing.id, code: getErrorCode(restoreError) });
             return existing as Conversation;
           }
 
@@ -1382,6 +1382,7 @@ export class MessageService {
               logger.warn('Failed to clear conversation cache after marking as read', {
                 userId,
                 conversationId,
+                code: getErrorCode(cacheError),
                 error: getErrorMessage(cacheError),
               });
             }
@@ -1794,6 +1795,8 @@ export class MessageService {
    */
   static async permanentlyDeleteConversation(conversationId: string): Promise<void> {
     try {
+      // Deleting the conversation row also removes all associated messages via
+      // the ON DELETE CASCADE foreign key constraint on messages.conversation_id.
       const { error } = await supabase
         .from('conversations')
         .delete()
