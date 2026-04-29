@@ -6,7 +6,7 @@ import {
     Target,
     TrendingUp
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import ReactApexChart from 'react-apexcharts';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/shared/api/supabaseClient';
@@ -15,30 +15,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('AnalyticsView');
+const IS_DEBUG_MODE = import.meta.env.DEV;
 
 const AnalyticsView = ({ studentId, userEmail }) => {
   const navigate = useNavigate();
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [debugMode, setDebugMode] = useState(process.env.NODE_ENV === 'development');
 
-  // Debug logging
-  const debugLog = (message, data = null) => {
-    if (debugMode) {
-      logger.info(`${message}`, data || '');
-    }
-  };
-
-  useEffect(() => {
-    debugLog('AnalyticsView mounted', { studentId, userEmail });
-    if (studentId) {
-      fetchApplicationData();
-    }
-  }, [studentId]);
-
-  const fetchApplicationData = async () => {
+  // Define fetchApplicationData with proper dependencies BEFORE useEffect
+  const fetchApplicationData = useCallback(async () => {
     try {
-      debugLog('Fetching application data...');
+      if (IS_DEBUG_MODE) {
+        logger.info('Fetching application data...');
+      }
       setLoading(true);
       const { data: appliedJobs, error: jobsError } = await supabase
         .from('applied_jobs')
@@ -60,18 +49,32 @@ const AnalyticsView = ({ studentId, userEmail }) => {
         .order('applied_at', { ascending: false });
 
       if (!jobsError) {
-        debugLog(`Fetched ${appliedJobs?.length || 0} applications`);
+        if (IS_DEBUG_MODE) {
+          logger.info(`Fetched ${appliedJobs?.length || 0} applications`);
+        }
         setApplications(appliedJobs || []);
       } else {
-        debugLog('Error fetching applications:', jobsError);
+        if (IS_DEBUG_MODE) {
+          logger.error('Error fetching applications:', jobsError);
+        }
       }
     } catch (error) {
-      debugLog('Error in fetchApplicationData:', error);
+      // Always log errors regardless of environment
       logger.error('Error in fetchApplicationData:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [studentId]); // Proper dependency: studentId
+
+  // useEffect with complete dependencies
+  useEffect(() => {
+    if (IS_DEBUG_MODE) {
+      logger.info('AnalyticsView mounted', { studentId, userEmail });
+    }
+    if (studentId) {
+      fetchApplicationData();
+    }
+  }, [studentId, fetchApplicationData]); // Complete dependencies
 
   // Calculate analytics data
   const analytics = useMemo(() => {
