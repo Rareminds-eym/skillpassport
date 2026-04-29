@@ -85,45 +85,76 @@ interface ErrorWithMessage {
 }
 
 function isErrorWithCode(err: unknown): err is ErrorWithCode {
-  if (typeof err !== 'object' || err === null || !('code' in err)) return false;
-  const code = (err as Record<string, unknown>).code;
+  if (typeof err !== 'object' || err === null) return false;
+  if (!Object.prototype.hasOwnProperty.call(err, 'code')) return false;
+  const obj = err as Record<string, unknown>;
+  const code = obj.code;
   return typeof code === 'string' || typeof code === 'number';
 }
 
 function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
   if (typeof err !== 'object' || err === null) return false;
-  const rec = err as Record<string, unknown>;
-  const hasMessage = 'message' in rec && (typeof rec.message === 'string' || rec.message === undefined);
-  const hasError = 'error' in rec && (typeof rec.error === 'string' || rec.error === undefined);
+  const obj = err as Record<string, unknown>;
+  const hasMessage = Object.prototype.hasOwnProperty.call(obj, 'message') &&
+    (typeof obj.message === 'string' || obj.message === undefined);
+  const hasError = Object.prototype.hasOwnProperty.call(obj, 'error') &&
+    (typeof obj.error === 'string' || obj.error === undefined);
   return hasMessage || hasError;
 }
 
 function getErrorCode(error: unknown): string | undefined {
   if (!isErrorWithCode(error)) return undefined;
-  // error.code is guaranteed string | number by the type guard
-  return typeof error.code === 'string' ? error.code : String(error.code);
+  const code = (error as ErrorWithCode).code;
+  return typeof code === 'string' ? code : String(code);
 }
 
 function getErrorMessage(error: unknown): string | undefined {
-  if (error instanceof Error) return error.message;
-  if (isErrorWithMessage(error)) {
-    const msg = error.message ?? error.error;
-    if (typeof msg === 'string') return msg;
+  if (error instanceof Error) {
+    const msg = error.message?.trim();
+    return msg && msg.length > 0 ? msg : undefined;
   }
-  if (typeof error === 'string') return error;
-  // Safe serialization guarded against circular references
-  try {
-    const serialized = JSON.stringify(error);
-    return serialized ?? undefined;
-  } catch {
+
+  if (isErrorWithMessage(error)) {
+    const obj = error as ErrorWithMessage;
+    const msg = obj.message?.trim() ?? obj.error?.trim();
+    return msg && msg.length > 0 ? msg : undefined;
+  }
+
+  if (typeof error === 'string') {
+    const trimmed = error.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+
+  if (error === null || error === undefined) {
     return undefined;
   }
+
+  try {
+    const serialized = JSON.stringify(error);
+    if (serialized && serialized !== '{}' && serialized.length > 0) {
+      return serialized;
+    }
+  } catch {
+    if (typeof error === 'object') {
+      const type = Object.prototype.toString.call(error);
+      if (type !== '[object Object]') {
+        return type;
+      }
+    }
+  }
+
+  return undefined;
 }
 
 function ensureErrorObject(err: unknown): Error {
   if (err instanceof Error) return err;
+
   const msg = getErrorMessage(err);
-  return new Error(msg || 'Unknown error occurred');
+  if (msg && msg.length > 0) {
+    return new Error(msg);
+  }
+
+  return new Error('Unknown error occurred');
 }
 
 export class MessageService {
@@ -660,9 +691,14 @@ export class MessageService {
         .single();
 
       if (error) {
-        const errorMessage = getErrorMessage(error);
-        const errorObj = new Error(`Failed to send message: ${errorMessage || 'Unknown error'}`);
-        logger.error('Failed to send message', errorObj, { conversationId, code: getErrorCode(error) });
+        const errorMsg = getErrorMessage(error) || 'Unknown error';
+        const errorCode = getErrorCode(error);
+        const errorObj = new Error(`Failed to send message: ${errorMsg}`);
+        const metadata: Record<string, unknown> = { conversationId, senderId, receiverId };
+        if (errorCode) {
+          metadata.code = errorCode;
+        }
+        logger.error('Failed to send message', errorObj, metadata);
         throw errorObj;
       }
 
@@ -699,9 +735,14 @@ export class MessageService {
         .maybeSingle();
 
       if (convError && convError.code !== 'PGRST116') {
-        const errorMessage = getErrorMessage(convError);
-        const errorObj = new Error(`Error fetching conversation: ${errorMessage || 'Unknown error'}`);
-        logger.error('Error fetching conversation', errorObj, { conversationId, code: getErrorCode(convError) });
+        const errorMsg = getErrorMessage(convError) || 'Unknown error';
+        const errorCode = getErrorCode(convError);
+        const errorObj = new Error(`Error fetching conversation: ${errorMsg}`);
+        const metadata: Record<string, unknown> = { conversationId, studentId };
+        if (errorCode) {
+          metadata.code = errorCode;
+        }
+        logger.error('Error fetching conversation', errorObj, metadata);
         throw errorObj;
       }
 
@@ -775,9 +816,20 @@ export class MessageService {
         const { data, error } = await query;
 
         if (error) {
-          const errorMsg = getErrorMessage(error);
-          const errorObj = new Error(`Failed to fetch conversation messages: ${errorMsg || 'Unknown error'}`);
-          logger.error('Failed to fetch conversation messages', errorObj, { conversationId, code: getErrorCode(error) });
+          const errorMsg = getErrorMessage(error) || 'Unknown error';
+          const errorCode = getErrorCode(error);
+          const errorObj = new Error(`Failed to fetch conversation messages: ${errorMsg}`);
+          const metadata: Record<string, unknown> = { conversationId };
+          if (errorCode) {
+            metadata.code = errorCode;
+          }
+          if (limit !== undefined) {
+            metadata.limit = limit;
+          }
+          if (offset) {
+            metadata.offset = offset;
+          }
+          logger.error('Failed to fetch conversation messages', errorObj, metadata);
           throw errorObj;
         }
 
@@ -1052,9 +1104,9 @@ export class MessageService {
       const { data, error } = await query;
       
       if (error) {
-        const errorMessage = getErrorMessage(error) || '';
+        const errorMsg = getErrorMessage(error);
         const errorCode = getErrorCode(error);
-        if (errorMessage.includes('deleted_by') || errorCode === '42703') {
+        if (errorMsg?.includes('deleted_by') || errorCode === '42703') {
           let retryQuery = supabase
             .from('conversations')
             .select(`
@@ -1804,12 +1856,17 @@ export class MessageService {
 
       if (error) {
         const errorMsg = getErrorMessage(error) || 'Unknown error';
+        const errorCode = getErrorCode(error);
         const errorObj = new Error(`Failed to permanently delete conversation: ${errorMsg}`);
-        logger.error('Failed to permanently delete conversation', errorObj, { conversationId, code: getErrorCode(error) });
+        const metadata: Record<string, unknown> = { conversationId };
+        if (errorCode) {
+          metadata.code = errorCode;
+        }
+        logger.error('Failed to permanently delete conversation', errorObj, metadata);
         throw errorObj;
       }
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
+      const errorObj = ensureErrorObject(error);
       logger.error('Error in permanentlyDeleteConversation', errorObj, { conversationId });
       throw error;
     }
@@ -1862,8 +1919,13 @@ export class MessageService {
 
       if (error) {
         const errorMsg = getErrorMessage(error) || 'Unknown error';
+        const errorCode = getErrorCode(error);
         const errorObj = new Error(`Error executing get_or_create_student_college_admin_conversation RPC: ${errorMsg}`);
-        logger.error('Error executing get_or_create_student_college_admin_conversation RPC', errorObj, { studentId, collegeId, code: getErrorCode(error) });
+        const metadata: Record<string, unknown> = { studentId, collegeId };
+        if (errorCode) {
+          metadata.code = errorCode;
+        }
+        logger.error('Error executing get_or_create_student_college_admin_conversation RPC', errorObj, metadata);
         throw errorObj;
       }
       
@@ -1956,8 +2018,13 @@ export class MessageService {
 
       if (error) {
         const errorMsg = getErrorMessage(error) || 'Unknown error';
+        const errorCode = getErrorCode(error);
         const errorObj = new Error(`Error executing get_or_create_educator_admin_conversation RPC: ${errorMsg}`);
-        logger.error('Error executing get_or_create_educator_admin_conversation RPC', errorObj, { educatorId, schoolId, code: getErrorCode(error) });
+        const metadata: Record<string, unknown> = { educatorId, schoolId };
+        if (errorCode) {
+          metadata.code = errorCode;
+        }
+        logger.error('Error executing get_or_create_educator_admin_conversation RPC', errorObj, metadata);
         throw errorObj;
       }
 
@@ -2032,8 +2099,13 @@ export class MessageService {
 
       if (error) {
         const errorMsg = getErrorMessage(error) || 'Unknown error';
+        const errorCode = getErrorCode(error);
         const errorObj = new Error(`Error executing get_or_create_college_educator_admin_conversation RPC: ${errorMsg}`);
-        logger.error('Error executing get_or_create_college_educator_admin_conversation RPC', errorObj, { educatorId, collegeId, code: getErrorCode(error) });
+        const metadata: Record<string, unknown> = { educatorId, collegeId };
+        if (errorCode) {
+          metadata.code = errorCode;
+        }
+        logger.error('Error executing get_or_create_college_educator_admin_conversation RPC', errorObj, metadata);
         throw errorObj;
       }
 
