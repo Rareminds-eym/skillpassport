@@ -11,6 +11,16 @@ const logger = getLogger('storage-api');
 
 const API_URL = getApiUrl('storage');
 
+function ensureErrorObject(err: unknown): Error {
+  if (err instanceof Error) return err;
+  if (typeof err === 'string') return new Error(err);
+  try {
+    return new Error(JSON.stringify(err));
+  } catch {
+    return new Error('Unknown error occurred');
+  }
+}
+
 /**
  * Get authentication token from current session
  */
@@ -19,13 +29,13 @@ async function getAuthToken(): Promise<string | null> {
     const { data: { session }, error } = await supabase.auth.getSession();
 
     if (error) {
-      logger.error('Failed to get session', error instanceof Error ? error : new Error(String(error)));
+      logger.error('Failed to get session', ensureErrorObject(error));
       return null;
     }
 
     return session?.access_token || null;
   } catch (error) {
-    logger.error('Error retrieving auth token', error instanceof Error ? error : new Error(String(error)));
+    logger.error('Error retrieving auth token', ensureErrorObject(error));
     return null;
   }
 }

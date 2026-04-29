@@ -3,6 +3,16 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('settings-service');
 
+function ensureErrorObject(err: unknown): Error {
+  if (err instanceof Error) return err;
+  if (typeof err === 'string') return new Error(err);
+  try {
+    return new Error(JSON.stringify(err));
+  } catch {
+    return new Error('Unknown error occurred');
+  }
+}
+
 export interface Module {
   id: string;
   module_name: string;
@@ -55,7 +65,7 @@ export const getAvailableModules = async (): Promise<Module[]> => {
     if (error) throw error;
     return data || [];
   } catch (error) {
-    logger.error('Error fetching modules', error instanceof Error ? error : new Error(String(error)));
+    logger.error('Error fetching modules', ensureErrorObject(error));
     return [];
   }
 };
@@ -73,7 +83,7 @@ export const getAvailablePermissions = async (): Promise<Permission[]> => {
     if (error) throw error;
     return data || [];
   } catch (error) {
-    logger.error('Error fetching permissions', error instanceof Error ? error : new Error(String(error)));
+    logger.error('Error fetching permissions', ensureErrorObject(error));
     return [];
   }
 };
@@ -164,7 +174,7 @@ export const getRolesWithPermissions = async (): Promise<Role[]> => {
 
     return Array.from(roleMap.values());
   } catch (error) {
-    logger.error('Error fetching roles with permissions', error instanceof Error ? error : new Error(String(error)));
+    logger.error('Error fetching roles with permissions', ensureErrorObject(error));
     return [];
   }
 };
@@ -258,7 +268,7 @@ export const saveRolePermissions = async (
 
     return true;
   } catch (error) {
-    logger.error('Error saving role permissions', error instanceof Error ? error : new Error(String(error)));
+    logger.error('Error saving role permissions', ensureErrorObject(error));
     return false;
   }
 };
@@ -291,7 +301,7 @@ export const getDepartments = async (): Promise<{ id: string; name: string; code
     if (error) throw error;
     return data || [];
   } catch (error) {
-    logger.error('Error fetching departments', error instanceof Error ? error : new Error(String(error)));
+    logger.error('Error fetching departments', ensureErrorObject(error));
     return [];
   }
 };
@@ -310,7 +320,7 @@ export const getPrograms = async (): Promise<{ id: string; name: string; code: s
     if (error) throw error;
     return data || [];
   } catch (error) {
-    logger.error('Error fetching programs', error instanceof Error ? error : new Error(String(error)));
+    logger.error('Error fetching programs', ensureErrorObject(error));
     return [];
   }
 };

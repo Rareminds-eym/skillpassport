@@ -11,24 +11,42 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('auth-media');
 
+interface ErrorWithCode {
+  code: string | number;
+}
+
 interface ErrorWithMessage {
-  message?: unknown;
-  error?: unknown;
+  message?: string;
+  error?: string;
+}
+
+function isErrorWithCode(err: unknown): err is ErrorWithCode {
+  if (typeof err !== 'object' || err === null || !('code' in err)) return false;
+  const code = (err as Record<string, unknown>).code;
+  return typeof code === 'string' || typeof code === 'number';
 }
 
 function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
-  return typeof err === 'object' && err !== null && ('message' in err || 'error' in err);
+  if (typeof err !== 'object' || err === null) return false;
+  const rec = err as Record<string, unknown>;
+  const hasMessage = 'message' in rec && (typeof rec.message === 'string' || rec.message === undefined);
+  const hasError = 'error' in rec && (typeof rec.error === 'string' || rec.error === undefined);
+  return hasMessage || hasError;
 }
 
 function extractErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   if (isErrorWithMessage(err)) {
-    const msg = err.message || err.error;
+    const msg = err.message ?? err.error;
     if (typeof msg === 'string') return msg;
-    if (typeof msg === 'object' && msg !== null) return JSON.stringify(msg);
   }
   if (typeof err === 'string') return err;
-  return 'Unknown error occurred';
+  // Last resort: safe serialization guarded against circular references
+  try {
+    return JSON.stringify(err) ?? 'Unknown error occurred';
+  } catch {
+    return 'Unknown error occurred';
+  }
 }
 
 function ensureErrorObject(err: unknown): Error {
@@ -62,7 +80,7 @@ export async function getAuthenticatedMediaUrl(
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.access_token) {
-      logger.error('No active session', undefined, { fileUrl, courseId, lessonId });
+      logger.error('No active session', new Error('No active session for authenticated media request'), { fileUrl, courseId, lessonId });
       return null;
     }
 
