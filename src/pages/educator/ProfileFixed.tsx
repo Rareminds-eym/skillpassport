@@ -411,13 +411,9 @@ const ProfileFixed = () => {
         }
       });
 
-      logger.info('Saving profile', { updateData });
-      logger.info('Photo URL debug', {
-        'formData.photo_url': formData.photo_url,
-        'profile.photo_url': profile.photo_url,
-        'hasOwnProperty': formData.hasOwnProperty('photo_url'),
-        'final_photo_url': updateData.photo_url
-      });
+      if (import.meta.env.DEV) {
+        logger.info('Saving profile', { updateData });
+      }
 
       const { error } = await supabase
         .from('school_educators')
