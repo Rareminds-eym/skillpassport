@@ -10,13 +10,46 @@ const logger = getLogger('file-upload');
 
 const STORAGE_API_URL = 'https://storage-api.dark-mode-d021.workers.dev';
 
-// Helper function to safely extract error code from Supabase errors
-function getErrorCode(error: any): string | undefined {
-  if (!error) return undefined;
-  if (typeof error === 'object' && 'code' in error) {
-    return (error as any).code;
-  }
+interface ErrorWithCode {
+  code?: unknown;
+}
+
+interface ErrorWithMessage {
+  message?: unknown;
+  error?: unknown;
+}
+
+function isErrorWithCode(err: unknown): err is ErrorWithCode {
+  return typeof err === 'object' && err !== null && 'code' in err;
+}
+
+function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
+  return typeof err === 'object' && err !== null && ('message' in err || 'error' in err);
+}
+
+function extractErrorCode(err: unknown): string | undefined {
+  if (!isErrorWithCode(err)) return undefined;
+  const code = err.code;
+  if (typeof code === 'string') return code;
+  if (typeof code === 'number') return String(code);
   return undefined;
+}
+
+function extractErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (isErrorWithMessage(err)) {
+    const msg = err.message || err.error;
+    if (typeof msg === 'string') return msg;
+    if (typeof msg === 'object' && msg !== null) return JSON.stringify(msg);
+  }
+  if (typeof err === 'string') return err;
+  return 'Unknown error occurred';
+}
+
+function ensureErrorObject(err: unknown): Error {
+  if (err instanceof Error) return err;
+  const msg = extractErrorMessage(err);
+  return new Error(msg);
 }
 
 /**
@@ -27,14 +60,14 @@ async function getAuthToken(): Promise<string | null> {
     const { data: { session }, error } = await supabase.auth.getSession();
 
     if (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      logger.error('Failed to get session', errorObj, { code: getErrorCode(error) });
+      const errorCode = extractErrorCode(error);
+      logger.error('Failed to get session', ensureErrorObject(error), { code: errorCode });
       return null;
     }
     return session?.access_token || null;
   } catch (error) {
-    const errorObj = error instanceof Error ? error : new Error(String(error));
-    logger.error('Error retrieving auth token', errorObj);
+    const errorMsg = extractErrorMessage(error);
+    logger.error('Error retrieving auth token', ensureErrorObject(error), { message: errorMsg });
     return null;
   }
 }
@@ -57,8 +90,7 @@ export interface UploadProgress {
  */
 export const uploadFile = async (
   file: File,
-  folder: string = 'documents',
-  onProgress?: (progress: UploadProgress) => void
+  folder: string = 'documents'
 ): Promise<UploadResult> => {
   try {
     // Get authentication token
@@ -93,19 +125,20 @@ export const uploadFile = async (
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      
-      // Handle authentication errors
+
       if (response.status === 401) {
         throw new Error('Authentication failed. Please refresh the page and log in again.');
       }
-      
-      throw new Error(errorData.error || `Upload failed: ${response.status}`);
+
+      const errorMsg = extractErrorMessage(errorData);
+      throw new Error(errorMsg || `Upload failed: ${response.status}`);
     }
 
     const result = await response.json();
-    
+
     if (!result.success) {
-      throw new Error(result.error || 'Upload failed');
+      const errorMsg = extractErrorMessage(result);
+      throw new Error(errorMsg || 'Upload failed');
     }
 
     return {
@@ -114,11 +147,11 @@ export const uploadFile = async (
       filename: result.filename,
     };
   } catch (error) {
-    const errorObj = error instanceof Error ? error : new Error(String(error));
-    logger.error('File upload error', errorObj, { folder, fileName: file.name });
+    const errorMsg = extractErrorMessage(error);
+    logger.error('File upload error', ensureErrorObject(error), { folder, fileName: file.name, message: errorMsg });
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Upload failed',
+      error: errorMsg,
     };
   }
 };
@@ -128,21 +161,16 @@ export const uploadFile = async (
  */
 export const uploadMultipleFiles = async (
   files: File[],
-  folder: string = 'documents',
-  onProgress?: (fileIndex: number, progress: UploadProgress) => void
+  folder: string = 'documents'
 ): Promise<UploadResult[]> => {
   const results: UploadResult[] = [];
-  
+
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
-    const result = await uploadFile(
-      file, 
-      folder, 
-      onProgress ? (progress) => onProgress(i, progress) : undefined
-    );
+    const result = await uploadFile(file, folder);
     results.push(result);
   }
-  
+
   return results;
 };
 
@@ -159,10 +187,9 @@ export const getDocumentUrl = (fileUrl: string, mode: 'inline' | 'download' = 'i
  */
 export const deleteFile = async (fileUrl: string): Promise<boolean> => {
   try {
-    // Get authentication token
     const token = await getAuthToken();
     if (!token) {
-      logger.error('Authentication required to delete file', undefined, { fileUrl });
+      logger.error('Authentication required to delete file', new Error('No auth token'), { fileUrl });
       return false;
     }
 
@@ -177,8 +204,7 @@ export const deleteFile = async (fileUrl: string): Promise<boolean> => {
 
     if (!response.ok) {
       if (response.status === 401) {
-        logger.error('Authentication failed. Please refresh the page and log in again.', undefined, { status: response.status, fileUrl });
-        return false;
+        throw new Error('Authentication failed. Please refresh the page and log in again.');
       }
       throw new Error(`Delete failed: ${response.status}`);
     }
@@ -186,8 +212,8 @@ export const deleteFile = async (fileUrl: string): Promise<boolean> => {
     const result = await response.json();
     return result.success;
   } catch (error) {
-    const errorObj = error instanceof Error ? error : new Error(String(error));
-    logger.error('File delete error', errorObj, { fileUrl });
+    const errorMsg = extractErrorMessage(error);
+    logger.error('File delete error', ensureErrorObject(error), { fileUrl, message: errorMsg });
     return false;
   }
 };

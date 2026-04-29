@@ -11,6 +11,32 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('auth-media');
 
+interface ErrorWithMessage {
+  message?: unknown;
+  error?: unknown;
+}
+
+function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
+  return typeof err === 'object' && err !== null && ('message' in err || 'error' in err);
+}
+
+function extractErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (isErrorWithMessage(err)) {
+    const msg = err.message || err.error;
+    if (typeof msg === 'string') return msg;
+    if (typeof msg === 'object' && msg !== null) return JSON.stringify(msg);
+  }
+  if (typeof err === 'string') return err;
+  return 'Unknown error occurred';
+}
+
+function ensureErrorObject(err: unknown): Error {
+  if (err instanceof Error) return err;
+  const msg = extractErrorMessage(err);
+  return new Error(msg);
+}
+
 interface AuthenticatedUrlResponse {
   success: boolean;
   url?: string;
@@ -63,9 +89,7 @@ export async function getAuthenticatedMediaUrl(
 
     if (!response.ok) {
       const error = await response.json();
-      const errorMessage = typeof error === 'object' && error !== null && 'message' in error
-        ? (error as any).message
-        : 'Unknown error';
+      const errorMessage = extractErrorMessage(error);
       const errorObj = new Error(`Failed to get authenticated URL: ${errorMessage}`);
       logger.error('Failed to get authenticated URL', errorObj, { statusCode: response.status, url: fileUrl, errorDetails: error });
       return null;
@@ -90,8 +114,7 @@ export async function getAuthenticatedMediaUrl(
     const urlWithFp = `${data.url}&fp=${encodeURIComponent(fingerprint)}`;
     return urlWithFp;
   } catch (error) {
-    const errorObj = error instanceof Error ? error : new Error(String(error));
-    logger.error('Error getting authenticated URL', errorObj, { fileUrl, courseId, lessonId });
+    logger.error('Error getting authenticated URL', ensureErrorObject(error), { fileUrl, courseId, lessonId });
     return null;
   }
 }
@@ -200,8 +223,7 @@ export function extractFileKey(url: string): string | null {
 
     return null;
   } catch (error) {
-    const errorObj = error instanceof Error ? error : new Error(String(error));
-    logger.error('Error extracting file key', errorObj, { url });
+    logger.error('Error extracting file key', ensureErrorObject(error), { url });
     return null;
   }
 }

@@ -75,24 +75,46 @@ export interface Conversation {
   class?: any;
 }
 
-// Helper functions for safe error handling
-function getErrorCode(error: any): string | undefined {
-  if (!error) return undefined;
-  if (typeof error === 'object' && 'code' in error) {
-    return (error as any).code;
-  }
+interface ErrorWithCode {
+  code?: unknown;
+}
+
+interface ErrorWithMessage {
+  message?: unknown;
+  error?: unknown;
+}
+
+function isErrorWithCode(err: unknown): err is ErrorWithCode {
+  return typeof err === 'object' && err !== null && 'code' in err;
+}
+
+function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
+  return typeof err === 'object' && err !== null && ('message' in err || 'error' in err);
+}
+
+function getErrorCode(error: unknown): string | undefined {
+  if (!isErrorWithCode(error)) return undefined;
+  const code = error.code;
+  if (typeof code === 'string') return code;
+  if (typeof code === 'number') return String(code);
   return undefined;
 }
 
-function getErrorMessage(error: any): string | undefined {
-  if (!error) return undefined;
-  if (typeof error === 'object' && 'message' in error) {
-    return (error as any).message;
+function getErrorMessage(error: unknown): string | undefined {
+  if (error instanceof Error) return error.message;
+  if (isErrorWithMessage(error)) {
+    const msg = error.message || error.error;
+    if (typeof msg === 'string') return msg;
+    if (typeof msg === 'object' && msg !== null) return JSON.stringify(msg);
   }
-  if (typeof error === 'string') {
-    return error;
-  }
+  if (typeof error === 'string') return error;
   return undefined;
+}
+
+function ensureErrorObject(err: unknown): Error {
+  if (err instanceof Error) return err;
+  const msg = getErrorMessage(err);
+  return new Error(msg || 'Unknown error occurred');
 }
 
 export class MessageService {
@@ -627,7 +649,7 @@ export class MessageService {
 
       if (error) {
         const errorMessage = getErrorMessage(error);
-        const errorObj = new Error(`Failed to send message: ${errorMessage}`);
+        const errorObj = new Error(`Failed to send message: ${errorMessage || 'Unknown error'}`);
         logger.error('Failed to send message', errorObj, { conversationId, code: getErrorCode(error) });
         throw errorObj;
       }
@@ -639,8 +661,7 @@ export class MessageService {
       
       return data;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      logger.error('Error in sendMessage', errorObj, { conversationId, senderId, receiverId });
+      logger.error('Error in sendMessage', ensureErrorObject(error), { conversationId, senderId, receiverId });
       throw error;
     }
   }
@@ -667,7 +688,7 @@ export class MessageService {
 
       if (convError && convError.code !== 'PGRST116') {
         const errorMessage = getErrorMessage(convError);
-        const errorObj = new Error(`Error fetching conversation: ${errorMessage}`);
+        const errorObj = new Error(`Error fetching conversation: ${errorMessage || 'Unknown error'}`);
         logger.error('Error fetching conversation', errorObj, { conversationId, code: getErrorCode(convError) });
         throw errorObj;
       }
@@ -698,7 +719,7 @@ export class MessageService {
         attachments
       );
     } catch (error) {
-      logger.error('Error in sendStudentEducatorMessage', error instanceof Error ? error : new Error(String(error)), { conversationId, studentId });
+      logger.error('Error in sendStudentEducatorMessage', ensureErrorObject(error), { conversationId, studentId });
       throw error;
     }
   }
@@ -742,7 +763,8 @@ export class MessageService {
         const { data, error } = await query;
 
         if (error) {
-          const errorObj = error instanceof Error ? error : new Error(String(error));
+          const errorMsg = getErrorMessage(error);
+          const errorObj = new Error(`Failed to fetch conversation messages: ${errorMsg || 'Unknown error'}`);
           logger.error('Failed to fetch conversation messages', errorObj, { conversationId, code: getErrorCode(error) });
           throw errorObj;
         }
@@ -764,8 +786,7 @@ export class MessageService {
 
         return messages;
       } catch (error) {
-        const errorObj = error instanceof Error ? error : new Error(String(error));
-        logger.error('Error in getConversationMessages', errorObj, { conversationId, limit, offset });
+        logger.error('Error in getConversationMessages', ensureErrorObject(error), { conversationId, limit, offset });
         throw error;
       }
     })();
@@ -1019,10 +1040,9 @@ export class MessageService {
       const { data, error } = await query;
       
       if (error) {
-        // If error is about missing column, try query without deleted filter
-        const errorMessage = getErrorMessage(error);
+        const errorMessage = getErrorMessage(error) || '';
         const errorCode = getErrorCode(error);
-        if (errorMessage?.includes('deleted_by') || errorCode === '42703') {
+        if (errorMessage.includes('deleted_by') || errorCode === '42703') {
           let retryQuery = supabase
             .from('conversations')
             .select(`
@@ -1345,8 +1365,7 @@ export class MessageService {
 
             this.clearConversationCache(userId);
           } catch (error) {
-            const errorObj = error instanceof Error ? error : new Error(String(error));
-            logger.error('Failed to update conversation unread count', errorObj, { conversationId, updateField, userId });
+            logger.error('Failed to update conversation unread count', ensureErrorObject(error), { conversationId, updateField, userId });
           }
         }
       }
@@ -1633,8 +1652,7 @@ export class MessageService {
       
       return conversation;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      logger.error('Error creating student-admin conversation', errorObj, { studentId, schoolId });
+      logger.error('Error creating student-admin conversation', ensureErrorObject(error), { studentId, schoolId });
       throw error;
     }
   }
@@ -1689,8 +1707,7 @@ export class MessageService {
 
       if (error) throw error;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      logger.error('Error in deleteConversationForUser', errorObj, { conversationId, userId, userType });
+      logger.error('Error in deleteConversationForUser', ensureErrorObject(error), { conversationId, userId, userType });
       throw error;
     }
   }
@@ -1744,8 +1761,7 @@ export class MessageService {
 
       if (error) throw error;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      logger.error('Error in restoreConversation', errorObj, { conversationId, userId, userType });
+      logger.error('Error in restoreConversation', ensureErrorObject(error), { conversationId, userId, userType });
       throw error;
     }
   }
@@ -1763,7 +1779,8 @@ export class MessageService {
         .eq('id', conversationId);
 
       if (error) {
-        const errorObj = error instanceof Error ? error : new Error(String(error));
+        const errorMsg = getErrorMessage(error) || 'Unknown error';
+        const errorObj = new Error(`Failed to permanently delete conversation: ${errorMsg}`);
         logger.error('Failed to permanently delete conversation', errorObj, { conversationId, code: getErrorCode(error) });
         throw errorObj;
       }
@@ -1820,7 +1837,8 @@ export class MessageService {
         });
 
       if (error) {
-        const errorObj = error instanceof Error ? error : new Error(String(error));
+        const errorMsg = getErrorMessage(error) || 'Unknown error';
+        const errorObj = new Error(`Error executing get_or_create_student_college_admin_conversation RPC: ${errorMsg}`);
         logger.error('Error executing get_or_create_student_college_admin_conversation RPC', errorObj, { studentId, collegeId, code: getErrorCode(error) });
         throw errorObj;
       }
@@ -1861,8 +1879,7 @@ export class MessageService {
 
       return conversation;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      logger.error('Error creating student-college_admin conversation', errorObj, { studentId, collegeId });
+      logger.error('Error creating student-college_admin conversation', ensureErrorObject(error), { studentId, collegeId });
       throw error;
     }
   }
@@ -1914,7 +1931,8 @@ export class MessageService {
         });
 
       if (error) {
-        const errorObj = error instanceof Error ? error : new Error(String(error));
+        const errorMsg = getErrorMessage(error) || 'Unknown error';
+        const errorObj = new Error(`Error executing get_or_create_educator_admin_conversation RPC: ${errorMsg}`);
         logger.error('Error executing get_or_create_educator_admin_conversation RPC', errorObj, { educatorId, schoolId, code: getErrorCode(error) });
         throw errorObj;
       }
@@ -1938,8 +1956,7 @@ export class MessageService {
 
       return conversation;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      logger.error('Error creating educator-admin conversation', errorObj, { educatorId, schoolId });
+      logger.error('Error creating educator-admin conversation', ensureErrorObject(error), { educatorId, schoolId });
       throw error;
     }
   }
@@ -1990,7 +2007,8 @@ export class MessageService {
         });
 
       if (error) {
-        const errorObj = error instanceof Error ? error : new Error(String(error));
+        const errorMsg = getErrorMessage(error) || 'Unknown error';
+        const errorObj = new Error(`Error executing get_or_create_college_educator_admin_conversation RPC: ${errorMsg}`);
         logger.error('Error executing get_or_create_college_educator_admin_conversation RPC', errorObj, { educatorId, collegeId, code: getErrorCode(error) });
         throw errorObj;
       }
@@ -2014,8 +2032,7 @@ export class MessageService {
 
       return conversation;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      logger.error('Error creating college educator-admin conversation', errorObj, { educatorId, collegeId });
+      logger.error('Error creating college educator-admin conversation', ensureErrorObject(error), { educatorId, collegeId });
       throw error;
     }
   }
