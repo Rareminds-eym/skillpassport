@@ -16,16 +16,14 @@ interface ErrorWithStatus {
   message?: string;
 }
 
-interface ErrorWithMessage {
-  message?: string;
+interface SanitizedError {
+  message: string;
+  type: string;
+  stack?: string;
 }
 
 function isErrorWithStatus(err: unknown): err is ErrorWithStatus {
   return typeof err === 'object' && err !== null && 'status' in err;
-}
-
-function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
-  return typeof err === 'object' && err !== null && 'message' in err;
 }
 
 function extractErrorStatus(err: unknown): number | undefined {
@@ -40,12 +38,56 @@ function extractErrorStatus(err: unknown): number | undefined {
 }
 
 function extractErrorMessage(err: unknown): string {
-  if (isErrorWithMessage(err) && typeof err.message === 'string') {
+  if (isErrorWithStatus(err) && typeof err.message === 'string') {
     return err.message.toLowerCase();
   }
   if (err instanceof Error) return err.message.toLowerCase();
   if (typeof err === 'string') return err.toLowerCase();
   return '';
+}
+
+function sanitizeError(err: unknown): SanitizedError {
+  if (err instanceof Error) {
+    return {
+      message: err.message,
+      type: err.constructor.name,
+      stack: err.stack,
+    };
+  }
+
+  if (typeof err === 'string') {
+    return {
+      message: err,
+      type: 'string',
+    };
+  }
+
+  if (typeof err === 'number' || typeof err === 'boolean') {
+    return {
+      message: String(err),
+      type: typeof err,
+    };
+  }
+
+  if (typeof err === 'object' && err !== null) {
+    if ('message' in err && typeof (err as any).message === 'string') {
+      return {
+        message: (err as any).message,
+        type: err.constructor.name || 'object',
+        stack: 'stack' in err && typeof (err as any).stack === 'string' ? (err as any).stack : undefined,
+      };
+    }
+
+    return {
+      message: 'Unknown object error',
+      type: err.constructor.name || 'object',
+    };
+  }
+
+  return {
+    message: 'Unknown error',
+    type: 'unknown',
+  };
 }
 
 export interface RefreshCoordinatorConfig {
@@ -168,14 +210,15 @@ export class RefreshCoordinator {
         }
 
         // If not successful, prepare for retry
-        lastError = result.error;
-        retryable = result.retryable;
+        const failureResult = result as Extract<RefreshResult, { success: false }>;
+        lastError = failureResult.error;
+        retryable = failureResult.retryable;
 
         // Log the failure
         this.errorHandler.logFailure(
-          result.error,
+          failureResult.error,
           attempt + 1,
-          result.retryable,
+          failureResult.retryable,
           `Attempt ${attempt + 1}/${this.config.maxRetries}`
         );
 
@@ -195,10 +238,14 @@ export class RefreshCoordinator {
         }
       } catch (error) {
         const errorObj = error instanceof Error ? error : new Error(String(error));
+        const sanitized = sanitizeError(error);
         logger.error('Unexpected error during refresh', errorObj, {
           attempt: attempt + 1,
-          errorType: typeof error,
-          originalError: error,
+          errorType: sanitized.type,
+          sanitizedError: {
+            message: sanitized.message,
+            type: sanitized.type,
+          },
         });
         lastError = 'unknown';
         retryable = true;
@@ -316,10 +363,14 @@ export class RefreshCoordinator {
       const errorObj = error instanceof Error ? error : new Error(String(error));
       const errorMsg = extractErrorMessage(error);
       const errorStatus = extractErrorStatus(error);
+      const sanitized = sanitizeError(error);
 
       logger.error('Refresh execution error', errorObj, {
-        type: typeof error,
-        originalError: error,
+        type: sanitized.type,
+        sanitizedError: {
+          message: sanitized.message,
+          type: sanitized.type,
+        },
       });
 
       // Categorize error
@@ -440,9 +491,13 @@ export class RefreshCoordinator {
         request.resolve(result);
       } catch (error) {
         const errorObj = error instanceof Error ? error : new Error(String(error));
+        const sanitized = sanitizeError(error);
         logger.error('Error processing queued refresh request', errorObj, {
           queueIndex: queue.indexOf(request),
-          originalError: error,
+          sanitizedError: {
+            message: sanitized.message,
+            type: sanitized.type,
+          },
         });
       }
     });
