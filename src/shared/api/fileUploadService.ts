@@ -10,6 +10,15 @@ const logger = getLogger('file-upload');
 
 const STORAGE_API_URL = 'https://storage-api.dark-mode-d021.workers.dev';
 
+// Helper function to safely extract error code from Supabase errors
+function getErrorCode(error: any): string | undefined {
+  if (!error) return undefined;
+  if (typeof error === 'object' && 'code' in error) {
+    return (error as any).code;
+  }
+  return undefined;
+}
+
 /**
  * Get authentication token from current session
  */
@@ -19,7 +28,7 @@ async function getAuthToken(): Promise<string | null> {
 
     if (error) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
-      logger.error('Failed to get session', errorObj, { code: (error as { code?: string })?.code });
+      logger.error('Failed to get session', errorObj, { code: getErrorCode(error) });
       return null;
     }
     return session?.access_token || null;
@@ -153,8 +162,7 @@ export const deleteFile = async (fileUrl: string): Promise<boolean> => {
     // Get authentication token
     const token = await getAuthToken();
     if (!token) {
-      const errorObj = new Error('Authentication required to delete file');
-      logger.error('Authentication required to delete file', errorObj, { fileUrl });
+      logger.error('Authentication required to delete file', undefined, { fileUrl });
       return false;
     }
 
@@ -169,8 +177,7 @@ export const deleteFile = async (fileUrl: string): Promise<boolean> => {
 
     if (!response.ok) {
       if (response.status === 401) {
-        const errorObj = new Error('Authentication failed during file deletion');
-        logger.error('Authentication failed. Please refresh the page and log in again.', errorObj, { status: response.status, fileUrl });
+        logger.error('Authentication failed. Please refresh the page and log in again.', undefined, { status: response.status, fileUrl });
         return false;
       }
       throw new Error(`Delete failed: ${response.status}`);

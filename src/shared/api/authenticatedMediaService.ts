@@ -36,8 +36,7 @@ export async function getAuthenticatedMediaUrl(
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.access_token) {
-      const errorObj = new Error('No active session found');
-      logger.error('No active session', errorObj, { fileUrl, courseId, lessonId });
+      logger.error('No active session', undefined, { fileUrl, courseId, lessonId });
       return null;
     }
 
@@ -64,16 +63,26 @@ export async function getAuthenticatedMediaUrl(
 
     if (!response.ok) {
       const error = await response.json();
-      const errorObj = new Error(`Failed to get authenticated URL: ${JSON.stringify(error)}`);
-      logger.error('Failed to get authenticated URL', errorObj, { statusCode: response.status, url: fileUrl });
+      const errorMessage = typeof error === 'object' && error !== null && 'message' in error
+        ? (error as any).message
+        : 'Unknown error';
+      const errorObj = new Error(`Failed to get authenticated URL: ${errorMessage}`);
+      logger.error('Failed to get authenticated URL', errorObj, { statusCode: response.status, url: fileUrl, errorDetails: error });
       return null;
     }
 
     const data: AuthenticatedUrlResponse = await response.json();
 
     if (!data.success || !data.url) {
-      const errorObj = new Error(`Invalid response from authenticated URL endpoint: ${data.error || 'No URL provided'}`);
-      logger.error('Invalid response from authenticated URL endpoint', errorObj, { hasUrl: !!data.url, success: data.success, courseId, fileUrl });
+      const errorReason = data.error || (!data.url ? 'No URL provided' : 'Request not successful');
+      const errorObj = new Error(`Invalid response from authenticated URL endpoint: ${errorReason}`);
+      logger.error('Invalid response from authenticated URL endpoint', errorObj, {
+        hasUrl: !!data.url,
+        success: data.success,
+        courseId,
+        fileUrl,
+        responseError: data.error
+      });
       return null;
     }
 
