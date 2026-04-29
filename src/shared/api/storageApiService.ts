@@ -13,11 +13,30 @@ const API_URL = getApiUrl('storage');
 
 function ensureErrorObject(err: unknown): Error {
   if (err instanceof Error) return err;
-  if (typeof err === 'string') return new Error(err);
-  try {
-    return new Error(JSON.stringify(err));
-  } catch {
+  if (typeof err === 'string') {
+    return err.trim() ? new Error(err) : new Error('Unknown error occurred');
+  }
+
+  if (err === null || err === undefined) {
     return new Error('Unknown error occurred');
+  }
+
+  if (typeof err === 'object') {
+    const obj = err as Record<string, unknown>;
+    if (typeof obj.message === 'string' && obj.message.trim()) {
+      return new Error(obj.message);
+    }
+  }
+
+  try {
+    const serialized = JSON.stringify(err);
+    return serialized && serialized !== '{}'
+      ? new Error(serialized)
+      : new Error('Unknown error occurred');
+  } catch {
+    return typeof err === 'object'
+      ? new Error(Object.prototype.toString.call(err))
+      : new Error('Unknown error occurred');
   }
 }
 
