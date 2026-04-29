@@ -75,136 +75,129 @@ export interface Conversation {
   class?: any;
 }
 
-interface ErrorWithCode {
-  code: string | number;
-}
-
-interface ErrorWithMessage {
-  message?: string;
-  error?: string;
-}
-
 /**
- * Type guard: safely checks if an error object has a code property with valid type
- * Uses defensive programming - no type assertions, only direct property checks
+ * PRODUCTION-GRADE ERROR NORMALIZATION UTILITY
+ *
+ * Single source of truth for error handling across messageService.ts
+ * Handles all error types safely: Error instances, error-like objects, primitives, null, undefined
+ *
+ * Used: Logger calls, Promise.allSettled handlers, error construction
+ *
+ * Security:
+ *  - No unsafe type assertions without validation
+ *  - Null checks before property access
+ *  - Prototype pollution prevention (hasOwnProperty)
+ *  - Circular reference handling (JSON.stringify wrapped)
+ *
+ * Returns: Normalized error with guaranteed message (string) and optional code (string | undefined)
+ * Never throws, never returns null, always has valid message string
  */
-function isErrorWithCode(err: unknown): err is ErrorWithCode {
-  // First level: structural check
-  if (typeof err !== 'object' || err === null) return false;
-
-  // Second level: property existence check using hasOwnProperty to avoid prototype pollution
-  if (!Object.prototype.hasOwnProperty.call(err, 'code')) return false;
-
-  // Third level: type validation of the code property value
-  const code = (err as Record<string, unknown>).code;
-  return typeof code === 'string' || typeof code === 'number';
+interface NormalizedError {
+  message: string;
+  code?: string;
 }
 
-/**
- * Type guard: safely checks if an error object has message or error properties with valid types
- * Defensive: validates property existence and type before accepting
- */
-function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
-  // First level: structural check
-  if (typeof err !== 'object' || err === null) return false;
-
-  const rec = err as Record<string, unknown>;
-
-  // Second level: property existence and type validation
-  const messageProperty = Object.prototype.hasOwnProperty.call(rec, 'message');
-  const errorProperty = Object.prototype.hasOwnProperty.call(rec, 'error');
-
-  // Message property must be string or undefined
-  const hasValidMessage = messageProperty &&
-    (typeof rec.message === 'string' || rec.message === undefined);
-
-  // Error property must be string or undefined
-  const hasValidError = errorProperty &&
-    (typeof rec.error === 'string' || rec.error === undefined);
-
-  return hasValidMessage || hasValidError;
-}
-
-/**
- * Safely extracts error code from any error object
- * Returns undefined if code cannot be safely extracted
- * Type guard ensures code is either string or number before conversion
- */
-function getErrorCode(error: unknown): string | undefined {
-  if (!isErrorWithCode(error)) return undefined;
-
-  // At this point, error.code is guaranteed to be string | number
-  const code = error.code;
-
-  // Convert number to string; string is returned as-is
-  if (typeof code === 'number') {
-    return String(code);
+function normalizeError(value: unknown): NormalizedError {
+  // Fast path: Error instance (most common case - handle 99% here)
+  if (value instanceof Error) {
+    const code = extractErrorCode(value);
+    return {
+      message: value.message || 'Unknown error',
+      code
+    };
   }
 
-  return code;
-}
-
-/**
- * Safely extracts error message from any error object
- * Handles: Error instances, error-like objects, strings, and unknown types
- * Returns undefined if message cannot be safely extracted (never null or unsafe values)
- * Does NOT throw; gracefully degrades to undefined for unparseable errors
- */
-function getErrorMessage(error: unknown): string | undefined {
-  // Fast path: Error instance (most common case)
-  if (error instanceof Error) {
-    const msg = error.message;
-    return typeof msg === 'string' ? msg : undefined;
+  // Explicit null/undefined handling (fail-safe)
+  if (value === null || value === undefined) {
+    return { message: 'Unknown error occurred' };
   }
 
-  // Second path: error-like objects with message or error properties
-  if (isErrorWithMessage(error)) {
-    const msg = error.message ?? error.error;
-    if (typeof msg === 'string') {
-      return msg;
+  // Handle error-like objects with defensive property access
+  if (typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+
+    // Defensive property existence checks (prevents prototype pollution)
+    const message = extractObjectMessage(obj);
+    const code = extractObjectCode(obj);
+
+    // If we found either message or code, return normalized result
+    if (message || code) {
+      return {
+        message: message || 'Unknown error',
+        code
+      };
     }
   }
 
-  // Third path: primitive string
-  if (typeof error === 'string') {
-    return error;
+  // Handle primitive strings
+  if (typeof value === 'string' && value.length > 0) {
+    return { message: value };
   }
 
-  // Fourth path: attempt safe JSON serialization for debugging
-  // Only for objects that might have useful debugging info
-  if (typeof error === 'object' && error !== null) {
-    try {
-      const serialized = JSON.stringify(error);
-      // Only return if serialization produced non-empty string
-      return serialized && serialized.length > 0 ? serialized : undefined;
-    } catch {
-      // JSON.stringify failed (circular ref, etc.) - safely degrade
-      return undefined;
-    }
-  }
+  // Fallback for any other type (symbols, numbers, boolean, etc)
+  return { message: 'Unknown error occurred' };
+}
 
-  // All paths exhausted: cannot safely extract message
+/**
+ * Safe error code extraction from any object
+ * Returns string or undefined (never null)
+ */
+function extractErrorCode(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null) return undefined;
+
+  const obj = error as Record<string, unknown>;
+
+  // Check property exists and has valid type (string or number)
+  if (!Object.prototype.hasOwnProperty.call(obj, 'code')) return undefined;
+
+  const code = obj.code;
+  if (typeof code === 'string') return code;
+  if (typeof code === 'number') return String(code);
+
   return undefined;
 }
 
 /**
- * Converts any value into a safe Error object for throwing/logging
- * Always returns an Error instance with a meaningful message
- * Never returns null, undefined, or throws
+ * Safe error message extraction from error-like object
+ * Checks for 'message' or 'error' properties with defensive access
+ * Returns string or undefined (never null)
  */
-function ensureErrorObject(err: unknown): Error {
-  // Fast path: already an Error instance
-  if (err instanceof Error) return err;
+function extractObjectMessage(obj: Record<string, unknown>): string | undefined {
+  // Try 'message' property first
+  if (Object.prototype.hasOwnProperty.call(obj, 'message')) {
+    const msg = obj.message;
+    if (typeof msg === 'string' && msg.length > 0) return msg;
+  }
 
-  // Try to extract a meaningful message from the error
-  const msg = getErrorMessage(err);
+  // Fall back to 'error' property
+  if (Object.prototype.hasOwnProperty.call(obj, 'error')) {
+    const err = obj.error;
+    if (typeof err === 'string' && err.length > 0) return err;
+  }
 
-  // Ensure the message is a non-empty string
-  const finalMessage = (typeof msg === 'string' && msg.length > 0)
-    ? msg
-    : 'Unknown error occurred';
+  // Try safe JSON serialization as last resort for debugging
+  try {
+    const serialized = JSON.stringify(obj);
+    if (typeof serialized === 'string' && serialized.length > 2) return serialized;
+  } catch {
+    // Circular reference or non-serializable - ignore
+  }
 
-  return new Error(finalMessage);
+  return undefined;
+}
+
+/**
+ * Safe error code extraction from error-like object
+ * Returns string or undefined (never null)
+ */
+function extractObjectCode(obj: Record<string, unknown>): string | undefined {
+  if (!Object.prototype.hasOwnProperty.call(obj, 'code')) return undefined;
+
+  const code = obj.code;
+  if (typeof code === 'string') return code;
+  if (typeof code === 'number') return String(code);
+
+  return undefined;
 }
 
 export class MessageService {
@@ -316,7 +309,8 @@ export class MessageService {
             .maybeSingle();
           
           if (appError) {
-            logger.warn('Could not find id_old for application UUID', { applicationId, code: getErrorCode(appError) });
+            const { code: appErrorCode } = normalizeError(appError);
+            logger.warn('Could not find id_old for application UUID', { applicationId, code: appErrorCode });
           } else if (appData) {
             applicationIdOld = appData.id_old;
           }
@@ -338,7 +332,8 @@ export class MessageService {
             .maybeSingle();
           
           if (oppError) {
-            logger.warn('Could not find id_old for opportunity UUID', { opportunityId, code: getErrorCode(oppError) });
+            const { code: oppErrorCode } = normalizeError(oppError);
+            logger.warn('Could not find id_old for opportunity UUID', { opportunityId, code: oppErrorCode });
           } else if (oppData) {
             opportunityIdOld = oppData.id_old;
           }
@@ -383,7 +378,8 @@ export class MessageService {
             .maybeSingle();
 
           if (restoreError) {
-            logger.warn('Could not restore conversation, using as-is', { conversationId: existing.id, code: getErrorCode(restoreError) });
+            const { code: restoreErrorCode } = normalizeError(restoreError);
+            logger.warn('Could not restore conversation, using as-is', { conversationId: existing.id, code: restoreErrorCode });
             return existing as Conversation;
           }
 
@@ -499,7 +495,8 @@ export class MessageService {
             .maybeSingle();
 
           if (restoreError) {
-            logger.warn('Could not restore student-educator conversation, using as-is', { conversationId: existing.id, code: getErrorCode(restoreError) });
+            const { code: restoreEducatorErrorCode } = normalizeError(restoreError);
+            logger.warn('Could not restore student-educator conversation, using as-is', { conversationId: existing.id, code: restoreEducatorErrorCode });
             return existing as Conversation;
           }
 
@@ -629,7 +626,8 @@ export class MessageService {
             .maybeSingle();
 
           if (restoreError) {
-            logger.warn('Could not restore student-college lecturer conversation, using as-is', { conversationId: existing.id, code: getErrorCode(restoreError) });
+            const { code: restoreCollegeErrorCode } = normalizeError(restoreError);
+            logger.warn('Could not restore student-college lecturer conversation, using as-is', { conversationId: existing.id, code: restoreCollegeErrorCode });
             return existing as Conversation;
           }
 
@@ -741,8 +739,7 @@ export class MessageService {
         .single();
 
       if (error) {
-        const errorMessage = getErrorMessage(error) || 'Unknown error';
-        const errorCode = getErrorCode(error);
+        const { message: errorMessage, code: errorCode } = normalizeError(error);
         const errorObj = new Error(`Failed to send message: ${errorMessage}`);
         logger.error('Failed to send message', errorObj, { conversationId, code: errorCode });
         throw errorObj;
@@ -755,7 +752,8 @@ export class MessageService {
       
       return data;
     } catch (error) {
-      logger.error('Error in sendMessage', ensureErrorObject(error), { conversationId, senderId, receiverId });
+      const { message } = normalizeError(error);
+      logger.error('Error in sendMessage', new Error(message), { conversationId, senderId, receiverId });
       throw error;
     }
   }
@@ -781,8 +779,7 @@ export class MessageService {
         .maybeSingle();
 
       if (convError && convError.code !== 'PGRST116') {
-        const errorMessage = getErrorMessage(convError) || 'Unknown error';
-        const errorCode = getErrorCode(convError);
+        const { message: errorMessage, code: errorCode } = normalizeError(convError);
         const errorObj = new Error(`Error fetching conversation: ${errorMessage}`);
         logger.error('Error fetching conversation', errorObj, { conversationId, code: errorCode });
         throw errorObj;
@@ -814,7 +811,8 @@ export class MessageService {
         attachments
       );
     } catch (error) {
-      logger.error('Error in sendStudentEducatorMessage', ensureErrorObject(error), { conversationId, studentId });
+      const { message } = normalizeError(error);
+      logger.error('Error in sendStudentEducatorMessage', new Error(message), { conversationId, studentId });
       throw error;
     }
   }
@@ -858,8 +856,7 @@ export class MessageService {
         const { data, error } = await query;
 
         if (error) {
-          const errorMsg = getErrorMessage(error) || 'Unknown error';
-          const errorCode = getErrorCode(error);
+          const { message: errorMsg, code: errorCode } = normalizeError(error);
           const errorObj = new Error(`Failed to fetch conversation messages: ${errorMsg}`);
           logger.error('Failed to fetch conversation messages', errorObj, { conversationId, code: errorCode });
           throw errorObj;
@@ -882,7 +879,8 @@ export class MessageService {
 
         return messages;
       } catch (error) {
-        logger.error('Error in getConversationMessages', ensureErrorObject(error), { conversationId, limit, offset });
+        const { message } = normalizeError(error);
+        logger.error('Error in getConversationMessages', new Error(message), { conversationId, limit, offset });
         throw error;
       }
     })();
@@ -1136,8 +1134,7 @@ export class MessageService {
       const { data, error } = await query;
       
       if (error) {
-        const errorMessage = getErrorMessage(error) ?? '';
-        const errorCode = getErrorCode(error) ?? undefined;
+        const { message: errorMessage, code: errorCode } = normalizeError(error);
         if (errorMessage.includes('deleted_by') || errorCode === '42703') {
           let retryQuery = supabase
             .from('conversations')
@@ -1463,15 +1460,17 @@ export class MessageService {
               this.clearConversationCache(userId);
             } catch (cacheError) {
               // Cache clearing is best-effort; log but don't fail the read operation
+              const { message: cacheErrorMsg, code: cacheErrorCode } = normalizeError(cacheError);
               logger.warn('Failed to clear conversation cache after marking as read', {
                 userId,
                 conversationId,
-                code: getErrorCode(cacheError),
-                error: getErrorMessage(cacheError),
+                code: cacheErrorCode,
+                error: cacheErrorMsg,
               });
             }
           } catch (error) {
-            logger.error('Failed to update conversation unread count', ensureErrorObject(error), { conversationId, updateField, userId });
+            const { message } = normalizeError(error);
+            logger.error('Failed to update conversation unread count', new Error(message), { conversationId, updateField, userId });
           }
         }
       }
@@ -1758,7 +1757,8 @@ export class MessageService {
       
       return conversation;
     } catch (error) {
-      logger.error('Error creating student-admin conversation', ensureErrorObject(error), { studentId, schoolId });
+      const { message } = normalizeError(error);
+      logger.error('Error creating student-admin conversation', new Error(message), { studentId, schoolId });
       throw error;
     }
   }
@@ -1813,7 +1813,8 @@ export class MessageService {
 
       if (error) throw error;
     } catch (error) {
-      logger.error('Error in deleteConversationForUser', ensureErrorObject(error), { conversationId, userId, userType });
+      const { message } = normalizeError(error);
+      logger.error('Error in deleteConversationForUser', new Error(message), { conversationId, userId, userType });
       throw error;
     }
   }
@@ -1867,7 +1868,8 @@ export class MessageService {
 
       if (error) throw error;
     } catch (error) {
-      logger.error('Error in restoreConversation', ensureErrorObject(error), { conversationId, userId, userType });
+      const { message } = normalizeError(error);
+      logger.error('Error in restoreConversation', new Error(message), { conversationId, userId, userType });
       throw error;
     }
   }
@@ -1887,8 +1889,7 @@ export class MessageService {
         .eq('id', conversationId);
 
       if (error) {
-        const errorMsg = getErrorMessage(error) || 'Unknown error';
-        const errorCode = getErrorCode(error);
+        const { message: errorMsg, code: errorCode } = normalizeError(error);
         const errorObj = new Error(`Failed to permanently delete conversation: ${errorMsg}`);
         logger.error('Failed to permanently delete conversation', errorObj, { conversationId, code: errorCode });
         throw errorObj;
@@ -1946,9 +1947,9 @@ export class MessageService {
         });
 
       if (error) {
-        const errorMsg = getErrorMessage(error) || 'Unknown error';
+        const { message: errorMsg, code: errorCode } = normalizeError(error);
         const errorObj = new Error(`Error executing get_or_create_student_college_admin_conversation RPC: ${errorMsg}`);
-        logger.error('Error executing get_or_create_student_college_admin_conversation RPC', errorObj, { studentId, collegeId, code: getErrorCode(error) });
+        logger.error('Error executing get_or_create_student_college_admin_conversation RPC', errorObj, { studentId, collegeId, code: errorCode });
         throw errorObj;
       }
       
@@ -1988,7 +1989,8 @@ export class MessageService {
 
       return conversation;
     } catch (error) {
-      logger.error('Error creating student-college_admin conversation', ensureErrorObject(error), { studentId, collegeId });
+      const { message } = normalizeError(error);
+      logger.error('Error creating student-college_admin conversation', new Error(message), { studentId, collegeId });
       throw error;
     }
   }
@@ -2040,9 +2042,9 @@ export class MessageService {
         });
 
       if (error) {
-        const errorMsg = getErrorMessage(error) || 'Unknown error';
+        const { message: errorMsg, code: errorCode } = normalizeError(error);
         const errorObj = new Error(`Error executing get_or_create_educator_admin_conversation RPC: ${errorMsg}`);
-        logger.error('Error executing get_or_create_educator_admin_conversation RPC', errorObj, { educatorId, schoolId, code: getErrorCode(error) });
+        logger.error('Error executing get_or_create_educator_admin_conversation RPC', errorObj, { educatorId, schoolId, code: errorCode });
         throw errorObj;
       }
 
@@ -2065,7 +2067,8 @@ export class MessageService {
 
       return conversation;
     } catch (error) {
-      logger.error('Error creating educator-admin conversation', ensureErrorObject(error), { educatorId, schoolId });
+      const { message } = normalizeError(error);
+      logger.error('Error creating educator-admin conversation', new Error(message), { educatorId, schoolId });
       throw error;
     }
   }
@@ -2116,9 +2119,9 @@ export class MessageService {
         });
 
       if (error) {
-        const errorMsg = getErrorMessage(error) || 'Unknown error';
+        const { message: errorMsg, code: errorCode } = normalizeError(error);
         const errorObj = new Error(`Error executing get_or_create_college_educator_admin_conversation RPC: ${errorMsg}`);
-        logger.error('Error executing get_or_create_college_educator_admin_conversation RPC', errorObj, { educatorId, collegeId, code: getErrorCode(error) });
+        logger.error('Error executing get_or_create_college_educator_admin_conversation RPC', errorObj, { educatorId, collegeId, code: errorCode });
         throw errorObj;
       }
 
@@ -2141,7 +2144,8 @@ export class MessageService {
 
       return conversation;
     } catch (error) {
-      logger.error('Error creating college educator-admin conversation', ensureErrorObject(error), { educatorId, collegeId });
+      const { message } = normalizeError(error);
+      logger.error('Error creating college educator-admin conversation', new Error(message), { educatorId, collegeId });
       throw error;
     }
   }
