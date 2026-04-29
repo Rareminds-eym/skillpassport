@@ -11,48 +11,60 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('auth-media');
 
-interface ErrorWithCode {
-  code: string | number;
-}
+const UNKNOWN_ERROR_MESSAGE = 'Unknown error occurred';
 
-interface ErrorWithMessage {
-  message?: string;
-  error?: string;
-}
+/**
+ * Single consolidated error extraction utility
+ * Safely extracts message and code from any error type
+ * Returns: { message: string, code?: string }
+ * Never throws, always has valid message
+ */
+function extractErrorInfo(err: unknown): { message: string; code?: string } {
+  if (err instanceof Error) {
+    const message = err.message || UNKNOWN_ERROR_MESSAGE;
+    const code = (err as any).code ? String((err as any).code) : undefined;
+    return { message, code };
+  }
 
-function isErrorWithCode(err: unknown): err is ErrorWithCode {
-  if (typeof err !== 'object' || err === null || !('code' in err)) return false;
-  const code = (err as Record<string, unknown>).code;
-  return typeof code === 'string' || typeof code === 'number';
-}
+  if (typeof err === 'string' && err.trim().length > 0) {
+    return { message: err.trim() };
+  }
 
-function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
-  if (typeof err !== 'object' || err === null) return false;
-  const rec = err as Record<string, unknown>;
-  const hasMessage = 'message' in rec && (typeof rec.message === 'string' || rec.message === undefined);
-  const hasError = 'error' in rec && (typeof rec.error === 'string' || rec.error === undefined);
-  return hasMessage || hasError;
+  if (err === null || err === undefined) {
+    return { message: UNKNOWN_ERROR_MESSAGE };
+  }
+
+  if (typeof err === 'object') {
+    const obj = err as Record<string, unknown>;
+    const message = (
+      (typeof obj.message === 'string' ? obj.message : undefined) ||
+      (typeof obj.error === 'string' ? obj.error : undefined) ||
+      ''
+    ).trim();
+    const code = (
+      (typeof obj.code === 'string' ? obj.code : undefined) ||
+      (typeof obj.code === 'number' ? String(obj.code) : undefined)
+    );
+    if (message || code) {
+      return { message: message || UNKNOWN_ERROR_MESSAGE, code };
+    }
+  }
+
+  try {
+    const serialized = JSON.stringify(err);
+    return { message: (serialized && serialized.length > 2) ? serialized : UNKNOWN_ERROR_MESSAGE };
+  } catch {
+    return { message: UNKNOWN_ERROR_MESSAGE };
+  }
 }
 
 function extractErrorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (isErrorWithMessage(err)) {
-    const msg = err.message ?? err.error;
-    if (typeof msg === 'string') return msg;
-  }
-  if (typeof err === 'string') return err;
-  // Last resort: safe serialization guarded against circular references
-  try {
-    return JSON.stringify(err) ?? 'Unknown error occurred';
-  } catch {
-    return 'Unknown error occurred';
-  }
+  return extractErrorInfo(err).message;
 }
 
 function ensureErrorObject(err: unknown): Error {
-  if (err instanceof Error) return err;
-  const msg = extractErrorMessage(err);
-  return new Error(msg);
+  const { message } = extractErrorInfo(err);
+  return new Error(message);
 }
 
 interface AuthenticatedUrlResponse {

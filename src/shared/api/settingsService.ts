@@ -3,13 +3,23 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('settings-service');
 
+const UNKNOWN_ERROR_MESSAGE = 'Unknown error occurred';
+
 function ensureErrorObject(err: unknown): Error {
   if (err instanceof Error) return err;
-  if (typeof err === 'string') return new Error(err);
+  if (typeof err === 'string' && err.trim().length > 0) return new Error(err.trim());
+  if (err === null || err === undefined) return new Error(UNKNOWN_ERROR_MESSAGE);
+  if (typeof err === 'object') {
+    const obj = err as Record<string, unknown>;
+    const msg = (typeof obj.message === 'string' ? obj.message : undefined) ||
+                (typeof obj.error === 'string' ? obj.error : undefined);
+    if (msg) return new Error(msg);
+  }
   try {
-    return new Error(JSON.stringify(err));
+    const serialized = JSON.stringify(err);
+    return new Error((serialized && serialized.length > 2) ? serialized : UNKNOWN_ERROR_MESSAGE);
   } catch {
-    return new Error('Unknown error occurred');
+    return new Error(UNKNOWN_ERROR_MESSAGE);
   }
 }
 
