@@ -31,13 +31,13 @@ export async function callEmbeddingWorker(
     );
   }
 
-  // Get API configuration
-  const embeddingApiUrl = env.EMBEDDING_API_URL || env.VITE_EMBEDDING_API_URL;
-  const embeddingApiKey = env.EMBEDDING_API_KEY || env.VITE_EMBEDDING_API_KEY;
+  // Get API configuration - only use backend environment variables
+  const embeddingApiUrl = env.EMBEDDING_API_URL;
+  const embeddingApiKey = env.EMBEDDING_API_KEY;
 
   if (!embeddingApiUrl) {
     throw new EmbeddingError(
-      'EMBEDDING_API_URL or VITE_EMBEDDING_API_URL environment variable is required',
+      'EMBEDDING_API_URL environment variable is required',
       'API_ERROR',
       { missingVar: 'EMBEDDING_API_URL' }
     );
@@ -116,13 +116,14 @@ export async function callEmbeddingWorker(
 /**
  * Get embedding API configuration from environment
  * Helper function for consistent config extraction
+ * Only uses backend environment variables (no VITE_ prefix)
  */
 export function getEmbeddingConfig(env: Record<string, string>): {
   apiUrl: string | undefined;
   apiKey: string | undefined;
 } {
   return {
-    apiUrl: env.EMBEDDING_API_URL || env.VITE_EMBEDDING_API_URL,
-    apiKey: env.EMBEDDING_API_KEY || env.VITE_EMBEDDING_API_KEY,
+    apiUrl: env.EMBEDDING_API_URL,
+    apiKey: env.EMBEDDING_API_KEY,
   };
 }

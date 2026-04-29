@@ -500,9 +500,12 @@ export function buildOpportunityText(opportunity: OpportunityData): string {
   const skillsRaw = opportunity.skills_required;
   let skillNames: string[] = [];
 
+  // Define proper type for skill items (can be string or object with name/skill properties)
+  type SkillItem = string | { name?: string; skill?: string };
+
   if (Array.isArray(skillsRaw) && skillsRaw.length > 0) {
     skillNames = skillsRaw
-      .map((s: any) => typeof s === 'string' ? s : s?.name || s?.skill)
+      .map((s: SkillItem) => typeof s === 'string' ? s : s?.name || s?.skill)
       .filter((name): name is string => Boolean(name && typeof name === 'string'));
   } else if (typeof skillsRaw === 'string' && skillsRaw.trim()) {
     skillNames = skillsRaw

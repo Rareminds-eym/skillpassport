@@ -46,7 +46,16 @@ export async function updateEmbedding(
       );
     }
 
-    const rowsAffected = data?.length || 0;
+    if (!data) {
+      console.error('[DatabaseUpdater] Update succeeded but no data returned');
+      throw new EmbeddingError(
+        'Database update succeeded but no data returned',
+        'API_ERROR',
+        { table, id }
+      );
+    }
+
+    const rowsAffected = data.length;
     console.log(`[DatabaseUpdater] Updated ${table} #${id}. Rows affected: ${rowsAffected}`);
 
     return {

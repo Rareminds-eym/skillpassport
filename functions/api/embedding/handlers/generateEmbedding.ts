@@ -33,7 +33,7 @@
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import { authenticateUser, isValidUUID } from '../../shared/auth';
 import { checkRateLimit } from '../../career/utils/rate-limit';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient as SupabaseClientType } from '@supabase/supabase-js';
 import { callEmbeddingWorker } from '../services/embeddingWorkerClient';
 import {
   buildStudentTextFromDatabase,
@@ -59,13 +59,22 @@ interface GenerateEmbeddingRequest {
 }
 
 /**
+ * Base type for database records with common fields
+ */
+interface DatabaseRecord {
+  id: string;
+  [key: string]: unknown;
+}
+
+/**
  * Entity configuration for text building and authorization
  */
 interface EntityConfig {
   selectFields: string;
-  buildText: (data: any) => string;
+  buildText: (data: DatabaseRecord) => string;
   ownershipField?: string; // Field to check ownership (e.g., 'student_id')
   requiresAdmin?: boolean; // Whether admin privileges are required
+  entityName?: string; // Human-readable entity name for error messages
 }
 
 const ENTITY_CONFIGS: Record<string, EntityConfig> = {
@@ -73,16 +82,19 @@ const ENTITY_CONFIGS: Record<string, EntityConfig> = {
     selectFields: '*', // Will use buildStudentTextFromDatabase
     buildText: () => '', // Not used, handled separately
     ownershipField: 'id', // Special case: check id === studentId
+    entityName: 'Student',
   },
   profiles: {
     selectFields: 'user_id',
     buildText: () => '', // Not used, handled separately
     ownershipField: 'user_id',
+    entityName: 'Profile',
   },
   skills: {
     selectFields: 'name, description, student_id',
     buildText: (skill) => `Skill: ${skill.name}. ${skill.description || ''}`.trim(),
     ownershipField: 'student_id',
+    entityName: 'Skill',
   },
   projects: {
     selectFields: 'title, role, organization, tech_stack, description, student_id',
@@ -97,6 +109,7 @@ const ENTITY_CONFIGS: Record<string, EntityConfig> = {
       return text.trim();
     },
     ownershipField: 'student_id',
+    entityName: 'Project',
   },
   certificates: {
     selectFields: 'title, issuer, platform, level, category, instructor, description, student_id',
@@ -111,6 +124,7 @@ const ENTITY_CONFIGS: Record<string, EntityConfig> = {
       return text.trim();
     },
     ownershipField: 'student_id',
+    entityName: 'Certificate',
   },
   trainings: {
     selectFields: 'title, organization, source, description, student_id',
@@ -122,28 +136,33 @@ const ENTITY_CONFIGS: Record<string, EntityConfig> = {
       return text.trim();
     },
     ownershipField: 'student_id',
+    entityName: 'Training',
   },
   opportunities: {
     selectFields: '*', // Will use buildOpportunityTextFromDatabase
     buildText: () => '', // Not used, handled separately
     requiresAdmin: true,
+    entityName: 'Opportunity',
   },
   courses: {
     selectFields: '*', // Will use buildCourseTextFromDatabase
     buildText: () => '', // Not used, handled separately
     requiresAdmin: true,
+    entityName: 'Course',
   },
 };
 
 /**
  * Verify entity ownership for user-owned entities
+ * SECURITY: This function performs authorization check atomically with data fetch
+ * to prevent TOCTOU (Time-of-Check to Time-of-Use) race conditions
  */
 async function verifyEntityOwnership(
   table: string,
   id: string,
   studentId: string,
-  userSupabase: any
-): Promise<{ authorized: boolean; error?: string }> {
+  userSupabase: SupabaseClientType
+): Promise<{ authorized: boolean; error?: string; data?: DatabaseRecord | null }> {
   const config = ENTITY_CONFIGS[table];
   if (!config) {
     return { authorized: false, error: `Unsupported table: ${table}` };
@@ -154,23 +173,38 @@ async function verifyEntityOwnership(
     if (id !== studentId) {
       return { authorized: false, error: 'Unauthorized: Cannot generate embedding for other users' };
     }
-    return { authorized: true };
-  }
-
-  // For entities with ownership field, verify ownership
-  if (config.ownershipField) {
-    const { data } = await userSupabase
+    // Fetch data atomically with authorization check
+    const { data, error } = await userSupabase
       .from(table)
-      .select(config.ownershipField)
+      .select('*')
       .eq('id', id)
       .single();
     
-    if (!data || data[config.ownershipField] !== studentId) {
+    if (error || !data) {
+      return { authorized: false, error: 'Student not found or access denied' };
+    }
+    
+    return { authorized: true, data: data as unknown as DatabaseRecord };
+  }
+
+  // For entities with ownership field, verify ownership atomically with data fetch
+  if (config.ownershipField) {
+    const { data, error } = await userSupabase
+      .from(table)
+      .select(config.selectFields)
+      .eq('id', id)
+      .single();
+    
+    // Check if data exists and ownership matches in a single atomic check
+    const ownershipField = config.ownershipField;
+    if (error || !data || (data as unknown as Record<string, unknown>)[ownershipField] !== studentId) {
       return { 
         authorized: false, 
         error: `Unauthorized: Cannot generate embedding for other users' ${table}` 
       };
     }
+    
+    return { authorized: true, data: data as unknown as DatabaseRecord };
   }
 
   return { authorized: true };
@@ -181,9 +215,12 @@ async function verifyEntityOwnership(
  */
 async function verifyAdminPrivileges(
   studentId: string,
-  userSupabase: any
+  userSupabase: SupabaseClientType
 ): Promise<{ authorized: boolean; error?: string }> {
-  const [{ data: adminCheck }, { data: collegeAdminCheck }] = await Promise.all([
+  const [
+    { data: adminCheck, error: adminError }, 
+    { data: collegeAdminCheck, error: collegeError }
+  ] = await Promise.all([
     userSupabase
       .from('school_admins')
       .select('id')
@@ -198,6 +235,15 @@ async function verifyAdminPrivileges(
       .maybeSingle()
   ]);
   
+  // Check for query errors
+  if (adminError || collegeError) {
+    console.error('[Admin Check] Query error:', adminError || collegeError);
+    return { 
+      authorized: false, 
+      error: 'Failed to verify admin privileges' 
+    };
+  }
+  
   if (!adminCheck && !collegeAdminCheck) {
     return { 
       authorized: false, 
@@ -210,11 +256,13 @@ async function verifyAdminPrivileges(
 
 /**
  * Fetch data from database and build text using configuration
+ * SECURITY: Uses pre-validated data when available to prevent race conditions
  */
 async function fetchAndBuildText(
   table: string,
   id: string,
-  supabase: any
+  supabase: SupabaseClientType,
+  preValidatedData?: DatabaseRecord | null
 ): Promise<string> {
   // Use shared text builders for complex entities
   if (table === 'students') {
@@ -235,18 +283,27 @@ async function fetchAndBuildText(
     );
   }
 
-  const { data, error } = await supabase
-    .from(table)
-    .select(config.selectFields)
-    .eq('id', id)
-    .single();
+  // Use pre-validated data if available (prevents race condition)
+  let data = preValidatedData;
   
-  if (error || !data) {
-    throw new EmbeddingError(
-      `${table.slice(0, -1).charAt(0).toUpperCase() + table.slice(1, -1)} not found: ${id}`,
-      'INVALID_TEXT',
-      { table, id }
-    );
+  if (!data) {
+    const result = await supabase
+      .from(table)
+      .select(config.selectFields)
+      .eq('id', id)
+      .single();
+    
+    if (result.error || !result.data) {
+      // Use safe entity name from config instead of string manipulation
+      const entityName = config.entityName || 'Entity';
+      throw new EmbeddingError(
+        `${entityName} not found: ${id}`,
+        'INVALID_TEXT',
+        { table, id }
+      );
+    }
+    
+    data = result.data as unknown as DatabaseRecord;
   }
   
   return config.buildText(data);
@@ -323,7 +380,7 @@ export async function handleGenerateEmbedding(
     );
   }
 
-  if (!ALLOWED_TABLES.includes(table as any)) {
+  if (!ALLOWED_TABLES.includes(table as typeof ALLOWED_TABLES[number])) {
     return jsonResponse(
       {
         success: false,
@@ -352,8 +409,8 @@ export async function handleGenerateEmbedding(
       env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // SECURITY: Validate authorization BEFORE embedding generation
-    // This prevents unauthorized users from generating embeddings for other users' data
+    // SECURITY: Validate authorization ATOMICALLY with data fetch
+    // This prevents TOCTOU race conditions where data could be modified between check and use
     const userSupabase = auth.supabase;
     const config = ENTITY_CONFIGS[table];
     
@@ -363,6 +420,9 @@ export async function handleGenerateEmbedding(
         error: `Unsupported table: ${table}`
       }, 400);
     }
+
+    // Store pre-validated data to prevent race conditions
+    let preValidatedData: DatabaseRecord | null = null;
 
     // Check admin privileges for admin-only entities
     if (config.requiresAdmin) {
@@ -374,7 +434,7 @@ export async function handleGenerateEmbedding(
         }, 403);
       }
     } else {
-      // Check entity ownership for user-owned entities
+      // Check entity ownership for user-owned entities ATOMICALLY with data fetch
       const ownershipAuth = await verifyEntityOwnership(table, id, studentId, userSupabase);
       if (!ownershipAuth.authorized) {
         return jsonResponse({
@@ -382,6 +442,8 @@ export async function handleGenerateEmbedding(
           error: ownershipAuth.error
         }, 403);
       }
+      // Store the validated data to use later (prevents race condition)
+      preValidatedData = ownershipAuth.data ?? null;
     }
 
     // Get the text (either provided or fetched from database)
@@ -389,12 +451,13 @@ export async function handleGenerateEmbedding(
     
     if (fromDatabase) {
       // MODE 2: Fetch from database using shared text builders
+      // Use pre-validated data when available to prevent race conditions
       console.log(`[Embedding] Fetching data from ${table} for ID ${id}`);
-      finalText = await fetchAndBuildText(table, id, supabase);
+      finalText = await fetchAndBuildText(table, id, supabase, preValidatedData);
       console.log(`[Embedding] Built text from database (${finalText.length} chars)`);
     } else {
       // MODE 1: Use provided text
-      if (!text || text.trim().length < EMBEDDING_CONFIG.MIN_TEXT_LENGTH) {
+      if (!text || typeof text !== 'string' || text.trim().length < EMBEDDING_CONFIG.MIN_TEXT_LENGTH) {
         return jsonResponse(
           {
             success: false,
