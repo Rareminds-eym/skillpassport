@@ -43,13 +43,26 @@ export async function handleInvitationEmail(
 
     const subject = getInvitationSubject(organizationName);
 
-    const result = await sendEmail(env, {
-      to,
-      subject,
-      html,
-      from: env.FROM_EMAIL || 'noreply@rareminds.in',
-      fromName: env.FROM_NAME || 'Skill Passport',
+    const response = await fetch(env.EMAIL_WORKER_URL || 'http://127.0.0.1:8787/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Api-Key': env.INTERNAL_API_KEY || 'dev-test1232312',
+      },
+      body: JSON.stringify({
+        to,
+        subject,
+        html,
+        from: env.FROM_EMAIL || 'noreply@rareminds.in',
+        fromName: env.FROM_NAME || 'Skill Passport',
+      }),
     });
+
+    if (!response.ok) {
+      throw new Error(`Email worker failed with status ${response.status}`);
+    }
+
+    const result = await response.json();
 
     return jsonResponse({
       success: true,

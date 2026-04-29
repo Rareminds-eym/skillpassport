@@ -77,7 +77,7 @@ export const onRequest: PagesFunction = async (context) => {
 
     // Route to appropriate handler
     if (path === '/invitation') {
-      return await handleInvitationEmail(body, env, supabase);
+      return await handleInvitationEmail(request, body, env, supabase);
     }
     
     if (path === '/countdown') {

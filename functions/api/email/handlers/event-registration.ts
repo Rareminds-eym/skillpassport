@@ -65,24 +65,32 @@ export async function handleEventConfirmation(
     const adminSubject = getAdminNotificationSubject(name, amount);
 
     // Send both emails in parallel
+    const emailWorkerUrl = env.EMAIL_WORKER_URL || 'http://127.0.0.1:8787/send';
+    const emailWorkerKey = env.INTERNAL_API_KEY || 'dev-test1232312';
+
     await Promise.all([
       // User confirmation email
-      sendEmail(env, {
-        to: email,
-        subject: userSubject,
-        html: userHtml,
-        text: `Thank you for registering! Your order ID is ${orderId}. Amount paid: ₹${amount}`,
-        from: env.FROM_EMAIL || 'noreply@rareminds.in',
-        fromName: env.FROM_NAME || 'Skill Passport',
+      fetch(emailWorkerUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Internal-Api-Key': emailWorkerKey,
+        },
+        body: JSON.stringify({ to: email, subject: userSubject, html: userHtml }),
+      }).then(async (res) => {
+        if (!res.ok) throw new Error(`Email worker failed with status ${res.status}`);
       }),
       // Admin notification email
-      sendEmail(env, {
-        to: 'naveen@rareminds.in',
-        subject: adminSubject,
-        html: adminHtml,
-        from: env.FROM_EMAIL || 'noreply@rareminds.in',
-        fromName: env.FROM_NAME || 'Skill Passport',
-      })
+      fetch(emailWorkerUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Internal-Api-Key': emailWorkerKey,
+        },
+        body: JSON.stringify({ to: 'naveen@rareminds.in', subject: adminSubject, html: adminHtml }),
+      }).then(async (res) => {
+        if (!res.ok) throw new Error(`Email worker failed with status ${res.status}`);
+      }),
     ]);
 
     return jsonResponse({

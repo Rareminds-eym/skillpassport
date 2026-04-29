@@ -54,7 +54,7 @@ async function sendEmailViaWorker(
  * Send welcome email to new user
  */
 export async function sendWelcomeEmail(
-  env: PagesEnv,
+  baseUrl: string,
   email: string,
   name: string,
   password: string,
@@ -109,7 +109,26 @@ export async function sendWelcomeEmail(
 
   const text = `Welcome to SkillPassport!\n\nHello ${name},\n\nYour account has been created successfully.\n\nEmail: ${email}\nTemporary Password: ${password}\nRole: ${role}\n\nPlease change your password after your first login.\n\nLogin at: https://skillpassport.rareminds.in/login`;
 
-  await sendEmailViaWorker(env, email, subject, html, text);
+  const emailApiUrl = `${baseUrl}/api/email`;
+  try {
+    const response = await fetch(emailApiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: email,
+        subject,
+        html,
+        text,
+        from: FROM_EMAIL,
+        fromName: FROM_NAME,
+      }),
+    });
+    if (!response.ok) {
+      console.error('Welcome email failed:', await response.text());
+    }
+  } catch (error) {
+    console.error('Welcome email failed:', error);
+  }
 }
 
 /**

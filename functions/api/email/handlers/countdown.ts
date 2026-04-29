@@ -8,7 +8,6 @@ import type { Env } from '../../../../src/functions-lib/types';
 import type { CountdownEmailRequest } from '../types';
 import { EMAIL_STATUS } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib';
-import { sendEmail } from '../services/mailer';
 import { generateCountdownEmailHtml, getCountdownSubject } from '../services/templates';
 import { 
   findPreRegistrationByEmail, 
@@ -62,13 +61,21 @@ export async function handleCountdownEmail(
     const html = generateCountdownEmailHtml({ fullName, countdownDay, launchDate });
     const subject = getCountdownSubject(countdownDay);
 
-    const result = await sendEmail(env, {
-      to,
-      subject,
-      html,
-      from: env.FROM_EMAIL || 'noreply@rareminds.in',
-      fromName: env.FROM_NAME || 'Skill Passport',
+    const response = await fetch(env.EMAIL_WORKER_URL || 'http://127.0.0.1:8787/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Api-Key': env.INTERNAL_API_KEY || 'dev-test1232312',
+      },
+      body: JSON.stringify({ to, subject, html }),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Email worker failed: ${errorText}`);
+    }
+
+    const result = await response.json();
 
     // Update tracking status to sent
     if (trackingId && supabase) {
