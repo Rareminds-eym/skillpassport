@@ -12,6 +12,44 @@ const messageCache = new Map<string, { data: Message[]; timestamp: number }>();
 const pendingRequests = new Map<string, Promise<any>>();
 
 // Types
+
+interface ErrorWithStatus {
+  status?: number | string;
+  message?: string;
+}
+
+interface ErrorWithMessage {
+  message?: string;
+}
+
+function isErrorWithStatus(err: unknown): err is ErrorWithStatus {
+  return typeof err === 'object' && err !== null && 'status' in err;
+}
+
+function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
+  return typeof err === 'object' && err !== null && 'message' in err;
+}
+
+function extractErrorStatus(err: unknown): number | undefined {
+  if (!isErrorWithStatus(err)) return undefined;
+  const status = err.status;
+  if (typeof status === 'number') return status;
+  if (typeof status === 'string') {
+    const parsed = parseInt(status, 10);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+  return undefined;
+}
+
+function extractErrorMessage(err: unknown): string {
+  if (isErrorWithMessage(err) && typeof err.message === 'string') {
+    return err.message.toLowerCase();
+  }
+  if (err instanceof Error) return err.message.toLowerCase();
+  if (typeof err === 'string') return err.toLowerCase();
+  return '';
+}
+
 export interface Message {
   id: number;
   conversation_id: string;
@@ -73,131 +111,6 @@ export interface Conversation {
   application?: any;
   opportunity?: any;
   class?: any;
-}
-
-/**
- * PRODUCTION-GRADE ERROR NORMALIZATION UTILITY
- *
- * Single source of truth for error handling across messageService.ts
- * Handles all error types safely: Error instances, error-like objects, primitives, null, undefined
- *
- * Used: Logger calls, Promise.allSettled handlers, error construction
- *
- * Security:
- *  - No unsafe type assertions without validation
- *  - Null checks before property access
- *  - Prototype pollution prevention (hasOwnProperty)
- *  - Circular reference handling (JSON.stringify wrapped)
- *
- * Returns: Normalized error with guaranteed message (string) and optional code (string | undefined)
- * Never throws, never returns null, always has valid message string
- */
-interface NormalizedError {
-  message: string;
-  code?: string;
-}
-
-function normalizeError(value: unknown): NormalizedError {
-  // Fast path: Error instance (most common case - handle 99% here)
-  if (value instanceof Error) {
-    const code = extractErrorCode(value);
-    return {
-      message: value.message || 'Unknown error',
-      code
-    };
-  }
-
-  // Explicit null/undefined handling (fail-safe)
-  if (value === null || value === undefined) {
-    return { message: 'Unknown error occurred' };
-  }
-
-  // Handle error-like objects with defensive property access
-  if (typeof value === 'object') {
-    const obj = value as Record<string, unknown>;
-
-    // Defensive property existence checks (prevents prototype pollution)
-    const message = extractObjectMessage(obj);
-    const code = extractObjectCode(obj);
-
-    // If we found either message or code, return normalized result
-    if (message || code) {
-      return {
-        message: message || 'Unknown error',
-        code
-      };
-    }
-  }
-
-  // Handle primitive strings
-  if (typeof value === 'string' && value.length > 0) {
-    return { message: value };
-  }
-
-  // Fallback for any other type (symbols, numbers, boolean, etc)
-  return { message: 'Unknown error occurred' };
-}
-
-/**
- * Safe error code extraction from any object
- * Returns string or undefined (never null)
- */
-function extractErrorCode(error: unknown): string | undefined {
-  if (typeof error !== 'object' || error === null) return undefined;
-
-  const obj = error as Record<string, unknown>;
-
-  // Check property exists and has valid type (string or number)
-  if (!Object.prototype.hasOwnProperty.call(obj, 'code')) return undefined;
-
-  const code = obj.code;
-  if (typeof code === 'string') return code;
-  if (typeof code === 'number') return String(code);
-
-  return undefined;
-}
-
-/**
- * Safe error message extraction from error-like object
- * Checks for 'message' or 'error' properties with defensive access
- * Returns string or undefined (never null)
- */
-function extractObjectMessage(obj: Record<string, unknown>): string | undefined {
-  // Try 'message' property first
-  if (Object.prototype.hasOwnProperty.call(obj, 'message')) {
-    const msg = obj.message;
-    if (typeof msg === 'string' && msg.length > 0) return msg;
-  }
-
-  // Fall back to 'error' property
-  if (Object.prototype.hasOwnProperty.call(obj, 'error')) {
-    const err = obj.error;
-    if (typeof err === 'string' && err.length > 0) return err;
-  }
-
-  // Try safe JSON serialization as last resort for debugging
-  try {
-    const serialized = JSON.stringify(obj);
-    if (typeof serialized === 'string' && serialized.length > 2) return serialized;
-  } catch {
-    // Circular reference or non-serializable - ignore
-  }
-
-  return undefined;
-}
-
-/**
- * Safe error code extraction from error-like object
- * Returns string or undefined (never null)
- */
-function extractObjectCode(obj: Record<string, unknown>): string | undefined {
-  if (!Object.prototype.hasOwnProperty.call(obj, 'code')) return undefined;
-
-  const code = obj.code;
-  if (typeof code === 'string') return code;
-  if (typeof code === 'number') return String(code);
-
-  return undefined;
 }
 
 export class MessageService {
@@ -309,8 +222,8 @@ export class MessageService {
             .maybeSingle();
           
           if (appError) {
-            const { code: appErrorCode } = normalizeError(appError);
-            logger.warn('Could not find id_old for application UUID', { applicationId, code: appErrorCode });
+            const appErrorObj = new Error(`Failed to fetch application id_old: ${appError.message}`);
+            logger.error('Failed to fetch application id_old for UUID conversion', appErrorObj, { applicationId, code: appError.code });
           } else if (appData) {
             applicationIdOld = appData.id_old;
           }
@@ -332,8 +245,8 @@ export class MessageService {
             .maybeSingle();
           
           if (oppError) {
-            const { code: oppErrorCode } = normalizeError(oppError);
-            logger.warn('Could not find id_old for opportunity UUID', { opportunityId, code: oppErrorCode });
+            const oppErrorObj = new Error(`Failed to fetch opportunity id_old: ${oppError.message}`);
+            logger.error('Failed to fetch opportunity id_old for UUID conversion', oppErrorObj, { opportunityId, code: oppError.code });
           } else if (oppData) {
             opportunityIdOld = oppData.id_old;
           }
@@ -378,8 +291,7 @@ export class MessageService {
             .maybeSingle();
 
           if (restoreError) {
-            const { code: restoreErrorCode } = normalizeError(restoreError);
-            logger.warn('Could not restore conversation, using as-is', { conversationId: existing.id, code: restoreErrorCode });
+            logger.warn('Could not restore conversation, using as-is', { conversationId: existing.id });
             return existing as Conversation;
           }
 
@@ -495,8 +407,7 @@ export class MessageService {
             .maybeSingle();
 
           if (restoreError) {
-            const { code: restoreEducatorErrorCode } = normalizeError(restoreError);
-            logger.warn('Could not restore student-educator conversation, using as-is', { conversationId: existing.id, code: restoreEducatorErrorCode });
+            logger.warn('Could not restore student-educator conversation, using as-is', { conversationId: existing.id });
             return existing as Conversation;
           }
 
@@ -543,21 +454,14 @@ export class MessageService {
     subject?: string
   ): Promise<Conversation> {
     const cacheKey = `student_college_lecturer_${studentId}_${collegeLecturerId}_${subject || 'general'}`;
-
-    // Check pending requests FIRST to prevent race conditions where multiple
-    // callers slip past the cache check before the first request completes.
-    if (pendingRequests.has(cacheKey)) {
-      return pendingRequests.get(cacheKey)!;
-    }
-
-    // Only consult the cache after confirming no in-flight request exists.
+    
     if (conversationCache.has(cacheKey)) {
       const cached = conversationCache.get(cacheKey);
       if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
         return cached.data;
       }
     }
-
+    
     const request = this._getOrCreateStudentCollegeLecturerConversationInternal(
       studentId,
       collegeLecturerId,
@@ -565,21 +469,18 @@ export class MessageService {
       programSectionId,
       subject
     );
-
-    pendingRequests.set(cacheKey, request);
-
-    try {
-      const result = await request;
-      // Store with a timestamp; the cache-read path already enforces CACHE_DURATION
-      // via a Date.now() comparison, so no separate setTimeout cleanup is needed.
+    
+    // Cache the promise result
+    request.then(result => {
       conversationCache.set(cacheKey, { data: result, timestamp: Date.now() });
-      return result;
-    } finally {
-      // Always remove from pending — whether the request succeeded or failed —
-      // so subsequent callers issue a fresh request rather than awaiting a
-      // settled (and now removed) promise.
-      pendingRequests.delete(cacheKey);
-    }
+      
+      // Clear cache after duration
+      setTimeout(() => {
+        conversationCache.delete(cacheKey);
+      }, CACHE_DURATION);
+    });
+    
+    return request;
   }
 
   private static async _getOrCreateStudentCollegeLecturerConversationInternal(
@@ -626,8 +527,7 @@ export class MessageService {
             .maybeSingle();
 
           if (restoreError) {
-            const { code: restoreCollegeErrorCode } = normalizeError(restoreError);
-            logger.warn('Could not restore student-college lecturer conversation, using as-is', { conversationId: existing.id, code: restoreCollegeErrorCode });
+            logger.warn('Could not restore student-college lecturer conversation, using as-is', { conversationId: existing.id });
             return existing as Conversation;
           }
 
@@ -739,10 +639,11 @@ export class MessageService {
         .single();
 
       if (error) {
-        const { message: errorMessage, code: errorCode } = normalizeError(error);
-        const errorObj = new Error(`Failed to send message: ${errorMessage}`);
-        logger.error('Failed to send message', errorObj, { conversationId, code: errorCode });
-        throw errorObj;
+        const errorMessage = extractErrorMessage(error);
+        const errorStatus = extractErrorStatus(error);
+        const messageError = new Error(`Failed to send message: ${errorMessage}`);
+        logger.error('Failed to send message', messageError, { conversationId, status: errorStatus });
+        throw messageError;
       }
 
       // Clear caches after sending message
@@ -752,8 +653,10 @@ export class MessageService {
       
       return data;
     } catch (error) {
-      const { message } = normalizeError(error);
-      logger.error('Error in sendMessage', new Error(message), { conversationId, senderId, receiverId });
+      const errorMessage = extractErrorMessage(error);
+      const errorStatus = extractErrorStatus(error);
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      logger.error('Error in sendMessage', errorObj, { status: errorStatus, message: errorMessage });
       throw error;
     }
   }
@@ -779,10 +682,11 @@ export class MessageService {
         .maybeSingle();
 
       if (convError && convError.code !== 'PGRST116') {
-        const { message: errorMessage, code: errorCode } = normalizeError(convError);
-        const errorObj = new Error(`Error fetching conversation: ${errorMessage}`);
-        logger.error('Error fetching conversation', errorObj, { conversationId, code: errorCode });
-        throw errorObj;
+        const errorMessage = extractErrorMessage(convError);
+        const errorStatus = extractErrorStatus(convError);
+        const fetchError = new Error(`Error fetching conversation: ${errorMessage}`);
+        logger.error('Error fetching conversation', fetchError, { conversationId, status: errorStatus });
+        throw fetchError;
       }
 
       if (!conversation) {
@@ -811,8 +715,10 @@ export class MessageService {
         attachments
       );
     } catch (error) {
-      const { message } = normalizeError(error);
-      logger.error('Error in sendStudentEducatorMessage', new Error(message), { conversationId, studentId });
+      const errorMessage = extractErrorMessage(error);
+      const errorStatus = extractErrorStatus(error);
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      logger.error('Error in sendStudentEducatorMessage', errorObj, { conversationId, studentId, status: errorStatus, message: errorMessage });
       throw error;
     }
   }
@@ -856,10 +762,10 @@ export class MessageService {
         const { data, error } = await query;
 
         if (error) {
-          const { message: errorMsg, code: errorCode } = normalizeError(error);
-          const errorObj = new Error(`Failed to fetch conversation messages: ${errorMsg}`);
-          logger.error('Failed to fetch conversation messages', errorObj, { conversationId, code: errorCode });
-          throw errorObj;
+          const errorMessage = extractErrorMessage(error);
+          const errorStatus = extractErrorStatus(error);
+          logger.error('Failed to fetch conversation messages', new Error(errorMessage), { conversationId, status: errorStatus });
+          throw error;
         }
 
         const messages = data || [];
@@ -879,8 +785,10 @@ export class MessageService {
 
         return messages;
       } catch (error) {
-        const { message } = normalizeError(error);
-        logger.error('Error in getConversationMessages', new Error(message), { conversationId, limit, offset });
+        const errorMessage = extractErrorMessage(error);
+        const errorStatus = extractErrorStatus(error);
+        const errorObj = error instanceof Error ? error : new Error(String(error));
+        logger.error('Error in getConversationMessages', errorObj, { status: errorStatus, message: errorMessage });
         throw error;
       }
     })();
@@ -1134,8 +1042,8 @@ export class MessageService {
       const { data, error } = await query;
       
       if (error) {
-        const { message: errorMessage, code: errorCode } = normalizeError(error);
-        if (errorMessage.includes('deleted_by') || errorCode === '42703') {
+        // If error is about missing column, try query without deleted filter
+        if (error.message?.includes('deleted_by') || error.code === '42703') {
           let retryQuery = supabase
             .from('conversations')
             .select(`
@@ -1301,8 +1209,10 @@ export class MessageService {
       ]);
       
       if (messageResult.status === 'rejected') {
+        const errorMessage = extractErrorMessage(messageResult.reason);
+        const errorStatus = extractErrorStatus(messageResult.reason);
         const errorObj = messageResult.reason instanceof Error ? messageResult.reason : new Error(String(messageResult.reason));
-        logger.error('Error marking messages as read', errorObj, { conversationId });
+        logger.error('Error marking messages as read', errorObj, { status: errorStatus, message: errorMessage });
         throw messageResult.reason;
       }
       
@@ -1446,34 +1356,25 @@ export class MessageService {
           }
         } else {
           // Handle regular conversations
-          const updateField = isStudent ? 'student_unread_count' :
-                              isRecruiter ? 'recruiter_unread_count' :
+          const updateField = isStudent ? 'student_unread_count' : 
+                              isRecruiter ? 'recruiter_unread_count' : 
                               'educator_unread_count';
-
-          try {
-            await supabase
-              .from('conversations')
-              .update({ [updateField]: 0 })
-              .eq('id', conversationId);
-
-            try {
+          
+          // Update unread count without awaiting (fire and forget for speed)
+          supabase
+            .from('conversations')
+            .update({ [updateField]: 0 })
+            .eq('id', conversationId)
+            .then(() => {
+              // Clear conversation cache after update
               this.clearConversationCache(userId);
-            } catch (cacheError) {
-              // Cache clearing is best-effort; log but don't fail the read operation
-              const { message: cacheErrorMsg, code: cacheErrorCode } = normalizeError(cacheError);
-              logger.warn('Failed to clear conversation cache after marking as read', {
-                userId,
-                conversationId,
-                code: cacheErrorCode,
-                error: cacheErrorMsg,
-              });
-            }
-          } catch (error) {
-            const { message } = normalizeError(error);
-            const errorObj = new Error(message);
-            logger.error('Failed to update conversation unread count', errorObj, { conversationId, updateField, userId });
-            throw error;
-          }
+            })
+            .catch((error) => {
+              const errorMessage = extractErrorMessage(error);
+              const errorStatus = extractErrorStatus(error);
+              const errorObj = error instanceof Error ? error : new Error(String(error));
+              logger.error('Failed to update conversation unread count', errorObj, { conversationId, updateField, status: errorStatus, message: errorMessage });
+            });
         }
       }
       
@@ -1759,8 +1660,10 @@ export class MessageService {
       
       return conversation;
     } catch (error) {
-      const { message } = normalizeError(error);
-      logger.error('Error creating student-admin conversation', new Error(message), { studentId, schoolId });
+      const errorMessage = extractErrorMessage(error);
+      const errorStatus = extractErrorStatus(error);
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      logger.error('Error creating student-admin conversation', errorObj, { status: errorStatus, message: errorMessage });
       throw error;
     }
   }
@@ -1806,7 +1709,7 @@ export class MessageService {
       
       const { error } = await supabase
         .from('conversations')
-        .update({
+        .update({ 
           [deletedColumn]: true,
           [deletedAtColumn]: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -1815,8 +1718,10 @@ export class MessageService {
 
       if (error) throw error;
     } catch (error) {
-      const { message } = normalizeError(error);
-      logger.error('Error in deleteConversationForUser', new Error(message), { conversationId, userId, userType });
+      const errorMessage = extractErrorMessage(error);
+      const errorStatus = extractErrorStatus(error);
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      logger.error('Error deleting conversation', errorObj, { status: errorStatus, message: errorMessage });
       throw error;
     }
   }
@@ -1870,8 +1775,10 @@ export class MessageService {
 
       if (error) throw error;
     } catch (error) {
-      const { message } = normalizeError(error);
-      logger.error('Error in restoreConversation', new Error(message), { conversationId, userId, userType });
+      const errorMessage = extractErrorMessage(error);
+      const errorStatus = extractErrorStatus(error);
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      logger.error('Error restoring conversation', errorObj, { status: errorStatus, message: errorMessage });
       throw error;
     }
   }
@@ -1883,22 +1790,18 @@ export class MessageService {
    */
   static async permanentlyDeleteConversation(conversationId: string): Promise<void> {
     try {
-      // Deleting the conversation row also removes all associated messages via
-      // the ON DELETE CASCADE foreign key constraint on messages.conversation_id.
+      // Messages will be cascade deleted due to foreign key constraint
       const { error } = await supabase
         .from('conversations')
         .delete()
         .eq('id', conversationId);
 
-      if (error) {
-        const { message: errorMsg, code: errorCode } = normalizeError(error);
-        const errorObj = new Error(`Failed to permanently delete conversation: ${errorMsg}`);
-        logger.error('Failed to permanently delete conversation', errorObj, { conversationId, code: errorCode });
-        throw errorObj;
-      }
+      if (error) throw error;
     } catch (error) {
+      const errorMessage = extractErrorMessage(error);
+      const errorStatus = extractErrorStatus(error);
       const errorObj = error instanceof Error ? error : new Error(String(error));
-      logger.error('Error in permanentlyDeleteConversation', errorObj, { conversationId });
+      logger.error('Error permanently deleting conversation', errorObj, { status: errorStatus, message: errorMessage });
       throw error;
     }
   }
@@ -1941,6 +1844,7 @@ export class MessageService {
     subject?: string
   ): Promise<Conversation> {
     try {
+      // Use the database function for consistency
       const { data, error } = await supabase
         .rpc('get_or_create_student_college_admin_conversation', {
           p_student_id: studentId,
@@ -1948,17 +1852,10 @@ export class MessageService {
           p_subject: subject || 'General Discussion'
         });
 
-      if (error) {
-        const { message: errorMsg, code: errorCode } = normalizeError(error);
-        const errorObj = new Error(`Error executing get_or_create_student_college_admin_conversation RPC: ${errorMsg}`);
-        logger.error('Error executing get_or_create_student_college_admin_conversation RPC', errorObj, { studentId, collegeId, code: errorCode });
-        throw errorObj;
-      }
+      if (error) throw error;
       
       if (!data || data.length === 0) {
-        const noDataError = new Error('Failed to create student-college_admin conversation');
-        logger.error('No data returned from student-college_admin conversation RPC', noDataError, { studentId, collegeId });
-        throw noDataError;
+        throw new Error('Failed to create student-college_admin conversation');
       }
 
       const conversationId = data[0].conversation_id;
@@ -1991,8 +1888,10 @@ export class MessageService {
 
       return conversation;
     } catch (error) {
-      const { message } = normalizeError(error);
-      logger.error('Error creating student-college_admin conversation', new Error(message), { studentId, collegeId });
+      const errorMessage = extractErrorMessage(error);
+      const errorStatus = extractErrorStatus(error);
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      logger.error('Error creating student-college_admin conversation', errorObj, { status: errorStatus, message: errorMessage });
       throw error;
     }
   }
@@ -2007,7 +1906,7 @@ export class MessageService {
     subject?: string
   ): Promise<Conversation> {
     const cacheKey = `educator_admin:${educatorId}:${schoolId}:${subject || 'general'}`;
-
+    
     // Deduplicate concurrent requests
     if (pendingRequests.has(cacheKey)) {
       return pendingRequests.get(cacheKey)!;
@@ -2018,9 +1917,9 @@ export class MessageService {
       schoolId,
       subject
     );
-
+    
     pendingRequests.set(cacheKey, request);
-
+    
     try {
       const result = await request;
       return result;
@@ -2043,21 +1942,14 @@ export class MessageService {
           p_subject: subject || 'General Discussion'
         });
 
-      if (error) {
-        const { message: errorMsg, code: errorCode } = normalizeError(error);
-        const errorObj = new Error(`Error executing get_or_create_educator_admin_conversation RPC: ${errorMsg}`);
-        logger.error('Error executing get_or_create_educator_admin_conversation RPC', errorObj, { educatorId, schoolId, code: errorCode });
-        throw errorObj;
-      }
-
+      if (error) throw error;
+      
       if (!data || data.length === 0) {
-        const noDataError = new Error('Failed to create educator-admin conversation');
-        logger.error('No data returned from educator-admin conversation RPC', noDataError, { educatorId, schoolId });
-        throw noDataError;
+        throw new Error('Failed to create educator-admin conversation');
       }
 
       const conversationId = data[0].conversation_id;
-
+      
       // Fetch the full conversation details (remove problematic school_educators JOIN)
       const { data: conversation, error: fetchError } = await supabase
         .from('conversations')
@@ -2069,11 +1961,14 @@ export class MessageService {
 
       return conversation;
     } catch (error) {
-      const { message } = normalizeError(error);
-      logger.error('Error creating educator-admin conversation', new Error(message), { educatorId, schoolId });
+      const errorMessage = extractErrorMessage(error);
+      const errorStatus = extractErrorStatus(error);
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      logger.error('Error creating educator-admin conversation', errorObj, { status: errorStatus, message: errorMessage });
       throw error;
     }
   }
+
   /**
    * Get or create conversation between college educator and college admin
    * For college-related discussions, issues, etc.
@@ -2084,7 +1979,7 @@ export class MessageService {
     subject?: string
   ): Promise<Conversation> {
     const cacheKey = `college_educator_admin:${educatorId}:${collegeId}:${subject || 'general'}`;
-
+    
     // Deduplicate concurrent requests
     if (pendingRequests.has(cacheKey)) {
       return pendingRequests.get(cacheKey)!;
@@ -2095,9 +1990,9 @@ export class MessageService {
       collegeId,
       subject
     );
-
+    
     pendingRequests.set(cacheKey, request);
-
+    
     try {
       const result = await request;
       return result;
@@ -2120,21 +2015,14 @@ export class MessageService {
           p_subject: subject || 'General Discussion'
         });
 
-      if (error) {
-        const { message: errorMsg, code: errorCode } = normalizeError(error);
-        const errorObj = new Error(`Error executing get_or_create_college_educator_admin_conversation RPC: ${errorMsg}`);
-        logger.error('Error executing get_or_create_college_educator_admin_conversation RPC', errorObj, { educatorId, collegeId, code: errorCode });
-        throw errorObj;
-      }
-
+      if (error) throw error;
+      
       if (!data || data.length === 0) {
-        const noDataError = new Error('Failed to create college educator-admin conversation');
-        logger.error('No data returned from college educator-admin conversation RPC', noDataError, { educatorId, collegeId });
-        throw noDataError;
+        throw new Error('Failed to create college educator-admin conversation');
       }
 
       const conversationId = data[0].conversation_id;
-
+      
       // Fetch the full conversation details
       const { data: conversation, error: fetchError } = await supabase
         .from('conversations')
@@ -2146,8 +2034,10 @@ export class MessageService {
 
       return conversation;
     } catch (error) {
-      const { message } = normalizeError(error);
-      logger.error('Error creating college educator-admin conversation', new Error(message), { educatorId, collegeId });
+      const errorMessage = extractErrorMessage(error);
+      const errorStatus = extractErrorStatus(error);
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      logger.error('Error creating college educator-admin conversation', errorObj, { status: errorStatus, message: errorMessage });
       throw error;
     }
   }

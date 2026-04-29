@@ -11,62 +11,6 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('auth-media');
 
-const UNKNOWN_ERROR_MESSAGE = 'Unknown error occurred';
-
-/**
- * Single consolidated error extraction utility
- * Safely extracts message and code from any error type
- * Returns: { message: string, code?: string }
- * Never throws, always has valid message
- */
-function extractErrorInfo(err: unknown): { message: string; code?: string } {
-  if (err instanceof Error) {
-    const message = err.message || UNKNOWN_ERROR_MESSAGE;
-    const code = (err as any).code ? String((err as any).code) : undefined;
-    return { message, code };
-  }
-
-  if (typeof err === 'string' && err.trim().length > 0) {
-    return { message: err.trim() };
-  }
-
-  if (err === null || err === undefined) {
-    return { message: UNKNOWN_ERROR_MESSAGE };
-  }
-
-  if (typeof err === 'object') {
-    const obj = err as Record<string, unknown>;
-    const message = (
-      (typeof obj.message === 'string' ? obj.message : undefined) ||
-      (typeof obj.error === 'string' ? obj.error : undefined) ||
-      ''
-    ).trim();
-    const code = (
-      (typeof obj.code === 'string' ? obj.code : undefined) ||
-      (typeof obj.code === 'number' ? String(obj.code) : undefined)
-    );
-    if (message || code) {
-      return { message: message || UNKNOWN_ERROR_MESSAGE, code };
-    }
-  }
-
-  try {
-    const serialized = JSON.stringify(err);
-    return { message: (serialized && serialized.length > 2) ? serialized : UNKNOWN_ERROR_MESSAGE };
-  } catch {
-    return { message: UNKNOWN_ERROR_MESSAGE };
-  }
-}
-
-function extractErrorMessage(err: unknown): string {
-  return extractErrorInfo(err).message;
-}
-
-function ensureErrorObject(err: unknown): Error {
-  const { message } = extractErrorInfo(err);
-  return new Error(message);
-}
-
 interface AuthenticatedUrlResponse {
   success: boolean;
   url?: string;
@@ -92,7 +36,7 @@ export async function getAuthenticatedMediaUrl(
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.access_token) {
-      logger.error('No active session', new Error('No active session for authenticated media request'), { fileUrl, courseId, lessonId });
+      logger.error('No active session');
       return null;
     }
 
@@ -118,25 +62,23 @@ export async function getAuthenticatedMediaUrl(
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      const errorMessage = extractErrorMessage(error);
-      const errorObj = new Error(`Failed to get authenticated URL: ${errorMessage}`);
-      logger.error('Failed to get authenticated URL', errorObj, { statusCode: response.status, url: fileUrl, errorDetails: error });
+      const errorData = await response.json();
+      logger.error(
+        'Failed to get authenticated URL',
+        new Error(`HTTP ${response.status}`),
+        { statusCode: response.status, errorData }
+      );
       return null;
     }
 
     const data: AuthenticatedUrlResponse = await response.json();
 
     if (!data.success || !data.url) {
-      const errorReason = data.error || (!data.url ? 'No URL provided' : 'Request not successful');
-      const errorObj = new Error(`Invalid response from authenticated URL endpoint: ${errorReason}`);
-      logger.error('Invalid response from authenticated URL endpoint', errorObj, {
-        hasUrl: !!data.url,
-        success: data.success,
-        courseId,
-        fileUrl,
-        responseError: data.error
-      });
+      logger.error(
+        'Invalid response from authenticated URL endpoint',
+        new Error(data.error || 'Missing URL in response'),
+        { response: data }
+      );
       return null;
     }
 
@@ -144,7 +86,7 @@ export async function getAuthenticatedMediaUrl(
     const urlWithFp = `${data.url}&fp=${encodeURIComponent(fingerprint)}`;
     return urlWithFp;
   } catch (error) {
-    logger.error('Error getting authenticated URL', ensureErrorObject(error), { fileUrl, courseId, lessonId });
+    logger.error('Error getting authenticated URL', error instanceof Error ? error : new Error(String(error)), { courseId, fileUrl });
     return null;
   }
 }
@@ -253,7 +195,7 @@ export function extractFileKey(url: string): string | null {
 
     return null;
   } catch (error) {
-    logger.error('Error extracting file key', ensureErrorObject(error), { url });
+    logger.error('Error extracting file key', error instanceof Error ? error : new Error(String(error)), { url });
     return null;
   }
 }
