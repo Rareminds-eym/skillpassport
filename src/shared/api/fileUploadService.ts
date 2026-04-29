@@ -285,6 +285,14 @@ function uploadFileWithProgress(
       reject(new Error('Upload was aborted'));
     });
 
+    // 'timeout' fires when the request exceeds the timeout threshold.
+    // Reject so the outer try/catch in uploadFile() logs and returns { success: false }.
+    xhr.addEventListener('timeout', () => {
+      const err = new Error('Upload request timeout');
+      logger.error('File upload timeout', err, { folder, fileName: file.name });
+      reject(err);
+    });
+
     xhr.open('POST', `${STORAGE_API_URL}/upload`);
     xhr.setRequestHeader('Authorization', `Bearer ${token}`);
     xhr.send(formData);

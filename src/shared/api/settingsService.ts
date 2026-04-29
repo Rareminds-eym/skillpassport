@@ -65,7 +65,8 @@ export const getAvailableModules = async (): Promise<Module[]> => {
     if (error) throw error;
     return data || [];
   } catch (error) {
-    logger.error('Error fetching modules', ensureErrorObject(error));
+    const errorObj = ensureErrorObject(error);
+    logger.error('Error fetching modules', errorObj);
     return [];
   }
 };
@@ -83,7 +84,8 @@ export const getAvailablePermissions = async (): Promise<Permission[]> => {
     if (error) throw error;
     return data || [];
   } catch (error) {
-    logger.error('Error fetching permissions', ensureErrorObject(error));
+    const errorObj = ensureErrorObject(error);
+    logger.error('Error fetching permissions', errorObj);
     return [];
   }
 };
@@ -174,7 +176,8 @@ export const getRolesWithPermissions = async (): Promise<Role[]> => {
 
     return Array.from(roleMap.values());
   } catch (error) {
-    logger.error('Error fetching roles with permissions', ensureErrorObject(error));
+    const errorObj = ensureErrorObject(error);
+    logger.error('Error fetching roles with permissions', errorObj);
     return [];
   }
 };
@@ -268,7 +271,8 @@ export const saveRolePermissions = async (
 
     return true;
   } catch (error) {
-    logger.error('Error saving role permissions', ensureErrorObject(error));
+    const errorObj = ensureErrorObject(error);
+    logger.error('Error saving role permissions', errorObj);
     return false;
   }
 };
@@ -301,7 +305,8 @@ export const getDepartments = async (): Promise<{ id: string; name: string; code
     if (error) throw error;
     return data || [];
   } catch (error) {
-    logger.error('Error fetching departments', ensureErrorObject(error));
+    const errorObj = ensureErrorObject(error);
+    logger.error('Error fetching departments', errorObj);
     return [];
   }
 };
@@ -320,7 +325,8 @@ export const getPrograms = async (): Promise<{ id: string; name: string; code: s
     if (error) throw error;
     return data || [];
   } catch (error) {
-    logger.error('Error fetching programs', ensureErrorObject(error));
+    const errorObj = ensureErrorObject(error);
+    logger.error('Error fetching programs', errorObj);
     return [];
   }
 };

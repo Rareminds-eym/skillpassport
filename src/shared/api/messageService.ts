@@ -1470,7 +1470,9 @@ export class MessageService {
             }
           } catch (error) {
             const { message } = normalizeError(error);
-            logger.error('Failed to update conversation unread count', new Error(message), { conversationId, updateField, userId });
+            const errorObj = new Error(message);
+            logger.error('Failed to update conversation unread count', errorObj, { conversationId, updateField, userId });
+            throw error;
           }
         }
       }

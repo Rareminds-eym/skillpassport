@@ -12,31 +12,42 @@ const logger = getLogger('storage-api');
 const API_URL = getApiUrl('storage');
 
 function ensureErrorObject(err: unknown): Error {
+  // Fast path: Error instance
   if (err instanceof Error) return err;
+
+  // String errors
   if (typeof err === 'string') {
-    return err.trim() ? new Error(err) : new Error('Unknown error occurred');
+    const trimmed = err.trim();
+    return trimmed ? new Error(trimmed) : new Error('Unknown error occurred');
   }
 
+  // Null/undefined - explicit fail-safe
   if (err === null || err === undefined) {
     return new Error('Unknown error occurred');
   }
 
+  // Error-like objects with message property
   if (typeof err === 'object') {
     const obj = err as Record<string, unknown>;
-    if (typeof obj.message === 'string' && obj.message.trim()) {
-      return new Error(obj.message);
+    // Defensive property check
+    if (Object.prototype.hasOwnProperty.call(obj, 'message')) {
+      const msg = obj.message;
+      if (typeof msg === 'string') {
+        const trimmed = msg.trim();
+        return trimmed ? new Error(trimmed) : new Error('Unknown error occurred');
+      }
     }
   }
 
+  // Try JSON serialization as last resort
   try {
     const serialized = JSON.stringify(err);
-    return serialized && serialized !== '{}'
+    return (serialized && serialized.length > 2)
       ? new Error(serialized)
       : new Error('Unknown error occurred');
   } catch {
-    return typeof err === 'object'
-      ? new Error(Object.prototype.toString.call(err))
-      : new Error('Unknown error occurred');
+    // Circular reference or non-serializable - safe degradation
+    return new Error('Unknown error occurred');
   }
 }
 
@@ -48,13 +59,15 @@ async function getAuthToken(): Promise<string | null> {
     const { data: { session }, error } = await supabase.auth.getSession();
 
     if (error) {
-      logger.error('Failed to get session', ensureErrorObject(error));
+      const errorObj = ensureErrorObject(error);
+      logger.error('Failed to get session', errorObj);
       return null;
     }
 
     return session?.access_token || null;
   } catch (error) {
-    logger.error('Error retrieving auth token', ensureErrorObject(error));
+    const errorObj = ensureErrorObject(error);
+    logger.error('Error retrieving auth token', errorObj);
     return null;
   }
 }
