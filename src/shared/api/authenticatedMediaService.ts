@@ -62,23 +62,15 @@ export async function getAuthenticatedMediaUrl(
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      logger.error(
-        'Failed to get authenticated URL',
-        new Error(`HTTP ${response.status}`),
-        { statusCode: response.status, errorData }
-      );
+      const error = await response.json();
+      logger.error('Failed to get authenticated URL', undefined, { statusCode: response.status, error });
       return null;
     }
 
     const data: AuthenticatedUrlResponse = await response.json();
-
+    
     if (!data.success || !data.url) {
-      logger.error(
-        'Invalid response from authenticated URL endpoint',
-        new Error(data.error || 'Missing URL in response'),
-        { response: data }
-      );
+      logger.error('Invalid response from authenticated URL endpoint', undefined, { response: data });
       return null;
     }
 
@@ -86,7 +78,7 @@ export async function getAuthenticatedMediaUrl(
     const urlWithFp = `${data.url}&fp=${encodeURIComponent(fingerprint)}`;
     return urlWithFp;
   } catch (error) {
-    logger.error('Error getting authenticated URL', error instanceof Error ? error : new Error(String(error)), { courseId, fileUrl });
+    logger.error('Error getting authenticated URL', error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }
