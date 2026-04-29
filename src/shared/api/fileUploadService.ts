@@ -11,39 +11,47 @@ const logger = getLogger('file-upload');
 const STORAGE_API_URL = 'https://storage-api.dark-mode-d021.workers.dev';
 
 interface ErrorWithCode {
-  code?: unknown;
+  code: string | number;
 }
 
 interface ErrorWithMessage {
-  message?: unknown;
-  error?: unknown;
+  message?: string;
+  error?: string;
 }
 
 function isErrorWithCode(err: unknown): err is ErrorWithCode {
-  return typeof err === 'object' && err !== null && 'code' in err;
+  if (typeof err !== 'object' || err === null || !('code' in err)) return false;
+  const code = (err as Record<string, unknown>).code;
+  return typeof code === 'string' || typeof code === 'number';
 }
 
 function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
-  return typeof err === 'object' && err !== null && ('message' in err || 'error' in err);
+  if (typeof err !== 'object' || err === null) return false;
+  const rec = err as Record<string, unknown>;
+  const hasMessage = 'message' in rec && (typeof rec.message === 'string' || rec.message === undefined);
+  const hasError = 'error' in rec && (typeof rec.error === 'string' || rec.error === undefined);
+  return hasMessage || hasError;
 }
 
 function extractErrorCode(err: unknown): string | undefined {
   if (!isErrorWithCode(err)) return undefined;
-  const code = err.code;
-  if (typeof code === 'string') return code;
-  if (typeof code === 'number') return String(code);
-  return undefined;
+  // err.code is guaranteed string | number by the type guard
+  return typeof err.code === 'string' ? err.code : String(err.code);
 }
 
 function extractErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   if (isErrorWithMessage(err)) {
-    const msg = err.message || err.error;
+    const msg = err.message ?? err.error;
     if (typeof msg === 'string') return msg;
-    if (typeof msg === 'object' && msg !== null) return JSON.stringify(msg);
   }
   if (typeof err === 'string') return err;
-  return 'Unknown error occurred';
+  // Last resort: safe serialization guarded against circular references
+  try {
+    return JSON.stringify(err) ?? 'Unknown error occurred';
+  } catch {
+    return 'Unknown error occurred';
+  }
 }
 
 function ensureErrorObject(err: unknown): Error {
@@ -169,7 +177,15 @@ export const uploadFile = async (
 };
 
 /**
- * Internal helper: upload using XMLHttpRequest to support progress tracking
+ * Internal helper: upload using XMLHttpRequest to support progress tracking.
+ *
+ * Rejection vs resolution semantics mirror the fetch() path:
+ *   - Network-level failures (no connectivity, DNS failure, CORS abort) → reject
+ *   - HTTP-level failures (4xx/5xx) → resolve with { success: false }
+ *   - Successful upload → resolve with { success: true }
+ *
+ * The outer uploadFile() try/catch converts any rejection into { success: false }
+ * so callers always receive a well-typed UploadResult regardless of path.
  */
 function uploadFileWithProgress(
   formData: FormData,
@@ -178,7 +194,7 @@ function uploadFileWithProgress(
   folder: string,
   onProgress: (progress: UploadProgress) => void
 ): Promise<UploadResult> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
 
     xhr.upload.addEventListener('progress', (event) => {
@@ -203,19 +219,20 @@ function uploadFileWithProgress(
       if (xhr.status < 200 || xhr.status >= 300) {
         let errorMsg = `Upload failed: ${xhr.status}`;
         try {
-          const errorData = JSON.parse(xhr.responseText);
-          errorMsg = extractErrorMessage(errorData) || errorMsg;
+          const errorData = JSON.parse(xhr.responseText) as unknown;
+          const parsed = extractErrorMessage(errorData);
+          if (parsed && parsed !== 'Unknown error occurred') errorMsg = parsed;
         } catch {
-          // ignore parse errors
+          // responseText is not JSON — keep the status-based message
         }
         resolve({ success: false, error: errorMsg });
         return;
       }
 
       try {
-        const result = JSON.parse(xhr.responseText);
+        const result = JSON.parse(xhr.responseText) as { success?: boolean; url?: string; filename?: string };
         if (!result.success) {
-          const errorMsg = extractErrorMessage(result) || 'Upload failed';
+          const errorMsg = extractErrorMessage(result);
           resolve({ success: false, error: errorMsg });
           return;
         }
@@ -225,14 +242,18 @@ function uploadFileWithProgress(
       }
     });
 
+    // 'error' fires on network-level failures (no response received at all).
+    // Reject so the outer try/catch in uploadFile() logs and returns { success: false }.
     xhr.addEventListener('error', () => {
-      const errorMsg = 'Network error during upload';
-      logger.error('File upload network error', new Error(errorMsg), { folder, fileName: file.name });
-      resolve({ success: false, error: errorMsg });
+      const err = new Error('Network error during upload');
+      logger.error('File upload network error', err, { folder, fileName: file.name });
+      reject(err);
     });
 
+    // 'abort' fires when xhr.abort() is called programmatically.
+    // Reject so callers can distinguish an intentional abort from a successful upload.
     xhr.addEventListener('abort', () => {
-      resolve({ success: false, error: 'Upload was aborted' });
+      reject(new Error('Upload was aborted'));
     });
 
     xhr.open('POST', `${STORAGE_API_URL}/upload`);

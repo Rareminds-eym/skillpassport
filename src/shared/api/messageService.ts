@@ -76,39 +76,48 @@ export interface Conversation {
 }
 
 interface ErrorWithCode {
-  code?: unknown;
+  code: string | number;
 }
 
 interface ErrorWithMessage {
-  message?: unknown;
-  error?: unknown;
+  message?: string;
+  error?: string;
 }
 
 function isErrorWithCode(err: unknown): err is ErrorWithCode {
-  return typeof err === 'object' && err !== null && 'code' in err;
+  if (typeof err !== 'object' || err === null || !('code' in err)) return false;
+  const code = (err as Record<string, unknown>).code;
+  return typeof code === 'string' || typeof code === 'number';
 }
 
 function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
-  return typeof err === 'object' && err !== null && ('message' in err || 'error' in err);
+  if (typeof err !== 'object' || err === null) return false;
+  const rec = err as Record<string, unknown>;
+  const hasMessage = 'message' in rec && (typeof rec.message === 'string' || rec.message === undefined);
+  const hasError = 'error' in rec && (typeof rec.error === 'string' || rec.error === undefined);
+  return hasMessage || hasError;
 }
 
 function getErrorCode(error: unknown): string | undefined {
   if (!isErrorWithCode(error)) return undefined;
-  const code = error.code;
-  if (typeof code === 'string') return code;
-  if (typeof code === 'number') return String(code);
-  return undefined;
+  // error.code is guaranteed string | number by the type guard
+  return typeof error.code === 'string' ? error.code : String(error.code);
 }
 
 function getErrorMessage(error: unknown): string | undefined {
   if (error instanceof Error) return error.message;
   if (isErrorWithMessage(error)) {
-    const msg = error.message || error.error;
+    const msg = error.message ?? error.error;
     if (typeof msg === 'string') return msg;
-    if (typeof msg === 'object' && msg !== null) return JSON.stringify(msg);
   }
   if (typeof error === 'string') return error;
-  return undefined;
+  // Safe serialization guarded against circular references
+  try {
+    const serialized = JSON.stringify(error);
+    return serialized ?? undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function ensureErrorObject(err: unknown): Error {
@@ -483,14 +492,14 @@ export class MessageService {
 
     try {
       const result = await request;
+      // Store with a timestamp; the cache-read path already enforces CACHE_DURATION
+      // via a Date.now() comparison, so no separate setTimeout cleanup is needed.
       conversationCache.set(cacheKey, { data: result, timestamp: Date.now() });
-
-      setTimeout(() => {
-        conversationCache.delete(cacheKey);
-      }, CACHE_DURATION);
-
       return result;
     } finally {
+      // Always remove from pending — whether the request succeeded or failed —
+      // so subsequent callers issue a fresh request rather than awaiting a
+      // settled (and now removed) promise.
       pendingRequests.delete(cacheKey);
     }
   }
