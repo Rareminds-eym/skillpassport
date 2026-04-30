@@ -15,21 +15,11 @@ import {
   BriefcaseIcon,
   ClipboardDocumentCheckIcon
 } from '@heroicons/react/24/outline';
-import { createClient } from '@supabase/supabase-js';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
-
-// These are safe to expose in frontend - they're public configuration
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing required Supabase environment variables: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
-}
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: { persistSession: false }
-});
+import { queryKeys } from '@/shared/lib/queryKeys';
 import { getLogger } from '@/shared/config/logging';
+import { supabase } from '@/shared/api/supabaseClient';
 
 const logger = getLogger('EducatorActivities');
 
@@ -97,7 +87,7 @@ interface Activity {
 
 const FilterSection = ({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
-  
+
   return (
     <div className="border-b border-gray-200 py-4">
       <button
@@ -139,11 +129,11 @@ const CheckboxGroup = ({ options, selectedValues, onChange }: { options: any[]; 
   );
 };
 
-const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject, onShowError }: { 
-  isOpen: boolean; 
-  onClose: () => void; 
-  activity: Activity | null; 
-  onVerify: (id: string, remark: string) => Promise<void>; 
+const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject, onShowError }: {
+  isOpen: boolean;
+  onClose: () => void;
+  activity: Activity | null;
+  onVerify: (id: string, remark: string) => Promise<void>;
   onReject: (id: string, remark: string) => Promise<void>;
   onShowError: (msg: string) => void;
 }) => {
@@ -158,12 +148,12 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject, on
 
   const handleVerify = async () => {
     if (!activity) return;
-    
+
     if (!remark.trim() && activity.status === 'pending') {
       onShowError('Please provide remarks before taking action');
       return;
     }
-    
+
     setLoading(true);
     try {
       await onVerify(activity.id, remark);
@@ -174,12 +164,12 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject, on
 
   const handleReject = async () => {
     if (!activity) return;
-    
+
     if (!remark.trim() && activity.status === 'pending') {
       onShowError('Please provide remarks before taking action');
       return;
     }
-    
+
     setLoading(true);
     try {
       await onReject(activity.id, remark);
@@ -241,7 +231,7 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject, on
                       <p className="text-sm text-gray-900">{activity.organization}</p>
                     </div>
                   )}
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     {activity.start_date && (
                       <div>
@@ -481,10 +471,10 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject, on
   );
 };
 
-const ActivityCard = ({ activity, onViewDetails, isSelected, onSelect }: { 
-  activity: Activity; 
-  onViewDetails: (activity: Activity) => void; 
-  onVerify: (id: string, remark: string) => Promise<void>; 
+const ActivityCard = ({ activity, onViewDetails, isSelected, onSelect }: {
+  activity: Activity;
+  onViewDetails: (activity: Activity) => void;
+  onVerify: (id: string, remark: string) => Promise<void>;
   onReject: (id: string, remark: string) => Promise<void>;
   isSelected: boolean;
   onSelect: (id: string, checked: boolean) => void;
@@ -565,8 +555,7 @@ const ActivityCard = ({ activity, onViewDetails, isSelected, onSelect }: {
 };
 
 const Activities = () => {
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'pending' | 'sent_to_admin' | 'approved' | 'rejected'>('pending');
   const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
   const [detailModal, setDetailModal] = useState<Activity | null>(null);
@@ -594,19 +583,137 @@ const Activities = () => {
   // Get educator's school information with class assignments
   const { school: educatorSchool, college: educatorCollege, educatorType, educatorRole, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
 
-  useEffect(() => {
-    // Wait for school data before fetching activities
-    if (schoolLoading || (!educatorSchool && !educatorCollege)) return;
-    fetchActivities();
-  }, [educatorSchool, educatorCollege, assignedClassIds, schoolLoading]);
+  // Fetch activities using React Query
+  const { data: activities = [], isLoading: loading } = useQuery({
+    queryKey: queryKeys.educator.activities(educatorSchool?.id || educatorCollege?.id || 'none'),
+    queryFn: async () => {
+      if (!educatorSchool?.id && !educatorCollege?.id) {
+        return [];
+      }
+
+      let students;
+
+      if (educatorType === 'school' && educatorSchool) {
+        if (educatorRole === 'admin' || educatorRole === 'school_admin') {
+          const { data } = await supabase
+            .from('students')
+            .select('id, name, user_id')
+            .eq('school_id', educatorSchool.id)
+            .eq('is_deleted', false);
+          students = data;
+        } else if (assignedClassIds.length > 0) {
+          const { data } = await supabase
+            .from('students')
+            .select('id, name, user_id')
+            .eq('school_id', educatorSchool.id)
+            .in('school_class_id', assignedClassIds)
+            .eq('is_deleted', false);
+          students = data;
+        } else {
+          students = [];
+        }
+      } else if (educatorType === 'college' && educatorCollege) {
+        const { data } = await supabase
+          .from('students')
+          .select('id, name, user_id')
+          .eq('college_id', educatorCollege.id)
+          .eq('is_deleted', false);
+        students = data;
+      } else {
+        students = [];
+      }
+
+      const studentMap: Record<string, string> = {};
+      const studentIds = new Set<string>();
+      students?.forEach((student: any) => {
+        studentMap[student.user_id] = student.name || `Student ${student.id.substring(0, 8)}`;
+        studentIds.add(student.user_id);
+      });
+
+      const { data: projects } = await supabase
+        .from('projects')
+        .select('*')
+        .in('student_id', Array.from(studentIds));
+
+      const { data: trainings } = await supabase
+        .from('trainings')
+        .select('*')
+        .in('student_id', Array.from(studentIds));
+
+      const { data: certificates } = await supabase
+        .from('certificates')
+        .select('*')
+        .in('student_id', Array.from(studentIds));
+
+      const allActivities: Activity[] = [
+        ...(projects || []).map((p: any) => ({
+          id: p.id,
+          student_id: p.student_id,
+          student: studentMap[p.student_id] || `Student ${p.student_id?.substring(0, 8) || 'Unknown'}`,
+          title: p.title,
+          type: 'Project' as const,
+          status: p.approval_status || 'pending',
+          date: p.created_at,
+          description: p.description || '',
+          tech_stack: p.tech_stack,
+          demo_link: p.demo_link,
+          github_link: p.github_link,
+          start_date: p.start_date,
+          end_date: p.end_date,
+          duration: p.duration,
+          organization: p.organization,
+          certificate_url: p.certificate_url,
+          video_url: p.video_url,
+          ppt_url: p.ppt_url,
+          approval_notes: p.approval_notes,
+        })),
+        ...(trainings || []).map((t: any) => ({
+          id: t.id,
+          student_id: t.student_id,
+          student: studentMap[t.student_id] || `Student ${t.student_id?.substring(0, 8) || 'Unknown'}`,
+          title: t.title,
+          type: 'Training' as const,
+          status: t.approval_status || 'pending',
+          date: t.created_at,
+          description: t.description || '',
+          organization: t.organization,
+          start_date: t.start_date,
+          end_date: t.end_date,
+          duration: t.duration,
+          approval_notes: t.approval_notes,
+        })),
+        ...(certificates || []).map((c: any) => ({
+          id: c.id,
+          student_id: c.student_id,
+          student: studentMap[c.student_id] || `Student ${c.student_id?.substring(0, 8) || 'Unknown'}`,
+          title: c.title,
+          type: 'Certificate' as const,
+          status: c.approval_status || 'pending',
+          date: c.created_at,
+          description: c.description || '',
+          issuer: c.issuer,
+          level: c.level,
+          credential_id: c.credential_id,
+          link: c.link,
+          issued_on: c.issued_on,
+          document_url: c.document_url,
+          approval_notes: c.approval_notes,
+        })),
+      ];
+
+      return allActivities;
+    },
+    enabled: !schoolLoading && (!!educatorSchool?.id || !!educatorCollege?.id),
+    staleTime: 30000,
+  });
 
   const fetchActivities = async () => {
     if (!educatorSchool?.id && !educatorCollege?.id) return;
-    
+
     setLoading(true);
     try {
       let students;
-      
+
       if (educatorType === 'school' && educatorSchool) {
         // For school educators, check role and class assignments
         if (educatorRole === 'admin' || educatorRole === 'school_admin') {
@@ -641,7 +748,7 @@ const Activities = () => {
       } else {
         students = [];
       }
-      
+
       // Create a mapping of user_id to student name
       const studentMap: Record<string, string> = {};
       const studentIds = new Set<string>();
@@ -655,12 +762,12 @@ const Activities = () => {
         .from('projects')
         .select('*')
         .in('student_id', Array.from(studentIds));
-      
+
       const { data: trainings } = await supabase
         .from('trainings')
         .select('*')
         .in('student_id', Array.from(studentIds));
-      
+
       const { data: certificates } = await supabase
         .from('certificates')
         .select('*')
@@ -816,7 +923,7 @@ const Activities = () => {
 
   const confirmBulkVerify = async () => {
     logger.info('Starting bulk verification', { selectedActivities, bulkRemark });
-    
+
     if (!bulkRemark.trim()) {
       logger.warn('Bulk verify remarks empty');
       setErrorMessage('Please provide remarks for bulk verification');
@@ -827,21 +934,21 @@ const Activities = () => {
     try {
       for (const id of selectedActivities) {
         logger.info('Processing activity for bulk verify', { id });
-        
+
         const activity = activities.find(a => a.id === id);
         if (!activity) {
           logger.warn('Activity not found, skipping', { id });
           continue;
         }
-        
-        const table = activity.type === 'Project' ? 'projects' : 
-                     activity.type === 'Training' ? 'trainings' : 'certificates';
-        
+
+        const table = activity.type === 'Project' ? 'projects' :
+          activity.type === 'Training' ? 'trainings' : 'certificates';
+
         logger.info('Updating table for bulk verify', { table, id });
-        
+
         const { data, error } = await supabase
           .from(table)
-          .update({ 
+          .update({
             approval_status: 'sent_to_admin',
             approval_notes: bulkRemark,
             updated_at: new Date().toISOString()
@@ -852,10 +959,10 @@ const Activities = () => {
           logger.error('Error updating activity', error, { id });
           throw error;
         }
-        
+
         logger.info('Successfully updated activity', { id });
       }
-      
+
       logger.info('All activities verified');
       await fetchActivities();
       setSelectedActivities([]);
@@ -879,7 +986,7 @@ const Activities = () => {
 
   const confirmBulkReject = async () => {
     logger.info('Starting bulk rejection', { selectedActivities, bulkRemark });
-    
+
     if (!bulkRemark.trim()) {
       logger.warn('Bulk reject remarks empty');
       setErrorMessage('Please provide remarks for bulk rejection');
@@ -890,21 +997,21 @@ const Activities = () => {
     try {
       for (const id of selectedActivities) {
         logger.info('Processing activity for bulk reject', { id });
-        
+
         const activity = activities.find(a => a.id === id);
         if (!activity) {
           logger.warn('Activity not found, skipping', { id });
           continue;
         }
-        
-        const table = activity.type === 'Project' ? 'projects' : 
-                     activity.type === 'Training' ? 'trainings' : 'certificates';
-        
+
+        const table = activity.type === 'Project' ? 'projects' :
+          activity.type === 'Training' ? 'trainings' : 'certificates';
+
         logger.info('Updating table for bulk reject', { table, id });
-        
+
         const { data, error } = await supabase
           .from(table)
-          .update({ 
+          .update({
             approval_status: 'rejected',
             approval_notes: bulkRemark,
             updated_at: new Date().toISOString()
@@ -915,10 +1022,10 @@ const Activities = () => {
           logger.error('Error updating activity', error, { id });
           throw error;
         }
-        
+
         logger.info('Successfully updated activity', { id });
       }
-      
+
       logger.info('All activities rejected');
       await fetchActivities();
       setSelectedActivities([]);
@@ -936,21 +1043,21 @@ const Activities = () => {
 
   const handleVerify = async (id: string, remark: string) => {
     logger.info('Starting verification process', { id, remark });
-    
+
     try {
       const activity = activities.find(a => a.id === id);
       logger.info('Found activity', { activity });
-      
+
       if (!activity) {
         logger.error('Activity not found', { id });
         return;
       }
-      
-      const table = activity.type === 'Project' ? 'projects' : 
-                   activity.type === 'Training' ? 'trainings' : 'certificates';
-      
-      logger.info('Updating table', { 
-        table, 
+
+      const table = activity.type === 'Project' ? 'projects' :
+        activity.type === 'Training' ? 'trainings' : 'certificates';
+
+      logger.info('Updating table', {
+        table,
         payload: {
           approval_status: 'sent_to_admin',
           approval_notes: remark || null,
@@ -960,7 +1067,7 @@ const Activities = () => {
 
       const { data, error } = await supabase
         .from(table)
-        .update({ 
+        .update({
           approval_status: 'sent_to_admin',
           approval_notes: remark || null,
           updated_at: new Date().toISOString()
@@ -968,11 +1075,11 @@ const Activities = () => {
         .eq('id', id);
 
       if (error) {
-        logger.error('Supabase error during verify', error, { 
-          code: error.code, 
-          message: error.message, 
-          details: error.details, 
-          hint: error.hint 
+        logger.error('Supabase error during verify', error, {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
         });
         throw error;
       }
@@ -993,21 +1100,21 @@ const Activities = () => {
 
   const handleReject = async (id: string, remark: string) => {
     logger.info('Starting rejection process', { id, remark });
-    
+
     try {
       const activity = activities.find(a => a.id === id);
       logger.info('Found activity', { activity });
-      
+
       if (!activity) {
         logger.error('Activity not found', { id });
         return;
       }
-      
-      const table = activity.type === 'Project' ? 'projects' : 
-                   activity.type === 'Training' ? 'trainings' : 'certificates';
-      
-      logger.info('Updating table', { 
-        table, 
+
+      const table = activity.type === 'Project' ? 'projects' :
+        activity.type === 'Training' ? 'trainings' : 'certificates';
+
+      logger.info('Updating table', {
+        table,
         payload: {
           approval_status: 'rejected',
           approval_notes: remark || null,
@@ -1017,7 +1124,7 @@ const Activities = () => {
 
       const { data, error } = await supabase
         .from(table)
-        .update({ 
+        .update({
           approval_status: 'rejected',
           approval_notes: remark || null,
           updated_at: new Date().toISOString()
@@ -1025,11 +1132,11 @@ const Activities = () => {
         .eq('id', id);
 
       if (error) {
-        logger.error('Supabase error during reject', error, { 
-          code: error.code, 
-          message: error.message, 
-          details: error.details, 
-          hint: error.hint 
+        logger.error('Supabase error during reject', error, {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
         });
         throw error;
       }
@@ -1106,21 +1213,19 @@ const Activities = () => {
           <div className="flex rounded-md shadow-sm">
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
-                viewMode === 'grid'
-                  ? 'bg-primary-50 border-primary-300 text-primary-700'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === 'grid'
+                ? 'bg-primary-50 border-primary-300 text-primary-700'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
-                viewMode === 'table'
-                  ? 'bg-primary-50 border-primary-300 text-primary-700'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === 'table'
+                ? 'bg-primary-50 border-primary-300 text-primary-700'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
             >
               <TableCellsIcon className="h-4 w-4" />
             </button>
@@ -1163,21 +1268,19 @@ const Activities = () => {
           <div className="flex rounded-md shadow-sm">
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
-                viewMode === 'grid'
-                  ? 'bg-primary-50 border-primary-300 text-primary-700'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === 'grid'
+                ? 'bg-primary-50 border-primary-300 text-primary-700'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
-                viewMode === 'table'
-                  ? 'bg-primary-50 border-primary-300 text-primary-700'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === 'table'
+                ? 'bg-primary-50 border-primary-300 text-primary-700'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
             >
               <TableCellsIcon className="h-4 w-4" />
             </button>
@@ -1195,19 +1298,17 @@ const Activities = () => {
                 setActiveTab(tab);
                 setSelectedActivities([]);
               }}
-              className={`px-6 py-3 font-medium text-sm transition-all relative ${
-                activeTab === tab
-                  ? 'text-primary-600 border-b-2 border-primary-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={`px-6 py-3 font-medium text-sm transition-all relative ${activeTab === tab
+                ? 'text-primary-600 border-b-2 border-primary-600'
+                : 'text-gray-600 hover:text-gray-900'
+                }`}
             >
               {getTabLabel(tab)}
-              <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${
-                tab === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+              <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${tab === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                 tab === 'sent_to_admin' ? 'bg-blue-100 text-blue-800' :
-                tab === 'approved' ? 'bg-green-100 text-green-800' :
-                'bg-red-100 text-red-800'
-              }`}>
+                  tab === 'approved' ? 'bg-green-100 text-green-800' :
+                    'bg-red-100 text-red-800'
+                }`}>
                 {tabCounts[tab]}
               </span>
             </button>
@@ -1222,7 +1323,7 @@ const Activities = () => {
             <div className="p-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-medium text-gray-900">Filters</h2>
-                <button 
+                <button
                   onClick={handleClearFilters}
                   className="text-sm text-primary-600 hover:text-primary-700"
                 >
@@ -1235,7 +1336,7 @@ const Activities = () => {
                   <CheckboxGroup
                     options={typeOptions}
                     selectedValues={filters.types}
-                    onChange={(values: string[]) => setFilters({...filters, types: values})}
+                    onChange={(values: string[]) => setFilters({ ...filters, types: values })}
                   />
                 </FilterSection>
 
@@ -1247,8 +1348,8 @@ const Activities = () => {
                         type="date"
                         value={filters.dateRange.start}
                         onChange={(e) => setFilters({
-                          ...filters, 
-                          dateRange: {...filters.dateRange, start: e.target.value}
+                          ...filters,
+                          dateRange: { ...filters.dateRange, start: e.target.value }
                         })}
                         className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                       />
@@ -1259,8 +1360,8 @@ const Activities = () => {
                         type="date"
                         value={filters.dateRange.end}
                         onChange={(e) => setFilters({
-                          ...filters, 
-                          dateRange: {...filters.dateRange, end: e.target.value}
+                          ...filters,
+                          dateRange: { ...filters.dateRange, end: e.target.value }
                         })}
                         className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                       />
@@ -1308,7 +1409,7 @@ const Activities = () => {
                 Showing <span className="font-medium">{filteredAndSortedActivities.length}</span> result{filteredAndSortedActivities.length !== 1 ? 's' : ''}
                 {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
               </p>
-              <select 
+              <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
                 className="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -1328,11 +1429,10 @@ const Activities = () => {
                 <div className="text-sm text-gray-500">Loading activities...</div>
               </div>
             ) : viewMode === 'grid' ? (
-              <div className={`grid grid-cols-1 gap-4 ${
-                showFilters 
-                  ? 'md:grid-cols-2' 
-                  : 'md:grid-cols-2 lg:grid-cols-3'
-              }`}>
+              <div className={`grid grid-cols-1 gap-4 ${showFilters
+                ? 'md:grid-cols-2'
+                : 'md:grid-cols-2 lg:grid-cols-3'
+                }`}>
                 {filteredAndSortedActivities.length === 0 ? (
                   <div className="col-span-full text-center py-8">
                     <p className="text-sm text-gray-500 mb-2">
@@ -1342,12 +1442,12 @@ const Activities = () => {
                           : 'No student activities found'
                         : `No ${getTabLabel(activeTab).toLowerCase()} activities found`}
                     </p>
-                    {activities.length === 0 && !searchQuery && filters.types.length === 0 && 
-                     educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0 && (
-                      <p className="text-xs text-gray-400">
-                        Please contact your school administrator to assign you to classes.
-                      </p>
-                    )}
+                    {activities.length === 0 && !searchQuery && filters.types.length === 0 &&
+                      educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0 && (
+                        <p className="text-xs text-gray-400">
+                          Please contact your school administrator to assign you to classes.
+                        </p>
+                      )}
                     {(searchQuery || filters.types.length > 0) && (
                       <button
                         onClick={handleClearFilters}
@@ -1415,12 +1515,12 @@ const Activities = () => {
                                   : 'No student activities found'
                                 : `No ${getTabLabel(activeTab).toLowerCase()} activities found`}
                             </p>
-                            {activities.length === 0 && !searchQuery && filters.types.length === 0 && 
-                             educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0 && (
-                              <p className="text-xs text-gray-400">
-                                Please contact your school administrator to assign you to classes.
-                              </p>
-                            )}
+                            {activities.length === 0 && !searchQuery && filters.types.length === 0 &&
+                              educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0 && (
+                                <p className="text-xs text-gray-400">
+                                  Please contact your school administrator to assign you to classes.
+                                </p>
+                              )}
                           </div>
                         </td>
                       </tr>
@@ -1441,11 +1541,10 @@ const Activities = () => {
                             <div className="text-sm font-medium text-gray-900">{activity.student}</div>
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                              activity.type === 'Project' ? 'bg-blue-100 text-blue-800' :
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${activity.type === 'Project' ? 'bg-blue-100 text-blue-800' :
                               activity.type === 'Training' ? 'bg-purple-100 text-purple-800' :
-                              'bg-green-100 text-green-800'
-                            }`}>
+                                'bg-green-100 text-green-800'
+                              }`}>
                               {activity.type}
                             </span>
                           </td>
@@ -1454,10 +1553,10 @@ const Activities = () => {
                           </td>
                           <td className="px-6 py-4">
                             <div className="text-sm text-gray-500">
-                              {new Date(activity.date).toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                day: 'numeric', 
-                                year: 'numeric' 
+                              {new Date(activity.date).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
                               })}
                             </div>
                           </td>

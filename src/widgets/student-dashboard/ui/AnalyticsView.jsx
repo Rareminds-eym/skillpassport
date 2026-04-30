@@ -1,26 +1,26 @@
 import {
-    Award,
-    Briefcase,
-    Calendar,
-    Clock,
-    Target,
-    TrendingUp
+  Award,
+  Briefcase,
+  Calendar,
+  Clock,
+  Target,
+  TrendingUp
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import ReactApexChart from 'react-apexcharts';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/shared/api/supabaseClient';
 import TopSkillsInDemand from './TopSkillsInDemand';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 import { getLogger } from '@/shared/config/logging';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 const logger = getLogger('AnalyticsView');
 
-const AnalyticsView = ({ studentId, userEmail }) => {
+const AnalyticsView = ({ studentId }) => {
   const navigate = useNavigate();
-  const [applications, setApplications] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [debugMode, setDebugMode] = useState(process.env.NODE_ENV === 'development');
+  const [debugMode] = useState(process.env.NODE_ENV === 'development');
 
   // Debug logging
   const debugLog = (message, data = null) => {
@@ -29,17 +29,11 @@ const AnalyticsView = ({ studentId, userEmail }) => {
     }
   };
 
-  useEffect(() => {
-    debugLog('AnalyticsView mounted', { studentId, userEmail });
-    if (studentId) {
-      fetchApplicationData();
-    }
-  }, [studentId]);
-
-  const fetchApplicationData = async () => {
-    try {
+  // Fetch application data with React Query
+  const { data: applications = [], isLoading: loading } = useQuery({
+    queryKey: queryKeys.application.studentApplications(studentId),
+    queryFn: async () => {
       debugLog('Fetching application data...');
-      setLoading(true);
       const { data: appliedJobs, error: jobsError } = await supabase
         .from('applied_jobs')
         .select(`
@@ -59,19 +53,17 @@ const AnalyticsView = ({ studentId, userEmail }) => {
         .eq('student_id', studentId)
         .order('applied_at', { ascending: false });
 
-      if (!jobsError) {
-        debugLog(`Fetched ${appliedJobs?.length || 0} applications`);
-        setApplications(appliedJobs || []);
-      } else {
+      if (jobsError) {
         debugLog('Error fetching applications:', jobsError);
+        throw jobsError;
       }
-    } catch (error) {
-      debugLog('Error in fetchApplicationData:', error);
-      logger.error('Error in fetchApplicationData:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+
+      debugLog(`Fetched ${appliedJobs?.length || 0} applications`);
+      return appliedJobs || [];
+    },
+    enabled: !!studentId,
+    staleTime: 30000, // 30 seconds
+  });
 
   // Calculate analytics data
   const analytics = useMemo(() => {
@@ -120,8 +112,8 @@ const AnalyticsView = ({ studentId, userEmail }) => {
         const responded = new Date(app.responded_at);
         return (responded - applied) / (1000 * 60 * 60 * 24);
       });
-    const averageResponseTime = responseTimes.length > 0 
-      ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length 
+    const averageResponseTime = responseTimes.length > 0
+      ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length
       : 0;
 
     return {
@@ -284,9 +276,9 @@ const AnalyticsView = ({ studentId, userEmail }) => {
         </Card>
 
         {/* Skills in Demand */}
-        <TopSkillsInDemand 
-          limit={5} 
-          className="lg:col-span-2" 
+        <TopSkillsInDemand
+          limit={5}
+          className="lg:col-span-2"
           showHeader={true}
         />
       </div>
@@ -301,7 +293,7 @@ const AnalyticsView = ({ studentId, userEmail }) => {
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">No Applications Yet</h3>
               <p className="text-gray-600 text-sm mb-6">Start applying to jobs to see your analytics dashboard</p>
-              <button 
+              <button
                 onClick={() => navigate('/student/opportunities')}
                 className="px-6 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors duration-200"
               >
