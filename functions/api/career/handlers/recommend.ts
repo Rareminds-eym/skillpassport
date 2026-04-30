@@ -16,6 +16,9 @@ import { isValidUUID } from '../../shared/auth';
 import { checkRateLimit } from '../utils/rate-limit';
 import { getOpenRouterKey } from '../[[path]]';
 import { API_CONFIG, AI_MODELS } from '../../shared/ai-config';
+import { buildStudentTextFromDatabase } from '../../embedding/services/textBuilder';
+import { callEmbeddingWorker } from '../../embedding/services/embeddingWorkerClient';
+import { updateEmbedding } from '../../embedding/services/databaseUpdater';
 
 const RECOMMEND_CONFIG = {
   MATCH_THRESHOLD: 0.01,
@@ -141,11 +144,32 @@ export async function handleRecommendOpportunities(request: Request, env: Record
     return await getPopularFallback(supabase, studentId, safeLimit, startTime, 'no_profile');
   }
 
-  // Check if student has embedding
-  const studentEmbedding = student.embedding;
+  // Check if student has embedding - auto-generate if missing
+  let studentEmbedding = student.embedding;
   if (!studentEmbedding) {
-    console.log(`[NO EMBEDDING] Student ${studentId} has no embedding - returning popular fallback`);
-    return await getPopularFallback(supabase, studentId, safeLimit, startTime, 'no_embedding');
+    try {
+      console.log(`[AUTO-EMBED] Generating embedding for student ${studentId}...`);
+      
+      // Build enriched text from student profile
+      const text = await buildStudentTextFromDatabase(supabase, studentId);
+      console.log(`[AUTO-EMBED] Built text of length ${text.length} for student ${studentId}`);
+      
+      // Generate embedding vector
+      const embedding = await callEmbeddingWorker(text, env);
+      console.log(`[AUTO-EMBED] Generated embedding with ${embedding.length} dimensions for student ${studentId}`);
+      
+      // Persist to database for future requests
+      await updateEmbedding(supabase, 'students', studentId, embedding);
+      console.log(`[AUTO-EMBED] Successfully saved embedding for student ${studentId}`);
+      
+      // Use the newly generated embedding
+      studentEmbedding = embedding;
+    } catch (error) {
+      console.error(`[AUTO-EMBED] Failed for student ${studentId}:`, error);
+      return await getPopularFallback(supabase, studentId, safeLimit, startTime, 'embedding_generation_failed');
+    }
+  } else {
+    console.log(`[RECOMMEND] Student ${studentId} - using existing embedding`);
   }
 
   // ==================== GET DISMISSED OPPORTUNITIES ====================

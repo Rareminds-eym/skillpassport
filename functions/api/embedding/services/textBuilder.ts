@@ -61,6 +61,8 @@ interface StudentRecord {
   email: string | null;
 }
 
+// These interfaces document the expected Supabase response shape.
+// Actual data access uses safe property checks to handle schema drift.
 interface SkillRecord {
   name: string;
   level: number | null;
@@ -262,33 +264,74 @@ export async function buildStudentTextFromDatabase(
     // Section 2: Skills with Proficiency
     if (skills && skills.length > 0) {
       parts.push('\n=== TECHNICAL SKILLS ===');
-      const skillStrings = (skills as SkillRecord[]).map((s) => {
-        let skillStr = s.name;
-        if (s.level) skillStr += ` (Level ${s.level}/5)`;
-        else if (s.proficiency_level) skillStr += ` (${s.proficiency_level})`;
-        if (s.type) skillStr += ` [${s.type}]`;
-        if (s.description) skillStr += ` - ${s.description}`;
+      const safeStr = (val: unknown): string | null => typeof val === 'string' ? val : null;
+      const safeNum = (val: unknown): number | null => typeof val === 'number' ? val : null;
+      
+      const skillStrings = (skills as unknown as Record<string, unknown>[]).map((s) => {
+        const name = safeStr(s.name);
+        if (!name) return null;
+        
+        let skillStr = name;
+        const level = safeNum(s.level);
+        const proficiencyLevel = safeStr(s.proficiency_level);
+        const type = safeStr(s.type);
+        const description = safeStr(s.description);
+        
+        if (level) skillStr += ` (Level ${level}/5)`;
+        else if (proficiencyLevel) skillStr += ` (${proficiencyLevel})`;
+        if (type) skillStr += ` [${type}]`;
+        if (description) skillStr += ` - ${description}`;
         return skillStr;
-      });
-      parts.push(skillStrings.join(', '));
+      }).filter((s): s is string => s !== null);
+      
+      if (skillStrings.length > 0) {
+        parts.push(skillStrings.join(', '));
+      }
     }
 
     // Section 3: Certificates
     if (certificates && certificates.length > 0) {
       parts.push('\n=== CERTIFICATIONS ===');
-      for (const cert of certificates) {
-        const typedCert = cert as unknown as CertificateRecord;
-        let certStr = typedCert.title;
-        if (typedCert.issuer) certStr += ` from ${typedCert.issuer}`;
-        if (typedCert.platform) certStr += ` on ${typedCert.platform}`;
-        if (typedCert.level) certStr += ` (${typedCert.level})`;
-        if (typedCert.category) certStr += ` - Category: ${typedCert.category}`;
-        if (typedCert.instructor) certStr += ` - Instructor: ${typedCert.instructor}`;
-        if (typedCert.description) certStr += `. ${typedCert.description}`;
+      const safeStr = (val: unknown): string | null => typeof val === 'string' ? val : null;
+      
+      for (const cert of certificates as unknown as Record<string, unknown>[]) {
+        const title = safeStr(cert.title);
+        if (!title) continue;
         
-        // Add training title if joined
-        if (typedCert.trainings && typedCert.trainings.title) {
-          certStr += ` | Related Training: ${typedCert.trainings.title}`;
+        let certStr = title;
+        const issuer = safeStr(cert.issuer);
+        const platform = safeStr(cert.platform);
+        const level = safeStr(cert.level);
+        const category = safeStr(cert.category);
+        const instructor = safeStr(cert.instructor);
+        const description = safeStr(cert.description);
+        
+        if (issuer) certStr += ` from ${issuer}`;
+        if (platform) certStr += ` on ${platform}`;
+        if (level) certStr += ` (${level})`;
+        if (category) certStr += ` - Category: ${category}`;
+        if (instructor) certStr += ` - Instructor: ${instructor}`;
+        if (description) certStr += `. ${description}`;
+        
+        // Handle trainings join - can be object, array, or null
+        const trainings = cert.trainings;
+        let trainingTitle: string | null = null;
+        
+        if (trainings && typeof trainings === 'object') {
+          if (Array.isArray(trainings) && trainings.length > 0) {
+            // Array case: take first element's title
+            const firstTraining = trainings[0];
+            if (firstTraining && typeof firstTraining === 'object') {
+              trainingTitle = safeStr((firstTraining as Record<string, unknown>).title);
+            }
+          } else if (!Array.isArray(trainings)) {
+            // Object case: extract title directly
+            trainingTitle = safeStr((trainings as Record<string, unknown>).title);
+          }
+        }
+        
+        if (trainingTitle) {
+          certStr += ` | Related Training: ${trainingTitle}`;
         }
         
         parts.push(`• ${certStr}`);
@@ -298,16 +341,34 @@ export async function buildStudentTextFromDatabase(
     // Section 4: Projects
     if (projects && projects.length > 0) {
       parts.push('\n=== PROJECTS ===');
-      for (const proj of projects as ProjectRecord[]) {
-        let projStr = proj.title;
-        if (proj.role) projStr += ` (${proj.role})`;
-        if (proj.organization) projStr += ` at ${proj.organization}`;
-        if (proj.status) projStr += ` [${proj.status}]`;
-        if (proj.tech_stack && Array.isArray(proj.tech_stack) && proj.tech_stack.length > 0) {
-          projStr += ` | Technologies: ${proj.tech_stack.join(', ')}`;
+      const safeStr = (val: unknown): string | null => typeof val === 'string' ? val : null;
+      
+      for (const proj of projects as unknown as Record<string, unknown>[]) {
+        const title = safeStr(proj.title);
+        if (!title) continue;
+        
+        let projStr = title;
+        const role = safeStr(proj.role);
+        const organization = safeStr(proj.organization);
+        const status = safeStr(proj.status);
+        const description = safeStr(proj.description);
+        
+        if (role) projStr += ` (${role})`;
+        if (organization) projStr += ` at ${organization}`;
+        if (status) projStr += ` [${status}]`;
+        
+        const techStack = proj.tech_stack;
+        if (Array.isArray(techStack) && techStack.length > 0) {
+          const techStrings = techStack
+            .map((t) => typeof t === 'string' ? t : null)
+            .filter((t): t is string => t !== null);
+          if (techStrings.length > 0) {
+            projStr += ` | Technologies: ${techStrings.join(', ')}`;
+          }
         }
-        if (proj.description) {
-          projStr += `. ${proj.description.slice(0, EMBEDDING_CONFIG.PROJECT_DESC_MAX_LENGTH)}`;
+        
+        if (description) {
+          projStr += `. ${description.slice(0, EMBEDDING_CONFIG.PROJECT_DESC_MAX_LENGTH)}`;
         }
         parts.push(`• ${projStr}`);
       }
@@ -316,13 +377,23 @@ export async function buildStudentTextFromDatabase(
     // Section 5: Trainings
     if (trainings && trainings.length > 0) {
       parts.push('\n=== TRAINING PROGRAMS ===');
-      for (const training of trainings as TrainingRecord[]) {
-        let trainStr = training.title;
-        if (training.organization) trainStr += ` by ${training.organization}`;
-        if (training.source) trainStr += ` via ${training.source}`;
-        if (training.status) trainStr += ` (${training.status})`;
-        if (training.description) {
-          trainStr += `. ${training.description.slice(0, EMBEDDING_CONFIG.TRAINING_DESC_MAX_LENGTH)}`;
+      const safeStr = (val: unknown): string | null => typeof val === 'string' ? val : null;
+      
+      for (const training of trainings as unknown as Record<string, unknown>[]) {
+        const title = safeStr(training.title);
+        if (!title) continue;
+        
+        let trainStr = title;
+        const organization = safeStr(training.organization);
+        const source = safeStr(training.source);
+        const status = safeStr(training.status);
+        const description = safeStr(training.description);
+        
+        if (organization) trainStr += ` by ${organization}`;
+        if (source) trainStr += ` via ${source}`;
+        if (status) trainStr += ` (${status})`;
+        if (description) {
+          trainStr += `. ${description.slice(0, EMBEDDING_CONFIG.TRAINING_DESC_MAX_LENGTH)}`;
         }
         parts.push(`• ${trainStr}`);
       }
@@ -330,13 +401,27 @@ export async function buildStudentTextFromDatabase(
 
     // Section 6: Completed Courses
     if (courseEnrollments && courseEnrollments.length > 0) {
-      const completed = (courseEnrollments as CourseEnrollmentRecord[]).filter((c) => c.status === 'completed');
+      const safeStr = (val: unknown): string | null => typeof val === 'string' ? val : null;
+      
+      const completed = (courseEnrollments as unknown as Record<string, unknown>[])
+        .filter((c) => safeStr(c.status) === 'completed');
+      
       if (completed.length > 0) {
         parts.push('\n=== COMPLETED COURSES ===');
         for (const course of completed.slice(0, EMBEDDING_CONFIG.MAX_COURSES)) {
-          let courseStr = course.course_title;
-          if (course.skills_acquired && Array.isArray(course.skills_acquired) && course.skills_acquired.length > 0) {
-            courseStr += ` | Skills: ${course.skills_acquired.join(', ')}`;
+          const courseTitle = safeStr(course.course_title);
+          if (!courseTitle) continue;
+          
+          let courseStr = courseTitle;
+          const skillsAcquired = course.skills_acquired;
+          
+          if (Array.isArray(skillsAcquired) && skillsAcquired.length > 0) {
+            const skillStrings = skillsAcquired
+              .map((s) => typeof s === 'string' ? s : null)
+              .filter((s): s is string => s !== null);
+            if (skillStrings.length > 0) {
+              courseStr += ` | Skills: ${skillStrings.join(', ')}`;
+            }
           }
           parts.push(`• ${courseStr}`);
         }

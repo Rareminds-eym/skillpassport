@@ -7,6 +7,56 @@
 
 import { SupabaseClient } from '@supabase/supabase-js';
 import { EmbeddingError } from '../types';
+import { EMBEDDING_CONFIG, ALLOWED_TABLES, AllowedTable } from '../config/constants';
+
+/**
+ * Validate embedding vector
+ * 
+ * @param embedding - Embedding vector to validate
+ * @throws EmbeddingError if validation fails
+ */
+function validateEmbeddingVector(embedding: number[]): void {
+  // Check if input is a non-empty array
+  if (!Array.isArray(embedding) || embedding.length === 0) {
+    throw new EmbeddingError(
+      'Invalid embedding: must be a non-empty array',
+      'INVALID_RESPONSE',
+      { 
+        actualType: Array.isArray(embedding) ? 'empty array' : typeof embedding,
+        expectedDimensions: EMBEDDING_CONFIG.EXPECTED_DIMENSIONS
+      }
+    );
+  }
+
+  // Check if length matches expected dimensions
+  if (embedding.length !== EMBEDDING_CONFIG.EXPECTED_DIMENSIONS) {
+    throw new EmbeddingError(
+      `Invalid embedding dimensions: expected ${EMBEDDING_CONFIG.EXPECTED_DIMENSIONS}, got ${embedding.length}`,
+      'INVALID_RESPONSE',
+      { 
+        actualDimensions: embedding.length,
+        expectedDimensions: EMBEDDING_CONFIG.EXPECTED_DIMENSIONS
+      }
+    );
+  }
+
+  // Check if every element is a finite number
+  for (let i = 0; i < embedding.length; i++) {
+    const value = embedding[i];
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      throw new EmbeddingError(
+        `Invalid embedding value at index ${i}: must be a finite number`,
+        'INVALID_RESPONSE',
+        { 
+          index: i,
+          value: value,
+          type: typeof value,
+          expectedDimensions: EMBEDDING_CONFIG.EXPECTED_DIMENSIONS
+        }
+      );
+    }
+  }
+}
 
 /**
  * Update embedding in database
@@ -24,6 +74,21 @@ export async function updateEmbedding(
   embedding: number[]
 ): Promise<{ success: boolean; rowsAffected: number; error?: string }> {
   try {
+    // Validate table name
+    if (!ALLOWED_TABLES.includes(table as AllowedTable)) {
+      throw new EmbeddingError(
+        `Invalid table name: ${table}. Allowed tables: ${ALLOWED_TABLES.join(', ')}`,
+        'API_ERROR',
+        { 
+          table,
+          allowedTables: ALLOWED_TABLES
+        }
+      );
+    }
+
+    // Validate embedding vector
+    validateEmbeddingVector(embedding);
+
     console.log(`[DatabaseUpdater] Updating ${table} #${id} with ${embedding.length}D vector`);
 
     const { data, error: updateError } = await supabase

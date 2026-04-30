@@ -152,6 +152,18 @@ const ENTITY_CONFIGS: Record<string, EntityConfig> = {
   },
 };
 
+// Startup-time config validation: Ensure ownershipField is included in selectFields
+for (const [tableName, config] of Object.entries(ENTITY_CONFIGS)) {
+  if (config.ownershipField && config.selectFields !== '*') {
+    const fields = config.selectFields.split(',').map(f => f.trim());
+    if (!fields.includes(config.ownershipField)) {
+      throw new Error(
+        `Configuration error for table "${tableName}": ownershipField "${config.ownershipField}" must be included in selectFields "${config.selectFields}"`
+      );
+    }
+  }
+}
+
 /**
  * Verify entity ownership for user-owned entities
  * SECURITY: This function performs authorization check atomically with data fetch
@@ -195,16 +207,42 @@ async function verifyEntityOwnership(
       .eq('id', id)
       .single();
     
-    // Check if data exists and ownership matches in a single atomic check
+    // Check 1: Verify entity exists
+    if (error || !data) {
+      const entityName = config.entityName || 'Entity';
+      return { 
+        authorized: false, 
+        error: `${entityName} not found or access denied` 
+      };
+    }
+    
+    // Cast data once to a record for ownership verification
+    const record = data as Record<string, unknown>;
     const ownershipField = config.ownershipField;
-    if (error || !data || (data as unknown as Record<string, unknown>)[ownershipField] !== studentId) {
+    
+    // Check 2: Verify ownershipField exists in the fetched data
+    if (!(ownershipField in record)) {
+      console.error(
+        `[Security] Configuration error for table "${table}": ` +
+        `ownershipField "${ownershipField}" not found in fetched data. ` +
+        `selectFields: "${config.selectFields}", ` +
+        `available fields: ${Object.keys(record).join(', ')}`
+      );
+      return { 
+        authorized: false, 
+        error: 'Ownership verification failed due to configuration error' 
+      };
+    }
+    
+    // Check 3: Verify ownership matches
+    if (record[ownershipField] !== studentId) {
       return { 
         authorized: false, 
         error: `Unauthorized: Cannot generate embedding for other users' ${table}` 
       };
     }
     
-    return { authorized: true, data: data as unknown as DatabaseRecord };
+    return { authorized: true, data: record as DatabaseRecord };
   }
 
   return { authorized: true };

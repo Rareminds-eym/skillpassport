@@ -73,7 +73,14 @@ export async function callEmbeddingWorker(
     });
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error');
+      let errorText: string;
+      try {
+        errorText = await response.text();
+      } catch (textError) {
+        const textErrorMsg = textError instanceof Error ? textError.message : 'Unknown read error';
+        errorText = `[Response body unreadable: ${textErrorMsg}]`;
+        console.error(`[EmbeddingClient] Failed to read error response body (status ${response.status}):`, textErrorMsg);
+      }
       throw new EmbeddingError(
         `Embedding worker returned ${response.status}: ${errorText}`,
         'API_ERROR',
