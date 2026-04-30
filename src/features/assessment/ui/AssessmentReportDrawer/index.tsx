@@ -14,8 +14,6 @@ import {
 import { Button } from '@/shared/ui';
 // @ts-ignore - JS file without types
 import { useAssessmentRecommendations } from '@/features/assessment';
-// @ts-ignore - JS file without types
-import { getStudentPreGeneratedCourses, getAllCoursesFlat } from "@/services/courseRecommendation/preGeneratedCoursesService";
 // Import CareerTrackModal
 // @ts-ignore - JS file without types
 import { CareerTrackModal } from '@/features/assessment';
