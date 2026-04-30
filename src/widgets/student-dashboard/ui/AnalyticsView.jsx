@@ -17,6 +17,7 @@ import { getLogger } from '@/shared/config/logging';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
 const logger = getLogger('AnalyticsView');
+const IS_DEBUG_MODE = import.meta.env.DEV;
 
 const AnalyticsView = ({ studentId }) => {
   const navigate = useNavigate();
