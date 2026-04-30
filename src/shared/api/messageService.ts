@@ -137,7 +137,7 @@ export class MessageService {
         schoolEducatorConvs.forEach(conv => {
           const educator = schoolEducators?.find(e => e.id === conv.educator_id);
           if (educator) {
-            (conv as any).educator = educator;
+            (conv as Conversation & { educator?: typeof educator }).educator = educator;
           }
         });
       }
@@ -157,7 +157,7 @@ export class MessageService {
         collegeEducatorConvs.forEach(conv => {
           const educator = collegeLecturers?.find(e => e.id === conv.educator_id);
           if (educator) {
-            (conv as any).educator = educator;
+            (conv as Conversation & { educator?: typeof educator }).educator = educator;
           }
         });
       }
@@ -224,6 +224,7 @@ export class MessageService {
           if (appError) {
             const appErrorObj = new Error(`Failed to fetch application id_old: ${appError.message}`);
             logger.error('Failed to fetch application id_old for UUID conversion', appErrorObj, { applicationId, code: appError.code });
+            throw appErrorObj;
           } else if (appData) {
             applicationIdOld = appData.id_old;
           }
@@ -247,6 +248,7 @@ export class MessageService {
           if (oppError) {
             const oppErrorObj = new Error(`Failed to fetch opportunity id_old: ${oppError.message}`);
             logger.error('Failed to fetch opportunity id_old for UUID conversion', oppErrorObj, { opportunityId, code: oppError.code });
+            throw oppErrorObj;
           } else if (oppData) {
             opportunityIdOld = oppData.id_old;
           }
@@ -1217,7 +1219,14 @@ export class MessageService {
       }
       
       if (conversationResult.status === 'fulfilled' && conversationResult.value.data) {
-        const conversation = conversationResult.value.data as any; // Type assertion to handle dynamic select
+        const conversation = conversationResult.value.data as Conversation & {
+          student_id?: string;
+          recruiter_id?: string;
+          educator_id?: string;
+          school_id?: string;
+          college_id?: string;
+          conversation_type?: string;
+        };
         const isStudent = conversation.student_id === userId;
         const isRecruiter = conversation.recruiter_id === userId;
         const isEducator = conversation.educator_id === userId;
@@ -1880,9 +1889,9 @@ export class MessageService {
           .select('id, name')
           .eq('id', conversation.student.college_id)
           .maybeSingle();
-        
+
         if (orgData) {
-          (conversation as any).college = orgData;
+          (conversation as Conversation & { college?: typeof orgData }).college = orgData;
         }
       }
 

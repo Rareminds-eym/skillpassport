@@ -18,7 +18,7 @@ function ensureErrorObject(err: unknown): Error {
   // String errors
   if (typeof err === 'string') {
     const trimmed = err.trim();
-    return trimmed ? new Error(trimmed) : new Error('Unknown error occurred');
+    return new Error(trimmed || 'Unknown error occurred');
   }
 
   // Null/undefined - explicit fail-safe
@@ -26,27 +26,20 @@ function ensureErrorObject(err: unknown): Error {
     return new Error('Unknown error occurred');
   }
 
-  // Error-like objects with message property
-  if (typeof err === 'object') {
-    const obj = err as Record<string, unknown>;
-    // Defensive property check
-    if (Object.prototype.hasOwnProperty.call(obj, 'message')) {
-      const msg = obj.message;
-      if (typeof msg === 'string') {
-        const trimmed = msg.trim();
-        return trimmed ? new Error(trimmed) : new Error('Unknown error occurred');
-      }
+  // Error-like objects with message property - use type narrowing instead of 'as'
+  if (typeof err === 'object' && 'message' in err) {
+    const msg = (err as { message?: unknown }).message;
+    if (typeof msg === 'string') {
+      const trimmed = msg.trim();
+      return new Error(trimmed || 'Unknown error occurred');
     }
   }
 
-  // Try JSON serialization as last resort
+  // Fallback: attempt string conversion
   try {
-    const serialized = JSON.stringify(err);
-    return (serialized && serialized.length > 2)
-      ? new Error(serialized)
-      : new Error('Unknown error occurred');
+    const stringified = String(err);
+    return new Error(stringified && stringified.length > 0 ? stringified : 'Unknown error occurred');
   } catch {
-    // Circular reference or non-serializable - safe degradation
     return new Error('Unknown error occurred');
   }
 }
