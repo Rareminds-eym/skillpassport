@@ -64,10 +64,6 @@ const ExamWorkflowManager: React.FC<ExamWorkflowManagerProps> = (props) => {
 
   // Keep localExam in sync with the exam prop (which comes from global state)
   React.useEffect(() => {
-    console.log('🔄 Exam prop updated:', exam.name, 'marks:', exam.marks.length);
-    exam.marks.forEach(mark => {
-      console.log(`  📊 Subject ${mark.subjectName} (${mark.subjectId}): ${mark.studentMarks.length} students`);
-    });
     setLocalExam(exam);
   }, [exam]);
 

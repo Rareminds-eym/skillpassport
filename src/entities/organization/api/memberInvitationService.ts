@@ -7,6 +7,9 @@
 
 import { supabase } from '@/shared/api';
 import { LicenseAssignment, licenseManagementService } from './licenseManagementService';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('memberInvitation');
 
 // ============================================================================
 // Types & Interfaces
@@ -136,7 +139,7 @@ export class MemberInvitationService {
 
       return this.mapToOrganizationInvitation(invitation);
     } catch (error) {
-      console.error('Error inviting member:', error);
+      logger.error('Error inviting member', error as Error);
       throw error;
     }
   }
@@ -211,7 +214,7 @@ export class MemberInvitationService {
         invitation.invitation_message
       );
     } catch (error) {
-      console.error('Error resending invitation:', error);
+      logger.error('Error resending invitation', error as Error);
       throw error;
     }
   }
@@ -240,7 +243,7 @@ export class MemberInvitationService {
 
       if (error) throw error;
     } catch (error) {
-      console.error('Error cancelling invitation:', error);
+      logger.error('Error cancelling invitation', error as Error);
       throw error;
     }
   }
@@ -306,7 +309,7 @@ export class MemberInvitationService {
             invitation.invited_by
           );
         } catch (licenseError) {
-          console.warn('Could not auto-assign license:', licenseError);
+          logger.warn('Could not auto-assign license', licenseError as Error);
           // Don't fail the invitation acceptance if license assignment fails
         }
       }
@@ -328,7 +331,7 @@ export class MemberInvitationService {
         organizationName
       };
     } catch (error) {
-      console.error('Error accepting invitation:', error);
+      logger.error('Error accepting invitation', error as Error);
       throw error;
     }
   }
@@ -358,7 +361,7 @@ export class MemberInvitationService {
 
       return (data || []).map(this.mapToOrganizationInvitation);
     } catch (error) {
-      console.error('Error fetching pending invitations:', error);
+      logger.error('Error fetching pending invitations', error as Error);
       throw error;
     }
   }
@@ -399,7 +402,7 @@ export class MemberInvitationService {
 
       return (data || []).map(this.mapToOrganizationInvitation);
     } catch (error) {
-      console.error('Error fetching invitations:', error);
+      logger.error('Error fetching invitations', error as Error);
       throw error;
     }
   }
@@ -424,7 +427,7 @@ export class MemberInvitationService {
 
       return data ? this.mapToOrganizationInvitation(data) : null;
     } catch (error) {
-      console.error('Error fetching invitation by token:', error);
+      logger.error('Error fetching invitation by token', error as Error);
       throw error;
     }
   }
@@ -474,7 +477,7 @@ export class MemberInvitationService {
 
       return stats;
     } catch (error) {
-      console.error('Error fetching invitation stats:', error);
+      logger.error('Error fetching invitation stats', error as Error);
       throw error;
     }
   }
@@ -498,7 +501,7 @@ export class MemberInvitationService {
 
       return data?.length || 0;
     } catch (error) {
-      console.error('Error expiring old invitations:', error);
+      logger.error('Error expiring old invitations', error as Error);
       throw error;
     }
   }
@@ -659,15 +662,14 @@ export class MemberInvitationService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Email sending failed:', response.status, errorText);
+        logger.error('Email sending failed', new Error(`Status: ${response.status}, ${errorText}`));
         return false;
       }
 
       const result = await response.json();
-      console.log('Invitation email sent successfully:', result);
       return true;
     } catch (error) {
-      console.error('Failed to send invitation email:', error);
+      logger.error('Failed to send invitation email', error as Error);
       // Don't throw - email failure shouldn't block invitation creation
       return false;
     }
@@ -699,16 +701,6 @@ export class MemberInvitationService {
       const isEducator = inviteeRole.includes('educator');
       const isStudent = inviteeRole.includes('student');
 
-      console.log('🔗 Linking user to organization:', {
-        userId,
-        organizationId,
-        organizationType,
-        inviteeRole,
-        inviteeEmail,
-        isEducator,
-        isStudent
-      });
-
       // Build update data for students/educators tables
       const memberUpdateData: Record<string, any> = {};
       if (organizationType === 'school') {
@@ -727,12 +719,12 @@ export class MemberInvitationService {
           .select('id');
         
         if (studentError) {
-          console.warn('Could not update students table by user_id:', studentError.message);
+          logger.warn('Could not update students table by user_id', studentError as Error);
         } else if (updatedByUserId && updatedByUserId.length > 0) {
-          console.log('✅ Updated students table with organization (by user_id)');
+          logger.info('Updated students table with organization (by user_id)');
         } else if (inviteeEmail) {
           // Fallback: try to update by email if user_id didn't match any records
-          console.log('⚠️ No student found with user_id, trying email fallback...');
+          logger.info('No student found with user_id, trying email fallback');
           const { data: updatedByEmail, error: emailError } = await supabase
             .from('students')
             .update({ ...memberUpdateData, user_id: userId })
@@ -740,11 +732,11 @@ export class MemberInvitationService {
             .select('id');
           
           if (emailError) {
-            console.warn('Could not update students table by email:', emailError.message);
+            logger.warn('Could not update students table by email', emailError as Error);
           } else if (updatedByEmail && updatedByEmail.length > 0) {
-            console.log('✅ Updated students table with organization (by email)');
+            logger.info('Updated students table with organization (by email)');
           } else {
-            console.warn('No student found with email:', inviteeEmail);
+            logger.warn('No student found with email', { email: inviteeEmail });
           }
         }
       }
@@ -759,12 +751,12 @@ export class MemberInvitationService {
           .select('id');
         
         if (educatorError) {
-          console.warn('Could not update school_educators table by user_id:', educatorError.message);
+          logger.warn('Could not update school_educators table by user_id', educatorError as Error);
         } else if (updatedByUserId && updatedByUserId.length > 0) {
-          console.log('✅ Updated school_educators table with organization (by user_id)');
+          logger.info('Updated school_educators table with organization (by user_id)');
         } else if (inviteeEmail) {
           // Fallback: try by email
-          console.log('⚠️ No educator found with user_id, trying email fallback...');
+          logger.info('No educator found with user_id, trying email fallback');
           const { data: updatedByEmail, error: emailError } = await supabase
             .from('school_educators')
             .update({ school_id: organizationId, user_id: userId })
@@ -772,9 +764,9 @@ export class MemberInvitationService {
             .select('id');
           
           if (emailError) {
-            console.warn('Could not update school_educators table by email:', emailError.message);
+            logger.warn('Could not update school_educators table by email', emailError as Error);
           } else if (updatedByEmail && updatedByEmail.length > 0) {
-            console.log('✅ Updated school_educators table with organization (by email)');
+            logger.info('Updated school_educators table with organization (by email)');
           }
         }
       }
@@ -791,13 +783,13 @@ export class MemberInvitationService {
         .eq('id', userId);
 
       if (userError) {
-        console.warn('Could not update users table:', userError.message);
+        logger.warn('Could not update users table', userError as Error);
       } else {
-        console.log('✅ Updated users table with organization and role');
+        logger.info('Updated users table with organization and role');
       }
 
     } catch (error) {
-      console.error('Error linking user to organization:', error);
+      logger.error('Error linking user to organization', error as Error);
       // Don't throw - this is a best-effort operation
     }
   }
@@ -821,7 +813,7 @@ export class MemberInvitationService {
 
       return data?.name || 'Organization';
     } catch (error) {
-      console.error('Error fetching organization name:', error);
+      logger.error('Error fetching organization name', error as Error);
       return 'Organization';
     }
   }

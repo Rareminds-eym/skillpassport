@@ -4,6 +4,9 @@
  */
 
 import { getDomainKeywordsWithCache } from './fieldDomainService';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('profile-builder');
 
 /**
  * Build a composite text representation of the student's profile
@@ -33,18 +36,12 @@ export const buildProfileText = async (assessmentResults) => {
     // Generate domain-specific keywords using AI service
     // This works for ALL fields, not just hardcoded ones
     try {
-      console.log(`[Profile Builder] Fetching domain keywords for: "${stream}"`);
       const domainKeywords = await getDomainKeywordsWithCache(stream);
       if (domainKeywords) {
         parts.push(`Domain Focus: ${domainKeywords}`);
-        console.log(`[Profile Builder] ✅ Domain keywords added to profile`);
-      } else {
-        console.warn(`[Profile Builder] ⚠️ No domain keywords returned for "${stream}"`);
-        console.log(`[Profile Builder] → Continuing with LAYER 4 (Other Profile Factors)`);
       }
     } catch (error) {
-      console.error(`[Profile Builder] ❌ LAYER 4 (Graceful Degradation) - Failed to generate domain keywords:`, error.message);
-      console.log(`[Profile Builder] → Continuing without domain keywords, using career clusters and skill gaps`);
+      logger.error(`Error generating domain keywords for field: ${stream}`, error instanceof Error ? error : new Error(String(error)));
       // Continue without domain keywords rather than failing
     }
   }

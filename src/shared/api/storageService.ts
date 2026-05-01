@@ -8,6 +8,9 @@
 
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('storage-service');
 
 interface UploadResponse {
   success: boolean;
@@ -56,7 +59,7 @@ class StorageService {
       }
       return session.access_token;
     } catch (error) {
-      console.error('Error getting auth token:', error);
+      logger.error('Error getting auth token', error as Error);
       return null;
     }
   }
@@ -97,7 +100,7 @@ class StorageService {
       const result = await response.json();
       return result;
     } catch (error) {
-      console.error('Upload error:', error);
+      logger.error('Upload error', error as Error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Upload failed'
@@ -118,7 +121,7 @@ class StorageService {
 
       return await this.uploadFile(file, filename);
     } catch (error) {
-      console.error('Teacher document upload error:', error);
+      logger.error('Teacher document upload error', error as Error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Document upload failed'
@@ -174,7 +177,7 @@ class StorageService {
 
       return await this.uploadFile(file, filename);
     } catch (error) {
-      console.error('Student document upload error:', error);
+      logger.error('Student document upload error', error as Error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Document upload failed'
@@ -259,7 +262,7 @@ class StorageService {
       const result = await response.json();
       return result;
     } catch (error) {
-      console.error('Presigned URL error:', error);
+      logger.error('Presigned URL error', error as Error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get presigned URL'
@@ -305,7 +308,7 @@ class StorageService {
       const result = await response.json();
       return result;
     } catch (error) {
-      console.error('Confirm upload error:', error);
+      logger.error('Confirm upload error', error as Error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to confirm upload'
@@ -346,7 +349,7 @@ class StorageService {
       const result = await response.json();
       return result;
     } catch (error) {
-      console.error('Delete error:', error);
+      logger.error('Delete error', error as Error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Delete failed'
@@ -370,7 +373,7 @@ class StorageService {
       const result = await response.json();
       return result;
     } catch (error) {
-      console.error('Get file URL error:', error);
+      logger.error('Get file URL error', error as Error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get file URL'
@@ -414,7 +417,7 @@ class StorageService {
       const result = await response.json();
       return result;
     } catch (error) {
-      console.error('Get signed URL error:', error);
+      logger.error('Get signed URL error', error as Error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get signed URL'

@@ -8,6 +8,9 @@ import toast from 'react-hot-toast';
 import { supabase } from '@/shared/api/supabaseClient';
 import { MessageService } from '@/features/messaging';
 import { Student } from '@/features/student-profile/model';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('school-admission-note-modal');
 
 interface SchoolAdmissionNoteModalProps {
   isOpen: boolean;
@@ -45,7 +48,7 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
       setSendToCommunication(false);
       onClose();
     } catch (error) {
-      console.error('Error saving note:', error);
+      logger.error('Error saving note', error as Error);
       toast.error('Failed to save note');
     } finally {
       setIsSubmitting(false);
@@ -62,9 +65,6 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
         throw new Error('Not authenticated');
       }
 
-      console.log('🔍 Looking up school ID for user:', user.id);
-      console.log('📋 Student data:', { id: student.id, name: student.name, school_id: (student as any).school_id });
-
       // Get school ID for the admin - match the same logic as StudentCommunication.tsx
       let schoolId: string | null = null;
 
@@ -74,8 +74,6 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
         .select('school_id')
         .eq('user_id', user.id)
         .single();
-
-      console.log('📊 Educator data:', educatorData, 'Error:', educatorError);
 
       if (educatorData?.school_id) {
         schoolId = educatorData.school_id;
@@ -88,8 +86,6 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
           .eq('admin_id', user.id)
           .maybeSingle();
 
-        console.log('📊 Organization owner data:', orgData, 'Error:', orgError);
-
         if (orgData?.id) {
           schoolId = orgData.id;
         }
@@ -97,17 +93,12 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
 
       // If still no school ID, try to use the student's school_id
       if (!schoolId && (student as any).school_id) {
-        console.log('⚠️ Using student school_id as fallback:', (student as any).school_id);
         schoolId = (student as any).school_id;
       }
 
       if (!schoolId) {
-        console.error('❌ Could not determine school ID for user:', user.id);
         throw new Error('Could not determine school ID. Please ensure you are logged in as a school admin.');
       }
-
-      console.log('✅ Found school ID:', schoolId);
-      console.log('📝 Creating conversation with student:', student.id);
 
       // Create or get conversation with student
       const conversation = await MessageService.getOrCreateStudentAdminConversation(
@@ -115,8 +106,6 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
         schoolId,
         'Admission Note'
       );
-
-      console.log('✅ Conversation created/found:', conversation);
 
       // Send the note as a message directly to the database
       const messageData = {
@@ -129,8 +118,6 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
         subject: 'Admission Note',
       };
 
-      console.log('📤 Sending message:', messageData);
-
       const { data: messageResult, error: messageError } = await supabase
         .from('messages')
         .insert(messageData)
@@ -138,11 +125,8 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
         .single();
 
       if (messageError) {
-        console.error('❌ Message error:', messageError);
         throw messageError;
       }
-
-      console.log('✅ Message sent:', messageResult);
 
       // Update conversation's last_message fields to ensure it shows up in the list
       const { error: updateError } = await supabase
@@ -155,15 +139,9 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
         })
         .eq('id', conversation.id);
 
-      if (updateError) {
-        console.warn('⚠️ Could not update conversation preview:', updateError);
-      } else {
-        console.log('✅ Conversation updated with last message info');
-      }
-
       toast.success('Note sent to student via communication');
     } catch (error) {
-      console.error('Error sending note to communication:', error);
+      logger.error('Error sending note to communication', error as Error);
       throw error;
     }
   };

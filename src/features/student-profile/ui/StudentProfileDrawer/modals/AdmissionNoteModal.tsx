@@ -4,6 +4,9 @@ import toast from 'react-hot-toast';
 import { supabase } from '@/shared/api/supabaseClient';
 import { MessageService } from '@/features/messaging';
 import { Student } from '@/features/student-profile/model';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('admission-note-modal');
 
 interface AdmissionNoteModalProps {
   isOpen: boolean;
@@ -44,7 +47,7 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
       setSendToCommunication(false);
       onClose();
     } catch (error) {
-      console.error('Error saving note:', error);
+      logger.error('Error saving note', error as Error);
       toast.error('Failed to save note');
     } finally {
       setIsSubmitting(false);
@@ -59,49 +62,33 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
         throw new Error('Not authenticated');
       }
 
-      console.log('🔍 Starting user detection for:', user.id);
-
       // Detect user type and get appropriate IDs
       let userType: 'college_admin' | 'college_educator' | 'school_educator' | null = null;
       let organizationId: string | null = null;
       let educatorId: string | null = null;
 
       // Check if user is a school educator
-      console.log('🏫 Checking school_educators table...');
       const { data: schoolEducatorData, error: schoolError } = await supabase
         .from('school_educators')
         .select('id, school_id')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      console.log('🏫 School educator result:', { data: schoolEducatorData, error: schoolError });
-
       if (schoolEducatorData) {
         userType = 'school_educator';
         educatorId = schoolEducatorData.id;
         organizationId = schoolEducatorData.school_id;
-        console.log('✅ Detected as school_educator:', { educatorId, organizationId });
       } else {
         // Check if user is a college lecturer
-        console.log('🎓 Checking college_lecturers table...');
-        
         const { data: lecturerData, error: lecturerError } = await supabase
           .from('college_lecturers')
           .select('id, collegeId, designation, user_id')
           .eq('user_id', user.id)
           .maybeSingle();
         
-        console.log('🎓 College lecturer result:', { data: lecturerData, error: lecturerError });
-        
         if (lecturerData) {
           educatorId = lecturerData.id;
           organizationId = lecturerData.collegeId;
-          
-          console.log('📋 Lecturer data found:', { 
-            id: lecturerData.id, 
-            collegeId: lecturerData.collegeId, 
-            designation: lecturerData.designation 
-          });
           
           // Check if they're an admin based on designation
           // Common admin designations: 'Principal', 'Dean', 'HOD', 'Admin', etc.
@@ -111,14 +98,11 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
           
           if (isAdmin) {
             userType = 'college_admin';
-            console.log('✅ Detected as college_admin (based on designation)');
           } else {
             userType = 'college_educator';
-            console.log('✅ Detected as college_educator');
           }
         } else {
           // Fallback: check if user is college owner in organizations table
-          console.log('🏢 Checking organizations table...');
           const { data: orgData, error: orgError } = await supabase
             .from('organizations')
             .select('id')
@@ -126,20 +110,14 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
             .eq('admin_id', user.id)
             .maybeSingle();
           
-          console.log('🏢 Organization result:', { data: orgData, error: orgError });
-          
           if (orgData?.id) {
             userType = 'college_admin';
             organizationId = orgData.id;
-            console.log('✅ Detected as college owner/admin');
           }
         }
       }
 
-      console.log('📊 Final detection:', { userType, organizationId, educatorId });
-
       if (!userType || !organizationId) {
-        console.error('❌ Detection failed - missing userType or organizationId');
         throw new Error('Could not determine user type or organization');
       }
 
@@ -147,7 +125,6 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
 
       // Create or get conversation based on user type
       if (userType === 'school_educator') {
-        console.log('🏫 Creating school educator conversation...');
         conversation = await MessageService.getOrCreateStudentEducatorConversation(
           student.id,
           educatorId!,
@@ -155,7 +132,6 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
           'Mentor Note'
         );
       } else if (userType === 'college_educator') {
-        console.log('🎓 Creating college educator conversation...');
         conversation = await MessageService.getOrCreateStudentCollegeLecturerConversation(
           student.id,
           educatorId!,
@@ -165,15 +141,12 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
         );
       } else {
         // college_admin
-        console.log('🏢 Creating college admin conversation...');
         conversation = await MessageService.getOrCreateStudentCollegeAdminConversation(
           student.id,
           organizationId,
           'Admission Note'
         );
       }
-
-      console.log('✅ Conversation created:', conversation.id);
 
       // Send the note as a message
       const senderType = userType === 'school_educator' ? 'educator' : 
@@ -192,21 +165,17 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
         subject: `${notePrefix} Note`
       };
 
-      console.log('📤 Sending message:', messageData);
-
       const { error: messageError } = await supabase
         .from('messages')
         .insert(messageData);
 
       if (messageError) {
-        console.error('❌ Message error:', messageError);
         throw messageError;
       }
 
-      console.log('✅ Message sent successfully');
       toast.success(`Note sent to student via communication`);
     } catch (error) {
-      console.error('❌ Error sending note to communication:', error);
+      logger.error('Error sending note to communication', error as Error);
       throw error;
     }
   };

@@ -202,7 +202,6 @@ export const useOptimizedCoCurricularsData = (userEmail: string | null): UseCoCu
         setCertificates(processedCertificates);
       }
     } catch (err) {
-      console.error('Error fetching co-curriculars data:', err);
       setError(err as Error);
     } finally {
       setLoading(false);

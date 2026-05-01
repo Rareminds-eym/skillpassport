@@ -4,6 +4,9 @@ import { usePortfolio } from '@/features/digital-portfolio';
 import { useTheme } from "@/shared/model/themeStore";
 import { checkProfileCompleteness } from '@/features/student-profile';
 import { getPromptDismissed, setPromptDismissed } from '@/features/student-profile';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('profile-completion-prompt');
 
 /**
  * Return type for useProfileCompletionPrompt hook
@@ -36,8 +39,6 @@ export function useProfileCompletionPrompt(): UseProfileCompletionPromptReturn {
   const [showModal, setShowModal] = useState(false);
   const [hasError, setHasError] = useState(false);
 
-  const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
-
   // Memoize profile completeness check results to avoid recalculation
   const profileCompletenessResult = useMemo(() => {
     if (isLoading || !student) {
@@ -46,22 +47,12 @@ export function useProfileCompletionPrompt(): UseProfileCompletionPromptReturn {
 
     try {
       const result = checkProfileCompleteness(student);
-      
-      if (isDevelopment) {
-        console.log('[useProfileCompletionPrompt] Profile completeness check memoized', {
-          studentId: student.id,
-          result,
-        });
-      }
-      
       return result;
     } catch (error) {
-      if (isDevelopment) {
-        console.error('[useProfileCompletionPrompt] Error in memoized completeness check:', error);
-      }
+      logger.error('Error in memoized completeness check', error as Error);
       return { incompleteSections: [], isComplete: true };
     }
-  }, [student, isLoading, isDevelopment]);
+  }, [student, isLoading]);
 
   // Memoize dismissal preference check to avoid repeated localStorage reads
   const isDismissed = useMemo(() => {
@@ -69,22 +60,12 @@ export function useProfileCompletionPrompt(): UseProfileCompletionPromptReturn {
     
     try {
       const dismissed = getPromptDismissed(student.id);
-      
-      if (isDevelopment) {
-        console.log('[useProfileCompletionPrompt] Dismissal preference memoized', {
-          studentId: student.id,
-          dismissed,
-        });
-      }
-      
       return dismissed;
     } catch (error) {
-      if (isDevelopment) {
-        console.error('[useProfileCompletionPrompt] Error checking dismissal preference:', error);
-      }
+      logger.error('Error checking dismissal preference', error as Error);
       return false;
     }
-  }, [student?.id, isDevelopment]);
+  }, [student?.id]);
 
   // Check profile completeness and determine if modal should show
   useEffect(() => {
@@ -93,26 +74,17 @@ export function useProfileCompletionPrompt(): UseProfileCompletionPromptReturn {
 
     // Don't show modal while data is loading
     if (isLoading) {
-      if (isDevelopment) {
-        console.log('[useProfileCompletionPrompt] Waiting for data to load...');
-      }
       return;
     }
 
     // Handle missing student data gracefully
     if (!student) {
-      if (isDevelopment) {
-        console.log('[useProfileCompletionPrompt] No student data available - assuming complete profile');
-      }
       setShowModal(false);
       return;
     }
 
     // Validate student data structure
     if (!student.id) {
-      if (isDevelopment) {
-        console.error('[useProfileCompletionPrompt] Invalid student data: missing ID', student);
-      }
       setHasError(true);
       setShowModal(false);
       return;
@@ -121,47 +93,25 @@ export function useProfileCompletionPrompt(): UseProfileCompletionPromptReturn {
     try {
       // Use memoized values instead of recalculating
       if (isDismissed) {
-        if (isDevelopment) {
-          console.log('[useProfileCompletionPrompt] User has permanently dismissed prompt', {
-            studentId: student.id,
-          });
-        }
         setShowModal(false);
         return;
       }
 
       // Show modal only if profile is incomplete
       const shouldShow = !profileCompletenessResult.isComplete;
-      
-      if (isDevelopment) {
-        console.log('[useProfileCompletionPrompt] Modal display decision', {
-          studentId: student.id,
-          isComplete: profileCompletenessResult.isComplete,
-          incompleteSections: profileCompletenessResult.incompleteSections,
-          shouldShow,
-          isDismissed,
-          theme,
-        });
-      }
-
       setShowModal(shouldShow);
     } catch (error) {
-      if (isDevelopment) {
-        console.error('[useProfileCompletionPrompt] Error during modal display logic:', error);
-      }
+      logger.error('Error during modal display logic', error as Error);
       setHasError(true);
       setShowModal(false);
     }
-  }, [student, isLoading, isDismissed, profileCompletenessResult, theme, isDevelopment]);
+  }, [student, isLoading, isDismissed, profileCompletenessResult, theme]);
 
   /**
    * Handle "Complete Now" button click
    * Closes modal and navigates to profile edit page
    */
   const handleComplete = () => {
-    if (isDevelopment) {
-      console.log('[useProfileCompletionPrompt] User clicked "Complete Now"');
-    }
     setShowModal(false);
     navigate('/student/profile');
   };
@@ -171,9 +121,6 @@ export function useProfileCompletionPrompt(): UseProfileCompletionPromptReturn {
    * Closes modal without changing user preference
    */
   const handleSkip = () => {
-    if (isDevelopment) {
-      console.log('[useProfileCompletionPrompt] User clicked "Skip for now"');
-    }
     setShowModal(false);
   };
 
@@ -183,35 +130,22 @@ export function useProfileCompletionPrompt(): UseProfileCompletionPromptReturn {
    */
   const handleNeverShow = () => {
     if (!student) {
-      if (isDevelopment) {
-        console.log('[useProfileCompletionPrompt] Cannot save preference: no student data');
-      }
       setShowModal(false);
       return;
     }
 
     if (!student.id) {
-      if (isDevelopment) {
-        console.error('[useProfileCompletionPrompt] Cannot save preference: invalid student ID');
-      }
+      logger.error('Cannot save preference: invalid student ID');
       setShowModal(false);
       return;
     }
 
     try {
-      if (isDevelopment) {
-        console.log('[useProfileCompletionPrompt] User clicked "Never show this again"', {
-          studentId: student.id,
-        });
-      }
-
       // Store dismissal preference with error handling
       setPromptDismissed(student.id, true);
       setShowModal(false);
     } catch (error) {
-      if (isDevelopment) {
-        console.error('[useProfileCompletionPrompt] Error saving dismissal preference:', error);
-      }
+      logger.error('Error saving dismissal preference', error as Error);
       // Still close modal even if preference save fails
       setShowModal(false);
     }
@@ -222,9 +156,6 @@ export function useProfileCompletionPrompt(): UseProfileCompletionPromptReturn {
    * Closes modal without changing user preference
    */
   const handleClose = () => {
-    if (isDevelopment) {
-      console.log('[useProfileCompletionPrompt] User closed modal (backdrop/Escape)');
-    }
     setShowModal(false);
   };
 

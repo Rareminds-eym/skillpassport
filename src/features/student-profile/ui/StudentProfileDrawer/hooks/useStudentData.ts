@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
 import { Student, AssessmentResult, CurriculumData, LessonPlan, Course, AdmissionNote, Project, Certificate } from '@/features/student-profile/model';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('use-student-data');
 
 // Additional types for new data
 export interface Experience {
@@ -299,7 +302,7 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
       setEducation(educationData || []);
 
     } catch (error) {
-      console.error('Error fetching additional data:', error);
+      logger.error('Error fetching additional data', error as Error);
     } finally {
       setLoadingAdditional(false);
     }
@@ -318,7 +321,7 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
         }
       ]);
     } catch (error) {
-      console.error('Error fetching notes:', error);
+      logger.error('Error fetching notes', error as Error);
       setAdmissionNotes([]);
     } finally {
       setLoadingNotes(false);
@@ -337,13 +340,13 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching assessment results:', error);
+        logger.error('Error fetching assessment results', error);
         setAssessmentResults([]);
       } else {
         setAssessmentResults(data || []);
       }
     } catch (error) {
-      console.error('Error fetching assessment results:', error);
+      logger.error('Error fetching assessment results', error as Error);
       setAssessmentResults([]);
     } finally {
       setLoadingAssessments(false);
@@ -374,7 +377,7 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
         .order('created_at', { ascending: false });
 
       if (trainingsError) {
-        console.error('Error fetching trainings:', trainingsError);
+        logger.error('Error fetching trainings', trainingsError);
         setCourses([]);
         return;
       }
@@ -386,7 +389,7 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
         .order('enrolled_at', { ascending: false });
 
       if (enrollmentsError) {
-        console.error('Error fetching course enrollments:', enrollmentsError);
+        logger.error('Error fetching course enrollments', enrollmentsError);
       }
 
       const coursesData = (trainings || []).map((training: any) => {
@@ -433,7 +436,7 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
 
       setCourses(coursesData);
     } catch (error) {
-      console.error('Error fetching courses:', error);
+      logger.error('Error fetching courses', error as Error);
       setCourses([]);
     } finally {
       setLoadingCourses(false);
@@ -460,13 +463,12 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
         .order('created_at', { ascending: false });
 
       if (projectsError) {
-        console.log('No projects table found, using student.projects field');
         setProjects([]);
       } else {
         setProjects(projectsData || []);
       }
     } catch (error) {
-      console.error('Error fetching projects:', error);
+      logger.error('Error fetching projects', error as Error);
       setProjects([]);
     } finally {
       setLoadingProjects(false);
@@ -493,13 +495,12 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
         .order('issued_on', { ascending: false });
 
       if (certificatesError) {
-        console.log('No certificates table found, using student.certificates field');
         setCertificates([]);
       } else {
         setCertificates(certificatesData || []);
       }
     } catch (error) {
-      console.error('Error fetching certificates:', error);
+      logger.error('Error fetching certificates', error as Error);
       setCertificates([]);
     } finally {
       setLoadingCertificates(false);
@@ -673,7 +674,7 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
       setCurriculumData(selectedCurriculums);
 
     } catch (error) {
-      console.error('Error fetching curriculum data:', error);
+      logger.error('Error fetching curriculum data', error as Error);
       setCurriculumData([]);
       setLessonPlans([]);
     } finally {

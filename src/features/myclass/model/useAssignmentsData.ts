@@ -31,7 +31,6 @@ export const useAssignmentsData = (studentId: string | undefined): UseAssignment
       setAssignments(assignmentsData);
       setHasFetched(true);
     } catch (err) {
-      console.error('Error fetching assignments:', err);
       setError(err as Error);
     } finally {
       setLoading(false);
@@ -45,7 +44,7 @@ export const useAssignmentsData = (studentId: string | undefined): UseAssignment
       const assignmentsData = await getAssignmentsByStudentId(studentId);
       setAssignments(assignmentsData);
     } catch (err) {
-      console.error('Error refetching assignments:', err);
+      // Silent fail - error state will be handled by component
     }
   }, [studentId]);
 

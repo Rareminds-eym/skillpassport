@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('analytics-service');
 
 export type FunnelRangePreset = '7d' | '30d' | '90d' | 'ytd' | 'custom';
 
@@ -79,7 +82,9 @@ export const getGeographicDistribution = async (
 
     return { data: locationsArray, error: null };
   } catch (error) {
-    console.error('Error fetching geographic distribution:', error);
+    logger.error('Geographic distribution fetch failed', error instanceof Error ? error : new Error(String(error)), {
+      preset
+    });
     return { data: null, error };
   }
 };
@@ -131,7 +136,9 @@ export const getTopHiringColleges = async (
 
     return { data: collegesArray, error: null };
   } catch (error) {
-    console.error('Error fetching top hiring colleges:', error);
+    logger.error('Top hiring colleges fetch failed', error instanceof Error ? error : new Error(String(error)), {
+      preset
+    });
     return { data: null, error };
   }
 };
@@ -306,7 +313,9 @@ export const getQualityMetrics = async (
 
     return { data, error: null };
   } catch (error) {
-    console.error('Error fetching quality metrics:', error);
+    logger.error('Quality metrics fetch failed', error instanceof Error ? error : new Error(String(error)), {
+      preset
+    });
     return { data: null, error };
   }
 };

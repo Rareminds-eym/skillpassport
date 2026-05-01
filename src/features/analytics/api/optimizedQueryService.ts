@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('optimized-query-service');
 
 /**
  * Optimized Query Service
@@ -71,7 +74,7 @@ export const checkEmailExistsOptimized = async (email) => {
     emailCheckCache.set(cacheKey, data);
     return data;
   } catch (error) {
-    console.error('Email check error:', error);
+    logger.error('Email check error', error instanceof Error ? error : new Error(String(error)), { email });
     // Fallback to direct query
     const { data } = await supabase
       .from('students')
@@ -111,7 +114,7 @@ export const getStudentByIdOptimized = async (studentId) => {
     
     return student;
   } catch (error) {
-    console.error('Student lookup error:', error);
+    logger.error('Student lookup error', error instanceof Error ? error : new Error(String(error)), { studentId });
     // Fallback to direct query
     const { data } = await supabase
       .from('students')
@@ -201,7 +204,7 @@ export const prefetchUserData = async (userId) => {
   try {
     await Promise.all(promises);
   } catch (error) {
-    console.error('Prefetch error:', error);
+    logger.error('Prefetch error', error instanceof Error ? error : new Error(String(error)), { userId });
   }
 };
 

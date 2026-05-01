@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('recent-updates-service');
 
 /**
  * Service for managing recent updates data
@@ -41,7 +44,7 @@ export const recentUpdatesService = {
 
       return { updates: [] };
     } catch (error) {
-      console.error('Error in getRecentUpdatesByEmail:', error);
+      logger.error('Failed to get recent updates by email', error as Error, { email });
       throw error;
     }
   },
@@ -100,7 +103,7 @@ export const recentUpdatesService = {
 
       return { updates: trimmedUpdates };
     } catch (error) {
-      console.error('Error in addRecentUpdate:', error);
+      logger.error('Failed to add recent update', error as Error, { email });
       throw error;
     }
   },
@@ -141,7 +144,7 @@ export const recentUpdatesService = {
 
       return { updates: [] };
     } catch (error) {
-      console.error('Error in clearRecentUpdates:', error);
+      logger.error('Failed to clear recent updates', error as Error, { email });
       throw error;
     }
   }

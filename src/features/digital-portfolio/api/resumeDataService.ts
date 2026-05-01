@@ -51,7 +51,6 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
         if (error) throw error;
         results.saved.education = data?.length || 0;
       } catch (error) {
-        console.error('Error saving education:', error);
         results.errors.push({ table: 'education', error: error.message });
       }
     }
@@ -76,7 +75,6 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
         if (error) throw error;
         results.saved.experience = data?.length || 0;
       } catch (error) {
-        console.error('Error saving experience:', error);
         results.errors.push({ table: 'experience', error: error.message });
       }
     }
@@ -124,7 +122,6 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
         if (error) throw error;
         results.saved.skills = data?.length || 0;
       } catch (error) {
-        console.error('Error saving skills:', error);
         results.errors.push({ table: 'skills', error: error.message });
       }
     }
@@ -153,7 +150,6 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
         if (error) throw error;
         results.saved.certificates = data?.length || 0;
       } catch (error) {
-        console.error('Error saving certificates:', error);
         results.errors.push({ table: 'certificates', error: error.message });
       }
     }
@@ -182,7 +178,6 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
         if (error) throw error;
         results.saved.projects = data?.length || 0;
       } catch (error) {
-        console.error('Error saving projects:', error);
         results.errors.push({ table: 'projects', error: error.message });
       }
     }
@@ -207,7 +202,6 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
         if (error) throw error;
         results.saved.trainings = data?.length || 0;
       } catch (error) {
-        console.error('Error saving trainings:', error);
         results.errors.push({ table: 'trainings', error: error.message });
       }
     }
@@ -239,7 +233,6 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
         if (error) throw error;
       }
     } catch (error) {
-      console.error('Error updating student profile:', error);
       results.errors.push({ table: 'students', error: error.message });
     }
 
@@ -250,7 +243,6 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
 
     return results;
   } catch (error) {
-    console.error('Error in saveResumeToTables:', error);
     return {
       success: false,
       error: error.message,
@@ -285,7 +277,6 @@ export const getResumeDataSummary = async (studentId) => {
       trainings: trainings.data || []
     };
   } catch (error) {
-    console.error('Error fetching resume data summary:', error);
     return null;
   }
 };

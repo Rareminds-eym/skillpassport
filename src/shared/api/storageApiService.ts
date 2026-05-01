@@ -11,39 +11,6 @@ const logger = getLogger('storage-api');
 
 const API_URL = getApiUrl('storage');
 
-function ensureErrorObject(err: unknown): Error {
-  // Fast path: Error instance
-  if (err instanceof Error) return err;
-
-  // String errors
-  if (typeof err === 'string') {
-    const trimmed = err.trim();
-    return new Error(trimmed || 'Unknown error occurred');
-  }
-
-  // Null/undefined - explicit fail-safe
-  if (err === null || err === undefined) {
-    return new Error('Unknown error occurred');
-  }
-
-  // Error-like objects with message property - use type narrowing instead of 'as'
-  if (typeof err === 'object' && 'message' in err) {
-    const msg = (err as { message?: unknown }).message;
-    if (typeof msg === 'string') {
-      const trimmed = msg.trim();
-      return new Error(trimmed || 'Unknown error occurred');
-    }
-  }
-
-  // Fallback: attempt string conversion
-  try {
-    const stringified = String(err);
-    return new Error(stringified && stringified.length > 0 ? stringified : 'Unknown error occurred');
-  } catch {
-    return new Error('Unknown error occurred');
-  }
-}
-
 /**
  * Get authentication token from current session
  */
@@ -52,15 +19,13 @@ async function getAuthToken(): Promise<string | null> {
     const { data: { session }, error } = await supabase.auth.getSession();
 
     if (error) {
-      const errorObj = ensureErrorObject(error);
-      logger.error('Failed to get session', errorObj);
+      logger.error('Failed to get session', error instanceof Error ? error : new Error(String(error)));
       return null;
     }
 
     return session?.access_token || null;
   } catch (error) {
-    const errorObj = ensureErrorObject(error);
-    logger.error('Error retrieving auth token', errorObj);
+    logger.error('Error retrieving auth token', error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }

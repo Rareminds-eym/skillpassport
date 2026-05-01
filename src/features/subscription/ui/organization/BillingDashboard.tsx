@@ -52,7 +52,6 @@ function BillingDashboard({
       );
       setBillingData(data);
     } catch (err) {
-      console.error('Error fetching billing data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load billing data');
     } finally {
       setIsLoading(false);
@@ -111,7 +110,6 @@ Thank you for your business!
       
       toast.success('Invoice downloaded');
     } catch (err) {
-      console.error('Error downloading invoice:', err);
       toast.error('Failed to download invoice');
     } finally {
       setDownloadingInvoice(null);

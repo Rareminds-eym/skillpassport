@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('reports-service');
 
 /**
  * College Reports & Analytics Service
@@ -71,22 +74,11 @@ const getStatus = (value: number, threshold = 90): string => {
 // Helper to get college ID from current user - matches useStudents hook logic
 const getCollegeIdForCurrentUser = async (): Promise<string | null> => {
   try {
-    console.log('🔍 [Reports] Getting college ID for current user...');
-
     // Check localStorage first (same as useStudents)
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       const userData = JSON.parse(storedUser);
-      console.log(
-        '📦 [Reports] Found user in localStorage:',
-        userData.email,
-        'role:',
-        userData.role,
-        'collegeId:',
-        userData.collegeId
-      );
       if (userData.role === 'college_admin' && userData.collegeId) {
-        console.log('✅ [Reports] Using collegeId from localStorage:', userData.collegeId);
         return userData.collegeId;
       }
     }
@@ -95,14 +87,12 @@ const getCollegeIdForCurrentUser = async (): Promise<string | null> => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    console.log('🔐 [Reports] Supabase auth user:', user?.email, 'id:', user?.id);
 
     if (user) {
       // Get user role from users table (same as useStudents)
       const { data: userRecord } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle();
 
       const userRole = userRecord?.role || null;
-      console.log('👤 [Reports] User role from database:', userRole);
 
       // Check for college admin (using unified organizations table)
       if (userRole === 'college_admin' && user.email) {
@@ -114,18 +104,10 @@ const getCollegeIdForCurrentUser = async (): Promise<string | null> => {
           .or(`admin_id.eq.${user.id},email.ilike.${user.email}`)
           .single();
 
-        console.log('🏫 [Reports] College lookup from organizations:', college, 'error:', collegeError);
-
         if (college?.id) {
-          console.log('✅ [Reports] Found college:', college.id, college.name);
           return college.id;
-        } else {
-          // Debug: fetch all colleges to see what's available
-          const { data: allColleges } = await supabase
-            .from('organizations')
-            .select('id, name, email, admin_id')
-            .eq('organization_type', 'college');
-          console.log('📋 [Reports] All colleges in database:', allColleges);
+        } else if (collegeError) {
+          logger.error('Error looking up college in organizations', collegeError as Error, { userId: user.id, userEmail: user.email });
         }
       }
 
@@ -138,18 +120,16 @@ const getCollegeIdForCurrentUser = async (): Promise<string | null> => {
           .eq('admin_id', user.id)
           .single();
 
-        console.log('🏫 [Reports] College by admin_id lookup:', collegeByAdmin, 'error:', adminError);
-
         if (collegeByAdmin?.id) {
-          console.log('✅ [Reports] Found college by admin_id:', collegeByAdmin.id);
           return collegeByAdmin.id;
+        } else if (adminError) {
+          logger.error('Error looking up college by admin_id', adminError as Error, { userId: user.id });
         }
       }
     }
-    console.warn('⚠️ [Reports] No college ID found for current user');
     return null;
   } catch (error) {
-    console.error('❌ [Reports] Error getting college ID:', error);
+    logger.error('Error getting college ID for current user', error as Error, {});
     return null;
   }
 };
@@ -161,11 +141,9 @@ export const reportsService = {
 
       // Get college ID - use provided or fetch from current user
       let collegeId = filters.collegeId;
-      console.log('📊 [Reports] getAttendanceReport called with collegeId from filters:', collegeId);
-      
+
       if (!collegeId) {
         collegeId = (await getCollegeIdForCurrentUser()) || '';
-        console.log('📊 [Reports] Got collegeId from current user:', collegeId);
       }
 
       // Query students
@@ -174,20 +152,16 @@ export const reportsService = {
         .select('id, college_id');
 
       if (collegeId) {
-        console.log('📊 [Reports] Filtering students by college_id:', collegeId);
         studentsQuery = studentsQuery.eq('college_id', collegeId);
-      } else {
-        console.warn('⚠️ [Reports] No collegeId - will fetch ALL students');
       }
 
       const { data: students, error: studentsError } = await studentsQuery;
 
       if (studentsError) {
-        console.error('❌ [Reports] Error fetching students:', studentsError);
+        logger.error('Error fetching students for attendance report', studentsError as Error, { collegeId });
       }
-      
+
       const totalStudents = students?.length || 0;
-      console.log('✅ [Reports] Found', totalStudents, 'students for college:', collegeId);
 
       // ✅ NOW CONNECTED: Fetch real attendance data from college_attendance_records (Attendance Tracking)
       let recordsQuery = supabase
@@ -215,26 +189,21 @@ export const reportsService = {
         
         if (sessionIds.length > 0) {
           recordsQuery = recordsQuery.in('session_id', sessionIds);
-        } else {
-          // No sessions for this college, return empty data
-          console.log('⚠️ [Reports] No attendance sessions found for college:', collegeId);
         }
       }
 
       const { data: attendanceRecords, error: recordsError } = await recordsQuery;
-      
+
       if (recordsError) {
-        console.error('❌ [Reports] Error fetching attendance records:', recordsError);
+        logger.error('Error fetching attendance records', recordsError as Error, { collegeId });
       }
-      
+
       const totalRecords = attendanceRecords?.length || 0;
       // Count present, late, and excused as "attended"
       const presentCount = attendanceRecords?.filter(
         a => a.status === 'present' || a.status === 'late' || a.status === 'excused'
       ).length || 0;
       const hasRealData = totalRecords > 0;
-
-      console.log('📊 [Reports] Attendance records from tracking system:', totalRecords, 'Attended:', presentCount);
 
       // Calculate monthly attendance
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -261,12 +230,10 @@ export const reportsService = {
         });
 
         attendanceRate = Math.round((presentCount / totalRecords) * 100);
-        console.log('✅ [Reports] Using REAL attendance data - Rate:', attendanceRate + '%');
       } else {
         // No data - show zeros
         chartValues = months.map(() => 0);
         attendanceRate = 0;
-        console.log('⚠️ [Reports] No attendance data - showing zeros');
       }
 
       // Fetch departments
@@ -331,7 +298,7 @@ export const reportsService = {
         tableData
       };
     } catch (error) {
-      console.error('Error fetching attendance report:', error);
+      logger.error('Error fetching attendance report', error as Error, { collegeId: filters.collegeId });
       throw error;
     }
   },
@@ -428,7 +395,7 @@ export const reportsService = {
         tableData
       };
     } catch (error) {
-      console.error('Error fetching performance report:', error);
+      logger.error('Error fetching performance report', error as Error, { collegeId: filters.collegeId });
       throw error;
     }
   },
@@ -480,13 +447,13 @@ export const reportsService = {
           .select('id');
 
         if (companiesError) {
-          console.warn('⚠️ [Reports] Companies table error:', companiesError.message);
+          logger.error('Error fetching companies', companiesError as Error, { collegeId });
           uniqueCompanies = 0;
         } else {
           uniqueCompanies = companies?.length || 0;
         }
       } catch (error) {
-        console.warn('⚠️ [Reports] Could not fetch companies:', error);
+        logger.error('Error in companies table fetch', error as Error, { collegeId });
         uniqueCompanies = 0;
       }
 
@@ -505,9 +472,9 @@ export const reportsService = {
       }
 
       const { data: placementOffers, error: offersError } = await offersQuery;
-      
+
       if (offersError) {
-        console.warn('⚠️ [Reports] Placement offers table error:', offersError.message);
+        logger.error('Error fetching placement offers', offersError as Error, { collegeId });
       }
       
       let avgPackage = '₹0';
@@ -573,7 +540,7 @@ export const reportsService = {
         tableData
       };
     } catch (error) {
-      console.error('Error fetching placement report:', error);
+      logger.error('Error fetching placement report', error as Error, { collegeId: filters.collegeId });
       throw error;
     }
   },
@@ -610,7 +577,7 @@ export const reportsService = {
       const { data: enrollments, error: enrollmentsError } = await enrollmentsQuery;
 
       if (enrollmentsError) {
-        console.warn('⚠️ [Reports] Course enrollments error:', enrollmentsError.message);
+        logger.error('Error fetching course enrollments', enrollmentsError as Error, { collegeId });
       }
 
       const totalEnrollments = enrollments?.length || 0;
@@ -619,9 +586,9 @@ export const reportsService = {
       const completionRate = totalEnrollments > 0 ? Math.round((completedCount / totalEnrollments) * 100) : 0;
 
       const { data: courses, error: coursesError } = await supabase.from('courses').select('id, title, category');
-      
+
       if (coursesError) {
-        console.warn('⚠️ [Reports] Courses table error:', coursesError.message);
+        logger.error('Error fetching courses', coursesError as Error, { collegeId });
       }
       
       const totalCourses = courses?.length || 0;
@@ -656,7 +623,7 @@ export const reportsService = {
         tableData
       };
     } catch (error) {
-      console.error('Error fetching skill analytics report:', error);
+      logger.error('Error fetching skill analytics report', error as Error, { collegeId: filters.collegeId });
       throw error;
     }
   },
@@ -727,7 +694,7 @@ export const reportsService = {
         tableData
       };
     } catch (error) {
-      console.error('Error fetching budget report:', error);
+      logger.error('Error fetching budget report', error as Error, { collegeId: filters.collegeId });
       throw error;
     }
   },
@@ -786,7 +753,7 @@ export const reportsService = {
         tableData
       };
     } catch (error) {
-      console.error('Error fetching exam progress report:', error);
+      logger.error('Error fetching exam progress report', error as Error, { collegeId: filters.collegeId });
       throw error;
     }
   },
@@ -805,7 +772,7 @@ export const reportsService = {
       if (error) throw error;
       return data || [];
     } catch (error) {
-      console.error('Error fetching departments:', error);
+      logger.error('Error fetching departments', error as Error, { collegeId });
       return [];
     }
   }

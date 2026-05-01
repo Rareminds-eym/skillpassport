@@ -5,6 +5,9 @@
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { careerApiService } from '@/features/counselling';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('career-worker-service');
 
 export interface CareerChatResult {
   success: boolean;
@@ -37,11 +40,9 @@ export async function streamCareerChat(
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
     if (sessionError || !session) {
-      console.error('Auth error:', sessionError);
+      logger.error('Authentication failed for career AI service', sessionError as Error);
       return { success: false, error: 'Please log in to use Career AI' };
     }
-
-    console.log('🚀 Calling Career AI Worker');
 
     let result: CareerChatResult = { success: true };
 
@@ -64,7 +65,7 @@ export async function streamCareerChat(
           resolve();
         },
         (error) => {
-          console.error('Career AI service error:', error);
+          logger.error('Career AI service request failed', error as Error);
           result.success = false;
           result.error = error.message;
           resolve();
@@ -73,11 +74,10 @@ export async function streamCareerChat(
       );
     });
 
-    console.log('✅ Career AI stream complete:', result);
     return result;
 
   } catch (error: any) {
-    console.error('❌ Career AI stream error:', error);
+    logger.error('Career AI stream processing failed', error as Error);
     return {
       success: false,
       error: error.message || 'Failed to connect to Career AI service'

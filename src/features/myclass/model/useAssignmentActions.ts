@@ -69,7 +69,6 @@ export const useAssignmentActions = ({
       onNotification('success', 'Status Updated',
         `Assignment status changed to ${statusLabels[newStatus] || newStatus}`);
     } catch (error) {
-      console.error('Error updating status:', error);
       onNotification('error', 'Update Failed',
         'Failed to update assignment status. Please try again.');
     }
@@ -115,7 +114,6 @@ export const useAssignmentActions = ({
         setIsUploading(false);
       }, 1000);
     } catch (error: any) {
-      console.error('Upload failed:', error);
       const errorMessage = getUploadErrorMessage(error);
       onNotification('error', 'Upload Failed', errorMessage);
       setIsUploading(false);
@@ -129,7 +127,6 @@ export const useAssignmentActions = ({
     try {
       return await getAssignmentWithFiles(studentId, assignmentId);
     } catch (error) {
-      console.error('Error loading assignment details:', error);
       throw error;
     }
   }, [studentId]);

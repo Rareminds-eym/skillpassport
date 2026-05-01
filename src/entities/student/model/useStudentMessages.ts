@@ -346,12 +346,10 @@ export const useStudentConversations = (studentId: string | null, enabled = true
         },
         (payload) => {
           const updatedConv = payload.new as any;
-          console.log('🔄 Realtime UPDATE detected:', updatedConv);
 
           // CRITICAL: Ignore updates for conversations that were deleted
           // This prevents re-fetching deleted conversations back into the cache
           if (updatedConv.deleted_by_student || updatedConv.deleted_by_recruiter) {
-            console.log('❌ Ignoring UPDATE for deleted conversation:', updatedConv.id);
             return; // Don't refetch
           }
 

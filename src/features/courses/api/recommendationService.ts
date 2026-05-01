@@ -21,6 +21,9 @@ import {
   MIN_SIMILARITY_THRESHOLD,
   DEFAULT_FALLBACK_SCORE
 } from './config';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('recommendation-service');
 
 /**
  * Fallback to keyword-based matching when embedding generation fails.
@@ -48,7 +51,7 @@ export const fallbackKeywordMatching = async (assessmentResults) => {
           fieldKeywords.push(...aiKeywords);
         }
       } catch (error) {
-        console.warn('Failed to get AI keywords for fallback, using pattern matching');
+        // Continue with pattern matching if AI keywords fail
       }
     }
 
@@ -134,7 +137,7 @@ export const fallbackKeywordMatching = async (assessmentResults) => {
       .slice(0, MAX_RECOMMENDATIONS)
       .map(({ _matchCount, _fieldMatchCount, ...course }) => course);
   } catch (error) {
-    console.error('Fallback keyword matching failed:', error);
+    logger.error('Fallback keyword matching failed', error instanceof Error ? error : new Error(String(error)));
     return [];
   }
 };
@@ -150,7 +153,6 @@ export const fallbackKeywordMatching = async (assessmentResults) => {
  */
 export const getRecommendedCourses = async (assessmentResults) => {
   if (!assessmentResults) {
-    console.warn('No assessment results provided for course recommendations');
     return [];
   }
 
@@ -160,7 +162,6 @@ export const getRecommendedCourses = async (assessmentResults) => {
     try {
       profileText = buildProfileText(assessmentResults);
     } catch (error) {
-      console.warn('Failed to build profile text:', error.message);
       return [];
     }
 
@@ -169,7 +170,7 @@ export const getRecommendedCourses = async (assessmentResults) => {
     try {
       profileEmbedding = await generateEmbedding(profileText);
     } catch (error) {
-      console.error('Failed to generate profile embedding:', error.message);
+      logger.error('Failed to generate profile embedding', error instanceof Error ? error : new Error(String(error)));
       // Fall back to keyword-based matching if embedding fails
       return await fallbackKeywordMatching(assessmentResults);
     }
@@ -214,7 +215,7 @@ export const getRecommendedCourses = async (assessmentResults) => {
 
     return recommendations;
   } catch (error) {
-    console.error('Error getting course recommendations:', error);
+    logger.error('Error getting course recommendations', error instanceof Error ? error : new Error(String(error)));
     // Return empty array on error rather than throwing
     return [];
   }
@@ -263,7 +264,7 @@ const fallbackFetchByType = async (maxPerType) => {
       }))
     };
   } catch (error) {
-    console.error('Fallback fetch by type failed:', error);
+    logger.error('Fallback fetch by type failed', error instanceof Error ? error : new Error(String(error)));
     return { technical: [], soft: [] };
   }
 };
@@ -280,7 +281,6 @@ const fallbackFetchByType = async (maxPerType) => {
  */
 export const getRecommendedCoursesByType = async (assessmentResults, maxPerType = 5) => {
   if (!assessmentResults) {
-    console.warn('No assessment results provided');
     return { technical: [], soft: [] };
   }
 
@@ -290,7 +290,6 @@ export const getRecommendedCoursesByType = async (assessmentResults, maxPerType 
     try {
       profileText = buildProfileText(assessmentResults);
     } catch (error) {
-      console.warn('Failed to build profile text:', error.message);
       return { technical: [], soft: [] };
     }
 
@@ -299,7 +298,7 @@ export const getRecommendedCoursesByType = async (assessmentResults, maxPerType 
     try {
       profileEmbedding = await generateEmbedding(profileText);
     } catch (error) {
-      console.error('Failed to generate profile embedding:', error.message);
+      logger.error('Failed to generate profile embedding', error instanceof Error ? error : new Error(String(error)));
       // Fallback to simple fetch without similarity ranking
       return await fallbackFetchByType(maxPerType);
     }
@@ -365,7 +364,7 @@ export const getRecommendedCoursesByType = async (assessmentResults, maxPerType 
       soft: rankedSoft
     };
   } catch (error) {
-    console.error('Error getting courses by type:', error);
+    logger.error('Error getting courses by type', error instanceof Error ? error : new Error(String(error)));
     return { technical: [], soft: [] };
   }
 };

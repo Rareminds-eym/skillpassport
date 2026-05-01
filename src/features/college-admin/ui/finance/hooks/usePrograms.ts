@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from '@/shared/api/supabaseClient';
 import { Program, Department } from '@/features/student-profile/model';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('programs');
 
 export const usePrograms = (collegeId: string | null) => {
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -56,7 +59,7 @@ export const usePrograms = (collegeId: string | null) => {
         setPrograms(progs || []);
       }
     } catch (err) {
-      console.error("Failed to load departments and programs:", err);
+      logger.error("Failed to load departments and programs", err instanceof Error ? err : new Error(String(err)));
       setDepartments([]);
       setPrograms([]);
     } finally {

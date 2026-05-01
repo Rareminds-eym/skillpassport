@@ -1,5 +1,8 @@
 import { supabase } from '@/shared/api/supabaseClient';
 import { StudentProfile, TechnicalSkill, Experience } from '@/features/student-profile/model';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('profile-service');
 
 /**
  * Profile Service
@@ -16,20 +19,15 @@ export async function fetchStudentProfile(studentId: string): Promise<StudentPro
       .single();
 
     if (studentError || !student) {
-      console.error('Error fetching student:', studentError);
+      logger.error('Error fetching student profile', studentError instanceof Error ? studentError : new Error(String(studentError)), {
+        studentId,
+        hasError: !!studentError
+      });
       return null;
     }
 
     // Parse the JSONB profile column
     const profileData = student.profile || {};
-    
-    console.log('📦 Raw profile data:', {
-      hasProfile: !!student.profile,
-      education: profileData.education?.length || 0,
-      training: profileData.training?.length || 0,
-      projects: profileData.projects?.length || 0,
-      softSkills: profileData.softSkills?.length || 0
-    });
 
     // Extract department from education or profile
     const department = profileData.education?.[0]?.department || 
@@ -108,7 +106,9 @@ export async function fetchStudentProfile(studentId: string): Promise<StudentPro
       }
     };
   } catch (error) {
-    console.error('Error in fetchStudentProfile:', error);
+    logger.error('Exception in fetchStudentProfile', error instanceof Error ? error : new Error(String(error)), {
+      studentId
+    });
     return null;
   }
 }
@@ -118,8 +118,6 @@ export async function fetchStudentProfile(studentId: string): Promise<StudentPro
  */
 export async function fetchOpportunities(): Promise<any[]> {
   try {
-    console.log('📊 Fetching opportunities from database...');
-    
     // Fetch ALL jobs (don't filter by is_active since many jobs may have it as false/null)
     const { data, error } = await supabase
       .from('opportunities')
@@ -128,22 +126,17 @@ export async function fetchOpportunities(): Promise<any[]> {
       .limit(50); // Fetch up to 50 recent jobs
 
     if (error) {
-      console.error('❌ Error fetching opportunities:', error);
+      logger.error('Error fetching opportunities from database', error instanceof Error ? error : new Error(String(error)), {
+        operation: 'fetchOpportunities'
+      });
       return [];
-    }
-
-    console.log(`✅ Found ${data?.length || 0} total opportunities in database`);
-    
-    if (data && data.length > 0) {
-      const activeCount = data.filter(j => j.is_active === true).length;
-      console.log(`📊 Active jobs: ${activeCount} | Total: ${data.length}`);
-    } else {
-      console.warn('⚠️ No jobs found in database. Please add some opportunities!');
     }
 
     return data || [];
   } catch (error) {
-    console.error('❌ Error in fetchOpportunities:', error);
+    logger.error('Exception in fetchOpportunities', error instanceof Error ? error : new Error(String(error)), {
+      operation: 'fetchOpportunities'
+    });
     return [];
   }
 }

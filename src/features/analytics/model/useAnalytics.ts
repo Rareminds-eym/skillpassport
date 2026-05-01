@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
 import { useUser } from '@/shared/model/authStore';
+import { getLogger } from '@/shared/config/logging';
 
+const logger = getLogger('analytics');
 
 // Types
 export interface KPIData {
@@ -162,14 +164,9 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
           .eq('faculty_id', (user as any)?.id)
           .eq('status', 'active');
 
-        console.log('📚 Program sections found for faculty:', programSections?.length || 0);
-
         if (!programSections || programSections.length === 0) {
-          console.log('No program sections assigned to this faculty');
           return [];
         }
-
-        console.log('📋 Program sections:', programSections);
 
         // Get students using EXACT same filtering as Dashboard
         // Build OR conditions for each program section (program_id + semester + section)
@@ -186,24 +183,10 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
           `and(program_id.eq.${section.program_id},semester.eq.${section.semester},section.eq.${section.section})`
         ).join(',');
 
-        console.log('🔍 Applying exact filtering conditions:', orConditions);
-
         // Use the or() method to combine all conditions
         studentsQuery = studentsQuery.or(orConditions);
 
         const { data: collegeStudents } = await studentsQuery;
-
-        console.log('👥 Students found in program sections:', collegeStudents?.length || 0);
-        
-        // Log student names and verify they're college students
-        if (collegeStudents && collegeStudents.length > 0) {
-          console.log('📝 Student names in faculty sections:');
-          collegeStudents.forEach((student, index) => {
-            const type = student.school_id ? '⚠️ SCHOOL' : '✅ COLLEGE';
-            const hasStudentId = student.student_id ? '✅' : '❌ NO STUDENT_ID';
-            console.log(`  ${index + 1}. ${student.name || 'Unknown'} (${type}) ${hasStudentId} (Program: ${student.program_id}, Sem: ${student.semester}, Sec: ${student.section})`);
-          });
-        }
 
         // Filter out null user_ids, school students, and students without student_id
         return collegeStudents
@@ -213,7 +196,7 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
       
       return [];
     } catch (error) {
-      console.error('Error getting filtered student IDs:', error);
+      logger.error('Error getting filtered student IDs', error instanceof Error ? error : new Error(String(error)));
       return [];
     }
   };
@@ -280,7 +263,7 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
       
       return [];
     } catch (error) {
-      console.error('Error getting filtered student record IDs:', error);
+      logger.error('Error getting filtered student record IDs', error instanceof Error ? error : new Error(String(error)));
       return [];
     }
   };
@@ -288,29 +271,10 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
   // Fetch KPI Data
   const fetchKPIData = async () => {
     try {
-      console.log('📊 [Analytics KPI] Starting KPI data fetch with options:', {
-        educatorType,
-        schoolId,
-        collegeId,
-        educatorRole,
-        assignedClassIds,
-        userId: (user as any)?.id
-      });
-
       // Get filtered student IDs based on educator type and assignments
       const studentIds = await getFilteredStudentIds();
-      
-      console.log('📊 [Analytics KPI] Filtered student IDs:', {
-        count: studentIds.length,
-        studentIds: studentIds,
-        educatorType,
-        schoolId,
-        collegeId,
-        assignedClassIds
-      });
-      
+
       if (studentIds.length === 0) {
-        console.log('⚠️ [Active Students] No students found for this educator');
         setKpiData({
           activeStudents: 0,
           totalVerifiedActivities: 0,
@@ -376,13 +340,6 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
       // Calculate active students: students who have at least one activity (project, certificate, training, or skill)
       const activeStudentSet = new Set<string>();
       
-      console.log('📊 [Active Students] Activity data fetched:', {
-        skills: allSkills?.length || 0,
-        projects: projectStudents?.length || 0,
-        certificates: certStudents?.length || 0,
-        trainings: trainingStudents?.length || 0
-      });
-      
       // Add students with skills
       (allSkills as Array<{ student_id: string }> | null)?.forEach(skill => {
         if (skill.student_id) activeStudentSet.add(skill.student_id);
@@ -404,26 +361,6 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
       });
 
       const activeStudents = activeStudentSet.size;
-      
-      console.log('✅ [Active Students] Final count:', {
-        activeStudents: activeStudents,
-        uniqueStudentIds: Array.from(activeStudentSet)
-      });
-
-      // Fetch and log active student names
-      if (activeStudents > 0) {
-        const { data: activeStudentDetails } = await supabase
-          .from('students')
-          .select('user_id, name, student_id')
-          .in('user_id', Array.from(activeStudentSet));
-
-        if (activeStudentDetails && activeStudentDetails.length > 0) {
-          console.log('👥 Active student names (students with activities):');
-          activeStudentDetails.forEach((student, index) => {
-            console.log(`  ${index + 1}. ${student.name || 'Unknown'} (ID: ${student.student_id || student.user_id})`);
-          });
-        }
-      }
 
       // Calculate totals to match Activities page logic
       const totalApproved = (approvedProjects || 0) + (approvedCerts || 0) + (approvedTrainings || 0);
@@ -436,82 +373,35 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
       let attendanceRate = 0;
       let engagementRate = 0;
 
-      console.log('📊 [Analytics KPI] Fetching attendance data:', {
-        educatorType,
-        schoolId,
-        collegeId,
-        studentIdsCount: studentIds.length
-      });
-
       if (educatorType === 'school' && studentIds.length > 0 && schoolId) {
         // Get student record IDs for attendance query
         const studentRecordIds = await getFilteredStudentRecordIds();
-        
+
         // Query attendance_records for school - filtered by school_id and student record IDs
-        const { data: attendanceRecords, error: attendanceError } = await supabase
+        const { data: attendanceRecords } = await supabase
           .from('attendance_records')
           .select('status, student_id')
           .eq('school_id', schoolId)
           .in('student_id', studentRecordIds);
 
-        console.log('📊 [Analytics KPI] School attendance query result:', {
-          recordsCount: attendanceRecords?.length || 0,
-          error: attendanceError,
-          sampleRecords: attendanceRecords?.slice(0, 3),
-          query: {
-            table: 'attendance_records',
-            school_id: schoolId,
-            student_record_ids_count: studentRecordIds.length
-          }
-        });
-
         if (attendanceRecords && attendanceRecords.length > 0) {
           const presentCount = attendanceRecords.filter(r => r.status === 'present' || r.status === 'late').length;
           attendanceRate = Math.round((presentCount / attendanceRecords.length) * 100);
-          console.log('📊 [Analytics KPI] School attendance calculated:', {
-            totalRecords: attendanceRecords.length,
-            presentCount,
-            attendanceRate
-          });
         }
       } else if (educatorType === 'college' && studentIds.length > 0 && collegeId) {
         // Get student record IDs for attendance query
         const studentRecordIds = await getFilteredStudentRecordIds();
-        
-        console.log('📊 [Analytics KPI] Using student record IDs for college attendance:', {
-          studentRecordIds: studentRecordIds.slice(0, 5),
-          totalCount: studentRecordIds.length
-        });
 
         // Query college_attendance_records for college - filtered by college_id and student record IDs
-        const { data: collegeAttendanceRecords, error: attendanceError } = await supabase
+        const { data: collegeAttendanceRecords } = await supabase
           .from('college_attendance_records')
           .select('status, student_id, date, college_id')
           .eq('college_id', collegeId)
           .in('student_id', studentRecordIds);
 
-        console.log('📊 [Analytics KPI] College attendance query result:', {
-          recordsCount: collegeAttendanceRecords?.length || 0,
-          error: attendanceError,
-          sampleRecords: collegeAttendanceRecords?.slice(0, 3),
-          query: {
-            table: 'college_attendance_records',
-            college_id: collegeId,
-            student_record_ids: studentRecordIds.slice(0, 5),
-            student_record_ids_count: studentRecordIds.length
-          }
-        });
-
         if (collegeAttendanceRecords && collegeAttendanceRecords.length > 0) {
           const presentCount = collegeAttendanceRecords.filter(r => r.status === 'present' || r.status === 'late').length;
           attendanceRate = Math.round((presentCount / collegeAttendanceRecords.length) * 100);
-          console.log('📊 [Analytics KPI] College attendance calculated:', {
-            totalRecords: collegeAttendanceRecords.length,
-            presentCount,
-            attendanceRate
-          });
-        } else {
-          console.log('⚠️ [Analytics KPI] No college attendance records found');
         }
       }
 
@@ -534,11 +424,9 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
         engagementRate: engagementRate,
       };
 
-      console.log('✅ [Analytics KPI] Final KPI data calculated:', finalKpiData);
-
       setKpiData(finalKpiData);
     } catch (error) {
-      console.error('❌ [Analytics KPI] Error fetching KPI data:', error);
+      logger.error('Error fetching KPI data', error instanceof Error ? error : new Error(String(error)));
     }
   };
 
@@ -609,34 +497,24 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
 
       setSkillSummary(summary);
     } catch (error) {
-      console.error('Error fetching skill summary:', error);
+      logger.error('Error fetching skill summary', error instanceof Error ? error : new Error(String(error)));
     }
   };
 
   // Fetch Attendance Data (Last 6 Months)
   const fetchAttendanceData = async () => {
     try {
-      console.log('📊 [Analytics Attendance] Starting attendance data fetch');
-
       // Get filtered student IDs based on educator type and assignments
       const studentIds = await getFilteredStudentIds();
-      
-      console.log('📊 [Analytics Attendance] Student IDs:', {
-        count: studentIds.length,
-        educatorType,
-        schoolId,
-        collegeId
-      });
 
       if (studentIds.length === 0) {
-        console.log('⚠️ [Analytics Attendance] No students found, returning empty data');
         setAttendanceData([]);
         return;
       }
 
       const months = [];
       const now = new Date();
-      
+
       for (let i = 5; i >= 0; i--) {
         const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
         months.push({
@@ -645,61 +523,33 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
           endDate: new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59).toISOString(),
         });
       }
-      
-      console.log('📊 [Analytics Attendance] Fetching data for months:', months.map(m => m.label));
 
       // Query real attendance data from database (filtered by school/college and educator's students)
       const attendancePromises = months.map(async month => {
         let attendanceRecords: Array<{ status: string; date: string; student_id: string }> = [];
 
         if (educatorType === 'school' && schoolId) {
-          // Get student record IDs
           const studentRecordIds = await getFilteredStudentRecordIds();
-          
-          // Query attendance_records for school - filtered by school_id and student record IDs
-          const { data, error } = await supabase
+
+          const { data } = await supabase
             .from('attendance_records')
             .select('status, date, student_id')
             .eq('school_id', schoolId)
             .in('student_id', studentRecordIds)
             .gte('date', month.startDate)
             .lte('date', month.endDate);
-          
-          console.log(`📊 [Analytics Attendance] School data for ${month.label}:`, {
-            recordsCount: data?.length || 0,
-            error,
-            query: {
-              table: 'attendance_records',
-              school_id: schoolId,
-              dateRange: `${month.startDate} to ${month.endDate}`
-            }
-          });
 
           attendanceRecords = data || [];
         } else if (educatorType === 'college' && collegeId) {
-          // Get student record IDs
           const studentRecordIds = await getFilteredStudentRecordIds();
-          
-          // Query college_attendance_records for college - filtered by college_id and student record IDs
-          const { data, error } = await supabase
+
+          const { data } = await supabase
             .from('college_attendance_records')
             .select('status, date, student_id')
             .eq('college_id', collegeId)
             .in('student_id', studentRecordIds)
             .gte('date', month.startDate)
             .lte('date', month.endDate);
-          
-          console.log(`📊 [Analytics Attendance] College data for ${month.label}:`, {
-            recordsCount: data?.length || 0,
-            error,
-            sampleRecords: data?.slice(0, 2),
-            query: {
-              table: 'college_attendance_records',
-              college_id: collegeId,
-              student_record_ids_count: studentRecordIds.length,
-              dateRange: `${month.startDate} to ${month.endDate}`
-            }
-          });
 
           attendanceRecords = data || [];
         }
@@ -707,13 +557,6 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
         const present = attendanceRecords.filter(r => r.status === 'present').length;
         const absent = attendanceRecords.filter(r => r.status === 'absent').length;
         const late = attendanceRecords.filter(r => r.status === 'late').length;
-
-        console.log(`📊 [Analytics Attendance] ${month.label} summary:`, {
-          present,
-          absent,
-          late,
-          total: attendanceRecords.length
-        });
 
         return {
           month: month.label,
@@ -724,20 +567,9 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
       });
 
       const data = await Promise.all(attendancePromises);
-      console.log('✅ [Analytics Attendance] Final attendance data:', data);
       setAttendanceData(data);
-
-      // COMMENTED OUT: Old dummy/static data generation
-      // const dummyData = months.map(month => ({
-      //   month: month.label,
-      //   present: Math.floor(Math.random() * 30) + 20,
-      //   absent: Math.floor(Math.random() * 10) + 2,
-      //   late: Math.floor(Math.random() * 8) + 1,
-      // }));
-      // setAttendanceData(dummyData);
-
     } catch (error) {
-      console.error('❌ [Analytics Attendance] Error fetching attendance data:', error);
+      logger.error('Error fetching attendance data', error instanceof Error ? error : new Error(String(error)));
       setAttendanceData([]);
     }
   };
@@ -834,7 +666,7 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
 
       setSkillGrowthData(data);
     } catch (error) {
-      console.error('Error fetching skill growth data:', error);
+      logger.error('Error fetching skill growth data', error instanceof Error ? error : new Error(String(error)));
     }
   };
 
@@ -875,7 +707,6 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
           .eq('status', 'active');
 
         if (!programSections || programSections.length === 0) {
-          console.log('No program sections assigned to this faculty');
           setLeaderboard([]);
           return;
         }
@@ -898,35 +729,16 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
         return;
       }
 
-      const { data: students, error: studentsError } = await studentsQuery;
-
-      console.log('📊 [Leaderboard] Students query result:', {
-        returned: students?.length || 0,
-        error: studentsError,
-        sampleStudents: students?.slice(0, 3).map(s => ({ name: s.name, user_id: s.user_id, student_id: s.student_id }))
-      });
+      const { data: students } = await studentsQuery;
 
       if (!students || students.length === 0) {
-        console.log('⚠️ [Leaderboard] No students returned from query, returning empty leaderboard');
         setLeaderboard([]);
         return;
       }
 
-      console.log('📊 [Leaderboard] All students in leaderboard:');
-      students.forEach((s, idx) => {
-        console.log(`  ${idx + 1}. ${s.name || 'Unknown'} (user_id: ${s.user_id || 'NONE'}, student_id: ${s.student_id})`);
-      });
-      
       // Use user_id for students that have it, otherwise use id
       // This ensures we include ALL students from educator's sections
       const studentUserIds = students.map(s => s.user_id || s.id).filter(id => id != null);
-      
-      console.log('📊 [Leaderboard] Student IDs for activity queries:', {
-        total: students.length,
-        withUserId: students.filter(s => s.user_id).length,
-        withoutUserId: students.filter(s => !s.user_id).length,
-        studentUserIds: studentUserIds
-      });
       
       const buildQuery = (table: string, select: string) => {
         return supabase.from(table).select(select)
@@ -935,47 +747,18 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
       };
 
       const [
-        skillsResult,
         projectsResult,
         certificatesResult,
         trainingsResult,
       ] = await Promise.all([
-        supabase.from('skills').select('student_id, verified, enabled')
-          .in('student_id', studentUserIds)
-          .eq('enabled', true),
         buildQuery('projects', 'student_id, approval_status'),
         buildQuery('certificates', 'student_id, approval_status'),
         buildQuery('trainings', 'student_id, approval_status'),
       ]);
 
-      const skills = skillsResult.data || [];
       const projects = projectsResult.data || [];
       const certificates = certificatesResult.data || [];
       const trainings = trainingsResult.data || [];
-
-      // Log all unique approval statuses to debug
-      const projectStatuses = new Set(projects.map((p: any) => p.approval_status));
-      const certStatuses = new Set(certificates.map((c: any) => c.approval_status));
-      const trainingStatuses = new Set(trainings.map((t: any) => t.approval_status));
-
-      console.log('📊 [Leaderboard] Activities fetched:', {
-        skills: skills.length,
-        projects: projects.length,
-        certificates: certificates.length,
-        trainings: trainings.length,
-        projectStatuses: Array.from(projectStatuses),
-        certStatuses: Array.from(certStatuses),
-        trainingStatuses: Array.from(trainingStatuses),
-        projectsWithSentToAdmin: projects.filter((p: any) => p.approval_status === 'sent_to_admin').length,
-        projectsWithApproved: projects.filter((p: any) => p.approval_status === 'approved').length,
-        projectsWithPending: projects.filter((p: any) => p.approval_status === 'pending').length,
-        certificatesWithSentToAdmin: certificates.filter((c: any) => c.approval_status === 'sent_to_admin').length,
-        certificatesWithApproved: certificates.filter((c: any) => c.approval_status === 'approved').length,
-        certificatesWithPending: certificates.filter((c: any) => c.approval_status === 'pending').length,
-        trainingsWithSentToAdmin: trainings.filter((t: any) => t.approval_status === 'sent_to_admin').length,
-        trainingsWithApproved: trainings.filter((t: any) => t.approval_status === 'approved').length,
-        trainingsWithPending: trainings.filter((t: any) => t.approval_status === 'pending').length,
-      });
 
       // Initialize activity map for ALL students (using user_id or id as key)
       const activityMap: Record<string, { total: number; verified: number }> = {};
@@ -1010,28 +793,16 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
             progress: total > 0 ? Math.round((verified / total) * 100) : 0,
           };
         })
-        .sort((a, b) => 
-          b.verifiedActivities !== a.verifiedActivities 
-            ? b.verifiedActivities - a.verifiedActivities 
+        .sort((a, b) =>
+          b.verifiedActivities !== a.verifiedActivities
+            ? b.verifiedActivities - a.verifiedActivities
             : b.totalActivities - a.totalActivities
         )
         .map((entry, index) => ({ ...entry, rank: index + 1 }));
 
-      console.log('✅ [Leaderboard] Final leaderboard:', {
-        totalStudents: leaderboardData.length,
-        studentsWithActivities: leaderboardData.filter(s => s.totalActivities > 0).length,
-        studentsWithoutActivities: leaderboardData.filter(s => s.totalActivities === 0).length,
-        topStudents: leaderboardData.slice(0, 5).map(s => ({ name: s.studentName, activities: s.totalActivities }))
-      });
-
-      console.log('📋 [Leaderboard] Complete leaderboard entries:');
-      leaderboardData.forEach(entry => {
-        console.log(`  ${entry.rank}. ${entry.studentName} - Activities: ${entry.totalActivities}, Verified: ${entry.verifiedActivities}`);
-      });
-
       setLeaderboard(leaderboardData);
     } catch (error) {
-      console.error('Error fetching leaderboard data:', error);
+      logger.error('Error fetching leaderboard data', error instanceof Error ? error : new Error(String(error)));
     }
   };
 
@@ -1096,7 +867,7 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
 
       setActivityHeatmap(heatmapData);
     } catch (error) {
-      console.error('Error fetching activity heatmap:', error);
+      logger.error('Error fetching activity heatmap', error instanceof Error ? error : new Error(String(error)));
     }
   };
 
@@ -1148,7 +919,7 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
 
       setCertificateStats(certificateStatsArray);
     } catch (error) {
-      console.error('Error fetching certificate stats:', error);
+      logger.error('Error fetching certificate stats', error instanceof Error ? error : new Error(String(error)));
     }
   };
 
@@ -1207,7 +978,7 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
 
       setAssignmentStats(assignmentStatsArray);
     } catch (error) {
-      console.error('Error fetching assignment stats:', error);
+      logger.error('Error fetching assignment stats', error instanceof Error ? error : new Error(String(error)));
     }
   };
 
@@ -1304,7 +1075,7 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
 
       setAssignmentDetails(detailsArray);
     } catch (error) {
-      console.error('Error fetching assignment details:', error);
+      logger.error('Error fetching assignment details', error instanceof Error ? error : new Error(String(error)));
     }
   };
 
@@ -1352,7 +1123,7 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
 
       setTopSkills(skillsArray);
     } catch (error) {
-      console.error('Error fetching top skills:', error);
+      logger.error('Error fetching top skills', error instanceof Error ? error : new Error(String(error)));
     }
   };
 
@@ -1373,9 +1144,8 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
         fetchAssignmentDetails(),
         fetchTopSkills(),
       ]);
-      
     } catch (error) {
-      console.error('Error fetching analytics data:', error);
+      logger.error('Error fetching analytics data', error instanceof Error ? error : new Error(String(error)));
     } finally {
       setLoading(false);
       setRefreshing(false);

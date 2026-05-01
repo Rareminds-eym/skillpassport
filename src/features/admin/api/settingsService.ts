@@ -1,6 +1,9 @@
 import { supabase } from '@/shared/api/supabaseClient';
 import type { Module, Permission, RolePermission, Role, ModuleAccess, ScopeRule } from '../model/types';
 import { formatRoleName } from '../lib/formatters';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('settings-service');
 
 /**
  * Fetch all available modules
@@ -16,7 +19,7 @@ export const getAvailableModules = async (): Promise<Module[]> => {
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('Error fetching modules:', error);
+    logger.error('Fetch modules failed', error instanceof Error ? error : new Error(String(error)));
     return [];
   }
 };
@@ -34,7 +37,7 @@ export const getAvailablePermissions = async (): Promise<Permission[]> => {
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('Error fetching permissions:', error);
+    logger.error('Fetch permissions failed', error instanceof Error ? error : new Error(String(error)));
     return [];
   }
 };
@@ -125,7 +128,7 @@ export const getRolesWithPermissions = async (): Promise<Role[]> => {
 
     return Array.from(roleMap.values());
   } catch (error) {
-    console.error('Error fetching roles with permissions:', error);
+    logger.error('Fetch roles with permissions failed', error instanceof Error ? error : new Error(String(error)));
     return [];
   }
 };
@@ -219,7 +222,7 @@ export const saveRolePermissions = async (
 
     return true;
   } catch (error) {
-    console.error('Error saving role permissions:', error);
+    logger.error('Save role permissions failed', error instanceof Error ? error : new Error(String(error)), { roleType });
     return false;
   }
 };
@@ -238,7 +241,7 @@ export const getDepartments = async (): Promise<{ id: string; name: string; code
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('Error fetching departments:', error);
+    logger.error('Fetch departments failed', error instanceof Error ? error : new Error(String(error)));
     return [];
   }
 };
@@ -257,7 +260,7 @@ export const getPrograms = async (): Promise<{ id: string; name: string; code: s
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('Error fetching programs:', error);
+    logger.error('Fetch programs failed', error instanceof Error ? error : new Error(String(error)));
     return [];
   }
 };

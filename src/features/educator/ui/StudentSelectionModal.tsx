@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon, MagnifyingGlassIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('StudentSelectionModal');
 
 interface Student {
     id: string;
@@ -63,7 +66,7 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
                 setClassNames(names);
             }
         } catch (error) {
-            console.error('Error fetching class names:', error);
+            logger.error('Failed to fetch class names', error as Error);
         }
     };
 
@@ -91,16 +94,16 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
                 .eq('is_deleted', false);
 
             if (error) {
-                console.error('Error fetching assigned students:', error);
+                logger.error('Failed to fetch assigned students', error as Error);
                 return;
             }
 
             // Pre-select already assigned students
             const assignedIds = (assignedStudents || []).map(sa => sa.student_id);
             setSelectedIds(assignedIds);
-            setInitiallyAssignedIds(assignedIds); // Track originally assigned students
+            setInitiallyAssignedIds(assignedIds);
         } catch (error) {
-            console.error('Error fetching assigned students:', error);
+            logger.error('Failed to fetch assigned students', error as Error);
         }
     };
 
@@ -142,7 +145,7 @@ const fetchStudents = async () => {
         const { data, error } = await query;
 
         if (error) {
-            console.error('Supabase query error:', error);
+            logger.error('Supabase query error', error as Error);
             throw error;
         }
 
@@ -169,7 +172,7 @@ const fetchStudents = async () => {
         
         setStudents(transformedStudents);
     } catch (error) {
-        console.error('Error fetching students:', error);
+        logger.error('Failed to fetch students', error as Error);
         alert('Failed to load students');
     } finally {
         setLoading(false);
@@ -207,9 +210,9 @@ const fetchStudents = async () => {
             const years = studentsData?.map(s => s.profile?.yearOfPassing).filter(Boolean) || [];
             const uniqueYears = [...new Set(years)];
             setYears(uniqueYears as string[]);
-            
+
         } catch (error) {
-            console.error('Error fetching filter data:', error);
+            logger.error('Failed to fetch filter data', error as Error);
         }
     };
 
@@ -241,7 +244,7 @@ const fetchStudents = async () => {
             onClose();
             setSelectedIds([]);
         } catch (error) {
-            console.error('Error assigning students:', error);
+            logger.error('Failed to assign students', error as Error);
             alert('Failed to assign students');
         } finally {
             setAssigning(false);

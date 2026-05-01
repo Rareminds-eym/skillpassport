@@ -13,6 +13,9 @@
 
 import { supabase } from '@/shared/api/supabaseClient';
 import paymentsApiService from './paymentsApiService';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('payment-verification');
 
 // Cache for verification results (5 minutes TTL)
 const verificationCache = new Map();
@@ -47,7 +50,6 @@ export const verifyPaymentSignature = async (paymentData) => {
     const cacheKey = `${razorpay_payment_id}_${razorpay_order_id}`;
     const cached = verificationCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      console.log('✅ Using cached verification result');
       return cached.result;
     }
 
@@ -71,7 +73,7 @@ export const verifyPaymentSignature = async (paymentData) => {
 
     return result;
   } catch (error) {
-    console.error('❌ Error verifying payment:', error);
+    logger.error('Error verifying payment', error);
     return {
       success: false,
       verified: false,
@@ -121,7 +123,6 @@ export const validatePaymentParams = (params) => {
  */
 export const clearVerificationCache = () => {
   verificationCache.clear();
-  console.log('✅ Verification cache cleared');
 };
 
 /**
@@ -137,24 +138,11 @@ export const logFailedTransaction = async (transactionData) => {
     const { data: { session } } = await supabase.auth.getSession();
     const userId = session?.user?.id;
 
-    // Log to console for debugging
-    console.warn('❌ Payment failed:', {
-      payment_id: razorpay_payment_id,
-      order_id: razorpay_order_id,
-      amount,
-      currency,
-      error,
-      error_description,
-      user_id: userId,
-      timestamp: new Date().toISOString()
-    });
-
     // Optionally log to database if needed
     // This can be expanded to store in a failed_transactions table
     
     return { success: true, logged: true };
   } catch (err) {
-    console.error('Error logging failed transaction:', err);
     return { success: false, logged: false, error: err.message };
   }
 };

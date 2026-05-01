@@ -4,6 +4,9 @@ import { ProgramSection, ProgramStudent, getStudentsByProgramSection, getAvailab
 import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool'
 import { usePermission } from '@/entities/user/model/usePermissions'
 import toast from 'react-hot-toast'
+import { getLogger } from '@/shared/config/logging'
+
+const logger = getLogger('manage-program-students-modal')
 
 interface ManageProgramStudentsModalProps {
   isOpen: boolean
@@ -61,12 +64,12 @@ const ManageProgramStudentsModal: React.FC<ManageProgramStudentsModalProps> = ({
     try {
       const { data, error } = await getAvailableStudentsForProgram(college.id)
       if (error) {
-        console.error('Error fetching available students:', error)
+        logger.error('Error fetching available students', new Error(error))
       } else {
         setAvailableStudents(data || [])
       }
     } catch (err) {
-      console.error('Failed to fetch available students:', err)
+      logger.error('Failed to fetch available students', err instanceof Error ? err : new Error(String(err)))
     }
   }
 
@@ -158,18 +161,6 @@ const ManageProgramStudentsModal: React.FC<ManageProgramStudentsModalProps> = ({
                   </select>
                   <button
                     onClick={() => {
-                      console.log('🎓 [ManageProgramStudentsModal] Action: Add Student Button Clicked', {
-                        module: 'Classroom Management',
-                        action: 'Add Student',
-                        permissions: {
-                          canCreate: canCreate.allowed,
-                          canEdit: canEdit.allowed
-                        },
-                        selectedStudentId: selectedStudentId,
-                        programSectionId: programSection?.id,
-                        timestamp: new Date().toISOString()
-                      });
-                      //                      alert('✅ Permission Test: Add student to program allowed for College Educator');
                       handleAddStudent();
                     }}
                     disabled={!selectedStudentId || addingStudent}
@@ -247,19 +238,6 @@ const ManageProgramStudentsModal: React.FC<ManageProgramStudentsModalProps> = ({
                       {canEdit.allowed ? (
                         <button
                           onClick={() => {
-                            console.log('🎓 [ManageProgramStudentsModal] Action: Remove Student Button Clicked', {
-                              module: 'Classroom Management',
-                              action: 'Remove Student',
-                              permissions: {
-                                canCreate: canCreate.allowed,
-                                canEdit: canEdit.allowed
-                              },
-                              studentId: student.id,
-                              studentName: student.name,
-                              programSectionId: programSection?.id,
-                              timestamp: new Date().toISOString()
-                            });
-                            alert('✅ Permission Test: Remove student from program allowed for College Educator');
                             handleRemoveStudent(student.id);
                           }}
                           className="inline-flex items-center rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 transition-all"
@@ -272,8 +250,7 @@ const ManageProgramStudentsModal: React.FC<ManageProgramStudentsModalProps> = ({
                       ) : (
                         <button
                           onClick={() => {
-                            console.log('❌ [ManageProgramStudentsModal] Action Blocked: Remove Student - No Edit Permission');
-                            alert('❌ Access Denied: You need EDIT permission to remove students');
+                            logger.warn('Access denied: User lacks EDIT permission to remove students');
                           }}
                           disabled
                           className="inline-flex items-center rounded-md border border-gray-200 bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-500 cursor-not-allowed opacity-50 blur-sm transition-all"

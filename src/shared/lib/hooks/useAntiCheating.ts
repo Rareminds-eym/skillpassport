@@ -17,6 +17,9 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('anti-cheating');
 
 interface AntiCheatingOptions {
   enabled?: boolean;
@@ -53,11 +56,8 @@ export const useAntiCheating = (options: AntiCheatingOptions | boolean = true) =
       import.meta.env.DEV;
 
     if (!enabled || isDevelopment) {
-      console.log('🔓 [Anti-Cheating] Disabled for development environment');
       return;
     }
-
-    console.log('🔒 [Anti-Cheating] Enabled for production environment');
 
     // Disable right-click context menu
     const handleContextMenu = (e: MouseEvent) => {
@@ -148,7 +148,6 @@ export const useAntiCheating = (options: AntiCheatingOptions | boolean = true) =
     const handleVisibilityChange = () => {
       if (document.hidden) {
         tabSwitchCountRef.current += 1;
-        console.warn(`⚠️ [Anti-Cheating] Tab switch detected (${tabSwitchCountRef.current}/${maxTabSwitches})`);
         
         if (onTabSwitch) {
           onTabSwitch();
@@ -161,14 +160,12 @@ export const useAntiCheating = (options: AntiCheatingOptions | boolean = true) =
     };
 
     const handleBlur = () => {
-      console.warn('⚠️ [Anti-Cheating] Window lost focus');
     };
 
     // Prevent screenshots (limited effectiveness but adds friction)
     const handlePrintScreen = (e: KeyboardEvent) => {
       if (e.key === 'PrintScreen') {
         e.preventDefault();
-        console.warn('⚠️ [Anti-Cheating] Screenshot attempt detected');
         alert('⚠️ Screenshots are not allowed during the assessment.');
         return false;
       }
@@ -181,7 +178,6 @@ export const useAntiCheating = (options: AntiCheatingOptions | boolean = true) =
       const heightThreshold = window.outerHeight - window.innerHeight > threshold;
       
       if (widthThreshold || heightThreshold) {
-        console.warn('⚠️ [Anti-Cheating] DevTools may be open');
         if (onDevToolsDetected) {
           onDevToolsDetected();
         }
@@ -192,14 +188,13 @@ export const useAntiCheating = (options: AntiCheatingOptions | boolean = true) =
     const requestFullscreen = () => {
       if (enforceFullscreen && !document.fullscreenElement) {
         document.documentElement.requestFullscreen?.().catch(err => {
-          console.warn('⚠️ [Anti-Cheating] Could not enter fullscreen:', err);
+          logger.warn('Could not enter fullscreen', { error: String(err) });
         });
       }
     };
 
     const handleFullscreenChange = () => {
       if (enforceFullscreen && !document.fullscreenElement) {
-        console.warn('⚠️ [Anti-Cheating] User exited fullscreen');
         alert('⚠️ Please stay in fullscreen mode during the assessment.');
         requestFullscreen();
       }

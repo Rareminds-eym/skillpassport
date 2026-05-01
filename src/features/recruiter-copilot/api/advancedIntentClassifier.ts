@@ -67,7 +67,6 @@ class AdvancedIntentClassifier {
     
     // Use AI for better understanding - only skip AI if confidence is VERY high
     if (patternResult.confidence > 0.95) {
-      console.log('🎯 Pattern-based classification (instant, very confident):', patternResult.primary);
       return this.enrichClassification(patternResult, query, conversationHistory);
     }
 
@@ -80,19 +79,16 @@ class AdvancedIntentClassifier {
     
     // Lower threshold - prefer AI for ambiguous queries
     if (contextResult.confidence > 0.90) {
-      console.log('🧠 Context-aware classification:', contextResult.primary);
       return this.enrichClassification(contextResult, query, conversationHistory);
     }
 
     // Layer 3: LLM-powered semantic understanding (most accurate)
     // Use AI for most queries to ensure better understanding
     try {
-      console.log('🤖 Using AI for semantic understanding...');
       const llmResult = await this.llmBasedClassification(query, conversationHistory);
-      console.log('✅ LLM-based classification:', llmResult.primary, `(confidence: ${(llmResult.confidence || 0.95) * 100}%)`);
       return this.enrichClassification(llmResult, query, conversationHistory);
     } catch (error) {
-      console.error('LLM classification failed, using fallback:', error);
+      // Uses fallback classification on error
       // Use context result if available, otherwise pattern result
       return this.enrichClassification(
         contextResult.confidence > patternResult.confidence ? contextResult : patternResult, 
@@ -115,7 +111,6 @@ class AdvancedIntentClassifier {
     
     for (const pattern of skillSearchPatterns) {
       if (pattern.test(originalQuery)) {
-        console.log('🎯 Detected skill-based candidate search (high priority)');
         return {
           primary: 'candidate-search',
           confidence: 0.98,  // Very high confidence to skip LLM
@@ -127,7 +122,6 @@ class AdvancedIntentClassifier {
     // Generic skill search patterns (e.g., "Find React developers" without tech stack keywords)
     if (/(?:find|search|show|get|looking for|need|list)\s+(?:\w+\s+)?(?:developer|engineer|programmer)s?/i.test(originalQuery)) {
       // Likely a skill-based search even if tech stack not in our list
-      console.log('🎯 Detected generic skill search pattern');
       return {
         primary: 'candidate-search',
         confidence: 0.96,  // High confidence to skip LLM
@@ -138,7 +132,6 @@ class AdvancedIntentClassifier {
     // CRITICAL: "Who should I hire for [POSITION]" = job-matching, NOT hiring-decision
     // Check if query has "hire for" followed by a position name
     if (/(?:who should i|who to|which candidate to|whom to)?\s*hire\s+for/i.test(queryLower)) {
-      console.log('🎯 Detected "hire for [position]" - job-matching');
       return {
         primary: 'job-matching',
         confidence: 0.97,  // Very high confidence

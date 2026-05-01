@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Search, Eye, CheckCircle, Clock, XCircle, FileText } from "lucide-react";
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 
 import { FacultyDocumentViewerModal } from '@/features/college-admin';
 
 import { useUser } from '@/shared/model/authStore';
+
+const logger = getLogger('college-admin:FacultyList');
 interface Faculty {
   id: string;
   userId?: string;
@@ -85,12 +88,12 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
         .order("createdAt", { ascending: false });
 
       if (error) {
-        console.error('Error loading faculty:', error);
+        logger.error('Error loading faculty', error);
       } else if (data) {
         setFaculty(data);
       }
     } catch (error) {
-      console.error('Error in loadFaculty:', error);
+      logger.error('Error in loadFaculty', error as Error);
     } finally {
       setLoading(false);
     }
@@ -166,7 +169,7 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
       loadFaculty();
       setSelectedFaculty(null);
     } else {
-      console.error('Error updating faculty status:', error);
+      logger.error('Error updating faculty status', error);
     }
   };
 

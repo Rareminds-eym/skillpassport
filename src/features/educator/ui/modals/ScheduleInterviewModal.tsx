@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { XMarkIcon, CheckIcon, CalendarIcon, VideoCameraIcon, PhoneIcon } from '@heroicons/react/24/outline'
 import { createInterview } from '@/features/opportunities'
+import { getLogger } from '@/shared/config/logging'
+
+const logger = getLogger('ScheduleInterviewModal')
 
 interface Props {
   isOpen: boolean
@@ -54,7 +57,7 @@ const ScheduleInterviewModal: React.FC<Props> = ({ isOpen, onClose, candidate, o
       onSuccess?.()
       onClose()
     } catch (err: any) {
-      console.error('Error scheduling interview:', err)
+      logger.error('Failed to schedule interview', err as Error)
       setError(err.message || 'Failed to schedule interview')
     } finally {
       setLoading(false)

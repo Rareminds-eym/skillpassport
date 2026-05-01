@@ -13,6 +13,9 @@
  */
 
 import { getOpenAIClient, DEFAULT_MODEL } from './openAIClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('student-problem-solver');
 
 export type StudentProblem =
   | 'imposter-syndrome'
@@ -59,8 +62,6 @@ class StudentProblemSolverService {
   ): Promise<ProblemSolution> {
     
     try {
-      console.log('🎯 Student Problem Solver: Analyzing issue...');
-      
       const prompt = `You are an empathetic student mentor who understands the REAL struggles students face. Not just technical problems, but emotional and psychological challenges.
 
 **STUDENT'S MESSAGE:**
@@ -214,16 +215,13 @@ Identify the REAL problem and provide practical, empathetic solutions.
       });
       
       const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
-      console.log('🎯 Problem Identified:', result.problemIdentified);
-      console.log('💚 Empathy provided');
-      console.log('🎬 Immediate actions:', result.immediateActions?.length || 0);
-      console.log('📚 Resources:', result.resources?.length || 0);
-      
+
       return result as ProblemSolution;
       
     } catch (error) {
-      console.error('Problem solving error:', error);
+      logger.error('Failed to analyze student problem', error instanceof Error ? error : new Error(String(error)), {
+        studentMessage: studentMessage.substring(0, 100)
+      });
       throw new Error('Failed to analyze student problem');
     }
   }

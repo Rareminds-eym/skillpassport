@@ -183,7 +183,7 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
 
       setOffers(filteredData);
     } catch (err: any) {
-      console.error("Error fetching offers:", err);
+      // Error handled via state
       setError(err.message || "Failed to fetch offers");
     } finally {
       setLoading(false);
@@ -214,7 +214,7 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
 
       return { success: true, data };
     } catch (err: any) {
-      console.error("Error creating offer:", err);
+      // Error handled via return
       return { success: false, error: err.message || "Failed to create offer" };
     }
   };
@@ -262,7 +262,7 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
 
       return { success: true, data };
     } catch (err: any) {
-      console.error("Error updating offer:", err);
+      // Error handled via return
       return { success: false, error: err.message || "Failed to update offer" };
     }
   };
@@ -289,7 +289,7 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
 
       return { success: true };
     } catch (err: any) {
-      console.error("Error deleting offer:", err);
+      // Error handled via return
       return { success: false, error: err.message || "Failed to delete offer" };
     }
   };
@@ -332,7 +332,7 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
 
       return result;
     } catch (err: any) {
-      console.error("Error extending offer:", err);
+      // Error handled via return
       return { success: false, error: err.message || "Failed to extend offer" };
     }
   };

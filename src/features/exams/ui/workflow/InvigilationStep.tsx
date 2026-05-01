@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
+import { getLogger } from '@/shared/config/logging';
 import {
   PlusCircleIcon,
   TrashIcon,
@@ -13,6 +14,8 @@ import {
   EyeIcon,
 } from '@heroicons/react/24/outline';
 import { UIExam } from '@/features/exams';
+
+const logger = getLogger('InvigilationStep');
 import { WorkflowStage } from '../types';
 
 interface InvigilationStepProps {
@@ -123,7 +126,7 @@ const InvigilationStep: React.FC<InvigilationStepProps> = ({
       // Reset form
       setInvEntry({ timetableEntryId: "", teacherId: "", room: "" });
     } catch (error: any) {
-      console.error('Error adding invigilation assignment:', error);
+      logger.error('Failed to add invigilation assignment', error as Error);
       alert(`❌ Failed to assign invigilation duty: ${error?.message || 'Unknown error'}. Please try again.`);
     }
   };
@@ -389,7 +392,7 @@ const InvigilationStep: React.FC<InvigilationStepProps> = ({
                               };
                               updateExam(updatedExam);
                             } catch (error: any) {
-                              console.error('Error deleting invigilation assignment:', error);
+                              logger.error('Failed to delete invigilation assignment', error as Error);
                               alert(`Failed to remove invigilation duty: ${error?.message || 'Unknown error'}`);
                             }
                           }} 

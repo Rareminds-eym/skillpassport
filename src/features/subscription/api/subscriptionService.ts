@@ -21,6 +21,9 @@
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { checkAuthentication } from '@/features/auth';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('subscription-service');
 
 /**
  * Get active subscription for authenticated user
@@ -104,7 +107,6 @@ export const getActiveSubscription = async () => {
               license_assignment_id: licenseAssignment.id,
             };
 
-            console.log(`✅ User ${userId} has active organization license from org ${orgSub.organization_id}`);
             return {
               success: true,
               data: orgSubscriptionData,
@@ -162,7 +164,7 @@ export const getActiveSubscription = async () => {
       .maybeSingle();
 
     if (error) {
-      console.error('❌ Error fetching subscription:', error);
+      logger.error('Error fetching subscription', error);
       return {
         success: false,
         data: null,
@@ -175,7 +177,6 @@ export const getActiveSubscription = async () => {
       // If user had a revoked organization license, show as expired
       if (revokedLicense) {
         const revokedOrgSub = revokedLicense.organization_subscriptions;
-        console.log(`⚠️ User ${userId} had revoked organization license`);
         return {
           success: true,
           data: {
@@ -208,7 +209,7 @@ export const getActiveSubscription = async () => {
         .maybeSingle();
 
       if (recentError) {
-        console.error('❌ Error fetching recent subscription:', recentError);
+        logger.error('Error fetching recent subscription', recentError);
       }
 
       return {
@@ -224,7 +225,7 @@ export const getActiveSubscription = async () => {
       error: null
     };
   } catch (error) {
-    console.error('❌ Unexpected error fetching subscription:', error);
+    logger.error('Unexpected error fetching subscription', error as Error);
     return {
       success: false,
       data: null,
@@ -265,7 +266,7 @@ export const getUserSubscriptions = async (includeAll = false) => {
       .limit(20); // Limit to recent 20 for performance
 
     if (error) {
-      console.error('❌ Error fetching subscriptions:', error);
+      logger.error('Error fetching subscriptions', error);
       return {
         success: false,
         data: null,
@@ -279,7 +280,7 @@ export const getUserSubscriptions = async (includeAll = false) => {
       error: null
     };
   } catch (error) {
-    console.error('❌ Unexpected error fetching subscriptions:', error);
+    logger.error('Unexpected error fetching subscriptions', error as Error);
     return {
       success: false,
       data: null,
@@ -302,7 +303,7 @@ export const getSubscriptionPayments = async (subscriptionId) => {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('❌ Error fetching payments:', error);
+      logger.error('Error fetching payments', error);
       return {
         success: false,
         data: null,
@@ -316,7 +317,7 @@ export const getSubscriptionPayments = async (subscriptionId) => {
       error: null
     };
   } catch (error) {
-    console.error('❌ Unexpected error fetching payments:', error);
+    logger.error('Unexpected error fetching payments', error as Error);
     return {
       success: false,
       data: null,
@@ -350,7 +351,7 @@ export const getUserPayments = async () => {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('❌ Error fetching user payments:', error);
+      logger.error('Error fetching user payments', error);
       return {
         success: false,
         data: null,
@@ -364,7 +365,7 @@ export const getUserPayments = async () => {
       error: null
     };
   } catch (error) {
-    console.error('❌ Unexpected error fetching user payments:', error);
+    logger.error('Unexpected error fetching user payments', error as Error);
     return {
       success: false,
       data: null,
@@ -400,7 +401,7 @@ export const checkActiveSubscription = async () => {
       subscription: result.data
     };
   } catch (error) {
-    console.error('❌ Error checking subscription:', error);
+    logger.error('Error checking subscription', error as Error);
     return {
       hasSubscription: false,
       subscription: null

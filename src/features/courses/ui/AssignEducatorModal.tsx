@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon, UserIcon } from '@heroicons/react/24/outline';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('assign-educator-modal');
 
 interface Educator {
   user_id: string;
@@ -49,7 +52,7 @@ const AssignEducatorModal: React.FC<AssignEducatorModalProps> = ({
       if (error) throw error;
       setEducators(data || []);
     } catch (error) {
-      console.error('Error fetching educators:', error);
+      logger.error('Error fetching educators', error instanceof Error ? error : new Error(String(error)));
     } finally {
       setLoading(false);
     }

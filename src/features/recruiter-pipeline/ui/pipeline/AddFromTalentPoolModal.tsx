@@ -9,6 +9,9 @@ import { useStudents } from '@/entities/student/model/useStudents';
 import toast from 'react-hot-toast';
 import { addCandidateToPipeline } from '@/features/recruiter-pipeline';
 import { createNotification } from '@/features/notifications';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('AddFromTalentPoolModal');
 
 interface AddFromTalentPoolModalProps {
   isOpen: boolean;
@@ -105,7 +108,11 @@ export const AddFromTalentPoolModal: React.FC<AddFromTalentPoolModalProps> = ({
         setSelectedStudents([]);
       }
     } catch (err: any) {
-      console.error('Error adding candidates:', err);
+      logger.error('Failed to add candidates to pipeline', err, { 
+        selectedCount: selectedStudents.length,
+        requisitionId,
+        targetStage 
+      });
       setError(err.message);
     } finally {
       setAdding(false);

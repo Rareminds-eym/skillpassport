@@ -5,6 +5,9 @@
 
 import { getApiUrl, getAuthHeaders } from '@/shared/api/apiUtils';
 import { getGlobalCareerApiInterceptor } from './careerApiInterceptor';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('career-api-service');
 
 const API_URL = getApiUrl('career');
 
@@ -52,7 +55,9 @@ export async function sendCareerChatMessage(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({})) as { error?: string };
-      console.error('❌ Worker error response:', error);
+      logger.error('Career chat API request failed', new Error(error.error || 'Chat request failed'), {
+        status: response.status
+      });
       onError?.(new Error(error.error || 'Chat request failed'));
       return;
     }
@@ -94,14 +99,15 @@ export async function sendCareerChatMessage(
               onError?.(new Error(data.error));
             }
           } catch (parseError) {
-            console.warn('Failed to parse SSE data:', line, parseError);
+            logger.warn('Failed to parse career chat SSE data', {
+              error: parseError instanceof Error ? parseError.message : String(parseError)
+            });
           }
         }
       }
     }
   } catch (error) {
     if ((error as Error).name === 'AbortError') {
-      console.log('Stream aborted by user');
       return;
     }
     onError?.(error as Error);

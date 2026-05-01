@@ -4,8 +4,10 @@
  */
 
 import { getApiUrl, getAuthHeaders } from '@/shared/api/apiUtils';
+import { getLogger } from '@/shared/config/logging';
 
 const API_URL = getApiUrl('user');
+const logger = getLogger('user-api-service');
 
 // ==================== SIGNUP ENDPOINTS (No Auth Required) ====================
 
@@ -365,16 +367,12 @@ export async function checkCompanyCode(code: string): Promise<any> {
 // ==================== AUTHENTICATED ENDPOINTS ====================
 
 export async function createStudent(studentData: any, token?: string): Promise<any> {
-  console.log('🔑 userApiService.createStudent called with token length:', token?.length || 'no token');
-  
   const response = await fetch(`${API_URL}/create-student`, {
     method: 'POST',
     headers: getAuthHeaders(token),
     body: JSON.stringify(studentData),
   });
 
-  console.log('📡 Response status:', response.status, response.statusText);
-  
   if (!response.ok) {
     let errorDetails;
     try {
@@ -383,7 +381,7 @@ export async function createStudent(studentData: any, token?: string): Promise<a
       errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
     }
     
-    console.error('❌ API Error:', errorDetails);
+    logger.error('API error creating student', new Error(errorDetails.error || `HTTP ${response.status}`), { status: response.status });
     
     if (response.status === 401) {
       throw new Error('Authentication failed. Please login again.');
@@ -393,7 +391,6 @@ export async function createStudent(studentData: any, token?: string): Promise<a
   }
 
   const result = await response.json();
-  console.log('✅ API Success:', result);
   return result;
 }
 
@@ -487,16 +484,12 @@ export async function updateStudentDocuments(
   documents: any,
   token?: string
 ): Promise<any> {
-  console.log('🔑 userApiService.updateStudentDocuments called with token length:', token?.length || 'no token');
-  
   const response = await fetch(`${API_URL}/update-student-documents`, {
     method: 'POST',
     headers: getAuthHeaders(token),
     body: JSON.stringify({ studentId, documents }),
   });
 
-  console.log('📡 Response status:', response.status, response.statusText);
-  
   if (!response.ok) {
     let errorDetails;
     try {
@@ -505,7 +498,7 @@ export async function updateStudentDocuments(
       errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
     }
     
-    console.error('❌ API Error:', errorDetails);
+    logger.error('API error updating student documents', new Error(errorDetails.error || `HTTP ${response.status}`), { status: response.status, studentId });
     
     if (response.status === 401) {
       throw new Error('Authentication failed. Please login again.');
@@ -515,7 +508,6 @@ export async function updateStudentDocuments(
   }
 
   const result = await response.json();
-  console.log('✅ API Success:', result);
   return result;
 }
 
@@ -524,16 +516,12 @@ export async function updateTeacherDocuments(
   documents: any,
   token?: string
 ): Promise<any> {
-  console.log('🔑 userApiService.updateTeacherDocuments called with token length:', token?.length || 'no token');
-  
   const response = await fetch(`${API_URL}/update-teacher-documents`, {
     method: 'POST',
     headers: getAuthHeaders(token),
     body: JSON.stringify({ teacherId, documents }),
   });
 
-  console.log('📡 Response status:', response.status, response.statusText);
-  
   if (!response.ok) {
     let errorDetails;
     try {
@@ -542,7 +530,7 @@ export async function updateTeacherDocuments(
       errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
     }
     
-    console.error('❌ API Error:', errorDetails);
+    logger.error('API error updating teacher documents', new Error(errorDetails.error || `HTTP ${response.status}`), { status: response.status, teacherId });
     
     if (response.status === 401) {
       throw new Error('Authentication failed. Please login again.');
@@ -552,20 +540,15 @@ export async function updateTeacherDocuments(
   }
 
   const result = await response.json();
-  console.log('✅ API Success:', result);
   return result;
 }
 
 export async function createCollegeStaff(staffData: any, token?: string): Promise<any> {
-  console.log('🔑 userApiService.createCollegeStaff called with token length:', token?.length || 'no token');
-  
   const response = await fetch(`${API_URL}/create-college-staff`, {
     method: 'POST',
     headers: getAuthHeaders(token),
     body: JSON.stringify(staffData),
   });
-
-  console.log('📡 Response status:', response.status, response.statusText);
   
   if (!response.ok) {
     let errorDetails;
@@ -575,7 +558,7 @@ export async function createCollegeStaff(staffData: any, token?: string): Promis
       errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
     }
     
-    console.error('❌ API Error:', errorDetails);
+    logger.error('API error creating college staff', new Error(errorDetails.error || `HTTP ${response.status}`), { status: response.status });
     
     if (response.status === 401) {
       throw new Error('Authentication failed. Please login again.');
@@ -585,7 +568,6 @@ export async function createCollegeStaff(staffData: any, token?: string): Promis
   }
 
   const result = await response.json();
-  console.log('✅ API Success:', result);
   return result;
 }
 

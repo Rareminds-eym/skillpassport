@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/shared/api';
 import { authSessionService } from '@/features/auth';
+import { getLogger } from '@/shared/config/logging';
 import {
   getSwapRequests,
   getSwapRequestDetails,
@@ -9,6 +10,8 @@ import {
   getSwapStatistics,
 } from '../api';
 import type { ClassSwapRequestWithDetails, SwapStatistics } from '@/shared/types/classSwap';
+
+const logger = getLogger('college-admin:useSwapRequests');
 
 type TabType = 'received' | 'sent' | 'history';
 
@@ -86,7 +89,7 @@ export const useSwapRequests = (): UseSwapRequestsReturn => {
         setIsCollegeEducator(false);
       }
     } catch (error) {
-      console.error('Error loading educator data:', error);
+      logger.error('Error loading educator data', error as Error);
     }
   };
 
@@ -117,7 +120,7 @@ export const useSwapRequests = (): UseSwapRequestsReturn => {
         setRequests(filtered as ClassSwapRequestWithDetails[]);
       }
     } catch (error) {
-      console.error('Error loading requests:', error);
+      logger.error('Error loading requests', error as Error);
     } finally {
       setLoading(false);
     }
@@ -128,7 +131,7 @@ export const useSwapRequests = (): UseSwapRequestsReturn => {
       const stats = await getSwapStatistics(educatorId);
       setStatistics(stats);
     } catch (error) {
-      console.error('Error loading statistics:', error);
+      logger.error('Error loading statistics', error as Error);
     }
   };
 

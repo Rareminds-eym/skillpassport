@@ -1,5 +1,8 @@
 import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl, getAuthHeaders } from '@/shared/api/apiUtils';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('tutor-service');
 
 // ==================== API URL CONFIGURATION ====================
 const API_URL = getApiUrl('course');
@@ -66,16 +69,14 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
   const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
   if (sessionError) {
-    console.error('Session error:', sessionError);
+    logger.error('Session error in sendMessage', sessionError instanceof Error ? sessionError : new Error(String(sessionError)));
     throw new Error('Authentication error. Please try logging in again.');
   }
 
   if (!session?.access_token) {
-    console.error('No session or access token found');
+    logger.error('No session or access token found', new Error('Authentication failed'));
     throw new Error('Please log in to use the AI Tutor');
   }
-
-  console.log('Sending AI tutor request with token:', session.access_token.substring(0, 20) + '...');
 
   const response = await fetch(
     `${API_URL}/ai-tutor-chat`,
@@ -177,7 +178,7 @@ export async function getConversations(courseId: string): Promise<Conversation[]
     .order('updated_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching conversations:', error);
+    logger.error('Error fetching conversations', error instanceof Error ? error : new Error(String(error)), { courseId });
     throw error;
   }
 
@@ -209,7 +210,7 @@ export async function getConversation(conversationId: string): Promise<Conversat
 
   if (error) {
     if (error.code === 'PGRST116') return null; // Not found
-    console.error('Error fetching conversation:', error);
+    logger.error('Error fetching conversation', error instanceof Error ? error : new Error(String(error)), { conversationId });
     throw error;
   }
 
@@ -242,7 +243,7 @@ export async function getSuggestedQuestions(lessonId: string): Promise<string[]>
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
     if (sessionError) {
-      console.error('Session error in getSuggestedQuestions:', sessionError);
+      logger.error('Session error in getSuggestedQuestions', sessionError instanceof Error ? sessionError : new Error(String(sessionError)), { lessonId });
       return getDefaultSuggestions();
     }
 
@@ -257,20 +258,20 @@ export async function getSuggestedQuestions(lessonId: string): Promise<string[]>
 
     // Handle auth errors gracefully - return defaults instead of throwing
     if (response.status === 401 || response.status === 403) {
-      console.log('Auth required for suggestions, using defaults');
+      logger.warn('Auth required for suggestions, using defaults', { status: response.status, lessonId });
       return getDefaultSuggestions();
     }
 
     if (!response.ok) {
       // Return default suggestions on error
-      console.warn('Failed to fetch suggestions, using defaults. Status:', response.status);
+      logger.warn('Failed to fetch suggestions, using defaults', { status: response.status, lessonId });
       return getDefaultSuggestions();
     }
 
     const data = await response.json();
     return data.questions || getDefaultSuggestions();
   } catch (error) {
-    console.warn('Error fetching suggestions:', error);
+    logger.warn('Error fetching suggestions, using defaults', { lessonId });
     return getDefaultSuggestions();
   }
 }
@@ -359,7 +360,7 @@ export async function deleteConversation(conversationId: string): Promise<void> 
     .eq('conversation_id', conversationId);
 
   if (feedbackError) {
-    console.error('Error deleting feedback:', feedbackError);
+    logger.warn('Error deleting feedback', { conversationId });
     // Continue even if feedback deletion fails (might not have any feedback)
   }
 
@@ -370,7 +371,7 @@ export async function deleteConversation(conversationId: string): Promise<void> 
     .eq('id', conversationId);
 
   if (conversationError) {
-    console.error('Error deleting conversation:', conversationError);
+    logger.error('Error deleting conversation', conversationError instanceof Error ? conversationError : new Error(String(conversationError)), { conversationId });
     throw new Error('Failed to delete conversation');
   }
 }

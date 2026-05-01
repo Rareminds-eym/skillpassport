@@ -58,8 +58,6 @@ export const useEducatorMessages = ({
     const subscription = MessageService.subscribeToConversation(
       conversationId,
       (newMessage) => {
-        console.log('📨 [Educator] New message received:', newMessage);
-
         // Add message to cache optimistically
         queryClient.setQueryData(queryKeys.educator.messages.conversation(conversationId), (oldMessages) => {
           if (!oldMessages) return [newMessage];
@@ -142,7 +140,6 @@ export const useEducatorMessages = ({
       if (context?.previousMessages) {
         queryClient.setQueryData(queryKeys.educator.messages.conversation(conversationId || ''), context.previousMessages);
       }
-      console.error('❌ [Educator] Failed to send message:', err);
     },
     onSuccess: (data, variables, context) => {
       // Replace optimistic message with real one

@@ -1,4 +1,7 @@
 import { supabase } from "@/shared/api/supabase";
+import { getLogger } from "@/shared/config/logging";
+
+const logger = getLogger("mentor-allocation-service");
 
 export interface MentorPeriod {
   id: string;
@@ -119,7 +122,7 @@ export const getMentorPeriods = async (collegeId: string): Promise<MentorPeriod[
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching mentor periods:', error);
+    logger.error('Error fetching mentor periods', error as Error, { collegeId });
     throw error;
   }
 
@@ -135,7 +138,7 @@ export const getMentors = async (collegeId: string): Promise<Mentor[]> => {
     .eq('accountStatus', 'active');
 
   if (error) {
-    console.error('Error fetching mentors:', error);
+    logger.error('Error fetching mentors', error as Error, { collegeId });
     throw error;
   }
 
@@ -163,19 +166,15 @@ export const getMentors = async (collegeId: string): Promise<Mentor[]> => {
 
 // Get all students for a college - simplified direct fetch
 export const getStudents = async (collegeId: string): Promise<Student[]> => {
-  console.log('🔍 [getStudents] Fetching students for college:', collegeId);
-  
   const { data, error } = await supabase
     .from('students')
     .select('*')
     .eq('college_id', collegeId);
 
   if (error) {
-    console.error('❌ [getStudents] Error fetching students:', error);
+    logger.error('Error fetching students', error as Error, { collegeId });
     throw error;
   }
-
-  console.log('✅ [getStudents] Raw student data:', data?.length || 0, 'students found');
 
   return (data || []).map(student => {
     // Calculate batch from enrollment date or expected graduation
@@ -197,19 +196,10 @@ export const getStudents = async (collegeId: string): Promise<Student[]> => {
     // Determine if student is at risk based on CGPA
     const cgpa = parseFloat(student.currentCgpa || student.current_cgpa || '0');
     const atRisk = cgpa < 7.0 || (student.semester && student.semester > 4 && cgpa < 7.5);
-    
+
     const riskFactors = [];
     if (cgpa < 6.5) riskFactors.push('Low CGPA');
     if (cgpa < 7.0 && student.semester && student.semester > 2) riskFactors.push('Academic Struggles');
-
-    console.log('📊 [getStudents] Processing student:', {
-      id: student.id,
-      name: student.name,
-      cgpa: cgpa,
-      semester: student.semester,
-      atRisk: atRisk,
-      batch: batch
-    });
 
     return {
       id: student.id,
@@ -255,7 +245,7 @@ export const getMentorAllocations = async (collegeId: string): Promise<MentorAll
     .in('status', ['active', 'pending']); // Only fetch active and pending allocations
 
   if (error) {
-    console.error('Error fetching mentor allocations:', error);
+    logger.error('Error fetching mentor allocations', error as Error, { collegeId });
     throw error;
   }
 
@@ -279,7 +269,7 @@ export const findAllocationId = async (
     .maybeSingle();
 
   if (error) {
-    console.error('Error finding allocation ID:', error);
+    logger.error('Error finding allocation ID', error as Error, { mentorId, studentId, status });
     return null;
   }
 
@@ -288,8 +278,6 @@ export const findAllocationId = async (
 
 // Get mentor notes for a college
 export const getMentorNotes = async (collegeId: string): Promise<MentorNote[]> => {
-  console.log('🔍 [getMentorNotes] Fetching notes for college:', collegeId);
-  
   // First, get all allocation IDs for this college
   const { data: allocations, error: allocError } = await supabase
     .from('college_mentor_student_allocations')
@@ -302,17 +290,15 @@ export const getMentorNotes = async (collegeId: string): Promise<MentorNote[]> =
     .eq('college_mentor_periods.college_id', collegeId);
 
   if (allocError) {
-    console.error('❌ [getMentorNotes] Error fetching allocations:', allocError);
+    logger.error('Error fetching allocations for mentor notes', allocError as Error, { collegeId });
     throw allocError;
   }
 
   if (!allocations || allocations.length === 0) {
-    console.log('⚠️ [getMentorNotes] No allocations found for college');
     return [];
   }
 
   const allocationIds = allocations.map(a => a.id);
-  console.log('🔍 [getMentorNotes] Found allocation IDs:', allocationIds.length);
 
   // Now get notes for these allocations
   const { data, error } = await supabase
@@ -321,11 +307,10 @@ export const getMentorNotes = async (collegeId: string): Promise<MentorNote[]> =
     .in('allocation_id', allocationIds);
 
   if (error) {
-    console.error('❌ [getMentorNotes] Error fetching mentor notes:', error);
+    logger.error('Error fetching mentor notes', error as Error, { collegeId, allocationCount: allocationIds.length });
     throw error;
   }
 
-  console.log('✅ [getMentorNotes] Found notes:', data?.length || 0);
   return data || [];
 };
 
@@ -338,7 +323,7 @@ export const createMentorPeriod = async (period: Omit<MentorPeriod, 'id' | 'crea
     .single();
 
   if (error) {
-    console.error('Error creating mentor period:', error);
+    logger.error('Error creating mentor period', error as Error, { periodName: period.name, collegeId: period.college_id });
     throw error;
   }
 
@@ -377,7 +362,7 @@ export const createMentorAllocations = async (
     .select();
 
   if (error) {
-    console.error('Error creating mentor allocations:', error);
+    logger.error('Error creating mentor allocations', error as Error, { allocationCount: allocations.length });
     throw error;
   }
 
@@ -393,7 +378,7 @@ export const createMentorNote = async (note: Omit<MentorNote, 'id' | 'created_at
     .single();
 
   if (error) {
-    console.error('Error creating mentor note:', error);
+    logger.error('Error creating mentor note', error as Error, { allocationId: note.allocation_id, mentorId: note.mentor_id });
     throw error;
   }
 
@@ -413,7 +398,7 @@ export const updateMentorAllocation = async (
     .single();
 
   if (error) {
-    console.error('Error updating mentor allocation:', error);
+    logger.error('Error updating mentor allocation', error as Error, { allocationId: id });
     throw error;
   }
 
@@ -433,7 +418,7 @@ export const updateMentorPeriod = async (
     .single();
 
   if (error) {
-    console.error('Error updating mentor period:', error);
+    logger.error('Error updating mentor period', error as Error, { periodId });
     throw error;
   }
 
@@ -448,7 +433,7 @@ export const getDepartments = async (collegeId: string): Promise<Array<{id: stri
     .eq('college_id', collegeId);
 
   if (error) {
-    console.error('Error fetching departments:', error);
+    logger.error('Error fetching departments', error as Error, { collegeId });
     throw error;
   }
 
@@ -470,7 +455,7 @@ export const getPrograms = async (collegeId: string): Promise<Array<{id: string;
     .eq('departments.college_id', collegeId);
 
   if (error) {
-    console.error('Error fetching programs:', error);
+    logger.error('Error fetching programs', error as Error, { collegeId });
     throw error;
   }
 
@@ -501,7 +486,7 @@ export const updateMentorNoteResponse = async (
     .single();
 
   if (fetchError) {
-    console.error('Error fetching note for validation:', fetchError);
+    logger.error('Error fetching note for validation', fetchError as Error, { noteId });
     throw new Error('Failed to fetch note for validation');
   }
 
@@ -531,7 +516,7 @@ export const updateMentorNoteResponse = async (
     .single();
 
   if (error) {
-    console.error('Error updating mentor note response:', error);
+    logger.error('Error updating mentor note response', error as Error, { noteId });
     throw error;
   }
 
@@ -558,7 +543,7 @@ export const updateMentorNoteFeedback = async (
     .single();
 
   if (fetchError) {
-    console.error('Error fetching note for validation:', fetchError);
+    logger.error('Error fetching note for validation', fetchError as Error, { noteId });
     throw new Error('Failed to fetch note for validation');
   }
 
@@ -584,7 +569,7 @@ export const updateMentorNoteFeedback = async (
     .single();
 
   if (error) {
-    console.error('Error updating mentor note feedback:', error);
+    logger.error('Error updating mentor note feedback', error as Error, { noteId });
     throw error;
   }
 
@@ -604,7 +589,7 @@ export const resolveNote = async (
     .single();
 
   if (fetchError) {
-    console.error('Error fetching note for validation:', fetchError);
+    logger.error('Error fetching note for validation', fetchError as Error, { noteId });
     throw new Error('Failed to fetch note for validation');
   }
 
@@ -626,7 +611,7 @@ export const resolveNote = async (
     .single();
 
   if (error) {
-    console.error('Error resolving mentor note:', error);
+    logger.error('Error resolving mentor note', error as Error, { noteId });
     throw error;
   }
 
@@ -652,7 +637,7 @@ export const escalateNote = async (
     .single();
 
   if (error) {
-    console.error('Error escalating mentor note:', error);
+    logger.error('Error escalating mentor note', error as Error, { noteId });
     throw error;
   }
 
@@ -665,7 +650,7 @@ export const getPendingFollowUps = async (mentorId: string) => {
     .rpc('get_pending_follow_ups', { p_mentor_id: mentorId });
 
   if (error) {
-    console.error('Error fetching pending follow-ups:', error);
+    logger.error('Error fetching pending follow-ups', error as Error, { mentorId });
     throw error;
   }
 
@@ -681,7 +666,7 @@ export const getNoteConversation = async (noteId: string) => {
     .single();
 
   if (error) {
-    console.error('Error fetching note conversation:', error);
+    logger.error('Error fetching note conversation', error as Error, { noteId });
     throw error;
   }
 

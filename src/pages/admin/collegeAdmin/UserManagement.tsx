@@ -103,7 +103,7 @@ const UserManagement: React.FC = () => {
         const { data: { user: currentUser } } = await authSessionService.getUser();
 
         if (!currentUser?.email) {
-          logger.error('No user logged in');
+          logger.error('No authenticated user found');
           return;
         }
 

@@ -5,8 +5,10 @@
 
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 
 const EMBEDDING_API_URL = getApiUrl('career');
+const logger = getLogger('embedding-service');
 
 /**
  * Generate embedding for text via the career-api Cloudflare worker.
@@ -53,12 +55,11 @@ export const generateEmbedding = async (text) => {
       }
     }
   } catch (error) {
-    console.warn('[Embedding] Career API unavailable, using fallback:', error.message);
+    logger.warn('Career API unavailable, using fallback');
   }
 
   // Fallback: Use simple keyword-based matching instead of embeddings
   // This is a temporary solution until the career API embedding endpoint is implemented
-  console.warn('[Embedding] Using keyword-based fallback instead of semantic embeddings');
   
   // Return a dummy embedding that will trigger keyword-based matching
   // The calling code should handle this gracefully

@@ -7,6 +7,9 @@
 
 import { supabase } from '@/shared/api';
 import type { LicenseAssignment } from './licenseManagementService';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('organizationEntitlement');
 
 // ============================================================================
 // Types & Interfaces
@@ -90,7 +93,7 @@ export class OrganizationEntitlementService {
           .single();
 
         if (error) {
-          console.error(`Error granting entitlement for ${featureKey}:`, error);
+          logger.error(`Error granting entitlement for ${featureKey}`, error as Error);
           continue;
         }
 
@@ -99,7 +102,7 @@ export class OrganizationEntitlementService {
 
       return entitlements;
     } catch (error) {
-      console.error('Error granting entitlements from assignment:', error);
+      logger.error('Error granting entitlements from assignment', error as Error);
       throw error;
     }
   }
@@ -133,7 +136,7 @@ export class OrganizationEntitlementService {
 
       if (error) throw error;
     } catch (error) {
-      console.error('Error revoking entitlements from assignment:', error);
+      logger.error('Error revoking entitlements from assignment', error as Error);
       throw error;
     }
   }
@@ -191,7 +194,7 @@ export class OrganizationEntitlementService {
 
       return { hasAccess: false, source: 'none' };
     } catch (error) {
-      console.error('Error checking feature access:', error);
+      logger.error('Error checking feature access', error as Error);
       return { hasAccess: false, source: 'none' };
     }
   }
@@ -216,7 +219,7 @@ export class OrganizationEntitlementService {
         selfPurchased: entitlements.filter(e => !e.grantedByOrganization)
       };
     } catch (error) {
-      console.error('Error fetching user entitlements:', error);
+      logger.error('Error fetching user entitlements', error as Error);
       throw error;
     }
   }
@@ -247,7 +250,7 @@ export class OrganizationEntitlementService {
         await this.grantEntitlementsFromAssignment(assignment);
       }
     } catch (error) {
-      console.error('Error syncing organization entitlements:', error);
+      logger.error('Error syncing organization entitlements', error as Error);
       throw error;
     }
   }
@@ -280,13 +283,13 @@ export class OrganizationEntitlementService {
             .single();
 
           if (error) {
-            console.error(`Error granting ${featureKey} to ${userId}:`, error);
+            logger.error(`Error granting ${featureKey} to ${userId}`, error as Error);
             continue;
           }
 
           entitlements.push(this.mapToUserEntitlement(data));
         } catch (error) {
-          console.error(`Error in bulk grant for ${userId}:`, error);
+          logger.error(`Error in bulk grant for ${userId}`, error as Error);
         }
       }
     }
@@ -314,7 +317,7 @@ export class OrganizationEntitlementService {
 
       if (error) throw error;
     } catch (error) {
-      console.error('Error bulk revoking entitlements:', error);
+      logger.error('Error bulk revoking entitlements', error as Error);
       throw error;
     }
   }
@@ -356,7 +359,7 @@ export class OrganizationEntitlementService {
         featureBreakdown
       };
     } catch (error) {
-      console.error('Error fetching entitlement stats:', error);
+      logger.error('Error fetching entitlement stats', error as Error);
       throw error;
     }
   }

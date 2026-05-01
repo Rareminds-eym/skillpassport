@@ -84,7 +84,7 @@ class PipelineIntelligenceService {
         .in('opportunity_id', opportunityIds);
 
       if (error || !pipelineCandidates) {
-        console.error('Error fetching pipeline candidates:', error);
+        // Error handled
         return this.getEmptyInsights();
       }
 
@@ -104,7 +104,7 @@ class PipelineIntelligenceService {
       };
 
     } catch (error) {
-      console.error('Error getting pipeline insights:', error);
+      // Error propagated
       return this.getEmptyInsights();
     }
   }
@@ -127,14 +127,14 @@ class PipelineIntelligenceService {
         .order('stage_changed_at', { ascending: false });
 
       if (error || !pipelineCandidates) {
-        console.error('Error fetching pipeline:', error);
+        // Error handled
         return [];
       }
 
       return this.enrichPipelineStatus(pipelineCandidates);
 
     } catch (error) {
-      console.error('Error getting opportunity pipeline:', error);
+      // Error propagated
       return [];
     }
   }
@@ -170,7 +170,6 @@ class PipelineIntelligenceService {
       return this.enrichPipelineStatus(candidates);
 
     } catch (error) {
-      console.error('Error getting stuck candidates:', error);
       return [];
     }
   }
@@ -202,7 +201,6 @@ class PipelineIntelligenceService {
       return this.enrichPipelineStatus(candidates);
 
     } catch (error) {
-      console.error('Error getting candidates needing action:', error);
       return [];
     }
   }

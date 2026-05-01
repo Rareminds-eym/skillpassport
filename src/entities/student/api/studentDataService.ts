@@ -18,7 +18,6 @@ export const getCompleteStudentData = async (userId: string) => {
       .maybeSingle();
 
     if (studentError) {
-      console.error('Error fetching student:', studentError);
       return { errors: studentError.message };
     }
 
@@ -38,9 +37,8 @@ export const getCompleteStudentData = async (userId: string) => {
       recentUpdates: [],
       suggestions: []
     };
-  } catch (error) {
-    console.error('Error in getCompleteStudentData:', error);
-    return { errors: error.message };
+  } catch (error: unknown) {
+    return { errors: (error as Error).message };
   }
 };
 

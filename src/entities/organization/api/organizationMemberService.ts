@@ -6,6 +6,9 @@
  */
 
 import { supabase } from '@/shared/api';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('organizationMember');
 
 // ============================================================================
 // Types & Interfaces
@@ -69,7 +72,7 @@ export class OrganizationMemberService {
 
     // Early return if no organizationId
     if (!organizationId) {
-      console.warn('[organizationMemberService] No organizationId provided, returning empty result');
+      logger.warn('No organizationId provided, returning empty result');
       return { members: [], total: 0, hasMore: false };
     }
 
@@ -114,7 +117,7 @@ export class OrganizationMemberService {
         hasMore: members.length >= limit,
       };
     } catch (error) {
-      console.error('Error fetching organization members:', error);
+      logger.error('Error fetching organization members', error as Error);
       throw error;
     }
   }
@@ -130,8 +133,6 @@ export class OrganizationMemberService {
     offset: number = 0
   ): Promise<{ members: OrganizationMember[]; total: number }> {
     try {
-      console.log('[organizationMemberService] fetchStudents called:', { organizationId, organizationType });
-      
       // Build query based on organization type
       let query = supabase
         .from('students')
@@ -139,13 +140,10 @@ export class OrganizationMemberService {
 
       // Filter by organization
       if (organizationType === 'school') {
-        console.log('[organizationMemberService] Filtering by school_id:', organizationId);
         query = query.eq('school_id', organizationId);
       } else if (organizationType === 'college') {
-        console.log('[organizationMemberService] Filtering by college_id:', organizationId);
         query = query.eq('college_id', organizationId);
       } else if (organizationType === 'university') {
-        console.log('[organizationMemberService] Filtering by universityId:', organizationId);
         query = query.eq('universityId', organizationId);
       }
 
@@ -161,8 +159,6 @@ export class OrganizationMemberService {
       query = query.range(offset, offset + limit - 1);
 
       const { data, error, count } = await query;
-
-      console.log('[organizationMemberService] Students query result:', { dataLength: data?.length, count, error });
 
       if (error) throw error;
 
@@ -183,7 +179,7 @@ export class OrganizationMemberService {
 
       return { members, total: count || 0 };
     } catch (error) {
-      console.error('Error fetching students:', error);
+      logger.error('Error fetching students', error as Error);
       return { members: [], total: 0 };
     }
   }
@@ -199,14 +195,11 @@ export class OrganizationMemberService {
     offset: number = 0
   ): Promise<{ members: OrganizationMember[]; total: number }> {
     try {
-      console.log('[organizationMemberService] fetchEducators called:', { organizationId, organizationType });
-      
       let members: OrganizationMember[] = [];
       let total = 0;
 
       if (organizationType === 'school') {
         // Fetch from school_educators table
-        console.log('[organizationMemberService] Fetching from school_educators, school_id:', organizationId);
         let query = supabase
           .from('school_educators')
           .select('*', { count: 'exact' })
@@ -221,8 +214,6 @@ export class OrganizationMemberService {
         query = query.range(offset, offset + limit - 1);
 
         const { data, error, count } = await query;
-
-        console.log('[organizationMemberService] school_educators query result:', { dataLength: data?.length, count, error });
 
         if (error) throw error;
 
@@ -243,7 +234,6 @@ export class OrganizationMemberService {
         total = count || 0;
       } else if (organizationType === 'college') {
         // Fetch from college_lecturers table
-        console.log('[organizationMemberService] Fetching from college_lecturers, collegeId:', organizationId);
         let query = supabase
           .from('college_lecturers')
           .select('*', { count: 'exact' })
@@ -258,8 +248,6 @@ export class OrganizationMemberService {
         query = query.range(offset, offset + limit - 1);
 
         const { data, error, count } = await query;
-
-        console.log('[organizationMemberService] college_lecturers query result:', { dataLength: data?.length, count, error });
 
         if (error) throw error;
 
@@ -283,7 +271,7 @@ export class OrganizationMemberService {
 
       return { members, total };
     } catch (error) {
-      console.error('Error fetching educators:', error);
+      logger.error('Error fetching educators', error as Error);
       return { members: [], total: 0 };
     }
   }
@@ -314,7 +302,7 @@ export class OrganizationMemberService {
         .eq('status', 'active');
 
       if (error) {
-        console.error('Error fetching license assignments:', error);
+        logger.error('Error fetching license assignments', error as Error);
         return;
       }
 
@@ -357,7 +345,7 @@ export class OrganizationMemberService {
         }
       });
     } catch (error) {
-      console.error('Error enriching with assignment status:', error);
+      logger.error('Error enriching with assignment status', error as Error);
     }
   }
 
@@ -419,7 +407,7 @@ export class OrganizationMemberService {
         };
       }
     } catch (error) {
-      console.error('Error fetching member by ID:', error);
+      logger.error('Error fetching member by ID', error as Error);
       return null;
     }
   }
@@ -474,7 +462,7 @@ export class OrganizationMemberService {
         total: studentCount + educatorCount,
       };
     } catch (error) {
-      console.error('Error fetching member counts:', error);
+      logger.error('Error fetching member counts', error as Error);
       return { students: 0, educators: 0, total: 0 };
     }
   }
@@ -498,13 +486,6 @@ export class OrganizationMemberService {
     revokedBy?: string
   ): Promise<{ success: boolean; message: string }> {
     try {
-      console.log('🗑️ Removing member from organization:', {
-        memberId,
-        memberType,
-        organizationType,
-        organizationId
-      });
-
       if (memberType === 'student') {
         // For students, clear the school_id or college_id
         const updateData: Record<string, any> = {};
@@ -542,7 +523,7 @@ export class OrganizationMemberService {
           .eq('id', memberId);
 
         if (updateError) {
-          console.error('Error removing student from organization:', updateError);
+          logger.error('Error removing student from organization', updateError as Error);
           return { success: false, message: updateError.message };
         }
 
@@ -551,7 +532,7 @@ export class OrganizationMemberService {
         const userIdForLicense = student.user_id || student.id;
         await this.revokeMemberLicenses(userIdForLicense, organizationId, revokedBy, 'Member removed from organization');
 
-        console.log('✅ Student removed from organization:', student.email);
+        logger.info('Student removed from organization', { email: student.email });
         return { success: true, message: `${student.name || 'Student'} has been removed from the organization` };
 
       } else {
@@ -579,7 +560,7 @@ export class OrganizationMemberService {
             .eq('id', memberId);
 
           if (updateError) {
-            console.error('Error removing educator from organization:', updateError);
+            logger.error('Error removing educator from organization', updateError as Error);
             return { success: false, message: updateError.message };
           }
 
@@ -589,7 +570,7 @@ export class OrganizationMemberService {
           }
 
           const educatorName = `${educator.first_name || ''} ${educator.last_name || ''}`.trim() || 'Educator';
-          console.log('✅ Educator removed from organization:', educator.email);
+          logger.info('Educator removed from organization', { email: educator.email });
           return { success: true, message: `${educatorName} has been removed from the organization` };
 
         } else if (organizationType === 'college') {
@@ -615,7 +596,7 @@ export class OrganizationMemberService {
             .eq('id', memberId);
 
           if (updateError) {
-            console.error('Error removing lecturer from organization:', updateError);
+            logger.error('Error removing lecturer from organization', updateError as Error);
             return { success: false, message: updateError.message };
           }
 
@@ -625,14 +606,14 @@ export class OrganizationMemberService {
           }
 
           const lecturerName = `${lecturer.first_name || ''} ${lecturer.last_name || ''}`.trim() || 'Lecturer';
-          console.log('✅ Lecturer removed from organization:', lecturer.email);
+          logger.info('Lecturer removed from organization', { email: lecturer.email });
           return { success: true, message: `${lecturerName} has been removed from the organization` };
         }
 
         return { success: false, message: 'Unsupported organization type for educator removal' };
       }
     } catch (error) {
-      console.error('Error removing member:', error);
+      logger.error('Error removing member', error as Error);
       return { 
         success: false, 
         message: error instanceof Error ? error.message : 'Failed to remove member' 
@@ -674,12 +655,12 @@ export class OrganizationMemberService {
         .eq('status', 'active');
 
       if (error) {
-        console.warn('Could not revoke license assignments:', error.message);
+        logger.warn('Could not revoke license assignments', { error: error?.message || String(error) });
       } else {
-        console.log('✅ License assignments revoked for user:', userId);
+        logger.info('License assignments revoked for user', { userId });
       }
     } catch (error) {
-      console.warn('Error revoking member licenses:', error);
+      logger.warn('Error revoking member licenses', { error: error instanceof Error ? error.message : String(error) });
     }
   }
 }

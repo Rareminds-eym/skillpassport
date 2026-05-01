@@ -34,14 +34,12 @@ class EntitlementService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching user entitlements:', error);
         return { success: false, error: error.message };
       }
 
       return { success: true, data: data || [] };
     } catch (error) {
-      console.error('Error in getUserEntitlements:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
@@ -63,8 +61,6 @@ class EntitlementService {
         return { success: false, error: 'User ID and feature key are required' };
       }
 
-      console.log(`[EntitlementService] Checking access for user ${userId}, feature ${featureKey}`);
-
       // First, check if user has a subscription plan that includes this feature
       // Include 'cancelled' status - user retains access until subscription_end_date
       const { data: subscription, error: subError } = await supabase
@@ -76,15 +72,12 @@ class EntitlementService {
         .limit(1)
         .maybeSingle();
 
-      console.log(`[EntitlementService] Subscription query result:`, { subscription, subError });
-
       if (!subError && subscription?.plan_id) {
         // For cancelled subscriptions, check if end date hasn't passed
         if (subscription.status === 'cancelled') {
           const endDate = new Date(subscription.subscription_end_date);
           const now = new Date();
           if (endDate < now) {
-            console.log(`[EntitlementService] Cancelled subscription has expired, no plan access`);
             // Don't return yet - check for add-on entitlements below
           } else {
             // Cancelled but still within access period
@@ -95,10 +88,7 @@ class EntitlementService {
               .eq('feature_key', featureKey)
               .single();
 
-            console.log(`[EntitlementService] Plan feature check (cancelled):`, { planFeature, featureError });
-
             if (!featureError && planFeature?.is_included) {
-              console.log(`[EntitlementService] Access granted via cancelled plan (until ${subscription.subscription_end_date}) for ${featureKey}`);
               return {
                 success: true,
                 data: { hasAccess: true, accessSource: 'plan' }
@@ -114,10 +104,7 @@ class EntitlementService {
             .eq('feature_key', featureKey)
             .single();
 
-          console.log(`[EntitlementService] Plan feature check:`, { planFeature, featureError });
-
           if (!featureError && planFeature?.is_included) {
-            console.log(`[EntitlementService] Access granted via plan for ${featureKey}`);
             return {
               success: true,
               data: { hasAccess: true, accessSource: 'plan' }
@@ -136,25 +123,20 @@ class EntitlementService {
         .gte('end_date', new Date().toISOString())
         .maybeSingle();
 
-      console.log(`[EntitlementService] Entitlement check:`, { entitlement, entError });
-
       if (!entError && entitlement) {
         const accessSource = entitlement.bundle_id ? 'bundle' : 'addon';
-        console.log(`[EntitlementService] Access granted via ${accessSource} for ${featureKey}`);
         return {
           success: true,
           data: { hasAccess: true, accessSource }
         };
       }
 
-      console.log(`[EntitlementService] No access for ${featureKey}`);
       return {
         success: true,
         data: { hasAccess: false, accessSource: null }
       };
     } catch (error) {
-      console.error('Error in hasFeatureAccess:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
@@ -221,14 +203,12 @@ class EntitlementService {
         .single();
 
       if (insertError) {
-        console.error('Error creating entitlement:', insertError);
         return { success: false, error: insertError.message };
       }
 
       return { success: true, data: entitlement };
     } catch (error) {
-      console.error('Error in activateAddOn:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
@@ -305,14 +285,12 @@ class EntitlementService {
         .select();
 
       if (insertError) {
-        console.error('Error creating bundle entitlements:', insertError);
         return { success: false, error: insertError.message };
       }
 
       return { success: true, data: createdEntitlements };
     } catch (error) {
-      console.error('Error in activateBundle:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
@@ -347,14 +325,12 @@ class EntitlementService {
         if (error.code === 'PGRST116') {
           return { success: false, error: 'ENTITLEMENT_NOT_FOUND' };
         }
-        console.error('Error cancelling entitlement:', error);
         return { success: false, error: error.message };
       }
 
       return { success: true, data: entitlement };
     } catch (error) {
-      console.error('Error in cancelAddOn:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
@@ -389,14 +365,12 @@ class EntitlementService {
         if (error.code === 'PGRST116') {
           return { success: false, error: 'ENTITLEMENT_NOT_FOUND' };
         }
-        console.error('Error toggling auto-renew:', error);
         return { success: false, error: error.message };
       }
 
       return { success: true, data: entitlement };
     } catch (error) {
-      console.error('Error in toggleAutoRenew:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
@@ -421,7 +395,6 @@ class EntitlementService {
         .in('status', ['active', 'grace_period']);
 
       if (error) {
-        console.error('Error fetching entitlements for cost calculation:', error);
         return { success: false, error: error.message };
       }
 
@@ -448,8 +421,7 @@ class EntitlementService {
         }
       };
     } catch (error) {
-      console.error('Error in calculateTotalCost:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
@@ -493,14 +465,12 @@ class EntitlementService {
         .single();
 
       if (error) {
-        console.error('Error applying grace period:', error);
         return { success: false, error: error.message };
       }
 
       return { success: true, data: entitlement };
     } catch (error) {
-      console.error('Error in applyGracePeriod:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
@@ -530,14 +500,12 @@ class EntitlementService {
         .order('end_date', { ascending: true });
 
       if (error) {
-        console.error('Error fetching expiring entitlements:', error);
         return { success: false, error: error.message };
       }
 
       return { success: true, data: data || [] };
     } catch (error) {
-      console.error('Error in getExpiringEntitlements:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
@@ -572,7 +540,6 @@ class EntitlementService {
         .maybeSingle();
 
       if (error) {
-        console.error('Error fetching addon by feature key:', error);
         return null;
       }
 
@@ -590,7 +557,6 @@ class EntitlementService {
         icon_url: data.icon_url,
       };
     } catch (error) {
-      console.error('Error in getAddonByFeatureKey:', error);
       return null;
     }
   }
@@ -622,7 +588,6 @@ class EntitlementService {
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error fetching available addons:', error);
         return [];
       }
 
@@ -646,7 +611,6 @@ class EntitlementService {
 
       return Array.from(uniqueAddons.values());
     } catch (error) {
-      console.error('Error in getAvailableAddons:', error);
       return [];
     }
   }

@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('curriculum-approval-service');
 
 export interface CollegeAffiliation {
   isAffiliated: boolean;
@@ -69,12 +72,11 @@ class CurriculumApprovalService {
    */
   async checkCollegeAffiliation(): Promise<{ success: boolean; data?: CollegeAffiliation; error?: string }> {
     try {
-      console.log('🔍 Checking college affiliation with direct query...');
       
       // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
-        console.log('❌ No authenticated user found', userError);
+        logger.error('Failed to get authenticated user', userError instanceof Error ? userError : new Error(String(userError)));
         return {
           success: true,
           data: {
@@ -85,8 +87,6 @@ class CurriculumApprovalService {
           }
         };
       }
-      
-      console.log('✅ User authenticated:', user.email);
 
       // Get user's organization (college)
       const { data: userData, error: userDataError } = await supabase
@@ -95,10 +95,8 @@ class CurriculumApprovalService {
         .eq('id', user.id)
         .single();
 
-      console.log('📊 User data query result:', { userData, error: userDataError });
-
       if (userDataError || !userData?.organizationId) {
-        console.log('❌ User has no organization assigned', userDataError);
+        logger.error('User has no organization assigned', userDataError instanceof Error ? userDataError : new Error(String(userDataError)));
         return {
           success: true,
           data: {
@@ -111,7 +109,6 @@ class CurriculumApprovalService {
       }
 
       const collegeId = userData.organizationId;
-      console.log('✅ User college ID:', collegeId);
 
       // Simple query without foreign key reference - just get university_id first
       const { data: affiliationData, error: affiliationError } = await supabase
@@ -121,25 +118,13 @@ class CurriculumApprovalService {
         .eq('account_status', 'active')
         .limit(1);
 
-      console.log('📊 Affiliation query result:', { 
-        affiliationData, 
-        error: affiliationError,
-        collegeId: collegeId,
-        query: 'university_colleges where college_id = ' + collegeId + ' and account_status = active'
-      });
-
       if (affiliationError) {
-        console.log('❌ Error checking affiliation:', affiliationError.message, affiliationError);
+        logger.error('Failed to check college affiliation', affiliationError instanceof Error ? affiliationError : new Error(String(affiliationError)));
         return { success: false, error: affiliationError.message };
       }
 
       // If no records found or empty result, college is not affiliated
       if (!affiliationData || affiliationData.length === 0) {
-        console.log('❌ No active affiliation found for college:', collegeId);
-        console.log('   This means either:');
-        console.log('   1. College is not in university_colleges table');
-        console.log('   2. account_status is not "active"');
-        console.log('   3. RLS policy is blocking the query');
         return {
           success: true,
           data: {
@@ -153,7 +138,6 @@ class CurriculumApprovalService {
 
       // College is affiliated! Now get university name
       const affiliation = affiliationData[0];
-      console.log('✅ College is affiliated with university:', affiliation.university_id);
       
       // Get university name in a separate query
       let universityName = 'University';
@@ -163,20 +147,11 @@ class CurriculumApprovalService {
           .select('name')
           .eq('id', affiliation.university_id)
           .single();
-        
-        console.log('📊 University name query result:', { universityData, error: universityError });
-        
+
         if (universityData) {
           universityName = universityData.name;
         }
       }
-      
-      console.log('✅ Final affiliation result:', {
-        isAffiliated: true,
-        collegeId: collegeId,
-        universityId: affiliation.university_id,
-        universityName: universityName
-      });
       
       return {
         success: true,
@@ -189,7 +164,7 @@ class CurriculumApprovalService {
       };
 
     } catch (error: any) {
-      console.error('❌ Error in checkCollegeAffiliation:', error);
+      logger.error('Failed to check college affiliation', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   }
@@ -205,7 +180,9 @@ class CurriculumApprovalService {
       });
       
       if (error) {
-        console.error('Error submitting curriculum for approval:', error);
+        logger.error('Failed to submit curriculum for approval', error instanceof Error ? error : new Error(String(error)), {
+          curriculumId
+        });
         return { success: false, error: error.message };
       }
 
@@ -215,7 +192,9 @@ class CurriculumApprovalService {
 
       return { success: true };
     } catch (error: any) {
-      console.error('Error in submitForApproval:', error);
+      logger.error('Failed to submit curriculum for approval', error instanceof Error ? error : new Error(String(error)), {
+        curriculumId
+      });
       return { success: false, error: error.message };
     }
   }
@@ -233,7 +212,10 @@ class CurriculumApprovalService {
       });
       
       if (error) {
-        console.error('RPC function failed, trying direct update:', error);
+        logger.error('RPC function failed, attempting direct update', error instanceof Error ? error : new Error(String(error)), {
+          curriculumId,
+          decision
+        });
         
         // Fallback: Update curriculum directly
         const newStatus = decision === 'approved' ? 'published' : 'rejected';
@@ -249,11 +231,11 @@ class CurriculumApprovalService {
           .eq('status', 'pending_approval');
         
         if (updateError) {
-          console.error('Direct update also failed:', updateError);
-          return { success: false, error: updateError.message };
+          logger.error('Direct curriculum update failed', updateError instanceof Error ? updateError : new Error(String(updateError)), {
+            curriculumId
+          });
+          return { success: false, error: (updateError as any).message };
         }
-        
-        console.log('✅ Curriculum updated successfully via direct update');
         return { success: true };
       }
 
@@ -263,7 +245,10 @@ class CurriculumApprovalService {
 
       return { success: true };
     } catch (error: any) {
-      console.error('Error in reviewCurriculum:', error);
+      logger.error('Failed to review curriculum', error instanceof Error ? error : new Error(String(error)), {
+        curriculumId,
+        decision
+      });
       return { success: false, error: error.message };
     }
   }
@@ -292,8 +277,6 @@ class CurriculumApprovalService {
     limit?: number;
   }): Promise<{ success: boolean; data?: CurriculumApprovalDashboard[]; error?: string }> {
     try {
-      console.log('🔍 Fetching approval requests for university:', universityId);
-      
       let query = supabase
         .from('curriculum_approval_dashboard')
         .select('*')
@@ -314,16 +297,15 @@ class CurriculumApprovalService {
         query = query.limit(filters.limit);
       }
 
-      console.log('📊 Query filters:', { universityId, filters });
-
       const { data, error } = await query;
-      
+
       if (error) {
-        console.error('❌ Error fetching approval requests:', error);
+        logger.error('Failed to fetch approval requests', error instanceof Error ? error : new Error(String(error)), {
+          universityId,
+          filters
+        });
         return { success: false, error: error.message };
       }
-
-      console.log('✅ Raw data from database:', data);
 
       const approvalRequests: CurriculumApprovalDashboard[] = (data || []).map(item => ({
         request_id: item.curriculum_id,
@@ -346,10 +328,11 @@ class CurriculumApprovalService {
         reviewer_name: item.reviewer_name,
       }));
 
-      console.log('✅ Processed approval requests:', approvalRequests.length);
       return { success: true, data: approvalRequests };
     } catch (error: any) {
-      console.error('❌ Error in getApprovalRequests:', error);
+      logger.error('Failed to get approval requests', error instanceof Error ? error : new Error(String(error)), {
+        universityId
+      });
       return { success: false, error: error.message };
     }
   }
@@ -359,19 +342,17 @@ class CurriculumApprovalService {
    */
   async getApprovalStatistics(universityId: string): Promise<{ success: boolean; data?: ApprovalStatistics; error?: string }> {
     try {
-      console.log('📊 Fetching approval statistics for university:', universityId);
-      
       const { data, error } = await supabase
         .from('curriculum_approval_dashboard')
         .select('status')
         .eq('university_id', universityId);
       
       if (error) {
-        console.error('❌ Error fetching approval statistics:', error);
+        logger.error('Failed to fetch approval statistics', error instanceof Error ? error : new Error(String(error)), {
+          universityId
+        });
         return { success: false, error: error.message };
       }
-
-      console.log('✅ Raw statistics data:', data);
 
       const stats = (data || []).reduce((acc, item) => {
         acc.total++;
@@ -392,10 +373,11 @@ class CurriculumApprovalService {
         return acc;
       }, { total: 0, pending: 0, approved: 0, rejected: 0, published: 0 });
 
-      console.log('✅ Processed statistics:', stats);
       return { success: true, data: stats };
     } catch (error: any) {
-      console.error('❌ Error in getApprovalStatistics:', error);
+      logger.error('Failed to get approval statistics', error instanceof Error ? error : new Error(String(error)), {
+        universityId
+      });
       return { success: false, error: error.message };
     }
   }
@@ -412,7 +394,7 @@ class CurriculumApprovalService {
         .order('request_date', { ascending: false });
       
       if (error) {
-        console.error('Error fetching pending approvals:', error);
+        logger.error('Failed to fetch pending approvals', error instanceof Error ? error : new Error(String(error)));
         return { success: false, error: error.message };
       }
 
@@ -433,7 +415,7 @@ class CurriculumApprovalService {
 
       return { success: true, data: pendingApprovals };
     } catch (error: any) {
-      console.error('Error in getPendingApprovals:', error);
+      logger.error('Failed to get pending approvals', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   }
@@ -451,13 +433,15 @@ class CurriculumApprovalService {
         .limit(limit);
       
       if (error) {
-        console.error('Error fetching approval history:', error);
+        logger.error('Failed to fetch approval history', error instanceof Error ? error : new Error(String(error)), {
+          limit
+        });
         return { success: false, error: error.message };
       }
 
       return { success: true, data: data || [] };
     } catch (error: any) {
-      console.error('Error in getApprovalHistory:', error);
+      logger.error('Failed to get approval history', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   }
@@ -474,13 +458,17 @@ class CurriculumApprovalService {
         .single();
       
       if (error) {
-        console.error('Error fetching curriculum status:', error);
+        logger.error('Failed to fetch curriculum status', error instanceof Error ? error : new Error(String(error)), {
+          curriculumId
+        });
         return { success: false, error: error.message };
       }
 
       return { success: true, data };
     } catch (error: any) {
-      console.error('Error in getCurriculumStatus:', error);
+      logger.error('Failed to get curriculum status', error instanceof Error ? error : new Error(String(error)), {
+        curriculumId
+      });
       return { success: false, error: error.message };
     }
   }

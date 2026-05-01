@@ -3,8 +3,11 @@ import { ChevronDownIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
 import { supabase } from '@/shared/api/supabaseClient';
 import { departmentService } from '@/features/college-admin';
+import { getLogger } from '@/shared/config/logging';
 
 import { useUser } from '@/shared/model/authStore';
+
+const logger = getLogger('college-admin:AddDepartmentModal');
 interface Faculty {
   id: string;
   name: string;
@@ -83,7 +86,7 @@ const AddDepartmentModal: React.FC<AddDepartmentModalProps> = ({
         const validation = await departmentService.validateDepartmentCode(collegeId, code.trim());
         setCodeValidation(validation);
       } catch (error) {
-        console.error('Error validating code:', error);
+        logger.error('Error validating code', error as Error);
         setCodeValidation({ isValid: false, message: 'Error validating code. Please try again.' });
       } finally {
         setIsValidatingCode(false);

@@ -64,7 +64,6 @@ const InterventionResponseModal: React.FC<InterventionResponseModalProps> = ({
       });
       onClose();
     } catch (error) {
-      console.error('Error saving response:', error);
       toast.error('Failed to save response. Please try again.');
     } finally {
       setSaving(false);

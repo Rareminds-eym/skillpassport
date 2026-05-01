@@ -4,6 +4,9 @@
  */
 
 import { getApiUrl } from '@/shared/api/apiUtils';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('program-career-paths-service');
 
 const API_URL = getApiUrl('analyze-assessment');
 
@@ -78,8 +81,6 @@ export async function generateProgramCareerPaths(
       throw new Error(data.error || 'Failed to generate career paths');
     }
 
-    console.log('[CAREER_PATHS_SERVICE] Successfully generated', data.careerPaths.length, 'career paths');
-
     return data.careerPaths;
   } catch (error) {
     // Don't log error here - let the caller handle it
@@ -99,8 +100,11 @@ export async function generateProgramCareerPathsWithFallback(
     const aiPaths = await generateProgramCareerPaths(request);
     return aiPaths;
   } catch (error) {
-    // Silently use fallback - this is expected when Worker is not deployed
-    console.log('[CAREER_PATHS_SERVICE] Using fallback career paths (AI service unavailable)');
+    // Using fallback - this is expected when Worker is not deployed
+    logger.warn('AI career paths generation failed, using fallback', {
+      program: request.programName,
+      error: error instanceof Error ? error.message : String(error)
+    });
     // Return fallback paths from COURSE_KNOWLEDGE_BASE
     return fallbackPaths;
   }

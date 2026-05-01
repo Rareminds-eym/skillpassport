@@ -7,6 +7,9 @@ import { useEffect, useRef } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
 import MessageService from '@/shared/api/messageService';
 import { queryKeys } from '@/shared/lib/queryKeys';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('student-admin-messages');
 /**
  * @deprecated This hook is deprecated and will be removed in a future version.
  * Please migrate to the new unified messaging hooks from @/features/messaging:
@@ -61,8 +64,6 @@ export const useStudentAdminMessages = ({
     const subscription = MessageService.subscribeToConversation(
       conversationId,
       (newMessage) => {
-        console.log('📨 [Student-Admin] New message received:', newMessage);
-
         // Add message to cache optimistically
         queryClient.setQueryData(queryKeys.student.messages.conversation(conversationId!), (oldMessages) => {
           if (!oldMessages) return [newMessage];
@@ -143,7 +144,7 @@ export const useStudentAdminMessages = ({
       if (context?.previousMessages) {
         queryClient.setQueryData(queryKeys.student.messages.conversation(conversationId!), context.previousMessages);
       }
-      console.error('❌ [Student-Admin] Failed to send message:', err);
+      logger.error('Failed to send message', err instanceof Error ? err : new Error(String(err)), { conversationId, studentId });
     },
     onSuccess: (data, variables, context) => {
       // Replace optimistic message with real one

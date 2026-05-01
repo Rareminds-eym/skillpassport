@@ -1,5 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import RealtimeService, { UserPresence, OnlineUser } from '@/shared/api/realtimeService';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('realtime-presence');
 
 interface UseRealtimePresenceProps {
   channelName: string;
@@ -64,7 +67,7 @@ export const useRealtimePresence = ({
           }
         );
       } catch (error) {
-        console.error('❌ Error setting up presence:', error);
+        logger.error('Error setting up presence', error as Error);
         setIsConnected(false);
       }
     };
@@ -90,7 +93,7 @@ export const useRealtimePresence = ({
           status
         );
       } catch (error) {
-        console.error('❌ Error updating status:', error);
+        logger.error('Error updating status', error as Error);
       }
     },
     [channelName, userPresence.userId]

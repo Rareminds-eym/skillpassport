@@ -24,6 +24,9 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { KPICard } from '@/features/analytics';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('graduation-integration');
 
 const GraduationIntegration = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -225,12 +228,12 @@ const GraduationIntegration = () => {
     // Simulate API call
     setTimeout(() => {
       setLoading(false);
-      console.log('Data refreshed successfully');
+      // Data refreshed silently
+      logger.info('Data refreshed successfully');
     }, 1500);
   };
 
   const handleExportData = () => {
-    console.log('Exporting graduation data...');
     // Simulate export functionality
     const data = {
       batches: graduationBatches,
@@ -252,7 +255,6 @@ const GraduationIntegration = () => {
   const handleProcessBatch = (batchId: number) => {
     const batch = graduationBatches.find(b => b.id === batchId);
     if (batch) {
-      console.log(`Processing batch: ${batch.batchName}`);
       // Simulate batch processing
       alert(`Processing ${batch.batchName}\n\nThis will:\n• Verify all library clearances\n• Generate graduation certificates\n• Update student records\n• Send notifications\n\nEstimated time: 15-30 minutes`);
     }
@@ -261,7 +263,6 @@ const GraduationIntegration = () => {
   const handleViewBatchDetails = (batchId: number) => {
     const batch = graduationBatches.find(b => b.id === batchId);
     if (batch) {
-      console.log(`Viewing details for batch: ${batch.batchName}`);
       alert(`Batch Details: ${batch.batchName}\n\nLibrary Status:\n• Books Returned: ${batch.booksReturned}/${batch.totalStudents}\n• Library Cleared: ${batch.libraryCleared}\n• Pending Clearances: ${batch.libraryPending}\n• Outstanding Fines: ${batch.finesPending} students\n\nNext Steps:\n• Follow up on pending returns\n• Process fine payments\n• Generate clearance reports`);
     }
   };
@@ -778,7 +779,9 @@ const GraduationIntegration = () => {
                   {system.status.charAt(0).toUpperCase() + system.status.slice(1)}
                 </span>
                 <button 
-                  onClick={() => console.log(`Configuring ${system.system}`)}
+                  onClick={() => {
+                    logger.info(`Configuring integration for ${system.system}`);
+                  }}
                   className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-sm rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
                 >
                   Configure
@@ -846,7 +849,10 @@ const GraduationIntegration = () => {
         <h3 className="text-lg font-semibold text-gray-900 mb-6">Configuration Actions</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <button 
-            onClick={() => console.log('Testing integration...')}
+            onClick={() => {
+              logger.info('Testing integration...');
+              // Test integration
+            }}
             className="flex items-center gap-3 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl hover:shadow-md transition-all duration-200"
           >
             <Settings className="h-5 w-5 text-blue-600" />
@@ -857,7 +863,10 @@ const GraduationIntegration = () => {
           </button>
           
           <button 
-            onClick={() => console.log('Syncing data...')}
+            onClick={() => {
+              logger.info('Syncing data...');
+              // Sync data
+            }}
             className="flex items-center gap-3 p-4 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl hover:shadow-md transition-all duration-200"
           >
             <RefreshCw className="h-5 w-5 text-green-600" />
@@ -868,7 +877,10 @@ const GraduationIntegration = () => {
           </button>
           
           <button 
-            onClick={() => console.log('Viewing logs...')}
+            onClick={() => {
+              logger.info('Viewing integration logs...');
+              // View logs
+            }}
             className="flex items-center gap-3 p-4 bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-xl hover:shadow-md transition-all duration-200"
           >
             <DocumentTextIcon className="h-5 w-5 text-purple-600" />

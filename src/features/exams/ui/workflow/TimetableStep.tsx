@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
+import { getLogger } from '@/shared/config/logging';
 import {
   PlusCircleIcon,
   TrashIcon,
@@ -10,6 +11,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { UIExam } from '@/features/exams';
 import { WorkflowStage } from '../types';
+
+const logger = getLogger('TimetableStep');
 
 interface TimetableStepProps {
   exam: UIExam;
@@ -45,7 +48,7 @@ const TimetableStep: React.FC<TimetableStepProps> = ({
           const room = await getClassRoom(exam.grade, exam.section);
           setClassRoom(room);
         } catch (error) {
-          console.error('Error loading class room:', error);
+          logger.error('Failed to load class room', error as Error);
         }
       }
     };
@@ -160,7 +163,7 @@ const TimetableStep: React.FC<TimetableStepProps> = ({
       setTtEntry({ subjectId: "", date: "", startTime: "", endTime: "", room: "" });
       setManualRoom("");
     } catch (error: any) {
-      console.error('Error adding timetable entry:', error);
+      logger.error('Failed to add timetable entry', error as Error);
       alert(`❌ Failed to add timetable entry: ${error?.message || 'Unknown error'}. Please try again.`);
     }
   };
@@ -345,7 +348,7 @@ const TimetableStep: React.FC<TimetableStepProps> = ({
                             };
                             updateExam(updatedExam);
                           } catch (error: any) {
-                            console.error('Error deleting timetable entry:', error);
+                            logger.error('Failed to delete timetable entry', error as Error);
                             alert(`Failed to delete timetable entry: ${error?.message || 'Unknown error'}`);
                           }
                         }} 

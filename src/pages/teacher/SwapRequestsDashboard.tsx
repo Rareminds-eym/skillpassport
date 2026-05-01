@@ -2,6 +2,9 @@ import React from 'react';
 import { RefreshCw, Search, TrendingUp, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { SwapRequestCard } from '@/features/college-admin';
 import { useSwapRequests } from '@/features/college-admin/model/useSwapRequests';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('swap-requests-dashboard');
 
 const SwapRequestsDashboard: React.FC = () => {
   const {
@@ -169,7 +172,7 @@ const SwapRequestsDashboard: React.FC = () => {
                     onAccept={handleAccept}
                     onReject={handleReject}
                     onCancel={handleCancel}
-                    onViewDetails={(id) => console.log('View details:', id)}
+                    onViewDetails={(id) => {logger.info(`Viewing details for request ${id}`);}}
                   />
                 ))}
               </div>

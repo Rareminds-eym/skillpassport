@@ -3,6 +3,9 @@
 // =====================================================
 
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('class-swap-service');
 import type {
   ClassSwapRequest,
   ClassSwapRequestWithDetails,
@@ -46,7 +49,10 @@ const getFacultyInfo = async (facultyId: string, isCollegeEducator: boolean): Pr
       return data;
     }
   } catch (error) {
-    console.error('Error fetching faculty info:', error);
+    logger.error('Failed to fetch faculty info', error instanceof Error ? error : new Error(String(error)), {
+      facultyId,
+      isCollegeEducator
+    });
     return null;
   }
 };
@@ -106,7 +112,10 @@ const getSlotInfo = async (slotId: string, isCollegeEducator: boolean): Promise<
       };
     }
   } catch (error) {
-    console.error('Error fetching slot info:', error);
+    logger.error('Failed to fetch slot info', error instanceof Error ? error : new Error(String(error)), {
+      slotId,
+      isCollegeEducator
+    });
     return null;
   }
 };
@@ -163,7 +172,11 @@ export const createSwapRequest = async (
     
     return { data, error: null };
   } catch (error) {
-    console.error('Error creating swap request:', error);
+    logger.error('Failed to create swap request', error instanceof Error ? error : new Error(String(error)), {
+      requesterFacultyId: payload.requester_faculty_id,
+      targetFacultyId: payload.target_faculty_id,
+      requestType: payload.request_type
+    });
     return { data: null, error: error as Error };
   }
 };
@@ -205,7 +218,10 @@ export const getSwapRequests = async (
     
     return { data, error: null };
   } catch (error) {
-    console.error('Error fetching swap requests:', error);
+    logger.error('Failed to fetch swap requests', error instanceof Error ? error : new Error(String(error)), {
+      facultyId,
+      hasFilters: !!filters
+    });
     return { data: null, error: error as Error };
   }
 };
@@ -260,7 +276,10 @@ export const getSwapRequestDetails = async (
     
     return { data: detailedRequest, error: null };
   } catch (error) {
-    console.error('Error fetching swap request details:', error);
+    logger.error('Failed to fetch swap request details', error instanceof Error ? error : new Error(String(error)), {
+      requestId,
+      isCollegeEducator
+    });
     return { data: null, error: error as Error };
   }
 };
@@ -290,7 +309,10 @@ export const respondToSwapRequest = async (
     
     return { data, error: null };
   } catch (error) {
-    console.error('Error responding to swap request:', error);
+    logger.error('Failed to respond to swap request', error instanceof Error ? error : new Error(String(error)), {
+      requestId,
+      responseStatus: payload.status
+    });
     return { data: null, error: error as Error };
   }
 };
@@ -315,7 +337,9 @@ export const cancelSwapRequest = async (
     
     return { data, error: null };
   } catch (error) {
-    console.error('Error cancelling swap request:', error);
+    logger.error('Failed to cancel swap request', error instanceof Error ? error : new Error(String(error)), {
+      requestId
+    });
     return { data: null, error: error as Error };
   }
 };
@@ -348,7 +372,10 @@ export const adminApproveSwapRequest = async (
     
     return { data, error: null };
   } catch (error) {
-    console.error('Error processing admin approval:', error);
+    logger.error('Failed to process admin approval', error instanceof Error ? error : new Error(String(error)), {
+      requestId,
+      adminId
+    });
     return { data: null, error: error as Error };
   }
 };
@@ -372,7 +399,11 @@ export const checkSwapConflicts = async (
     
     return data[0] || { has_conflict: false, conflict_reason: 'No conflicts detected' };
   } catch (error) {
-    console.error('Error checking swap conflicts:', error);
+    logger.error('Failed to check swap conflicts', error instanceof Error ? error : new Error(String(error)), {
+      requesterSlotId,
+      targetSlotId,
+      swapDate
+    });
     return { has_conflict: true, conflict_reason: 'Error checking conflicts' };
   }
 };
@@ -390,7 +421,9 @@ export const getPendingSwapCount = async (facultyId: string): Promise<number> =>
     
     return data || 0;
   } catch (error) {
-    console.error('Error getting pending swap count:', error);
+    logger.error('Failed to get pending swap count', error instanceof Error ? error : new Error(String(error)), {
+      facultyId
+    });
     return 0;
   }
 };
@@ -418,7 +451,9 @@ export const getSwapStatistics = async (facultyId: string): Promise<SwapStatisti
     
     return stats;
   } catch (error) {
-    console.error('Error getting swap statistics:', error);
+    logger.error('Failed to get swap statistics', error instanceof Error ? error : new Error(String(error)), {
+      facultyId
+    });
     return {
       total_requests: 0,
       pending_requests: 0,
@@ -482,7 +517,10 @@ export const getCollegeSwapRequests = async (
     
     return { data, error: null };
   } catch (error) {
-    console.error('Error fetching college swap requests:', error);
+    logger.error('Failed to fetch college swap requests', error instanceof Error ? error : new Error(String(error)), {
+      collegeId,
+      hasFilters: !!filters
+    });
     return { data: null, error: error as Error };
   }
 };
@@ -536,7 +574,10 @@ export const getCollegeSwapRequestsWithDetails = async (
     
     return { data: detailedRequests, error: null };
   } catch (error) {
-    console.error('Error fetching college swap requests with details:', error);
+    logger.error('Failed to fetch college swap requests with details', error instanceof Error ? error : new Error(String(error)), {
+      collegeId,
+      hasFilters: !!filters
+    });
     return { data: null, error: error as Error };
   }
 };
@@ -570,7 +611,9 @@ export const getCollegeSwapStatistics = async (collegeId: string): Promise<SwapS
     
     return stats;
   } catch (error) {
-    console.error('Error getting college swap statistics:', error);
+    logger.error('Failed to get college swap statistics', error instanceof Error ? error : new Error(String(error)), {
+      collegeId
+    });
     return {
       total_requests: 0,
       pending_requests: 0,
@@ -687,7 +730,11 @@ export const getAvailableSlotsForSwap = async (
       return { data: slots, error: null };
     }
   } catch (error) {
-    console.error('Error fetching available slots:', error);
+    logger.error('Failed to fetch available slots', error instanceof Error ? error : new Error(String(error)), {
+      currentSlotId,
+      currentFacultyId,
+      isCollegeEducator
+    });
     return { data: null, error: error as Error };
   }
 };

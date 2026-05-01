@@ -25,6 +25,9 @@ import { opportunitiesService } from '@/features/opportunities';
 import type { Opportunity } from '@/features/opportunities';
 import { applicationTrackingService } from '@/features/opportunities';
 import type { ApplicationTrackingData, ApplicationStats } from '@/features/opportunities';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('ApplicationTracking');
 
 const ApplicationTracking: React.FC = () => {
   const [applicationSearchTerm, setApplicationSearchTerm] = useState("");
@@ -97,7 +100,6 @@ const ApplicationTracking: React.FC = () => {
         setSelectedJobDetails(opportunitiesData[0]);
       }
     } catch (error) {
-      console.error('Error loading opportunities:', error);
       setHasError(true);
       toast.error('Failed to load job opportunities');
       setOpportunities([]);
@@ -139,7 +141,6 @@ const ApplicationTracking: React.FC = () => {
       }
 
       if (!collegeId) {
-        console.error('❌ No college ID found for current user');
         setApplications([]);
         setApplicationStats({
           total: 0,
@@ -166,7 +167,6 @@ const ApplicationTracking: React.FC = () => {
       setApplicationStats(statsData);
 
     } catch (error) {
-      console.error('Error loading applications:', error);
       setApplicationError('Failed to load application data. Please try again.');
       toast.error('Failed to load applications');
     } finally {
@@ -273,7 +273,7 @@ const ApplicationTracking: React.FC = () => {
       setPipelineModalView('pipeline');
       setShowPipelineModal(true);
     } catch (error) {
-      console.error('Error loading pipeline data:', error);
+      logger.error('Failed to load pipeline data', error as Error);
       toast.error('Failed to load pipeline data');
     }
   };
@@ -311,7 +311,7 @@ const ApplicationTracking: React.FC = () => {
         setNewApplicationStage("");
         setNewApplicationStatus("");
       } catch (error) {
-        console.error('Error updating application:', error);
+        logger.error('Failed to update application status', error as Error);
         toast.error("Failed to update application. Please try again.");
       } finally {
         setIsUpdating(false);

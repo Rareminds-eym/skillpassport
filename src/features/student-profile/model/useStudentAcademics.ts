@@ -12,6 +12,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('student-academics');
 
 export interface UseStudentAcademicsOptions {
   studentId: string | null;
@@ -73,7 +76,7 @@ export const useStudentAcademics = ({ studentId, enabled = true }: UseStudentAca
         fetchAssessments()
       ]);
     } catch (err: any) {
-      console.error('Error fetching academic data:', err);
+      logger.error('Error fetching academic data', err);
       setError(err.message || 'Failed to fetch academic data');
     } finally {
       setLoading(false);
@@ -95,7 +98,7 @@ export const useStudentAcademics = ({ studentId, enabled = true }: UseStudentAca
 
       setCurriculum(data || []);
     } catch (err) {
-      console.error('Error fetching curriculum:', err);
+      logger.error('Error fetching curriculum', err as Error);
     }
   };
 
@@ -114,7 +117,7 @@ export const useStudentAcademics = ({ studentId, enabled = true }: UseStudentAca
 
       setExams(data || []);
     } catch (err) {
-      console.error('Error fetching exams:', err);
+      logger.error('Error fetching exams', err as Error);
     }
   };
 
@@ -133,7 +136,7 @@ export const useStudentAcademics = ({ studentId, enabled = true }: UseStudentAca
 
       setAssessments(data || []);
     } catch (err) {
-      console.error('Error fetching assessments:', err);
+      logger.error('Error fetching assessments', err as Error);
     }
   };
 

@@ -82,7 +82,6 @@ const TeacherListPage: React.FC = () => {
 
   const fetchSchoolId = async () => {
     if (!user?.email) {
-      console.error('No user email found');
       setLoading(false);
       return;
     }
@@ -96,13 +95,11 @@ const TeacherListPage: React.FC = () => {
         .maybeSingle();
 
       if (educatorData?.school_id) {
-        console.log('Found school_id from school_educators:', educatorData.school_id);
         setSchoolId(educatorData.school_id);
         return;
       }
 
       // If not found in school_educators, check organizations table
-      console.log('Not found in school_educators, checking organizations table...');
       const { data: schoolData, error: schoolError } = await supabase
         .from('organizations')
         .select('id')
@@ -111,26 +108,22 @@ const TeacherListPage: React.FC = () => {
         .maybeSingle();
 
       if (schoolError) {
-        console.error('Error fetching from organizations:', schoolError);
+        // Error handled silently
       }
 
       if (schoolData?.id) {
-        console.log('Found school_id from organizations table:', schoolData.id);
         setSchoolId(schoolData.id);
         return;
       }
 
-      console.error('No school_id found for user in any table');
       setLoading(false);
     } catch (error) {
-      console.error('Error in fetchSchoolId:', error);
       setLoading(false);
     }
   };
 
   const loadTeachers = async () => {
     if (!schoolId) {
-      console.error('No school_id available');
       setLoading(false);
       return;
     }
@@ -144,13 +137,12 @@ const TeacherListPage: React.FC = () => {
         .order("created_at", { ascending: false });
 
       if (error) {
-        console.error('Error loading teachers:', error);
+        // Error handled silently
       } else if (data) {
-        console.log('Loaded teachers:', data.length);
         setTeachers(data);
       }
     } catch (error) {
-      console.error('Error in loadTeachers:', error);
+      // Error handled silently
     } finally {
       setLoading(false);
     }
@@ -223,8 +215,6 @@ const TeacherListPage: React.FC = () => {
     if (!error) {
       loadTeachers();
       setSelectedTeacher(null);
-    } else {
-      console.error('Error updating teacher status:', error);
     }
   };
 

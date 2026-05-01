@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('course-mapping-service');
 
 // Types
 export interface Course {
@@ -159,7 +162,10 @@ export async function getCourses(searchQuery?: string, courseType?: string): Pro
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('Error fetching courses:', error);
+    logger.error('Failed to fetch courses', error instanceof Error ? error : new Error(String(error)), {
+      searchQuery,
+      courseType
+    });
     throw error;
   }
 }
@@ -196,7 +202,10 @@ export async function createCourse(courseData: Omit<Course, 'id' | 'created_at' 
 
     return data;
   } catch (error) {
-    console.error('Error creating course:', error);
+    logger.error('Failed to create course', error instanceof Error ? error : new Error(String(error)), {
+      courseCode: courseData.course_code,
+      courseName: courseData.course_name
+    });
     throw error;
   }
 }
@@ -222,7 +231,9 @@ export async function updateCourse(courseId: string, updates: Partial<Course>): 
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Error updating course:', error);
+    logger.error('Failed to update course', error instanceof Error ? error : new Error(String(error)), {
+      courseId
+    });
     throw error;
   }
 }
@@ -429,7 +440,7 @@ export async function getCourseMappingFaculty(departmentId?: string): Promise<Fa
 
     return Array.from(facultyMap.values()).sort((a, b) => a.name.localeCompare(b.name));
   } catch (error) {
-    console.error('Error fetching faculty:', error);
+    logger.error('Failed to fetch faculty', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 }
@@ -457,7 +468,7 @@ async function calculateFacultyWorkload(facultyIds: string[]): Promise<Map<strin
       workloadMap.set(mapping.faculty_id, current + Number(credits));
     });
   } catch (error) {
-    console.error('Error calculating faculty workload:', error);
+    logger.error('Failed to calculate faculty workload', error instanceof Error ? error : new Error(String(error)));
   }
 
   return workloadMap;
@@ -627,7 +638,7 @@ export async function mapCourse(data: {
 
     return mapping;
   } catch (error) {
-    console.error('Error mapping course:', error);
+    logger.error('Failed to map course', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 }
@@ -684,7 +695,7 @@ export async function updateCourseMapping(id: string, updates: Partial<CourseMap
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Error updating course mapping:', error);
+    logger.error('Failed to update course mapping', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 }
@@ -716,7 +727,9 @@ export async function deleteCourseMapping(id: string): Promise<void> {
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error deleting course mapping:', error);
+    logger.error('Failed to delete course mapping', error instanceof Error ? error : new Error(String(error)), {
+      mappingId: id
+    });
     throw error;
   }
 }
@@ -779,7 +792,7 @@ export async function getCourseMappings(
 
     return mappings;
   } catch (error) {
-    console.error('Error fetching course mappings:', error);
+    logger.error('Failed to fetch course mappings', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 }
@@ -804,7 +817,7 @@ export async function isSemesterLocked(programId: string, semester: number): Pro
     if (error && error.code !== 'PGRST116') throw error;
     return data?.is_locked || false;
   } catch (error) {
-    console.error('Error checking semester lock:', error);
+    logger.error('Failed to check semester lock', error instanceof Error ? error : new Error(String(error)));
     return false;
   }
 }
@@ -829,7 +842,7 @@ export async function lockSemester(programId: string, semester: number): Promise
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error locking semester:', error);
+    logger.error('Failed to lock semester', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 }
@@ -851,7 +864,7 @@ export async function unlockSemester(programId: string, semester: number): Promi
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error unlocking semester:', error);
+    logger.error('Failed to unlock semester', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 }
@@ -913,7 +926,7 @@ export async function cloneSemesterStructure(
       throw insertError;
     }
   } catch (error) {
-    console.error('Error cloning semester structure:', error);
+    logger.error('Failed to clone semester structure', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 }
@@ -940,7 +953,7 @@ export async function allocateFaculty(mappingId: string, facultyId: string): Pro
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error allocating faculty:', error);
+    logger.error('Failed to allocate faculty', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 }
@@ -992,7 +1005,7 @@ export async function calculateWorkload(facultyId: string): Promise<WorkloadSumm
       }))
     };
   } catch (error) {
-    console.error('Error calculating workload:', error);
+    logger.error('Failed to calculate workload', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 }
@@ -1025,7 +1038,10 @@ export async function getAllCourseMappings(
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('Error fetching all course mappings:', error);
+    logger.error('Failed to fetch all course mappings', error instanceof Error ? error : new Error(String(error)), {
+      limit,
+      offset
+    });
     throw error;
   }
 }
@@ -1060,7 +1076,9 @@ export async function checkElectiveCapacity(mappingId: string): Promise<{
       available: Math.max(0, capacity - enrolled)
     };
   } catch (error) {
-    console.error('Error checking elective capacity:', error);
+    logger.error('Failed to check elective capacity', error instanceof Error ? error : new Error(String(error)), {
+      mappingId
+    });
     throw error;
   }
 }

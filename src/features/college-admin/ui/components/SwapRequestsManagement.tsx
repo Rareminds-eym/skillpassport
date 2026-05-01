@@ -3,6 +3,7 @@ import {
   RefreshCw, Filter, Calendar, CheckCircle, 
   XCircle, Clock, TrendingUp, AlertCircle 
 } from 'lucide-react';
+import { getLogger } from '@/shared/config/logging';
 import {
   getCollegeSwapRequestsWithDetails,
   getCollegeSwapStatistics,
@@ -17,6 +18,8 @@ import type {
 import { supabase } from '@/shared/api/supabaseClient';
 
 import { useUser } from '@/shared/model/authStore';
+
+const logger = getLogger('college-admin:SwapRequestsManagement');
 interface SwapRequestsManagementProps {
   collegeId: string | null;
 }
@@ -60,7 +63,7 @@ const SwapRequestsManagement: React.FC<SwapRequestsManagementProps> = ({ college
       
       setStats(statsResult);
     } catch (error) {
-      console.error('Error loading swap requests:', error);
+      logger.error('Error loading swap requests', error as Error);
     } finally {
       setLoading(false);
     }
@@ -103,7 +106,7 @@ const SwapRequestsManagement: React.FC<SwapRequestsManagementProps> = ({ college
         loadData(); // Reload data
       }
     } catch (error) {
-      console.error('Error submitting approval:', error);
+      logger.error('Error submitting approval', error as Error);
       alert('Failed to submit approval');
     } finally {
       setSubmitting(false);

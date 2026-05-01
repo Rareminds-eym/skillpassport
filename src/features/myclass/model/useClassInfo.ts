@@ -31,7 +31,6 @@ export const useClassInfo = (studentId: string | undefined, authLoading: boolean
         const classData = await getStudentClassInfo(studentId);
         setClassInfo(classData);
       } catch (err) {
-        console.error('Error fetching class info:', err);
         setError(err as Error);
       } finally {
         setLoading(false);

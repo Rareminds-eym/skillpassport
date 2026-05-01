@@ -1,5 +1,8 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 import { UserRole } from './unifiedAuthService';
+
+const logger = getLogger('role-lookup-service');
 
 export interface UserData {
   id: string;
@@ -99,12 +102,9 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
       .select('*')
       .eq('id', userId)
       .maybeSingle();
-    
-    console.log('👤 Users table result:', { userData, userError });
 
     if (!userError && userData && userData.role) {
       const userRole = userData.role as string;
-      console.log('🎭 Found role in users table:', userRole);
       
       // Handle admin roles
       if (['school_admin', 'college_admin', 'university_admin'].includes(userRole)) {
@@ -122,7 +122,6 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
       }
       // Handle educator roles (college_educator, school_educator)
       else if (['college_educator', 'school_educator'].includes(userRole)) {
-        console.log('🎓 Converting', userRole, 'to educator role');
         foundRoles.push('educator');
         foundUserData.push({
           id: userData.id,
@@ -138,7 +137,6 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
       }
       // Handle student roles (college_student, school_student)
       else if (['college_student', 'school_student'].includes(userRole)) {
-        console.log('🎓 Converting', userRole, 'to student role');
         foundRoles.push('student');
         foundUserData.push({
           id: userData.id,
@@ -154,7 +152,6 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
       }
       // Handle recruiter role
       else if (userRole === 'recruiter') {
-        console.log('💼 Adding recruiter role');
         foundRoles.push('recruiter');
         foundUserData.push({
           id: userData.id,
@@ -168,7 +165,6 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
       }
       // Handle special admin roles (super_admin, company_admin) - treat as school_admin for now
       else if (['super_admin', 'company_admin'].includes(userRole)) {
-        console.log('🔧 Converting', userRole, 'to school_admin role');
         foundRoles.push('school_admin');
         foundUserData.push({
           id: userData.id,
@@ -180,19 +176,10 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
           ...userData
         });
       }
-      else {
-        console.log('⚠️ User has unrecognized role:', userRole);
-      }
-    } else {
-      console.log('⚠️ No role found in users table');
-      if (userData) {
-        console.log('⚠️ User data found but no role field:', userData);
-      }
     }
 
     // No roles found
     if (foundRoles.length === 0) {
-      console.warn('No role found for user:', userId, email);
       return {
         role: null,
         userData: null,
@@ -217,7 +204,7 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
     };
 
   } catch (error) {
-    console.error('Role lookup error:', error);
+    logger.error('Role lookup error', error as Error);
     return {
       role: null,
       userData: null,

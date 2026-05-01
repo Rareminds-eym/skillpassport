@@ -25,8 +25,11 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 import { OrganizationPurchaseData } from '@/features/subscription';
 import { initiateOrganizationPayment } from '@/entities/organization/api/organizationPaymentService';
+import { getLogger } from '@/shared/config/logging';
 
-import { useUser } from '@/shared/model/authStore';
+import { useUser, useIsAuthenticated } from '@/shared/model/authStore';
+
+const logger = getLogger('organization-payment-page');
 interface OrganizationConfig {
   organizationType: 'school' | 'college' | 'university';
   seatCount: number;
@@ -86,21 +89,17 @@ function OrganizationPaymentPage() {
   
   // Get organization ID from state first, then fallback to user context
   const organizationId = useMemo(() => {
-    // First priority: from location state (passed from BulkPurchasePage)
     if (stateOrgId) {
-      console.log('[OrgPaymentPage] Using organizationId from state:', stateOrgId);
       return stateOrgId;
     }
-    
-    // Fallback: Try to get from user object
+
     if (user?.school_id) return String(user.school_id);
     if (user?.college_id) return String(user.college_id);
     if (user?.university_id) return String(user.university_id);
     if (user?.schoolId) return String(user.schoolId);
     if (user?.collegeId) return String(user.collegeId);
     if (user?.universityId) return String(user.universityId);
-    
-    // Try localStorage
+
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
@@ -110,8 +109,7 @@ function OrganizationPaymentPage() {
         if (userData.universityId) return userData.universityId;
       } catch (e) { /* ignore */ }
     }
-    
-    console.log('[OrgPaymentPage] Could not find organizationId');
+
     return '';
   }, [stateOrgId, user]);
   
@@ -199,23 +197,21 @@ function OrganizationPaymentPage() {
       await initiateOrganizationPayment({
         purchaseData,
         onSuccess: (result) => {
-          console.log('[OrgPayment] Payment successful:', result);
           toast.success('Payment successful! Your subscription has been activated.');
-          
-          // Navigate to organization subscription page
-          navigate(`${basePath}/subscription/organization`, { 
+
+          navigate(`${basePath}/subscription/organization`, {
             replace: true,
             state: { paymentSuccess: true, subscription: result.subscription }
           });
         },
         onFailure: (err) => {
-          console.error('[OrgPayment] Payment failed:', err);
+          logger.error('Payment initiation failed', new Error(err.message));
           setLoading(false);
           setError(err.message || 'Payment failed. Please try again.');
         },
       });
     } catch (err) {
-      console.error('[OrgPayment] Error:', err);
+      logger.error('Failed to process payment', err instanceof Error ? err : new Error(String(err)));
       setLoading(false);
       setError(err instanceof Error ? err.message : 'Failed to process payment. Please try again.');
     }

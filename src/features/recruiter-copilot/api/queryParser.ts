@@ -107,8 +107,7 @@ class QueryParserService {
       // Parse JSON response
       const parsed = JSON.parse(content);
       
-      console.log('✅ AI Parser Result:', parsed);
-      
+        
       let result = {
         ...this.getDefaultParsing(query),
         ...parsed,
@@ -124,21 +123,17 @@ class QueryParserService {
             queryLower.includes('premier') ||
             queryLower.includes('elite')) {
           result.specific_institutions = ['IIT', 'NIT', 'IIIT', 'BITS'];
-          console.log('🔧 Post-processing: Added top universities filter');
-        } else if (queryLower.includes('iit')) {
+            } else if (queryLower.includes('iit')) {
           result.specific_institutions = ['IIT'];
-          console.log('🔧 Post-processing: Added IIT filter');
-        } else if (queryLower.includes('nit')) {
+            } else if (queryLower.includes('nit')) {
           result.specific_institutions = ['NIT'];
-          console.log('🔧 Post-processing: Added NIT filter');
-        }
+            }
       }
       
-      console.log('📦 Final Parsed Query:', result);
-      return result;
+        return result;
 
     } catch (error) {
-      console.error('Query parsing error:', error);
+      // Error handled
       return this.getFallbackParsing(query);
     }
   }
@@ -261,8 +256,7 @@ Respond with JSON only:`;
       if (queryLower.includes(role)) {
         foundSkills = skills;
         job_role = role.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-        console.log(`🎯 Detected role: ${job_role}, mapped to skills:`, skills);
-        break;
+          break;
       }
     }
     
@@ -347,8 +341,7 @@ Respond with JSON only:`;
         queryLower.includes('premier') ||
         queryLower.includes('elite')) {
       specific_institutions = ['IIT', 'NIT', 'IIIT', 'BITS'];
-      console.log('🏛️ Detected top universities filter:', specific_institutions);
-    }
+      }
     // Detect specific institutions
     else if (queryLower.includes('iit')) {
       specific_institutions = ['IIT'];

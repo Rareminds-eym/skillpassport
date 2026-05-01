@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { OrganizationType, useOrganizationCheck } from '@/entities/organization/model/useOrganizationCheck';
 import { useUser } from '@/shared/model/authStore';
@@ -28,16 +28,6 @@ const OrganizationGuard: React.FC<OrganizationGuardProps> = ({
   const user = useUser();
   const location = useLocation();
   const { loading, hasOrganization, error } = useOrganizationCheck(organizationType, user);
-
-  // Debug logging for redirect loop investigation
-  useEffect(() => {
-    console.log('[OrganizationGuard] State:', {
-      organizationType,
-      loading,
-      hasOrganization,
-      error,
-    });
-  }, [organizationType, loading, hasOrganization, error]);
 
   // Show loading state while checking organization status
   if (loading) {

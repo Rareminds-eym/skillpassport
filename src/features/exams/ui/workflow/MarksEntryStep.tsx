@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
+import { getLogger } from '@/shared/config/logging';
 import {
   ArrowLeftIcon,
   ChevronRightIcon,
@@ -10,6 +11,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { UIExam, UIStudentMark } from '@/features/exams';
 import { WorkflowStage } from '../types';
+
+const logger = getLogger('MarksEntryStep');
 
 interface MarksEntryStepProps {
   exam: UIExam;
@@ -65,7 +68,7 @@ const MarksEntryStep: React.FC<MarksEntryStepProps> = ({
             setStudentMarks(transformedStudents);
           }
         } catch (error) {
-          console.error('Error loading students:', error);
+          logger.error('Failed to load students', error as Error);
           setStudentMarks([]);
         } finally {
           setLoadingStudents(false);
@@ -170,7 +173,7 @@ const MarksEntryStep: React.FC<MarksEntryStepProps> = ({
         setSaveStatus({type: null, message: ''});
       }, 3000);
     } catch (error) {
-      console.error('Error saving marks:', error);
+      logger.error('Failed to save marks', error as Error);
       setSaveStatus({
         type: 'error',
         message: 'Failed to save marks. Please try again.'
@@ -278,7 +281,7 @@ const MarksEntryStep: React.FC<MarksEntryStepProps> = ({
                         type: 'error',
                         message: 'Error processing file. Please ensure it\'s a valid CSV file with the correct format.'
                       });
-                      console.error('Bulk upload error:', error);
+                      logger.error('Bulk upload error', error as Error);
                     }
                   };
                   reader.readAsText(file);

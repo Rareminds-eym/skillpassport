@@ -69,14 +69,12 @@ class AddOnAnalyticsService {
         .single();
 
       if (error) {
-        console.error('Error tracking event:', error);
         return { success: false, error: error.message };
       }
 
       return { success: true, data };
     } catch (error) {
-      console.error('Error in trackEvent:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
@@ -111,7 +109,6 @@ class AddOnAnalyticsService {
         .order('created_at', { ascending: true });
 
       if (eventsError) {
-        console.error('Error fetching purchase events:', eventsError);
         return { success: false, error: eventsError.message };
       }
 
@@ -123,7 +120,6 @@ class AddOnAnalyticsService {
         .lte('created_at', end);
 
       if (entError) {
-        console.error('Error fetching entitlements:', entError);
         return { success: false, error: entError.message };
       }
 
@@ -170,8 +166,7 @@ class AddOnAnalyticsService {
         }
       };
     } catch (error) {
-      console.error('Error in getAddOnRevenue:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
@@ -254,7 +249,6 @@ class AddOnAnalyticsService {
       const { data: entitlements, error } = await query;
 
       if (error) {
-        console.error('Error fetching entitlements for churn:', error);
         return { success: false, error: error.message };
       }
 
@@ -307,8 +301,7 @@ class AddOnAnalyticsService {
         }
       };
     } catch (error) {
-      console.error('Error in getChurnRate:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
@@ -342,7 +335,6 @@ class AddOnAnalyticsService {
         .order('created_at', { ascending: true });
 
       if (cohortError) {
-        console.error('Error fetching cohort data:', cohortError);
         return { success: false, error: cohortError.message };
       }
 
@@ -388,7 +380,6 @@ class AddOnAnalyticsService {
           .gte('end_date', monthStart.toISOString());
 
         if (activeError) {
-          console.error('Error fetching active users:', activeError);
           continue;
         }
 
@@ -417,8 +408,7 @@ class AddOnAnalyticsService {
         }
       };
     } catch (error) {
-      console.error('Error in getCohortAnalysis:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
@@ -454,7 +444,6 @@ class AddOnAnalyticsService {
       const { data: events, error } = await query;
 
       if (error) {
-        console.error('Error fetching feature usage:', error);
         return { success: false, error: error.message };
       }
 
@@ -493,8 +482,7 @@ class AddOnAnalyticsService {
         }
       };
     } catch (error) {
-      console.error('Error in getFeatureUsage:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
@@ -512,7 +500,6 @@ class AddOnAnalyticsService {
         .in('status', ['active', 'grace_period']);
 
       if (entError) {
-        console.error('Error fetching entitlements:', entError);
         return { success: false, error: entError.message };
       }
 
@@ -523,7 +510,6 @@ class AddOnAnalyticsService {
         .eq('is_addon', true);
 
       if (addOnsError) {
-        console.error('Error fetching add-ons:', addOnsError);
         return { success: false, error: addOnsError.message };
       }
 
@@ -575,8 +561,7 @@ class AddOnAnalyticsService {
         }
       };
     } catch (error) {
-      console.error('Error in getAdoptionMetrics:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 }

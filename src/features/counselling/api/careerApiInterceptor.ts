@@ -1,6 +1,6 @@
 /**
  * Career API Request Interceptor
- * 
+ *
  * Intercepts fetch requests to Career AI endpoints (/api/career/*) to ensure
  * all requests use valid JWT tokens. Coordinates with Token Monitor and Refresh
  * Coordinator to handle token expiry proactively.
@@ -10,6 +10,9 @@ import { TokenMonitor, getGlobalTokenMonitor } from '@/features/auth';
 import { RefreshCoordinator, getGlobalRefreshCoordinator, RefreshResult } from '@/features/auth';
 import { getGlobalTokenRefreshErrorHandler } from '@/features/auth/lib/tokenRefreshErrorHandler';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('career-api-interceptor');
 
 export interface InterceptorConfig {
   /** Maximum time to wait for token refresh (in milliseconds). Default: 10000 (10 seconds) */
@@ -80,16 +83,15 @@ export class CareerApiInterceptor {
       return { url, init };
     }
 
-    console.log('[CareerApiInterceptor] Intercepting request to:', url);
-
     // Check token validity before request
     const isValid = this.tokenMonitor.isTokenValid();
     const needsRefresh = this.tokenMonitor.needsRefresh();
 
     if (!isValid || needsRefresh) {
-      console.log(
-        `[CareerApiInterceptor] Token ${!isValid ? 'expired' : 'near expiry'}, waiting for refresh...`
-      );
+      logger.warn('Token refresh needed before request', {
+        url,
+        state: !isValid ? 'expired' : 'near_expiry'
+      });
 
       // Wait for token refresh with timeout
       const refreshResult = await this.waitForTokenRefresh();
@@ -99,8 +101,6 @@ export class CareerApiInterceptor {
           `Token refresh failed: ${refreshResult.error}. Cannot proceed with request.`
         );
       }
-
-      console.log('[CareerApiInterceptor] Token refreshed, proceeding with request');
     }
 
     // Get fresh token from Supabase session
@@ -132,8 +132,6 @@ export class CareerApiInterceptor {
 
       // Handle 401 responses with retry
       if (response.status === 401 && this.config.retryOn401) {
-        console.log('[CareerApiInterceptor] Received 401, attempting token refresh and retry...');
-
         // Log the 401 error
         this.errorHandler.logFailure(
           'invalid_refresh_token',
@@ -150,10 +148,13 @@ export class CareerApiInterceptor {
           const retryConfig = await this.interceptRequest(url, init);
           const retryResponse = await fetch(retryConfig.url, retryConfig.init);
 
-          console.log('[CareerApiInterceptor] Retry after refresh:', retryResponse.status);
           return retryResponse;
         } else {
-          console.warn('[CareerApiInterceptor] Token refresh failed after 401:', refreshResult.error);
+          logger.warn('Token refresh failed after 401 response', {
+            url,
+            error: refreshResult.error,
+            attempt: this.refreshCoordinator.getCurrentAttempt() || 1
+          });
 
           // Log the final failure
           this.errorHandler.logFailure(
@@ -170,7 +171,9 @@ export class CareerApiInterceptor {
 
       return response;
     } catch (error) {
-      console.error('[CareerApiInterceptor] Request error:', error);
+      logger.error('Career API request failed', error instanceof Error ? error : new Error(String(error)), {
+        url
+      });
       throw error;
     }
   }
@@ -191,10 +194,6 @@ export class CareerApiInterceptor {
         reject,
         timestamp: Date.now(),
       });
-
-      console.log(
-        `[CareerApiInterceptor] Request ${requestId} queued (queue length: ${this.requestQueue.length})`
-      );
     });
   }
 
@@ -209,10 +208,6 @@ export class CareerApiInterceptor {
     this.isProcessingQueue = true;
 
     try {
-      console.log(
-        `[CareerApiInterceptor] Processing ${this.requestQueue.length} queued requests`
-      );
-
       // Get fresh token
       const token = await this.getCurrentToken();
 
@@ -232,15 +227,12 @@ export class CareerApiInterceptor {
 
           request.resolve(updatedConfig);
         } catch (error) {
-          console.error(
-            `[CareerApiInterceptor] Error processing queued request ${request.requestId}:`,
-            error
-          );
+          logger.error('Error processing queued request', error instanceof Error ? error : new Error(String(error)), {
+            requestId: request.requestId
+          });
           request.reject(error as Error);
         }
       }
-
-      console.log('[CareerApiInterceptor] Queue processing complete');
     } finally {
       this.isProcessingQueue = false;
     }
@@ -253,8 +245,6 @@ export class CareerApiInterceptor {
   private async waitForTokenRefresh(): Promise<RefreshResult> {
     // Check if refresh is already in progress
     if (this.refreshCoordinator.isRefreshInProgress()) {
-      console.log('[CareerApiInterceptor] Refresh already in progress, waiting...');
-
       // Wait for existing refresh with timeout
       return this.waitWithTimeout(
         this.refreshCoordinator.waitForRefresh(),
@@ -263,8 +253,6 @@ export class CareerApiInterceptor {
     }
 
     // Initiate new refresh
-    console.log('[CareerApiInterceptor] Initiating token refresh...');
-
     return this.waitWithTimeout(
       this.refreshCoordinator.refreshToken(),
       this.config.maxWaitTimeMs
@@ -299,13 +287,13 @@ export class CareerApiInterceptor {
       const { data: { session }, error } = await supabase.auth.getSession();
 
       if (error) {
-        console.error('[CareerApiInterceptor] Error getting session:', error);
+        logger.error('Failed to get session', error instanceof Error ? error : new Error(String(error)));
         return null;
       }
 
       return session?.access_token || null;
     } catch (error) {
-      console.error('[CareerApiInterceptor] Error getting current token:', error);
+      logger.error('Error retrieving current token', error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }

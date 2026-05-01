@@ -40,7 +40,6 @@ class AddOnCatalogService {
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error fetching add-ons:', error);
         return { success: false, error: error.message };
       }
 
@@ -58,8 +57,7 @@ class AddOnCatalogService {
 
       return { success: true, data: filteredData };
     } catch (error) {
-      console.error('Error in getAddOns:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
@@ -86,14 +84,12 @@ class AddOnCatalogService {
         if (error.code === 'PGRST116') {
           return { success: false, error: 'ADD_ON_NOT_FOUND' };
         }
-        console.error('Error fetching add-on by feature key:', error);
         return { success: false, error: error.message };
       }
 
       return { success: true, data };
     } catch (error) {
-      console.error('Error in getAddOnByFeatureKey:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
@@ -114,7 +110,6 @@ class AddOnCatalogService {
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error fetching bundles:', error);
         return { success: false, error: error.message };
       }
 
@@ -132,8 +127,7 @@ class AddOnCatalogService {
 
       return { success: true, data: filteredData };
     } catch (error) {
-      console.error('Error in getBundles:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
@@ -160,7 +154,6 @@ class AddOnCatalogService {
         if (bundleError.code === 'PGRST116') {
           return { success: false, error: 'BUNDLE_NOT_FOUND' };
         }
-        console.error('Error fetching bundle:', bundleError);
         return { success: false, error: bundleError.message };
       }
 
@@ -186,7 +179,6 @@ class AddOnCatalogService {
         .in('feature_key', featureKeys);
 
       if (addOnsError) {
-        console.error('Error fetching add-on prices:', addOnsError);
         return { success: false, error: addOnsError.message };
       }
 
@@ -207,8 +199,7 @@ class AddOnCatalogService {
         }
       };
     } catch (error) {
-      console.error('Error in calculateBundleSavings:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 }

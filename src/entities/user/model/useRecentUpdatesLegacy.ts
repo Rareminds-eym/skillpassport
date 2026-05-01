@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('recent-updates-legacy-hook');
 
 /**
  * Legacy hook for recent updates - provides fallback data when auth-based data is unavailable
@@ -54,7 +57,7 @@ export const useRecentUpdatesLegacy = () => {
       setRecentUpdates(mockRecentUpdates);
       
     } catch (err) {
-      console.error('❌ Error in useRecentUpdatesLegacy:', err);
+      logger.error('Failed to fetch recent updates (legacy)', err instanceof Error ? err : new Error(String(err)));
       setError(err.message);
       // Even on error, provide some fallback data
       setRecentUpdates([

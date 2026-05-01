@@ -26,13 +26,11 @@ import {
   updateTechnicalSkillsByEmail,
   updateTrainingByEmail
 } from '@/entities/student/api';
-// Note: Embedding regeneration is now handled automatically by database triggers
-// No need to call scheduleEmbeddingRegeneration from frontend
+import { getLogger } from '@/shared/config/logging';
 
-console.log('🔍 [useStudentDataByEmail] Hook module loaded');
+const logger = getLogger('student-data-by-email');
 
 export const useStudentDataByEmail = (email, fallbackToMock = true) => {
-  console.log('🔍 [useStudentDataByEmail] Hook called with email:', email);
   const [studentData, setStudentData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -60,16 +58,14 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
           if (errorMsg.toLowerCase().includes('row-level security') ||
             errorMsg.toLowerCase().includes('rls') ||
             errorMsg.toLowerCase().includes('permission denied')) {
-            setError('⚠️ Database access blocked. Please disable RLS in Supabase. See FIX_RLS.md');
-            console.error('🔒 RLS is blocking access! Run this in Supabase SQL Editor:');
-            console.error('ALTER TABLE students DISABLE ROW LEVEL SECURITY;');
+            setError('Database access blocked. Please disable RLS in Supabase.');
           } else {
             setError(errorMsg);
           }
           setStudentData(null); // No fallback to mock data
         }
       } catch (err) {
-        console.error('❌ Error fetching student data:', err);
+        logger.error('Error fetching student data', err instanceof Error ? err : new Error(String(err)), { email });
         setError(err.message);
         setStudentData(null);
       } finally {
@@ -92,7 +88,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
       setStudentData(result.data);
       setError(null);
     } else {
-      console.error('❌ refresh: Error loading data:', result.error);
+      logger.error('Error loading data', new Error(result.error || 'Unknown error'), { email });
       setError(result.error);
     }
 
@@ -111,26 +107,23 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
         throw new Error(result.error);
       }
     } catch (err) {
-      console.error('Error updating profile:', err);
+      logger.error('Error updating profile', err instanceof Error ? err : new Error(String(err)), { email });
       return { success: false, error: err.message };
     }
   };
 
   const updateEducation = async (educationData) => {
     try {
-      console.log('💾 Saving education data:', educationData);
       const result = await updateEducationByEmail(email, educationData);
       if (result.success) {
-        console.log('✅ Education saved successfully:', result.data);
         setStudentData(result.data);
         // Embedding regeneration handled by database trigger
         return { success: true };
       } else {
-        console.error('❌ Failed to save education:', result.error);
         throw new Error(result.error);
       }
     } catch (err) {
-      console.error('Error updating education:', err);
+      logger.error('Error updating education', err instanceof Error ? err : new Error(String(err)), { email });
       return { success: false, error: err.message };
     }
   };
@@ -147,7 +140,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
         throw new Error(result.error);
       }
     } catch (err) {
-      console.error('Error updating training:', err);
+      logger.error('Error updating training', err instanceof Error ? err : new Error(String(err)), { email });
       return { success: false, error: err.message };
     }
   };
@@ -168,7 +161,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
         throw new Error(result.error);
       }
     } catch (err) {
-      console.error('Error updating single training:', err);
+      logger.error('Error updating single training', err instanceof Error ? err : new Error(String(err)), { email });
       return { success: false, error: err.message };
     }
   };
@@ -184,7 +177,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
         throw new Error(result.error);
       }
     } catch (err) {
-      console.error('Error updating experience:', err);
+      logger.error('Error updating experience', err instanceof Error ? err : new Error(String(err)), { email });
       return { success: false, error: err.message };
     }
   };
@@ -200,7 +193,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
         throw new Error(result.error);
       }
     } catch (err) {
-      console.error('Error updating technical skills:', err);
+      logger.error('Error updating technical skills', err instanceof Error ? err : new Error(String(err)), { email });
       return { success: false, error: err.message };
     }
   };
@@ -216,7 +209,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
         throw new Error(result.error);
       }
     } catch (err) {
-      console.error('Error updating soft skills:', err);
+      logger.error('Error updating soft skills', err instanceof Error ? err : new Error(String(err)), { email });
       return { success: false, error: err.message };
     }
   };
@@ -233,7 +226,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
         throw new Error(result.error);
       }
     } catch (err) {
-      console.error('Error updating skills:', err);
+      logger.error('Error updating skills', err instanceof Error ? err : new Error(String(err)), { email });
       return { success: false, error: err.message };
     }
   };

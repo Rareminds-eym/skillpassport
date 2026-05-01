@@ -1,8 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 
-/**
- * Service for managing course enrollments and student progress
- */
+const logger = getLogger('course-enrollment-service');
 export const courseEnrollmentService = {
   /**
    * Enroll a student in a course
@@ -60,13 +59,12 @@ export const courseEnrollmentService = {
 
       // If error occurred, throw it
       if (checkError) {
-        console.error('Error checking enrollment:', checkError);
+        logger.error('Error checking enrollment', checkError instanceof Error ? checkError : new Error(String(checkError)));
         throw checkError;
       }
 
       // If enrollment exists, return it
       if (existingEnrollment) {
-        console.log('Student already enrolled, returning existing enrollment');
         // Update last_accessed and ensure progress is at least 1 (so it shows in My Learning)
         const updateData = { 
           last_accessed: new Date().toISOString(),
@@ -104,8 +102,6 @@ export const courseEnrollmentService = {
       const totalLessons = modulesData?.reduce((acc, module) => 
         acc + (module.lessons?.length || 0), 0) || 0;
 
-      console.log('📚 Course has', totalLessons, 'total lessons');
-
       // Create enrollment with progress=1 so it shows in My Learning immediately
       const { data: enrollment, error: enrollError } = await supabase
         .from('course_enrollments')
@@ -130,7 +126,6 @@ export const courseEnrollmentService = {
 
       // Handle duplicate key error (race condition from React StrictMode)
       if (enrollError && enrollError.code === '23505') {
-        console.log('Duplicate enrollment detected, fetching existing record');
         const { data: existingRecord } = await supabase
           .from('course_enrollments')
           .select('*')
@@ -164,13 +159,7 @@ export const courseEnrollmentService = {
         data: enrollment
       };
     } catch (error) {
-      console.error('Error enrolling student:', error);
-      console.error('Error details:', {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint
-      });
+      logger.error('Error enrolling student', error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
         error: error.message || 'Failed to enroll student'
@@ -230,20 +219,17 @@ export const courseEnrollmentService = {
 
       // If course is being completed, fetch and add skills from course_skills
       if (progress >= 100 && (!enrollment.skills_acquired || enrollment.skills_acquired.length === 0)) {
-        console.log('📚 Course completed! Fetching skills from course_skills for course:', courseId);
         const { data: courseSkills, error: skillsError } = await supabase
           .from('course_skills')
           .select('skill_name')
           .eq('course_id', courseId);
 
-        console.log('📚 Course skills fetched:', courseSkills);
-        console.log('📚 Skills error:', skillsError);
+        if (skillsError) {
+          logger.warn('Error fetching course skills');
+        }
 
         if (courseSkills && courseSkills.length > 0) {
           updateData.skills_acquired = courseSkills.map(s => s.skill_name);
-          console.log('📚 Adding skills to enrollment:', updateData.skills_acquired);
-        } else {
-          console.log('⚠️ No course skills found for this course');
         }
       }
 
@@ -257,8 +243,6 @@ export const courseEnrollmentService = {
 
       if (updateError) throw updateError;
 
-      console.log('📊 Progress updated:', { progress, completedLessons: completedLessons.length, totalLessons, status });
-
       // Embedding regeneration handled by database trigger on course_enrollments
 
       return {
@@ -266,7 +250,7 @@ export const courseEnrollmentService = {
         data: updated
       };
     } catch (error) {
-      console.error('Error updating progress:', error);
+      logger.error('Error updating progress', error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
         error: error.message
@@ -304,7 +288,7 @@ export const courseEnrollmentService = {
         data: data || null
       };
     } catch (error) {
-      console.error('Error getting enrollment:', error);
+      logger.error('Error getting enrollment', error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
         error: error.message
@@ -340,7 +324,7 @@ export const courseEnrollmentService = {
         data: data || []
       };
     } catch (error) {
-      console.error('Error getting student enrollments:', error);
+      logger.error('Error getting student enrollments', error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
         error: error.message,
@@ -369,7 +353,7 @@ export const courseEnrollmentService = {
         data: data || []
       };
     } catch (error) {
-      console.error('Error getting course enrollments:', error);
+      logger.error('Error getting course enrollments', error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
         error: error.message,
@@ -411,7 +395,7 @@ export const courseEnrollmentService = {
         data: stats
       };
     } catch (error) {
-      console.error('Error getting educator stats:', error);
+      logger.error('Error getting educator stats', error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
         error: error.message

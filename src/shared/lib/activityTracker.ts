@@ -5,6 +5,10 @@
  * Monitors UI interactions, message sends, and tab visibility to determine session activity.
  */
 
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('activity-tracker');
+
 export type ActivityType =
   | 'message_sent'
   | 'ui_interaction'
@@ -54,8 +58,6 @@ export class ActivityTracker {
     // Update last activity time
     this.lastActivityTime = Date.now();
     this.activityCount++;
-
-    console.log(`[ActivityTracker] Activity recorded: ${activityType}`);
 
     // Emit activity event to callbacks
     this.emitActivity(activityType);
@@ -121,7 +123,7 @@ export class ActivityTracker {
       try {
         callback(type);
       } catch (error) {
-        console.error('[ActivityTracker] Error in activity callback:', error);
+        logger.error('Error in activity callback', error as Error);
       }
     });
   }
@@ -131,11 +133,9 @@ export class ActivityTracker {
    */
   startTracking(): void {
     if (this.isTracking) {
-      console.warn('[ActivityTracker] Already tracking');
       return;
     }
 
-    console.log('[ActivityTracker] Starting activity tracking');
     this.isTracking = true;
 
     // Set up Page Visibility API listener
@@ -155,7 +155,6 @@ export class ActivityTracker {
       return;
     }
 
-    console.log('[ActivityTracker] Stopping activity tracking');
     this.isTracking = false;
 
     // Remove all event listeners
@@ -173,10 +172,8 @@ export class ActivityTracker {
         this.isTabVisible = isVisible;
         
         if (isVisible) {
-          console.log('[ActivityTracker] Tab became visible');
           this.recordActivity('tab_visible');
         } else {
-          console.log('[ActivityTracker] Tab became hidden');
           this.recordActivity('tab_hidden');
         }
       }

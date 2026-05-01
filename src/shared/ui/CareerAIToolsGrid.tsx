@@ -22,6 +22,9 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('career-ai-tools-grid');
 
 export interface CareerAIAction {
   id: string;
@@ -100,7 +103,7 @@ const CareerAIToolsGrid: React.FC<CareerAIToolsGridProps> = ({
         }
       }
     } catch (error) {
-      console.error('Error fetching grade-appropriate actions:', error);
+      logger.error('Error fetching grade-appropriate actions', error as Error);
     } finally {
       setLoading(false);
     }

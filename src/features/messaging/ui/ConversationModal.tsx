@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, GraduationCap, Building2, MessageCircle } from 'lucide-react';
+import { getLogger } from '@/shared/config/logging';
 import { supabase } from '@/shared/api';
 import { ConversationType, getConversationConfig } from '../lib/conversationConfig';
+
+const logger = getLogger('ConversationModal');
 
 interface Recipient {
   id: string;
@@ -330,7 +333,7 @@ export const ConversationModal: React.FC<ConversationModalProps> = ({
       
       setRecipients(data);
     } catch (error) {
-      console.error('Error fetching recipients:', error);
+      logger.error('Failed to fetch recipients', error as Error);
       setRecipients([]);
     } finally {
       setLoading(false);
@@ -344,7 +347,7 @@ export const ConversationModal: React.FC<ConversationModalProps> = ({
       // This is used when we don't need to select a recipient
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching organization info:', error);
+      logger.error('Failed to fetch organization info', error as Error);
       setLoading(false);
     }
   };
@@ -356,7 +359,7 @@ export const ConversationModal: React.FC<ConversationModalProps> = ({
       setShowMessageModal(false);
       handleClose();
     } catch (error) {
-      console.error('Error creating conversation:', error);
+      logger.error('Failed to create conversation', error as Error);
     } finally {
       setSendingMessage(false);
     }

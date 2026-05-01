@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
-import { 
-  ArrowLeftIcon, 
-  ArrowDownTrayIcon, 
+import { getLogger } from '@/shared/config/logging';
+import {
+  ArrowLeftIcon,
+  ArrowDownTrayIcon,
   ChartBarIcon,
   UserGroupIcon,
   TrophyIcon,
@@ -10,6 +11,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { UIExam } from '@/features/exams';
 import { WorkflowStage } from '../types';
+
+const logger = getLogger('ResultsStep');
 import TypeBadge from '../TypeBadge';
 
 interface ResultsStepProps {
@@ -157,7 +160,7 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
       
       setClasswiseData(filteredStats);
     } catch (error) {
-      console.error('Error fetching class-wise data:', error);
+      logger.error('Failed to fetch class-wise data', error as Error);
       setClasswiseData([]);
     } finally {
       setLoadingClasswise(false);

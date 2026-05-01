@@ -156,7 +156,6 @@ export const useStudentProjects = (studentId, enabled = true) => {
 
       setProjects(transformedData);
     } catch (err) {
-      console.error('Error fetching projects:', err);
       setError(err.message);
     } finally {
       setLoading(false);

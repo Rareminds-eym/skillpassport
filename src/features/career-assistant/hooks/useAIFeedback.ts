@@ -6,6 +6,9 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
 import { useUser } from '@/shared/model/authStore';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('ai-feedback-hook');
 
 
 export interface AIFeedback {
@@ -104,7 +107,7 @@ export function useAIFeedback() {
 
       return true;
     } catch (err: any) {
-      console.error('Error submitting feedback:', err);
+      logger.error('Failed to submit AI feedback', err instanceof Error ? err : new Error(String(err)));
       setError(err.message || 'Failed to submit feedback');
       return false;
     } finally {
@@ -144,7 +147,7 @@ export function useAIFeedback() {
         setFeedbackState(prev => ({ ...prev, ...newState }));
       }
     } catch (err) {
-      console.error('Error loading feedback:', err);
+      logger.error('Failed to load AI feedback', err instanceof Error ? err : new Error(String(err)));
     }
   }, [user?.id]);
 

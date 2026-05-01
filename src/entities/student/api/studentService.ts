@@ -86,7 +86,7 @@ export const createUserRecord = async (userId: string, userData: UserCreateData)
       .single();
 
     if (error) {
-      logger.error('Error creating user record', error, { userId, email: userData.email });
+      logger.error('Error creating user record', error);
       return { success: false, data: null, error: error.message };
     }
 
@@ -94,7 +94,7 @@ export const createUserRecord = async (userId: string, userData: UserCreateData)
     return { success: true, data: data, error: null };
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    logger.error('Unexpected error creating user record', error instanceof Error ? error : new Error(String(error)), { userId });
+    logger.error('Unexpected error creating user record', error instanceof Error ? error : new Error(String(error)));
     return { success: false, data: null, error: errorMessage };
   }
 };
@@ -394,7 +394,7 @@ export const getStudentByEmail = async (email: string): Promise<ServiceResponse>
       .maybeSingle();
 
     if (error) {
-      console.error('❌ Supabase error:', error);
+      logger.error('Supabase error fetching student by email', error, { email });
       return { success: false, data: null, error: error.message };
     }
 
@@ -791,7 +791,7 @@ export const getStudentByEmail = async (email: string): Promise<ServiceResponse>
     return { success: true, data: mergedData, error: null };
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-    console.error('❌ getStudentByEmail exception:', err);
+    logger.error('Exception in getStudentByEmail', err instanceof Error ? err : new Error(String(err)), { email });
     return { success: false, data: null, error: errorMessage };
   }
 };
@@ -871,7 +871,7 @@ export const getStudentById = async (studentId: string): Promise<ServiceResponse
       .maybeSingle();
 
     if (error) {
-      console.error('❌ Supabase error:', error);
+      logger.error('Supabase error fetching student by ID', error);
       return { success: false, data: null, error: error.message };
     }
 
@@ -884,7 +884,7 @@ export const getStudentById = async (studentId: string): Promise<ServiceResponse
     return await getStudentByEmail(email);
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-    console.error('❌ getStudentById exception:', err);
+    logger.error('Exception in getStudentById', err instanceof Error ? err : new Error(String(err)));
     return { success: false, data: null, error: errorMessage };
   }
 };
@@ -901,7 +901,7 @@ export async function findStudentByEmail(email: string): Promise<ServiceResponse
       .maybeSingle();
 
     if (error) {
-      console.error('❌ Database error:', error);
+      logger.error('Database error finding student', error, { email });
       return { success: false, data: null, error: error.message };
     }
 
@@ -912,7 +912,7 @@ export async function findStudentByEmail(email: string): Promise<ServiceResponse
     return { success: true, data: studentRecord, error: null };
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-    console.error('❌ findStudentByEmail exception:', err);
+    logger.error('Exception in findStudentByEmail', err instanceof Error ? err : new Error(String(err)));
     return { success: false, data: null, error: errorMessage };
   }
 }
@@ -924,7 +924,7 @@ export async function updateStudentByEmail(email: string, updates: StudentUpdate
   try {
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
-      console.error('❌ Failed to find student:', findResult.error);
+      logger.error('Failed to find student', new Error(findResult.error || 'Unknown error'));
       return findResult;
     }
 
@@ -1046,7 +1046,7 @@ export async function updateStudentByEmail(email: string, updates: StudentUpdate
       .single();
 
     if (error) {
-      console.error('❌ Supabase update error:', error);
+      logger.error('Supabase update error', error, { email });
       return { success: false, data: null, error: error.message };
     }
 
@@ -1060,7 +1060,7 @@ export async function updateStudentByEmail(email: string, updates: StudentUpdate
 
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-    console.error('❌ Unexpected error in updateStudentByEmail:', err);
+    logger.error('Exception in updateStudentByEmail', err instanceof Error ? err : new Error(String(err)));
     return { success: false, data: null, error: errorMessage };
   }
 }
@@ -1198,7 +1198,7 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
         .in('id', toDelete);
 
       if (deleteError) {
-        console.error('❌ Error deleting trainings:', deleteError);
+        logger.error('Error deleting trainings', deleteError);
         return { success: false, data: null, error: deleteError.message };
       }
     }
@@ -1210,7 +1210,7 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
         .upsert(formatted, { onConflict: 'id' });
 
       if (upsertError) {
-        console.error('❌ Error upserting trainings:', upsertError);
+        logger.error('Error upserting trainings', upsertError);
         return { success: false, data: null, error: upsertError.message };
       }
 
@@ -1295,7 +1295,7 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
               .insert(skillRecords);
 
             if (skillsInsertError) {
-              console.error('❌ Error inserting skills:', skillsInsertError);
+              logger.error('Error inserting skills', skillsInsertError);
             }
           }
         } else {
@@ -1311,7 +1311,7 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
     return await getStudentByEmail(email);
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-    console.error('❌ updateTrainingByEmail exception:', err);
+    logger.error('Exception in updateTrainingByEmail', err instanceof Error ? err : new Error(String(err)));
     return { success: false, data: null, error: errorMessage };
   }
 }
@@ -1384,7 +1384,7 @@ export async function updateTechnicalSkillsByEmail(email: string, skillsData: Sk
         .in('id', toDelete);
 
       if (deleteError) {
-        console.error('❌ Error deleting technical skills:', deleteError);
+        logger.error('Error deleting technical skills', deleteError);
         return { success: false, data: null, error: deleteError.message };
       }
     }
@@ -1396,7 +1396,7 @@ export async function updateTechnicalSkillsByEmail(email: string, skillsData: Sk
         .upsert(formatted, { onConflict: 'id' });
 
       if (upsertError) {
-        console.error('❌ Error upserting technical skills:', upsertError);
+        logger.error('Error upserting technical skills', upsertError);
         return { success: false, data: null, error: upsertError.message };
       }
     }
@@ -1404,7 +1404,7 @@ export async function updateTechnicalSkillsByEmail(email: string, skillsData: Sk
     return await getStudentByEmail(email);
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-    console.error('❌ updateTechnicalSkillsByEmail exception:', err);
+    logger.error('Exception in updateTechnicalSkillsByEmail', err instanceof Error ? err : new Error(String(err)));
     return { success: false, data: null, error: errorMessage };
   }
 }
@@ -1477,7 +1477,7 @@ export async function updateSoftSkillsByEmail(email: string, skillsData: SkillUp
         .in('id', toDelete);
 
       if (deleteError) {
-        console.error('❌ Error deleting soft skills:', deleteError);
+        logger.error('Error deleting soft skills', deleteError);
         return { success: false, data: null, error: deleteError.message };
       }
     }
@@ -1489,7 +1489,7 @@ export async function updateSoftSkillsByEmail(email: string, skillsData: SkillUp
         .upsert(formatted, { onConflict: 'id' });
 
       if (upsertError) {
-        console.error('❌ Error upserting soft skills:', upsertError);
+        logger.error('Error upserting soft skills', upsertError);
         return { success: false, data: null, error: upsertError.message };
       }
     }
@@ -1497,7 +1497,7 @@ export async function updateSoftSkillsByEmail(email: string, skillsData: SkillUp
     return await getStudentByEmail(email);
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-    console.error('❌ updateSoftSkillsByEmail exception:', err);
+    logger.error('Exception in updateSoftSkillsByEmail', err instanceof Error ? err : new Error(String(err)));
     return { success: false, data: null, error: errorMessage };
   }
 }
@@ -1570,7 +1570,7 @@ export async function updateExperienceByEmail(email: string, experienceData: Exp
         .in('id', toDelete);
 
       if (deleteError) {
-        console.error('❌ Error deleting experience:', deleteError);
+        logger.error('Error deleting experience', deleteError);
         return { success: false, data: null, error: deleteError.message };
       }
     }
@@ -1582,7 +1582,7 @@ export async function updateExperienceByEmail(email: string, experienceData: Exp
         .upsert(formatted, { onConflict: 'id' });
 
       if (upsertError) {
-        console.error('❌ Error upserting experience:', upsertError);
+        logger.error('Error upserting experience', upsertError);
         return { success: false, data: null, error: upsertError.message };
       }
     }
@@ -1590,7 +1590,7 @@ export async function updateExperienceByEmail(email: string, experienceData: Exp
     return await getStudentByEmail(email);
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-    console.error('❌ updateExperienceByEmail exception:', err);
+    logger.error('Exception in updateExperienceByEmail', err instanceof Error ? err : new Error(String(err)));
     return { success: false, data: null, error: errorMessage };
   }
 }
@@ -1667,7 +1667,7 @@ export async function updateEducationByEmail(email: string, educationData: Educa
         .in('id', toDelete);
 
       if (deleteError) {
-        console.error('❌ Error deleting education:', deleteError);
+        logger.error('Error deleting education', deleteError);
         return { success: false, data: null, error: deleteError.message };
       }
     }
@@ -1679,7 +1679,7 @@ export async function updateEducationByEmail(email: string, educationData: Educa
         .upsert(formatted, { onConflict: 'id' });
 
       if (upsertError) {
-        console.error('❌ Error upserting education:', upsertError);
+        logger.error('Error upserting education', upsertError);
         return { success: false, data: null, error: upsertError.message };
       }
     }
@@ -1687,7 +1687,7 @@ export async function updateEducationByEmail(email: string, educationData: Educa
     return await getStudentByEmail(email);
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-    console.error('❌ updateEducationByEmail exception:', err);
+    logger.error('Exception in updateEducationByEmail', err instanceof Error ? err : new Error(String(err)));
     return { success: false, data: null, error: errorMessage };
   }
 }
@@ -1765,7 +1765,7 @@ export async function updateCertificatesByEmail(email: string, certificatesData:
         .in('id', toDelete);
 
       if (deleteError) {
-        console.error('❌ Error deleting certificates:', deleteError);
+        logger.error('Error deleting certificates', deleteError);
         return { success: false, data: null, error: deleteError.message };
       }
     }
@@ -1777,7 +1777,7 @@ export async function updateCertificatesByEmail(email: string, certificatesData:
         .upsert(formatted, { onConflict: 'id' });
 
       if (upsertError) {
-        console.error('❌ Error upserting certificates:', upsertError);
+        logger.error('Error upserting certificates', upsertError);
         return { success: false, data: null, error: upsertError.message };
       }
     }
@@ -1785,7 +1785,7 @@ export async function updateCertificatesByEmail(email: string, certificatesData:
     return await getStudentByEmail(email);
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-    console.error('❌ updateCertificatesByEmail exception:', err);
+    logger.error('Exception in updateCertificatesByEmail', err instanceof Error ? err : new Error(String(err)));
     return { success: false, data: null, error: errorMessage };
   }
 }
@@ -1818,7 +1818,7 @@ export async function updateSkillsByEmail(email: string, skillsData: SkillUpdate
     return await getStudentByEmail(email);
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-    console.error('❌ updateSkillsByEmail exception:', err);
+    logger.error('Exception in updateSkillsByEmail', err instanceof Error ? err : new Error(String(err)));
     return { success: false, data: null, error: errorMessage };
   }
 }
@@ -1898,7 +1898,7 @@ export async function updateProjectsByEmail(email: string, projectsData: Project
         .in('id', toDelete);
 
       if (deleteError) {
-        console.error('❌ Error deleting projects:', deleteError);
+        logger.error('Error deleting projects', deleteError);
         return { success: false, data: null, error: deleteError.message };
       }
     }
@@ -1910,7 +1910,7 @@ export async function updateProjectsByEmail(email: string, projectsData: Project
         .upsert(formatted, { onConflict: 'id' });
 
       if (upsertError) {
-        console.error('❌ Error upserting projects:', upsertError);
+        logger.error('Error upserting projects', upsertError);
         return { success: false, data: null, error: upsertError.message };
       }
     }
@@ -1918,7 +1918,7 @@ export async function updateProjectsByEmail(email: string, projectsData: Project
     return await getStudentByEmail(email);
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-    console.error('❌ updateProjectsByEmail exception:', err);
+    logger.error('Exception in updateProjectsByEmail', err instanceof Error ? err : new Error(String(err)));
     return { success: false, data: null, error: errorMessage };
   }
 }
@@ -1951,7 +1951,7 @@ export async function updateSingleTrainingById(trainingId: string, updateData: T
       .single();
 
     if (updateError) {
-      console.error('❌ Error updating training:', updateError);
+      logger.error('Error updating training', updateError);
       return { success: false, data: null, error: updateError.message };
     }
 
@@ -2061,7 +2061,7 @@ export async function updateSingleTrainingById(trainingId: string, updateData: T
     return { success: true, data: updatedTraining, error: null };
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-    console.error('❌ Error updating single training:', err);
+    logger.error('Error updating single training', err instanceof Error ? err : new Error(String(err)));
     return { success: false, data: null, error: errorMessage };
   }
 }

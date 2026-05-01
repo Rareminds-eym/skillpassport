@@ -8,6 +8,10 @@
  * - Alert thresholds
  */
 
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('monitoring');
+
 // Environment detection
 const isDevelopment = import.meta.env.DEV;
 
@@ -15,7 +19,7 @@ const isDevelopment = import.meta.env.DEV;
  * Initialize error tracking (no-op stub, Sentry removed)
  */
 export function initializeSentry(): void {
-  console.warn('Sentry is not configured. Error tracking disabled.');
+  logger.warn('Sentry is not configured. Error tracking disabled.');
 }
 
 /**
@@ -25,7 +29,7 @@ export function captureError(
   error: Error,
   context?: Record<string, unknown>
 ): void {
-  console.error('[captureError]', error.message, context);
+  logger.error(error.message, error, context);
 }
 
 /**
@@ -89,7 +93,7 @@ export function trackPerformance(
   metadata?: Record<string, unknown>
 ): void {
   if (isDevelopment) {
-    console.log(`[Performance] ${name}: ${duration}ms`, metadata);
+    logger.debug(`${name}: ${duration}ms`, metadata);
   }
 
   if (typeof window !== 'undefined' && 'performance' in window) {
@@ -135,9 +139,9 @@ export function trackOrgMetrics(
   metrics: OrgSubscriptionMetrics
 ): void {
   if (metrics.utilizationRate < 20) {
-    console.warn(`Low seat utilization (${metrics.utilizationRate}%) for org ${organizationId}`);
+    logger.warn(`Low seat utilization (${metrics.utilizationRate}%) for org ${organizationId}`);
   } else if (metrics.utilizationRate > 95) {
-    console.warn(`High seat utilization (${metrics.utilizationRate}%) for org ${organizationId}`);
+    logger.warn(`High seat utilization (${metrics.utilizationRate}%) for org ${organizationId}`);
   }
 }
 

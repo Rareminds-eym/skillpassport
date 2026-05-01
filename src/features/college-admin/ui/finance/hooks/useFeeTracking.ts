@@ -3,6 +3,9 @@ import toast from "react-hot-toast";
 import { supabase } from '@/shared/api/supabaseClient';
 import { FeePayment, PaymentStatus, StudentFeeSummary, StudentLedger } from '@/features/student-profile/model';
 import { getExpenditureSummary } from "@/features/college-admin";
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('fee-tracking');
 
 export const useFeeTracking = () => {
   const [ledgers, setLedgers] = useState<StudentLedger[]>([]);
@@ -19,7 +22,6 @@ export const useFeeTracking = () => {
       if (storedUser) {
         const userData = JSON.parse(storedUser);
         if (userData.role === 'college_admin' && userData.collegeId) {
-          console.log('✅ College admin detected, using collegeId from localStorage:', userData.collegeId);
           return userData.collegeId;
         }
       }
@@ -27,8 +29,6 @@ export const useFeeTracking = () => {
       // If not found in localStorage, try Supabase Auth
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        console.log('🔍 Checking Supabase auth user for college admin:', user.email);
-        
         // Get user role from users table
         const { data: userRecord } = await supabase
           .from('users')
@@ -46,17 +46,13 @@ export const useFeeTracking = () => {
             .maybeSingle();
 
           if (org?.id) {
-            console.log('✅ Found college_id for college admin:', org.id, 'College:', org.name);
             return org.id;
-          } else {
-            console.warn('⚠️ College admin but no matching organization found for email:', user.email);
           }
         }
       }
       
       return null;
     } catch (err) {
-      console.error("Failed to get college ID:", err);
       return null;
     }
   }, []);
@@ -65,11 +61,8 @@ export const useFeeTracking = () => {
     if (!collegeId) return;
     
     try {
-      console.log('🚀 [Fee Tracking] Loading stats from database function for college:', collegeId);
-      
       const stats = await getExpenditureSummary(collegeId);
       
-      console.log('✅ [Fee Tracking] Loaded stats from database:', stats);
       setDbStats({
         totalDue: Number(stats.total_due_amount) || 0,
         totalCollected: Number(stats.total_paid_amount) || 0,
@@ -81,7 +74,7 @@ export const useFeeTracking = () => {
         overdueCount: Number(stats.overdue_students) || 0,
       });
     } catch (err) {
-      console.error("Failed to load stats from database:", err);
+      logger.error("Failed to get fee stats", err instanceof Error ? err : new Error(String(err)));
     }
   }, [collegeId]);
 
@@ -90,13 +83,9 @@ export const useFeeTracking = () => {
     
     try {
       setLoading(true);
-      console.log('🚀 [Fee Tracking] Loading all students for college:', collegeId);
-
-      // Always load all students first, then merge with any existing ledger data
       await loadStudentsAsFallback();
       
     } catch (err) {
-      console.error("Failed to load ledgers:", err);
       toast.error("Failed to load student ledgers");
       setLedgers([]);
     } finally {
@@ -108,8 +97,6 @@ export const useFeeTracking = () => {
     if (!collegeId) return;
     
     try {
-      console.log('🚀 [Fee Tracking] Loading all students for college:', collegeId);
-      
       // Get all students for this college
       const { data: students, error } = await supabase
         .from("students")
@@ -118,11 +105,9 @@ export const useFeeTracking = () => {
         .order("name", { ascending: true });
       
       if (error) {
-        console.error('Students query failed:', error);
+        logger.error("Students query failed", error instanceof Error ? error : new Error(String(error)));
         return;
       }
-
-      console.log(`✅ [Fee Tracking] Found ${students?.length || 0} students in college`);
 
       // Get existing ledger entries for these students
       const studentIds = students?.map(s => s.user_id || s.id).filter(Boolean) || [];
@@ -135,7 +120,6 @@ export const useFeeTracking = () => {
           .in("student_id", studentIds);
         
         existingLedgers = ledgerData || [];
-        console.log(`✅ [Fee Tracking] Found ${existingLedgers.length} existing ledger entries`);
       }
 
       // Create ledger entries for all students (real + mock)
@@ -179,10 +163,9 @@ export const useFeeTracking = () => {
         }
       }) || [];
 
-      console.log(`✅ [Fee Tracking] Created ${allLedgers.length} total ledger entries (${existingLedgers.length} real + ${allLedgers.length - existingLedgers.length} mock)`);
       setLedgers(allLedgers);
     } catch (err) {
-      console.error("Failed to load students:", err);
+      logger.error("Failed to load students", err instanceof Error ? err : new Error(String(err)));
       setLedgers([]);
     }
   }, [collegeId]);
@@ -200,7 +183,7 @@ export const useFeeTracking = () => {
       if (error) throw error;
       setPayments(data || []);
     } catch (err) {
-      console.error("Failed to load payments:", err);
+      logger.error("Failed to load payments", err instanceof Error ? err : new Error(String(err)));
     }
   }, []);
 
@@ -295,7 +278,7 @@ export const useFeeTracking = () => {
       loadLedgers();
       return true;
     } catch (err) {
-      console.error("Failed to record payment:", err);
+      logger.error("Failed to record payment", err instanceof Error ? err : new Error(String(err)));
       toast.error("Failed to record payment");
       return false;
     }
@@ -318,7 +301,7 @@ export const useFeeTracking = () => {
       toast.success("Payment verified");
       return true;
     } catch (err) {
-      console.error("Failed to verify payment:", err);
+      logger.error("Failed to verify payment", err instanceof Error ? err : new Error(String(err)));
       toast.error("Failed to verify payment");
       return false;
     }

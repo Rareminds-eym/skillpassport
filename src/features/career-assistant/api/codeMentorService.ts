@@ -1,6 +1,6 @@
 /**
  * 👨‍💻 CODE MENTOR SERVICE
- * 
+ *
  * Provides:
  * - Intelligent code review
  * - Refactoring suggestions
@@ -11,6 +11,9 @@
  */
 
 import { getOpenAIClient, DEFAULT_MODEL } from './openAIClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('code-mentor-service');
 
 export interface CodeReviewResult {
   overallQuality: 'Excellent' | 'Good' | 'Needs Improvement' | 'Problematic';
@@ -70,8 +73,6 @@ class CodeMentorService {
   ): Promise<CodeReviewResult> {
     
     try {
-      console.log('👨‍💻 Code Mentor: Analyzing code...');
-      
       const prompt = `You are a friendly, experienced coding mentor reviewing a student's code. Be constructive, encouraging, and educational.
 
 **STUDENT LEVEL:** ${studentLevel || 'intermediate'}
@@ -202,15 +203,14 @@ ${code}
       });
       
       const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
-      console.log('✅ Code Review Complete:',result.overallQuality, `(${result.score}/100)`);
-      console.log('👍 Strengths:', result.strengths?.length || 0);
-      console.log('⚠️  Improvements:', result.improvements?.length || 0);
-      
       return result as CodeReviewResult;
-      
+
     } catch (error) {
-      console.error('Code review error:', error);
+      logger.error('Failed to review code', error as Error, {
+        language,
+        studentLevel,
+        codeLength: code.length
+      });
       throw new Error('Failed to review code');
     }
   }
@@ -226,8 +226,6 @@ ${code}
   ): Promise<DebuggingHelp> {
     
     try {
-      console.log('🐛 Code Mentor: Helping debug issue...');
-      
       const prompt = `You are a patient debugging mentor helping a student fix their code.
 
 **LANGUAGE:** ${language}
@@ -364,15 +362,14 @@ ${code}
       });
       
       const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
-      console.log('🐛 Debugging Help Generated');
-      console.log('🔍 Likely causes identified:', result.likelyCauses?.length || 0);
-      console.log('💡 Solutions provided:', result.possibleSolutions?.length || 0);
-      
       return result as DebuggingHelp;
-      
+
     } catch (error) {
-      console.error('Debugging help error:', error);
+      logger.error('Failed to generate debugging help', error as Error, {
+        language,
+        errorMessageLength: error?.toString().length || 0,
+        codeLength: code.length
+      });
       throw new Error('Failed to generate debugging help');
     }
   }
@@ -417,9 +414,13 @@ Be clear, educational, and adjust complexity to student level.`;
       });
       
       return completion.choices[0]?.message?.content || 'Unable to explain code at this time.';
-      
+
     } catch (error) {
-      console.error('Code explanation error:', error);
+      logger.error('Failed to explain code', error as Error, {
+        language,
+        studentLevel,
+        codeLength: code.length
+      });
       return 'Unable to explain code at this time.';
     }
   }

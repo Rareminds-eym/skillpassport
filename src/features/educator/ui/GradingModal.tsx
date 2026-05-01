@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { getAssignmentStudents, gradeAssignment } from '@/features/educator';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl } from '@/shared/api/apiUtils';
+import { getLogger } from '@/shared/config/logging';
 import {
     ChatBubbleBottomCenterTextIcon,
     XMarkIcon,
@@ -10,6 +11,8 @@ import {
     AcademicCapIcon
 } from '@heroicons/react/24/outline';
 import NotificationModal from '@/shared/ui/NotificationModal';
+
+const logger = getLogger('GradingModal');
 
 // Helper function to extract file key from R2 URL
 const extractFileKey = (fileUrl: string): string | null => {
@@ -132,7 +135,7 @@ const GradingModal = ({ isOpen, onClose, assignment, onGradeSubmitted }: Grading
             const studentsData = await getAssignmentStudents(assignment.id);
             setStudents(studentsData);
         } catch (error) {
-            console.error('Error loading students:', error);
+            logger.error('Error loading students', error as Error);
         } finally {
             setLoading(false);
         }

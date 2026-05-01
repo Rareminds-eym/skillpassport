@@ -183,7 +183,6 @@ const EmployeeRecords: React.FC = () => {
 
   const handleDownloadRecord = (employee: Employee) => {
     // Handle download logic here
-    console.log('Downloading record for:', employee.name);
   };
 
   const closeModal = () => {
@@ -283,7 +282,9 @@ const EmployeeRecords: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h3 className="text-lg font-semibold text-gray-800">Employee Records ({filteredEmployees.length})</h3>
         <button 
-          onClick={() => console.log('Add employee functionality would be implemented here')}
+          onClick={() => {
+            // Add employee functionality would be implemented here
+          }}
           className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
         >
           <Plus className="h-4 w-4" />

@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { immer } from 'zustand/middleware/immer';
 import { getStudentPortfolioByEmail } from '@/features/digital-portfolio/api/portfolioService';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('PortfolioStore');
 
 // Service response type
 interface ServiceResponse<T> {
@@ -147,7 +150,6 @@ export const usePortfolioStore = create<PortfolioState>()(
               state.loadedUserEmail = studentData.email;
             });
           } else {
-            console.error('Error fetching student data:', result.error);
             set((state) => {
               state.student = studentData;
               state.loadedUserEmail = studentData.email;
@@ -160,7 +162,6 @@ export const usePortfolioStore = create<PortfolioState>()(
           });
         }
       } catch (error) {
-        console.error('Error in setStudent:', error);
         set((state) => {
           state.student = studentData;
         });
@@ -276,7 +277,7 @@ export const usePortfolioStore = create<PortfolioState>()(
           });
         }
       } catch (error) {
-        console.error('Error loading student:', error);
+        logger.error('Error loading student by email', error instanceof Error ? error : new Error('Unknown error'));
       } finally {
         set((state) => {
           state.isLoading = false;

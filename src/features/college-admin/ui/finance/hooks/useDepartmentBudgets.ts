@@ -37,7 +37,6 @@ export const useDepartmentBudgets = () => {
       if (storedUser) {
         const userData = JSON.parse(storedUser);
         if (userData.role === 'college_admin' && userData.collegeId) {
-          console.log('✅ College admin detected, using collegeId from localStorage:', userData.collegeId);
           return userData.collegeId;
         }
       }
@@ -45,8 +44,6 @@ export const useDepartmentBudgets = () => {
       // If not found in localStorage, try Supabase Auth
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        console.log('🔍 Checking Supabase auth user for college admin:', user.email);
-        
         // Get user role from users table
         const { data: userRecord } = await supabase
           .from('users')
@@ -64,17 +61,13 @@ export const useDepartmentBudgets = () => {
             .maybeSingle();
 
           if (org?.id) {
-            console.log('✅ Found college_id for college admin:', org.id, 'College:', org.name);
             return org.id;
-          } else {
-            console.warn('⚠️ College admin but no matching organization found for email:', user.email);
           }
         }
       }
       
       return null;
     } catch (err) {
-      console.error("Failed to get college ID:", err);
       return null;
     }
   }, []);
@@ -84,7 +77,6 @@ export const useDepartmentBudgets = () => {
     
     try {
       setLoading(true);
-      console.log('🚀 [Department Budgets] Loading budgets for college:', collegeId);
 
       // Try to load from department_budgets table (if it exists)
       const { data, error } = await supabase
@@ -95,21 +87,17 @@ export const useDepartmentBudgets = () => {
 
       if (error && error.code === '42P01') {
         // Table doesn't exist, create mock data
-        console.log('📝 [Department Budgets] Table not found, creating mock data');
         await createMockBudgets();
         return;
       }
 
       if (error) {
-        console.error('Failed to load budgets:', error);
         await createMockBudgets();
         return;
       }
 
-      console.log(`✅ [Department Budgets] Loaded ${data?.length || 0} budget records`);
       setBudgets(data || []);
     } catch (err) {
-      console.error("Failed to load department budgets:", err);
       await createMockBudgets();
     } finally {
       setLoading(false);
@@ -176,7 +164,6 @@ export const useDepartmentBudgets = () => {
     ];
 
     setBudgets(mockBudgets);
-    console.log(`✅ [Department Budgets] Created ${mockBudgets.length} mock budget records`);
   }, []);
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { 
-  UsersIcon, 
+import {
+  UsersIcon,
   ClipboardDocumentCheckIcon,
   AcademicCapIcon,
   BanknotesIcon,
@@ -12,6 +12,9 @@ import {
 } from '@heroicons/react/24/outline';
 import KPICard from './KPICard';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('kpi-dashboard-advanced');
 
 interface KPIData {
   totalStudents: number;
@@ -99,7 +102,7 @@ const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({
       if (schoolId) examsQuery = examsQuery.eq('school_id', schoolId);
 
       const { count: examsScheduled, error: examsError } = await examsQuery;
-      if (examsError) console.warn('Exams query error:', examsError.message);
+      if (examsError) logger.warn('Fetch exams scheduled failed', { error: examsError.message, schoolId });
 
       // Fetch Pending Assessments (unpublished assessments)
       // Using assessments table instead of non-existent 'marks' table
@@ -111,7 +114,7 @@ const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({
       if (schoolId) assessmentsQuery = assessmentsQuery.eq('school_id', schoolId);
 
       const { count: pendingAssessments, error: assessmentsError } = await assessmentsQuery;
-      if (assessmentsError) console.warn('Assessments query error:', assessmentsError.message);
+      if (assessmentsError) logger.warn('Fetch pending assessments failed', { error: assessmentsError.message, schoolId });
 
       // Fetch Fee Collection based on date range
       // Note: fee_payments doesn't have school_id column
@@ -128,8 +131,8 @@ const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({
         // Note: school_id filter removed as fee_payments table doesn't have this column
 
         const { data, error } = await feeQuery;
-        if (error) console.warn('Fee query error:', error.message);
-        
+        if (error) logger.warn('Fetch fee collection failed', { error: error.message, daysBack });
+
         return data?.reduce((sum, fee) => sum + (fee.amount || 0), 0) || 0;
       };
 
@@ -140,7 +143,6 @@ const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({
       // Fetch Career Readiness Index (AI-driven average)
       // Note: career_recommendations table doesn't exist, using placeholder
       const avgCareerReadiness = 0;
-      console.log('Career readiness: using placeholder (career_recommendations table not available)');
 
       // Fetch Library Overdue Items
       // Using library_book_issues_school table instead of non-existent 'book_issue' table
@@ -153,7 +155,7 @@ const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({
       if (schoolId) libraryQuery = libraryQuery.eq('school_id', schoolId);
 
       const { count: libraryOverdue, error: libraryError } = await libraryQuery;
-      if (libraryError) console.warn('Library query error:', libraryError.message);
+      if (libraryError) logger.warn('Fetch library overdue items failed', { error: libraryError.message, schoolId });
 
       setKpiData({
         totalStudents: totalStudents || 0,
@@ -172,7 +174,7 @@ const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({
       setLastUpdated(new Date());
       setLoading(false);
     } catch (err) {
-      console.error('Error fetching KPI data:', err);
+      logger.error('Fetch KPI data failed', err instanceof Error ? err : new Error(String(err)), { schoolId });
       setError('Failed to load dashboard data. Please try again.');
       setLoading(false);
     }

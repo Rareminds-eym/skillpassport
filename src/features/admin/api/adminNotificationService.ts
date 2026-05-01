@@ -5,6 +5,9 @@
 
 import { supabase } from '@/shared/api/supabaseClient';
 import type { AdminNotificationType } from '../model/types';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('admin-notification-service');
 
 export class AdminNotificationService {
   /**
@@ -34,14 +37,13 @@ export class AdminNotificationService {
         .single();
 
       if (error) {
-        console.error('Error creating admin notification:', error);
+        logger.error('Create admin notification failed', new Error(error.message), { recipientId, type });
         throw error;
       }
 
-      console.log('✅ Admin notification created:', data);
       return data;
     } catch (error) {
-      console.error('Failed to create admin notification:', error);
+      logger.error('Create admin notification exception', error instanceof Error ? error : new Error(String(error)), { recipientId, type });
       throw error;
     }
   }
@@ -65,7 +67,6 @@ export class AdminNotificationService {
         .maybeSingle();
 
       if (!schoolAdmin?.user_id) {
-        console.log('No school admin found for school:', schoolId);
         return;
       }
 
@@ -76,7 +77,7 @@ export class AdminNotificationService {
         `${studentName} submitted "${trainingTitle}" for approval`
       );
     } catch (error) {
-      console.error('Failed to notify training submission:', error);
+      logger.error('Notify training submission failed', error instanceof Error ? error : new Error(String(error)), { schoolId, trainingId });
     }
   }
 
@@ -99,7 +100,6 @@ export class AdminNotificationService {
         .maybeSingle();
 
       if (!schoolAdmin?.user_id) {
-        console.log('No school admin found for school:', schoolId);
         return;
       }
 
@@ -110,7 +110,7 @@ export class AdminNotificationService {
         `${studentName} submitted "${experienceTitle}" for approval`
       );
     } catch (error) {
-      console.error('Failed to notify experience submission:', error);
+      logger.error('Notify experience submission failed', error instanceof Error ? error : new Error(String(error)), { schoolId, experienceId });
     }
   }
 
@@ -133,7 +133,6 @@ export class AdminNotificationService {
         .maybeSingle();
 
       if (!schoolAdmin?.user_id) {
-        console.log('No school admin found for school:', schoolId);
         return;
       }
 
@@ -144,7 +143,7 @@ export class AdminNotificationService {
         `${studentName} submitted "${projectTitle}" for approval`
       );
     } catch (error) {
-      console.error('Failed to notify project submission:', error);
+      logger.error('Notify project submission failed', error instanceof Error ? error : new Error(String(error)), { schoolId, projectId });
     }
   }
 
@@ -168,7 +167,6 @@ export class AdminNotificationService {
         .maybeSingle();
 
       if (!collegeAdmin?.id) {
-        console.log('No college admin found for college:', collegeId);
         return;
       }
 
@@ -179,7 +177,7 @@ export class AdminNotificationService {
         message
       );
     } catch (error) {
-      console.error('Failed to notify college admin:', error);
+      logger.error('Notify college admin failed', error instanceof Error ? error : new Error(String(error)), { collegeId, type });
     }
   }
 
@@ -202,7 +200,6 @@ export class AdminNotificationService {
         .maybeSingle();
 
       if (!student?.user_id) {
-        console.log('No user ID found for student:', studentId);
         return;
       }
 
@@ -225,7 +222,7 @@ export class AdminNotificationService {
         message
       );
     } catch (error) {
-      console.error('Failed to notify approval status:', error);
+      logger.error('Notify approval status failed', error instanceof Error ? error : new Error(String(error)), { studentId, type, itemId });
     }
   }
 
@@ -279,14 +276,12 @@ export class AdminNotificationService {
           .insert(notifications);
 
         if (error) {
-          console.error('Error creating system alerts:', error);
+          logger.error('Create system alerts failed', new Error(error.message), { adminType, count: notifications.length });
           throw error;
         }
-
-        console.log(`✅ System alert sent to ${notifications.length} admins`);
       }
     } catch (error) {
-      console.error('Failed to create system alert:', error);
+      logger.error('Create system alert exception', error instanceof Error ? error : new Error(String(error)), { adminType });
     }
   }
 }

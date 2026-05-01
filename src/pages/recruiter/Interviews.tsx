@@ -23,6 +23,9 @@ import { supabase } from '@/shared/api/supabaseClient';
 import { createInterview, sendReminder } from '@/features/opportunities';
 import { useUser } from '@/shared/model/authStore';
 import { createNotification } from '@/features/notifications'; // ✅ Import notification service
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('interviews-page');
 
 
 // Define TypeScript interfaces

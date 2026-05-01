@@ -7,6 +7,9 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('authenticated-student');
 
 interface User {
   id: string;
@@ -39,7 +42,7 @@ export const useAuthenticatedStudent = (user: User | null) => {
           .maybeSingle();
 
         if (dbError) {
-          console.error('❌ Error fetching student data:', dbError);
+          logger.error('Error fetching student data', dbError, { userId: user.id });
           setError(dbError.message);
           setStudentData(null);
         } else if (data) {
@@ -51,7 +54,7 @@ export const useAuthenticatedStudent = (user: User | null) => {
         }
 
       } catch (err) {
-        console.error('❌ Error in useAuthenticatedStudent:', err);
+        logger.error('Error in useAuthenticatedStudent', err instanceof Error ? err : new Error(String(err)), { userId: user?.id });
         setError(err.message);
         setStudentData(null);
       } finally {
@@ -78,7 +81,7 @@ export const useAuthenticatedStudent = (user: User | null) => {
         .maybeSingle();
 
       if (error) {
-        console.error('❌ Error updating student data:', error);
+        logger.error('Error updating student data', error, { userId: user.id });
         throw error;
       }
 
@@ -86,7 +89,7 @@ export const useAuthenticatedStudent = (user: User | null) => {
       return { success: true, data };
 
     } catch (err) {
-      console.error('❌ Error in updateStudentData:', err);
+      logger.error('Error in updateStudentData', err instanceof Error ? err : new Error(String(err)), { userId: user?.id });
       return { success: false, error: err.message };
     }
   };
@@ -106,14 +109,14 @@ export const useAuthenticatedStudent = (user: User | null) => {
         .maybeSingle();
 
       if (error) {
-        console.error('❌ Error refreshing student data:', error);
+        logger.error('Error refreshing student data', error, { userId: user.id });
         setError(error.message);
       } else {
         setStudentData(data);
         setError(null);
       }
     } catch (err) {
-      console.error('❌ Error refreshing student data:', err);
+      logger.error('Error refreshing student data', err instanceof Error ? err : new Error(String(err)), { userId: user?.id });
       setError(err.message);
     } finally {
       setLoading(false);

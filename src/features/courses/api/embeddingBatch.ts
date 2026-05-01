@@ -5,8 +5,10 @@
 
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 
 const EMBEDDING_API_URL = getApiUrl('career');
+const logger = getLogger('embedding-batch');
 
 /**
  * Generate multiple embeddings in parallel
@@ -63,7 +65,7 @@ export const generateEmbeddingsBatch = async (texts, maxConcurrent = 5) => {
 
         return result.embedding;
       } catch (error) {
-        console.error(`Failed to generate embedding for text: ${text.substring(0, 50)}...`, error);
+        logger.error(`Failed to generate embedding for text: ${text.substring(0, 50)}...`, error instanceof Error ? error : new Error(String(error)));
         return null; // Return null for failed embeddings
       }
     });

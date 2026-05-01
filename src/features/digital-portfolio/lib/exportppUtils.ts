@@ -2,7 +2,10 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import QRCode from 'qrcode';
 import { saveAs } from 'file-saver';
+import { getLogger } from '@/shared/config/logging';
 import type { Student, PortfolioSettings } from '@/shared/types/student';
+
+const logger = getLogger('ExportUtils');
 
 // Export portfolio as PDF
 export const exportAsPDF = async (
@@ -57,7 +60,7 @@ export const exportAsPDF = async (
 
     pdf.save(filename);
   } catch (error) {
-    console.error('Error generating PDF:', error);
+    logger.error('Error exporting portfolio as PDF', error instanceof Error ? error : new Error('Unknown error'));
     throw error;
   }
 };
@@ -80,7 +83,7 @@ export const exportAsJSON = (
     const blob = new Blob([jsonString], { type: 'application/json' });
     saveAs(blob, filename);
   } catch (error) {
-    console.error('Error exporting JSON:', error);
+    logger.error('Error exporting portfolio as JSON', error instanceof Error ? error : new Error('Unknown error'));
     throw error;
   }
 };
@@ -237,7 +240,7 @@ export const exportAsHTML = async (
     const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
     saveAs(blob, filename);
   } catch (error) {
-    console.error('Error exporting HTML:', error);
+    logger.error('Error exporting portfolio as HTML', error instanceof Error ? error : new Error('Unknown error'));
     throw error;
   }
 };
@@ -264,7 +267,6 @@ export const generateQRCode = async (
     });
     return qrDataURL;
   } catch (error) {
-    console.error('Error generating QR code:', error);
     throw error;
   }
 };
@@ -283,7 +285,6 @@ export const downloadQRCode = async (
     
     saveAs(blob, filename);
   } catch (error) {
-    console.error('Error downloading QR code:', error);
     throw error;
   }
 };
@@ -308,7 +309,7 @@ export const sharePortfolio = async (
       return false; // Indicates fallback was used
     }
   } catch (error) {
-    console.error('Error sharing:', error);
+    logger.error('Error sharing portfolio', error as Error);
     throw error;
   }
 };
@@ -318,7 +319,7 @@ export const copyToClipboard = async (text: string): Promise<void> => {
   try {
     await navigator.clipboard.writeText(text);
   } catch (error) {
-    console.error('Error copying to clipboard:', error);
+    logger.error('Error copying to clipboard', error as Error);
     throw error;
   }
 };
@@ -451,7 +452,7 @@ export const exportResume = async (
 
     pdf.save(filename);
   } catch (error) {
-    console.error('Error generating resume:', error);
+    logger.error('Error exporting resume as PDF', error instanceof Error ? error : new Error('Unknown error'));
     throw error;
   }
 };

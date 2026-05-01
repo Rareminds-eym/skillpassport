@@ -1,6 +1,6 @@
 /**
  * 📊 MULTI-MODAL LEARNING SERVICE
- * 
+ *
  * Generates:
  * - Mermaid diagrams (flowcharts, architecture, sequences)
  * - Visual comparisons and tables
@@ -10,6 +10,9 @@
  */
 
 import { getOpenAIClient, DEFAULT_MODEL } from './openAIClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('multi-modal-learning-service');
 
 export interface VisualLearningContent {
   textExplanation: string;
@@ -57,8 +60,6 @@ class MultiModalLearningService {
   ): Promise<VisualLearningContent> {
     
     try {
-      console.log('📊 Multi-Modal: Generating visual learning content...');
-      
       const prompt = `You are an educational content creator who makes complex concepts easy through visuals.
 
 **TOPIC:** ${topic}
@@ -175,17 +176,14 @@ Create multi-modal learning content that includes:
       });
       
       const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
-      console.log('📊 Visual Content Generated');
-      console.log('🎨 Has Diagram:', !!result.diagram);
-      console.log('💻 Has Code Example:', !!result.codeExample);
-      console.log('📋 Has Comparison:', !!result.visualComparison);
-      console.log('📝 Has Steps:', !!result.interactiveSteps);
-      
       return result as VisualLearningContent;
-      
+
     } catch (error) {
-      console.error('Visual content generation error:', error);
+      logger.error('Failed to generate visual learning content', error as Error, {
+        topic,
+        studentLevel,
+        hasContext: !!context
+      });
       throw new Error('Failed to generate visual learning content');
     }
   }
@@ -246,9 +244,13 @@ Generate:
       });
       
       return JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
+
     } catch (error) {
-      console.error('Roadmap generation error:', error);
+      logger.error('Failed to generate learning roadmap', error as Error, {
+        goal,
+        currentSkillsCount: currentSkills.length,
+        timeframe
+      });
       throw new Error('Failed to generate learning roadmap');
     }
   }
@@ -308,9 +310,12 @@ Create a Mermaid flowchart showing:
       });
       
       return JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
+
     } catch (error) {
-      console.error('Architecture diagram error:', error);
+      logger.error('Failed to generate architecture diagram', error as Error, {
+        projectDescriptionLength: projectDescription.length,
+        techStackCount: techStack.length
+      });
       throw new Error('Failed to generate architecture diagram');
     }
   }

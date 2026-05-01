@@ -2,6 +2,9 @@ import { useEffect, useCallback } from 'react';
 import RealtimeService from '@/shared/api/realtimeService';
 import toast from 'react-hot-toast';
 import { Bell } from 'lucide-react';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('notification-broadcast');
 
 interface UseNotificationBroadcastProps {
   userId: string;
@@ -40,12 +43,9 @@ export const useNotificationBroadcast = ({
   useEffect(() => {
     if (!enabled || !userId) return;
 
-
     const channel = RealtimeService.subscribeToNotificationBroadcasts(
       userId,
       (notification) => {
-
-        // Call custom handler
         if (onNotification) {
           onNotification(notification);
         }
@@ -137,7 +137,10 @@ export const useNotificationBroadcast = ({
         );
         return result;
       } catch (error) {
-        console.error('❌ Error sending notification:', error);
+        logger.error('Failed to send notification broadcast', error as Error, {
+          targetUserId,
+          notificationType: notification.type
+        });
         throw error;
       }
     },

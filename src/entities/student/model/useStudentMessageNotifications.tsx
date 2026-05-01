@@ -6,9 +6,13 @@ import React, { useEffect, useRef } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
 import toast from 'react-hot-toast';
 import { MessageSquare, X, User, Briefcase } from 'lucide-react';
+import { getLogger } from '@/shared/config/logging';
 
 import type { Message } from '@/shared/api/messageService';
 import { useMessageStore } from '@/shared/model/useMessageStore';
+
+const logger = getLogger('student-message-notifications');
+
 interface UseStudentMessageNotificationsProps {
   studentId: string | null;
   enabled?: boolean;
@@ -54,9 +58,9 @@ export const useStudentMessageNotifications = ({
             audioRef.current!.currentTime = 0;
             setAudioEnabled(true);
           })
-          .catch(() => {
+          .catch((error) => {
             // Silent fail - audio will remain disabled
-            console.debug('Audio autoplay blocked - will enable on user interaction');
+            logger.warn('Unable to play notification sound', { error: error instanceof Error ? error.message : String(error) });
           });
       }
     };
@@ -193,9 +197,9 @@ const showMessageToast = (message: Message, audio: HTMLAudioElement | null) => {
   // Play notification sound (only if audio was enabled by user interaction)
   if (audio) {
     audio.currentTime = 0;
-    audio.play().catch((err) => {
+    audio.play().catch((error) => {
       // Silently handle autoplay restrictions
-      console.debug('Audio playback blocked:', err.name);
+      logger.warn('Unable to play notification sound', { error: error instanceof Error ? error.message : String(error) });
     });
   }
 };

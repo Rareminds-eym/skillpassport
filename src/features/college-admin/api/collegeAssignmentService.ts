@@ -1,5 +1,6 @@
 import { supabase } from '@/shared/api/supabaseClient';
 import { uploadMultipleFiles } from '@/shared/api/fileUploadService';
+import { getLogger } from '@/shared/config/logging';
 import type {
   Department,
   Program,
@@ -10,6 +11,8 @@ import type {
   CreateAssignmentData,
   ServiceResponse,
 } from './collegeAssignmentTypes';
+
+const logger = getLogger('college-assignment-service');
 
 // Re-export all types so existing imports keep working
 export * from './collegeAssignmentTypes';
@@ -217,7 +220,9 @@ export const createCollegeAssignment = async (
       .eq('user_id', educatorUserId)
       .single();
 
-    if (educatorError) console.warn('Could not fetch educator details:', educatorError);
+    if (educatorError) logger.error('Failed to fetch educator details', educatorError instanceof Error ? educatorError : new Error(String(educatorError)), {
+      educatorUserId
+    });
 
     const educatorName = educator
       ? `${educator.first_name} ${educator.last_name}`.trim()
@@ -307,8 +312,7 @@ export const fetchEducatorAssignments = async (educatorUserId: string): Promise<
       return { data: null, error: message };
     }
 
-    // Log RPC function not found and fall back
-    console.warn('RPC function not found, falling back to direct query:', rpcErr);
+    // RPC function not found, fall back to direct query
     try {
       const { data: fallbackData, error: fallbackError } = await supabase
         .from('college_assignments')
@@ -392,7 +396,9 @@ const ensureUserAccountsExist = async (students: CollegeStudent[]): Promise<stri
     .in('email', emails);
 
   if (error) {
-    console.error('Error fetching users:', error);
+    logger.error('Failed to fetch users', error instanceof Error ? error : new Error(String(error)), {
+      studentCount: students.length
+    });
     return [];
   }
 
@@ -417,7 +423,9 @@ const ensureUserAccountsExist = async (students: CollegeStudent[]): Promise<stri
       .upsert(updates, { onConflict: 'id' });
 
     if (upsertError) {
-      console.error('Error batch updating students with user_ids:', upsertError);
+      logger.error('Failed to batch update students with user IDs', upsertError instanceof Error ? upsertError : new Error(String(upsertError)), {
+        updateCount: updates.length
+      });
     }
   }
 

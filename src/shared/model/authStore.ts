@@ -3,6 +3,9 @@ import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { supabase } from '@/shared/api/supabaseClient';
 import { secureStorage } from '@/shared/lib/secureStorage';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('auth-store');
 
 // Types
 interface ErrorNotification {
@@ -162,7 +165,7 @@ export const useAuthStore = create<AuthState>()(
           try {
             await supabase.auth.signOut();
           } catch (err) {
-            console.error('Error signing out:', err);
+            logger.error('Error signing out', err as Error);
           }
 
           set((state) => {
@@ -263,7 +266,6 @@ export const useAuthStore = create<AuthState>()(
 
         // Initialize auth state from Supabase
         initialize: async () => {
-          console.log('🔐 [AuthStore] initialize() called');
           set((state) => {
             state.loading = true;
           });
@@ -272,7 +274,7 @@ export const useAuthStore = create<AuthState>()(
             const { data: { session }, error } = await supabase.auth.getSession();
 
             if (error) {
-              console.error('Error getting session:', error);
+              logger.error('Error getting session', new Error(error.message));
               set((state) => {
                 state.loading = false;
               });
@@ -312,9 +314,8 @@ export const useAuthStore = create<AuthState>()(
               }
             }
           } catch (err) {
-            console.error('Error initializing auth:', err);
+            logger.error('Error initializing auth', err as Error);
           } finally {
-            console.log('🔐 [AuthStore] initialize() finished. Setting loading=false. user=', get().user?.id, 'isAuthenticated=', get().isAuthenticated, 'role=', get().role);
             set((state) => {
               state.loading = false;
             });
@@ -327,7 +328,7 @@ export const useAuthStore = create<AuthState>()(
             const { data, error } = await supabase.auth.refreshSession();
 
             if (error) {
-              console.warn('Session refresh failed:', error.message);
+              logger.warn('Session refresh failed', { message: error.message });
               return false;
             }
 
@@ -338,7 +339,7 @@ export const useAuthStore = create<AuthState>()(
 
             return false;
           } catch (err) {
-            console.error('Session refresh error:', err);
+            logger.error('Session refresh error', err as Error);
             return false;
           }
         },
@@ -349,13 +350,13 @@ export const useAuthStore = create<AuthState>()(
             const { data: { session }, error } = await supabase.auth.getSession();
 
             if (error) {
-              console.error('Session check error:', error);
+              logger.error('Session check error', new Error(error.message));
               return null;
             }
 
             return session as Session | null;
           } catch (err) {
-            console.error('Session validity check failed:', err);
+            logger.error('Session validity check failed', err as Error);
             return null;
           }
         },
@@ -419,8 +420,6 @@ export const useAuthStore = create<AuthState>()(
 if (typeof window !== 'undefined') {
   supabase.auth.onAuthStateChange((event, session) => {
     const store = useAuthStore.getState();
-
-    console.log('Auth state changed:', event, session?.user?.id);
 
     if (event === 'SIGNED_IN' && session?.user) {
       store.setSession(session as Session);
@@ -493,7 +492,5 @@ export default useAuthStore;
  * Called once at app startup to initialize auth state
  */
 export const initializeStores = async () => {
-  console.log('🔧 [initializeStores] Initializing all stores...');
   await useAuthStore.getState().initialize();
-  console.log('🔧 [initializeStores] All stores initialized');
 };

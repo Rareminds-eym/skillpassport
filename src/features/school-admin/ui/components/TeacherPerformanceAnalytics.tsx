@@ -46,7 +46,7 @@ const TeacherPerformanceAnalytics: React.FC = () => {
       const metricsData = await Promise.all(metricsPromises);
       setMetrics(metricsData);
     } catch (error) {
-      console.error('Failed to load analytics:', error);
+      // Error handled silently - metrics will remain empty
     } finally {
       setLoading(false);
     }

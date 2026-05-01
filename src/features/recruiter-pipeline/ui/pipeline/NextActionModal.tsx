@@ -5,6 +5,9 @@ import { updateNextAction } from '@/features/recruiter-pipeline';
 import { createNotification } from '@/features/notifications';
 import { PipelineCandidate } from '@/features/student-profile/model';
 import { NEXT_ACTIONS } from './types';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('NextActionModal');
 
 interface NextActionModalProps {
   isOpen: boolean;
@@ -53,7 +56,7 @@ export const NextActionModal: React.FC<NextActionModalProps> = ({
       setDate('');
       setNotes('');
     } catch (error) {
-      console.error('Error setting next action:', error);
+      logger.error('Failed to set next action', error as Error);
       toast.error('Failed to set next action. Please try again.');
     } finally {
       setSaving(false);

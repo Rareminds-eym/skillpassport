@@ -6,6 +6,9 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('enrollment-service');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ENROLLMENT OPERATIONS
@@ -67,13 +70,12 @@ export async function enrollStudent(studentEmail: string, courseId: string) {
 
     // If error occurred, throw it
     if (checkError) {
-      console.error('Error checking enrollment:', checkError);
+      logger.error('Error checking enrollment', checkError instanceof Error ? checkError : new Error(String(checkError)));
       throw checkError;
     }
 
     // If enrollment exists, return it
     if (existingEnrollment) {
-      console.log('Student already enrolled, returning existing enrollment');
       // Update last_accessed and ensure progress is at least 1 (so it shows in My Learning)
       const updateData = { 
         last_accessed: new Date().toISOString(),
@@ -111,8 +113,6 @@ export async function enrollStudent(studentEmail: string, courseId: string) {
     const totalLessons = modulesData?.reduce((acc, module) => 
       acc + (module.lessons?.length || 0), 0) || 0;
 
-    console.log('📚 Course has', totalLessons, 'total lessons');
-
     // Create enrollment with progress=1 so it shows in My Learning immediately
     const { data: enrollment, error: enrollError } = await supabase
       .from('course_enrollments')
@@ -136,7 +136,6 @@ export async function enrollStudent(studentEmail: string, courseId: string) {
 
     // Handle duplicate key error (race condition from React StrictMode)
     if (enrollError && enrollError.code === '23505') {
-      console.log('Duplicate enrollment detected, fetching existing record');
       const { data: existingRecord } = await supabase
         .from('course_enrollments')
         .select('*')
@@ -170,13 +169,7 @@ export async function enrollStudent(studentEmail: string, courseId: string) {
       data: enrollment
     };
   } catch (error: any) {
-    console.error('Error enrolling student:', error);
-    console.error('Error details:', {
-      message: error.message,
-      code: error.code,
-      details: error.details,
-      hint: error.hint
-    });
+    logger.error('Error enrolling student', error instanceof Error ? error : new Error(String(error)));
     return {
       success: false,
       error: error.message || 'Failed to enroll student'
@@ -241,8 +234,6 @@ export async function updateProgress(studentEmail: string, courseId: string, com
 
     if (updateError) throw updateError;
 
-    console.log('📊 Progress updated:', { progress, completedLessons: completedLessons.length, totalLessons, status });
-
     // Embedding regeneration handled by database trigger on course_enrollments
 
     return {
@@ -250,7 +241,7 @@ export async function updateProgress(studentEmail: string, courseId: string, com
       data: updated
     };
   } catch (error: any) {
-    console.error('Error updating progress:', error);
+    logger.error('Error updating progress', error instanceof Error ? error : new Error(String(error)));
     return {
       success: false,
       error: error.message
@@ -292,7 +283,7 @@ export async function getEnrollment(studentEmail: string, courseId: string) {
       data: data || null
     };
   } catch (error: any) {
-    console.error('Error getting enrollment:', error);
+    logger.error('Error getting enrollment', error instanceof Error ? error : new Error(String(error)));
     return {
       success: false,
       error: error.message
@@ -328,7 +319,7 @@ export async function getStudentEnrollments(studentEmail: string) {
       data: data || []
     };
   } catch (error: any) {
-    console.error('Error getting student enrollments:', error);
+    logger.error('Error getting student enrollments', error instanceof Error ? error : new Error(String(error)));
     return {
       success: false,
       error: error.message,
@@ -357,7 +348,7 @@ export async function getCourseEnrollments(courseId: string) {
       data: data || []
     };
   } catch (error: any) {
-    console.error('Error getting course enrollments:', error);
+    logger.error('Error getting course enrollments', error instanceof Error ? error : new Error(String(error)));
     return {
       success: false,
       error: error.message,
@@ -403,7 +394,7 @@ export async function getEducatorEnrollmentStats(educatorId: string) {
       data: stats
     };
   } catch (error: any) {
-    console.error('Error getting educator stats:', error);
+    logger.error('Error getting educator stats', error instanceof Error ? error : new Error(String(error)));
     return {
       success: false,
       error: error.message

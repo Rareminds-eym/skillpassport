@@ -9,6 +9,9 @@ import {
   EnvelopeIcon,
 } from "@heroicons/react/24/outline";
 import { departmentService, DepartmentWithStats } from '@/features/college-admin';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('college-admin:DepartmentDetailsDrawer');
 
 interface Faculty {
   id: string;
@@ -82,7 +85,7 @@ const DepartmentDetailsDrawer: React.FC<DepartmentDetailsDrawerProps> = ({
           setAssignedFaculty(faculty);
         })
         .catch(error => {
-          console.error('Error loading department faculty:', error);
+          logger.error('Error loading department faculty', error as Error);
           setAssignedFaculty([]);
         })
         .finally(() => {

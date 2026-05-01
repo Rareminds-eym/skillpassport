@@ -32,7 +32,6 @@ export const timetableSlotsService = {
     });
 
     if (error) {
-      console.error('Error calculating teacher workload:', error);
       throw error;
     }
 

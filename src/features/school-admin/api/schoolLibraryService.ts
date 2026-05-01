@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('schoolLibraryService');
 
 export interface SchoolLibraryBook {
   id: string;
@@ -88,7 +91,7 @@ class SchoolLibraryService {
           return userData.schoolId;
         }
       } catch (e) {
-        console.error('Error parsing stored user:', e);
+        logger.error('Failed to parse stored user', e as Error);
       }
     }
     

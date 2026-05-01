@@ -776,6 +776,9 @@ import {
 } from '@heroicons/react/24/outline';
 import { RequisitionFilters } from '@/shared/types/recruiter';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('AdvancedRequisitionFilters');
 
 interface AdvancedRequisitionFiltersProps {
   filters: RequisitionFilters;
@@ -866,7 +869,7 @@ const AdvancedRequisitionFilters: React.FC<AdvancedRequisitionFiltersProps> = ({
         .order('department');
 
       if (deptError) {
-        console.error('Error fetching departments:', deptError);
+        logger.error('Failed to fetch departments', deptError as Error);
       } else {
         const uniqueDepartments = [...new Set(
           deptData.map(item => item.department).filter(Boolean)
@@ -874,7 +877,7 @@ const AdvancedRequisitionFilters: React.FC<AdvancedRequisitionFiltersProps> = ({
         setDepartments(uniqueDepartments);
       }
     } catch (error) {
-      console.error('Error fetching departments:', error);
+      logger.error('Failed to fetch departments', error as Error);
     } finally {
       setLoadingDepartments(false);
     }
@@ -889,7 +892,7 @@ const AdvancedRequisitionFilters: React.FC<AdvancedRequisitionFiltersProps> = ({
         .order('location');
 
       if (locError) {
-        console.error('Error fetching locations:', locError);
+        logger.error('Failed to fetch locations', locError as Error);
       } else {
         const uniqueLocations = [...new Set(
           locData.map(item => item.location).filter(Boolean)
@@ -897,7 +900,7 @@ const AdvancedRequisitionFilters: React.FC<AdvancedRequisitionFiltersProps> = ({
         setLocations(uniqueLocations);
       }
     } catch (error) {
-      console.error('Error fetching locations:', error);
+      logger.error('Failed to fetch locations', error as Error);
     } finally {
       setLoadingLocations(false);
     }
@@ -911,7 +914,7 @@ const AdvancedRequisitionFilters: React.FC<AdvancedRequisitionFiltersProps> = ({
         .order('title');
 
       if (titleError) {
-        console.error('Error fetching titles:', titleError);
+        logger.error('Failed to fetch job titles', titleError as Error);
       } else {
         const allTitles = titleData
           .map(item => item.title || item.job_title)
@@ -932,7 +935,7 @@ const AdvancedRequisitionFilters: React.FC<AdvancedRequisitionFiltersProps> = ({
         );
       }
     } catch (error) {
-      console.error('Error fetching titles:', error);
+      logger.error('Failed to fetch job titles', error as Error);
       setTitles([
         'Software Engineer',
         'Senior Software Engineer',

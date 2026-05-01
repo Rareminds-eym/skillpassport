@@ -1,5 +1,8 @@
 import { supabase } from '@/shared/api/supabaseClient';
 import { createStudentNotification } from '@/features/notifications';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('appliedJobsService');
 
 /**
  * Service for managing job applications
@@ -19,8 +22,6 @@ export class AppliedJobsService {
    */
   static async applyToJob(studentId, opportunityId) {
     try {
-      console.log('🔍 applyToJob called with:', { studentId, opportunityId });
-
       // Check if opportunity has available openings
       const { data: opportunity, error: oppError } = await supabase
         .from('opportunities')
@@ -29,12 +30,10 @@ export class AppliedJobsService {
         .single();
 
       if (oppError) {
-        console.error('❌ Error fetching opportunity:', oppError);
         throw oppError;
       }
 
       if (!opportunity.is_active || opportunity.status === 'filled' || opportunity.applications_count === 0) {
-        console.log('⚠️ No openings available');
         return {
           success: false,
           message: `All openings for ${opportunity.job_title} at ${opportunity.company_name} have been filled.`,
@@ -51,7 +50,6 @@ export class AppliedJobsService {
         .maybeSingle();
 
       if (existing) {
-        console.log('⚠️ Already applied');
         return {
           success: false,
           message: 'You have already applied to this job',
@@ -67,19 +65,15 @@ export class AppliedJobsService {
         .maybeSingle();
 
       if (studentError) {
-        console.error('❌ Error fetching student:', studentError);
         throw studentError;
       }
 
       if (!student) {
-        console.error('❌ Student not found with id:', studentId);
         return {
           success: false,
           message: 'Student profile not found'
         };
       }
-
-      console.log('✅ Student found:', student.name);
 
       const profile = {
         name: student?.name || '',
@@ -88,7 +82,6 @@ export class AppliedJobsService {
       };
 
       // Insert application
-      console.log('📝 Inserting application...');
       const { data, error } = await supabase
         .from('applied_jobs')
         .insert([{
@@ -100,15 +93,11 @@ export class AppliedJobsService {
         .single();
 
       if (error) {
-        console.error('❌ Insert error:', error);
         throw error;
       }
 
-      console.log('✅ Application inserted:', data);
-
       // Automatically add to pipeline as "sourced"
       try {
-        console.log('📝 Adding to pipeline...');
         const { error: pipelineError } = await supabase
           .from('pipeline_candidates')
           .insert([{
@@ -125,13 +114,10 @@ export class AppliedJobsService {
           }]);
 
         if (pipelineError) {
-          console.warn('⚠️ Pipeline insert failed:', pipelineError);
           // Don't fail the application if pipeline insert fails
-        } else {
-          console.log('✅ Added to pipeline');
         }
       } catch (pipelineErr) {
-        console.warn('⚠️ Pipeline insert error:', pipelineErr);
+        logger.error('Failed to add to pipeline', pipelineErr as Error);
       }
 
       return {
@@ -140,7 +126,6 @@ export class AppliedJobsService {
         data
       };
     } catch (error) {
-      console.error('❌ Error in applyToJob:', error);
       return {
         success: false,
         message: error.message || 'Failed to submit application',
@@ -166,7 +151,6 @@ export class AppliedJobsService {
 
       return !!data;
     } catch (error) {
-      console.error('Error in hasApplied:', error);
       return false;
     }
   }
@@ -210,7 +194,6 @@ export class AppliedJobsService {
 
       return data || [];
     } catch (error) {
-      console.error('Error in getStudentApplications:', error);
       throw error;
     }
   }
@@ -250,7 +233,7 @@ export class AppliedJobsService {
 
       return stats;
     } catch (error) {
-      console.error('Error in getApplicationStats:', error);
+      logger.error('Failed to get application stats', error as Error);
       throw error;
     }
   }
@@ -295,16 +278,14 @@ export class AppliedJobsService {
             `Your application status has been updated to: ${statusText}`
           );
           
-          console.log(`✅ Notification sent for application ${applicationId} status: ${status}`);
         }
       } catch (notifError) {
-        // Don't fail the status update if notification fails
-        console.warn('Failed to send notification:', notifError);
+        logger.error('Failed to send notification', notifError as Error);
       }
 
       return data;
     } catch (error) {
-      console.error('Error updating application status:', error);
+      logger.error('Failed to update application status', error as Error);
       throw error;
     }
   }
@@ -331,7 +312,7 @@ export class AppliedJobsService {
       if (error) throw error;
       return { success: true, message: 'Application withdrawn successfully', data };
     } catch (error) {
-      console.error('Error withdrawing application:', error);
+      logger.error('Failed to withdraw application', error as Error);
       return { success: false, message: error.message || 'Failed to withdraw application', error };
     }
   }
@@ -353,7 +334,7 @@ export class AppliedJobsService {
       if (error) throw error;
       return { success: true, message: 'Application deleted successfully' };
     } catch (error) {
-      console.error('Error deleting application:', error);
+      logger.error('Failed to delete application', error as Error);
       return { success: false, message: error.message || 'Failed to delete application', error };
     }
   }
@@ -378,7 +359,7 @@ export class AppliedJobsService {
       if (error) throw error;
       return data || [];
     } catch (error) {
-      console.error('Error in getRecentApplications:', error);
+      logger.error('Failed to get recent applications', error as Error);
       throw error;
     }
   }
@@ -414,7 +395,7 @@ export class AppliedJobsService {
       const { data: appliedJobs, error } = await query;
 
       if (error) {
-        console.error('Error fetching applied jobs:', error);
+        logger.error('Failed to fetch applied jobs', error as Error);
         throw error;
       }
 
@@ -425,23 +406,15 @@ export class AppliedJobsService {
       // Fetch student details for all applicants
       // Note: applied_jobs.student_id references students.user_id (not students.id)
       const studentIds = [...new Set(appliedJobs.map(job => job.student_id))];
-      
-      console.log('[AppliedJobsService] Fetching students for IDs:', studentIds);
-      
+
       // applied_jobs.student_id references students.id (not user_id)
       const { data: students, error: studentsError } = await supabase
         .from('students')
         .select('id, user_id, name, email, contact_number, university, branch_field, course_name, college_school_name, district_name, currentCgpa, expectedGraduationDate, approval_status')
         .in('id', studentIds);
 
-      console.log('[AppliedJobsService] Students fetch result:', {
-        count: students?.length,
-        error: studentsError,
-        sample: students?.[0]
-      });
-
       if (studentsError) {
-        console.error('Error fetching students:', studentsError);
+        logger.error('Failed to fetch student details', studentsError as Error);
       }
 
       // Fetch opportunity details for all jobs
@@ -452,7 +425,7 @@ export class AppliedJobsService {
         .in('id', opportunityIds);
 
       if (opportunitiesError) {
-        console.error('Error fetching opportunities:', opportunitiesError);
+        logger.error('Failed to fetch opportunity details', opportunitiesError as Error);
       }
 
       // Create lookup maps - Use direct fields from students table
@@ -493,7 +466,7 @@ export class AppliedJobsService {
 
       return result;
     } catch (error) {
-      console.error('Error in getAllApplicants:', error);
+      logger.error('Failed to get all applicants', error as Error);
       throw error;
     }
   }
@@ -529,7 +502,7 @@ export class AppliedJobsService {
         withdrawn: 0
       });
     } catch (error) {
-      console.error('Error in getApplicantStats:', error);
+      logger.error('Failed to get applicant stats', error as Error);
       throw error;
     }
   }

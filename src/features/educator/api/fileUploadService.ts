@@ -15,13 +15,11 @@ async function getAuthToken(): Promise<string | null> {
     const { data: { session }, error } = await supabase.auth.getSession();
     
     if (error) {
-      console.error('[FileUploadService] Failed to get session:', error);
       return null;
     }
     
     return session?.access_token || null;
   } catch (error) {
-    console.error('[FileUploadService] Error retrieving auth token:', error);
     return null;
   }
 }
@@ -101,7 +99,6 @@ export const uploadFile = async (
       filename: result.filename,
     };
   } catch (error) {
-    console.error('File upload error:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Upload failed',
@@ -149,7 +146,6 @@ export const deleteFile = async (fileUrl: string): Promise<boolean> => {
     const token = await getAuthToken();
     
     if (!token) {
-      console.error('Authentication required to delete file');
       return false;
     }
 
@@ -165,7 +161,6 @@ export const deleteFile = async (fileUrl: string): Promise<boolean> => {
     if (!response.ok) {
       // Handle authentication errors
       if (response.status === 401) {
-        console.error('Authentication failed. Please refresh the page and log in again.');
         return false;
       }
       
@@ -175,7 +170,6 @@ export const deleteFile = async (fileUrl: string): Promise<boolean> => {
     const result = await response.json();
     return result.success;
   } catch (error) {
-    console.error('File delete error:', error);
     return false;
   }
 };

@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Plus, ArrowDown, Square } from 'lucide-react';
+import { getLogger } from '@/shared/config/logging';
 import { educatorIntelligenceEngine } from '@/features/educator-copilot';
 import { educatorWelcomeConfig, educatorChatConfig } from '@/features/educator-copilot';
 
 import { StudentInsightCard } from './EducatorCards';
 
 import { useUser } from '@/shared/model/authStore';
+
+const logger = getLogger('EducatorCopilot');
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -220,7 +223,7 @@ const EducatorCopilot: React.FC = () => {
         ));
       }
     } catch (error) {
-      console.error('Educator AI Error:', error);
+      logger.error('Educator AI error', error as Error);
 
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -358,7 +361,6 @@ const EducatorCopilot: React.FC = () => {
                             priority={card.data.priority}
                             actionItems={card.data.actionItems}
                             onViewProfile={() => {
-                              console.log('View profile:', card.data.studentId);
                               // TODO: Navigate to student profile
                             }}
                           />

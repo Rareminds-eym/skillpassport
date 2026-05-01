@@ -227,7 +227,7 @@ function computeAccessState(sub: Subscription | null) {
       : 'Your subscription is in a grace period. Please renew to continue access.';
   } else if (status === 'cancelled') {
     accessReason = 'cancelled';
-    // Cancelled but not expired â€” user keeps access until end date
+    // Cancelled but not expired – user keeps access until end date
     const endDate = sub.endDate || sub.end_date;
     if (endDate && new Date(endDate) >= new Date()) {
       hasAccess = true;
@@ -297,17 +297,10 @@ export const useSubscriptionStore = create<SubscriptionState>()(
     getHasNoSubscription: () => get().accessReason === 'no_subscription',
 
     // ====================================================================
-    // fetchSubscription â€” the SINGLE async action that replaces React Query
+    // fetchSubscription – the SINGLE async action that replaces React Query
     // ====================================================================
     fetchSubscription: async (userId: string) => {
       const state = get();
-
-      console.log('ðŸ“¦ [SubStore] fetchSubscription called. userId=', userId, 'state:', {
-        isLoading: state.isLoading,
-        _currentUserId: state._currentUserId,
-        _lastFetchTime: state._lastFetchTime,
-        hasFetchPromise: !!state._fetchSubPromise,
-      });
 
       // Skip if data is fresh (within stale time) and for the same user
       if (
@@ -317,7 +310,6 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         !state.error
       ) {
         // Data is fresh, just make sure loading is false
-        console.log('ðŸ“¦ [SubStore] Data is fresh, skipping fetch');
         if (state.isLoading) {
           set((s) => { s.isLoading = false; });
         }
@@ -326,14 +318,12 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
       // If a fetch for this user is already in progress, return the existing Promise
       if (state._fetchSubPromise && state._currentUserId === userId) {
-        console.log('ðŸ“¦ [SubStore] Fetch already in progress, returning existing promise');
         return state._fetchSubPromise;
       }
 
       const fetchPromise = (async () => {
         // Set loading (isRefetching if we already have data)
         const isRefetch = !!get().subscription;
-        console.log('ðŸ“¦ [SubStore] Starting fetch. isRefetch=', isRefetch);
         set((s) => {
           s.isLoading = !isRefetch;
           s.isRefetching = isRefetch;
@@ -341,25 +331,16 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         });
 
         try {
-          console.log('ðŸ“¦ [SubStore] Calling getActiveSubscription()...');
           const result = await getActiveSubscription();
-          console.log('ðŸ“¦ [SubStore] getActiveSubscription returned:', {
-            success: result.success,
-            hasData: !!result.data,
-            error: result.error,
-            dataStatus: result.data?.status,
-          });
 
           // Race condition guard: if user changed while we were fetching, discard
           if (get()._currentUserId !== userId) {
-            console.log('ðŸ“¦ [SubStore] User changed during fetch, discarding');
             return;
           }
 
           if (result.success && result.data) {
             const subscription = formatSubscriptionData(result.data);
             const accessState = computeAccessState(subscription);
-            console.log('ðŸ“¦ [SubStore] Subscription found. accessState:', accessState);
 
             set((s) => {
               s.subscription = subscription;
@@ -376,7 +357,6 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             });
           } else {
             // No subscription
-            console.log('ðŸ“¦ [SubStore] No subscription found. Setting hasAccess=false, isLoading=false');
             set((s) => {
               s.subscription = null;
               s.hasAccess = false;
@@ -392,7 +372,6 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             });
           }
         } catch (err) {
-          console.error('ðŸ“¦ [SubStore] fetchSubscription CAUGHT error:', err);
           if (get()._currentUserId !== userId) return;
           set((s) => {
             s.isLoading = false;
@@ -401,11 +380,6 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             s._lastFetchTime = Date.now();
           });
         } finally {
-          console.log('ðŸ“¦ [SubStore] fetchSubscription finally. Store state:', {
-            isLoading: get().isLoading,
-            hasAccess: get().hasAccess,
-            accessReason: get().accessReason,
-          });
           set((s) => {
             if (s._currentUserId === userId) {
               s._fetchSubPromise = null;
@@ -421,7 +395,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       return fetchPromise;
     },
 
-    // Force refresh â€” bypasses stale time
+    // Force refresh – bypasses stale time
     refreshSubscription: async () => {
       const userId = get()._currentUserId;
       if (!userId) return;
@@ -598,7 +572,7 @@ export const useSubscriptionAccess = () => {
     clearFeatureAccessCache();
 
     await refreshSubscription();
-    // Pass userId explicitly â€” _currentUserId may have changed during refreshSubscription
+    // Pass userId explicitly – _currentUserId may have changed during refreshSubscription
     await fetchEntitlements(userId);
   };
 
@@ -688,7 +662,7 @@ export const useSubscriptionPurchase = () => {
   return { isPurchasing, isCancelling, purchaseError, clearPurchaseError, purchaseAddOn, purchaseBundle };
 };
 
-// Combined hook â€” single import for components that need everything
+// Combined hook – single import for components that need everything
 export const useSubscription = () => {
   const access = useSubscriptionAccess();
   const warnings = useSubscriptionWarnings();

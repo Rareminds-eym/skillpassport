@@ -12,6 +12,9 @@ import {
   IconBrain
 } from '@tabler/icons-react';
 import { supabase } from '@/shared/api';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('courses-tab');
 
 interface CoursesTabProps {
   courses: Course[];
@@ -50,7 +53,7 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ courses, loading, studentId }) 
           .limit(1);
 
         if (error) {
-          console.error('Error fetching assessment results:', error);
+          logger.error('Error fetching assessment results', error as Error);
           return;
         }
 
@@ -82,7 +85,7 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ courses, loading, studentId }) 
           setRecommendedCourses(topCourses);
         }
       } catch (error) {
-        console.error('Error processing recommendations:', error);
+        logger.error('Error processing recommendations', error as Error);
       } finally {
         setLoadingRecommendations(false);
       }

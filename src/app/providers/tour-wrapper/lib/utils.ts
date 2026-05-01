@@ -1,5 +1,8 @@
 import { TourProgress, TourKey } from '@/shared/types';
+import { getLogger } from '@/shared/config/logging';
 import { TOUR_STORAGE_KEY } from './constants';
+
+const logger = getLogger('tour-utils');
 
 /**
  * Utility functions for tour persistence and management
@@ -13,7 +16,7 @@ export const getTourProgressFromStorage = (): TourProgress => {
     const stored = localStorage.getItem(TOUR_STORAGE_KEY);
     return stored ? JSON.parse(stored) : {};
   } catch (error) {
-    console.warn('Failed to parse tour progress from localStorage:', error);
+    logger.error('Failed to parse tour progress from localStorage', error as Error, {});
     return {};
   }
 };
@@ -25,7 +28,7 @@ export const saveTourProgressToStorage = (progress: TourProgress): void => {
   try {
     localStorage.setItem(TOUR_STORAGE_KEY, JSON.stringify(progress));
   } catch (error) {
-    console.warn('Failed to save tour progress to localStorage:', error);
+    logger.error('Failed to save tour progress to localStorage', error as Error, {});
   }
 };
 
@@ -115,19 +118,16 @@ export const waitForElement = (selector: string, timeout = 5000): Promise<Elemen
     // Check immediately first
     const element = document.querySelector(selector);
     if (element) {
-      console.log(`✅ Element found immediately: ${selector}`);
       resolve(element);
       return;
     }
 
-    console.log(`⏳ Waiting for element: ${selector} (timeout: ${timeout}ms)`);
 
     let timeoutId: NodeJS.Timeout;
 
     const observer = new MutationObserver(() => {
       const element = document.querySelector(selector);
       if (element) {
-        console.log(`✅ Element found via observer: ${selector}`);
         observer.disconnect();
         clearTimeout(timeoutId);
         resolve(element);
@@ -141,7 +141,7 @@ export const waitForElement = (selector: string, timeout = 5000): Promise<Elemen
 
     // Timeout fallback
     timeoutId = setTimeout(() => {
-      console.warn(`⏰ Timeout waiting for element: ${selector}`);
+      logger.error('Timeout waiting for element', new Error(`Element selector: ${selector}`), { selector, timeout });
       observer.disconnect();
       resolve(null);
     }, timeout);
@@ -268,7 +268,6 @@ export const unlockScroll = (): void => {
   window.scrollTo(0, scrollPosition);
 
   isScrollLocked = false;
-  console.log('🔓 Tour scroll lock disabled');
 };
 
 /**

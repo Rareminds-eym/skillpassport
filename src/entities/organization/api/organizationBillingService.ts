@@ -6,6 +6,9 @@
  */
 
 import { supabase } from '@/shared/api';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('organizationBilling');
 
 // ============================================================================
 // Types & Interfaces
@@ -300,7 +303,7 @@ export class OrganizationBillingService {
         overallUtilization
       };
     } catch (error) {
-      console.error('Error fetching billing dashboard:', error);
+      logger.error('Error fetching billing dashboard', error as Error);
       throw error;
     }
   }
@@ -425,7 +428,7 @@ export class OrganizationBillingService {
 
       return invoice;
     } catch (error) {
-      console.error('Error generating invoice:', error);
+      logger.error('Error generating invoice', error as Error);
       throw error;
     }
   }
@@ -484,7 +487,7 @@ export class OrganizationBillingService {
 
       return invoices;
     } catch (error) {
-      console.error('Error fetching invoice history:', error);
+      logger.error('Error fetching invoice history', error as Error);
       throw error;
     }
   }
@@ -519,7 +522,7 @@ export class OrganizationBillingService {
       // Return the PDF blob
       return await response.blob();
     } catch (error) {
-      console.error('Error downloading invoice:', error);
+      logger.error('Error downloading invoice', error as Error);
       throw error;
     }
   }
@@ -583,7 +586,7 @@ export class OrganizationBillingService {
         }
       };
     } catch (error) {
-      console.error('Error projecting monthly cost:', error);
+      logger.error('Error projecting monthly cost', error as Error);
       throw error;
     }
   }
@@ -653,7 +656,7 @@ export class OrganizationBillingService {
         proratedCost: Math.round(proratedCost * 100) / 100
       };
     } catch (error) {
-      console.error('Error calculating seat addition cost:', error);
+      logger.error('Error calculating seat addition cost', error as Error);
       throw error;
     }
   }
@@ -672,7 +675,7 @@ export class OrganizationBillingService {
         .single();
 
       if (error) {
-        console.error('Error fetching organization for billing:', error);
+        logger.error('Error fetching organization for billing', error as Error);
         return [];
       }
 
@@ -683,7 +686,7 @@ export class OrganizationBillingService {
         isPrimary: true
       }] : [];
     } catch (error) {
-      console.error('Error fetching billing contacts:', error);
+      logger.error('Error fetching billing contacts', error as Error);
       return [];
     }
   }
@@ -698,12 +701,11 @@ export class OrganizationBillingService {
     try {
       // In production, this would insert into a billing_contacts table
       // For now, we update the organization's admin contact
-      console.log('Adding billing contact:', { organizationId, contact });
-      
+      logger.info('Updating organization admin contact');
       // This is a placeholder - actual implementation would depend on
       // having a dedicated billing_contacts table
     } catch (error) {
-      console.error('Error adding billing contact:', error);
+      logger.error('Error adding billing contact', error as Error);
       throw error;
     }
   }
@@ -718,12 +720,11 @@ export class OrganizationBillingService {
     try {
       // In production, this would integrate with Razorpay to store
       // payment method tokens securely
-      console.log('Updating payment method:', { organizationId, paymentMethod });
       
       // This is a placeholder - actual implementation would integrate
       // with Razorpay's saved payment methods API
     } catch (error) {
-      console.error('Error updating payment method:', error);
+      logger.error('Error updating payment method', error as Error);
       throw error;
     }
   }

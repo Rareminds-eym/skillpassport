@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('realtime-progress');
 
 /**
  * Hook for real-time progress synchronization across devices
@@ -33,7 +36,6 @@ export const useRealtimeProgress = (studentId, courseId, options = {}) => {
           filter: `student_id=eq.${studentId}`
         },
         (payload) => {
-          console.log('📡 Real-time progress update:', payload);
           setLastUpdate({
             type: 'progress',
             event: payload.eventType,
@@ -47,7 +49,6 @@ export const useRealtimeProgress = (studentId, courseId, options = {}) => {
         }
       )
       .subscribe((status) => {
-        console.log('Progress channel status:', status);
         setIsConnected(status === 'SUBSCRIBED');
       });
 
@@ -65,7 +66,6 @@ export const useRealtimeProgress = (studentId, courseId, options = {}) => {
           filter: `student_id=eq.${studentId}`
         },
         (payload) => {
-          console.log('📡 Real-time enrollment update:', payload);
           setLastUpdate({
             type: 'enrollment',
             event: payload.eventType,
@@ -107,7 +107,7 @@ export const useRealtimeProgress = (studentId, courseId, options = {}) => {
         }
       });
     } catch (error) {
-      console.error('Error broadcasting progress:', error);
+      logger.error('Error broadcasting progress', error as Error);
     }
   }, [isConnected]);
 

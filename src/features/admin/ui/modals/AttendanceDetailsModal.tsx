@@ -5,6 +5,9 @@ import { CalendarIcon, CheckCircleIcon, ClockIcon, ShieldCheckIcon, SparklesIcon
 import React, { useState } from 'react'
 import ReactApexChart from 'react-apexcharts';
 import toast from 'react-hot-toast';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('attendance-details-modal');
 
 // SubjectGroup interface
 interface SubjectGroup {
@@ -170,8 +173,6 @@ const AttendanceDetailsModal = ({
 
     // Local export function for modal
     const exportToCSV = (data: any[], filename: string) => {
-        console.log('Export CSV called with:', { dataLength: data.length, filename, sampleData: data[0] });
-        
         if (data.length === 0) {
             toast.error('No data available to export');
             return;
@@ -216,10 +217,8 @@ const AttendanceDetailsModal = ({
                     URL.revokeObjectURL(url);
                 }, 100);
             }
-            
-            console.log('CSV export completed successfully');
         } catch (error) {
-            console.error('CSV export failed:', error);
+            logger.error('Export to CSV failed', error instanceof Error ? error : new Error(String(error)), { filename });
             toast.error('Failed to export CSV file');
         }
     };
@@ -828,7 +827,6 @@ const AttendanceDetailsModal = ({
                                     try {
                                         if (activeTab === "today") {
                                             // Export selected session data
-                                            console.log('Exporting session data:', { session, todaysRecords });
                                             onExportSession(session, todaysRecords);
                                             toast.success('Session attendance exported successfully!');
                                         } else if (activeTab === "monthly") {
@@ -841,10 +839,6 @@ const AttendanceDetailsModal = ({
                                                     student.section === subjectGroup.section
                                             );
 
-                                            console.log('Monthly export - students found:', monthlyStudents.length);
-                                            console.log('Selected month:', selectedMonth);
-                                            console.log('All records for subject:', allRecords.filter(r => r.subject === subjectGroup.subject).length);
-
                                             if (monthlyStudents.length === 0) {
                                                 toast.error('No students found for this class');
                                                 return;
@@ -856,9 +850,7 @@ const AttendanceDetailsModal = ({
                                                     r.subject === subjectGroup.subject &&
                                                     r.date.startsWith(selectedMonth)
                                                 );
-                                                
-                                                console.log(`Student ${student.name} records for ${selectedMonth}:`, studentRecords.length);
-                                                
+
                                                 const stats = {
                                                     present: studentRecords.filter((r) => r.status === "present").length,
                                                     absent: studentRecords.filter((r) => r.status === "absent").length,
@@ -881,8 +873,6 @@ const AttendanceDetailsModal = ({
                                                 };
                                             });
 
-                                            console.log('Monthly export data prepared:', monthlyExportData);
-
                                             // Create export data even if no attendance records exist
                                             if (monthlyExportData.length > 0) {
                                                 const filename = `${subjectGroup.subject}_${selectedMonth.replace('-', '_')}_monthly_summary.csv`;
@@ -894,8 +884,7 @@ const AttendanceDetailsModal = ({
                                         } else {
                                             // Export all sessions for the subject
                                             const subjectRecords = allRecords.filter(r => r.subject === subjectGroup.subject);
-                                            console.log('Exporting all records for subject:', subjectRecords.length);
-                                            
+
                                             if (subjectRecords.length === 0) {
                                                 toast.error('No attendance records found for this subject');
                                                 return;
@@ -917,7 +906,7 @@ const AttendanceDetailsModal = ({
                                             toast.success(`Complete attendance history exported successfully!`);
                                         }
                                     } catch (error) {
-                                        console.error('Export failed:', error);
+                                        logger.error('Export attendance data failed', error instanceof Error ? error : new Error(String(error)), { activeTab });
                                         toast.error('Failed to export data. Please try again.');
                                     }
                                 }}

@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from '@/shared/api/supabaseClient';
 import toast from "react-hot-toast";
 import { FeeStructure } from '@/features/student-profile/model';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('useFeeStructures');
 
 export const useFeeStructures = (schoolId: string | null) => {
   const [feeStructures, setFeeStructures] = useState<FeeStructure[]>([]);
@@ -12,7 +15,6 @@ export const useFeeStructures = (schoolId: string | null) => {
     
     try {
       setLoading(true);
-      console.log('🚀 [Fee Structures] Loading fee structures for school:', schoolId);
 
       const { data, error } = await supabase
         .from('school_fee_structures')
@@ -21,7 +23,6 @@ export const useFeeStructures = (schoolId: string | null) => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Fee structures query failed:', error);
         // Create mock data for demonstration
         const mockStructures: FeeStructure[] = [
           {
@@ -67,14 +68,11 @@ export const useFeeStructures = (schoolId: string | null) => {
           },
         ];
         setFeeStructures(mockStructures);
-        console.log('✅ [Fee Structures] Using mock data:', mockStructures.length, 'structures');
         return;
       }
 
-      console.log(`✅ [Fee Structures] Loaded ${data?.length || 0} fee structures`);
       setFeeStructures(data || []);
     } catch (err) {
-      console.error("Failed to load fee structures:", err);
       toast.error("Failed to load fee structures");
       setFeeStructures([]);
     } finally {
@@ -114,7 +112,6 @@ export const useFeeStructures = (schoolId: string | null) => {
           .eq('id', existing.id);
 
         if (error) {
-          console.error('Update fee structure failed:', error);
           // For demo, update in local state
           setFeeStructures(prev => 
             prev.map(fs => fs.id === existing.id ? { ...fs, ...payload } : fs)
@@ -129,7 +126,6 @@ export const useFeeStructures = (schoolId: string | null) => {
           .insert({ ...payload, created_at: new Date().toISOString() });
 
         if (error) {
-          console.error('Create fee structure failed:', error);
           // For demo, add to local state
           const newStructure: FeeStructure = {
             id: `mock-${Date.now()}`,
@@ -146,7 +142,6 @@ export const useFeeStructures = (schoolId: string | null) => {
       loadFeeStructures();
       return true;
     } catch (err) {
-      console.error("Failed to save fee structure:", err);
       toast.error("Failed to save fee structure");
       return false;
     }
@@ -160,7 +155,6 @@ export const useFeeStructures = (schoolId: string | null) => {
         .eq('id', id);
 
       if (error) {
-        console.error('Delete fee structure failed:', error);
         // For demo, remove from local state
         setFeeStructures(prev => prev.filter(fs => fs.id !== id));
         toast.success("Fee structure deleted successfully!");
@@ -171,7 +165,7 @@ export const useFeeStructures = (schoolId: string | null) => {
       loadFeeStructures();
       return true;
     } catch (err) {
-      console.error("Failed to delete fee structure:", err);
+      logger.error('Failed to delete fee structure', err as Error);
       toast.error("Failed to delete fee structure");
       return false;
     }
@@ -191,7 +185,6 @@ export const useFeeStructures = (schoolId: string | null) => {
         .eq('id', id);
 
       if (error) {
-        console.error('Toggle active failed:', error);
         // For demo, update local state
         setFeeStructures(prev => 
           prev.map(fs => fs.id === id ? { ...fs, is_active: !fs.is_active } : fs)
@@ -204,7 +197,6 @@ export const useFeeStructures = (schoolId: string | null) => {
       loadFeeStructures();
       return true;
     } catch (err) {
-      console.error("Failed to toggle active status:", err);
       toast.error("Failed to update status");
       return false;
     }
@@ -225,7 +217,6 @@ export const useFeeStructures = (schoolId: string | null) => {
 
       return await saveFeeStructure(duplicateData);
     } catch (err) {
-      console.error("Failed to duplicate fee structure:", err);
       toast.error("Failed to duplicate fee structure");
       return false;
     }

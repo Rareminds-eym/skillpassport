@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('recent-updates-hook');
 
 // 🕓 Helper — format timestamps into “2 min ago” / “Oct 24” etc.
 const formatTimestamp = (timestamp) => {
@@ -54,7 +57,7 @@ export const useRecentUpdates = () => {
       setStudentId(data.id);
       return data.id;
     } catch (err) {
-      console.error("❌ [useRecentUpdates] Error finding student by email:", err);
+      logger.error('Failed to find student by email', err instanceof Error ? err : new Error(String(err)), { email });
       setError(err.message);
       setStudentId(null);
       return null;
@@ -93,7 +96,7 @@ export const useRecentUpdates = () => {
 
         updatesArray = (parsed?.updates || []).filter(Boolean);
       } catch (parseErr) {
-        console.error("❌ Error parsing updates JSON:", parseErr);
+        logger.error('Failed to parse recent updates JSON', parseErr instanceof Error ? parseErr : new Error(String(parseErr)));
       }
 
       // Format timestamps properly
@@ -112,7 +115,7 @@ export const useRecentUpdates = () => {
 
       setRecentUpdates(formatted);
     } catch (err) {
-      console.error("❌ [useRecentUpdates] Error fetching updates:", err);
+      logger.error('Failed to fetch recent updates', err instanceof Error ? err : new Error(String(err)));
       setError(err.message);
       setRecentUpdates([]);
     } finally {

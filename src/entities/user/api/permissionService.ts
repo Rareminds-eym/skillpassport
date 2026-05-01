@@ -1,5 +1,8 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 import { UserRole, Permission } from '@/shared/types/Permissions';
+
+const logger = getLogger('permission-service');
 
 export interface PermissionCheck {
   allowed: boolean;
@@ -31,7 +34,7 @@ class PermissionService {
       if (error) throw error;
       return userData.role as UserRole;
     } catch (error) {
-      console.error('Error getting user role:', error);
+      logger.error('Failed to get current user role', error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }
@@ -84,7 +87,7 @@ class PermissionService {
 
       return permissions;
     } catch (error) {
-      console.error('Error fetching user permissions:', error);
+      logger.error('Failed to fetch user permissions', error instanceof Error ? error : new Error(String(error)));
       return {};
     }
   }
@@ -107,7 +110,7 @@ class PermissionService {
         reason: hasPermission ? undefined : `No ${permission} permission for ${feature}`
       };
     } catch (error) {
-      console.error('Error checking permission:', error);
+      logger.error('Failed to check permission', error instanceof Error ? error : new Error(String(error)), { feature, permission });
       return { allowed: false, reason: 'Error checking permission' };
     }
   }
@@ -129,7 +132,7 @@ class PermissionService {
         canChangeClassSection: permissions['Classroom Management']?.includes('edit') || false
       };
     } catch (error) {
-      console.error('Error getting feature access:', error);
+      logger.error('Failed to get feature access', error instanceof Error ? error : new Error(String(error)));
       return {
         canAddStudent: false,
         canEditProfile: false,
@@ -164,7 +167,7 @@ class PermissionService {
       
       return permissionCheck;
     } catch (error) {
-      console.error('Error checking student access:', error);
+      logger.error('Failed to check student access', error instanceof Error ? error : new Error(String(error)), { studentId });
       return { allowed: false, reason: 'Error checking student access' };
     }
   }
@@ -197,7 +200,7 @@ class PermissionService {
 
       return { allowed: true };
     } catch (error) {
-      console.error('Error checking attendance edit permission:', error);
+      logger.error('Failed to check attendance edit permission', error instanceof Error ? error : new Error(String(error)), { attendanceDate });
       return { allowed: false, reason: 'Error checking attendance edit permission' };
     }
   }

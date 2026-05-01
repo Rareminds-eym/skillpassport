@@ -4,9 +4,12 @@
  * Uses IndexedDB for persistent local storage
  */
 
+import { getLogger } from '@/shared/config/logging';
+
 const DB_NAME = 'courseProgressDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'progressQueue';
+const logger = getLogger('progress-sync-manager');
 
 class ProgressSyncManager {
   constructor() {
@@ -29,13 +32,12 @@ class ProgressSyncManager {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
 
       request.onerror = () => {
-        console.error('Failed to open IndexedDB:', request.error);
+        logger.error('Failed to open IndexedDB', request.error instanceof Error ? request.error : new Error(String(request.error)));
         reject(request.error);
       };
 
       request.onsuccess = () => {
         this.db = request.result;
-        console.log('📦 IndexedDB initialized for offline progress');
         resolve(this.db);
         
         // Sync any pending items if online
@@ -62,7 +64,6 @@ class ProgressSyncManager {
   // Handle coming online
   async handleOnline() {
     this.isOnline = true;
-    console.log('🌐 Back online - syncing progress...');
     this.notifyListeners({ type: 'online' });
     await this.syncPendingProgress();
   }
@@ -70,7 +71,6 @@ class ProgressSyncManager {
   // Handle going offline
   handleOffline() {
     this.isOnline = false;
-    console.log('📴 Offline - progress will be cached locally');
     this.notifyListeners({ type: 'offline' });
   }
 
@@ -103,7 +103,6 @@ class ProgressSyncManager {
       const request = store.add(item);
 
       request.onsuccess = () => {
-        console.log('📝 Progress queued:', type);
         resolve(request.result);
         
         // Try to sync immediately if online
@@ -113,7 +112,7 @@ class ProgressSyncManager {
       };
 
       request.onerror = () => {
-        console.error('Failed to queue progress:', request.error);
+        logger.error('Failed to queue progress', request.error instanceof Error ? request.error : new Error(String(request.error)));
         reject(request.error);
       };
     });
@@ -152,8 +151,6 @@ class ProgressSyncManager {
         return;
       }
 
-      console.log(`🔄 Syncing ${pending.length} pending progress items...`);
-      
       let synced = 0;
       let failed = 0;
 
@@ -163,20 +160,19 @@ class ProgressSyncManager {
           await this.markSynced(item.id);
           synced++;
         } catch (error) {
-          console.error('Failed to sync item:', error);
+          logger.error('Failed to sync item', error instanceof Error ? error : new Error(String(error)));
           await this.incrementRetry(item.id);
           failed++;
         }
       }
 
-      console.log(`✅ Sync complete: ${synced} synced, ${failed} failed`);
       this.notifyListeners({ type: 'syncComplete', synced, failed });
 
       // Clean up old synced items
       await this.cleanupSyncedItems();
 
     } catch (error) {
-      console.error('Sync error:', error);
+      logger.error('Sync error', error instanceof Error ? error : new Error(String(error)));
       this.notifyListeners({ type: 'syncError', error });
     } finally {
       this.syncInProgress = false;
@@ -233,7 +229,6 @@ class ProgressSyncManager {
         );
       
       default:
-        console.warn('Unknown progress type:', item.type);
         return Promise.resolve();
     }
   }

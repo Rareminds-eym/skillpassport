@@ -4,6 +4,9 @@ import { X, CheckCircle, AlertCircle, Plus, Trash2, Save } from 'lucide-react';
 import { useTheme } from '@/shared/model/themeStore';
 import { usePortfolio } from '@/features/digital-portfolio';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('ProfileCompletionModal');
 
 export interface ProfileCompletionModalProps {
   isOpen: boolean;
@@ -72,11 +75,8 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
   // Memoize validation result to avoid repeated checks
   const isValidProps = React.useMemo(() => {
     const isValid = Array.isArray(incompleteSections);
-    if (!isValid && isDevelopment) {
-      console.error('[ProfileCompletionModal] Invalid incompleteSections prop:', incompleteSections);
-    }
     return isValid;
-  }, [incompleteSections, isDevelopment]);
+  }, [incompleteSections]);
 
   // Early return for invalid props to prevent unnecessary rendering
   if (!isValidProps) {
@@ -84,11 +84,6 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
   }
 
   // Log theme changes in development mode
-  useEffect(() => {
-    if (isDevelopment && isOpen) {
-      console.log('[ProfileCompletionModal] Current theme:', theme);
-    }
-  }, [theme, isOpen, isDevelopment]);
 
   // Focus management and accessibility
   useEffect(() => {
@@ -103,18 +98,11 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
         }
       }, 100); // Small delay to ensure modal is rendered
 
-      if (isDevelopment) {
-        console.log('[ProfileCompletionModal] Modal opened, focus set to first button');
-      }
-
       return () => clearTimeout(timer);
     } else {
       // Return focus to the previously focused element when modal closes
       if (previousActiveElementRef.current) {
         previousActiveElementRef.current.focus();
-        if (isDevelopment) {
-          console.log('[ProfileCompletionModal] Modal closed, focus returned to previous element');
-        }
       }
     }
   }, [isOpen, isDevelopment]);
@@ -156,9 +144,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
         try {
           onClose();
         } catch (error) {
-          if (isDevelopment) {
-            console.error('[ProfileCompletionModal] Error in onClose handler:', error);
-          }
+          logger.error('Failed to close modal on Escape key', error instanceof Error ? error : new Error('Unknown error'));
         }
       }
     };
@@ -173,7 +159,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen, onClose, isDevelopment]);
+  }, [isOpen, onClose]);
 
   // Handle backdrop click with error handling
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -181,9 +167,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
       try {
         onClose();
       } catch (error) {
-        if (isDevelopment) {
-          console.error('[ProfileCompletionModal] Error in backdrop click handler:', error);
-        }
+        logger.error('Failed to close modal on backdrop click', error instanceof Error ? error : new Error('Unknown error'));
       }
     }
   };
@@ -266,10 +250,6 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
         return;
       }
 
-      if (isDevelopment) {
-        console.log('[ProfileCompletionModal] Save successful');
-      }
-
       // Refresh student data
       const { data: updatedStudent } = await supabase
         .from('students')
@@ -284,9 +264,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
       setEditMode(false);
       onComplete();
     } catch (error: any) {
-      if (isDevelopment) {
-        console.error('[ProfileCompletionModal] Error saving profile:', error);
-      }
+      logger.error('Failed to save profile data', error instanceof Error ? error : new Error('Unknown error'));
       alert(`Failed to save: ${error.message || 'Unknown error'}`);
     } finally {
       setSaving(false);
@@ -311,9 +289,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
         }
       }
     } catch (error) {
-      if (isDevelopment) {
-        console.error('[ProfileCompletionModal] Error in onComplete handler:', error);
-      }
+      logger.error('Failed to complete profile', error instanceof Error ? error : new Error('Unknown error'));
     }
   };
 
@@ -322,9 +298,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
       setEditMode(false);
       onSkip();
     } catch (error) {
-      if (isDevelopment) {
-        console.error('[ProfileCompletionModal] Error in onSkip handler:', error);
-      }
+      logger.error('Failed to skip profile completion', error instanceof Error ? error : new Error('Unknown error'));
     }
   };
 
@@ -333,9 +307,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
       setEditMode(false);
       onNeverShow();
     } catch (error) {
-      if (isDevelopment) {
-        console.error('[ProfileCompletionModal] Error in onNeverShow handler:', error);
-      }
+      logger.error('Failed to set never show modal preference', error instanceof Error ? error : new Error('Unknown error'));
     }
   };
 

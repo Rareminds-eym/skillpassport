@@ -21,6 +21,9 @@ import jsPDF from 'jspdf';
 import { supabase } from '@/shared/api/supabaseClient';
 import { File } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('StudentProfileDrawer');
 
 const Badge = ({ type }) => {
   const badgeConfig = {
@@ -745,7 +748,7 @@ const AddMentorNoteModal = ({ isOpen, onClose, student, onSuccess }) => {
       setNote('');
       onClose();
     } catch (error) {
-      console.error('Error saving note:', error);
+      logger.error('Failed to save note', error as Error);
     } finally {
       setIsSubmitting(false);
     }
@@ -835,7 +838,7 @@ const VerifyAssignmentModal = ({ isOpen, onClose, student, onSuccess }) => {
       setSelectedAssignments([]);
       onClose();
     } catch (error) {
-      console.error('Error verifying assignments:', error);
+      logger.error('Failed to verify assignments', error as Error);
     } finally {
       setIsSubmitting(false);
     }
@@ -950,7 +953,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
         if (error) throw error;
         setProjects(data || []);
       } catch (error) {
-        console.error('Error fetching projects:', error);
+        logger.error('Failed to fetch projects', error as Error);
         setProjects([]);
       } finally {
         setLoadingProjects(false);
@@ -971,7 +974,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
         if (error) throw error;
         setCertificates(data || []);
       } catch (error) {
-        console.error('Error fetching certificates:', error);
+        logger.error('Failed to fetch certificates', error as Error);
         setCertificates([]);
       } finally {
         setLoadingCertificates(false);
@@ -1004,7 +1007,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
         if (error) throw error;
         setAssessments(data || []);
       } catch (error) {
-        console.error('Error fetching assignments:', error);
+        logger.error('Failed to fetch assignments', error as Error);
         setAssessments([]);
       } finally {
         setLoadingAssessments(false);

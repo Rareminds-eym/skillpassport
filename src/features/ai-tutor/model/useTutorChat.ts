@@ -10,6 +10,9 @@ import {
   submitFeedback as submitFeedbackService,
   deleteConversation as deleteConversationService
 } from '../api/tutorService';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('use-tutor-chat');
 
 export interface UseTutorChatOptions {
   courseId: string;
@@ -53,7 +56,7 @@ export function useTutorChat({ courseId, lessonId }: UseTutorChatOptions): UseTu
       const convs = await getConversations(courseId);
       setConversations(convs);
     } catch (err) {
-      console.error('Error fetching conversations:', err);
+      logger.error('Error fetching conversations', err instanceof Error ? err : new Error(String(err)));
     }
   }, [courseId]);
 
@@ -67,7 +70,7 @@ export function useTutorChat({ courseId, lessonId }: UseTutorChatOptions): UseTu
       const questions = await getSuggestedQuestions(lessonId);
       setSuggestedQuestions(questions);
     } catch (err) {
-      console.error('Error fetching suggestions:', err);
+      logger.error('Error fetching suggestions', err instanceof Error ? err : new Error(String(err)));
       setSuggestedQuestions([]);
     }
   }, [lessonId]);

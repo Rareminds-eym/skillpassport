@@ -1,5 +1,8 @@
 import { format } from "date-fns"
 import { supabase } from '@/shared/api/supabaseClient'
+import { getLogger } from '@/shared/config/logging'
+
+const logger = getLogger('class-service')
 
 type PerformanceBand = "High" | "Medium" | "Low"
 
@@ -97,7 +100,7 @@ export const getEducatorAssignedClassIds = async (educatorId: string, educatorTy
         .eq("educator_id", educatorId)
 
       if (error) {
-        console.error("Error fetching school educator assigned classes:", error)
+        logger.error('Failed to fetch school educator assigned classes', error instanceof Error ? error : new Error(String(error)));
         return []
       }
 
@@ -109,14 +112,16 @@ export const getEducatorAssignedClassIds = async (educatorId: string, educatorTy
         .eq("faculty_id", educatorId)
 
       if (error) {
-        console.error("Error fetching college educator assigned classes:", error)
+        logger.error('Failed to fetch college educator assigned classes', error instanceof Error ? error : new Error(String(error)), {
+          educatorId
+        });
         return []
       }
 
       return (data || []).map(ac => ac.class_id)
     }
   } catch (err) {
-    console.error("Error fetching educator assigned classes:", err)
+    logger.error('Exception fetching educator assigned classes', err instanceof Error ? err : new Error(String(err)));
     return []
   }
 }
@@ -204,7 +209,7 @@ const calculateStudentProgress = async (studentId: string, classId: string): Pro
 
     return Math.round(progress)
   } catch (err) {
-    console.error("Error calculating student progress:", err)
+    logger.error('Exception calculating student progress', err instanceof Error ? err : new Error(String(err)));
     return 0
   }
 }
@@ -218,7 +223,7 @@ export const fetchEducatorClasses = async (
   try {
     // SECURITY: Always require educatorId for educator role to prevent unauthorized access
     if (!educatorId || !educatorType) {
-      console.warn("fetchEducatorClasses called without educatorId or educatorType - this should not happen for educators")
+      logger.warn('fetchEducatorClasses called without educatorId or educatorType');
       return { data: [], error: null }
     }
 
@@ -228,7 +233,7 @@ export const fetchEducatorClasses = async (
       return await fetchCollegeEducatorClasses(collegeId, educatorId)
     }
   } catch (err: any) {
-    console.error("Error in fetchEducatorClasses:", err)
+    logger.error('Exception in fetchEducatorClasses', err instanceof Error ? err : new Error(String(err)));
     return { data: null, error: err?.message || "Unable to fetch classes" }
   }
 }
@@ -243,7 +248,7 @@ const fetchSchoolEducatorClasses = async (schoolId?: string, educatorId?: string
       .maybeSingle()
 
     if (educatorCheckError || !educatorCheck) {
-      console.error("Invalid school educator ID:", educatorId)
+      logger.error('Invalid school educator ID', educatorCheckError instanceof Error ? educatorCheckError : new Error(String(educatorCheckError)));
       return { data: null, error: "Invalid educator credentials" }
     }
 
@@ -254,7 +259,7 @@ const fetchSchoolEducatorClasses = async (schoolId?: string, educatorId?: string
       .eq("educator_id", educatorId)
 
     if (assignmentError) {
-      console.error("Error fetching school educator assignments:", assignmentError)
+      logger.error('Failed to fetch school educator assignments', assignmentError instanceof Error ? assignmentError : new Error(String(assignmentError)));
       return { data: null, error: assignmentError.message }
     }
 
@@ -290,7 +295,7 @@ const fetchSchoolEducatorClasses = async (schoolId?: string, educatorId?: string
     const { data, error } = await query
 
     if (error) {
-      console.error("Error fetching school classes:", error)
+      logger.error('Failed to fetch school classes', error instanceof Error ? error : new Error(String(error)));
       return { data: null, error: error.message }
     }
 
@@ -317,7 +322,7 @@ const fetchSchoolEducatorClasses = async (schoolId?: string, educatorId?: string
 
     return { data: classesWithStudents, error: null }
   } catch (err: any) {
-    console.error("Error in fetchSchoolEducatorClasses:", err)
+    logger.error('Exception in fetchSchoolEducatorClasses', err instanceof Error ? err : new Error(String(err)));
     return { data: null, error: err?.message || "Unable to fetch school classes" }
   }
 }
@@ -332,7 +337,7 @@ const fetchCollegeEducatorClasses = async (collegeId?: string, educatorId?: stri
       .maybeSingle()
 
     if (educatorCheckError || !educatorCheck) {
-      console.error("Invalid college educator ID:", educatorId)
+      logger.error('Invalid college educator ID', educatorCheckError instanceof Error ? educatorCheckError : new Error(String(educatorCheckError)));
       return { data: null, error: "Invalid educator credentials" }
     }
 
@@ -343,7 +348,7 @@ const fetchCollegeEducatorClasses = async (collegeId?: string, educatorId?: stri
       .eq("faculty_id", educatorId)
 
     if (assignmentError) {
-      console.error("Error fetching college educator assignments:", assignmentError)
+      logger.error('Failed to fetch college educator assignments', assignmentError instanceof Error ? assignmentError : new Error(String(assignmentError)));
       return { data: null, error: assignmentError.message }
     }
 
@@ -379,7 +384,7 @@ const fetchCollegeEducatorClasses = async (collegeId?: string, educatorId?: stri
     const { data, error } = await query
 
     if (error) {
-      console.error("Error fetching college classes:", error)
+      logger.error('Failed to fetch college classes', error instanceof Error ? error : new Error(String(error)));
       return { data: null, error: error.message }
     }
 
@@ -406,7 +411,7 @@ const fetchCollegeEducatorClasses = async (collegeId?: string, educatorId?: stri
 
     return { data: classesWithStudents, error: null }
   } catch (err: any) {
-    console.error("Error in fetchCollegeEducatorClasses:", err)
+    logger.error('Exception in fetchCollegeEducatorClasses', err instanceof Error ? err : new Error(String(err)));
     return { data: null, error: err?.message || "Unable to fetch college classes" }
   }
 }
@@ -483,7 +488,7 @@ export const fetchClassTasks = async (classId: string): Promise<ClassTask[]> => 
       .order("due_date", { ascending: true })
 
     if (error) {
-      console.error("Error fetching class tasks:", error)
+      logger.error('Failed to fetch class tasks', error instanceof Error ? error : new Error(String(error)));
       return []
     }
 
@@ -497,7 +502,7 @@ export const fetchClassTasks = async (classId: string): Promise<ClassTask[]> => 
       status: assignment.is_deleted ? "Completed" : "Pending"
     }))
   } catch (err: any) {
-    console.error("Error fetching class tasks:", err)
+    logger.error('Exception fetching class tasks', err instanceof Error ? err : new Error(String(err)));
     return []
   }
 }
@@ -512,7 +517,7 @@ export const fetchClassStudents = async (classId: string, educatorType: 'school'
       .eq(classIdField, classId)
 
     if (error) {
-      console.error("Error fetching class students:", error)
+      logger.error('Failed to fetch class students', error instanceof Error ? error : new Error(String(error)));
       return []
     }
 
@@ -531,7 +536,7 @@ export const fetchClassStudents = async (classId: string, educatorType: 'school'
 
     return studentsWithProgress
   } catch (err: any) {
-    console.error("Error fetching class students:", err)
+    logger.error('Exception fetching class students', err instanceof Error ? err : new Error(String(err)));
     return []
   }
 }
@@ -697,26 +702,16 @@ export const addStudentToClass = async ({ classId, student, educatorType = 'scho
     }
 
     const classIdField = educatorType === 'school' ? 'school_class_id' : 'college_class_id'
-    
-    console.log('🔍 Adding student to class:', {
-      studentId: student.id,
-      classId,
-      classIdField,
-      educatorType,
-      updateData: { [classIdField]: classId }
-    })
-    
+
     const { error: updateError } = await supabase
       .from("students")
       .update({ [classIdField]: classId })
       .eq("id", student.id)
 
     if (updateError) {
-      console.error('❌ Error updating student:', updateError)
+      logger.error('Failed to update student class assignment', updateError instanceof Error ? updateError : new Error(String(updateError)));
       return { data: null, error: updateError.message || "Unable to add student to class" }
     }
-    
-    console.log('✅ Student updated successfully')
 
     const classTable = educatorType === 'school' ? 'school_classes' : 'college_classes'
     const { error: incrementError } = await supabase
@@ -728,7 +723,7 @@ export const addStudentToClass = async ({ classId, student, educatorType = 'scho
       .eq("id", classId)
 
     if (incrementError) {
-      console.error("Error incrementing student count:", incrementError)
+      logger.error('Failed to increment student count', incrementError instanceof Error ? incrementError : new Error(String(incrementError)));
     }
 
     const { data: updatedClass, error: fetchError } = await getClassById(classId, educatorType)
@@ -770,7 +765,7 @@ export const removeStudentFromClass = async (classId: string, studentId: string,
       .eq("id", classId)
 
     if (decrementError) {
-      console.error("Error decrementing student count:", decrementError)
+      logger.error('Failed to decrement student count', decrementError instanceof Error ? decrementError : new Error(String(decrementError)));
     }
 
     const { data: updatedClass, error: fetchError } = await getClassById(classId, educatorType)
@@ -911,8 +906,11 @@ const createCollegeClass = async (payload: CreateClassPayload, skills: string[])
     ])
 
   if (assignmentError) {
-    console.error("Warning: Failed to create faculty assignment:", assignmentError)
-    // Don't fail the whole operation, just log the warning
+    logger.warn('Failed to create faculty assignment', {
+      error: assignmentError instanceof Error
+        ? { message: assignmentError.message, stack: assignmentError.stack }
+        : { message: String(assignmentError) }
+    });
   }
 
   const classItem = transformDBClassToClass(data, 'college')

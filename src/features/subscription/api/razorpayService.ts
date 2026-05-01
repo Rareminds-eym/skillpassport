@@ -43,8 +43,6 @@ export const loadRazorpayScript = () => {
  */
 export const createRazorpayOrder = async (orderData) => {
   try {
-    console.log('📦 Creating Razorpay order:', orderData);
-
     // Get auth token
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
@@ -64,11 +62,8 @@ export const createRazorpayOrder = async (orderData) => {
       isUpgrade: orderData.isUpgrade,
     }, token);
 
-    console.log('✅ Order created:', result.id);
     return result;
   } catch (error) {
-    console.error('❌ Error creating order:', error);
-
     // Check if this is a "subscription exists" error (409 Conflict)
     if (error.message?.includes('already have an active subscription')) {
       // Create a custom error with additional info
@@ -102,7 +97,6 @@ export const verifyPayment = async (paymentData) => {
       plan: paymentData.plan,
     }, token);
   } catch (error) {
-    console.error('❌ Error verifying payment:', error);
     throw error;
   }
 };
@@ -145,7 +139,6 @@ export const initiateRazorpayPayment = async ({ plan, userDetails, isUpgrade }) 
 
     // Use Razorpay key from backend API response (matches RAZORPAY_MODE on server)
     const razorpayKeyId = orderData.key;
-    console.log(`💳 Using ${orderData.key?.startsWith('rzp_live') ? 'LIVE' : 'TEST'} Razorpay key from API`);
 
     // Razorpay checkout options
     const options = {
@@ -203,8 +196,6 @@ export const initiateRazorpayPayment = async ({ plan, userDetails, isUpgrade }) 
 
     razorpay.open();
   } catch (error) {
-    console.error('❌ Error initiating payment:', error);
-
     // Handle "subscription already exists" error specially
     if (error.code === 'SUBSCRIPTION_EXISTS' || error.isSubscriptionExists) {
       const origin = window.location.origin;

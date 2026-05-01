@@ -14,8 +14,11 @@ import type { PurchaseData } from '@/features/subscription/ui/organization/BulkP
 import { supabase } from '@/shared/api/supabaseClient';
 import { organizationMemberService } from '@/entities/organization';
 import { useSubscriptionPlansData } from '@/features/subscription/model';
+import { getLogger } from '@/shared/config/logging';
 
 import { useUser, useIsAuthenticated } from '@/shared/model/authStore';
+
+const logger = getLogger('bulk-purchase-page');
 function BulkPurchasePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -50,125 +53,92 @@ function BulkPurchasePage() {
   // Fetch organization ID
   useEffect(() => {
     const fetchOrganizationId = async () => {
-      console.log('[BulkPurchasePage] Fetching organization ID, user:', user);
-
-      // Type assertion for user with organization IDs
       const userWithOrg = user as any;
 
-      // First check user object
-      if (userWithOrg?.school_id) { console.log('[BulkPurchasePage] Found school_id:', userWithOrg.school_id); setOrganizationId(String(userWithOrg.school_id)); return; }
-      if (userWithOrg?.college_id) { console.log('[BulkPurchasePage] Found college_id:', userWithOrg.college_id); setOrganizationId(String(userWithOrg.college_id)); return; }
-      if (userWithOrg?.university_id) { console.log('[BulkPurchasePage] Found university_id:', userWithOrg.university_id); setOrganizationId(String(userWithOrg.university_id)); return; }
-      if (userWithOrg?.schoolId) { console.log('[BulkPurchasePage] Found schoolId:', userWithOrg.schoolId); setOrganizationId(String(userWithOrg.schoolId)); return; }
-      if (userWithOrg?.collegeId) { console.log('[BulkPurchasePage] Found collegeId:', userWithOrg.collegeId); setOrganizationId(String(userWithOrg.collegeId)); return; }
-      if (userWithOrg?.universityId) { console.log('[BulkPurchasePage] Found universityId:', userWithOrg.universityId); setOrganizationId(String(userWithOrg.universityId)); return; }
+      if (userWithOrg?.school_id) { setOrganizationId(String(userWithOrg.school_id)); return; }
+      if (userWithOrg?.college_id) { setOrganizationId(String(userWithOrg.college_id)); return; }
+      if (userWithOrg?.university_id) { setOrganizationId(String(userWithOrg.university_id)); return; }
+      if (userWithOrg?.schoolId) { setOrganizationId(String(userWithOrg.schoolId)); return; }
+      if (userWithOrg?.collegeId) { setOrganizationId(String(userWithOrg.collegeId)); return; }
+      if (userWithOrg?.universityId) { setOrganizationId(String(userWithOrg.universityId)); return; }
 
-      // Fallback to localStorage
       const storedUser = localStorage.getItem('user');
-      console.log('[BulkPurchasePage] Checking localStorage user:', storedUser);
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);
-          if (userData.schoolId) { console.log('[BulkPurchasePage] Found schoolId in localStorage:', userData.schoolId); setOrganizationId(userData.schoolId); return; }
-          if (userData.collegeId) { console.log('[BulkPurchasePage] Found collegeId in localStorage:', userData.collegeId); setOrganizationId(userData.collegeId); return; }
-          if (userData.universityId) { console.log('[BulkPurchasePage] Found universityId in localStorage:', userData.universityId); setOrganizationId(userData.universityId); return; }
+          if (userData.schoolId) { setOrganizationId(userData.schoolId); return; }
+          if (userData.collegeId) { setOrganizationId(userData.collegeId); return; }
+          if (userData.universityId) { setOrganizationId(userData.universityId); return; }
         } catch (e) { /* ignore */ }
       }
 
-      // Fetch from database
       const userId = user?.id;
       let userEmail = user?.email;
 
-      // Fallback to localStorage for email
       if (!userEmail) {
         userEmail = localStorage.getItem('userEmail') || undefined;
       }
 
-      console.log('[BulkPurchasePage] Fetching from database, userId:', userId, 'userEmail:', userEmail);
-
       if (!userId && !userEmail) {
-        console.log('[BulkPurchasePage] No userId or userEmail, cannot fetch organization');
         return;
       }
 
       try {
-        // Try school_educators table first for school admins
         if (organizationType === 'school' && userId) {
-          console.log('[BulkPurchasePage] Querying school_educators by user_id:', userId);
-          const { data: educatorData, error: educatorError } = await supabase
+          const { data: educatorData } = await supabase
             .from('school_educators')
             .select('school_id')
             .eq('user_id', userId)
             .maybeSingle();
 
-          console.log('[BulkPurchasePage] school_educators result:', educatorData, educatorError);
-
           if (educatorData?.school_id) {
-            console.log('[BulkPurchasePage] Found school_id from school_educators:', educatorData.school_id);
             setOrganizationId(educatorData.school_id);
             return;
           }
         }
 
-        // Try college_lecturers table for college admins
         if (organizationType === 'college' && userId) {
-          console.log('[BulkPurchasePage] Querying college_lecturers by user_id:', userId);
-          const { data: lecturerData, error: lecturerError } = await supabase
+          const { data: lecturerData } = await supabase
             .from('college_lecturers')
             .select('collegeId')
             .eq('user_id', userId)
             .maybeSingle();
 
-          console.log('[BulkPurchasePage] college_lecturers result:', lecturerData, lecturerError);
-
           if (lecturerData?.collegeId) {
-            console.log('[BulkPurchasePage] Found collegeId from college_lecturers:', lecturerData.collegeId);
             setOrganizationId(lecturerData.collegeId);
             return;
           }
         }
 
-        // Try organizations table by email
         if (userEmail) {
-          console.log('[BulkPurchasePage] Querying organizations by email:', userEmail, 'type:', organizationType);
-          const { data: orgByEmail, error: emailError } = await supabase
+          const { data: orgByEmail } = await supabase
             .from('organizations')
             .select('id')
             .eq('organization_type', organizationType)
             .ilike('email', userEmail)
             .maybeSingle();
 
-          console.log('[BulkPurchasePage] Organizations by email result:', orgByEmail, emailError);
-
           if (orgByEmail?.id) {
-            console.log('[BulkPurchasePage] Found organization by email:', orgByEmail.id);
             setOrganizationId(orgByEmail.id);
             return;
           }
         }
 
-        // Try by admin_id
         if (userId) {
-          console.log('[BulkPurchasePage] Querying organizations by admin_id:', userId);
-          const { data: orgByAdminId, error: adminError } = await supabase
+          const { data: orgByAdminId } = await supabase
             .from('organizations')
             .select('id')
             .eq('organization_type', organizationType)
             .eq('admin_id', userId)
             .maybeSingle();
 
-          console.log('[BulkPurchasePage] Organizations by admin_id result:', orgByAdminId, adminError);
-
           if (orgByAdminId?.id) {
-            console.log('[BulkPurchasePage] Found organization by admin_id:', orgByAdminId.id);
             setOrganizationId(orgByAdminId.id);
             return;
           }
         }
-
-        console.log('[BulkPurchasePage] Could not find organization ID');
       } catch (err) {
-        console.error('[BulkPurchasePage] Error fetching organization ID:', err);
+        logger.error('Failed to fetch organization ID', err instanceof Error ? err : new Error(String(err)));
       }
     };
 
@@ -196,15 +166,12 @@ function BulkPurchasePage() {
 
   // Fetch members when organizationId is available
   const fetchMembers = useCallback(async () => {
-    console.log('[BulkPurchasePage] fetchMembers called, organizationId:', organizationId);
     if (!organizationId) {
-      console.log('[BulkPurchasePage] No organizationId, skipping member fetch');
       return;
     }
 
     setIsLoadingMembers(true);
     try {
-      console.log('[BulkPurchasePage] Fetching members for org:', organizationId, 'type:', organizationType);
       const result = await organizationMemberService.fetchOrganizationMembers({
         organizationId,
         organizationType,
@@ -213,9 +180,6 @@ function BulkPurchasePage() {
         limit: 500,
       });
 
-      console.log('[BulkPurchasePage] Members fetched:', result.members.length, 'total:', result.total);
-
-      // Transform to the format expected by BulkPurchaseWizard
       const transformedMembers = result.members.map((m: any) => ({
         id: m.id,
         name: m.name,
@@ -227,7 +191,7 @@ function BulkPurchasePage() {
 
       setAvailableMembers(transformedMembers);
     } catch (err) {
-      console.error('[BulkPurchasePage] Error fetching members:', err);
+      logger.error('Failed to fetch members', err instanceof Error ? err : new Error(String(err)));
     } finally {
       setIsLoadingMembers(false);
     }
@@ -274,7 +238,7 @@ function BulkPurchasePage() {
         },
       });
     } catch (error) {
-      console.error('Purchase error:', error);
+      logger.error('Purchase error', error instanceof Error ? error : new Error(String(error)));
       toast.error('Failed to process purchase. Please try again.');
     }
   }, [navigate, basePath, mode, existingSubscriptionId]);

@@ -1,6 +1,6 @@
 /**
  * 🎓 ADAPTIVE LEARNING PATH SERVICE
- * 
+ *
  * Features:
  * - Tracks student progress over time
  * - Adjusts difficulty dynamically based on performance
@@ -10,6 +10,9 @@
  */
 
 import { getOpenAIClient, DEFAULT_MODEL } from './openAIClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('adaptive-learning-service');
 
 export interface LearningProgress {
   studentId: string;
@@ -59,8 +62,6 @@ class AdaptiveLearningService {
   ): Promise<AdaptivePath> {
     
     try {
-      console.log('🎓 Adaptive Learning: Generating personalized path...');
-      
       const skills = studentProfile.profile?.technicalSkills?.map((s: any) => s.name) || [];
       const skillCount = skills.length;
       
@@ -190,17 +191,13 @@ ${learningProgress?.learningStyle === 'visual' ? '- Visual learner → Include d
       });
       
       const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
-      console.log('🎓 Adaptive Path Generated');
-      console.log('📍 Current Stage:', result.currentStage);
-      console.log('📊 Difficulty:', result.recommendedDifficulty);
-      console.log('🎯 Next Steps:', result.nextSteps?.length || 0);
-      console.log('🏆 Milestones:', result.milestones?.length || 0);
-      
       return result as AdaptivePath;
-      
+
     } catch (error) {
-      console.error('Adaptive path generation error:', error);
+      logger.error('Failed to generate adaptive learning path', error as Error, {
+        studentId: studentProfile?.id,
+        hasLearningProgress: !!learningProgress
+      });
       throw new Error('Failed to generate adaptive learning path');
     }
   }
@@ -260,9 +257,12 @@ Analyze:
       });
       
       return JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
+
     } catch (error) {
-      console.error('Pattern analysis error:', error);
+      logger.error('Failed to analyze learning patterns', error as Error, {
+        studentId,
+        activityCount: recentActivity.length
+      });
       throw new Error('Failed to analyze learning patterns');
     }
   }

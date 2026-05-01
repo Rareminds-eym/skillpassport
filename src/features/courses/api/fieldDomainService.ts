@@ -7,8 +7,10 @@
  */
 
 import { getApiUrl } from '@/shared/api/apiUtils';
+import { getLogger } from '@/shared/config/logging';
 
 const CAREER_API_URL = getApiUrl('career');
+const logger = getLogger('field-domain-service');
 
 /**
  * Generate domain-specific keywords for a field of study using AI
@@ -28,8 +30,6 @@ export async function generateDomainKeywords(fieldOfStudy) {
   }
 
   try {
-    console.log(`[Course Recommendations] Generating keywords for field: "${field}"`);
-    
     // Call career-api worker to generate keywords
     const response = await fetch(`${CAREER_API_URL}/generate-field-keywords`, {
       method: 'POST',
@@ -39,8 +39,6 @@ export async function generateDomainKeywords(fieldOfStudy) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.warn(`[Course Recommendations] ⚠️ LAYER 1 (AI Service) FAILED for "${field}": ${response.status}`);
-      console.log(`[Course Recommendations] → Falling back to LAYER 2 (Pattern Matching)`);
       
       // If worker says to use fallback, do so
       if (errorData.useFallback) {
@@ -54,19 +52,14 @@ export async function generateDomainKeywords(fieldOfStudy) {
     const keywords = data.keywords;
 
     if (!keywords) {
-      console.warn(`[Course Recommendations] ⚠️ LAYER 1 (AI Service) returned empty for "${field}"`);
-      console.log(`[Course Recommendations] → Falling back to LAYER 2 (Pattern Matching)`);
       return getFallbackKeywords(field);
     }
 
     // Success - AI generated keywords
-    console.log(`[Course Recommendations] ✅ LAYER 1 (AI Service) SUCCESS for "${field}"`);
-    console.log(`[Course Recommendations] Keywords: ${keywords}`);
     return keywords;
 
   } catch (error) {
-    console.error(`[Course Recommendations] ❌ LAYER 1 (AI Service) ERROR for "${field}":`, error.message);
-    console.log(`[Course Recommendations] → Falling back to LAYER 2 (Pattern Matching)`);
+    logger.error(`Error generating keywords for field: ${field}`, error instanceof Error ? error : new Error(String(error)));
     return getFallbackKeywords(field);
   }
 }
@@ -135,16 +128,12 @@ function getFallbackKeywords(field) {
   else {
     keywords = 'Professional Skills, Communication, Problem Solving, Critical Thinking, Teamwork, Leadership, Time Management, Adaptability, Interpersonal Skills, Collaboration, Project Management, Decision Making, Analytical Skills, Research Skills, Presentation Skills, Public Speaking, Written Communication, Verbal Communication, Active Listening, Conflict Resolution, Negotiation, Emotional Intelligence, Self-Awareness, Stress Management, Work Ethics, Professionalism, Attention to Detail, Organization, Planning, Goal Setting, Creativity, Innovation, Flexibility, Resilience, Learning Agility, Digital Literacy, Technical Skills, Data Analysis, Microsoft Office, Excel, PowerPoint, Word, Email Etiquette, Professional Development, Career Planning, Networking, Personal Branding';
     matchedCategory = 'Generic (No Pattern Match)';
-    console.log(`[Course Recommendations] ⚠️ LAYER 2 (Pattern Matching) - No match found for "${field}"`);
-    console.log(`[Course Recommendations] → Using LAYER 3 (Generic Keywords)`);
   }
 
   if (matchedCategory !== 'Generic (No Pattern Match)') {
-    console.log(`[Course Recommendations] ✅ LAYER 2 (Pattern Matching) SUCCESS for "${field}"`);
-    console.log(`[Course Recommendations] Matched Category: ${matchedCategory}`);
+    // Pattern matched successfully
   }
   
-  console.log(`[Course Recommendations] Keywords: ${keywords}`);
   return keywords;
 }
 
@@ -169,12 +158,9 @@ export async function getDomainKeywordsWithCache(fieldOfStudy) {
 
   // Check cache first
   if (keywordCache.has(cacheKey)) {
-    console.log(`[Course Recommendations] 🚀 CACHE HIT for "${fieldOfStudy}" (instant)`);
     return keywordCache.get(cacheKey);
   }
 
-  console.log(`[Course Recommendations] 💾 CACHE MISS for "${fieldOfStudy}" - generating keywords...`);
-  
   // Generate and cache
   const keywords = await generateDomainKeywords(fieldOfStudy);
   keywordCache.set(cacheKey, keywords);

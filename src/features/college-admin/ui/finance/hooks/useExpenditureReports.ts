@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { expenditureService, ExpenditureFilters, StudentFeeLedgerDetailed, ExpenditureSummary, DepartmentExpenditure, ProgramExpenditure } from '../services/expenditureService';
 import toast from 'react-hot-toast';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('useExpenditureReports');
 
 export const useExpenditureReports = () => {
   const [loading, setLoading] = useState(false);
@@ -63,7 +66,6 @@ export const useExpenditureReports = () => {
       const summaryData = await expenditureService.getExpenditureSummary();
       setSummary(summaryData);
     } catch (err) {
-      console.error('Error loading summary:', err);
       toast.error('Failed to load expenditure summary');
     }
   }, []);
@@ -74,7 +76,6 @@ export const useExpenditureReports = () => {
       const data = await expenditureService.getDepartmentExpenditure();
       setDepartmentData(data);
     } catch (err) {
-      console.error('Error loading department data:', err);
       toast.error('Failed to load department expenditure data');
     }
   }, []);
@@ -87,7 +88,6 @@ export const useExpenditureReports = () => {
 
     }
     catch(err){
-        console.error('Error loading Program Expenditure data:',err);
         toast.error('Failed to load Program expenditure data')
     }
   },[]);
@@ -98,7 +98,7 @@ export const useExpenditureReports = () => {
       const options = await expenditureService.getFilterOptions();
       setFilterOptions(options);
     } catch (err) {
-      console.error('Error loading filter options:', err);
+      logger.error('Failed to load filter options', err instanceof Error ? err : new Error(String(err)));
     }
   }, []);
 

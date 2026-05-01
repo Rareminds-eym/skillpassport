@@ -56,7 +56,6 @@ export const useStudentExperience = (studentId, enabled = true) => {
 
       setExperience(transformedData);
     } catch (err) {
-      console.error('Error fetching experience:', err);
       setError(err.message);
     } finally {
       setLoading(false);

@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('applicationTrackingService');
 
 export interface ApplicationTrackingData {
   id: number;
@@ -113,7 +116,6 @@ class ApplicationTrackingService {
       const { data: appliedJobs, error: appliedJobsError } = await appliedJobsQuery;
 
       if (appliedJobsError) {
-        console.error('Error fetching applied jobs:', appliedJobsError);
         throw appliedJobsError;
       }
 
@@ -151,16 +153,6 @@ class ApplicationTrackingService {
         `)
         .in('id', studentIds);
 
-      if (studentsError) {
-        console.error('Error fetching students:', studentsError);
-      }
-
-      console.log('Students fetch result:', {
-        requested: studentIds.length,
-        received: students?.length || 0,
-        error: studentsError,
-        sampleStudent: students?.[0]
-      });
 
       // Fetch opportunities data
       const { data: opportunities, error: opportunitiesError } = await supabase
@@ -168,9 +160,6 @@ class ApplicationTrackingService {
         .select('*')
         .in('id', opportunityIds);
 
-      if (opportunitiesError) {
-        console.error('Error fetching opportunities:', opportunitiesError);
-      }
 
       // Get unique company names from opportunities for company lookup
       const companyNames = [...new Set((opportunities || []).map(opp => opp.company_name).filter(Boolean))];
@@ -184,7 +173,8 @@ class ApplicationTrackingService {
           .in('name', companyNames);
 
         if (companiesError) {
-          console.error('Error fetching companies:', companiesError);
+          // Handle error silently
+          logger.error('Failed to fetch companies', companiesError as Error);
         } else {
           companies = companiesData || [];
         }
@@ -195,15 +185,6 @@ class ApplicationTrackingService {
         acc[student.id] = student;
         return acc;
       }, {} as Record<string, any>);
-
-      console.log('ApplicationTracking Debug:', {
-        totalApplications: appliedJobs.length,
-        totalStudents: students?.length || 0,
-        studentMapSize: Object.keys(studentMap).length,
-        sampleStudent: students?.[0],
-        sampleApplication: appliedJobs[0]
-      });
-
       const opportunityMap = (opportunities || []).reduce((acc, opp) => {
         acc[opp.id] = opp;
         return acc;
@@ -220,16 +201,6 @@ class ApplicationTrackingService {
         const opportunity = opportunityMap[job.opportunity_id];
         const company = opportunity ? companyMap[opportunity.company_name] : null;
 
-        // Debug log for first few records
-        if (appliedJobs.indexOf(job) < 3) {
-          console.log('Mapping application:', {
-            applicationId: job.id,
-            studentId: job.student_id,
-            foundStudent: !!student,
-            studentName: student?.name,
-            studentEmail: student?.email
-          });
-        }
 
         return {
           ...job,
@@ -304,7 +275,7 @@ class ApplicationTrackingService {
 
       return result;
     } catch (error) {
-      console.error('Error in getAllApplications:', error);
+      logger.error('Failed to fetch all applications', error as Error);
       throw error;
     }
   }
@@ -323,7 +294,7 @@ class ApplicationTrackingService {
           .eq('college_id', filters.college_id);
 
         if (studentsError) {
-          console.error('Error fetching students for stats:', studentsError);
+          logger.error('Failed to fetch students for stats', studentsError as Error);
           throw studentsError;
         }
 
@@ -366,7 +337,7 @@ class ApplicationTrackingService {
         const { data, error } = await query;
 
         if (error) {
-          console.error('Error fetching application stats:', error);
+          logger.error('Failed to fetch application stats', error as Error);
           throw error;
         }
 
@@ -413,7 +384,7 @@ class ApplicationTrackingService {
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error fetching application stats:', error);
+        logger.error('Failed to fetch application stats', error as Error);
         throw error;
       }
 
@@ -438,7 +409,7 @@ class ApplicationTrackingService {
 
       return stats;
     } catch (error) {
-      console.error('Error in getApplicationStats:', error);
+      logger.error('Failed to get application stats', error as Error);
       throw error;
     }
   }
@@ -476,7 +447,7 @@ class ApplicationTrackingService {
         .single();
 
       if (error) {
-        console.error('Error updating application status:', error);
+        logger.error('Failed to update application status', error as Error);
         throw error;
       }
 
@@ -486,7 +457,7 @@ class ApplicationTrackingService {
       
       return updatedApplication || data;
     } catch (error) {
-      console.error('Error in updateApplicationStatus:', error);
+      logger.error('Failed to update application status', error as Error);
       throw error;
     }
   }
@@ -523,13 +494,13 @@ class ApplicationTrackingService {
         .select();
 
       if (error) {
-        console.error('Error bulk updating applications:', error);
+        logger.error('Failed to bulk update applications', error as Error);
         throw error;
       }
 
       return data || [];
     } catch (error) {
-      console.error('Error in bulkUpdateApplications:', error);
+      logger.error('Failed to bulk update applications', error as Error);
       throw error;
     }
   }
@@ -545,7 +516,7 @@ class ApplicationTrackingService {
         .select('opportunity_id');
 
       if (appliedJobsError) {
-        console.error('Error fetching applied jobs for companies:', appliedJobsError);
+        logger.error('Failed to fetch applied jobs for companies', appliedJobsError as Error);
         throw appliedJobsError;
       }
 
@@ -561,7 +532,7 @@ class ApplicationTrackingService {
         .in('id', opportunityIds);
 
       if (opportunitiesError) {
-        console.error('Error fetching opportunities for companies:', opportunitiesError);
+        logger.error('Failed to fetch opportunities for companies', opportunitiesError as Error);
         throw opportunitiesError;
       }
 
@@ -579,14 +550,14 @@ class ApplicationTrackingService {
         .in('name', uniqueCompanyNames);
 
       if (companiesError) {
-        console.error('Error fetching companies:', companiesError);
+        logger.error('Failed to fetch companies', companiesError as Error);
         // Return company names even if companies table lookup fails
         return uniqueCompanyNames.map((name, index) => ({ id: `temp_${index}`, name }));
       }
 
       return companies || [];
     } catch (error) {
-      console.error('Error in getCompaniesWithApplications:', error);
+      logger.error('Failed to get companies with applications', error as Error);
       throw error;
     }
   }
@@ -608,7 +579,7 @@ class ApplicationTrackingService {
 
       return Array.from(departments).filter(dept => dept && dept.trim().length > 0);
     } catch (error) {
-      console.error('Error in getDepartmentsWithApplications:', error);
+      logger.error('Failed to get departments with applications', error as Error);
       throw error;
     }
   }
@@ -626,13 +597,13 @@ class ApplicationTrackingService {
         .maybeSingle();
 
       if (error) {
-        console.error('Error fetching pipeline data:', error);
+        logger.error('Failed to fetch pipeline data', error as Error);
         return null;
       }
 
       return data;
     } catch (error) {
-      console.error('Error in getPipelineDataForApplication:', error);
+      logger.error('Failed to get pipeline data for application', error as Error);
       return null;
     }
   }
@@ -645,7 +616,7 @@ class ApplicationTrackingService {
       const applications = await this.getAllApplications();
       return applications.find(app => app.id === id) || null;
     } catch (error) {
-      console.error('Error in getApplicationById:', error);
+      logger.error('Failed to get application by ID', error as Error);
       throw error;
     }
   }

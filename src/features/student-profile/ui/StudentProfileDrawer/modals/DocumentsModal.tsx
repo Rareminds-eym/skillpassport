@@ -365,6 +365,9 @@
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon, DocumentIcon, EyeIcon, ArrowDownTrayIcon, ArrowTopRightOnSquareIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import { getStudentDocuments, getStudentDocumentUrl } from '@/features/student-profile/api';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('documents-modal');
 
 interface Document {
   url: string;
@@ -426,7 +429,7 @@ const DocumentsModal: React.FC<DocumentsModalProps> = ({ isOpen, onClose, studen
       }
     } catch (err) {
       setError('Failed to load documents');
-      console.error('Error loading documents:', err);
+      logger.error('Error loading documents', err as Error);
     } finally {
       setLoading(false);
     }
@@ -443,9 +446,7 @@ const DocumentsModal: React.FC<DocumentsModalProps> = ({ isOpen, onClose, studen
       setDownloadError(null);
       setDownloadSuccess(null);
       
-      console.log('Downloading document:', document.name);
       const downloadUrl = getStudentDocumentUrl(document.url, 'download');
-      console.log('Download URL:', downloadUrl);
       
       const link = window.document.createElement('a');
       link.href = downloadUrl;
@@ -455,13 +456,11 @@ const DocumentsModal: React.FC<DocumentsModalProps> = ({ isOpen, onClose, studen
       link.click();
       window.document.body.removeChild(link);
       
-      console.log('Download initiated for:', document.name);
-      
       // Set success state
       setDownloadSuccess(document.url);
       setDownloading(null);
     } catch (error) {
-      console.error('Download failed:', error);
+      logger.error('Download failed', error as Error);
       setDownloadError(document.url);
       setDownloading(null);
       

@@ -18,6 +18,9 @@ import {
     PhoneIcon,
     XMarkIcon,
 } from '@heroicons/react/24/outline';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('message-modal');
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/shared/api/supabaseClient';
@@ -243,7 +246,7 @@ const MessageModal: React.FC<MessageModalProps> = ({
       setShowInternalMessage(false);
       onClose();
     } catch (error) {
-      console.error('Error sending message:', error);
+      logger.error('Failed to send message', error instanceof Error ? error : new Error(String(error)));
       toast.error('Failed to send message');
     } finally {
       setIsSending(false);

@@ -50,7 +50,6 @@ export const getStudentClassInfo = async (studentId: string): Promise<ClassInfo 
       .single();
 
     if (studentError || !student?.school_class_id) {
-      console.log('Student not assigned to a class');
       return null;
     }
 
@@ -105,7 +104,6 @@ export const getStudentClassInfo = async (studentId: string): Promise<ClassInfo 
       educator_email: educator?.email
     };
   } catch (error) {
-    console.error('Error fetching class info:', error);
     throw error;
   }
 };
@@ -126,7 +124,6 @@ export const getClassmates = async (classId: string, currentStudentId: string): 
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('Error fetching classmates:', error);
     throw error;
   }
 };
@@ -171,7 +168,6 @@ export const getClassTimetable = async (classId: string): Promise<TimetableSlot[
       };
     });
   } catch (error) {
-    console.error('Error fetching timetable:', error);
     throw error;
   }
 };
@@ -219,7 +215,6 @@ export const getTodaySchedule = async (classId: string): Promise<TimetableSlot[]
       };
     });
   } catch (error) {
-    console.error('Error fetching today schedule:', error);
     throw error;
   }
 };

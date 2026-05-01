@@ -80,7 +80,6 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
       }
       
       if (!studentId) {
-        console.log('No student ID available for exam results lookup');
         return;
       }
 
@@ -112,7 +111,6 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
         .order('created_at', { ascending: false });
 
       if (markError) {
-        console.error('Error fetching mark entries:', markError);
         return;
       }
 
@@ -261,8 +259,6 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
       });
 
       setSubjectSummaries(summaries);
-    } catch (error) {
-      console.error('Error fetching exam results:', error);
     } finally {
       setDataLoading(false);
     }

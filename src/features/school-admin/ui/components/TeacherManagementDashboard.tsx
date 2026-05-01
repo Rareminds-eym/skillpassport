@@ -41,7 +41,6 @@ const TeacherManagementDashboard: React.FC = () => {
 
   const fetchSchoolId = async () => {
     if (!user?.email) {
-      console.error('No user email found');
       setLoading(false);
       return;
     }
@@ -55,13 +54,11 @@ const TeacherManagementDashboard: React.FC = () => {
         .maybeSingle();
 
       if (educatorData?.school_id) {
-        console.log('Found school_id from school_educators:', educatorData.school_id);
         setSchoolId(educatorData.school_id);
         return;
       }
 
       // If not found in school_educators, check organizations table
-      console.log('Not found in school_educators, checking organizations table...');
       const { data: schoolData, error: schoolError } = await supabase
         .from('organizations')
         .select('id')
@@ -70,26 +67,22 @@ const TeacherManagementDashboard: React.FC = () => {
         .maybeSingle();
 
       if (schoolError) {
-        console.error('Error fetching from organizations:', schoolError);
+        // Error handled silently
       }
 
       if (schoolData?.id) {
-        console.log('Found school_id from organizations table:', schoolData.id);
         setSchoolId(schoolData.id);
         return;
       }
 
-      console.error('No school_id found for user in any table');
       setLoading(false);
     } catch (error) {
-      console.error('Error in fetchSchoolId:', error);
       setLoading(false);
     }
   };
 
   const loadStatistics = async () => {
     if (!schoolId) {
-      console.error('No school_id available for statistics');
       setLoading(false);
       return;
     }
@@ -98,7 +91,7 @@ const TeacherManagementDashboard: React.FC = () => {
       const statistics = await getTeacherStatistics(schoolId);
       setStats(statistics);
     } catch (error) {
-      console.error('Failed to load statistics:', error);
+      // Error handled silently
     } finally {
       setLoading(false);
     }

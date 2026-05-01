@@ -123,7 +123,7 @@ export const PaymentFormModal: React.FC<Props> = ({
         onClose();
       }
     } catch (error) {
-      console.error("Payment submission error:", error);
+      // Error handled by onSave callback
     } finally {
       setLoading(false);
     }

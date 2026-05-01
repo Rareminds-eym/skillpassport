@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { ProfileValidationService } from '../api/profileValidationService';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('profile-completion');
 
 /**
  * Hook to check and monitor student profile completion status
@@ -50,11 +53,11 @@ export const useProfileCompletion = (studentId, enabled = true) => {
       
       setLastChecked(now);
     } catch (error) {
-      console.error('Error checking profile completion:', error);
+      logger.error('Error checking profile completion', error as Error);
       setProfileStatus(prev => ({
         ...prev,
         isLoading: false,
-        error: error.message || 'Failed to check profile completion'
+        error: (error as any).message || 'Failed to check profile completion'
       }));
     }
   };
