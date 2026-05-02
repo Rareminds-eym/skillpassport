@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Briefcase,
   Clock,
@@ -22,14 +22,12 @@ import {
   Bell,
   FileText
 } from 'lucide-react';
-
-import { useStudentProfile } from '@/features/student-profile';
-import { AppliedJobsService } from '@/features/opportunities';
-import { studentPipelineService } from '@/features/student-profile/api';
+import { studentPipelineService as StudentPipelineService } from '@/features/student-profile/api';
 import { MessageService } from '@/features/messaging';
-import { useMessageNotifications } from '@/features/messaging';
+import { useMessageNotifications } from '@/features/messaging/model/useMessageNotifications';
 import { supabase } from '@/shared/api/supabaseClient';
-
+import { queryKeys } from '@/shared/lib/queryKeys';
+import { useStudentDataByEmail } from '@/entities/student';
 
 import { getLogger } from '@/shared/config/logging';
 
@@ -44,19 +42,13 @@ const Applications = () => {
   const { studentData } = useStudentDataByEmail(userEmail);
   const studentId = studentData?.id || user?.id;
 
-  const [applications, setApplications] = useState([]);
   const [filteredApplications, setFilteredApplications] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [pipelineStatuses, setPipelineStatuses] = useState([]);
-  const [interviews, setInterviews] = useState([]);
-  const [showPipelineView, setShowPipelineView] = useState(true);
   const [viewDetailsModalOpen, setViewDetailsModalOpen] = useState(false);
   const [detailsApplication, setDetailsApplication] = useState(null);
   const [showPipelineStatus, setShowPipelineStatus] = useState({});
-  const [messagingApplicationId, setMessagingApplicationId] = useState(null); // Track which app is opening message
+  const [messagingApplicationId, setMessagingApplicationId] = useState(null);
 
   useMessageNotifications({
     userId: studentId,
@@ -64,107 +56,7 @@ const Applications = () => {
     enabled: !!studentId
   });
 
-  // Fetch applications with pipeline status
-  useEffect(() => {
-    const fetchApplications = async () => {
-      if (!studentId) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Fetch applications with pipeline data
-        const applicationsData = await StudentPipelineService.getStudentApplicationsWithPipeline(
-          studentId,
-          userEmail
-        );
-
-        if (applicationsData[0]) {
-        }
-
-        // Fetch interviews separately
-        const interviewsData = await StudentPipelineService.getStudentInterviews(studentId);
-        setInterviews(interviewsData);
-
-        const transformedApplications = applicationsData.map(app => {
-          const recruiterId = app.opportunity?.recruiter_id || 
-                             app.pipeline_recruiter_id || 
-                             app.pipeline_status?.assigned_to || 
-                             null;
-          
-          logger.info('Application recruiter data', {
-            jobTitle: app.opportunity?.job_title,
-            opportunityRecruiterId: app.opportunity?.recruiter_id,
-            pipelineRecruiterId: app.pipeline_recruiter_id,
-            assignedTo: app.pipeline_status?.assigned_to,
-            finalRecruiterId: recruiterId,
-            studentId: app.student_id
-          });
-          
-          return {
-            id: app.id,
-            studentId: app.student_id,
-            jobTitle: app.opportunity?.job_title || app.opportunity?.title || 'N/A',
-            company: app.opportunity?.company_name || 'N/A',
-            location: app.opportunity?.location || 'N/A',
-            salary: app.opportunity?.salary_range_min && app.opportunity?.salary_range_max
-              ? `₹${(app.opportunity.salary_range_min / 1000).toFixed(0)}k - ₹${(app.opportunity.salary_range_max / 1000).toFixed(0)}k`
-              : 'Not specified',
-            appliedDate: app.applied_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-            status: app.application_status,
-            logo: app.opportunity?.company_logo,
-            type: app.opportunity?.employment_type || 'N/A',
-            level: app.opportunity?.experience_level || app.opportunity?.department || 'N/A',
-            lastUpdate: formatLastUpdate(app.updated_at || app.applied_at),
-            opportunityId: app.opportunity_id,
-            recruiterId: recruiterId,
-            
-            // Pipeline data
-            pipelineStatus: app.pipeline_status,
-            hasPipelineStatus: app.has_pipeline_status,
-            pipelineStage: app.pipeline_stage,
-            pipelineStageChangedAt: app.pipeline_stage_changed_at,
-            rejectionReason: app.rejection_reason,
-            nextAction: app.next_action,
-            nextActionDate: app.next_action_date,
-            interviews: app.interviews || []
-          };
-        });
-
-
-        setApplications(transformedApplications);
-        setFilteredApplications(transformedApplications);
-      } catch (err) {
-        logger.error('Error fetching applications', err);
-        setError(err.message || 'Failed to load applications');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchApplications();
-  }, [studentId, userEmail]);
-
-  // Subscribe to real-time pipeline updates
-  useEffect(() => {
-    if (!studentId) return;
-
-    const channel = StudentPipelineService.subscribeToPipelineUpdates(
-      studentId,
-      (payload) => {
-        // Refresh applications when pipeline updates
-        window.location.reload(); // Simple refresh, can be optimized
-      }
-    );
-
-    return () => {
-      StudentPipelineService.unsubscribeFromPipelineUpdates(channel);
-    };
-  }, [studentId]);
-
+  // Helper function for formatting dates
   const formatLastUpdate = (dateString) => {
     if (!dateString) return 'Recently';
     const diffDays = Math.ceil(Math.abs(new Date() - new Date(dateString)) / (1000 * 60 * 60 * 24));
@@ -177,6 +69,98 @@ const Applications = () => {
     if (diffDays < 60) return '1 month ago';
     return `${Math.floor(diffDays / 30)} months ago`;
   };
+
+  // Fetch applications with pipeline status using React Query
+  const { data: applications = [], isLoading: loading, error: queryError } = useQuery({
+    queryKey: queryKeys.applications.list({ studentId, userEmail }),
+    queryFn: async () => {
+      const applicationsData = await StudentPipelineService.getStudentApplicationsWithPipeline(
+        studentId,
+        userEmail
+      );
+
+      const transformedApplications = applicationsData.map(app => {
+        const recruiterId = app.opportunity?.recruiter_id ||
+          app.pipeline_recruiter_id ||
+          app.pipeline_status?.assigned_to ||
+          null;
+
+        logger.info('Application recruiter data', {
+          jobTitle: app.opportunity?.job_title,
+          opportunityRecruiterId: app.opportunity?.recruiter_id,
+          pipelineRecruiterId: app.pipeline_recruiter_id,
+          assignedTo: app.pipeline_status?.assigned_to,
+          finalRecruiterId: recruiterId,
+          studentId: app.student_id
+        });
+
+        return {
+          id: app.id,
+          studentId: app.student_id,
+          jobTitle: app.opportunity?.job_title || app.opportunity?.title || 'N/A',
+          company: app.opportunity?.company_name || 'N/A',
+          location: app.opportunity?.location || 'N/A',
+          salary: app.opportunity?.salary_range_min && app.opportunity?.salary_range_max
+            ? `₹${(app.opportunity.salary_range_min / 1000).toFixed(0)}k - ₹${(app.opportunity.salary_range_max / 1000).toFixed(0)}k`
+            : 'Not specified',
+          appliedDate: app.applied_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+          status: app.application_status,
+          logo: app.opportunity?.company_logo,
+          type: app.opportunity?.employment_type || 'N/A',
+          level: app.opportunity?.experience_level || app.opportunity?.department || 'N/A',
+          lastUpdate: formatLastUpdate(app.updated_at || app.applied_at),
+          opportunityId: app.opportunity_id,
+          recruiterId: recruiterId,
+
+          // Pipeline data
+          pipelineStatus: app.pipeline_status,
+          hasPipelineStatus: app.has_pipeline_status,
+          pipelineStage: app.pipeline_stage,
+          pipelineStageChangedAt: app.pipeline_stage_changed_at,
+          rejectionReason: app.rejection_reason,
+          nextAction: app.next_action,
+          nextActionDate: app.next_action_date,
+          interviews: app.interviews || []
+        };
+      });
+
+      return transformedApplications;
+    },
+    enabled: !!studentId,
+    staleTime: 30000, // 30 seconds - applications update frequently
+    refetchInterval: 60000, // Auto-refresh every minute for real-time updates
+  });
+
+  // Fetch interviews separately
+  const { data: interviews = [] } = useQuery({
+    queryKey: queryKeys.interviews.list({ studentId }),
+    queryFn: async () => {
+      const interviewsData = await StudentPipelineService.getStudentInterviews(studentId);
+      return interviewsData;
+    },
+    enabled: !!studentId,
+    staleTime: 30000,
+  });
+
+  const error = queryError?.message || null;
+
+  // Subscribe to real-time pipeline updates - invalidate queries instead of reload
+  useEffect(() => {
+    if (!studentId) return;
+
+    const channel = StudentPipelineService.subscribeToPipelineUpdates(
+      studentId,
+      (payload) => {
+        // Invalidate queries to trigger refetch
+        queryClient.invalidateQueries({ queryKey: queryKeys.applications.list({ studentId, userEmail }) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.interviews.list({ studentId }) });
+      }
+    );
+
+    return () => {
+      StudentPipelineService.unsubscribeFromPipelineUpdates(channel);
+    };
+  }, [studentId, userEmail, queryClient]);
 
   useEffect(() => {
     let filtered = applications;
@@ -788,10 +772,10 @@ const Applications = () => {
                               alert('This job posting does not have a recruiter assigned yet. Please contact support or wait for a recruiter to be assigned.');
                               return;
                             }
-                            
+
                             // Set loading state
                             setMessagingApplicationId(app.id);
-                            
+
                             try {
                               logger.info('Creating/getting conversation', {
                                 studentId: app.studentId,
@@ -799,7 +783,7 @@ const Applications = () => {
                                 applicationId: app.id,
                                 jobTitle: app.jobTitle
                               });
-                              
+
                               // Get or create conversation
                               const conversation = await MessageService.getOrCreateConversation(
                                 app.studentId,
@@ -808,19 +792,19 @@ const Applications = () => {
                                 app.opportunityId,
                                 `Application: ${app.jobTitle}`
                               );
-                              
+
                               logger.info('Conversation ready', { conversationId: conversation.id });
-                              
+
                               // OPTIMIZATION: Immediately update React Query cache with the new conversation
                               // This makes it instantly available when Messages page loads
                               const cachedConversations = queryClient.getQueryData(['student-conversations', app.studentId]) || [];
-                              
+
                               // Check if conversation already exists in cache
                               const conversationExists = cachedConversations.some(c => c.id === conversation.id);
-                              
+
                               if (!conversationExists) {
                                 logger.info('Adding conversation to cache optimistically');
-                                
+
                                 // Fetch recruiter data to display name and email properly
                                 let recruiterData = null;
                                 try {
@@ -829,13 +813,13 @@ const Applications = () => {
                                     .select('id, email, name, phone')
                                     .eq('id', app.recruiterId)
                                     .single();
-                                  
+
                                   recruiterData = recruiter;
                                   logger.info('Recruiter data fetched', { recruiterName: recruiter?.name || recruiter?.email });
                                 } catch (err) {
                                   logger.warn('Could not fetch recruiter data', err);
                                 }
-                                
+
                                 // Add the new conversation to cache with recruiter data
                                 queryClient.setQueryData(['student-conversations', app.studentId], [...cachedConversations, {
                                   ...conversation,
@@ -848,10 +832,10 @@ const Applications = () => {
                                   student: null
                                 }]);
                               }
-                              
+
                               // Reduced delay since cache is now pre-populated
                               await new Promise(resolve => setTimeout(resolve, 300));
-                              
+
                               // Navigate to messages with pre-selected conversation
                               // The Messages page will handle auto-selection and force refetch if needed
                               navigate(`/student/messages?conversation=${conversation.id}`);
@@ -980,9 +964,9 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
               <div className="text-sm text-gray-600 mb-1">Application Status</div>
               <div className="flex items-center gap-2">
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${application.status === 'accepted' ? 'bg-green-100 text-green-800' :
-                    application.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      application.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
+                  application.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                    application.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                      'bg-gray-100 text-gray-800'
                   }`}>
                   {application.status?.charAt(0).toUpperCase() + application.status?.slice(1)}
                 </span>
@@ -1051,12 +1035,12 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                           {/* Stage Number Circle */}
                           <div className="relative z-10 mb-2">
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${isCompleted
-                                ? 'bg-green-500 text-white shadow-lg shadow-green-200'
-                                : isCurrent
-                                  ? 'bg-blue-500 text-white shadow-lg shadow-blue-200 ring-4 ring-blue-200 animate-pulse'
-                                  : isRejected && index > getStageOrder('sourced')
-                                    ? 'bg-gray-200 text-gray-400'
-                                    : 'bg-white text-gray-400 border-2 border-gray-300'
+                              ? 'bg-green-500 text-white shadow-lg shadow-green-200'
+                              : isCurrent
+                                ? 'bg-blue-500 text-white shadow-lg shadow-blue-200 ring-4 ring-blue-200 animate-pulse'
+                                : isRejected && index > getStageOrder('sourced')
+                                  ? 'bg-gray-200 text-gray-400'
+                                  : 'bg-white text-gray-400 border-2 border-gray-300'
                               }`}>
                               {isCompleted ? (
                                 <CheckCircle2 className="w-6 h-6" />
@@ -1069,17 +1053,17 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                           {/* Connecting Line */}
                           {index < array.length - 1 && (
                             <div className={`absolute top-5 left-1/2 w-full h-0.5 -z-0 transition-all ${isCompleted
-                                ? 'bg-green-500'
-                                : 'bg-gray-300'
+                              ? 'bg-green-500'
+                              : 'bg-gray-300'
                               }`} style={{ transform: 'translateY(-50%)' }} />
                           )}
 
                           {/* Stage Label */}
                           <div className={`text-xs font-medium text-center px-1 transition-all ${isCurrent
-                              ? 'text-blue-700 font-bold'
-                              : isCompleted
-                                ? 'text-green-700'
-                                : 'text-gray-500'
+                            ? 'text-blue-700 font-bold'
+                            : isCompleted
+                              ? 'text-green-700'
+                              : 'text-gray-500'
                             }`}>
                             {stageLabel}
                           </div>
@@ -1192,8 +1176,8 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                         )}
                       </div>
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${interview.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          interview.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                            'bg-yellow-100 text-yellow-800'
+                        interview.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
                         }`}>
                         {interview.status?.charAt(0).toUpperCase() + interview.status?.slice(1)}
                       </span>
