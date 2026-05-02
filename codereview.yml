@@ -1,0 +1,743 @@
+# .codereview.yml — Skill Passport Code Review Configuration
+# Based on actual codebase analysis (not README assumptions)
+# Last updated: 2026-05-02
+
+# ============================================================================
+# TECH STACK
+# ============================================================================
+# Actual stack derived from package.json and src/ analysis
+
+stack:
+  language: typescript          # v5.5.3, strict mode enabled
+  framework: react              # v18.3.1 — this is NOT Next.js
+  bundler: vite                 # v5.4.2, NOT webpack
+  architecture: fsd             # Feature-Sliced Design (enforced via ESLint)
+  routing: react-router-dom     # v7.9.4 — SPA client-side routing
+  backend: cloudflare-pages     # Cloudflare Pages Functions only (no Workers)
+
+  ecosystem:
+    - zustand                   # v5.0.8 — primary state manager
+    - tanstack-query            # v5.90.3 — server state / caching
+    - supabase                  # v2.57.4 — auth, database, realtime
+    - tailwind                  # v3.4.1 — utility-first styling
+    - radix-ui                  # unstyled accessible primitives
+    - framer-motion             # v12 — animations
+    - react-router-dom          # v7 — client routing
+    - recharts                  # data visualization
+    - openai                    # v6 — AI features
+    - razorpay                  # payments via Cloudflare Pages Function
+    - vitest                    # v1.6.1 — test runner
+
+# ============================================================================
+# ARCHITECTURE RULES (FSD — Feature-Sliced Design)
+# ============================================================================
+# This project strictly enforces FSD layers via ESLint. Reviewers must enforce these boundaries.
+
+rules:
+
+  # --- FSD Layer Violations ---
+  # FSD enforces a strict unidirectional dependency graph:
+  # app → pages → features → entities → shared
+  # Each layer may only import from layers below it, never above or sideways.
+
+  - category: architecture
+    title: "FSD: No cross-feature imports"
+    description: |
+      Features must never import from sibling features — only downward.
+      Allowed: features → entities, features → shared.
+      Violation: src/features/auth importing from src/features/student.
+      If two features need to share logic, extract it to src/entities/ or src/shared/.
+    severity: critical
+
+  - category: architecture
+    title: "FSD: Entities must not import from features or app"
+    description: |
+      Entities are domain-pure models. They must never depend on features, pages, or app.
+      Entities may only import from other entities (carefully) and from shared.
+      Violation: src/entities/user importing from src/features/auth.
+    severity: critical
+
+  - category: architecture
+    title: "FSD: Shared must not import from any other layer"
+    description: |
+      Shared is the lowest layer — zero upward dependencies, zero business logic.
+      It must contain only generic utilities, UI primitives, API clients, and configs
+      that have no knowledge of any domain concept (user, student, course, etc.).
+      Violation: src/shared/lib importing from src/entities/* or src/features/*.
+    severity: critical
+
+  - category: architecture
+    title: "FSD: App layer is the only place to compose features"
+    description: |
+      src/app/ sits at the top of the layer hierarchy. It is the only layer allowed
+      to import from multiple features simultaneously (e.g., to wire up routing,
+      providers, and layouts). Features must never import from src/app/.
+      Violation: src/features/student importing from src/app/routes/*.
+    severity: critical
+
+  - category: architecture
+    title: "FSD: Always import through a slice's public API (index.ts)"
+    description: |
+      Every slice (feature, entity) exposes its public interface via index.ts only.
+      Never import from internal segment paths directly across slice boundaries.
+      Allowed:   import { loginStudent } from '@/features/auth'
+      Violation: import { loginStudent } from '@/features/auth/api/authService'
+      This is the most commonly violated FSD rule — catch it in every review.
+    severity: critical
+
+  - category: architecture
+    title: "FSD: No cross-slice segment imports"
+    description: |
+      Within a slice, segments (api/, model/, ui/, lib/) are private implementation
+      details. One slice must never reach into another slice's segment directly.
+      Violation: import { useUser } from '@/entities/user/model/userStore'
+      Correct:   import { useUser } from '@/entities/user'
+    severity: high
+
+  - category: architecture
+    title: "FSD: No business domain logic in shared/"
+    description: |
+      src/shared/ must be domain-agnostic. It must not contain concepts like
+      student, educator, course, subscription, or role-specific logic.
+      If a utility references a domain concept, it belongs in the relevant entity
+      or feature, not in shared.
+      Violation: src/shared/lib/utils/studentHelpers.ts
+    severity: high
+
+  - category: architecture
+    title: "FSD: Use @/ path alias consistently"
+    description: |
+      All cross-layer imports must use the @/ alias (maps to ./src/).
+      Deep relative paths like ../../../shared/ui are forbidden for cross-layer imports
+      as they obscure the architectural boundary being crossed.
+    severity: medium
+
+  # --- State Management ---
+  - category: state
+    title: "No direct Zustand store mutation outside actions"
+    description: |
+      All state mutations in authStore and subscriptionStore must go through
+      the actions object. Never call set() or mutate state outside defined actions.
+    severity: high
+
+  - category: state
+    title: "No localStorage/sessionStorage for auth tokens"
+    description: |
+      The authStore uses secure storage (not plain localStorage). Auth tokens,
+      session data, and user details must never be stored in plain localStorage
+      or sessionStorage directly.
+    severity: critical
+
+  - category: state
+    title: "Do not duplicate server state in Zustand"
+    description: |
+      React Query manages all server/async state. Zustand is for UI state
+      and auth state only. Do not cache API responses in Zustand stores —
+      use useQuery/useMutation with queryKeys instead.
+    severity: high
+
+  # --- React Query / Data Fetching ---
+  - category: data-fetching
+    title: "Use query key factory from shared/lib/queryKeys"
+    description: |
+      All React Query keys must come from /src/shared/lib/queryKeys/index.ts.
+      Never use ad-hoc string arrays as query keys — ensures consistent
+      invalidation and cache management.
+    severity: high
+
+  - category: data-fetching
+    title: "No raw fetch() calls inside components"
+    description: |
+      Data fetching belongs in service files (/api/*.ts) or custom hooks.
+      Components must not contain fetch(), axios, or supabase queries directly.
+    severity: high
+
+  - category: data-fetching
+    title: "Supabase RLS — always filter by authenticated user"
+    description: |
+      Every Supabase query that returns user-specific data must include an
+      .eq('user_id', user.id) or equivalent filter. Never fetch all rows and
+      filter client-side for user-owned data.
+    severity: critical
+
+  - category: data-fetching
+    title: "Handle all three React Query states"
+    description: |
+      Components using useQuery must handle isLoading, isError, and success
+      states. No silent failures — always render error UI or throw to error boundary.
+    severity: medium
+
+  # --- OWASP / General Security ---
+  - category: security
+    title: "No dangerouslySetInnerHTML without sanitization"
+    description: |
+      dangerouslySetInnerHTML must never be used with unsanitized user input.
+      If unavoidable, sanitize with DOMPurify before passing to __html.
+      Unsanitized usage is a direct XSS vector.
+    severity: critical
+
+  - category: security
+    title: "No open redirects via user-controlled input"
+    description: |
+      Never pass user-supplied values directly to navigate(), window.location,
+      or any redirect logic. Validate redirect targets against an allowlist
+      of internal routes before navigating.
+    severity: high
+
+  - category: security
+    title: "No PII or sensitive data in URL query params"
+    description: |
+      Student IDs, user tokens, email addresses, and scores must never appear
+      in URL query strings. They get logged by servers, proxies, and browsers.
+      Use route params or POST body for sensitive identifiers.
+    severity: high
+
+  - category: security
+    title: "No student PII in logs or error messages"
+    description: |
+      console.log, logger calls, and thrown error messages must never include
+      raw student names, emails, scores, or health data. This project handles
+      student PII — log correlation IDs and anonymized context only.
+    severity: critical
+
+  - category: security
+    title: "No raw user input passed to AI APIs"
+    description: |
+      User messages sent to OpenAI or Google Generative AI must be validated
+      and stripped of prompt injection patterns before being included in the
+      API payload. Never concatenate raw user text directly into system prompts.
+    severity: high
+
+  - category: security
+    title: "No PII sent to third-party services unmasked"
+    description: |
+      Student names, emails, and scores must not be sent to OpenAI, Google AI,
+      or any analytics service in plain form. Use anonymized IDs or masked values
+      when calling external APIs that do not have a data processing agreement.
+    severity: critical
+
+  # --- Authentication & Security ---
+  - category: security
+    title: "No hardcoded API keys or secrets"
+    description: |
+      All secrets (Supabase keys, OpenAI key, Razorpay keys, SMTP credentials)
+      must live in .env.* files and be accessed via import.meta.env.VITE_*.
+      Check for any sk_live_*, rk_live_*, Bearer <token> patterns.
+    severity: critical
+
+  - category: security
+    title: "VITE_ prefix for all client-side env vars"
+    description: |
+      Only VITE_-prefixed variables are exposed to the browser bundle.
+      Non-prefixed vars are only available in Cloudflare Pages Functions.
+      Never access sensitive keys via VITE_ prefix in client code.
+    severity: critical
+
+  - category: security
+    title: "Role checks must use authStore flags"
+    description: |
+      Use isStudent, isEducator, isAdmin, isRecruiter from useAuthStore().
+      Never decode JWT manually or read role from a plain variable without
+      going through the store's computed flags.
+    severity: high
+
+  - category: security
+    title: "Validate inputs at Cloudflare Functions boundary"
+    description: |
+      All inputs to /functions/api/* endpoints must be validated before
+      processing. No raw JSON.parse without shape validation.
+    severity: high
+
+  - category: security
+    title: "Razorpay webhook verification in Pages Function"
+    description: |
+      The payments Cloudflare Pages Function must verify webhook signatures from
+      Razorpay. Never trust raw webhook payloads without HMAC verification.
+    severity: critical
+
+  # --- TypeScript ---
+  - category: type-safety
+    title: "No 'any' type"
+    description: |
+      TypeScript strict mode is enabled. Use unknown and narrow with guards,
+      or define proper interfaces. The 'any' type defeats the purpose of TS.
+    severity: high
+
+  - category: type-safety
+    title: "No @ts-ignore or @ts-expect-error without explanation"
+    description: |
+      If suppressing a TS error is unavoidable, add a comment explaining WHY
+      on the line above. Bare suppressions are not acceptable.
+    severity: medium
+
+  - category: type-safety
+    title: "API response types must be explicitly typed"
+    description: |
+      Supabase queries and fetch() responses must have explicit return types.
+      No implicit any from untyped .json() or .data returns.
+    severity: high
+
+  - category: type-safety
+    title: "Props interfaces must be defined for all components"
+    description: |
+      Every component must have a named Props interface or type.
+      Avoid inline prop types for non-trivial components.
+    severity: medium
+
+  # --- Performance ---
+  - category: performance
+    title: "Use React.lazy for route-level components"
+    description: |
+      AppRoutes.jsx should lazy-load feature-level pages. Direct imports of
+      large dashboard, analytics, or PDF components at route level bloat the
+      initial bundle. Use React.lazy() + Suspense.
+    severity: high
+
+  - category: performance
+    title: "Avoid recreating objects/functions in render"
+    description: |
+      Memoize callbacks with useCallback and expensive computations with useMemo
+      when passed as props to child components or used as React Query dependencies.
+    severity: medium
+
+  - category: performance
+    title: "Paginate large Supabase queries"
+    description: |
+      Never use .select('*') without a .limit() or .range() for collections
+      that can grow unbounded (messages, conversations, assessments, etc.).
+    severity: high
+
+  - category: performance
+    title: "Vite chunk splitting — do not import heavy libs in shared/ui"
+    description: |
+      Libraries like pdfjs-dist, xlsx, framer-motion, and chart libs are already
+      in manual chunks. Do not re-import them from shared/ui/ components that are
+      always loaded — keep them in feature-specific code paths.
+    severity: medium
+
+  # --- React Patterns ---
+  - category: react
+    title: "No class components"
+    description: "Use functional components with hooks exclusively."
+    severity: high
+
+  - category: react
+    title: "Custom hooks for reusable logic"
+    description: |
+      Logic shared between two or more components must be extracted into a
+      custom hook under /features/{feature}/hooks/ or /shared/lib/hooks/.
+      No copy-paste of useEffect + useState blocks.
+    severity: medium
+
+  - category: react
+    title: "Error boundaries around async feature trees"
+    description: |
+      Each major feature route should be wrapped in an ErrorBoundary.
+      Supabase errors, fetch failures, and AI API errors must not crash
+      the entire app. Check main.tsx and AppRoutes.jsx for boundaries.
+    severity: high
+
+  - category: react
+    title: "No prop drilling more than 2 levels"
+    description: |
+      If a prop is passed through 3+ levels, lift state to Zustand or
+      React Query. This codebase has Zustand available — use it.
+    severity: medium
+
+  - category: react
+    title: "Realtime subscriptions must be cleaned up"
+    description: |
+      Every Supabase Realtime subscription opened in a hook must be
+      unsubscribed in the useEffect cleanup function. Missing cleanups
+      cause duplicate events and memory leaks.
+    severity: high
+
+  # --- Code Quality ---
+  - category: clean-code
+    title: "Functions should be under 50 lines"
+    description: "Large functions indicate missing abstractions. Split into helpers."
+    severity: low
+
+  - category: clean-code
+    title: "No console.log in production code"
+    description: |
+      Use the project logger (/src/shared/config/logging) for debug output.
+      console.log ships to production and leaks internal data.
+    severity: high
+
+  - category: clean-code
+    title: "Service files must not contain UI logic"
+    description: |
+      Files under /api/*.ts must return data or throw errors — never call
+      navigate(), toast(), or update DOM state. That belongs in the calling hook
+      or component.
+    severity: medium
+
+  - category: clean-code
+    title: "Naming conventions"
+    description: |
+      - Components: PascalCase (LoginStudent.tsx)
+      - Hooks: use* prefix (useCareerConversations.ts)
+      - Services: *Service suffix (authService.ts)
+      - Stores: *Store suffix (authStore.ts)
+      - Query key factories: queryKeys.domain.method
+      - Boolean vars: is*/has*/should* prefix
+    severity: low
+
+  # --- Testing ---
+  - category: testing
+    title: "Auth flow changes require unit tests"
+    description: |
+      Any change to /src/features/auth/api/ or /src/shared/model/authStore.ts
+      requires a corresponding test. See existing tests in __tests__/ as reference.
+    severity: high
+
+  - category: testing
+    title: "Cloudflare Pages Function changes require integration tests"
+    description: |
+      The payments and email Pages Functions handle production-critical paths.
+      Changes must include at minimum a smoke test for the main handler.
+    severity: high
+
+  - category: testing
+    title: "Property-based tests for data transformation utilities"
+    description: |
+      Utilities in /src/shared/lib/utils/ that transform or compute data
+      should use fast-check property-based tests (see /src/__tests__/property/).
+    severity: medium
+
+  # --- Documentation ---
+  - category: documentation
+    title: "Exported service functions must have JSDoc"
+    description: |
+      All exported functions from /api/*.ts files must document: params,
+      return type, and any thrown errors. Undocumented service APIs make
+      integration errors hard to debug.
+    severity: medium
+
+  - category: documentation
+    title: "New environment variables must be added to .env.schema"
+    description: |
+      The project validates env vars via scripts/validate-env.js against
+      .env.schema. Any new VITE_* or non-prefixed variable must be documented
+      in .env.schema or the build/deploy will fail validation.
+    severity: high
+
+# ============================================================================
+# SEVERITY OVERRIDES
+# ============================================================================
+
+severity:
+  "console.log usage": high
+  "Hardcoded secret or API key": critical
+  "Missing error handling in async function": critical
+  "FSD layer violation": critical
+  "Missing ARIA labels": high
+  "Missing alt text on img": high
+  "localStorage used for auth data": critical
+  "Unverified Razorpay webhook": critical
+  "dangerouslySetInnerHTML without sanitization": critical
+  "PII in logs or error messages": critical
+  "PII sent to third-party service unmasked": critical
+  "Open redirect via user input": high
+  "Sensitive data in URL query params": high
+  "Raw user input passed to AI API": high
+  "Untracked TODO comment": low
+  "Missing JSDoc on internal utility": low
+
+# ============================================================================
+# IGNORE PATTERNS
+# ============================================================================
+
+ignore:
+  # Build outputs
+  - "dist/**"
+  - ".output/**"
+  - ".cloudflare/**"
+
+  # Dependencies
+  - "node_modules/**"
+
+  # Generated / vendor
+  - "**/*.generated.ts"
+  - "**/generated/**"
+
+  # Supabase migrations (raw SQL, not app code)
+  - "supabase/migrations/**"
+
+  # Test fixtures
+  - "**/__fixtures__/**"
+  - "**/__mocks__/**"
+  - "**/*.mock.ts"
+
+  # Config files (reviewed separately)
+  - "vite.config.ts"
+  - "vitest.config.js"
+  - "tailwind.config.js"
+  - "eslint.config.js"
+  - "*.config.js"
+  - ".prettierrc.*"
+
+  # Documentation
+  - "docs/**"
+  - "*.md"
+  - "scripts/archive/**"
+
+  # Cloudflare wrangler config
+  - "**/wrangler.toml"
+
+# ============================================================================
+# FOCUS AREAS
+# ============================================================================
+# Paths that demand highest review scrutiny
+
+focus:
+  - path: "src/shared/model/authStore.ts"
+    reason: "Global auth state — session management, role resolution, secure storage"
+    severity: critical
+
+  - path: "src/features/auth/api/**"
+    reason: "Authentication logic — signup, login, session refresh, error handling"
+    severity: critical
+
+  - path: "functions/api/payment/**"
+    reason: "Razorpay webhook handling and payment verification"
+    severity: critical
+
+  - path: "functions/api/user/**"
+    reason: "User signup and profile mutation endpoints"
+    severity: critical
+
+  - path: "functions/_middleware.ts"
+    reason: "Global CORS and request validation for all Functions"
+    severity: critical
+
+  - path: "src/app/routes/AppRoutes.jsx"
+    reason: "Role-based routing — any gap exposes protected pages"
+    severity: high
+
+  - path: "src/features/assessment/**"
+    reason: "Contains anti-cheating logic (useAntiCheating) — integrity critical"
+    severity: high
+
+  - path: "src/features/analytics/**"
+    reason: "Aggregates sensitive student and organization data"
+    severity: high
+
+  - path: "src/entities/subscription/**"
+    reason: "Entitlement checks gate feature access — errors expose premium features"
+    severity: high
+
+  - path: "functions/api/career/**"
+    reason: "Sends student data to AI/vector services — data privacy boundary"
+    severity: high
+
+# ============================================================================
+# REVIEW PREFERENCES
+# ============================================================================
+
+preferences:
+  verbosity: normal
+  include_suggestions: true
+  include_examples: true
+  max_findings_per_file: 12
+  min_severity: low
+
+# ============================================================================
+# TEAM STANDARDS
+# ============================================================================
+
+standards:
+  naming:
+    - "PascalCase for React components and TypeScript interfaces/types"
+    - "camelCase for variables, functions, and object properties"
+    - "UPPER_SNAKE_CASE for true constants (not config objects)"
+    - "use* prefix for all custom hooks"
+    - "*Service suffix for API service files"
+    - "*Store suffix for Zustand store files"
+    - "is*/has*/should* prefix for boolean variables and props"
+    - "Query key factories follow queryKeys.domain.method() pattern"
+
+  organization:
+    - "Imports order: external libs → @/ internal → relative → types"
+    - "FSD layer order in each module: api → model → ui → lib → index"
+    - "One component per file (exception: small co-located helpers)"
+    - "Feature index.ts must re-export only the public API of the feature"
+    - "Supabase table queries belong in entity /api/ files, not in components"
+
+  error_handling:
+    - "All async functions must have try-catch or return error objects"
+    - "Log errors with correlation context: userId, requestId, action name"
+    - "Never swallow errors silently — always surface to error boundary or toast"
+    - "Supabase query errors must check 'error' property, not just 'data'"
+    - "Cloudflare Pages Function errors must return structured { error, code } JSON"
+    - "Auth errors go through authErrorHandler.ts, not raw console.error"
+
+  testing:
+    - "Vitest is the test runner — do not add Jest test files in src/"
+    - "Test files live in __tests__/ directory adjacent to the tested module"
+    - "Test names follow: 'should <outcome> when <condition>'"
+    - "Auth tests must cover: success, wrong password, expired session, network error"
+    - "Mock Supabase in unit tests; hit real Supabase in integration tests"
+
+  accessibility:
+    - "All interactive elements must have accessible labels (aria-label or visible text)"
+    - "Images must have meaningful alt text (not empty unless decorative)"
+    - "Forms must associate labels with inputs via htmlFor/id"
+    - "Keyboard navigation must work for all dialogs and dropdowns (Radix handles this)"
+    - "Color contrast must meet WCAG 2.1 AA minimum"
+
+  realtime:
+    - "Every useEffect that opens a Supabase channel must return cleanup that unsubscribes"
+    - "Presence hooks must handle the case where user goes offline mid-session"
+    - "Never open more than one channel per feature per component mount"
+
+# ============================================================================
+# INTEGRATION SETTINGS
+# ============================================================================
+
+integration:
+  auto_approve:
+    - "**/*.md"
+    - "docs/**"
+    - "supabase/migrations/**"      # Reviewed separately by DBA
+
+  block_on_critical: true
+
+  block_threshold:
+    critical: 1
+    high: 3
+
+  inline_comments:
+    - critical
+    - high
+
+# ============================================================================
+# EXAMPLES
+# ============================================================================
+# Good and bad patterns specific to THIS codebase
+
+examples:
+  good:
+    - description: "Correct Supabase query with user filter and error check"
+      code: |
+        const { data, error } = await supabase
+          .from('assessments')
+          .select('id, title, score, completed_at')
+          .eq('student_id', user.id)
+          .order('completed_at', { ascending: false })
+          .range(0, 19);
+
+        if (error) throw new Error(`Failed to fetch assessments: ${error.message}`);
+        return data;
+
+    - description: "Correct React Query usage with query key factory"
+      code: |
+        const { data, isLoading, isError } = useQuery({
+          queryKey: queryKeys.student.assessments.list(userId),
+          queryFn: () => fetchStudentAssessments(userId),
+          staleTime: 2 * 60 * 1000,
+          enabled: !!userId,
+        });
+
+        if (isLoading) return <Spinner />;
+        if (isError) return <ErrorMessage message="Failed to load assessments" />;
+        return <AssessmentList data={data} />;
+
+    - description: "Correct Supabase Realtime cleanup"
+      code: |
+        useEffect(() => {
+          const channel = supabase
+            .channel('notifications')
+            .on('postgres_changes', { event: 'INSERT', table: 'notifications' }, handler)
+            .subscribe();
+
+          return () => {
+            supabase.removeChannel(channel);
+          };
+        }, [user.id]);
+
+    - description: "Correct Cloudflare Pages Function webhook verification"
+      code: |
+        const signature = request.headers.get('x-razorpay-signature');
+        const isValid = verifyWebhookSignature(body, signature, WEBHOOK_SECRET);
+        if (!isValid) {
+          return new Response(JSON.stringify({ error: 'Invalid signature' }), { status: 401 });
+        }
+
+  bad:
+    - description: "Raw fetch inside a component (violates data-fetching rule)"
+      code: |
+        // WRONG: fetch inside component, no error handling, no caching
+        useEffect(() => {
+          fetch('/api/student/data')
+            .then(r => r.json())
+            .then(setData);
+        }, []);
+
+    - description: "Cross-feature FSD violation"
+      code: |
+        // WRONG: features importing from sibling features
+        import { useStudentProfile } from '@/features/student/hooks/useStudentProfile';
+        // inside src/features/auth/ — this breaks FSD boundaries
+
+    - description: "Insecure auth token in localStorage"
+      code: |
+        // WRONG: never store session tokens in plain localStorage
+        localStorage.setItem('session_token', session.access_token);
+        localStorage.setItem('user_role', user.role);
+
+    - description: "Missing error check on Supabase query"
+      code: |
+        // WRONG: ignoring the error property
+        const { data } = await supabase.from('students').select('*');
+        setStudents(data); // data is null when there's an RLS error
+
+    - description: "Ad-hoc query key (breaks cache invalidation)"
+      code: |
+        // WRONG: string array instead of queryKeys factory
+        useQuery({
+          queryKey: ['student', 'messages', conversationId],
+          queryFn: ...
+        });
+
+# ============================================================================
+# NOTES FOR AI REVIEWER
+# ============================================================================
+
+notes: |
+  This is a React 18 SPA — NOT Next.js. There is no App Router, no server
+  components, and no SSR. Do not flag missing 'use client' directives.
+
+  Routing is React Router DOM v7. Protected routes are in AppRoutes.jsx
+  and enforce role-based access through authStore.
+
+  Backend is Cloudflare Pages Functions only (/functions/api/*).
+  There are no separate Cloudflare Workers. All serverless logic lives under /functions/.
+
+  FSD compliance is enforced via ESLint. Flag any import that crosses layer boundaries as critical.
+
+  Supabase is the primary data store. All tables have Row Level Security (RLS).
+  Queries without user filters may silently return empty (not an error) if RLS
+  blocks access — this is a common source of hard-to-debug bugs.
+
+  AI features use both OpenAI and Google Generative AI. These API keys are
+  VITE_-prefixed, meaning they are exposed in the browser bundle. Flag any
+  new sensitive key that follows this pattern.
+
+  Payment processing uses Razorpay via a Cloudflare Pages Function.
+  The function must verify webhook HMAC signatures on every incoming event.
+
+  Anti-cheating logic in /src/features/assessment/ is security-sensitive.
+  Any change to useAntiCheating.ts or related hooks should receive full review.
+
+  Environment files: .env.local (dev), .env.development, .env.staging, .env.production
+  Run `npm run env:validate` before flagging "missing env var" issues.
+
+# ============================================================================
+# VERSION
+# ============================================================================
+
+version: "2.0.0"
+last_updated: "2026-05-02"
+reviewed_by: "full-codebase-analysis"
