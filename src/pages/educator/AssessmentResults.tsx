@@ -1,19 +1,21 @@
 import {
-    ChevronDownIcon,
-    ClipboardDocumentListIcon,
-    EyeIcon,
-    FunnelIcon,
-    SparklesIcon,
-    Squares2X2Icon,
-    TableCellsIcon
+  ChevronDownIcon,
+  ClipboardDocumentListIcon,
+  EyeIcon,
+  FunnelIcon,
+  SparklesIcon,
+  Squares2X2Icon,
+  TableCellsIcon
 } from '@heroicons/react/24/outline';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { SearchBar } from '@/shared/ui';
 import { AssessmentReportDrawer } from '@/features/assessment';
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { formatStreamId } from '@/shared/lib/utils/formatters';
 import { getLogger } from '@/shared/config/logging';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('EducatorAssessmentResults');
@@ -46,7 +48,7 @@ interface AssessmentResult {
   stream_name: string | null;
   riasec_scores: any;
   aptitude_scores: any;
-  profile_snapshot:any;
+  profile_snapshot: any;
 }
 
 // Filter Section Component
@@ -175,11 +177,10 @@ const AssessmentCard = ({
             {formatStreamId(result.stream_id) || 'N/A'}
           </span>
           <span
-            className={`text-xs px-2 py-0.5 rounded ${
-              result.status === 'completed'
-                ? 'bg-green-100 text-green-700'
-                : 'bg-yellow-100 text-yellow-700'
-            }`}
+            className={`text-xs px-2 py-0.5 rounded ${result.status === 'completed'
+              ? 'bg-green-100 text-green-700'
+              : 'bg-yellow-100 text-yellow-700'
+              }`}
           >
             {result.status}
           </span>
@@ -247,45 +248,18 @@ const AssessmentCard = ({
 const EducatorAssessmentResults: React.FC = () => {
   // @ts-ignore - AuthContext is a .jsx file
   const user = useUser();
+  const userId = user?.id;
+  const userEmail = user?.email;
 
-  // State
-  const [results, setResults] = useState<AssessmentResult[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [schoolName, setSchoolName] = useState<string>('');
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(24);
-  const [showFilters, setShowFilters] = useState(false);
-  const [sortBy, setSortBy] = useState('date');
-
-  const [selectedResult, setSelectedResult] = useState<AssessmentResult | null>(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-
-  const [filters, setFilters] = useState({
-    streams: [] as string[],
-    statuses: [] as string[],
-    readiness: [] as string[],
-  });
-
-  // Fetch assessment results for this educator's students
-  const fetchResults = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Get current user's email and id
-      const userEmail = user?.email;
-      const userId = user?.id;
-      logger.info('Starting fetch for user', { userId, userEmail });
-      
+  // Fetch assessment results using React Query
+  const { data: resultsData, isLoading: loading, error: queryError } = useQuery({
+    queryKey: queryKeys.educator.results(userId),
+    queryFn: async () => {
       if (!userEmail || !userId) {
-        setError('User not authenticated');
-        setLoading(false);
-        return;
+        throw new Error('User not authenticated');
       }
+
+      logger.info('Starting fetch for user', { userId, userEmail });
 
       // First check if they are a school educator - try both user_id and email lookup
       let schoolEducatorData = null;
@@ -334,7 +308,7 @@ const EducatorAssessmentResults: React.FC = () => {
       if (schoolEducatorData?.school_id) {
         // School educator
         schoolId = schoolEducatorData.school_id;
-        
+
         // Apply filtering based on educator role and class assignments
         if (schoolEducatorData.role === 'admin' || schoolEducatorData.role === 'school_admin') {
           // School admins can see all students in their school
@@ -353,9 +327,7 @@ const EducatorAssessmentResults: React.FC = () => {
               .in('school_class_id', assignedClassIds);
           } else {
             // Educator has no class assignments - return empty results
-            setResults([]);
-            setLoading(false);
-            return;
+            return { results: [], schoolName: '' };
           }
         }
 
@@ -365,7 +337,7 @@ const EducatorAssessmentResults: React.FC = () => {
           .select('name')
           .eq('id', schoolId)
           .maybeSingle();
-        
+
         schoolName = orgData?.name || '';
       } else {
         // Check if they are a college lecturer
@@ -382,12 +354,12 @@ const EducatorAssessmentResults: React.FC = () => {
         if (collegeLecturerData?.collegeId) {
           // College lecturer - check for program section assignments
           schoolId = collegeLecturerData.collegeId;
-          logger.info('College lecturer found', { 
-            lecturerId: collegeLecturerData.id, 
+          logger.info('College lecturer found', {
+            lecturerId: collegeLecturerData.id,
             collegeId: schoolId,
-            department: collegeLecturerData.department 
+            department: collegeLecturerData.department
           });
-          
+
           // Check if lecturer has any program section assignments using program_sections table
           const { data: programSections, error: programSectionsError } = await supabase
             .from('program_sections')
@@ -395,27 +367,27 @@ const EducatorAssessmentResults: React.FC = () => {
             .eq('faculty_id', userId)
             .eq('status', 'active');
 
-          logger.info('Program sections', { 
-            count: programSections?.length || 0, 
-            error: programSectionsError 
+          logger.info('Program sections', {
+            count: programSections?.length || 0,
+            error: programSectionsError
           });
 
           if (!programSectionsError && programSections && programSections.length > 0) {
             // Lecturer has program section assignments - filter students by those sections
             // Build OR conditions for each program section combination
-            const orConditions = programSections.map(ps => 
+            const orConditions = programSections.map(ps =>
               `and(program_id.eq.${ps.program_id},semester.eq.${ps.semester},section.eq.${ps.section})`
             ).join(',');
-            
+
             logger.info('Filtering students by program sections', { orConditions });
-            
+
             studentsQuery = studentsQuery
               .eq('college_id', schoolId)
               .or(orConditions);
           } else {
             // No program section assignments - check if admin
             const isCollegeAdmin = collegeLecturerData.department === 'Administration';
-            
+
             if (isCollegeAdmin) {
               // College admin can see all students in their college
               logger.info('College admin - showing all students');
@@ -423,19 +395,15 @@ const EducatorAssessmentResults: React.FC = () => {
             } else {
               // Regular lecturer with no assignments - return empty results
               logger.info('No program sections assigned - returning empty');
-              setResults([]);
-              setSchoolName('');
-              
+
               // Get college name for display from organizations table
               const { data: orgData } = await supabase
                 .from('organizations')
                 .select('name')
                 .eq('id', schoolId)
                 .maybeSingle();
-              
-              setSchoolName(orgData?.name || '');
-              setLoading(false);
-              return;
+
+              return { results: [], schoolName: orgData?.name || '' };
             }
           }
 
@@ -445,52 +413,44 @@ const EducatorAssessmentResults: React.FC = () => {
             .select('name')
             .eq('id', schoolId)
             .maybeSingle();
-          
+
           schoolName = orgData?.name || '';
         } else {
           logger.error('No educator found for user', { userId, userEmail });
-          setError('No school or college associated with your account. Please contact your administrator.');
-          setLoading(false);
-          return;
+          throw new Error('No school or college associated with your account. Please contact your administrator.');
         }
       }
-
-      setSchoolName(schoolName);
 
       // Get students based on the filtered query
       const { data: studentsData, error: studentsError } = await studentsQuery;
 
-      logger.info('Students query result', { 
-        count: studentsData?.length || 0, 
+      logger.info('Students query result', {
+        count: studentsData?.length || 0,
         error: studentsError,
-        sampleStudents: studentsData?.slice(0, 3).map(s => ({ 
-          name: s.name, 
+        sampleStudents: studentsData?.slice(0, 3).map(s => ({
+          name: s.name,
           user_id: s.user_id,
-          email: s.email 
+          email: s.email
         }))
       });
 
       if (studentsError) throw studentsError;
 
       if (!studentsData || studentsData.length === 0) {
-        setResults([]);
-        setLoading(false);
-        return;
+        return { results: [], schoolName };
       }
 
       // Filter out students with null user_id to avoid UUID parsing errors
       const validStudents = studentsData.filter((s) => s.user_id != null);
-      
-      logger.info('Valid students (with user_id)', { 
+
+      logger.info('Valid students (with user_id)', {
         total: studentsData.length,
         valid: validStudents.length,
         invalid: studentsData.length - validStudents.length
       });
-      
+
       if (validStudents.length === 0) {
-        setResults([]);
-        setLoading(false);
-        return;
+        return { results: [], schoolName };
       }
 
       const studentIds = validStudents.map((s) => s.user_id);
@@ -522,11 +482,11 @@ const EducatorAssessmentResults: React.FC = () => {
         .in('student_id', studentIds)
         .order('created_at', { ascending: false });
 
-      logger.info('Assessment results query', { 
-        count: data?.length || 0, 
+      logger.info('Assessment results query', {
+        count: data?.length || 0,
         error: fetchError,
-        sampleResults: data?.slice(0, 2).map(r => ({ 
-          id: r.id, 
+        sampleResults: data?.slice(0, 2).map(r => ({
+          id: r.id,
           student_id: r.student_id,
           status: r.status,
           stream_id: r.stream_id
@@ -565,8 +525,7 @@ const EducatorAssessmentResults: React.FC = () => {
         };
       });
 
-      setResults(enrichedResults as unknown as AssessmentResult[]);
-      logger.info('Final results set', { 
+      logger.info('Final results set', {
         count: enrichedResults.length,
         sampleEnriched: enrichedResults.slice(0, 2).map(r => ({
           id: r.id,
@@ -576,19 +535,33 @@ const EducatorAssessmentResults: React.FC = () => {
           status: r.status
         }))
       });
-    } catch (err: any) {
-      logger.error('Error fetching assessment results', err);
-      setError(err?.message || 'Failed to load assessment results');
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  useEffect(() => {
-    if (user?.email) {
-      fetchResults();
-    }
-  }, [user?.email]);
+      return { results: enrichedResults as unknown as AssessmentResult[], schoolName };
+    },
+    enabled: !!userEmail && !!userId,
+    staleTime: 30000, // 30 seconds - assessment results change frequently
+  });
+
+  const results = resultsData?.results || [];
+  const schoolName = resultsData?.schoolName || '';
+  const error = queryError ? (queryError as Error).message : null;
+
+  // State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(24);
+  const [showFilters, setShowFilters] = useState(false);
+  const [sortBy, setSortBy] = useState('date');
+
+  const [selectedResult, setSelectedResult] = useState<AssessmentResult | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+
+  const [filters, setFilters] = useState({
+    streams: [] as string[],
+    statuses: [] as string[],
+    readiness: [] as string[],
+  });
 
   useEffect(() => {
     setCurrentPage(1);
@@ -739,16 +712,16 @@ const EducatorAssessmentResults: React.FC = () => {
     const avgAptitude =
       results.length > 0
         ? Math.round(
-            results.reduce((sum, r) => sum + (r.aptitude_overall || 0), 0) /
-              results.length
-          )
+          results.reduce((sum, r) => sum + (r.aptitude_overall || 0), 0) /
+          results.length
+        )
         : 0;
     const avgKnowledge =
       results.length > 0
         ? Math.round(
-            results.reduce((sum, r) => sum + (r.knowledge_score || 0), 0) /
-              results.length
-          )
+          results.reduce((sum, r) => sum + (r.knowledge_score || 0), 0) /
+          results.length
+        )
         : 0;
     return { total: results.length, completed, avgAptitude, avgKnowledge };
   }, [results]);
@@ -826,21 +799,19 @@ const EducatorAssessmentResults: React.FC = () => {
           <div className="flex rounded-lg shadow-sm">
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-2 text-sm font-medium rounded-l-lg border ${
-                viewMode === 'grid'
-                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+              className={`px-3 py-2 text-sm font-medium rounded-l-lg border ${viewMode === 'grid'
+                ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-2 text-sm font-medium rounded-r-lg border-t border-r border-b ${
-                viewMode === 'table'
-                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+              className={`px-3 py-2 text-sm font-medium rounded-r-lg border-t border-r border-b ${viewMode === 'table'
+                ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
             >
               <TableCellsIcon className="h-4 w-4" />
             </button>

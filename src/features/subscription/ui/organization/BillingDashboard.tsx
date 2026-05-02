@@ -1,12 +1,11 @@
 /**
  * BillingDashboard Component
- * 
+ *
  * Displays billing information, payment history, and cost projections
  * for organization subscriptions.
  */
 
 import {
-  BillingDashboard as BillingData,
   organizationBillingService,
   PaymentRecord,
 } from '@/entities/organization';
@@ -20,8 +19,13 @@ import {
   RefreshCw,
   TrendingUp,
 } from 'lucide-react';
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useQuery } from '@tanstack/react-query';
+import { queryKeys } from '@/shared/lib/queryKeys';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('billing-dashboard');
 
 interface BillingDashboardProps {
   organizationId: string;
@@ -34,40 +38,35 @@ function BillingDashboard({
   organizationType,
   isLoading: externalLoading = false,
 }: BillingDashboardProps) {
-  const [billingData, setBillingData] = useState<BillingData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [downloadingInvoice, setDownloadingInvoice] = useState<string | null>(null);
 
-  const fetchBillingData = useCallback(async () => {
-    if (!organizationId) return;
-    
-    setIsLoading(true);
-    setError(null);
-    
-    try {
+  // Fetch billing data using React Query
+  const {
+    data: billingData,
+    isLoading,
+    error: queryError,
+    refetch: fetchBillingData
+  } = useQuery({
+    queryKey: queryKeys.subscription.billing(organizationId, organizationType),
+    queryFn: async () => {
       const data = await organizationBillingService.getBillingDashboard(
         organizationId,
         organizationType
       );
-      setBillingData(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load billing data');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [organizationId, organizationType]);
+      return data;
+    },
+    staleTime: 60000, // 1 minute - billing data updates moderately
+    enabled: !!organizationId,
+  });
 
-  useEffect(() => {
-    fetchBillingData();
-  }, [fetchBillingData]);
+  const error = queryError instanceof Error ? queryError.message : null;
 
   const handleDownloadInvoice = useCallback(async (payment: PaymentRecord) => {
     setDownloadingInvoice(payment.id);
     try {
       // Generate invoice for this transaction
       const invoice = await organizationBillingService.generateInvoice(payment.id);
-      
+
       // Create a simple text-based invoice for download
       const invoiceContent = `
 INVOICE
@@ -80,10 +79,10 @@ ${invoice.gstNumber ? `GST Number: ${invoice.gstNumber}` : ''}
 
 ITEMS
 -----
-${invoice.lineItems.map(item => 
-  `${item.description}
+${invoice.lineItems.map(item =>
+        `${item.description}
    Qty: ${item.quantity} x ₹${item.unitPrice.toFixed(2)} = ₹${item.amount.toFixed(2)}`
-).join('\n\n')}
+      ).join('\n\n')}
 
 SUMMARY
 -------
@@ -107,9 +106,10 @@ Thank you for your business!
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
+
       toast.success('Invoice downloaded');
     } catch (err) {
+      logger.error('Failed to download invoice', err instanceof Error ? err : new Error(String(err)));
       toast.error('Failed to download invoice');
     } finally {
       setDownloadingInvoice(null);
@@ -355,12 +355,11 @@ Thank you for your business!
                       {formatCurrency(payment.amount)}
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        payment.status === 'success' ? 'bg-green-100 text-green-700' :
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${payment.status === 'success' ? 'bg-green-100 text-green-700' :
                         payment.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                        payment.status === 'failed' ? 'bg-red-100 text-red-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
+                          payment.status === 'failed' ? 'bg-red-100 text-red-700' :
+                            'bg-gray-100 text-gray-700'
+                        }`}>
                         {payment.status}
                       </span>
                     </td>

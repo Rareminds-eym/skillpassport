@@ -48,7 +48,9 @@ export const restoreWarnings = () => {
   isSuppressionActive = false;
 };
 
-// Auto-suppress in development
-if (process.env.NODE_ENV === 'development') {
+// Auto-initialize in development
+// Note: This is a module-level side effect that runs on import
+// to suppress Recharts dimension warnings during chart initialization
+if (import.meta.env.DEV) {
   suppressRechartsWarnings();
 }

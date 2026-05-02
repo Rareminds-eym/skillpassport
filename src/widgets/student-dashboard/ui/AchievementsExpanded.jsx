@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useMemo } from 'react';
+import { motion, } from 'framer-motion';
 import {
   Award,
   Briefcase,
@@ -7,13 +7,8 @@ import {
   Medal,
   BookOpen,
   Calendar as CalendarIcon,
-  TrendingUp,
-  Target,
-  Zap,
   Grid,
   List,
-  Filter,
-  ChevronDown,
   Star,
   Trophy,
   Sparkles,
@@ -22,16 +17,14 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 import { Button } from '@/shared/ui/ButtonNew';
 import { Badge } from '@/shared/ui/Badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs';
 import { useStudentAchievements } from '@/entities/student';
 
 const AchievementsExpanded = ({ studentId, email }) => {
   const { achievements, badges, loading, error, refresh } = useStudentAchievements(studentId, email);
   const [viewMode, setViewMode] = useState('timeline'); // 'timeline' or 'calendar'
   const [filterType, setFilterType] = useState('all');
-  const [showBadges, setShowBadges] = useState(true);
 
-  // Group achievements by month for calendar view
+  // Group achievements by smonth for calendar view
   const achievementsByMonth = useMemo(() => {
     const grouped = {};
     achievements.forEach(achievement => {
@@ -85,8 +78,28 @@ const AchievementsExpanded = ({ studentId, email }) => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="space-y-4">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between mb-6 animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-48"></div>
+          <div className="h-10 bg-gray-200 rounded w-32"></div>
+        </div>
+
+        {/* Achievement cards skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-lg border border-gray-200 p-4 animate-pulse">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              </div>
+              <div className="h-3 bg-gray-200 rounded w-full"></div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -176,7 +189,7 @@ const AchievementsExpanded = ({ studentId, email }) => {
                 </p>
               </div>
             </CardTitle>
-            
+
             {/* View Toggle */}
             <div className="flex gap-2">
               <Button
@@ -276,7 +289,7 @@ const TimelineView = ({ achievements, getIconByType, getColorByType }) => {
                 )}
               </div>
             </div>
-            
+
             {achievement.progress !== undefined && (
               <div className="mt-3">
                 <div className="flex justify-between text-xs text-gray-600 mb-1">
@@ -284,7 +297,7 @@ const TimelineView = ({ achievements, getIconByType, getColorByType }) => {
                   <span>{achievement.progress}%</span>
                 </div>
                 <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all"
                     style={{ width: `${achievement.progress}%` }}
                   />
@@ -332,7 +345,7 @@ const CalendarView = ({ achievementsByMonth, filterType, getIconByType, getColor
         const monthAchievements = achievementsByMonth[monthKey].filter(
           a => filterType === 'all' || a.type === filterType
         );
-        
+
         if (monthAchievements.length === 0) return null;
 
         const [year, month] = monthKey.split('-');

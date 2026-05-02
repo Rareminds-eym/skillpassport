@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Card,
   CardContent,
@@ -31,6 +32,9 @@ import {
   getAssignmentStats,
   updateAssignmentStatus,
 } from '@/features/educator-copilot';
+import { queryKeys } from '@/shared/lib/queryKeys';
+import { useStudentDataByEmail } from '@/entities/student';
+import { useUser } from '@/shared/model/authStore';
 
 // Helper function to parse date as local time (avoiding timezone conversion)
 const parseAsLocalDate = (dateString) => {
@@ -45,7 +49,7 @@ const transformAssignment = (dbAssignment) => ({
   // Core identifiers
   id: dbAssignment.assignment_id,
   student_assignment_id: dbAssignment.student_assignment_id,
-  
+
   // Assignment details
   title: dbAssignment.title,
   course: dbAssignment.course_name,
@@ -54,11 +58,11 @@ const transformAssignment = (dbAssignment) => ({
   points: dbAssignment.total_points,
   rubric: dbAssignment.rubric || '',
   attachments: [],
-  
+
   // Status & Priority
   status: dbAssignment.status,
   priority: dbAssignment.priority,
-  
+
   // Dates - comprehensive tracking
   dueDate: dbAssignment.due_date,
   availableFrom: dbAssignment.available_from,
@@ -68,33 +72,33 @@ const transformAssignment = (dbAssignment) => ({
   completedDate: dbAssignment.completed_date,
   gradedDate: dbAssignment.graded_date,
   feedbackDate: dbAssignment.feedback_date,
-  
+
   // Submission details
   submissionType: dbAssignment.submission_type,
   submissionContent: dbAssignment.submission_content,
   submissionUrl: dbAssignment.submission_url,
-  
+
   // Grading information
   gradeReceived: dbAssignment.grade_received,
   grade: dbAssignment.grade_percentage,
   feedback: dbAssignment.instructor_feedback,
   gradedBy: dbAssignment.graded_by,
-  
+
   // Late tracking
   isLate: dbAssignment.is_late,
   latePenalty: dbAssignment.late_penalty,
-  
+
   // Late submission policy
   allowLateSubmission: dbAssignment.allow_late_submission
 });
 
 const Assignments = () => {
+  const queryClient = useQueryClient();
   const user = useUser();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const { studentData, loading: authLoading } = useStudentDataByEmail(userEmail);
   const studentId = studentData?.id || user?.id;
-  
-  
+
   const [filterStatus, setFilterStatus] = useState('all');
   const [sortBy, setSortBy] = useState('dueDate');
   const [searchQuery, setSearchQuery] = useState('');
@@ -103,58 +107,39 @@ const Assignments = () => {
   const [viewMode, setViewMode] = useState('list');
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [assignments, setAssignments] = useState([]);
-  const [stats, setStats] = useState({ total: 0, todo: 0, inProgress: 0, completed: 0, averageGrade: 0 });
-  const [loading, setLoading] = useState(true);
   const [showStatusToast, setShowStatusToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showQuickTip, setShowQuickTip] = useState(true);
-  // Add state for submission modal
-const [showSubmissionModal, setShowSubmissionModal] = useState(false);
-const [submissionData, setSubmissionData] = useState({
-  submission_type: 'text',
-  submission_content: '',
-  submission_url: ''
-});
+  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
+  const [submissionData, setSubmissionData] = useState({
+    submission_type: 'text',
+    submission_content: '',
+    submission_url: ''
+  });
 
-  // Fetch assignments from database
-  useEffect(() => {
-    
-    const fetchAssignments = async () => {
-      // Still loading auth
-      if (authLoading) {
-        return;
-      }
+  // Fetch assignments using React Query
+  const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({
+    queryKey: queryKeys.assignments.list({ studentId }),
+    queryFn: async () => {
+      const assignmentsData = await getAssignmentsByStudentId(studentId);
+      return assignmentsData.map(transformAssignment);
+    },
+    enabled: !!studentId && !authLoading,
+    staleTime: 30000, // 30 seconds
+  });
 
-      // Auth complete but no student data - show empty state
-      if (!studentId) {
-        setLoading(false);
-        setAssignments([]);
-        return;
-      }
+  // Fetch assignment stats using React Query
+  const { data: stats = { total: 0, todo: 0, inProgress: 0, completed: 0, averageGrade: 0 } } = useQuery({
+    queryKey: queryKeys.assignments.stats({ studentId }),
+    queryFn: async () => {
+      const statsData = await getAssignmentStats(studentId);
+      return statsData;
+    },
+    enabled: !!studentId && !authLoading,
+    staleTime: 30000,
+  });
 
-      try {
-        setLoading(true);
-        
-        const [assignmentsData, statsData] = await Promise.all([
-          getAssignmentsByStudentId(studentId),
-          getAssignmentStats(studentId)
-        ]);
-
-
-        const transformedAssignments = assignmentsData.map(transformAssignment);
-        setAssignments(transformedAssignments);
-        setStats(statsData);
-      } catch (error) {
-        logger.error('Error fetching assignments:', error);
-        setAssignments([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAssignments();
-  }, [studentId, authLoading]);
+  const loading = authLoading || assignmentsLoading;
 
   // Get unique courses for filter
   const courses = useMemo(() => {
@@ -181,35 +166,13 @@ const [submissionData, setSubmissionData] = useState({
         }
       }
 
-      // Optimistically update UI
-      setAssignments(prevAssignments => 
-        prevAssignments.map(assignment => {
-          if (assignment.id === assignmentId) {
-            const updatedAssignment = {
-              ...assignment,
-              status: newStatus
-            };
-            
-            // Auto-set submission date when submitted
-            if (newStatus === 'submitted' && !assignment.submittedDate) {
-              updatedAssignment.submittedDate = new Date().toISOString();
-            }
-            
-            return updatedAssignment;
-          }
-          return assignment;
-        })
-      );
-
       // Update in database using student_assignment_id
       await updateAssignmentStatus(assignment.student_assignment_id, newStatus);
 
-      // Refresh stats
-      if (studentId) {
-        const updatedStats = await getAssignmentStats(studentId);
-        setStats(updatedStats);
-      }
-      
+      // Invalidate queries to refetch data
+      queryClient.invalidateQueries({ queryKey: queryKeys.assignments.list({ studentId }) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.assignments.stats({ studentId }) });
+
       // Show toast notification
       const statusLabels = {
         'todo': '📋 To Do',
@@ -222,13 +185,10 @@ const [submissionData, setSubmissionData] = useState({
       setTimeout(() => setShowStatusToast(false), 3000);
     } catch (error) {
       logger.error('Error updating assignment status:', error);
-      // Revert optimistic update on error
-      const [assignmentsData] = await Promise.all([
-        getAssignmentsByStudentId(studentId)
-      ]);
-      const transformedAssignments = assignmentsData.map(transformAssignment);
-      setAssignments(transformedAssignments);
-      
+      // Invalidate queries to revert optimistic update
+      queryClient.invalidateQueries({ queryKey: queryKeys.assignments.list({ studentId }) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.assignments.stats({ studentId }) });
+
       setToastMessage('❌ Failed to update status. Please try again.');
       setShowStatusToast(true);
       setTimeout(() => setShowStatusToast(false), 4000);
@@ -288,19 +248,19 @@ const [submissionData, setSubmissionData] = useState({
 
   const getDaysRemaining = (dueDate) => {
     const now = new Date();
-    
+
     // Parse the due date and treat it as local time
     const dueDateStr = dueDate.replace('Z', '').replace('+00:00', '').replace('T', ' ');
     const localDue = new Date(dueDateStr);
-    
+
     // Calculate difference in milliseconds
     const diffTime = localDue.getTime() - now.getTime();
-    
+
     // If overdue, calculate how many days/hours overdue
     if (diffTime < 0) {
       const overdueDays = Math.floor(Math.abs(diffTime) / (1000 * 60 * 60 * 24));
       const overdueHours = Math.floor((Math.abs(diffTime) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      
+
       if (overdueDays > 0) {
         return <span className="text-red-600 text-sm font-medium">{overdueDays} day{overdueDays > 1 ? 's' : ''} overdue</span>;
       } else if (overdueHours > 0) {
@@ -309,12 +269,12 @@ const [submissionData, setSubmissionData] = useState({
         return <span className="text-red-600 text-sm font-medium">Just overdue</span>;
       }
     }
-    
+
     // If not overdue, calculate remaining time
     const remainingDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     const remainingHours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const remainingMinutes = Math.floor((diffTime % (1000 * 60 * 60)) / (1000 * 60));
-    
+
     if (remainingDays > 1) {
       return <span className="text-gray-600 text-sm">{remainingDays} days left</span>;
     } else if (remainingDays === 1) {
@@ -332,11 +292,11 @@ const [submissionData, setSubmissionData] = useState({
 
   const isOverdue = (dueDate) => {
     const now = new Date();
-    
+
     // Parse the due date and treat it as local time
     const dueDateStr = dueDate.replace('Z', '').replace('+00:00', '').replace('T', ' ');
     const localDue = new Date(dueDateStr);
-    
+
     return localDue < now;
   };
 
@@ -346,11 +306,11 @@ const [submissionData, setSubmissionData] = useState({
       const submissionDate = new Date(assignment.submittedDate);
       const dueDateStr = assignment.dueDate.replace('Z', '').replace('+00:00', '').replace('T', ' ');
       const localDue = new Date(dueDateStr);
-      
+
       // If submitted before due date, it's not overdue regardless of current time
       return submissionDate > localDue;
     }
-    
+
     // If not submitted, check if current time is past due date
     return isOverdue(assignment.dueDate);
   };
@@ -361,14 +321,14 @@ const [submissionData, setSubmissionData] = useState({
       const submissionDate = new Date(assignment.submittedDate);
       const dueDateStr = assignment.dueDate.replace('Z', '').replace('+00:00', '').replace('T', ' ');
       const localDue = new Date(dueDateStr);
-      
+
       if (submissionDate <= localDue) {
         return <span className="text-green-600 text-sm font-medium">Submitted</span>;
       } else {
         return <span className="text-orange-600 text-sm font-medium">Submitted late</span>;
       }
     }
-    
+
     // If not submitted, show time remaining or overdue
     return getDaysRemaining(assignment.dueDate);
   };
@@ -378,12 +338,12 @@ const [submissionData, setSubmissionData] = useState({
     if (assignment.status === 'submitted' || assignment.status === 'graded') {
       return false;
     }
-    
+
     // If not overdue, can always submit
     if (!isOverdue(assignment.dueDate)) {
       return true;
     }
-    
+
     // If overdue, can only submit if late submission is allowed
     return assignment.allowLateSubmission === true;
   };
@@ -444,12 +404,12 @@ const [submissionData, setSubmissionData] = useState({
       const availableDate = parseAsLocalDate(assignment.available_from);
       const dueDate = parseAsLocalDate(assignment.dueDate);
       const checkDate = new Date(date);
-      
+
       // Set all to start of day for accurate comparison
       availableDate.setHours(0, 0, 0, 0);
       dueDate.setHours(0, 0, 0, 0);
       checkDate.setHours(0, 0, 0, 0);
-      
+
       // Check if date is between available and due (inclusive)
       return checkDate >= availableDate && checkDate <= dueDate;
     });
@@ -495,8 +455,8 @@ const [submissionData, setSubmissionData] = useState({
                 variant={viewMode === 'list' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setViewMode('list')}
-                className={viewMode === 'list' 
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm rounded-lg' 
+                className={viewMode === 'list'
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm rounded-lg'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg'
                 }
               >
@@ -507,8 +467,8 @@ const [submissionData, setSubmissionData] = useState({
                 variant={viewMode === 'calendar' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setViewMode('calendar')}
-                className={viewMode === 'calendar' 
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm rounded-lg' 
+                className={viewMode === 'calendar'
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm rounded-lg'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg'
                 }
               >
@@ -580,11 +540,11 @@ const [submissionData, setSubmissionData] = useState({
               <div className="flex-1">
                 <h4 className="text-sm font-semibold text-blue-900 mb-1">💡 Quick Tip: Track Your Progress</h4>
                 <p className="text-xs text-blue-800">
-                  Update your assignment status: To Do → In Progress → Submitted → Graded. 
+                  Update your assignment status: To Do → In Progress → Submitted → Graded.
                   Click the status dropdown to change, or use the "Submit Assignment" button. Changes save automatically!
                 </p>
               </div>
-              <button 
+              <button
                 onClick={() => setShowQuickTip(false)}
                 className="text-blue-400 hover:text-blue-600 transition-colors"
               >
@@ -634,11 +594,10 @@ const [submissionData, setSubmissionData] = useState({
                   <button
                     key={status.id}
                     onClick={() => setFilterStatus(status.id)}
-                    className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
-                      filterStatus === status.id
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                    className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${filterStatus === status.id
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
                   >
                     {status.label}
                   </button>
@@ -718,7 +677,7 @@ const [submissionData, setSubmissionData] = useState({
                   </Button>
                 </div>
               </div>
-              
+
               {/* Calendar Stats Summary */}
               <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
                 <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
@@ -726,8 +685,8 @@ const [submissionData, setSubmissionData] = useState({
                   <div className="text-2xl font-bold text-gray-900">
                     {filteredAssignments.filter(a => {
                       const due = new Date(a.dueDate);
-                      return due.getMonth() === currentMonth.getMonth() && 
-                             due.getFullYear() === currentMonth.getFullYear();
+                      return due.getMonth() === currentMonth.getMonth() &&
+                        due.getFullYear() === currentMonth.getFullYear();
                     }).length}
                   </div>
                 </div>
@@ -795,7 +754,7 @@ const [submissionData, setSubmissionData] = useState({
                     <span className="text-gray-700">Late Submission</span>
                   </div>
                 </div>
-              <div className="flex flex-wrap items-center gap-4 text-xs">
+                <div className="flex flex-wrap items-center gap-4 text-xs">
                   <span className="font-semibold text-gray-600">Timeline Events:</span>
                   <div className="flex items-center gap-1.5">
                     <span className="text-teal-600 font-bold">📅</span>
@@ -824,7 +783,7 @@ const [submissionData, setSubmissionData] = useState({
                 </div>
               </div>
             </div>
-            
+
             <div className="p-6">
               {/* Calendar Grid */}
               <div className="grid grid-cols-7 gap-2">
@@ -834,20 +793,20 @@ const [submissionData, setSubmissionData] = useState({
                     {day}
                   </div>
                 ))}
-                
+
                 {/* Calendar days */}
                 {getCalendarDays().map((date, index) => {
                   const assignmentsOnDate = date ? getAssignmentsForDate(date) : [];
                   const availableAssignments = date ? getAvailableAssignmentsForDate(date) : [];
                   const activeAssignments = date ? getActiveAssignmentsForDate(date) : [];
-                  const isToday = date && 
+                  const isToday = date &&
                     date.toDateString() === new Date().toDateString();
                   const today = new Date();
                   today.setHours(0, 0, 0, 0);
                   const cellDate = date ? new Date(date) : null;
                   if (cellDate) cellDate.setHours(0, 0, 0, 0);
                   const isPastDate = cellDate && cellDate < today;
-                  
+
                   // Analyze assignments on this date
                   const hasGraded = assignmentsOnDate.some(a => a.status === 'graded');
                   const hasSubmitted = assignmentsOnDate.some(a => a.status === 'submitted');
@@ -860,37 +819,37 @@ const [submissionData, setSubmissionData] = useState({
                   const hasLateSubmission = assignmentsOnDate.some(a => a.isLate);
                   const hasHighPriority = assignmentsOnDate.some(a => a.priority === 'high');
                   const hasLatePenalty = assignmentsOnDate.some(a => a.latePenalty && a.latePenalty > 0);
-                  
+
                   // Timeline tracking - check what happened on this date
-                  const assignmentsStartedToday = assignmentsOnDate.filter(a => 
+                  const assignmentsStartedToday = assignmentsOnDate.filter(a =>
                     a.startedDate && new Date(a.startedDate).toDateString() === date?.toDateString()
                   );
-                  const assignmentsSubmittedToday = assignmentsOnDate.filter(a => 
+                  const assignmentsSubmittedToday = assignmentsOnDate.filter(a =>
                     a.submittedDate && new Date(a.submittedDate).toDateString() === date?.toDateString()
                   );
-                  const assignmentsCompletedToday = assignmentsOnDate.filter(a => 
+                  const assignmentsCompletedToday = assignmentsOnDate.filter(a =>
                     a.completedDate && new Date(a.completedDate).toDateString() === date?.toDateString()
                   );
-                  const assignmentsGradedToday = assignmentsOnDate.filter(a => 
+                  const assignmentsGradedToday = assignmentsOnDate.filter(a =>
                     a.gradedDate && new Date(a.gradedDate).toDateString() === date?.toDateString()
                   );
-                  
+
                   // Check if there are submissions or completions today
                   const hasSubmissionToday = assignmentsSubmittedToday.length > 0;
                   const hasCompletionToday = assignmentsCompletedToday.length > 0;
-                  
+
                   // Calculate completion rate for this day
-                  const completedCount = assignmentsOnDate.filter(a => 
+                  const completedCount = assignmentsOnDate.filter(a =>
                     a.status === 'graded' || a.status === 'submitted'
                   ).length;
                   const totalCount = assignmentsOnDate.length;
                   const completionRate = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
-                  
+
                   // Priority: Overdue > High Priority > Status-based coloring
                   let dateCellStyle = '';
                   let dateNumberStyle = '';
                   let borderStyle = '';
-                  
+
                   if (!date) {
                     dateCellStyle = 'bg-gray-50/50 border-gray-100';
                   } else if (isToday) {
@@ -926,13 +885,13 @@ const [submissionData, setSubmissionData] = useState({
                       dateCellStyle = 'bg-gray-50/70 border-gray-300 hover:bg-gray-100 hover:border-gray-400';
                       dateNumberStyle = 'text-gray-700';
                     }
-                    
+
                     // Add high priority indicator
                     if (hasHighPriority && !hasOverdue) {
                       borderStyle = 'border-l-4 border-l-amber-500';
                     }
                   }
-                  
+
                   return (
                     <div
                       key={index}
@@ -968,29 +927,29 @@ const [submissionData, setSubmissionData] = useState({
                                   )}
                                 </div>
                                 {/* Timeline events for today */}
-                                {(assignmentsStartedToday.length > 0 || 
+                                {(assignmentsStartedToday.length > 0 ||
                                   assignmentsSubmittedToday.length > 0 ||
-                                  assignmentsCompletedToday.length > 0 || 
+                                  assignmentsCompletedToday.length > 0 ||
                                   assignmentsGradedToday.length > 0) && (
-                                  <div className="flex items-center gap-0.5 text-[9px]">
-                                    {assignmentsStartedToday.length > 0 && (
-                                      <span className="text-blue-600 font-bold" title={`${assignmentsStartedToday.length} started today`}>▶</span>
-                                    )}
-                                    {assignmentsSubmittedToday.length > 0 && (
-                                      <span className="text-emerald-600 font-bold" title={`${assignmentsSubmittedToday.length} submitted today`}>📤</span>
-                                    )}
-                                    {assignmentsCompletedToday.length > 0 && (
-                                      <span className="text-indigo-600 font-bold" title={`${assignmentsCompletedToday.length} completed today`}>✓</span>
-                                    )}
-                                    {assignmentsGradedToday.length > 0 && (
-                                      <span className="text-green-600 font-bold" title={`${assignmentsGradedToday.length} graded today`}>★</span>
-                                    )}
-                                  </div>
-                                )}
+                                    <div className="flex items-center gap-0.5 text-[9px]">
+                                      {assignmentsStartedToday.length > 0 && (
+                                        <span className="text-blue-600 font-bold" title={`${assignmentsStartedToday.length} started today`}>▶</span>
+                                      )}
+                                      {assignmentsSubmittedToday.length > 0 && (
+                                        <span className="text-emerald-600 font-bold" title={`${assignmentsSubmittedToday.length} submitted today`}>📤</span>
+                                      )}
+                                      {assignmentsCompletedToday.length > 0 && (
+                                        <span className="text-indigo-600 font-bold" title={`${assignmentsCompletedToday.length} completed today`}>✓</span>
+                                      )}
+                                      {assignmentsGradedToday.length > 0 && (
+                                        <span className="text-green-600 font-bold" title={`${assignmentsGradedToday.length} graded today`}>★</span>
+                                      )}
+                                    </div>
+                                  )}
                               </div>
                             )}
                           </div>
-                          
+
                           {/* Available From Assignments - Show as teal "starting" indicators */}
                           {availableAssignments.length > 0 && (
                             <div className="space-y-1 mb-2">
@@ -1008,7 +967,7 @@ const [submissionData, setSubmissionData] = useState({
                                     <span className="truncate flex-1">{assignment.title}</span>
                                     <span className="text-[9px] text-teal-600 font-semibold">Opens</span>
                                   </div>
-                                  
+
                                   {/* Tooltip */}
                                   <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-20 w-56 bg-gray-900 text-white text-xs rounded-lg py-2 px-3 shadow-xl">
                                     <div className="font-semibold mb-1">{assignment.title}</div>
@@ -1036,16 +995,16 @@ const [submissionData, setSubmissionData] = useState({
                               ))}
                             </div>
                           )}
-                          
+
                           {/* Due Date Assignments - Main display */}
                           {assignmentsOnDate.length > 0 && (
                             <div className="space-y-1">
                               {assignmentsOnDate.slice(0, 2).map(assignment => {
                                 const assignmentDue = parseAsLocalDate(assignment.dueDate);
-                                const isOverdue = assignmentDue < new Date() && 
-                                                assignment.status !== 'submitted' && 
-                                                assignment.status !== 'graded';
-                                
+                                const isOverdue = assignmentDue < new Date() &&
+                                  assignment.status !== 'submitted' &&
+                                  assignment.status !== 'graded';
+
                                 return (
                                   <button
                                     key={assignment.id}
@@ -1053,24 +1012,23 @@ const [submissionData, setSubmissionData] = useState({
                                       e.stopPropagation();
                                       setSelectedAssignment(assignment);
                                     }}
-                                    className={`w-full text-left text-xs px-2 py-1.5 rounded-lg font-medium transition-all hover:shadow-md group relative ${
-                                      isOverdue
-                                        ? 'bg-red-100 text-red-800 hover:bg-red-200 border border-red-300'
-                                        : assignment.status === 'graded'
-                                          ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                                          : assignment.status === 'submitted'
-                                            ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                                            : assignment.status === 'in-progress'
-                                              ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                                              : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                                    }`}
+                                    className={`w-full text-left text-xs px-2 py-1.5 rounded-lg font-medium transition-all hover:shadow-md group relative ${isOverdue
+                                      ? 'bg-red-100 text-red-800 hover:bg-red-200 border border-red-300'
+                                      : assignment.status === 'graded'
+                                        ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                                        : assignment.status === 'submitted'
+                                          ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                          : assignment.status === 'in-progress'
+                                            ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                                      }`}
                                   >
                                     <div className="flex items-center gap-1">
                                       {assignment.priority === 'high' && (
                                         <span className="text-[10px]">🔥</span>
                                       )}
                                       <span className="truncate flex-1">{assignment.title}</span>
-                                      
+
                                       {/* Show grade or timeline status */}
                                       {assignment.gradeReceived ? (
                                         <span className="text-[10px] font-bold text-green-700">
@@ -1089,12 +1047,12 @@ const [submissionData, setSubmissionData] = useState({
                                         <span className="text-[9px] text-blue-600">▶</span>
                                       ) : null}
                                     </div>
-                                    
+
                                     {/* Enhanced Tooltip with Timeline */}
                                     <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-20 w-56 bg-gray-900 text-white text-xs rounded-lg py-2 px-3 shadow-xl">
                                       <div className="font-semibold mb-1">{assignment.title}</div>
                                       <div className="text-gray-400 text-[10px] mb-2">{assignment.course}</div>
-                                      
+
                                       {/* Complete Timeline */}
                                       <div className="space-y-1 border-t border-gray-700 pt-2 mb-2">
                                         {assignment.availableFrom && (
@@ -1143,7 +1101,7 @@ const [submissionData, setSubmissionData] = useState({
                                           </div>
                                         )}
                                       </div>
-                                      
+
                                       {/* Grade Info */}
                                       {assignment.gradeReceived && (
                                         <div className="border-t border-gray-700 pt-2">
@@ -1163,20 +1121,20 @@ const [submissionData, setSubmissionData] = useState({
                                           )}
                                         </div>
                                       )}
-                                      
+
                                       {/* Warnings */}
                                       {isOverdue && (
                                         <div className="text-red-300 mt-2 font-medium text-[10px] bg-red-900/30 rounded px-2 py-1">
                                           ⚠️ {Math.ceil((new Date() - parseAsLocalDate(assignment.dueDate)) / (1000 * 60 * 60 * 24))} days overdue
                                         </div>
                                       )}
-                                      
+
                                       <div className="absolute top-full left-4 w-2 h-2 bg-gray-900 transform rotate-45 -mt-1" />
                                     </div>
                                   </button>
                                 );
                               })}
-                              
+
                               {assignmentsOnDate.length > 2 && (
                                 <div className="text-[11px] text-gray-600 font-semibold pl-2 pt-1 flex items-center justify-between">
                                   <span>+{assignmentsOnDate.length - 2} more</span>
@@ -1202,237 +1160,231 @@ const [submissionData, setSubmissionData] = useState({
         {/* Assignments List */}
         {viewMode === 'list' && (
           <div className="space-y-5">
-          {filteredAssignments.length === 0 ? (
-            <div className="bg-white rounded-xl border border-gray-200/60 p-16 text-center shadow-sm">
-              <ClipboardList className="w-20 h-20 text-gray-300 mx-auto mb-6" />
-              <p className="text-gray-500 text-lg font-semibold">No assignments found</p>
-              <p className="text-gray-400 text-sm mt-2">Try adjusting your filters or search query</p>
-            </div>
-          ) : (
-            filteredAssignments.map((assignment) => (
-              <div
-                key={assignment.id}
-                className="bg-white rounded-xl border border-gray-200/60 hover:border-blue-400 hover:shadow-md transition-all p-6 shadow-sm"
-              >
-                {/* Header Row */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-xl font-bold text-gray-900">{assignment.title}</h3>
-                      
-                      {/* Status Change Dropdown - Only show if can submit or assignment allows status changes */}
-                      {(canSubmitAssignment(assignment) || !isOverdue(assignment.dueDate) || assignment.status === 'in-progress') && assignment.status !== 'graded' ? (
-                        <div className="relative group">
-                          <select
-                            value={assignment.status}
-                            onChange={(e) => handleStatusChange(assignment.id, e.target.value)}
-                            disabled={assignment.status === 'graded'}
-                            title={assignment.status === 'graded' ? 'Graded assignments cannot be changed' : 'Click to change assignment status'}
-                            className={`appearance-none cursor-pointer pl-3 pr-8 py-1.5 rounded-lg text-xs font-medium border transition-all hover:shadow-sm ${
-                              assignment.status === 'todo'
+            {filteredAssignments.length === 0 ? (
+              <div className="bg-white rounded-xl border border-gray-200/60 p-16 text-center shadow-sm">
+                <ClipboardList className="w-20 h-20 text-gray-300 mx-auto mb-6" />
+                <p className="text-gray-500 text-lg font-semibold">No assignments found</p>
+                <p className="text-gray-400 text-sm mt-2">Try adjusting your filters or search query</p>
+              </div>
+            ) : (
+              filteredAssignments.map((assignment) => (
+                <div
+                  key={assignment.id}
+                  className="bg-white rounded-xl border border-gray-200/60 hover:border-blue-400 hover:shadow-md transition-all p-6 shadow-sm"
+                >
+                  {/* Header Row */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-xl font-bold text-gray-900">{assignment.title}</h3>
+
+                        {/* Status Change Dropdown - Only show if can submit or assignment allows status changes */}
+                        {(canSubmitAssignment(assignment) || !isOverdue(assignment.dueDate) || assignment.status === 'in-progress') && assignment.status !== 'graded' ? (
+                          <div className="relative group">
+                            <select
+                              value={assignment.status}
+                              onChange={(e) => handleStatusChange(assignment.id, e.target.value)}
+                              disabled={assignment.status === 'graded'}
+                              title={assignment.status === 'graded' ? 'Graded assignments cannot be changed' : 'Click to change assignment status'}
+                              className={`appearance-none cursor-pointer pl-3 pr-8 py-1.5 rounded-lg text-xs font-medium border transition-all hover:shadow-sm ${assignment.status === 'todo'
                                 ? 'bg-gray-50 text-gray-700 border-gray-200 hover:border-gray-400 hover:bg-gray-100'
                                 : assignment.status === 'in-progress'
                                   ? 'bg-blue-50 text-blue-700 border-blue-200 hover:border-blue-400 hover:bg-blue-100'
                                   : assignment.status === 'submitted'
                                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:border-emerald-400 hover:bg-emerald-100'
                                     : 'bg-green-50 text-green-700 border-green-200 opacity-75 cursor-not-allowed'
-                            }`}
-                          >
-                            <option value="todo">📋 To Do</option>
-                            <option value="in-progress">⚡ In Progress</option>
-                            {canSubmitAssignment(assignment) && <option value="submitted">📤 Submitted</option>}
-                            {assignment.status === 'graded' && <option value="graded">✅ Graded</option>}
-                          </select>
-                          <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-gray-500 pointer-events-none" />
-                          
-                          <div className="absolute left-0 -bottom-8 hidden group-hover:block z-10 w-48 bg-gray-900 text-white text-xs rounded-lg py-2 px-3 shadow-lg">
-                            Click to update status
-                            <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45" />
+                                }`}
+                            >
+                              <option value="todo">📋 To Do</option>
+                              <option value="in-progress">⚡ In Progress</option>
+                              {canSubmitAssignment(assignment) && <option value="submitted">📤 Submitted</option>}
+                              {assignment.status === 'graded' && <option value="graded">✅ Graded</option>}
+                            </select>
+                            <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-gray-500 pointer-events-none" />
+
+                            <div className="absolute left-0 -bottom-8 hidden group-hover:block z-10 w-48 bg-gray-900 text-white text-xs rounded-lg py-2 px-3 shadow-lg">
+                              Click to update status
+                              <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45" />
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        /* Show status as read-only badge when dropdown is not available */
-                        getStatusBadge(assignment.status)
-                      )}
-
-                      
-                      {getPriorityBadge(assignment.priority)}
-                    </div>
-                    <p className="text-sm text-blue-600 font-semibold">{assignment.course}</p>
-                  </div>
-                  <div className="text-right">
-                    {assignment.gradeReceived ? (
-                      <>
-                        <p className="text-sm text-gray-600">Grade</p>
-                        <p className="text-xl font-bold text-green-600">
-                          {assignment.gradeReceived}/{assignment.points}
-                        </p>
-                        {assignment.grade && (
-                          <p className="text-sm font-semibold text-green-700">({assignment.grade}%)</p>
+                        ) : (
+                          /* Show status as read-only badge when dropdown is not available */
+                          getStatusBadge(assignment.status)
                         )}
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-sm text-gray-600">Max Points</p>
-                        <p className="text-lg font-semibold text-gray-900">{assignment.points}</p>
-                      </>
-                    )}
-                  </div>
-                </div>
 
-                {/* Status Progress Indicator */}
-                <div className="mb-5">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold text-gray-600">Progress</span>
-                    <span className="text-xs font-medium text-gray-600">
-                      {assignment.status === 'todo' ? 'Not Started' : 
-                       assignment.status === 'in-progress' ? 'Working On It' :
-                       assignment.status === 'submitted' ? 'Awaiting Grade' : 'Graded'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full transition-all duration-500 ease-out ${
-                          assignment.status === 'todo' ? 'w-0 bg-gray-400' :
-                          assignment.status === 'in-progress' ? 'w-1/3 bg-blue-500' :
-                          assignment.status === 'submitted' ? 'w-2/3 bg-emerald-500' :
-                          'w-full bg-green-500'
-                        }`}
-                      />
+
+                        {getPriorityBadge(assignment.priority)}
+                      </div>
+                      <p className="text-sm text-blue-600 font-semibold">{assignment.course}</p>
                     </div>
-                    <div className="flex gap-1">
-                      {/* Step 1: Todo */}
-                      <div className={`w-2 h-2 rounded-full transition-colors ${
-                        assignment.status !== 'todo' ? 'bg-blue-500' : 'bg-gray-400'
-                      }`} />
-                      {/* Step 2: In Progress */}
-                      <div className={`w-2 h-2 rounded-full transition-colors ${
-                        assignment.status === 'in-progress' || assignment.status === 'submitted' || assignment.status === 'graded'
+                    <div className="text-right">
+                      {assignment.gradeReceived ? (
+                        <>
+                          <p className="text-sm text-gray-600">Grade</p>
+                          <p className="text-xl font-bold text-green-600">
+                            {assignment.gradeReceived}/{assignment.points}
+                          </p>
+                          {assignment.grade && (
+                            <p className="text-sm font-semibold text-green-700">({assignment.grade}%)</p>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm text-gray-600">Max Points</p>
+                          <p className="text-lg font-semibold text-gray-900">{assignment.points}</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Status Progress Indicator */}
+                  <div className="mb-5">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-gray-600">Progress</span>
+                      <span className="text-xs font-medium text-gray-600">
+                        {assignment.status === 'todo' ? 'Not Started' :
+                          assignment.status === 'in-progress' ? 'Working On It' :
+                            assignment.status === 'submitted' ? 'Awaiting Grade' : 'Graded'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-500 ease-out ${assignment.status === 'todo' ? 'w-0 bg-gray-400' :
+                            assignment.status === 'in-progress' ? 'w-1/3 bg-blue-500' :
+                              assignment.status === 'submitted' ? 'w-2/3 bg-emerald-500' :
+                                'w-full bg-green-500'
+                            }`}
+                        />
+                      </div>
+                      <div className="flex gap-1">
+                        {/* Step 1: Todo */}
+                        <div className={`w-2 h-2 rounded-full transition-colors ${assignment.status !== 'todo' ? 'bg-blue-500' : 'bg-gray-400'
+                          }`} />
+                        {/* Step 2: In Progress */}
+                        <div className={`w-2 h-2 rounded-full transition-colors ${assignment.status === 'in-progress' || assignment.status === 'submitted' || assignment.status === 'graded'
                           ? 'bg-blue-500' : 'bg-gray-200'
-                      }`} />
-                      {/* Step 3: Submitted */}
-                      <div className={`w-2 h-2 rounded-full transition-colors ${
-                        assignment.status === 'submitted' || assignment.status === 'graded'
+                          }`} />
+                        {/* Step 3: Submitted */}
+                        <div className={`w-2 h-2 rounded-full transition-colors ${assignment.status === 'submitted' || assignment.status === 'graded'
                           ? 'bg-emerald-500' : 'bg-gray-200'
-                      }`} />
-                      {/* Step 4: Graded */}
-                      <div className={`w-2 h-2 rounded-full transition-colors ${
-                        assignment.status === 'graded' ? 'bg-green-500' : 'bg-gray-200'
-                      }`} />
+                          }`} />
+                        {/* Step 4: Graded */}
+                        <div className={`w-2 h-2 rounded-full transition-colors ${assignment.status === 'graded' ? 'bg-green-500' : 'bg-gray-200'
+                          }`} />
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Description */}
-                <p className="text-sm text-gray-700 mb-5 leading-relaxed">
-                  {assignment.description}
-                </p>
+                  {/* Description */}
+                  <p className="text-sm text-gray-700 mb-5 leading-relaxed">
+                    {assignment.description}
+                  </p>
 
-                {/* Date Information Row */}
-                <div className="flex items-center justify-between mb-5 pb-5 border-b border-gray-100">
-                  <div className="flex items-center gap-5 text-sm flex-wrap">
-                    {assignment.availableFrom && (
+                  {/* Date Information Row */}
+                  <div className="flex items-center justify-between mb-5 pb-5 border-b border-gray-100">
+                    <div className="flex items-center gap-5 text-sm flex-wrap">
+                      {assignment.availableFrom && (
+                        <div className="flex items-center gap-2">
+                          <CalendarIcon className="w-4 h-4 text-teal-500" />
+                          <span className="text-gray-600">Available:</span>
+                          <span className="font-semibold text-teal-700">
+                            {new Date(assignment.availableFrom).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                          </span>
+                        </div>
+                      )}
                       <div className="flex items-center gap-2">
-                        <CalendarIcon className="w-4 h-4 text-teal-500" />
-                        <span className="text-gray-600">Available:</span>
-                        <span className="font-semibold text-teal-700">
-                          {new Date(assignment.availableFrom).toLocaleDateString('en-US', {
+                        <CalendarIcon className="w-4 h-4 text-red-400" />
+                        <span className="text-gray-600">Due:</span>
+                        <span className="font-semibold text-gray-900">
+                          {parseAsLocalDate(assignment.dueDate).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric'
                           })}
                         </span>
                       </div>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <CalendarIcon className="w-4 h-4 text-red-400" />
-                      <span className="text-gray-600">Due:</span>
-                      <span className="font-semibold text-gray-900">
-                        {parseAsLocalDate(assignment.dueDate).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}
-                      </span>
+                      {getAssignmentTimeStatus(assignment)}
                     </div>
-                    {getAssignmentTimeStatus(assignment)}
+
+                    {assignment.submittedDate && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <CheckCircle2 className="w-4 h-4 text-green-600" />
+                        <span className="text-gray-600">Submitted:</span>
+                        <span className="font-semibold text-gray-900">
+                          {new Date(assignment.submittedDate).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric'
+                          })}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
-                  {assignment.submittedDate && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <CheckCircle2 className="w-4 h-4 text-green-600" />
-                      <span className="text-gray-600">Submitted:</span>
-                      <span className="font-semibold text-gray-900">
-                        {new Date(assignment.submittedDate).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric'
-                        })}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex items-center gap-3">
-                  <Button
-                    size="sm"
-                    onClick={() => setSelectedAssignment(assignment)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg shadow-sm"
-                  >
-                    <Eye className="w-4 h-4 mr-2" />
-                    View Details
-                  </Button>
-                  {/* Submit Assignment button that changes status */}
-                  {canSubmitAssignment(assignment) ? (
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-3">
                     <Button
                       size="sm"
-                      variant="outline"
-                      onClick={() => handleStatusChange(assignment.id, 'submitted')}
-                      className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 text-sm font-medium px-5 py-2.5 rounded-lg"
+                      onClick={() => setSelectedAssignment(assignment)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg shadow-sm"
                     >
-                      <Upload className="w-4 h-4 mr-2" />
-                      Submit Assignment
+                      <Eye className="w-4 h-4 mr-2" />
+                      View Details
                     </Button>
-                  ) : assignment.status === 'todo' || assignment.status === 'in-progress' ? (
-                    <div className="flex items-center gap-2 text-sm text-red-600">
-                      <AlertCircle className="w-4 h-4" />
-                      <span className="font-medium">Late submission not allowed</span>
-                    </div>
-                  ) : assignment.status === 'submitted' ? (
-                    <div className="flex items-center gap-2 text-sm text-emerald-600">
-                      <Clock className="w-4 h-4" />
-                      <span className="font-medium">Awaiting instructor grade</span>
-                    </div>
-                  ) : null}
-                  
-                  
-                  {/* Show submission status only */}
-                  {assignment.status === 'submitted' ? (
-                    <div className="flex items-center gap-2 text-sm text-emerald-600">
-                      <Clock className="w-4 h-4" />
-                      <span className="font-medium">Awaiting instructor grade</span>
-                    </div>
-                  ) : assignment.status === 'graded' ? (
-                    <div className="flex items-center gap-2 text-sm text-green-600">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span className="font-medium">Graded</span>
-                    </div>
-                  ) : canSubmitAssignment(assignment) ? (
-                    <div className="flex items-center gap-2 text-sm text-blue-600">
-                      <Clock className="w-4 h-4" />
-                      <span className="font-medium">Ready for submission</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 text-sm text-red-600">
-                      <AlertCircle className="w-4 h-4" />
-                      <span className="font-medium">Late submission not allowed</span>
-                    </div>
-                  )}
+                    {/* Submit Assignment button that changes status */}
+                    {canSubmitAssignment(assignment) ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleStatusChange(assignment.id, 'submitted')}
+                        className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 text-sm font-medium px-5 py-2.5 rounded-lg"
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        Submit Assignment
+                      </Button>
+                    ) : assignment.status === 'todo' || assignment.status === 'in-progress' ? (
+                      <div className="flex items-center gap-2 text-sm text-red-600">
+                        <AlertCircle className="w-4 h-4" />
+                        <span className="font-medium">Late submission not allowed</span>
+                      </div>
+                    ) : assignment.status === 'submitted' ? (
+                      <div className="flex items-center gap-2 text-sm text-emerald-600">
+                        <Clock className="w-4 h-4" />
+                        <span className="font-medium">Awaiting instructor grade</span>
+                      </div>
+                    ) : null}
+
+
+                    {/* Show submission status only */}
+                    {assignment.status === 'submitted' ? (
+                      <div className="flex items-center gap-2 text-sm text-emerald-600">
+                        <Clock className="w-4 h-4" />
+                        <span className="font-medium">Awaiting instructor grade</span>
+                      </div>
+                    ) : assignment.status === 'graded' ? (
+                      <div className="flex items-center gap-2 text-sm text-green-600">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span className="font-medium">Graded</span>
+                      </div>
+                    ) : canSubmitAssignment(assignment) ? (
+                      <div className="flex items-center gap-2 text-sm text-blue-600">
+                        <Clock className="w-4 h-4" />
+                        <span className="font-medium">Ready for submission</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-sm text-red-600">
+                        <AlertCircle className="w-4 h-4" />
+                        <span className="font-medium">Late submission not allowed</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
           </div>
         )}
       </div>

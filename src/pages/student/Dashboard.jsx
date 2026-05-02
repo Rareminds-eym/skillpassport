@@ -37,7 +37,7 @@ import {
   X
 } from "lucide-react";
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
