@@ -271,6 +271,41 @@ const TermsModal = ({ isOpen, onClose, onAccept, registrationFee }) => {
     </AnimatePresence>
   );
 };
+const MobileRefundBadge = () => {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="lg:hidden mt-4">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        onClick={() => setExpanded(v => !v)}
+        className="bg-white rounded-lg p-2 border border-emerald-200 shadow-sm cursor-pointer select-none"
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-5 h-5 bg-emerald-100 rounded flex items-center justify-center flex-shrink-0">
+            <Shield className="w-3 h-3 text-emerald-600" />
+          </div>
+          <h4 className="text-xs font-bold text-gray-900 flex-1">7-Day Refund Guarantee</h4>
+          <ChevronRight className={`w-3 h-3 text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`} />
+        </div>
+        <AnimatePresence>
+          {expanded && (
+            <motion.p
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="text-xs text-gray-600 leading-tight mt-1.5 pl-7 overflow-hidden"
+            >
+              If you don't find it useful, get your money back. No questions asked.
+            </motion.p>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </div>
+  );
+};
+
 export default function RegistrationForm({ campaign = 'skill-passport' }) {
   const location = useLocation();
   const isCorporate = location.pathname.includes('/register/corporate');
@@ -595,7 +630,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="inline-flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full mb-3 sm:mb-4"
+              className="hidden sm:inline-flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full mb-3 sm:mb-4"
             >
               <div className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 flex items-center justify-center">
                 <div style={{ transform: 'scale(1.5)', transformOrigin: 'center' }}>
@@ -610,17 +645,17 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
               <span className="text-gray-900 text-sm sm:text-base font-bold">For Students Only</span>
             </motion.div>
 
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2 sm:mb-3 px-4">
+            <h2 className="hidden sm:block text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2 sm:mb-3 px-4">
               Registration
             </h2>
-            <p className="text-gray-600 text-sm sm:text-base leading-relaxed max-w-md mx-auto px-4">
+            <p className="hidden sm:block text-gray-600 text-sm sm:text-base leading-relaxed max-w-md mx-auto px-4">
               Secure your access to the Job-Ready AI System today
             </p>
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
-            {/* Left Column - Promotional Content */}
-            <div className="lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-5rem)]">
+            {/* Left Column - Promotional Content - Hidden on mobile */}
+            <div className="hidden lg:block lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-5rem)]">
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -895,6 +930,29 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                   </div>
                 </div>
 
+           
+                <div className="lg:hidden mt-4 mb-4">
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className="bg-white rounded-lg py-4 px-2.5 border border-gray-200 shadow-sm"
+                  >
+                    <div className="flex items-center justify-around text-center">
+                      {[
+                        ["2,400+", "Students"],
+                        ["4.9★", "Rating"],
+                        ["1 Day", "System"]
+                      ].map(([value, label]) => (
+                        <div key={label}>
+                          <div className="text-sm font-bold text-blue-600">{value}</div>
+                          <div className="text-xs text-gray-500">{label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                </div>
+
                 {/* Fee summary */}
                 <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
                   <div className="p-4 flex gap-3 items-center border-b border-gray-100">
@@ -904,6 +962,34 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                       <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                         <Lock className="w-3 h-3" /> Secure payment via Razorpay
                       </div>
+                    </div>
+                  </div>
+
+                
+                  <div className="lg:hidden p-4 border-b border-gray-100 bg-gray-50">
+                    <div className="inline-block bg-blue-50 text-blue-600 text-xs font-semibold uppercase tracking-wider rounded-full px-3 py-1 mb-3 border border-blue-200">
+                      AI-Powered Career System
+                    </div>
+                    <h3 className="text-base font-bold text-gray-900 mb-2 leading-tight">
+                      Build Your Entire Job Application System in{' '}
+                      <span className="text-blue-600">1 Day</span> Using AI
+                    </h3>
+                    <p className="text-gray-600 text-xs mb-3 leading-relaxed">
+                      Stop applying randomly. Set up a system that gets you interviews.
+                    </p>
+                    <div className="border-t border-gray-200 pt-3 space-y-2">
+                      {[
+                        "1-day strategy with zero guesswork",
+                        "Resume + AI setup that actually gets you interviews",
+                        "Outreach + interview flow that gets responses"
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <div className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center mt-0.5 flex-shrink-0">
+                            <Check className="w-2.5 h-2.5 text-blue-600" strokeWidth={3} />
+                          </div>
+                          <span className="text-xs text-gray-700 leading-relaxed">{item}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
@@ -953,7 +1039,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                           <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center mt-0.5 flex-shrink-0">
                             <Check className="w-2.5 h-2.5 text-green-600" strokeWidth={3} />
                           </div>
-                          <span className="text-sm text-gray-700 leading-relaxed">{item}</span>
+                          <span className="text-sm font-bold text-gray-800 leading-relaxed">{item}</span>
                         </div>
                       ))}
                     </div>
@@ -962,7 +1048,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                   <div className="p-4">
                     {upsell ? (
                       <div className="flex justify-between">
-                        <span className="text-sm text-gray-600">Guide + SkillPassport Combo</span>
+                        <span className="text-sm font-bold text-gray-800">Guide + SkillPassport Combo</span>
                         <span className="text-sm font-semibold">₹{COMBO_FEE_STUDENT}</span>
                       </div>
                     ) : (
@@ -1034,12 +1120,11 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                 </div>
 
                 {/* CTA */}
-                <button
+                {/* CTA */}
+                <ShinyButton
                   onClick={handlePayment}
                   disabled={loading || !consentGiven}
-                  className={`w-full bg-gradient-to-r from-gray-600 to-gray-700 border-none rounded-full py-4 text-sm font-bold text-white cursor-pointer flex items-center justify-center gap-2 font-inherit shadow-lg transition-opacity duration-150 ${
-                    loading || !consentGiven ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
-                  }`}
+                  className={`w-full ${loading || !consentGiven ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {loading ? (
                     <div className="flex items-center gap-2">
@@ -1047,11 +1132,11 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                       <span>Processing...</span>
                     </div>
                   ) : (
-                    <>
+                    <span className="flex items-center justify-center gap-2">
                       <Lock className="w-4 h-4" /> Register Now ›
-                    </>
+                    </span>
                   )}
-                </button>
+                </ShinyButton>
 
                 {/* Trust badges */}
                 <div className="flex justify-center gap-5 mt-4">
@@ -1061,6 +1146,8 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                     </div>
                   ))}
                 </div>
+
+                <MobileRefundBadge />
               </div>
             </motion.div>
           </div>
