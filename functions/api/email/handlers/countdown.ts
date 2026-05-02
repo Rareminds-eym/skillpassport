@@ -8,8 +8,8 @@ import type { Env } from '../../../../src/functions-lib/types';
 import type { CountdownEmailRequest } from '../types';
 import { EMAIL_STATUS } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib';
-import { sendEmail } from '../services/mailer';
 import { generateCountdownEmailHtml, getCountdownSubject } from '../services/templates';
+import { apiLogger } from '../../../lib/logger';
 import { 
   findPreRegistrationByEmail, 
   createEmailTracking, 
@@ -59,16 +59,32 @@ export async function handleCountdownEmail(
     }
 
     // Generate and send email
+    if (!env.INTERNAL_API_KEY) {
+      throw new Error('INTERNAL_API_KEY environment variable is not configured');
+    }
+    if (!env.EMAIL_WORKER_URL) {
+      throw new Error('EMAIL_WORKER_URL environment variable is not configured');
+    }
+
     const html = generateCountdownEmailHtml({ fullName, countdownDay, launchDate });
     const subject = getCountdownSubject(countdownDay);
 
-    const result = await sendEmail(env, {
-      to,
-      subject,
-      html,
-      from: env.FROM_EMAIL || 'noreply@rareminds.in',
-      fromName: env.FROM_NAME || 'Skill Passport',
+    const response = await fetch(`${env.EMAIL_WORKER_URL}/send`, {
+
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Api-Key': env.INTERNAL_API_KEY,
+      },
+      body: JSON.stringify({ to, subject, html }),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Email worker failed: ${errorText}`);
+    }
+
+    const result = await response.json();
 
     // Update tracking status to sent
     if (trackingId && supabase) {
@@ -85,7 +101,7 @@ export async function handleCountdownEmail(
     });
 
   } catch (error: any) {
-    console.error('Error in handleCountdownEmail:', error);
+    apiLogger.error('Error in handleCountdownEmail', error);
 
     // Update tracking status to failed
     if (trackingId && supabase) {
