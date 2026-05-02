@@ -5,10 +5,13 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { getLogger } from '@/shared/config/logging';
 import { MessageService } from '../../../shared/api/messageService';
 import { messagesKeys } from '@/shared/lib/queryKeys/messages';
 import type { UserRole } from '../api/types';
 import { supabase } from '@/shared/api/supabase';
+
+const logger = getLogger('UseConversationActions');
 
 // ============================================================================
 // Hook Options Interface
@@ -134,7 +137,7 @@ export function useConversationActions(
             });
         },
         onError: (error) => {
-            console.error('[useConversationActions] Error archiving conversation:', error);
+            logger.error('Failed to archive conversation', error as Error);
         },
     });
 
@@ -163,7 +166,7 @@ export function useConversationActions(
             });
         },
         onError: (error) => {
-            console.error('[useConversationActions] Error unarchiving conversation:', error);
+            logger.error('Failed to unarchive conversation', error as Error);
         },
     });
 
@@ -186,7 +189,7 @@ export function useConversationActions(
             });
         },
         onError: (error) => {
-            console.error('[useConversationActions] Error deleting conversation:', error);
+            logger.error('Failed to delete conversation', error as Error);
         },
     });
 
@@ -209,7 +212,7 @@ export function useConversationActions(
             });
         },
         onError: (error) => {
-            console.error('[useConversationActions] Error restoring conversation:', error);
+            logger.error('Failed to restore conversation', error as Error);
         },
     });
 

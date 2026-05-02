@@ -14,6 +14,7 @@
 
 import { useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getLogger } from '@/shared/config/logging';
 import { MessageService } from '../../../shared/api/messageService';
 import { useMessageStore } from '@/shared/model/useMessageStore';
 import { messagesKeys } from '@/shared/lib/queryKeys/messages';
@@ -25,6 +26,8 @@ import type {
   SendMessageParams,
   CreateConversationParams,
 } from '../api/types';
+
+const logger = getLogger('UseMessages');
 
 // ============================================================================
 // Hook Options Interface
@@ -193,7 +196,7 @@ export function useMessages(options: UseMessagesOptions): UseMessagesReturn {
 
         return msgs;
       } catch (error) {
-        console.error('[useMessages] Error fetching messages:', error);
+        logger.error('Failed to fetch messages', error as Error);
         throw error;
       }
     },
@@ -225,7 +228,7 @@ export function useMessages(options: UseMessagesOptions): UseMessagesReturn {
 
         return convs;
       } catch (error) {
-        console.error('[useMessages] Error fetching conversations:', error);
+        logger.error('Failed to fetch conversations', error as Error);
         throw error;
       }
     },
@@ -251,7 +254,7 @@ export function useMessages(options: UseMessagesOptions): UseMessagesReturn {
 
         return count;
       } catch (error) {
-        console.error('[useMessages] Error fetching unread count:', error);
+        logger.error('Failed to fetch unread count', error as Error);
         throw error;
       }
     },
@@ -361,7 +364,7 @@ export function useMessages(options: UseMessagesOptions): UseMessagesReturn {
       MessageService.clearMessageCache(realMessage.conversation_id);
     },
     onError: (error, params, context) => {
-      console.error('[useMessages] Error sending message:', error);
+      logger.error('Failed to send message', error as Error);
 
       // Rollback optimistic update
       if (context?.tempId) {
@@ -427,7 +430,7 @@ export function useMessages(options: UseMessagesOptions): UseMessagesReturn {
       });
     },
     onError: (error) => {
-      console.error('[useMessages] Error marking as read:', error);
+      logger.error('Failed to mark message as read', error as Error);
 
       // Refetch to get correct count
       queryClient.invalidateQueries({
@@ -463,7 +466,7 @@ export function useMessages(options: UseMessagesOptions): UseMessagesReturn {
       MessageService.clearConversationCache(userId);
     },
     onError: (error) => {
-      console.error('[useMessages] Error creating conversation:', error);
+      logger.error('Failed to create conversation', error as Error);
     },
   });
 

@@ -12,8 +12,6 @@ export class SavedJobsService {
    */
   static async saveJob(studentId, opportunityId) {
     try {
-      console.log('💾 saveJob called with:', { studentId, opportunityId });
-
       // Check if already saved (use maybeSingle instead of single)
       const { data: existing, error: checkError } = await supabase
         .from('saved_jobs')
@@ -23,12 +21,10 @@ export class SavedJobsService {
         .maybeSingle(); // Changed from .single() to .maybeSingle()
 
       if (checkError) {
-        console.error('❌ Error checking saved job:', checkError);
         throw checkError;
       }
 
       if (existing) {
-        console.log('ℹ️ Job already saved');
         return {
           success: true,
           message: 'Job is already saved',
@@ -38,7 +34,6 @@ export class SavedJobsService {
       }
 
       // Insert saved job
-      console.log('📝 Inserting saved job...');
       const { data, error } = await supabase
         .from('saved_jobs')
         .insert([
@@ -51,11 +46,9 @@ export class SavedJobsService {
         .single();
 
       if (error) {
-        console.error('❌ Error saving job:', error);
         throw error;
       }
 
-      console.log('✅ Job saved successfully');
       return {
         success: true,
         message: 'Job saved successfully!',
@@ -63,7 +56,6 @@ export class SavedJobsService {
         alreadySaved: false
       };
     } catch (error) {
-      console.error('❌ Error in saveJob:', error);
       return {
         success: false,
         message: error.message || 'Failed to save job',
@@ -80,7 +72,6 @@ export class SavedJobsService {
    */
   static async unsaveJob(studentId, opportunityId) {
     try {
-
       const { data, error } = await supabase
         .from('saved_jobs')
         .delete()
@@ -89,10 +80,8 @@ export class SavedJobsService {
         .select();
 
       if (error) {
-        console.error('❌ Error unsaving job:', error);
         throw error;
       }
-
 
       return {
         success: true,
@@ -100,7 +89,6 @@ export class SavedJobsService {
         data
       };
     } catch (error) {
-      console.error('❌ Error in unsaveJob:', error);
       return {
         success: false,
         message: error.message || 'Failed to unsave job',
@@ -133,7 +121,6 @@ export class SavedJobsService {
         };
       }
     } catch (error) {
-      console.error('❌ Error in toggleSaveJob:', error);
       return {
         success: false,
         message: error.message || 'Failed to toggle save status',
@@ -158,13 +145,11 @@ export class SavedJobsService {
         .single();
 
       if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-        console.error('Error checking saved status:', error);
         return false;
       }
 
       return !!data;
     } catch (error) {
-      console.error('Error in isSaved:', error);
       return false;
     }
   }
@@ -182,13 +167,11 @@ export class SavedJobsService {
         .eq('student_id', studentId);
 
       if (error) {
-        console.error('Error fetching saved job IDs:', error);
         throw error;
       }
 
       return data.map(item => item.opportunity_id);
     } catch (error) {
-      console.error('Error in getSavedJobIds:', error);
       return [];
     }
   }
@@ -246,7 +229,6 @@ export class SavedJobsService {
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error fetching saved jobs:', error);
         throw error;
       }
 
@@ -264,7 +246,6 @@ export class SavedJobsService {
 
       return savedJobs;
     } catch (error) {
-      console.error('Error in getSavedJobsWithDetails:', error);
       throw error;
     }
   }
@@ -286,7 +267,6 @@ export class SavedJobsService {
         .eq('student_id', studentId);
 
       if (error) {
-        console.error('Error fetching applied status:', error);
         return savedJobs; // Return without applied status
       }
 
@@ -303,7 +283,6 @@ export class SavedJobsService {
         applied_at: appliedMap.get(job.id)?.applied_at || null
       }));
     } catch (error) {
-      console.error('Error in getSavedJobsWithAppliedStatus:', error);
       throw error;
     }
   }
@@ -324,7 +303,6 @@ export class SavedJobsService {
 
       return count || 0;
     } catch (error) {
-      console.error('Error in getSavedJobsCount:', error);
       return 0;
     }
   }
@@ -367,7 +345,6 @@ export class SavedJobsService {
         count: inactiveJobIds.length
       };
     } catch (error) {
-      console.error('Error removing inactive saved jobs:', error);
       return {
         success: false,
         message: error.message || 'Failed to remove inactive jobs',
@@ -402,7 +379,6 @@ export class SavedJobsService {
 
       return stats;
     } catch (error) {
-      console.error('Error in getSavedJobsStats:', error);
       return {
         total: 0,
         active: 0,

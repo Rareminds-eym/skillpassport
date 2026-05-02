@@ -6,7 +6,10 @@ import {
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 import toast from 'react-hot-toast';
+
+const logger = getLogger('college-admin:AddStudentModal');
 
 interface Student {
   id?: string;
@@ -60,8 +63,6 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
 
   useEffect(() => {
     if (isOpen && department) {
-      console.log('AddStudentModal opened with department:', department);
-      console.log('Department college_id:', department.college_id);
       fetchStudents();
     }
   }, [isOpen, department]);
@@ -73,12 +74,8 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
     setError(null);
     
     try {
-      console.log('Fetching students for department:', department.id, 'college:', department.college_id);
-      
       // Check if department has college_id
       if (!department.college_id) {
-        console.warn('Department missing college_id, trying to fetch from departments table');
-        
         // Fetch department details to get college_id
         const { data: deptData, error: deptFetchError } = await supabase
           .from('departments')
@@ -92,7 +89,6 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
         
         // Update the department object with college_id
         department.college_id = deptData.college_id;
-        console.log('Retrieved college_id from database:', deptData.college_id);
       }
       
       // Fetch current department students
@@ -102,11 +98,9 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
         .eq('department_id', department.id);
 
       if (deptError) {
-        console.error('Error fetching department students:', deptError);
+        logger.error('Error fetching department students', deptError);
         throw deptError;
       }
-
-      console.log('Department students found:', deptStudents?.length || 0);
 
       // Fetch available students (not assigned to any department but belong to the same college)
       const { data: availStudents, error: availError } = await supabase
@@ -116,16 +110,14 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
         .eq('college_id', department.college_id);
 
       if (availError) {
-        console.error('Error fetching available students:', availError);
+        logger.error('Error fetching available students', availError);
         throw availError;
       }
-
-      console.log('Available students found:', availStudents?.length || 0);
 
       setCurrentStudents(deptStudents || []);
       setAvailableStudents(availStudents || []);
     } catch (error: any) {
-      console.error('Error fetching students:', error);
+      logger.error('Error fetching students', error);
       setError(`Failed to load students: ${error.message || 'Unknown error'}`);
       toast.error(`Failed to load students: ${error.message || 'Unknown error'}`);
     } finally {
@@ -169,9 +161,6 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
 
     setLoading(true);
     try {
-      console.log('Adding students to department:', department.id, 'students:', selectedStudents);
-      console.log('Assignment details:', assignmentDetails);
-      
       const { error } = await supabase
         .from("students")
         .update({ 
@@ -183,7 +172,7 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
         .in("id", selectedStudents);
 
       if (error) {
-        console.error('Error adding students:', error);
+        logger.error('Error adding students', error);
         throw error;
       }
 
@@ -206,7 +195,7 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
       fetchStudents(); // Refresh the lists
       
     } catch (error: any) {
-      console.error('Error in handleAddStudents:', error);
+      logger.error('Error in handleAddStudents', error);
       toast.error(`Failed to add students: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
@@ -218,22 +207,20 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
     
     setLoading(true);
     try {
-      console.log('Removing student from department:', studentId, studentName);
-      
       const { error } = await supabase
         .from("students")
         .update({ department_id: null })
         .eq("id", studentId);
 
       if (error) {
-        console.error('Error removing student:', error);
+        logger.error('Error removing student', error);
         throw error;
       }
 
       toast.success(`${studentName} removed from ${department.name}`);
       fetchStudents(); // Refresh the lists
     } catch (error: any) {
-      console.error('Error in handleRemoveStudent:', error);
+      logger.error('Error in handleRemoveStudent', error);
       toast.error(`Failed to remove student: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);

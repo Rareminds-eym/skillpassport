@@ -40,7 +40,6 @@ export const usePaymentVerification = ({
   const verify = useCallback(async () => {
     // Prevent duplicate verifications
     if (hasVerified.current && status === 'success') {
-      console.log('⚠️ Payment already verified, skipping duplicate verification');
       return;
     }
 
@@ -87,7 +86,7 @@ export const usePaymentVerification = ({
           };
         }
       } catch (e) {
-        console.warn('Could not parse plan details from localStorage');
+        // Could not parse plan details from localStorage
       }
 
       // Verify payment - Worker now creates subscription too
@@ -106,7 +105,6 @@ export const usePaymentVerification = ({
       }
 
       const verificationTime = Date.now() - verificationStartTime.current;
-      console.log(`✅ Verification completed in ${verificationTime}ms`);
 
       if (result.success && result.verified) {
         setStatus('success');
@@ -129,7 +127,6 @@ export const usePaymentVerification = ({
       const verificationTime = Date.now() - verificationStartTime.current;
 
       if (err.message === 'Verification timeout') {
-        console.error('❌ Verification timeout after', verificationTime, 'ms');
         setStatus('error');
         setError({
           message: 'Verification is taking longer than expected. Please try again.',
@@ -137,7 +134,6 @@ export const usePaymentVerification = ({
           canRetry: true
         });
       } else {
-        console.error('❌ Verification error:', err);
         setStatus('error');
         setError({
           message: err.message || 'An error occurred during verification',

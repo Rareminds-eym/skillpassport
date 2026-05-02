@@ -23,6 +23,9 @@ import {
   PieChart
 } from 'lucide-react';
 import { FeeStructureModal } from '@/features/university-admin';
+import { getLogger } from '@/shared/config';
+
+const logger = getLogger('finance');
 
 interface FeeStructure {
   id: string;
@@ -324,7 +327,6 @@ const UniversityFinance: React.FC = () => {
       setEditingFeeStructure(null);
       return true;
     } catch (error) {
-      console.error('Error saving fee structure:', error);
       return false;
     } finally {
       setLoading(false);
@@ -338,7 +340,7 @@ const UniversityFinance: React.FC = () => {
       const updatedStructures = feeStructures.filter(structure => structure.id !== id);
       setFeeStructures(updatedStructures);
     } catch (error) {
-      console.error('Error deleting fee structure:', error);
+      logger.error('Error deleting fee structure:', error as Error);
     }
   };
 

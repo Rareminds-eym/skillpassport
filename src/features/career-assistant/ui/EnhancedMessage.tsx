@@ -4,6 +4,9 @@ import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import { useNavigate } from 'react-router-dom';
 import { X, Star } from 'lucide-react';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('enhanced-message');
 import { InteractiveCardRenderer } from './InteractiveCards';
 import { VisualizationContainer } from './Visualizations';
 import { formatMessageTime } from '@/features/career-assistant';
@@ -42,7 +45,10 @@ export const EnhancedMessage: React.FC<EnhancedMessageProps> = memo(({
         window.open(button.action.value, '_blank', 'noopener,noreferrer');
         break;
       case 'function':
-        console.log('Function action:', button.action.value, button.action.data);
+        logger.info('Interactive function action triggered', {
+          actionValue: button.action.value,
+          hasData: !!button.action.data
+        });
         break;
     }
   };

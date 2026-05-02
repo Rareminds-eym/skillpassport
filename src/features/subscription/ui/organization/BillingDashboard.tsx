@@ -1,6 +1,6 @@
 /**
  * BillingDashboard Component
- * 
+ *
  * Displays billing information, payment history, and cost projections
  * for organization subscriptions.
  */
@@ -23,6 +23,9 @@ import { memo, useCallback, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/shared/lib/queryKeys';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('billing-dashboard');
 
 interface BillingDashboardProps {
   organizationId: string;
@@ -106,7 +109,7 @@ Thank you for your business!
 
       toast.success('Invoice downloaded');
     } catch (err) {
-      console.error('Error downloading invoice:', err);
+      logger.error('Failed to download invoice', err instanceof Error ? err : new Error(String(err)));
       toast.error('Failed to download invoice');
     } finally {
       setDownloadingInvoice(null);

@@ -19,6 +19,9 @@ import {
 } from 'lucide-react';
 import { memo, useCallback, useMemo, useState } from 'react';
 import { AddStudentModal } from '@/features/educator';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('member-assignments');
 
 interface Member {
   id: string;
@@ -172,7 +175,7 @@ function MemberAssignments({
       setShowRemoveModal(false);
       setMemberToRemove(null);
     } catch (error) {
-      console.error('Error removing member:', error);
+      logger.error('Failed to remove member', error instanceof Error ? error : new Error(String(error)));
     } finally {
       setIsRemoving(false);
     }

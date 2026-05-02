@@ -5,6 +5,9 @@
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { parseEmbedding } from './utils';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('course-repository');
 
 /**
  * Fetch all active courses with embeddings from the database.
@@ -35,7 +38,7 @@ export const fetchCoursesWithEmbeddings = async () => {
       .is('deleted_at', null);
 
     if (error) {
-      console.error('Failed to fetch courses with embeddings:', error.message);
+      logger.error('Failed to fetch courses with embeddings', error instanceof Error ? error : new Error(String(error)));
       throw new Error(`Database error: ${error.message}`);
     }
 
@@ -51,7 +54,7 @@ export const fetchCoursesWithEmbeddings = async () => {
       .in('course_id', courseIds);
 
     if (skillsError) {
-      console.warn('Failed to fetch course skills:', skillsError.message);
+      logger.warn('Failed to fetch course skills');
     }
 
     // Group skills by course_id
@@ -72,7 +75,7 @@ export const fetchCoursesWithEmbeddings = async () => {
       embedding: parseEmbedding(course.embedding)
     }));
   } catch (error) {
-    console.error('Error fetching courses with embeddings:', error);
+    logger.error('Error fetching courses with embeddings', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 };
@@ -105,7 +108,7 @@ export const fetchCoursesBySkillType = async (skillType) => {
       .is('deleted_at', null);
 
     if (error) {
-      console.error(`Failed to fetch ${skillType} courses:`, error.message);
+      logger.error(`Failed to fetch ${skillType} courses`);
       return [];
     }
 
@@ -137,7 +140,7 @@ export const fetchCoursesBySkillType = async (skillType) => {
       embedding: parseEmbedding(course.embedding)
     }));
   } catch (error) {
-    console.error(`Error fetching ${skillType} courses:`, error);
+    logger.error(`Error fetching ${skillType} courses`, error instanceof Error ? error : new Error(String(error)));
     return [];
   }
 };
@@ -167,7 +170,9 @@ export const fetchBasicCourses = async (limit = 10) => {
       .limit(limit);
 
     if (error || !courses) {
-      console.error('Failed to fetch basic courses:', error?.message);
+      if (error) {
+        logger.error('Failed to fetch basic courses');
+      }
       return [];
     }
 
@@ -192,7 +197,7 @@ export const fetchBasicCourses = async (limit = 10) => {
       skills: skillsByCourse[course.course_id] || []
     }));
   } catch (error) {
-    console.error('Error fetching basic courses:', error);
+    logger.error('Error fetching basic courses', error instanceof Error ? error : new Error(String(error)));
     return [];
   }
 };
@@ -214,7 +219,7 @@ export const fetchCoursesBySkillName = async (skillName) => {
       .ilike('skill_name', `%${skillLower}%`);
 
     if (skillError) {
-      console.warn('Error querying course_skills:', skillError.message);
+      logger.warn('Error querying course_skills');
       return [];
     }
 
@@ -243,7 +248,9 @@ export const fetchCoursesBySkillName = async (skillName) => {
       .is('deleted_at', null);
 
     if (coursesError || !courses) {
-      console.warn('Error fetching courses for skill matches:', coursesError?.message);
+      if (coursesError) {
+        logger.warn('Error fetching courses for skill matches');
+      }
       return [];
     }
 
@@ -283,7 +290,7 @@ export const fetchCoursesBySkillName = async (skillName) => {
       };
     });
   } catch (error) {
-    console.error('Error in fetchCoursesBySkillName:', error);
+    logger.error('Error in fetchCoursesBySkillName', error instanceof Error ? error : new Error(String(error)));
     return [];
   }
 };

@@ -1,19 +1,22 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('skills-analytics-service');
 
 /**
  * Service for analyzing skills demand from opportunities
  */
 export class SkillsAnalyticsService {
-  static DEBUG = true; // Enable debugging
+  static DEBUG = false; // Enable debugging
 
   static log(message, data = null) {
     if (this.DEBUG) {
-      console.log(`[SkillsAnalytics] ${message}`, data || '');
+      logger.warn(message, data || undefined);
     }
   }
 
   static error(message, error = null) {
-    console.error(`[SkillsAnalytics ERROR] ${message}`, error || '');
+    logger.error(message, error instanceof Error ? error : new Error(String(error || message)));
   }
 
   /**
@@ -330,7 +333,7 @@ export class SkillsAnalyticsService {
         }
       };
     } catch (error) {
-      console.error('Error in getSkillsDemandAnalysis:', error);
+      logger.error('Error in getSkillsDemandAnalysis', error instanceof Error ? error : new Error(String(error)));
       return {
         topSkills: [],
         totalOpportunities: 0,

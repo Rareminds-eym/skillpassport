@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { curriculumService } from '@/features/college-admin';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('use-curriculum');
 
 export interface Chapter {
   id: string;
@@ -62,7 +65,7 @@ export const useCurriculum = (
       const result = await curriculumService.getAssessmentTypes();
       setAssessmentTypes(Array.isArray(result) ? result : (result?.data || []));
     } catch (error: any) {
-      console.error('Error loading assessment types:', error);
+      logger.error('Error loading assessment types', error as Error, {});
     }
   };
 
@@ -114,7 +117,7 @@ export const useCurriculum = (
         setLearningOutcomes([]);
       }
     } catch (error: any) {
-      console.error('Error loading curriculum:', error);
+      logger.error('Error loading curriculum', error as Error);
       throw error;
     } finally {
       setLoading(false);
@@ -152,7 +155,7 @@ export const useCurriculum = (
 
       return mappedChapter;
     } catch (error: any) {
-      console.error('Error adding chapter:', error);
+      logger.error('Error adding chapter', error as Error);
       setSaveStatus('idle');
       throw error;
     }
@@ -178,7 +181,7 @@ export const useCurriculum = (
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (error: any) {
-      console.error('Error updating chapter:', error);
+      logger.error('Error updating chapter', error as Error);
       setSaveStatus('idle');
       throw error;
     }
@@ -190,7 +193,7 @@ export const useCurriculum = (
       setChapters((prev) => prev.filter((ch) => ch.id !== chapterId));
       setLearningOutcomes((prev) => prev.filter((lo) => lo.chapterId !== chapterId));
     } catch (error: any) {
-      console.error('Error deleting chapter:', error);
+      logger.error('Error deleting chapter', error as Error);
       throw error;
     }
   };
@@ -230,7 +233,7 @@ export const useCurriculum = (
 
       return mappedOutcome;
     } catch (error: any) {
-      console.error('Error adding learning outcome:', error);
+      logger.error('Error adding learning outcome', error as Error);
       setSaveStatus('idle');
       throw error;
     }
@@ -267,7 +270,7 @@ export const useCurriculum = (
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (error: any) {
-      console.error('Error updating learning outcome:', error);
+      logger.error('Error updating learning outcome', error as Error);
       setSaveStatus('idle');
       throw error;
     }
@@ -278,7 +281,7 @@ export const useCurriculum = (
       await curriculumService.deleteLearningOutcome(outcomeId);
       setLearningOutcomes((prev) => prev.filter((lo) => lo.id !== outcomeId));
     } catch (error: any) {
-      console.error('Error deleting learning outcome:', error);
+      logger.error('Error deleting learning outcome', error as Error);
       throw error;
     }
   };
@@ -314,7 +317,7 @@ export const useCurriculum = (
       await curriculumService.updateCurriculumStatus(curriculumId, 'pending_approval');
       setStatus('pending_approval');
     } catch (error: any) {
-      console.error('Error submitting curriculum:', error);
+      logger.error('Error submitting curriculum', error as Error);
       throw error;
     }
   };
@@ -326,7 +329,7 @@ export const useCurriculum = (
       await curriculumService.updateCurriculumStatus(curriculumId, 'approved');
       setStatus('approved');
     } catch (error: any) {
-      console.error('Error approving curriculum:', error);
+      logger.error('Error approving curriculum', error as Error);
       throw error;
     }
   };
@@ -339,7 +342,7 @@ export const useCurriculum = (
       setStatus('rejected');
       setRejectionReason(reason);
     } catch (error: any) {
-      console.error('Error rejecting curriculum:', error);
+      logger.error('Error rejecting curriculum', error as Error);
       throw error;
     }
   };

@@ -4,6 +4,10 @@
  * Uses claude-3-haiku (cheapest) by default, with fallback options
  */
 
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('claude-service');
+
 // API Configuration
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
@@ -85,7 +89,6 @@ export async function callClaude(prompt, options = {}) {
   if (useCache) {
     const cached = responseCache.get(finalCacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      console.log('🔄 Using cached Claude response');
       return cached.response;
     }
   }
@@ -116,8 +119,6 @@ export async function callClaude(prompt, options = {}) {
   // Retry loop
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      console.log(`🤖 Claude API call (attempt ${attempt}/${MAX_RETRIES}) - Model: ${model}`);
-
       const response = await fetch(CLAUDE_API_URL, {
         method: 'POST',
         headers: {
@@ -135,7 +136,7 @@ export async function callClaude(prompt, options = {}) {
 
         // Handle rate limiting
         if (response.status === 429) {
-          console.warn(`⚠️ Rate limited, waiting ${retryDelay}ms before retry...`);
+          logger.warn('Rate limited, retrying', { retryDelay, model });
           await sleep(retryDelay);
           retryDelay = Math.min(retryDelay * 2, MAX_RETRY_DELAY);
           lastError = new Error(`Rate limited: ${errorMessage}`);
@@ -152,8 +153,6 @@ export async function callClaude(prompt, options = {}) {
       if (!responseText) {
         throw new Error('No content in Claude response');
       }
-
-      console.log('✅ Claude response received');
 
       // Cache the response
       if (useCache) {
@@ -176,7 +175,7 @@ export async function callClaude(prompt, options = {}) {
       }
 
       if (attempt < MAX_RETRIES) {
-        console.warn(`⚠️ Attempt ${attempt} failed, retrying in ${retryDelay}ms...`);
+        logger.warn('API call attempt failed, retrying', { attempt, retryDelay, model });
         await sleep(retryDelay);
         retryDelay = Math.min(retryDelay * 2, MAX_RETRY_DELAY);
       }
@@ -199,14 +198,13 @@ export async function callClaudeJSON(prompt, options = {}) {
     // Try to extract JSON from response
     const jsonMatch = response.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
     if (!jsonMatch) {
-      console.error('No JSON found in response:', response.slice(0, 500));
+      logger.error('No JSON found in response', new Error('JSON parsing failed'), { responseLength: response.length });
       throw new Error('No JSON found in Claude response');
     }
-    
+
     return JSON.parse(jsonMatch[0]);
   } catch (error) {
-    console.error('Failed to parse Claude JSON response:', error);
-    console.error('Raw response:', response.slice(0, 1000));
+    logger.error('Failed to parse Claude JSON response', error instanceof Error ? error : new Error(String(error)));
     throw new Error(`Failed to parse JSON: ${error.message}`);
   }
 }
@@ -261,8 +259,6 @@ export async function callClaudeWithImage(prompt, imageBase64, mediaType = 'imag
     requestBody.system = systemPrompt;
   }
 
-  console.log(`🤖 Claude Vision API call - Model: ${model}`);
-
   const response = await fetch(CLAUDE_API_URL, {
     method: 'POST',
     headers: {
@@ -286,7 +282,6 @@ export async function callClaudeWithImage(prompt, imageBase64, mediaType = 'imag
     throw new Error('No content in Claude response');
   }
 
-  console.log('✅ Claude Vision response received');
   return responseText;
 }
 
@@ -304,12 +299,12 @@ export async function callClaudeVisionJSON(prompt, imageBase64, mediaType = 'ima
   try {
     const jsonMatch = response.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
     if (!jsonMatch) {
-      console.error('No JSON found in vision response:', response.slice(0, 500));
+      logger.error('No JSON found in vision response', new Error('Vision JSON parsing failed'), { responseLength: response.length });
       throw new Error('No JSON found in Claude response');
     }
     return JSON.parse(jsonMatch[0]);
   } catch (error) {
-    console.error('Failed to parse Claude Vision JSON response:', error);
+    logger.error('Failed to parse Claude Vision JSON response', error instanceof Error ? error : new Error(String(error)));
     throw new Error(`Failed to parse JSON: ${error.message}`);
   }
 }
@@ -319,7 +314,6 @@ export async function callClaudeVisionJSON(prompt, imageBase64, mediaType = 'ima
  */
 export function clearCache() {
   responseCache.clear();
-  console.log('🗑️ Claude response cache cleared');
 }
 
 /**

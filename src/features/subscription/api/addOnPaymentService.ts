@@ -12,8 +12,6 @@ const PAYMENTS_API_URL = import.meta.env.VITE_PAYMENTS_API_URL || 'https://payme
 async function fetchWithRetry(url, options, retries = 3) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      console.log(`[AddOnPayment] Fetch attempt ${attempt} to ${url}`);
-
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
@@ -25,15 +23,12 @@ async function fetchWithRetry(url, options, retries = 3) {
       clearTimeout(timeoutId);
       return response;
     } catch (error) {
-      console.error(`[AddOnPayment] Fetch attempt ${attempt} failed:`, error);
-
       if (attempt === retries) {
         throw error;
       }
 
       // Wait before retrying (exponential backoff)
       const delay = attempt * 1000;
-      console.log(`[AddOnPayment] Retrying in ${delay}ms...`);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
@@ -56,16 +51,11 @@ export const addOnPaymentService = {
    */
   async createAddOnOrder({ featureKey, userId, billingPeriod, userEmail, userName }) {
     try {
-      console.log('[AddOnPayment] Creating order:', { featureKey, userId, billingPeriod });
-
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session) {
-        console.error('[AddOnPayment] No session found');
         return { success: false, error: 'User not authenticated' };
       }
-
-      console.log('[AddOnPayment] Calling API:', `${PAYMENTS_API_URL}/create-addon-order`);
 
       const response = await fetchWithRetry(`${PAYMENTS_API_URL}/create-addon-order`, {
         method: 'POST',
@@ -81,7 +71,6 @@ export const addOnPaymentService = {
       });
 
       const data = await response.json();
-      console.log('[AddOnPayment] API response:', { status: response.status, data });
 
       if (!response.ok) {
         return { success: false, error: data.error || 'Failed to create addon order' };
@@ -100,8 +89,7 @@ export const addOnPaymentService = {
         }
       };
     } catch (error) {
-      console.error('[AddOnPayment] Error creating addon order:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to create order' };
     }
   },
 
@@ -157,8 +145,7 @@ export const addOnPaymentService = {
         }
       };
     } catch (error) {
-      console.error('Error creating bundle order:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to create order' };
     }
   },
 
@@ -200,8 +187,6 @@ export const addOnPaymentService = {
   async verifyAddonPayment(razorpayOrderId, razorpayPaymentId, razorpaySignature, retries = 3) {
     const attemptVerification = async (attempt) => {
       try {
-        console.log(`[AddOnPayment] Verification attempt ${attempt} for order: ${razorpayOrderId}`);
-
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {
@@ -233,7 +218,6 @@ export const addOnPaymentService = {
           throw new Error(data.error || 'Payment verification failed');
         }
 
-        console.log(`[AddOnPayment] Verification successful for order: ${razorpayOrderId}`);
         return {
           success: true,
           entitlementId: data.entitlement_id,
@@ -242,11 +226,8 @@ export const addOnPaymentService = {
           message: data.message,
         };
       } catch (error) {
-        console.error(`[AddOnPayment] Verification attempt ${attempt} failed:`, error);
-
         // If we have retries left and it's a network error, retry
         if (attempt < retries && (error.name === 'AbortError' || error.message === 'Failed to fetch')) {
-          console.log(`[AddOnPayment] Retrying in ${attempt * 1000}ms...`);
           await new Promise(resolve => setTimeout(resolve, attempt * 1000));
           return attemptVerification(attempt + 1);
         }
@@ -258,10 +239,9 @@ export const addOnPaymentService = {
     try {
       return await attemptVerification(1);
     } catch (error) {
-      console.error('Error verifying addon payment:', error);
       return {
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Verification failed',
       };
     }
   },
@@ -279,8 +259,6 @@ export const addOnPaymentService = {
   async verifyBundlePayment(razorpayOrderId, razorpayPaymentId, razorpaySignature, bundleId, billingPeriod, retries = 3) {
     const attemptVerification = async (attempt) => {
       try {
-        console.log(`[AddOnPayment] Bundle verification attempt ${attempt} for order: ${razorpayOrderId}`);
-
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {
@@ -314,7 +292,6 @@ export const addOnPaymentService = {
           throw new Error(data.error || 'Bundle payment verification failed');
         }
 
-        console.log(`[AddOnPayment] Bundle verification successful for order: ${razorpayOrderId}`);
         return {
           success: true,
           entitlements: data.entitlements,
@@ -323,11 +300,8 @@ export const addOnPaymentService = {
           message: data.message,
         };
       } catch (error) {
-        console.error(`[AddOnPayment] Bundle verification attempt ${attempt} failed:`, error);
-
         // If we have retries left and it's a network error, retry
         if (attempt < retries && (error.name === 'AbortError' || error.message === 'Failed to fetch')) {
-          console.log(`[AddOnPayment] Retrying in ${attempt * 1000}ms...`);
           await new Promise(resolve => setTimeout(resolve, attempt * 1000));
           return attemptVerification(attempt + 1);
         }
@@ -339,10 +313,9 @@ export const addOnPaymentService = {
     try {
       return await attemptVerification(1);
     } catch (error) {
-      console.error('Error verifying bundle payment:', error);
       return {
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Verification failed',
       };
     }
   },
@@ -364,7 +337,6 @@ export const addOnPaymentService = {
 
       return data || [];
     } catch (error) {
-      console.error('Error fetching addon purchase history:', error);
       return [];
     }
   },
@@ -389,7 +361,6 @@ export const addOnPaymentService = {
 
       return data;
     } catch (error) {
-      console.error('Error checking pending addon order:', error);
       return null;
     }
   },

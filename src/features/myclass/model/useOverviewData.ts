@@ -49,7 +49,6 @@ export const useOverviewData = (
       setStats(statsData as AssignmentStats);
       setHasFetched(true);
     } catch (err) {
-      console.error('Error fetching overview data:', err);
       setError(err as Error);
     } finally {
       setLoading(false);

@@ -120,7 +120,6 @@ export const MessageModal: React.FC<MessageModalProps> = ({
       
       setNewMessage('');
     } catch (error) {
-      console.error('Error sending message:', error);
       toast.error('Failed to send message');
     }
   }, [newMessage, conversation, isSending, currentUserType, recruiterId, studentId, currentUserId, sendMessage, applicationId, opportunityId]);

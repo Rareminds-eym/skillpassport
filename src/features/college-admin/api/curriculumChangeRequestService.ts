@@ -6,6 +6,9 @@
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { curriculumChangeFallbackService } from './curriculumChangeFallbackService';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('curriculum-change-request');
 
 export interface PendingChange {
   id: string;
@@ -37,24 +40,24 @@ class CurriculumChangeRequestService {
         .select('status, university_id')
         .eq('id', curriculumId)
         .single();
-      
+
       if (error) throw error;
-      
+
       // Requires approval if:
       // 1. Curriculum is published
       // 2. College is affiliated with university
-      const requiresApproval = 
-        curriculum.status === 'published' && 
+      const requiresApproval =
+        curriculum.status === 'published' &&
         curriculum.university_id !== null;
-      
+
       return {
         requiresApproval,
-        reason: requiresApproval 
+        reason: requiresApproval
           ? 'Published curriculum in affiliated college requires university approval'
           : undefined
       };
     } catch (error: any) {
-      console.error('Error checking approval requirement:', error);
+      logger.error('Failed to check curriculum approval requirement', new Error(error?.message || 'Unknown error'));
       return { requiresApproval: false };
     }
   }
@@ -69,11 +72,10 @@ class CurriculumChangeRequestService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Use fallback method directly to avoid RPC authentication issues
-      console.log('Using fallback method for unit add...');
       return await curriculumChangeFallbackService.submitUnitAdd(curriculumId, unitData, message);
-      
+
     } catch (error: any) {
-      console.error('Error submitting unit add:', error);
+      logger.error('Failed to submit unit add', new Error(error?.message || 'Unknown error'));
       const errorMessage = error?.message || error?.error_description || error?.toString() || 'Unknown error occurred';
       return { success: false, error: errorMessage };
     }
@@ -91,7 +93,6 @@ class CurriculumChangeRequestService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Use fallback method directly to avoid RPC authentication issues
-      console.log('Using fallback method for unit edit...');
       return await curriculumChangeFallbackService.addPendingChange(
         curriculumId,
         'unit_edit',
@@ -99,9 +100,9 @@ class CurriculumChangeRequestService {
         { before: beforeData, after: afterData },
         message || 'Editing unit'
       );
-      
+
     } catch (error: any) {
-      console.error('Error submitting unit edit:', error);
+      logger.error('Failed to submit unit edit', new Error(error?.message || 'Unknown error'));
       const errorMessage = error?.message || error?.error_description || error?.toString() || 'Unknown error occurred';
       return { success: false, error: errorMessage };
     }
@@ -118,7 +119,6 @@ class CurriculumChangeRequestService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Use fallback method directly to avoid RPC authentication issues
-      console.log('Using fallback method for unit delete...');
       return await curriculumChangeFallbackService.addPendingChange(
         curriculumId,
         'unit_delete',
@@ -126,9 +126,9 @@ class CurriculumChangeRequestService {
         { data: unitData },
         message || 'Deleting unit'
       );
-      
+
     } catch (error: any) {
-      console.error('Error submitting unit delete:', error);
+      logger.error('Failed to submit unit delete', new Error(error?.message || 'Unknown error'));
       return { success: false, error: error.message };
     }
   }
@@ -144,26 +144,23 @@ class CurriculumChangeRequestService {
     try {
       // Check authentication before making the request
       const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
+
       if (authError || !user) {
-        console.error('Authentication error:', authError);
-        return { 
-          success: false, 
-          error: 'You must be logged in to make changes to the curriculum. Please refresh the page and try again.' 
+        logger.error('Failed to verify authentication for outcome add', new Error('User not authenticated'));
+        return {
+          success: false,
+          error: 'You must be logged in to make changes to the curriculum. Please refresh the page and try again.'
         };
       }
 
-      console.log('User authenticated for outcome add:', user.email);
-
       // Use fallback method directly to avoid RPC authentication issues
-      console.log('Using fallback method for outcome add...');
       return await curriculumChangeFallbackService.submitOutcomeAdd(curriculumId, outcomeData, message);
 
     } catch (error: any) {
-      console.error('Error submitting outcome add:', error);
+      logger.error('Failed to submit outcome add', new Error(error?.message || 'Unknown error'));
       // Handle different error formats
       let errorMessage = 'Failed to submit change request';
-      
+
       if (error?.message) {
         errorMessage = error.message;
       } else if (error?.error_description) {
@@ -171,14 +168,14 @@ class CurriculumChangeRequestService {
       } else if (typeof error === 'string') {
         errorMessage = error;
       }
-      
+
       // Provide user-friendly error messages
       if (errorMessage.includes('User not authenticated')) {
         errorMessage = 'Authentication expired. Please refresh the page and try again.';
       } else if (errorMessage.includes('function') && errorMessage.includes('does not exist')) {
         errorMessage = 'System configuration error. Please contact support.';
       }
-      
+
       return { success: false, error: errorMessage };
     }
   }
@@ -195,7 +192,6 @@ class CurriculumChangeRequestService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Use fallback method directly to avoid RPC authentication issues
-      console.log('Using fallback method for outcome edit...');
       return await curriculumChangeFallbackService.addPendingChange(
         curriculumId,
         'outcome_edit',
@@ -203,9 +199,9 @@ class CurriculumChangeRequestService {
         { before: beforeData, after: afterData },
         message || 'Editing learning outcome'
       );
-      
+
     } catch (error: any) {
-      console.error('Error submitting outcome edit:', error);
+      logger.error('Failed to submit outcome edit', new Error(error?.message || 'Unknown error'));
       return { success: false, error: error.message };
     }
   }
@@ -221,7 +217,6 @@ class CurriculumChangeRequestService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Use fallback method directly to avoid RPC authentication issues
-      console.log('Using fallback method for outcome delete...');
       return await curriculumChangeFallbackService.addPendingChange(
         curriculumId,
         'outcome_delete',
@@ -229,9 +224,9 @@ class CurriculumChangeRequestService {
         { data: outcomeData },
         message || 'Deleting learning outcome'
       );
-      
+
     } catch (error: any) {
-      console.error('Error submitting outcome delete:', error);
+      logger.error('Failed to submit outcome delete', new Error(error?.message || 'Unknown error'));
       return { success: false, error: error.message };
     }
   }
@@ -247,7 +242,6 @@ class CurriculumChangeRequestService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Use fallback method directly to avoid RPC authentication issues
-      console.log('Using fallback method for curriculum edit...');
       return await curriculumChangeFallbackService.addPendingChange(
         curriculumId,
         'curriculum_edit',
@@ -255,9 +249,9 @@ class CurriculumChangeRequestService {
         { before: beforeData, after: afterData },
         message || 'Editing curriculum details'
       );
-      
+
     } catch (error: any) {
-      console.error('Error submitting curriculum edit:', error);
+      logger.error('Failed to submit curriculum edit', new Error(error?.message || 'Unknown error'));
       return { success: false, error: error.message };
     }
   }
@@ -283,7 +277,7 @@ class CurriculumChangeRequestService {
       const pendingChanges = curriculum?.pending_changes || [];
       return { success: true, data: pendingChanges };
     } catch (error: any) {
-      console.error('Error fetching pending changes:', error);
+      logger.error('Failed to fetch pending changes', new Error(error?.message || 'Unknown error'));
       return { success: false, error: error.message };
     }
   }
@@ -298,10 +292,9 @@ class CurriculumChangeRequestService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Use fallback method directly to avoid RPC authentication issues
-      console.log('Using fallback method for change approval...');
       return await curriculumChangeFallbackService.approvePendingChange(curriculumId, changeId, reviewNotes);
     } catch (error: any) {
-      console.error('Error approving change:', error);
+      logger.error('Failed to approve change', new Error(error?.message || 'Unknown error'));
       const errorMessage = error?.message || error?.error_description || error?.toString() || 'Unknown error occurred';
       return { success: false, error: errorMessage };
     }
@@ -317,10 +310,9 @@ class CurriculumChangeRequestService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Use fallback method directly to avoid RPC authentication issues
-      console.log('Using fallback method for change rejection...');
       return await curriculumChangeFallbackService.rejectPendingChange(curriculumId, changeId, reviewNotes);
     } catch (error: any) {
-      console.error('Error rejecting change:', error);
+      logger.error('Failed to reject change', new Error(error?.message || 'Unknown error'));
       return { success: false, error: error.message };
     }
   }
@@ -334,10 +326,9 @@ class CurriculumChangeRequestService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Use fallback method directly to avoid RPC authentication issues
-      console.log('Using fallback method for change cancellation...');
       return await curriculumChangeFallbackService.cancelPendingChange(curriculumId, changeId);
     } catch (error: any) {
-      console.error('Error canceling change:', error);
+      logger.error('Failed to cancel change', new Error(error?.message || 'Unknown error'));
       return { success: false, error: error.message };
     }
   }
@@ -353,8 +344,6 @@ class CurriculumChangeRequestService {
   }> {
     try {
       // Use direct database query instead of RPC functions
-      console.log('Fetching pending changes for university:', universityId);
-      
       // Query college_curriculums with pending changes
       const { data: curriculums, error } = await supabase
         .from('college_curriculums')
@@ -374,7 +363,7 @@ class CurriculumChangeRequestService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching curriculums with pending changes:', error);
+        logger.error('Failed to fetch curriculums with pending changes', new Error(error?.message || 'Unknown error'));
         return { success: false, error: error.message };
       }
 
@@ -398,7 +387,7 @@ class CurriculumChangeRequestService {
 
       // Transform the data to flatten pending changes
       const pendingChanges: any[] = [];
-      
+
       curriculums?.forEach(curriculum => {
         if (curriculum.pending_changes && Array.isArray(curriculum.pending_changes)) {
           curriculum.pending_changes.forEach((change: any) => {
@@ -413,30 +402,29 @@ class CurriculumChangeRequestService {
                 program_name: curriculum.programs?.name,
                 college_name: collegeMap[curriculum.college_id] || 'Unknown College',
                 college_id: curriculum.college_id,
-                
+
                 // Change details - using field names expected by frontend
                 change_id: change.id,
                 change_type: change.change_type,
-                change_timestamp: change.request_date || change.request_timestamp, // Frontend expects this field name
+                change_timestamp: change.request_date || change.request_timestamp,
                 request_date: change.request_date || change.request_timestamp,
                 request_message: change.request_message,
                 requester_name: change.requester_name,
                 requested_by: change.requested_by,
                 status: change.status,
                 data: change.data,
-                change_data: change.data, // Frontend expects this field name
-                curriculum_name: curriculum.course?.course_name // Frontend expects this field name
+                change_data: change.data,
+                curriculum_name: curriculum.course?.course_name
               });
             }
           });
         }
       });
 
-      console.log(`Found ${pendingChanges.length} pending changes`);
       return { success: true, data: pendingChanges };
-      
+
     } catch (error: any) {
-      console.error('Error fetching university pending changes:', error);
+      logger.error('Failed to fetch university pending changes', new Error(error?.message || 'Unknown error'));
       return { success: false, error: error.message };
     }
   }

@@ -10,8 +10,11 @@ import {
   SplitScreenLayout
 } from '@/features/digital-portfolio';
 import { exportAsHTML, exportAsPDF } from '@/features/digital-portfolio';
+import { getLogger } from '@/shared/config/logging';
 
 import { usePortfolio } from '@/features/digital-portfolio/model/portfolioStore';
+
+const logger = getLogger('portfolio-page');
 const PortfolioPage: React.FC = () => {
   const navigate = useNavigate();
   const { student, settings, isLoading, isManuallySet, viewerRole, loadStudentByEmail } = usePortfolio();
@@ -29,15 +32,6 @@ const PortfolioPage: React.FC = () => {
 
   // Check if user is admin
   const isAdminViewing = viewerRole && (viewerRole.includes('admin') || viewerRole === 'admin');
-
-  // console.log('🎨 PortfolioPage rendering...', { 
-  //   student: student?.name || student?.email, 
-  //   currentLayout: settings.layout,
-  //   viewerRole,
-  //   isManuallySet,
-  //   isLoading,
-  //   message: `${viewerRole} using ${settings.layout} layout`
-  // });
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -65,7 +59,7 @@ const PortfolioPage: React.FC = () => {
               if (type === 'PDF') {
                 // Enter fullscreen mode for PDF
                 await document.documentElement.requestFullscreen().catch(() => {
-                  console.warn('Fullscreen not available');
+                  logger.warn('Fullscreen not available');
                 });
                 setIsFullscreen(true);
 
@@ -99,13 +93,13 @@ const PortfolioPage: React.FC = () => {
                 }, 300));
               }
             } catch (error) {
-              console.error('Export error:', error);
+              logger.error('Export error', error as Error);
               sessionStorage.removeItem('pendingExport');
               alert('Export failed. Please try again.');
             }
           }, 100));
         } catch (error) {
-          console.error('Error parsing pending export:', error);
+          logger.error('Error parsing pending export', error as Error);
           sessionStorage.removeItem('pendingExport');
         }
       }

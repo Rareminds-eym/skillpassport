@@ -10,6 +10,9 @@ import {
 import NotificationPanel from './NotificationPanel'
 import { supabase } from '@/shared/api/supabaseClient'
 import { useNotifications } from '@/features/notifications'
+import { getLogger } from '@/shared/config/logging'
+
+const logger = getLogger('EducatorHeader')
 
 interface HeaderProps {
   onMenuToggle: () => void
@@ -70,7 +73,7 @@ const Header: React.FC<HeaderProps> = ({
           const userData = JSON.parse(storedUser)
           email = userData.email || email
         } catch (e) {
-          console.error('Error parsing stored user:', e)
+          logger.error('Failed to parse stored user data', e as Error);
         }
       } else if (storedEmail) {
         email = storedEmail
@@ -86,7 +89,7 @@ const Header: React.FC<HeaderProps> = ({
         .maybeSingle()
 
       if (error) {
-        console.error('Error loading educator profile for header:', error)
+        logger.error('Failed to load educator profile', error as Error);
         return
       }
 
@@ -101,7 +104,7 @@ const Header: React.FC<HeaderProps> = ({
         })
       }
     } catch (error) {
-      console.error('Failed to load educator profile for header:', error)
+      logger.error('Failed to load educator profile', error as Error);
     }
   }
 
@@ -110,7 +113,6 @@ const Header: React.FC<HeaderProps> = ({
 
     // Listen for profile updates
     const handleProfileUpdate = () => {
-      console.log('🔄 Header received profile update event, refreshing...')
       loadEducatorProfile()
     }
 

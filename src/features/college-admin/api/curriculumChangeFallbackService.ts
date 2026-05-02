@@ -5,6 +5,9 @@
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { AdminNotificationService } from '@/features/admin';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('curriculum-change-fallback');
 
 export class CurriculumChangeFallbackService {
   /**
@@ -36,7 +39,7 @@ export class CurriculumChangeFallbackService {
         .single();
 
       if (userError) {
-        console.warn('Could not fetch user details:', userError);
+        logger.warn('Could not fetch user details', { error: userError.message });
       }
 
       // Construct full name from firstName and lastName
@@ -106,8 +109,6 @@ export class CurriculumChangeFallbackService {
 
       // Create notification for university admins
       try {
-        console.log('🔔 Attempting to create notification for university admins...');
-        
         // Get curriculum details for notification
         const { data: curriculumDetails, error: detailsError } = await supabase
           .from('college_curriculums')
@@ -120,15 +121,9 @@ export class CurriculumChangeFallbackService {
           .single();
 
         if (detailsError) {
-          console.error('❌ Error fetching curriculum details for notification:', detailsError);
+          logger.error('Failed to fetch curriculum details for notification', detailsError as Error, { curriculumId });
           throw detailsError;
         }
-
-        console.log('✅ Curriculum details fetched:', {
-          university_id: curriculumDetails?.university_id,
-          course_name: curriculumDetails?.course?.course_name,
-          department_name: curriculumDetails?.departments?.name
-        });
 
         if (curriculumDetails?.university_id) {
           // Get university admins
@@ -139,12 +134,9 @@ export class CurriculumChangeFallbackService {
             .eq('role', 'university_admin');
 
           if (adminsError) {
-            console.error('❌ Error fetching university admins:', adminsError);
+            logger.error('Failed to fetch university admins', adminsError as Error, { universityId: curriculumDetails.university_id });
             throw adminsError;
           }
-
-          console.log(`✅ Found ${universityAdmins?.length || 0} university admin(s):`, 
-            universityAdmins?.map(admin => admin.email));
 
           if (universityAdmins && universityAdmins.length > 0) {
             const courseName = curriculumDetails.course?.course_name || 'Unknown Course';
@@ -158,19 +150,10 @@ export class CurriculumChangeFallbackService {
             const notificationTitle = `${changeTypeLabel} Approval Required`;
             const notificationMessage = `${fullName || 'College Admin'} has submitted a ${changeTypeLabel.toLowerCase()} for ${courseName} (${departmentName}) that requires your approval.`;
 
-            console.log('📝 Notification details:', {
-              title: notificationTitle,
-              message: notificationMessage,
-              type: 'approval_required',
-              recipients: universityAdmins.length
-            });
-
             // Send notification to all university admins
             let successCount = 0;
             for (const admin of universityAdmins) {
               try {
-                console.log(`📤 Sending notification to: ${admin.email}`);
-                
                 await AdminNotificationService.createNotification(
                   admin.id,
                   'approval_required',
@@ -179,27 +162,24 @@ export class CurriculumChangeFallbackService {
                 );
 
                 successCount++;
-                console.log(`✅ Notification sent successfully to ${admin.email}`);
               } catch (notifError) {
-                console.error(`❌ Error sending notification to ${admin.email}:`, notifError);
+                logger.error('Failed to send notification to admin', notifError as Error, { adminEmail: admin.email, curriculumId });
               }
             }
 
-            console.log(`🎉 Notifications sent to ${successCount}/${universityAdmins.length} university admin(s)`);
-          } else {
-            console.warn('⚠️ No university admins found for this university');
+            if (successCount !== universityAdmins.length) {
+              logger.warn('Partial notification delivery', { successCount, totalAdmins: universityAdmins.length, curriculumId });
+            }
           }
-        } else {
-          console.warn('⚠️ No university_id found in curriculum details');
         }
       } catch (notificationError) {
-        console.error('❌ Failed to send notification:', notificationError);
+        logger.error('Failed to send university admin notifications', notificationError as Error, { curriculumId });
         // Don't fail the entire operation if notification fails
       }
 
       return { success: true, data: changeId };
     } catch (error: any) {
-      console.error('Error in addPendingChange fallback:', error);
+      logger.error('Error in addPendingChange fallback', error, { curriculumId, changeType });
       return { success: false, error: error.message || 'Unknown error occurred' };
     }
   }
@@ -257,24 +237,16 @@ export class CurriculumChangeFallbackService {
     reviewNotes?: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      console.log('🔍 Starting approval process:', {
-        curriculumId,
-        changeId,
-        reviewNotes
-      });
-
       // Check authentication
       const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
+
       if (authError || !user) {
-        console.error('❌ Authentication failed:', authError);
-        return { 
-          success: false, 
-          error: 'Authentication required. Please refresh the page and try again.' 
+        logger.error('Authentication failed in approvePendingChange', authError as Error, { curriculumId, changeId });
+        return {
+          success: false,
+          error: 'Authentication required. Please refresh the page and try again.'
         };
       }
-
-      console.log('✅ User authenticated:', user.email);
 
       // Get curriculum with pending changes
       const { data: curriculum, error: fetchError } = await supabase
@@ -284,47 +256,30 @@ export class CurriculumChangeFallbackService {
         .single();
 
       if (fetchError) {
-        console.error('❌ Failed to fetch curriculum:', fetchError);
+        logger.error('Failed to fetch curriculum for approval', fetchError as Error, { curriculumId });
         return { success: false, error: 'Curriculum not found' };
       }
-
-      console.log('📋 Curriculum fetched:', {
-        status: curriculum.status,
-        pendingChangesCount: curriculum.pending_changes?.length || 0
-      });
 
       const pendingChanges = curriculum.pending_changes || [];
       const changeIndex = pendingChanges.findIndex((change: any) => change.id === changeId);
 
       if (changeIndex === -1) {
-        console.error('❌ Change not found in pending changes:', {
-          changeId,
-          availableChanges: pendingChanges.map((c: any) => c.id)
-        });
+        logger.error('Change not found in pending changes', new Error('Change not found'), { curriculumId, changeId });
         return { success: false, error: 'Change request not found' };
       }
 
       const change = pendingChanges[changeIndex];
-      console.log('📝 Found change to approve:', {
-        changeType: change.change_type,
-        entityId: change.entity_id,
-        requestedBy: change.requester_name
-      });
 
       // Apply the change based on type
-      console.log('🔧 Applying change to database...');
       const applyResult = await this.applyChange(curriculumId, change, user.id);
-      
+
       if (!applyResult.success) {
-        console.error('❌ Failed to apply change:', applyResult.error);
+        logger.error('Failed to apply curriculum change', new Error(applyResult.error || 'Unknown error'), { curriculumId, changeId, changeType: change.change_type });
         return applyResult;
       }
 
-      console.log('✅ Change applied successfully to database');
-
       // Remove from pending changes
       const updatedPendingChanges = pendingChanges.filter((_: any, index: number) => index !== changeIndex);
-      console.log('📊 Updated pending changes count:', updatedPendingChanges.length);
 
       // Add to change history
       const currentChangeHistory = curriculum.change_history || [];
@@ -343,7 +298,6 @@ export class CurriculumChangeFallbackService {
       const updatedChangeHistory = [...currentChangeHistory, historyEntry];
 
       // Update curriculum with new pending changes and history
-      console.log('💾 Updating curriculum record...');
       const { error: updateError } = await supabase
         .from('college_curriculums')
         .update({
@@ -355,16 +309,12 @@ export class CurriculumChangeFallbackService {
         .eq('id', curriculumId);
 
       if (updateError) {
-        console.error('❌ Failed to update curriculum record:', updateError);
+        logger.error('Failed to update curriculum after approval', updateError as Error, { curriculumId, changeId });
         return { success: false, error: 'Failed to update curriculum: ' + updateError.message };
       }
 
-      console.log('🎉 Approval process completed successfully');
-
       // Send notification to college admin about approval
       try {
-        console.log('📧 Sending approval notification...');
-        
         // Get curriculum details for notification
         const { data: curriculumDetails, error: detailsError } = await supabase
           .from('college_curriculums')
@@ -405,18 +355,16 @@ export class CurriculumChangeFallbackService {
                 notificationTitle,
                 notificationMessage
               );
-              console.log('✅ Approval notification sent to:', originalRequester.email);
             }
           }
         }
       } catch (notificationError) {
-        console.error('⚠️ Failed to send approval notification:', notificationError);
-        // Don't fail the entire operation if notification fails
+        logger.error('Failed to send approval notification', notificationError as Error, { curriculumId, changeId });
       }
 
       return { success: true };
     } catch (error: any) {
-      console.error('💥 Error in approvePendingChange fallback:', error);
+      logger.error('Error in approvePendingChange fallback', error, { curriculumId, changeId });
       return { success: false, error: error.message || 'Unknown error occurred' };
     }
   }
@@ -431,11 +379,12 @@ export class CurriculumChangeFallbackService {
     try {
       // Check authentication
       const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
+
       if (authError || !user) {
-        return { 
-          success: false, 
-          error: 'Authentication required. Please refresh the page and try again.' 
+        logger.error('Authentication failed in cancelPendingChange', authError as Error, { curriculumId, changeId });
+        return {
+          success: false,
+          error: 'Authentication required. Please refresh the page and try again.'
         };
       }
 
@@ -447,6 +396,7 @@ export class CurriculumChangeFallbackService {
         .single();
 
       if (fetchError) {
+        logger.error('Failed to fetch curriculum for cancellation', fetchError as Error, { curriculumId });
         return { success: false, error: 'Curriculum not found' };
       }
 
@@ -454,6 +404,7 @@ export class CurriculumChangeFallbackService {
       const changeIndex = pendingChanges.findIndex((change: any) => change.id === changeId);
 
       if (changeIndex === -1) {
+        logger.error('Change not found in pending changes', new Error('Change not found'), { curriculumId, changeId });
         return { success: false, error: 'Change request not found' };
       }
 
@@ -487,12 +438,13 @@ export class CurriculumChangeFallbackService {
         .eq('id', curriculumId);
 
       if (updateError) {
+        logger.error('Failed to update curriculum after cancellation', updateError as Error, { curriculumId, changeId });
         return { success: false, error: 'Failed to update curriculum: ' + updateError.message };
       }
 
       return { success: true };
     } catch (error: any) {
-      console.error('Error in cancelPendingChange fallback:', error);
+      logger.error('Error in cancelPendingChange fallback', error, { curriculumId, changeId });
       return { success: false, error: error.message || 'Unknown error occurred' };
     }
   }
@@ -506,24 +458,16 @@ export class CurriculumChangeFallbackService {
     reviewNotes?: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      console.log('🚫 Starting rejection process:', {
-        curriculumId,
-        changeId,
-        reviewNotes
-      });
-
       // Check authentication
       const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
+
       if (authError || !user) {
-        console.error('❌ Authentication failed:', authError);
-        return { 
-          success: false, 
-          error: 'Authentication required. Please refresh the page and try again.' 
+        logger.error('Authentication failed in rejectPendingChange', authError as Error, { curriculumId, changeId });
+        return {
+          success: false,
+          error: 'Authentication required. Please refresh the page and try again.'
         };
       }
-
-      console.log('✅ User authenticated:', user.email);
 
       // Get curriculum with pending changes
       const { data: curriculum, error: fetchError } = await supabase
@@ -533,7 +477,7 @@ export class CurriculumChangeFallbackService {
         .single();
 
       if (fetchError) {
-        console.error('❌ Failed to fetch curriculum:', fetchError);
+        logger.error('Failed to fetch curriculum for rejection', fetchError as Error, { curriculumId });
         return { success: false, error: 'Curriculum not found' };
       }
 
@@ -541,23 +485,14 @@ export class CurriculumChangeFallbackService {
       const changeIndex = pendingChanges.findIndex((change: any) => change.id === changeId);
 
       if (changeIndex === -1) {
-        console.error('❌ Change not found in pending changes:', {
-          changeId,
-          availableChanges: pendingChanges.map((c: any) => c.id)
-        });
+        logger.error('Change not found in pending changes', new Error('Change not found'), { curriculumId, changeId });
         return { success: false, error: 'Change request not found' };
       }
 
       const change = pendingChanges[changeIndex];
-      console.log('📝 Found change to reject:', {
-        changeType: change.change_type,
-        entityId: change.entity_id,
-        requestedBy: change.requester_name
-      });
 
       // Remove from pending changes
       const updatedPendingChanges = pendingChanges.filter((_: any, index: number) => index !== changeIndex);
-      console.log('📊 Updated pending changes count:', updatedPendingChanges.length);
 
       // Add to change history
       const currentChangeHistory = curriculum.change_history || [];
@@ -576,7 +511,6 @@ export class CurriculumChangeFallbackService {
       const updatedChangeHistory = [...currentChangeHistory, historyEntry];
 
       // Update curriculum
-      console.log('💾 Updating curriculum record...');
       const { error: updateError } = await supabase
         .from('college_curriculums')
         .update({
@@ -588,16 +522,12 @@ export class CurriculumChangeFallbackService {
         .eq('id', curriculumId);
 
       if (updateError) {
-        console.error('❌ Failed to update curriculum record:', updateError);
+        logger.error('Failed to update curriculum after rejection', updateError as Error, { curriculumId, changeId });
         return { success: false, error: 'Failed to update curriculum: ' + updateError.message };
       }
 
-      console.log('🎉 Rejection process completed successfully');
-
       // Send notification to college admin about rejection
       try {
-        console.log('📧 Sending rejection notification...');
-        
         // Get curriculum details for notification
         const { data: curriculumDetails, error: detailsError } = await supabase
           .from('college_curriculums')
@@ -638,18 +568,16 @@ export class CurriculumChangeFallbackService {
                 notificationTitle,
                 notificationMessage
               );
-              console.log('✅ Rejection notification sent to:', originalRequester.email);
             }
           }
         }
       } catch (notificationError) {
-        console.error('⚠️ Failed to send rejection notification:', notificationError);
-        // Don't fail the entire operation if notification fails
+        logger.error('Failed to send rejection notification', notificationError as Error, { curriculumId, changeId });
       }
 
       return { success: true };
     } catch (error: any) {
-      console.error('💥 Error in rejectPendingChange fallback:', error);
+      logger.error('Error in rejectPendingChange fallback', error, { curriculumId, changeId });
       return { success: false, error: error.message || 'Unknown error occurred' };
     }
   }
@@ -660,17 +588,10 @@ export class CurriculumChangeFallbackService {
   private async applyChange(curriculumId: string, change: any, userId: string): Promise<{ success: boolean; error?: string }> {
     try {
       const changeType = change.change_type;
-      
-      console.log('🔧 Applying change:', {
-        changeType,
-        changeId: change.id,
-        entityId: change.entity_id,
-        changeData: change.data
-      });
 
       // Extract change data with multiple fallback paths
       let changeData = change.data;
-      
+
       // Handle nested data structures
       if (changeData?.data) {
         changeData = changeData.data;
@@ -683,20 +604,13 @@ export class CurriculumChangeFallbackService {
         const bloomLevel = changeData.bloomLevel || changeData.bloom_level || 'Apply';
         const assessmentMappings = changeData.assessmentMappings || changeData.assessment_mappings || [];
 
-        console.log('📝 Adding outcome:', {
-          unitId,
-          outcomeText,
-          bloomLevel,
-          assessmentMappings
-        });
-
         if (!unitId) {
-          console.error('❌ Missing unit ID in outcome add data:', changeData);
+          logger.error('Missing unit ID in outcome add data', new Error('Unit ID required'), { curriculumId, changeId: change.id, changeType });
           return { success: false, error: 'Unit ID is required but not found in change data' };
         }
 
         if (!outcomeText) {
-          console.error('❌ Missing outcome text in outcome add data:', changeData);
+          logger.error('Missing outcome text in outcome add data', new Error('Outcome text required'), { curriculumId, changeId: change.id, changeType });
           return { success: false, error: 'Outcome text is required but not found in change data' };
         }
 
@@ -715,11 +629,9 @@ export class CurriculumChangeFallbackService {
           .single();
 
         if (error) {
-          console.error('❌ Failed to add outcome:', error);
+          logger.error('Failed to add outcome to database', error as Error, { curriculumId, changeId: change.id, unitId });
           return { success: false, error: 'Failed to add outcome: ' + error.message };
         }
-
-        console.log('✅ Outcome added successfully:', insertedOutcome?.id);
 
       } else if (changeType === 'unit_add') {
         // Extract unit data with multiple field name variations
@@ -730,22 +642,13 @@ export class CurriculumChangeFallbackService {
         const estimatedDuration = changeData.estimatedDuration || changeData.estimated_duration;
         const durationUnit = changeData.durationUnit || changeData.duration_unit || 'hours';
 
-        console.log('📚 Adding unit:', {
-          name,
-          code,
-          description,
-          credits,
-          estimatedDuration,
-          durationUnit
-        });
-
         if (!name) {
-          console.error('❌ Missing unit name in unit add data:', changeData);
+          logger.error('Missing unit name in unit add data', new Error('Unit name required'), { curriculumId, changeId: change.id, changeType });
           return { success: false, error: 'Unit name is required but not found in change data' };
         }
 
         if (!code) {
-          console.error('❌ Missing unit code in unit add data:', changeData);
+          logger.error('Missing unit code in unit add data', new Error('Unit code required'), { curriculumId, changeId: change.id, changeType });
           return { success: false, error: 'Unit code is required but not found in change data' };
         }
 
@@ -758,15 +661,15 @@ export class CurriculumChangeFallbackService {
           .limit(1);
 
         if (orderError) {
-          console.error('❌ Failed to check existing units:', orderError);
+          logger.error('Failed to check existing units', orderError as Error, { curriculumId, changeId: change.id });
           return { success: false, error: 'Failed to check existing units: ' + orderError.message };
         }
 
-        const nextOrderIndex = existingUnits && existingUnits.length > 0 
-          ? (existingUnits[0].order_index || 0) + 1 
+        const nextOrderIndex = existingUnits && existingUnits.length > 0
+          ? (existingUnits[0].order_index || 0) + 1
           : 1;
 
-        const { data: insertedUnit, error } = await supabase
+        const { error } = await supabase
           .from('college_curriculum_units')
           .insert({
             curriculum_id: curriculumId,
@@ -784,29 +687,21 @@ export class CurriculumChangeFallbackService {
           .single();
 
         if (error) {
-          console.error('❌ Failed to add unit:', error);
+          logger.error('Failed to add unit to database', error as Error, { curriculumId, changeId: change.id, unitCode: code });
           return { success: false, error: 'Failed to add unit: ' + error.message };
         }
-
-        console.log('✅ Unit added successfully:', insertedUnit?.id);
 
       } else if (changeType === 'outcome_edit') {
         // For edit operations, extract the 'after' data which contains the new values
         let afterData = changeData.after || changeData;
-        
+
         // Handle nested after data
         if (afterData?.data) {
           afterData = afterData.data;
         }
 
-        console.log('✏️ Editing outcome:', {
-          entityId: change.entity_id,
-          beforeData: changeData.before,
-          afterData: afterData
-        });
-
         if (!change.entity_id) {
-          console.error('❌ Missing entity ID for outcome edit');
+          logger.error('Missing entity ID for outcome edit', new Error('Entity ID required'), { curriculumId, changeId: change.id, changeType });
           return { success: false, error: 'Entity ID is required for outcome edit' };
         }
 
@@ -832,16 +727,14 @@ export class CurriculumChangeFallbackService {
           updateData.bloom_level = afterData.bloomLevel;
         }
 
-        // Update assessment mappings if provided - CRITICAL FIX
+        // Update assessment mappings if provided
         if (afterData.assessment_mappings !== undefined) {
           updateData.assessment_mappings = afterData.assessment_mappings;
         } else if (afterData.assessmentMappings !== undefined) {
           updateData.assessment_mappings = afterData.assessmentMappings;
         }
 
-        console.log('📊 Updating outcome with data:', updateData);
-
-        const { data: updatedOutcome, error } = await supabase
+        const { error } = await supabase
           .from('college_curriculum_outcomes')
           .update(updateData)
           .eq('id', change.entity_id)
@@ -849,29 +742,21 @@ export class CurriculumChangeFallbackService {
           .single();
 
         if (error) {
-          console.error('❌ Failed to update outcome:', error);
+          logger.error('Failed to update outcome in database', error as Error, { curriculumId, changeId: change.id, entityId: change.entity_id });
           return { success: false, error: 'Failed to update outcome: ' + error.message };
         }
-
-        console.log('✅ Outcome updated successfully:', updatedOutcome?.id);
 
       } else if (changeType === 'unit_edit') {
         // For unit edit, extract the 'after' data
         let afterData = changeData.after || changeData;
-        
+
         // Handle nested after data
         if (afterData?.data) {
           afterData = afterData.data;
         }
 
-        console.log('✏️ Editing unit:', {
-          entityId: change.entity_id,
-          beforeData: changeData.before,
-          afterData: afterData
-        });
-
         if (!change.entity_id) {
-          console.error('❌ Missing entity ID for unit edit');
+          logger.error('Missing entity ID for unit edit', new Error('Entity ID required'), { curriculumId, changeId: change.id, changeType });
           return { success: false, error: 'Entity ID is required for unit edit' };
         }
 
@@ -893,9 +778,7 @@ export class CurriculumChangeFallbackService {
         if (afterData.order_index !== undefined) updateData.order_index = afterData.order_index;
         if (afterData.orderIndex !== undefined) updateData.order_index = afterData.orderIndex;
 
-        console.log('📚 Updating unit with data:', updateData);
-
-        const { data: updatedUnit, error } = await supabase
+        const { error } = await supabase
           .from('college_curriculum_units')
           .update(updateData)
           .eq('id', change.entity_id)
@@ -903,17 +786,13 @@ export class CurriculumChangeFallbackService {
           .single();
 
         if (error) {
-          console.error('❌ Failed to update unit:', error);
+          logger.error('Failed to update unit in database', error as Error, { curriculumId, changeId: change.id, entityId: change.entity_id });
           return { success: false, error: 'Failed to update unit: ' + error.message };
         }
 
-        console.log('✅ Unit updated successfully:', updatedUnit?.id);
-
       } else if (changeType === 'outcome_delete') {
-        console.log('🗑️ Deleting outcome:', change.entity_id);
-
         if (!change.entity_id) {
-          console.error('❌ Missing entity ID for outcome delete');
+          logger.error('Missing entity ID for outcome delete', new Error('Entity ID required'), { curriculumId, changeId: change.id, changeType });
           return { success: false, error: 'Entity ID is required for outcome delete' };
         }
 
@@ -923,17 +802,13 @@ export class CurriculumChangeFallbackService {
           .eq('id', change.entity_id);
 
         if (error) {
-          console.error('❌ Failed to delete outcome:', error);
+          logger.error('Failed to delete outcome from database', error as Error, { curriculumId, changeId: change.id, entityId: change.entity_id });
           return { success: false, error: 'Failed to delete outcome: ' + error.message };
         }
 
-        console.log('✅ Outcome deleted successfully');
-
       } else if (changeType === 'unit_delete') {
-        console.log('🗑️ Deleting unit:', change.entity_id);
-
         if (!change.entity_id) {
-          console.error('❌ Missing entity ID for unit delete');
+          logger.error('Missing entity ID for unit delete', new Error('Entity ID required'), { curriculumId, changeId: change.id, changeType });
           return { success: false, error: 'Entity ID is required for unit delete' };
         }
 
@@ -944,7 +819,7 @@ export class CurriculumChangeFallbackService {
           .eq('unit_id', change.entity_id);
 
         if (outcomeDeleteError) {
-          console.error('❌ Failed to delete unit outcomes:', outcomeDeleteError);
+          logger.error('Failed to delete unit outcomes', outcomeDeleteError as Error, { curriculumId, changeId: change.id, unitId: change.entity_id });
           return { success: false, error: 'Failed to delete unit outcomes: ' + outcomeDeleteError.message };
         }
 
@@ -955,21 +830,13 @@ export class CurriculumChangeFallbackService {
           .eq('id', change.entity_id);
 
         if (error) {
-          console.error('❌ Failed to delete unit:', error);
+          logger.error('Failed to delete unit from database', error as Error, { curriculumId, changeId: change.id, entityId: change.entity_id });
           return { success: false, error: 'Failed to delete unit: ' + error.message };
         }
-
-        console.log('✅ Unit and its outcomes deleted successfully');
 
       } else if (changeType === 'curriculum_edit') {
         // Handle curriculum-level edits
         let afterData = changeData.after || changeData;
-        
-        console.log('📋 Editing curriculum:', {
-          curriculumId,
-          beforeData: changeData.before,
-          afterData: afterData
-        });
 
         // Build update object for curriculum
         const updateData: any = {
@@ -982,9 +849,7 @@ export class CurriculumChangeFallbackService {
         if (afterData.semester !== undefined) updateData.semester = afterData.semester;
         if (afterData.description !== undefined) updateData.description = afterData.description;
 
-        console.log('📋 Updating curriculum with data:', updateData);
-
-        const { data: updatedCurriculum, error } = await supabase
+        const { error } = await supabase
           .from('college_curriculums')
           .update(updateData)
           .eq('id', curriculumId)
@@ -992,21 +857,18 @@ export class CurriculumChangeFallbackService {
           .single();
 
         if (error) {
-          console.error('❌ Failed to update curriculum:', error);
+          logger.error('Failed to update curriculum in database', error as Error, { curriculumId, changeId: change.id, changeType });
           return { success: false, error: 'Failed to update curriculum: ' + error.message };
         }
 
-        console.log('✅ Curriculum updated successfully');
-
       } else {
-        console.error('❌ Unknown change type:', changeType);
+        logger.error('Unknown change type', new Error('Unknown change type'), { curriculumId, changeId: change.id, changeType });
         return { success: false, error: 'Unknown change type: ' + changeType };
       }
 
-      console.log('🎉 Change applied successfully');
       return { success: true };
     } catch (error: any) {
-      console.error('💥 Error applying change:', error);
+      logger.error('Error applying curriculum change', error, { curriculumId, changeId: change.id, changeType: change.change_type });
       return { success: false, error: error.message || 'Unknown error occurred' };
     }
   }

@@ -132,7 +132,6 @@ class TalentAnalyticsService {
       };
 
     } catch (error) {
-      console.error('Error fetching talent pool analytics:', error);
       return {
         total_candidates: 0,
         by_skill: [],

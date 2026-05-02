@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('educator-assignments-service');
 
 /**
  * Educator Assignments Service
@@ -82,7 +85,7 @@ const getStudentSubmissionFiles = async (assignmentId: string): Promise<Record<s
     
     return groupedFiles;
   } catch (error) {
-    console.error('Error fetching student submission files:', error);
+    logger.error('Fetch student submission files failed', error instanceof Error ? error : new Error(String(error)), { assignmentId });
     throw error;
   }
 };
@@ -135,7 +138,7 @@ export const getAssignmentStudents = async (assignmentId: string): Promise<Stude
 
     return flattenedData;
   } catch (error) {
-    console.error('Error fetching assignment students:', error);
+    logger.error('Fetch assignment students failed', error instanceof Error ? error : new Error(String(error)), { assignmentId });
     throw error;
   }
 };
@@ -163,7 +166,7 @@ export const gradeAssignment = async (studentAssignmentId: string, gradingData: 
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Error grading assignment:', error);
+    logger.error('Grade assignment failed', error instanceof Error ? error : new Error(String(error)), { studentAssignmentId });
     throw error;
   }
 };

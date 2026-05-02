@@ -5,6 +5,9 @@ import {
   CheckCircleIcon,
 } from "@heroicons/react/24/outline";
 import { departmentService, DepartmentWithStats } from '@/features/college-admin';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('college-admin:FacultyAssignmentModal');
 
 interface Faculty {
   id: string;
@@ -44,7 +47,7 @@ const FacultyAssignmentModal: React.FC<FacultyAssignmentModalProps> = ({
         .then(assignedFaculty => {
           setSelectedFaculty(assignedFaculty.map(f => f.id));
         })
-        .catch(console.error);
+        .catch(error => logger.error('Error loading faculty', error as Error));
     }
   }, [department, isOpen]);
 

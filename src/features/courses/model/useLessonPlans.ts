@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/shared/api';
 import { lessonPlansService } from '../api';
 import { filterByStatus } from '../lib';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('use-lesson-plans');
 
 interface LessonPlan {
   id: string;
@@ -61,7 +64,7 @@ export const useLessonPlans = (): UseLessonPlansReturn => {
 
       setLessonPlans(data || []);
     } catch (error: any) {
-      console.error('Error loading lesson plans:', error);
+      logger.error('Error loading lesson plans', error instanceof Error ? error : new Error(String(error)));
     } finally {
       setLoading(false);
     }

@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
-import { 
-  ArrowLeftIcon, 
-  BellAlertIcon, 
+import { getLogger } from '@/shared/config/logging';
+import {
+  ArrowLeftIcon,
+  BellAlertIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
   EyeIcon,
@@ -16,6 +17,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { UIExam } from '@/entities/exam';
 import { WorkflowStage } from '../types';
+
+const logger = getLogger('PublishingStep');
 
 interface PublishingStepProps {
   exam: UIExam;
@@ -86,7 +89,7 @@ const PublishingStep: React.FC<PublishingStepProps> = ({ exam, setActiveStep, up
       }, 1000);
       
     } catch (error) {
-      console.error('Error publishing results:', error);
+      logger.error('Failed to publish results', error as Error);
       alert('Failed to publish results. Please try again.');
     } finally {
       setPublishing(false);

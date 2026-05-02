@@ -8,6 +8,9 @@ import {
 import { AppliedJobsService } from '@/features/opportunities';
 import { recruiterInsights } from '@/features/recruiter-copilot';
 import { PipelineFilters, PipelineSortOptions } from '@/shared/types/recruiter';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('usePipelineData');
 
 export interface PipelineCandidate {
   id: number;
@@ -122,7 +125,7 @@ export const usePipelineData = (
 
       setPipelineData(newData);
     } catch (error) {
-      console.error('[usePipelineData] Error loading candidates:', error);
+      logger.error('Failed to load pipeline candidates', error as Error);
     } finally {
       setLoading(false);
     }
@@ -148,10 +151,10 @@ export const usePipelineData = (
           }
         }
       } catch (e) {
-        console.log('[usePipelineData] Cache read error');
+        logger.error('Failed to read AI recommendations from cache', e as Error);
       }
     }
-    
+
     setLoadingRecommendations(true);
     try {
       const applicantsData = await AppliedJobsService.getAllApplicants();
@@ -268,11 +271,11 @@ export const usePipelineData = (
           applicantsData: applicantsForPanel,
           timestamp: Date.now()
         }));
-      } catch (e) {
-        console.log('[usePipelineData] Cache write error');
+      } catch (error) {
+        logger.error('Failed to cache AI recommendations', error as Error);
       }
     } catch (error) {
-      console.error('[usePipelineData] Error fetching AI recommendations:', error);
+      logger.error('Failed to fetch AI recommendations', error as Error);
       setAiRecommendations(null);
     } finally {
       setLoadingRecommendations(false);

@@ -28,6 +28,9 @@ import SearchBar from '@/shared/ui/SearchBar';
 import { Pagination } from '@/shared/ui';
 import { FileTextIcon } from "lucide-react";
 import { uploadFile, validateFile, deleteFile, getDocumentUrl } from '@/shared/api/fileUploadService';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('college-admin:CollegeLessonPlanUI');
 import type { CollegeLessonPlan } from '@/features/college-admin';
 import toast from 'react-hot-toast';
 
@@ -962,7 +965,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
           setFormCourses(result.courses);
         }
       } catch (error) {
-        console.error('Error loading programs/courses:', error);
+        logger.error('Error loading programs/courses', error as Error);
         setFormPrograms([]);
         setFormCourses([]);
       } finally {
@@ -996,7 +999,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
           setFormCourses(result.courses);
         }
       } catch (error) {
-        console.error('Error in onProgramChange:', error);
+        logger.error('Error in onProgramChange', error as Error);
       } finally {
         setLoadingCourses(false);
       }
@@ -1023,7 +1026,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
           setFormCourses(result.courses);
         }
       } catch (error) {
-        console.error('Error loading courses for semester:', error);
+        logger.error('Error loading courses for semester', error as Error);
         setFormCourses([]);
       } finally {
         setLoadingCourses(false);
@@ -1048,7 +1051,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
         await props.onCurriculumContextChange(course, program, academicYear);
         // useEffect will handle updating formUnits when units prop changes
       } catch (error) {
-        console.error('Error loading curriculum data:', error);
+        logger.error('Error loading curriculum data', error as Error);
         setFormUnits([]);
         setFormLearningOutcomes([]);
       } finally {
@@ -1070,7 +1073,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
         await props.onUnitChange(unitId);
         // No need for setTimeout - useEffect will handle the prop updates
       } catch (error) {
-        console.error('Error loading learning outcomes for unit:', error);
+        logger.error('Error loading learning outcomes for unit', error as Error);
       }
     } else {
       // Clear learning outcomes when no unit is selected
@@ -1199,7 +1202,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
       }
 
     } catch (error) {
-      console.error('File preparation error:', error);
+      logger.error('File preparation error', error as Error);
       toast.error('Error preparing files. Please try again.');
     } finally {
       setUploadingFiles(false);
@@ -1233,7 +1236,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
             // Skip this file but continue with others
           }
         } catch (error) {
-          console.error(`Error uploading ${tempFile.name}:`, error);
+          logger.error(`Error uploading ${tempFile.name}`, error as Error);
           // Skip this file but continue with others
         }
       } else {
@@ -1253,7 +1256,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
       try {
         await deleteFile(fileToRemove.url);
       } catch (error) {
-        console.error('Error deleting file from storage:', error);
+        logger.error('Error deleting file from storage', error as Error);
         // Continue with removal from UI even if storage deletion fails
       }
     }
@@ -1438,7 +1441,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
       resetForm();
       setShowEditor(false);
     } catch (error: any) {
-      console.error("Error saving lesson plan:", error);
+      logger.error('Error saving lesson plan', error);
       toast.error("Error: " + (error.message || "Failed to save lesson plan"));
     } finally {
       setSubmitting(false);
@@ -1525,7 +1528,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
       }
       
     } catch (error) {
-      console.error('Error loading dependent data for edit:', error);
+      logger.error('Error loading dependent data for edit', error as Error);
     } finally {
       setLoadingEdit(false);
     }
@@ -1603,7 +1606,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
       }
       
     } catch (error) {
-      console.error('Error loading dependent data for duplicate:', error);
+      logger.error('Error loading dependent data for duplicate', error as Error);
     }
   };
 

@@ -7,7 +7,9 @@
 
 import { supabase } from '@/shared/api';
 import { getRazorpayKeyId, getRazorpayKeyMode } from '@/shared/config';
+import { getLogger } from '@/shared/config/logging';
 
+const logger = getLogger('organizationPayment');
 const WORKER_URL = import.meta.env.VITE_PAYMENTS_API_URL;
 
 // ============================================================================
@@ -96,8 +98,6 @@ export async function createOrganizationOrder(
   purchaseData: OrganizationPurchaseData
 ): Promise<OrganizationOrderResult> {
   try {
-    console.log('[OrgPayment] Creating organization order:', purchaseData);
-    
     const headers = await getAuthHeaders();
     
     // Create order via Worker
@@ -125,10 +125,9 @@ export async function createOrganizationOrder(
     }
 
     const result = await response.json();
-    console.log('[OrgPayment] Order created:', result.id);
     return result;
   } catch (error) {
-    console.error('[OrgPayment] Error creating order:', error);
+    logger.error('Error creating order', error as Error);
     throw error;
   }
 }
@@ -143,8 +142,6 @@ export async function verifyOrganizationPayment(paymentData: {
   purchaseData: OrganizationPurchaseData;
 }): Promise<{ success: boolean; subscription?: any; error?: string }> {
   try {
-    console.log('[OrgPayment] Verifying payment:', paymentData.razorpay_payment_id);
-    
     const headers = await getAuthHeaders();
     
     const response = await fetch(`${WORKER_URL}/verify-org-payment`, {
@@ -165,7 +162,7 @@ export async function verifyOrganizationPayment(paymentData: {
 
     return await response.json();
   } catch (error) {
-    console.error('[OrgPayment] Error verifying payment:', error);
+    logger.error('Error verifying payment', error as Error);
     throw error;
   }
 }
@@ -177,8 +174,6 @@ export async function purchaseOrganizationSubscription(
   purchaseData: OrganizationPurchaseData
 ): Promise<{ success: boolean; subscription?: any; error?: string }> {
   try {
-    console.log('[OrgPayment] Purchasing subscription directly:', purchaseData);
-    
     const headers = await getAuthHeaders();
     
     const response = await fetch(`${WORKER_URL}/org-subscriptions/purchase`, {
@@ -202,7 +197,7 @@ export async function purchaseOrganizationSubscription(
 
     return await response.json();
   } catch (error) {
-    console.error('[OrgPayment] Error purchasing subscription:', error);
+    logger.error('Error purchasing subscription', error as Error);
     throw error;
   }
 }
@@ -232,7 +227,6 @@ export async function initiateOrganizationPayment(params: {
 
     // Use Razorpay key from backend API response (matches RAZORPAY_MODE on server)
     const razorpayKeyId = orderData.key;
-    console.log(`[OrgPayment] Using ${orderData.key?.startsWith('rzp_live') ? 'LIVE' : 'TEST'} Razorpay key from API`);
 
     // Razorpay checkout options
     const options = {
@@ -292,7 +286,7 @@ export async function initiateOrganizationPayment(params: {
 
     razorpay.open();
   } catch (error) {
-    console.error('[OrgPayment] Error initiating payment:', error);
+    logger.error('Error initiating payment', error as Error);
     onFailure(error instanceof Error ? error : new Error('Failed to initiate payment'));
   }
 }

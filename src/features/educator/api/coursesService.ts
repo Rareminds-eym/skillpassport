@@ -1,9 +1,12 @@
 import { supabase } from '@/shared/api/supabaseClient';
 import { Course, CourseModule, Lesson, Resource } from '@/shared/types/educator/course';
+import { getLogger } from '@/shared/config/logging';
 
 // =====================================================
 // NOTIFICATION HELPER
 // =====================================================
+
+const logger = getLogger('educator-courses');
 
 /**
  * Create a notification for all students in a school
@@ -25,14 +28,13 @@ const createCourseNotification = async (
         .select('school_id')
         .eq('course_id', courseId)
         .single();
-      
+
       if (courseData?.school_id) {
         finalSchoolId = courseData.school_id;
       }
     }
 
     if (!finalSchoolId) {
-      console.warn('⚠️ No school ID found for course notification');
       return;
     }
 
@@ -43,12 +45,13 @@ const createCourseNotification = async (
       .eq('school_id', finalSchoolId);
 
     if (studentError) {
-      console.error('❌ Error fetching students for notification:', studentError);
+      logger.error('Error fetching students for notification', studentError as Error, {
+        schoolId: finalSchoolId,
+      });
       return;
     }
 
     if (!studentData || studentData.length === 0) {
-      console.log('ℹ️ No students found for school');
       return;
     }
 
@@ -56,7 +59,7 @@ const createCourseNotification = async (
     const notifications = studentData.map(student => ({
       recipient_id: student.user_id,
       type: type,
-      title: type === 'course_added' 
+      title: type === 'course_added'
         ? `New Course: ${courseTitle}`
         : `Course Updated: ${courseTitle}`,
       message: type === 'course_added'
@@ -70,13 +73,14 @@ const createCourseNotification = async (
       .insert(notifications);
 
     if (notificationError) {
-      console.error('❌ Error creating notifications:', notificationError);
+      logger.error('Error creating notifications', notificationError as Error, {
+        courseId,
+        notificationCount: notifications.length,
+      });
       return;
     }
-
-    console.log(`✅ Notifications created for ${notifications.length} students`);
   } catch (error) {
-    console.error('❌ Error in createCourseNotification:', error);
+    logger.error('Error in createCourseNotification', error as Error, { courseId });
   }
 };
 
@@ -89,9 +93,6 @@ const createCourseNotification = async (
  */
 export const getAllCourses = async (): Promise<Course[]> => {
   try {
-    console.log('📡 Fetching all courses');
-    
-    // Step 1: Fetch basic course data only
     const { data: coursesData, error: coursesError } = await supabase
       .from('courses')
       .select('*')
@@ -99,19 +100,16 @@ export const getAllCourses = async (): Promise<Course[]> => {
       .order('created_at', { ascending: false });
 
     if (coursesError) {
-      console.error('❌ Error fetching courses:', coursesError);
       throw coursesError;
     }
 
     if (!coursesData || coursesData.length === 0) {
-      console.log('✅ No courses found');
       return [];
     }
 
-    console.log('✅ Courses fetched:', coursesData.length);
     return await transformCoursesData(coursesData);
   } catch (error) {
-    console.error('❌ Error fetching courses:', error);
+    logger.error('Error fetching all courses', error as Error);
     throw error;
   }
 };
@@ -122,9 +120,6 @@ export const getAllCourses = async (): Promise<Course[]> => {
  */
 export const getCoursesBySchool = async (schoolId: string): Promise<Course[]> => {
   try {
-    console.log('📡 Fetching courses for school:', schoolId);
-    
-    // Step 1: Fetch basic course data only
     const { data: coursesData, error: coursesError } = await supabase
       .from('courses')
       .select('*')
@@ -133,19 +128,16 @@ export const getCoursesBySchool = async (schoolId: string): Promise<Course[]> =>
       .order('created_at', { ascending: false });
 
     if (coursesError) {
-      console.error('❌ Error fetching courses:', coursesError);
       throw coursesError;
     }
 
     if (!coursesData || coursesData.length === 0) {
-      console.log('✅ No courses found');
       return [];
     }
 
-    console.log('✅ Courses fetched:', coursesData.length);
     return await transformCoursesData(coursesData);
   } catch (error) {
-    console.error('❌ Error fetching courses:', error);
+    logger.error('Error fetching courses by school', error as Error, { schoolId });
     throw error;
   }
 };
@@ -156,9 +148,6 @@ export const getCoursesBySchool = async (schoolId: string): Promise<Course[]> =>
  */
 export const getCoursesByEducator = async (educatorId: string): Promise<Course[]> => {
   try {
-    console.log('📡 Fetching courses for educator:', educatorId);
-    
-    // Step 1: Fetch basic course data only
     const { data: coursesData, error: coursesError } = await supabase
       .from('courses')
       .select('*')
@@ -167,19 +156,16 @@ export const getCoursesByEducator = async (educatorId: string): Promise<Course[]
       .order('created_at', { ascending: false });
 
     if (coursesError) {
-      console.error('❌ Error fetching courses:', coursesError);
       throw coursesError;
     }
 
     if (!coursesData || coursesData.length === 0) {
-      console.log('✅ No courses found');
       return [];
     }
 
-    console.log('✅ Courses fetched:', coursesData.length);
     return await transformCoursesData(coursesData);
   } catch (error) {
-    console.error('❌ Error fetching courses:', error);
+    logger.error('Error fetching courses by educator', error as Error, { educatorId });
     throw error;
   }
 };
@@ -191,36 +177,24 @@ export const getCoursesByEducator = async (educatorId: string): Promise<Course[]
 const transformCoursesData = async (coursesData: any[]): Promise<Course[]> => {
   try {
     const courseIds = coursesData.map((c: any) => c.course_id);
-    console.log('📋 Course IDs for modules query:', courseIds);
 
-    // Debug: Check if user is authenticated with Supabase
-    const { data: sessionData } = await supabase.auth.getSession();
-    console.log('🔐 Supabase session:', sessionData?.session ? 'Active' : 'No session');
-    if (sessionData?.session) {
-      console.log('🔐 Session user ID:', sessionData.session.user.id);
-      console.log('🔐 Session expires at:', new Date(sessionData.session.expires_at! * 1000).toISOString());
-    }
-
-    // Step 2: Fetch all related data in parallel
+    // Fetch all related data in parallel
     const [
       skillsResult,
       classesResult,
       modulesResult,
       coEducatorsResult
     ] = await Promise.allSettled([
-      // Fetch skills
       supabase
         .from('course_skills')
         .select('course_id, skill_name')
         .in('course_id', courseIds),
-      
-      // Fetch classes
+
       supabase
         .from('course_classes')
         .select('course_id, class_name')
         .in('course_id', courseIds),
-      
-      // Fetch modules with nested data
+
       supabase
         .from('course_modules')
         .select(`
@@ -232,15 +206,12 @@ const transformCoursesData = async (coursesData: any[]): Promise<Course[]> => {
         `)
         .in('course_id', courseIds)
         .order('order_index', { ascending: true }),
-      
-      // Fetch co-educators
+
       supabase
         .from('course_co_educators')
         .select('course_id, educator_name')
         .in('course_id', courseIds)
     ]);
-
-    console.log('✅ Related data fetched');
 
     // Process results with better error handling
     let skillsData: any[] = [];
@@ -251,70 +222,48 @@ const transformCoursesData = async (coursesData: any[]): Promise<Course[]> => {
     // Handle skills result
     if (skillsResult.status === 'fulfilled') {
       if (skillsResult.value.error) {
-        console.warn('⚠️ Skills fetch error:', skillsResult.value.error);
+        logger.error('Error fetching skills', skillsResult.value.error as Error, { courseIds });
       } else {
         skillsData = skillsResult.value.data || [];
       }
     } else {
-      console.warn('⚠️ Skills fetch rejected:', skillsResult.reason);
+      logger.error('Skills fetch rejected', skillsResult.reason as Error, { courseIds });
     }
 
     // Handle classes result
     if (classesResult.status === 'fulfilled') {
       if (classesResult.value.error) {
-        console.warn('⚠️ Classes fetch error:', classesResult.value.error);
+        logger.error('Error fetching classes', classesResult.value.error as Error, { courseIds });
       } else {
         classesData = classesResult.value.data || [];
       }
     } else {
-      console.warn('⚠️ Classes fetch rejected:', classesResult.reason);
+      logger.error('Classes fetch rejected', classesResult.reason as Error, { courseIds });
     }
 
-    // Handle modules result - THIS IS THE KEY ONE
+    // Handle modules result
     if (modulesResult.status === 'fulfilled') {
       if (modulesResult.value.error) {
-        console.error('❌ Modules fetch error:', modulesResult.value.error);
-        console.error('Error details:', JSON.stringify(modulesResult.value.error, null, 2));
+        logger.error('Error fetching modules', modulesResult.value.error as Error, { courseIds });
       } else {
         modulesData = modulesResult.value.data || [];
-        console.log('✅ Modules fetched:', modulesData.length, 'modules');
-        // Log first module to verify structure
-        if (modulesData.length > 0) {
-          console.log('📋 First module sample:', JSON.stringify(modulesData[0], null, 2));
-        } else {
-          // Debug: Try a simple query to see if we can access course_modules at all
-          console.log('⚠️ No modules returned, trying debug query...');
-          const debugResult = await supabase
-            .from('course_modules')
-            .select('module_id, course_id, title')
-            .limit(5);
-          console.log('🔍 Debug query result:', debugResult.data?.length || 0, 'modules');
-          if (debugResult.error) {
-            console.error('🔍 Debug query error:', debugResult.error);
-          } else if (debugResult.data && debugResult.data.length > 0) {
-            console.log('🔍 Debug modules found:', debugResult.data);
-            console.log('🔍 Checking if any debug module course_id matches our courseIds...');
-            const matchingIds = debugResult.data.filter((m: any) => courseIds.includes(m.course_id));
-            console.log('🔍 Matching modules:', matchingIds.length);
-          }
-        }
       }
     } else {
-      console.error('❌ Modules fetch rejected:', modulesResult.reason);
+      logger.error('Modules fetch rejected', modulesResult.reason as Error, { courseIds });
     }
 
     // Handle co-educators result
     if (coEducatorsResult.status === 'fulfilled') {
       if (coEducatorsResult.value.error) {
-        console.warn('⚠️ Co-educators fetch error:', coEducatorsResult.value.error);
+        logger.error('Error fetching co-educators', coEducatorsResult.value.error as Error, { courseIds });
       } else {
         coEducatorsData = coEducatorsResult.value.data || [];
       }
     } else {
-      console.warn('⚠️ Co-educators fetch rejected:', coEducatorsResult.reason);
+      logger.error('Co-educators fetch rejected', coEducatorsResult.reason as Error, { courseIds });
     }
 
-    // Step 3: Build lookup maps
+    // Build lookup maps
     const skillsMap: { [key: string]: string[] } = {};
     (skillsData || []).forEach((s: any) => {
       if (!skillsMap[s.course_id]) skillsMap[s.course_id] = [];
@@ -332,10 +281,6 @@ const transformCoursesData = async (coursesData: any[]): Promise<Course[]> => {
       if (!modulesMap[m.course_id]) modulesMap[m.course_id] = [];
       modulesMap[m.course_id].push(m);
     });
-    
-    // Log modules map for debugging
-    console.log('📊 Modules map keys:', Object.keys(modulesMap));
-    console.log('📊 Total modules in map:', Object.values(modulesMap).flat().length);
 
     const coEducatorsMap: { [key: string]: string[] } = {};
     (coEducatorsData || []).forEach((ce: any) => {
@@ -343,7 +288,7 @@ const transformCoursesData = async (coursesData: any[]): Promise<Course[]> => {
       coEducatorsMap[ce.course_id].push(ce.educator_name);
     });
 
-    // Step 4: Transform to match Course interface
+    // Transform to match Course interface
     const transformedCourses = coursesData.map((courseRow: any) => ({
       id: courseRow.course_id,
       title: courseRow.title,
@@ -390,10 +335,9 @@ const transformCoursesData = async (coursesData: any[]): Promise<Course[]> => {
       updatedAt: courseRow.updated_at
     }));
 
-    console.log('✅ Courses transformed:', transformedCourses.length);
     return transformedCourses;
   } catch (error) {
-    console.error('❌ Error transforming courses:', error);
+    logger.error('Error transforming courses', error as Error);
     throw error;
   }
 };
@@ -413,7 +357,7 @@ export const getCourseById = async (courseId: string): Promise<Course | null> =>
     // (This would need proper transformation based on the function return structure)
     return data as any; // You'd need to properly map this
   } catch (error) {
-    console.error('Error fetching course:', error);
+    logger.error('Error fetching course by ID', error as Error, { courseId });
     throw error;
   }
 };
@@ -428,8 +372,6 @@ export const createCourse = async (
   schoolId?: string
 ): Promise<Course> => {
   try {
-    console.log('📡 Creating course:', courseData);
-    
     // If schoolId not provided, try to get it from school_educators table
     let finalSchoolId = schoolId;
     if (!finalSchoolId) {
@@ -438,13 +380,12 @@ export const createCourse = async (
         .select('school_id')
         .eq('user_id', educatorId)
         .single();
-      
+
       if (educatorData) {
         finalSchoolId = educatorData.school_id;
-        console.log('✅ School ID retrieved from educator:', finalSchoolId);
       }
     }
-    
+
     // Insert course
     const { data: courseRow, error: courseError } = await supabase
       .from('courses')
@@ -466,15 +407,11 @@ export const createCourse = async (
       .single();
 
     if (courseError) {
-      console.error('❌ Error creating course:', courseError);
       throw courseError;
     }
 
-    console.log('✅ Course created:', courseRow.course_id);
-
     // Insert skills
     if (courseData.skillsCovered.length > 0) {
-      console.log('📡 Inserting skills:', courseData.skillsCovered);
       const skillsToInsert = courseData.skillsCovered.map(skill => ({
         course_id: courseRow.course_id,
         skill_name: skill
@@ -485,15 +422,12 @@ export const createCourse = async (
         .insert(skillsToInsert);
 
       if (skillsError) {
-        console.error('❌ Error inserting skills:', skillsError);
         throw skillsError;
       }
-      console.log('✅ Skills inserted');
     }
 
     // Insert classes
     if (courseData.linkedClasses.length > 0) {
-      console.log('📡 Inserting classes:', courseData.linkedClasses);
       const classesToInsert = courseData.linkedClasses.map(className => ({
         course_id: courseRow.course_id,
         class_name: className
@@ -504,37 +438,29 @@ export const createCourse = async (
         .insert(classesToInsert);
 
       if (classesError) {
-        console.error('❌ Error inserting classes:', classesError);
         throw classesError;
       }
-      console.log('✅ Classes inserted');
     }
 
     // Insert modules
     if (courseData.modules.length > 0) {
-      console.log('📡 Inserting modules:', courseData.modules.length);
       await insertModules(courseRow.course_id, courseData.modules);
-      console.log('✅ Modules inserted');
     }
 
     // Create notifications for new course
-    console.log('📢 Creating course notifications');
     await createCourseNotification('course_added', courseRow.course_id, courseData.title, educatorName, finalSchoolId);
 
     // Fetch and return the complete course
-    console.log('📡 Fetching complete course data');
     const courses = await getCoursesByEducator(educatorId);
     const newCourse = courses.find(c => c.id === courseRow.course_id);
 
     if (!newCourse) {
-      console.error('❌ Failed to retrieve created course');
       throw new Error('Failed to retrieve created course');
     }
 
-    console.log('✅ Course creation complete');
     return newCourse;
   } catch (error) {
-    console.error('❌ Error creating course:', error);
+    logger.error('Error creating course', error as Error, { educatorId, courseTitle: courseData.title });
     throw error;
   }
 };
@@ -547,8 +473,6 @@ export const updateCourse = async (
   updates: Partial<Course>
 ): Promise<Course> => {
   try {
-    console.log('📡 Updating course:', courseId, updates);
-    
     // Update course basic info
     const { error: courseError } = await supabase
       .from('courses')
@@ -569,15 +493,11 @@ export const updateCourse = async (
       .eq('course_id', courseId);
 
     if (courseError) {
-      console.error('❌ Error updating course:', courseError);
       throw courseError;
     }
 
-    console.log('✅ Course basic info updated');
-
     // Update skills if provided
     if (updates.skillsCovered) {
-      console.log('📡 Updating skills');
       // Delete existing skills
       await supabase
         .from('course_skills')
@@ -595,12 +515,10 @@ export const updateCourse = async (
           .from('course_skills')
           .insert(skillsToInsert);
       }
-      console.log('✅ Skills updated');
     }
 
     // Update classes if provided
     if (updates.linkedClasses) {
-      console.log('📡 Updating classes');
       // Delete existing classes
       await supabase
         .from('course_classes')
@@ -618,11 +536,9 @@ export const updateCourse = async (
           .from('course_classes')
           .insert(classesToInsert);
       }
-      console.log('✅ Classes updated');
     }
 
     // Get updated course
-    console.log('📡 Fetching updated course');
     const { data: courseData } = await supabase
       .from('courses')
       .select('educator_id, title, educator_name, school_id')
@@ -630,17 +546,15 @@ export const updateCourse = async (
       .single();
 
     if (!courseData) {
-      console.error('❌ Course not found');
       throw new Error('Course not found');
     }
 
     // Create notifications for course update
-    console.log('📢 Creating course update notifications');
     await createCourseNotification(
-      'course_updated', 
-      courseId, 
-      updates.title || courseData.title, 
-      courseData.educator_name, 
+      'course_updated',
+      courseId,
+      updates.title || courseData.title,
+      courseData.educator_name,
       courseData.school_id
     );
 
@@ -648,14 +562,12 @@ export const updateCourse = async (
     const updatedCourse = courses.find(c => c.id === courseId);
 
     if (!updatedCourse) {
-      console.error('❌ Failed to retrieve updated course');
       throw new Error('Failed to retrieve updated course');
     }
 
-    console.log('✅ Course update complete');
     return updatedCourse;
   } catch (error) {
-    console.error('❌ Error updating course:', error);
+    logger.error('Error updating course', error as Error, { courseId });
     throw error;
   }
 };
@@ -672,7 +584,6 @@ export const deleteCourse = async (courseId: string): Promise<void> => {
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error deleting course:', error);
     throw error;
   }
 };
@@ -741,7 +652,7 @@ export const addModule = async (
       lessons: []
     };
   } catch (error) {
-    console.error('Error adding module:', error);
+    logger.error('Error adding module', error as Error, { courseId, moduleTitle: moduleData.title });
     throw error;
   }
 };
@@ -816,7 +727,7 @@ export const addLesson = async (
       resources
     };
   } catch (error) {
-    console.error('Error adding lesson:', error);
+    logger.error('Error adding lesson', error as Error, { moduleId, lessonTitle: lessonData.title });
     throw error;
   }
 };
@@ -842,7 +753,7 @@ export const updateLesson = async (
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error updating lesson:', error);
+    logger.error('Error updating lesson', error as Error, { lessonId });
     throw error;
   }
 };
@@ -859,7 +770,7 @@ export const deleteLesson = async (lessonId: string): Promise<void> => {
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error deleting lesson:', error);
+    logger.error('Error deleting lesson', error as Error, { lessonId });
     throw error;
   }
 };
@@ -935,7 +846,7 @@ export const addResource = async (
       embedUrl: data.embed_url
     };
   } catch (error) {
-    console.error('Error adding resource:', error);
+    logger.error('Error adding resource', error as Error, { lessonId, resourceName: resourceData.name });
     throw error;
   }
 };
@@ -952,7 +863,7 @@ export const deleteResource = async (resourceId: string): Promise<void> => {
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error deleting resource:', error);
+    logger.error('Error deleting resource', error as Error, { resourceId });
     throw error;
   }
 };
@@ -976,7 +887,7 @@ export const updateEnrollmentCount = async (
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error updating enrollment count:', error);
+    logger.error('Error updating enrollment count', error as Error, { courseId, count });
     throw error;
   }
 };
@@ -996,7 +907,7 @@ export const updateCompletionRate = async (
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error updating completion rate:', error);
+    logger.error('Error updating completion rate', error as Error, { courseId, rate });
     throw error;
   }
 };

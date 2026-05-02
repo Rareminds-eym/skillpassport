@@ -128,7 +128,7 @@ const CollegeMyClass: React.FC = () => {
           setClassmates(classmatesData);
         }
       } catch (error) {
-        console.error('Error fetching college class data:', error);
+        // Silent fail - error will be handled by UI state
       } finally {
         setLoading(false);
       }
@@ -157,7 +157,7 @@ const CollegeMyClass: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('Error updating assignment status:', error);
+      // Silent fail - error will be handled by UI state
     }
   };
 
@@ -212,14 +212,7 @@ const CollegeMyClass: React.FC = () => {
       // Get user token from Supabase session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-      if (sessionError) {
-        console.error('Session error:', sessionError);
-        showNotificationModal('error', 'Authentication Error', `Authentication error: ${sessionError.message}`);
-        return;
-      }
-
       if (!session?.access_token) {
-        console.error('No access token found in session');
         showNotificationModal('error', 'Authentication Required', 'Authentication required. Please log in again.');
         return;
       }
@@ -263,8 +256,6 @@ const CollegeMyClass: React.FC = () => {
       }, 1000);
 
     } catch (error: any) {
-      console.error('Upload failed:', error);
-
       // Provide more specific error messages
       let errorMessage = error?.message || 'Unknown error';
 
@@ -292,7 +283,6 @@ const CollegeMyClass: React.FC = () => {
       const assignmentData = assignments.find(a => a.assignment_id === assignment.assignment_id);
       setAssignmentDetails(assignmentData);
     } catch (error) {
-      console.error('Error loading assignment details:', error);
       showNotificationModal('error', 'Load Error', 'Failed to load assignment details');
       setShowDetailsModal(false);
     } finally {

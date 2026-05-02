@@ -7,7 +7,7 @@ import { RecruiterContext } from '@/features/student-profile/model';
  */
 export async function buildRecruiterContext(recruiterId: string): Promise<RecruiterContext> {
   try {
-    console.log('🔍 Building recruiter context for:', recruiterId);
+    // Building recruiter context
 
     // Fetch recruiter profile
     const { data: recruiter, error: recruiterError } = await supabase
@@ -17,7 +17,7 @@ export async function buildRecruiterContext(recruiterId: string): Promise<Recrui
       .single();
 
     if (recruiterError || !recruiter) {
-      console.warn('⚠️ Recruiter not found, using fallback:', recruiterError?.message);
+      // Using fallback context
       return buildFallbackContext();
     }
 
@@ -77,11 +77,10 @@ export async function buildRecruiterContext(recruiterId: string): Promise<Recrui
       recent_activities: recentActivities.slice(0, 5)
     };
 
-    console.log('✅ Built recruiter context:', context);
     return context;
 
   } catch (error) {
-    console.error('❌ Error building recruiter context:', error);
+    // Error handled with fallback
     return buildFallbackContext();
   }
 }

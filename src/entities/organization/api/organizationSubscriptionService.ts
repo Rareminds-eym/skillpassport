@@ -6,6 +6,9 @@
  */
 
 import { supabase } from '@/shared/api';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('organizationSubscription');
 
 // ============================================================================
 // Types & Interfaces
@@ -182,7 +185,7 @@ export class OrganizationSubscriptionService {
 
       return this.mapToOrganizationSubscription(subscription);
     } catch (error) {
-      console.error('Error purchasing subscription:', error);
+      logger.error('Error purchasing subscription', error as Error);
       throw error;
     }
   }
@@ -212,7 +215,7 @@ export class OrganizationSubscriptionService {
 
       return (data || []).map(this.mapToOrganizationSubscription);
     } catch (error) {
-      console.error('Error fetching organization subscriptions:', error);
+      logger.error('Error fetching organization subscriptions', error as Error);
       throw error;
     }
   }
@@ -238,7 +241,7 @@ export class OrganizationSubscriptionService {
 
       return data ? this.mapToOrganizationSubscription(data) : null;
     } catch (error) {
-      console.error('Error fetching subscription:', error);
+      logger.error('Error fetching subscription', error as Error);
       throw error;
     }
   }
@@ -285,7 +288,7 @@ export class OrganizationSubscriptionService {
 
       return this.mapToOrganizationSubscription(data);
     } catch (error) {
-      console.error('Error updating seat count:', error);
+      logger.error('Error updating seat count', error as Error);
       throw error;
     }
   }
@@ -311,7 +314,7 @@ export class OrganizationSubscriptionService {
 
       if (error) throw error;
     } catch (error) {
-      console.error('Error cancelling subscription:', error);
+      logger.error('Error cancelling subscription', error as Error);
       throw error;
     }
   }
@@ -363,7 +366,7 @@ export class OrganizationSubscriptionService {
 
       return this.mapToOrganizationSubscription(data);
     } catch (error) {
-      console.error('Error renewing subscription:', error);
+      logger.error('Error renewing subscription', error as Error);
       throw error;
     }
   }
@@ -414,7 +417,7 @@ export class OrganizationSubscriptionService {
 
       return this.mapToOrganizationSubscription(data);
     } catch (error) {
-      console.error('Error upgrading subscription:', error);
+      logger.error('Error upgrading subscription', error as Error);
       throw error;
     }
   }

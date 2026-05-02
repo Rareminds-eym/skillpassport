@@ -583,7 +583,5 @@ export const exportAsPDF = (student: Student, options?: ExportOptions): void => 
     printWindow.onload = () => {
       printWindow.print();
     };
-  } else {
-    console.error('Failed to open print window. Please check popup blocker settings.');
   }
 };

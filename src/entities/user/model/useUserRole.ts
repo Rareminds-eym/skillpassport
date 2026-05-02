@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('user-role-hook');
 
 export type UserRole = 'school_admin' | 'principal' | 'it_admin' | 'class_teacher' | 'subject_teacher';
 
@@ -61,19 +64,11 @@ export const useUserRole = (authUser: User | null, authRole?: string) => {
     fetchUserRole();
   }, [authUser, authRole]);
 
-  // Debug: Log role changes
-  useEffect(() => {
-    console.log('Current role:', role);
-    console.log('Current permissions:', permissions);
-    console.log('Auth user:', authUser);
-    console.log('Auth role:', authRole);
-  }, [role, permissions, authUser, authRole]);
 
   const fetchUserRole = async () => {
     try {
       // First check if user has role from AuthContext (localStorage)
       if (authRole) {
-        console.log('Using role from AuthContext:', authRole);
         // Map the auth role to our UserRole type
         if (authRole === 'school_admin') {
           setRole('school_admin');
@@ -86,7 +81,6 @@ export const useUserRole = (authUser: User | null, authRole?: string) => {
       // If user is logged in via AuthContext
       if (authUser) {
         const userEmail = authUser.email;
-        console.log('User email from AuthContext:', userEmail);
 
         // Try to get role from teachers table
         if (userEmail) {
@@ -97,7 +91,6 @@ export const useUserRole = (authUser: User | null, authRole?: string) => {
             .maybeSingle();
 
           if (teacherData?.role) {
-            console.log('Found role in teachers table:', teacherData.role);
             setRole(teacherData.role as UserRole);
             setPermissions(ROLE_PERMISSIONS[teacherData.role as UserRole]);
             setLoading(false);
@@ -114,7 +107,6 @@ export const useUserRole = (authUser: User | null, authRole?: string) => {
             .maybeSingle();
 
           if (educatorData?.role) {
-            console.log('Found role in school_educators table:', educatorData.role);
             setRole(educatorData.role as UserRole);
             setPermissions(ROLE_PERMISSIONS[educatorData.role as UserRole]);
             setLoading(false);
@@ -127,7 +119,6 @@ export const useUserRole = (authUser: User | null, authRole?: string) => {
       // This ensures backward compatibility with existing school admin users
       const currentPath = window.location.pathname;
       if (currentPath.includes('/school-admin') || currentPath.includes('/admin/schoolAdmin')) {
-        console.log('Defaulting to school_admin role for school admin route');
         setRole('school_admin');
         setPermissions(ROLE_PERMISSIONS.school_admin);
         setLoading(false);
@@ -135,12 +126,11 @@ export const useUserRole = (authUser: User | null, authRole?: string) => {
       }
 
       // If no role found anywhere, default to subject_teacher
-      console.log('No role found, defaulting to subject_teacher');
       setRole('subject_teacher');
       setPermissions(ROLE_PERMISSIONS.subject_teacher);
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching user role:', error);
+      logger.error('Failed to fetch user role', error instanceof Error ? error : new Error(String(error)));
       // On error, default to school_admin if on school admin routes
       if (window.location.pathname.includes('/school-admin') || window.location.pathname.includes('/admin/schoolAdmin')) {
         setRole('school_admin');

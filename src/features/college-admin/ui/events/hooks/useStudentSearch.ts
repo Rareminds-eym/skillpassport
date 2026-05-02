@@ -1,6 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 import { Student } from '@/features/student-profile/model';
+
+const logger = getLogger('college-admin:useStudentSearch');
 
 export const useStudentSearch = (collegeId: string | null, excludeIds: Set<string>) => {
   const [students, setStudents] = useState<Student[]>([]);
@@ -58,7 +61,7 @@ export const useStudentSearch = (collegeId: string | null, excludeIds: Set<strin
         const filtered = (data || []).filter(s => !excludeIds.has(s.id));
         setStudents(filtered);
       } catch (err) {
-        console.error("Search error:", err);
+        logger.error('Search error', err as Error);
         setStudents([]);
       } finally {
         setLoading(false);

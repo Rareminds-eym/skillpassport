@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { XMarkIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('DiversityExportModal');
 
 // Extend jsPDF type to include autoTable
 declare module 'jspdf' {
@@ -195,8 +198,7 @@ const DiversityExportModal: React.FC<DiversityExportModalProps> = ({
       // Close modal after export
       onClose();
     } catch (error) {
-      console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF. Please check the console for details.');
+      logger.error('Failed to generate PDF export', error as Error);
     }
   };
 

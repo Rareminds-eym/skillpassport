@@ -11,6 +11,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('student-portfolio');
 
 export interface UseStudentPortfolioOptions {
   studentId: string | null;
@@ -124,7 +127,7 @@ export const useStudentPortfolio = ({ studentId, enabled = true }: UseStudentPor
         fetchTrainings()
       ]);
     } catch (err: any) {
-      console.error('Error fetching portfolio data:', err);
+      logger.error('Error fetching portfolio data', err);
       setError(err.message || 'Failed to fetch portfolio data');
     } finally {
       setLoading(false);
@@ -175,7 +178,7 @@ export const useStudentPortfolio = ({ studentId, enabled = true }: UseStudentPor
 
       setProjects(transformedData);
     } catch (err) {
-      console.error('Error fetching projects:', err);
+      logger.error('Error fetching projects', err as Error);
     }
   };
 
@@ -221,7 +224,7 @@ export const useStudentPortfolio = ({ studentId, enabled = true }: UseStudentPor
 
       setCertificates(transformedData);
     } catch (err) {
-      console.error('Error fetching certificates:', err);
+      logger.error('Error fetching certificates', err as Error);
     }
   };
 
@@ -349,7 +352,7 @@ export const useStudentPortfolio = ({ studentId, enabled = true }: UseStudentPor
       
       setTrainings([...filteredTrainings, ...formattedEnrollments]);
     } catch (err) {
-      console.error('Error fetching trainings:', err);
+      logger.error('Error fetching trainings', err as Error);
     }
   };
 

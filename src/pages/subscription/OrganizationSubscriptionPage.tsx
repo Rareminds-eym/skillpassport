@@ -21,8 +21,10 @@ import type { PoolUpdateData } from '@/features/subscription';
 import { useOrganizationSubscription } from '@/features/subscription/model';
 
 import { supabase } from '@/shared/api/supabaseClient';
-
+import { getLogger } from '@/shared/config/logging';
 import { useUser } from '@/shared/model/authStore';
+
+const logger = getLogger('organization-subscription');
 interface OrganizationDetails {
   id?: string;
   name?: string;
@@ -69,25 +71,23 @@ function OrganizationSubscriptionPage() {
   
   useEffect(() => {
     const fetchOrganizationId = async () => {
-      console.log('[OrganizationSubscriptionPage] Fetching organization ID, user:', user);
       
       // First check user object for organization IDs
-      if (user?.school_id) { console.log('[OrganizationSubscriptionPage] Found school_id in user:', user.school_id); setOrganizationId(String(user.school_id)); return; }
-      if (user?.college_id) { console.log('[OrganizationSubscriptionPage] Found college_id in user:', user.college_id); setOrganizationId(String(user.college_id)); return; }
-      if (user?.university_id) { console.log('[OrganizationSubscriptionPage] Found university_id in user:', user.university_id); setOrganizationId(String(user.university_id)); return; }
-      if (user?.schoolId) { console.log('[OrganizationSubscriptionPage] Found schoolId in user:', user.schoolId); setOrganizationId(String(user.schoolId)); return; }
-      if (user?.collegeId) { console.log('[OrganizationSubscriptionPage] Found collegeId in user:', user.collegeId); setOrganizationId(String(user.collegeId)); return; }
-      if (user?.universityId) { console.log('[OrganizationSubscriptionPage] Found universityId in user:', user.universityId); setOrganizationId(String(user.universityId)); return; }
+      if (user?.school_id) { setOrganizationId(String(user.school_id)); return; }
+      if (user?.college_id) { setOrganizationId(String(user.college_id)); return; }
+      if (user?.university_id) { setOrganizationId(String(user.university_id)); return; }
+      if (user?.schoolId) { setOrganizationId(String(user.schoolId)); return; }
+      if (user?.collegeId) { setOrganizationId(String(user.collegeId)); return; }
+      if (user?.universityId) { setOrganizationId(String(user.universityId)); return; }
       
       // Fallback to localStorage for school admins
       const storedUser = localStorage.getItem('user');
-      console.log('[OrganizationSubscriptionPage] Checking localStorage user:', storedUser);
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);
-          if (userData.schoolId) { console.log('[OrganizationSubscriptionPage] Found schoolId in localStorage:', userData.schoolId); setOrganizationId(userData.schoolId); return; }
-          if (userData.collegeId) { console.log('[OrganizationSubscriptionPage] Found collegeId in localStorage:', userData.collegeId); setOrganizationId(userData.collegeId); return; }
-          if (userData.universityId) { console.log('[OrganizationSubscriptionPage] Found universityId in localStorage:', userData.universityId); setOrganizationId(userData.universityId); return; }
+          if (userData.schoolId) { setOrganizationId(userData.schoolId); return; }
+          if (userData.collegeId) { setOrganizationId(userData.collegeId); return; }
+          if (userData.universityId) { setOrganizationId(userData.universityId); return; }
         } catch (e) {
           // Ignore parse errors
         }
@@ -103,11 +103,8 @@ function OrganizationSubscriptionPage() {
       }
       
       if (!userId && !userEmail) {
-        console.log('[OrganizationSubscriptionPage] No user ID or email, cannot fetch organization');
         return;
       }
-      
-      console.log('[OrganizationSubscriptionPage] Fetching organization from database for user:', userId, userEmail);
       
       try {
         // Try school_educators table first for school admins
@@ -118,10 +115,7 @@ function OrganizationSubscriptionPage() {
             .eq('user_id', userId)
             .maybeSingle();
           
-          console.log('[OrganizationSubscriptionPage] school_educators query result:', educatorData, educatorError);
-          
           if (educatorData?.school_id) {
-            console.log('[OrganizationSubscriptionPage] Found school_id from school_educators:', educatorData.school_id);
             setOrganizationId(educatorData.school_id);
             return;
           }
@@ -136,10 +130,7 @@ function OrganizationSubscriptionPage() {
             .ilike('email', userEmail)
             .maybeSingle();
           
-          console.log('[OrganizationSubscriptionPage] organizations by email (school) query result:', orgByEmail, emailError);
-          
           if (orgByEmail?.id) {
-            console.log('[OrganizationSubscriptionPage] Found organization by email:', orgByEmail.id);
             setOrganizationId(orgByEmail.id);
             return;
           }
@@ -153,10 +144,7 @@ function OrganizationSubscriptionPage() {
             .eq('user_id', userId)
             .maybeSingle();
           
-          console.log('[OrganizationSubscriptionPage] college_lecturers query result:', lecturerData, lecturerError);
-          
           if (lecturerData?.collegeId) {
-            console.log('[OrganizationSubscriptionPage] Found collegeId from college_lecturers:', lecturerData.collegeId);
             setOrganizationId(lecturerData.collegeId);
             return;
           }
@@ -172,10 +160,7 @@ function OrganizationSubscriptionPage() {
             .eq('admin_id', userId)
             .maybeSingle();
           
-          console.log('[OrganizationSubscriptionPage] organizations by admin_id query result:', orgByAdminId, adminIdError);
-          
           if (orgByAdminId?.id) {
-            console.log('[OrganizationSubscriptionPage] Found organization by admin_id:', orgByAdminId.id);
             setOrganizationId(orgByAdminId.id);
             return;
           }
@@ -190,18 +175,13 @@ function OrganizationSubscriptionPage() {
             .eq('email', userEmail)
             .maybeSingle();
           
-          console.log('[OrganizationSubscriptionPage] organizations by email query result:', orgByEmail, emailError);
-          
           if (orgByEmail?.id) {
-            console.log('[OrganizationSubscriptionPage] Found organization by email:', orgByEmail.id);
             setOrganizationId(orgByEmail.id);
             return;
           }
         }
-        
-        console.log('[OrganizationSubscriptionPage] Could not find organization ID');
       } catch (err) {
-        console.error('[OrganizationSubscriptionPage] Error fetching organization ID:', err);
+        logger.error('Error fetching organization ID', err as Error);
       }
     };
     
@@ -253,11 +233,8 @@ function OrganizationSubscriptionPage() {
   useEffect(() => {
     const fetchOrganizationDetails = async () => {
       if (!organizationId) {
-        console.log('[OrganizationSubscriptionPage] No organizationId yet, skipping fetch');
         return;
       }
-      
-      console.log('[OrganizationSubscriptionPage] Fetching organization details for ID:', organizationId);
       
       try {
         const { data, error } = await supabase
@@ -266,9 +243,8 @@ function OrganizationSubscriptionPage() {
           .eq('id', organizationId)
           .maybeSingle();
         
-        console.log('[OrganizationSubscriptionPage] Organization data:', data, 'Error:', error);
         if (error) {
-          console.error('Error fetching organization details:', error);
+          logger.error('Error fetching organization details', error as Error);
           return;
         }
         
@@ -293,7 +269,7 @@ function OrganizationSubscriptionPage() {
           });
         }
       } catch (err) {
-        console.error('Error fetching organization details:', err);
+        logger.error('Error fetching organization details', err as Error);
       }
     };
     
@@ -363,7 +339,7 @@ function OrganizationSubscriptionPage() {
   // Log member counts for debugging
   useEffect(() => {
     if (memberCounts.total > 0) {
-      console.log('[OrganizationSubscriptionPage] Member counts:', memberCounts);
+      logger.info('Member counts', memberCounts);
     }
   }, [memberCounts]);
   
@@ -444,7 +420,7 @@ function OrganizationSubscriptionPage() {
         .single();
       
       if (error) {
-        console.error('[CreatePool] Error:', error);
+        logger.error('CreatePool error', error as Error);
         throw new Error(error.message || 'Failed to create pool');
       }
       
@@ -454,7 +430,7 @@ function OrganizationSubscriptionPage() {
       // Refresh data
       await refresh();
     } catch (err) {
-      console.error('[CreatePool] Error:', err);
+      logger.error('CreatePool error', err as Error);
       throw err;
     } finally {
       setIsCreatingPool(false);
@@ -485,7 +461,7 @@ function OrganizationSubscriptionPage() {
         .eq('id', poolId);
       
       if (error) {
-        console.error('[EditPool] Error:', error);
+        logger.error('EditPool error', error as Error);
         throw new Error(error.message || 'Failed to update pool');
       }
       
@@ -495,7 +471,7 @@ function OrganizationSubscriptionPage() {
       
       await refresh();
     } catch (err) {
-      console.error('[EditPool] Error:', err);
+      logger.error('EditPool error', err as Error);
       throw err;
     } finally {
       setIsEditingPool(false);
@@ -520,7 +496,7 @@ function OrganizationSubscriptionPage() {
         .eq('id', poolId);
       
       if (error) {
-        console.error('[DeletePool] Error:', error);
+        logger.error('DeletePool error', error as Error);
         throw new Error(error.message || 'Failed to delete pool');
       }
       
@@ -530,7 +506,7 @@ function OrganizationSubscriptionPage() {
       
       await refresh();
     } catch (err) {
-      console.error('[DeletePool] Error:', err);
+      logger.error('DeletePool error', err as Error);
       throw err;
     } finally {
       setIsDeletingPool(false);
@@ -573,7 +549,7 @@ function OrganizationSubscriptionPage() {
         .eq('status', 'active');
       
       if (error) {
-        console.error('[ViewPoolAssignments] Error:', error);
+        logger.error('ViewPoolAssignments error', error as Error);
         toast.error('Failed to load assignments');
         return;
       }
@@ -589,7 +565,7 @@ function OrganizationSubscriptionPage() {
       
       setPoolAssignedMembers(members);
     } catch (err) {
-      console.error('[ViewPoolAssignments] Error:', err);
+      logger.error('ViewPoolAssignments error', err as Error);
       toast.error('Failed to load assignments');
     } finally {
       setIsLoadingPoolAssignments(false);
@@ -609,7 +585,7 @@ function OrganizationSubscriptionPage() {
         .eq('id', licenseAssignmentId);
       
       if (error) {
-        console.error('[UnassignFromPool] Error:', error);
+        logger.error('UnassignFromPool error', error as Error);
         throw new Error(error.message || 'Failed to unassign license');
       }
       
@@ -622,7 +598,7 @@ function OrganizationSubscriptionPage() {
       await refresh();
       await refreshMembers();
     } catch (err) {
-      console.error('[UnassignFromPool] Error:', err);
+      logger.error('UnassignFromPool error', err as Error);
       toast.error(err instanceof Error ? err.message : 'Failed to unassign license');
     }
   }, [user?.id, refresh, refreshMembers]);
@@ -700,7 +676,7 @@ function OrganizationSubscriptionPage() {
       await refreshMembers();
       await refresh();
     } catch (err) {
-      console.error('[AssignToPool] Error:', err);
+      logger.error('AssignToPool error', err as Error);
       throw err;
     } finally {
       setIsAssigningToPool(false);
@@ -842,7 +818,7 @@ function OrganizationSubscriptionPage() {
         toast.error(result.message);
       }
     } catch (err) {
-      console.error('Error removing member:', err);
+      logger.error('Error removing member', err as Error);
       toast.error(err instanceof Error ? err.message : 'Failed to remove member');
     }
   }, [organizationId, organizationType, refreshMembers, refresh]);

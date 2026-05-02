@@ -58,7 +58,6 @@ export class ProfileValidationService {
       };
 
     } catch (error) {
-      console.error('Profile validation error:', error);
       throw error;
     }
   }

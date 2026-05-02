@@ -158,8 +158,6 @@ const UniversityCounselling: React.FC = () => {
         setSuggestions(result.suggestions);
       }
     } catch (error) {
-      console.error('University AI Error:', error);
-
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',

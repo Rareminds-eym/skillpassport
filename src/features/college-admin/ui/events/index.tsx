@@ -61,7 +61,9 @@ const EventManagement: React.FC = () => {
           // Check user metadata
           if (user.user_metadata?.college_id) setCollegeId(user.user_metadata.college_id);
         }
-      } catch (error) { console.error("Error fetching college ID:", error); }
+      } catch (error) { 
+        // Silently handle college ID fetch failure
+      }
     };
     fetchCollegeId();
   }, []);

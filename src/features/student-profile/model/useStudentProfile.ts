@@ -14,6 +14,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('student-profile');
 // TODO: Uncomment when CRUD functions are added to studentProfileService
 // import { 
 //   getStudentById,
@@ -155,7 +158,7 @@ export const useStudentProfile = ({ studentId, email, enabled = true }: UseStude
         ]);
       }
     } catch (err: any) {
-      console.error('Error fetching student profile:', err);
+      logger.error('Error fetching student profile', err);
       setError(err.message || 'Failed to fetch profile');
     } finally {
       setLoading(false);
@@ -197,7 +200,7 @@ export const useStudentProfile = ({ studentId, email, enabled = true }: UseStude
 
       setEducation(transformedData);
     } catch (err) {
-      console.error('Error fetching education:', err);
+      logger.error('Error fetching education', err as Error);
     }
   };
 
@@ -235,7 +238,7 @@ export const useStudentProfile = ({ studentId, email, enabled = true }: UseStude
 
       setExperience(transformedData);
     } catch (err) {
-      console.error('Error fetching experience:', err);
+      logger.error('Error fetching experience', err as Error);
     }
   };
 
@@ -271,7 +274,7 @@ export const useStudentProfile = ({ studentId, email, enabled = true }: UseStude
       setTechnicalSkills(transformedData.filter(s => s.type === 'technical'));
       setSoftSkills(transformedData.filter(s => s.type === 'soft'));
     } catch (err) {
-      console.error('Error fetching skills:', err);
+      logger.error('Error fetching skills', err as Error);
     }
   };
 
@@ -293,7 +296,7 @@ export const useStudentProfile = ({ studentId, email, enabled = true }: UseStude
       refresh();
       return result;
     } catch (err) {
-      console.error('Error updating profile:', err);
+      logger.error('Error updating profile', err as Error);
       throw err;
     }
   };
@@ -306,7 +309,7 @@ export const useStudentProfile = ({ studentId, email, enabled = true }: UseStude
       refresh();
       return result;
     } catch (err) {
-      console.error('Error adding education:', err);
+      logger.error('Error adding education', err as Error);
       throw err;
     }
   };
@@ -318,7 +321,7 @@ export const useStudentProfile = ({ studentId, email, enabled = true }: UseStude
       refresh();
       return result;
     } catch (err) {
-      console.error('Error updating education:', err);
+      logger.error('Error updating education', err as Error);
       throw err;
     }
   };
@@ -330,7 +333,7 @@ export const useStudentProfile = ({ studentId, email, enabled = true }: UseStude
       refresh();
       return result;
     } catch (err) {
-      console.error('Error deleting education:', err);
+      logger.error('Error deleting education', err as Error);
       throw err;
     }
   };
@@ -343,7 +346,7 @@ export const useStudentProfile = ({ studentId, email, enabled = true }: UseStude
       refresh();
       return result;
     } catch (err) {
-      console.error('Error adding experience:', err);
+      logger.error('Error adding experience', err as Error);
       throw err;
     }
   };
@@ -355,7 +358,7 @@ export const useStudentProfile = ({ studentId, email, enabled = true }: UseStude
       refresh();
       return result;
     } catch (err) {
-      console.error('Error updating experience:', err);
+      logger.error('Error updating experience', err as Error);
       throw err;
     }
   };
@@ -367,7 +370,7 @@ export const useStudentProfile = ({ studentId, email, enabled = true }: UseStude
       refresh();
       return result;
     } catch (err) {
-      console.error('Error deleting experience:', err);
+      logger.error('Error deleting experience', err as Error);
       throw err;
     }
   };
@@ -380,7 +383,7 @@ export const useStudentProfile = ({ studentId, email, enabled = true }: UseStude
       refresh();
       return result;
     } catch (err) {
-      console.error('Error adding technical skill:', err);
+      logger.error('Error adding technical skill', err as Error);
       throw err;
     }
   };
@@ -392,7 +395,7 @@ export const useStudentProfile = ({ studentId, email, enabled = true }: UseStude
       refresh();
       return result;
     } catch (err) {
-      console.error('Error updating technical skill:', err);
+      logger.error('Error updating technical skill', err as Error);
       throw err;
     }
   };
@@ -404,7 +407,7 @@ export const useStudentProfile = ({ studentId, email, enabled = true }: UseStude
       refresh();
       return result;
     } catch (err) {
-      console.error('Error deleting technical skill:', err);
+      logger.error('Error deleting technical skill', err as Error);
       throw err;
     }
   };
@@ -416,7 +419,7 @@ export const useStudentProfile = ({ studentId, email, enabled = true }: UseStude
       refresh();
       return result;
     } catch (err) {
-      console.error('Error adding soft skill:', err);
+      logger.error('Error adding soft skill', err as Error);
       throw err;
     }
   };
@@ -428,7 +431,7 @@ export const useStudentProfile = ({ studentId, email, enabled = true }: UseStude
       refresh();
       return result;
     } catch (err) {
-      console.error('Error updating soft skill:', err);
+      logger.error('Error updating soft skill', err as Error);
       throw err;
     }
   };
@@ -436,10 +439,9 @@ export const useStudentProfile = ({ studentId, email, enabled = true }: UseStude
   const deleteSoftSkillRecord = async (skillId: string) => {
     try {
       // TODO: Implement deleteSoftSkill in student-profile API
-      console.warn('deleteSoftSkill not yet implemented');
       return { error: 'Not implemented' };
     } catch (err) {
-      console.error('Error deleting soft skill:', err);
+      logger.error('Error deleting soft skill', err as Error);
       throw err;
     }
   };

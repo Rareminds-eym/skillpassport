@@ -5,6 +5,9 @@ import { useState, useEffect } from "react"
 import { supabase } from "@/shared/api/supabaseClient"
 import toast from "react-hot-toast"
 import { XMarkIcon, UserPlusIcon, UserMinusIcon } from "@heroicons/react/24/outline"
+import { getLogger } from "@/shared/config/logging"
+
+const logger = getLogger('class-management-modals')
 
 interface Student {
   id: string
@@ -114,7 +117,7 @@ export const ManageStudentsModal = ({
       onUpdate()
     } catch (error: any) {
       toast.error("Failed to add students")
-      console.error(error)
+      logger.error("Error adding students to class", error)
     } finally {
       setLoading(false)
     }
@@ -144,7 +147,7 @@ export const ManageStudentsModal = ({
       onUpdate()
     } catch (error: any) {
       toast.error("Failed to remove student")
-      console.error(error)
+      logger.error("Error removing student from class", error)
     } finally {
       setLoading(false)
     }
@@ -356,7 +359,7 @@ export const AssignEducatorModal = ({
       if (error) throw error
       setAssignments(data || [])
     } catch (error: any) {
-      console.error("Error fetching assignments:", error)
+      logger.error("Error fetching assignments", error)
     } finally {
       setLoading(false)
     }
@@ -398,7 +401,7 @@ export const AssignEducatorModal = ({
       onUpdate()
     } catch (error: any) {
       toast.error("Failed to assign educator")
-      console.error(error)
+      logger.error("Error assigning educator to class", error)
     } finally {
       setSubmitting(false)
     }
@@ -421,7 +424,7 @@ export const AssignEducatorModal = ({
       onUpdate()
     } catch (error: any) {
       toast.error("Failed to remove assignment")
-      console.error(error)
+      logger.error("Error removing educator assignment", error)
     } finally {
       setSubmitting(false)
     }

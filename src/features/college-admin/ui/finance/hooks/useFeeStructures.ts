@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { supabase } from '@/shared/api/supabaseClient';
 import { FeeStructure } from '@/features/student-profile/model';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('fee-structures');
 
 export const useFeeStructures = (collegeId: string | null) => {
   const [feeStructures, setFeeStructures] = useState<FeeStructure[]>([]);
@@ -22,7 +25,7 @@ export const useFeeStructures = (collegeId: string | null) => {
       if (error) throw error;
       setFeeStructures(data || []);
     } catch (err) {
-      console.error("Failed to load fee structures:", err);
+      logger.error("Failed to load fee structures", err instanceof Error ? err : new Error(String(err)));
       toast.error("Failed to load fee structures");
     } finally {
       setLoading(false);
@@ -87,7 +90,7 @@ export const useFeeStructures = (collegeId: string | null) => {
       loadFeeStructures();
       return true;
     } catch (err) {
-      console.error("Failed to save fee structure:", err);
+      logger.error("Failed to save fee structure", err instanceof Error ? err : new Error(String(err)));
       toast.error("Failed to save fee structure");
       return false;
     }
@@ -106,7 +109,7 @@ export const useFeeStructures = (collegeId: string | null) => {
       toast.success("Fee structure deleted");
       return true;
     } catch (err) {
-      console.error("Failed to delete fee structure:", err);
+      logger.error("Failed to delete fee structure", err instanceof Error ? err : new Error(String(err)));
       toast.error("Failed to delete fee structure");
       return false;
     }
@@ -125,7 +128,7 @@ export const useFeeStructures = (collegeId: string | null) => {
       toast.success(currentStatus ? "Fee structure deactivated" : "Fee structure activated");
       return true;
     } catch (err) {
-      console.error("Failed to toggle status:", err);
+      logger.error("Failed to toggle status", err instanceof Error ? err : new Error(String(err)));
       toast.error("Failed to update status");
       return false;
     }
@@ -148,7 +151,7 @@ export const useFeeStructures = (collegeId: string | null) => {
       loadFeeStructures();
       return true;
     } catch (err) {
-      console.error("Failed to duplicate:", err);
+      logger.error("Failed to duplicate fee structure", err instanceof Error ? err : new Error(String(err)));
       toast.error("Failed to duplicate fee structure");
       return false;
     }

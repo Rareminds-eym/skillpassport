@@ -65,14 +65,7 @@ export async function matchJobsWithAI(studentProfile, topN = 3, forceRefresh = f
 
   const result = await response.json();
   const recommendations = result.recommendations || [];
-  
-  // Log cache status for debugging
-  if (result.cached) {
-    console.log(`[AI Job Matching] Cache HIT - ${recommendations.length} matches from cache (computed at ${result.computed_at})`);
-  } else {
-    console.log(`[AI Job Matching] Cache MISS - ${recommendations.length} fresh matches computed`);
-  }
-  
+
   if (recommendations.length === 0) {
     // Return empty array instead of throwing - no matches is valid
     return [];

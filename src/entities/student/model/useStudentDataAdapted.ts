@@ -59,7 +59,6 @@ export const useStudentDataAdapted = (userId, useMockData = false) => {
 
       setStudentData(data);
     } catch (err) {
-      console.error('Error fetching student data:', err);
       setError(err);
 
       // If useMockData is true, fall back to mock data
@@ -105,7 +104,6 @@ export const useStudentDataAdapted = (userId, useMockData = false) => {
       refresh();
       return result;
     } catch (err) {
-      console.error('Error updating profile:', err);
       throw err;
     }
   };
@@ -118,7 +116,6 @@ export const useStudentDataAdapted = (userId, useMockData = false) => {
       refresh();
       return result;
     } catch (err) {
-      console.error('Error adding education:', err);
       throw err;
     }
   };
@@ -130,7 +127,6 @@ export const useStudentDataAdapted = (userId, useMockData = false) => {
       refresh();
       return result;
     } catch (err) {
-      console.error('Error updating education:', err);
       throw err;
     }
   };
@@ -142,7 +138,6 @@ export const useStudentDataAdapted = (userId, useMockData = false) => {
       refresh();
       return result;
     } catch (err) {
-      console.error('Error deleting education:', err);
       throw err;
     }
   };
@@ -155,7 +150,6 @@ export const useStudentDataAdapted = (userId, useMockData = false) => {
       refresh();
       return result;
     } catch (err) {
-      console.error('Error adding training:', err);
       throw err;
     }
   };
@@ -167,7 +161,6 @@ export const useStudentDataAdapted = (userId, useMockData = false) => {
       refresh();
       return result;
     } catch (err) {
-      console.error('Error updating training:', err);
       throw err;
     }
   };
@@ -179,7 +172,6 @@ export const useStudentDataAdapted = (userId, useMockData = false) => {
       refresh();
       return result;
     } catch (err) {
-      console.error('Error deleting training:', err);
       throw err;
     }
   };
@@ -192,7 +184,6 @@ export const useStudentDataAdapted = (userId, useMockData = false) => {
       refresh();
       return result;
     } catch (err) {
-      console.error('Error adding experience:', err);
       throw err;
     }
   };
@@ -204,7 +195,6 @@ export const useStudentDataAdapted = (userId, useMockData = false) => {
       refresh();
       return result;
     } catch (err) {
-      console.error('Error updating experience:', err);
       throw err;
     }
   };
@@ -216,7 +206,6 @@ export const useStudentDataAdapted = (userId, useMockData = false) => {
       refresh();
       return result;
     } catch (err) {
-      console.error('Error deleting experience:', err);
       throw err;
     }
   };
@@ -229,7 +218,6 @@ export const useStudentDataAdapted = (userId, useMockData = false) => {
       refresh();
       return result;
     } catch (err) {
-      console.error('Error adding technical skill:', err);
       throw err;
     }
   };
@@ -241,7 +229,6 @@ export const useStudentDataAdapted = (userId, useMockData = false) => {
       refresh();
       return result;
     } catch (err) {
-      console.error('Error updating technical skill:', err);
       throw err;
     }
   };
@@ -253,7 +240,6 @@ export const useStudentDataAdapted = (userId, useMockData = false) => {
       refresh();
       return result;
     } catch (err) {
-      console.error('Error deleting technical skill:', err);
       throw err;
     }
   };
@@ -266,7 +252,6 @@ export const useStudentDataAdapted = (userId, useMockData = false) => {
       refresh();
       return result;
     } catch (err) {
-      console.error('Error adding soft skill:', err);
       throw err;
     }
   };
@@ -278,7 +263,6 @@ export const useStudentDataAdapted = (userId, useMockData = false) => {
       refresh();
       return result;
     } catch (err) {
-      console.error('Error updating soft skill:', err);
       throw err;
     }
   };
@@ -286,10 +270,8 @@ export const useStudentDataAdapted = (userId, useMockData = false) => {
   const deleteSoftSkillRecord = async (skillId) => {
     try {
       // TODO: Implement deleteSoftSkill in student-profile API
-      console.warn('deleteSoftSkill not yet implemented');
       return { error: 'Not implemented' };
     } catch (err) {
-      console.error('Error deleting soft skill:', err);
       throw err;
     }
   };

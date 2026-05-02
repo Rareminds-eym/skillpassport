@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient'
+import { getLogger } from '@/shared/config/logging'
+
+const logger = getLogger('program-service')
 
 export interface ProgramSection {
   id: string
@@ -61,7 +64,7 @@ const updateProgramSectionStudentCount = async (programId: string, semester: num
       .eq('is_deleted', false)
 
     if (countError) {
-      console.error('Error counting students:', countError)
+      logger.error('Error counting students', countError as Error, { programId, semester, section })
       return
     }
 
@@ -76,10 +79,10 @@ const updateProgramSectionStudentCount = async (programId: string, semester: num
       .eq('section', section)
 
     if (updateError) {
-      console.error('Error updating student count:', updateError)
+      logger.error('Error updating student count', updateError as Error, { programId, semester, section })
     }
   } catch (err) {
-    console.error('Error in updateProgramSectionStudentCount:', err)
+    logger.error('Error in updateProgramSectionStudentCount', err as Error, { programId, semester, section })
   }
 }
 
@@ -107,7 +110,7 @@ export const getCollegeLecturerProgramSections = async (userId: string): Promise
       .order('academic_year', { ascending: false })
 
     if (error) {
-      console.error('Error fetching program sections:', error)
+      logger.error('Error fetching program sections', error as Error, { userId })
       return { data: null, error: error.message }
     }
 
@@ -152,7 +155,7 @@ export const getCollegeLecturerProgramSections = async (userId: string): Promise
 
     return { data: data || [], error: null }
   } catch (err: any) {
-    console.error('Error in getCollegeLecturerProgramSections:', err)
+    logger.error('Error in getCollegeLecturerProgramSections', err as Error, { userId })
     return { data: null, error: err?.message || 'Unable to fetch program sections' }
   }
 }
@@ -170,13 +173,13 @@ export const getCollegeDepartments = async (collegeId: string): Promise<ServiceR
       .order('name', { ascending: true })
 
     if (error) {
-      console.error('Error fetching departments:', error)
+      logger.error('Error fetching departments', error as Error, { collegeId })
       return { data: null, error: error.message }
     }
 
     return { data: data || [], error: null }
   } catch (err: any) {
-    console.error('Error in getCollegeDepartments:', err)
+    logger.error('Error in getCollegeDepartments', err as Error, { collegeId })
     return { data: null, error: err?.message || 'Unable to fetch departments' }
   }
 }
@@ -226,7 +229,7 @@ export const createProgramSection = async (
         .single()
 
       if (programError) {
-        console.error('Error creating program:', programError)
+        logger.error('Error creating program', programError as Error, { departmentId, programCode: programData.code })
         return { data: null, error: programError.message }
       }
 
@@ -261,7 +264,7 @@ export const createProgramSection = async (
       .single()
 
     if (error) {
-      console.error('Error creating program section:', error)
+      logger.error('Error creating program section', error as Error, { departmentId, semester: sectionData.semester, section: sectionData.section })
       return { data: null, error: error.message }
     }
 
@@ -280,7 +283,7 @@ export const createProgramSection = async (
 
     return { data: data, error: null }
   } catch (err: any) {
-    console.error('Error in createProgramSection:', err)
+    logger.error('Error in createProgramSection', err as Error, { departmentId, semester: sectionData.semester, section: sectionData.section })
     return { data: null, error: err?.message || 'Unable to create program section' }
   }
 }
@@ -301,13 +304,13 @@ export const unassignLecturerFromProgramSection = async (
       .eq('id', programSectionId)
 
     if (error) {
-      console.error('Error unassigning lecturer from program section:', error)
+      logger.error('Error unassigning lecturer from program section', error as Error, { programSectionId })
       return { data: null, error: error.message }
     }
 
     return { data: true, error: null }
   } catch (err: any) {
-    console.error('Error in unassignLecturerFromProgramSection:', err)
+    logger.error('Error in unassignLecturerFromProgramSection', err as Error, { programSectionId })
     return { data: null, error: err?.message || 'Unable to unassign from program section' }
   }
 }
@@ -326,7 +329,7 @@ export const getProgramSectionStudents = async (userId: string): Promise<Service
       .eq('status', 'active')
 
     if (sectionsError) {
-      console.error('Error fetching lecturer program sections:', sectionsError)
+      logger.error('Error fetching lecturer program sections', sectionsError as Error, { userId })
       return { data: null, error: sectionsError.message }
     }
 
@@ -493,13 +496,13 @@ export const getProgramSectionStudents = async (userId: string): Promise<Service
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching program students:', error)
+      logger.error('Error fetching program students', error as Error, { userId })
       return { data: null, error: error.message }
     }
 
     return { data: data || [], error: null }
   } catch (err: any) {
-    console.error('Error in getProgramSectionStudents:', err)
+    logger.error('Error in getProgramSectionStudents', err as Error, { userId })
     return { data: null, error: err?.message || 'Unable to fetch students' }
   }
 }
@@ -542,7 +545,7 @@ export const getStudentsByProgramSection = async (programSectionId: string): Pro
       .order('name', { ascending: true })
 
     if (error) {
-      console.error('Error fetching section students:', error)
+      logger.error('Error fetching section students', error as Error, { programSectionId })
       return { data: null, error: error.message }
     }
 
@@ -561,7 +564,7 @@ export const getStudentsByProgramSection = async (programSectionId: string): Pro
 
     return { data: students, error: null }
   } catch (err: any) {
-    console.error('Error in getStudentsByProgramSection:', err)
+    logger.error('Error in getStudentsByProgramSection', err as Error, { programSectionId })
     return { data: null, error: err?.message || 'Unable to fetch section students' }
   }
 }
@@ -590,7 +593,7 @@ export const getAvailableStudentsForProgram = async (collegeId: string): Promise
       .order('name', { ascending: true })
 
     if (error) {
-      console.error('Error fetching available students:', error)
+      logger.error('Error fetching available students', error as Error, { collegeId })
       return { data: null, error: error.message }
     }
 
@@ -609,7 +612,7 @@ export const getAvailableStudentsForProgram = async (collegeId: string): Promise
 
     return { data: students, error: null }
   } catch (err: any) {
-    console.error('Error in getAvailableStudentsForProgram:', err)
+    logger.error('Error in getAvailableStudentsForProgram', err as Error, { collegeId })
     return { data: null, error: err?.message || 'Unable to fetch available students' }
   }
 }
@@ -635,7 +638,7 @@ export const addStudentToProgram = async (
       .eq('id', studentId)
 
     if (error) {
-      console.error('Error adding student to program:', error)
+      logger.error('Error adding student to program', error as Error, { studentId, programId })
       return { data: null, error: error.message }
     }
 
@@ -644,7 +647,7 @@ export const addStudentToProgram = async (
 
     return { data: true, error: null }
   } catch (err: any) {
-    console.error('Error in addStudentToProgram:', err)
+    logger.error('Error in addStudentToProgram', err as Error, { studentId, programId })
     return { data: null, error: err?.message || 'Unable to add student to program' }
   }
 }
@@ -662,7 +665,7 @@ export const removeStudentFromProgram = async (studentId: string): Promise<Servi
       .single()
 
     if (fetchError || !student) {
-      console.error('Error fetching student info:', fetchError)
+      logger.error('Error fetching student info', fetchError as Error, { studentId })
       return { data: null, error: 'Student not found' }
     }
 
@@ -680,7 +683,7 @@ export const removeStudentFromProgram = async (studentId: string): Promise<Servi
       .eq('id', studentId)
 
     if (error) {
-      console.error('Error removing student from program:', error)
+      logger.error('Error removing student from program', error as Error, { studentId })
       return { data: null, error: error.message }
     }
 
@@ -691,7 +694,7 @@ export const removeStudentFromProgram = async (studentId: string): Promise<Servi
 
     return { data: true, error: null }
   } catch (err: any) {
-    console.error('Error in removeStudentFromProgram:', err)
+    logger.error('Error in removeStudentFromProgram', err as Error, { studentId })
     return { data: null, error: err?.message || 'Unable to remove student from program' }
   }
 }

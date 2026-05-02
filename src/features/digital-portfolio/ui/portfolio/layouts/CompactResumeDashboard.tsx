@@ -43,13 +43,6 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
     index === self.findIndex((s) => s.id === skill.id)
   );
 
-  console.log('📋 CompactResumeDashboard - Skills:', {
-    profileSkills: student.profile?.skills?.length || 0,
-    profileTechnicalSkills: student.profile?.technicalSkills?.length || 0,
-    uniqueSkillsCount: uniqueSkills.length,
-    uniqueSkills: uniqueSkills.map(s => ({ name: s.name, level: s.level }))
-  });
-
   const tabs = [
     { id: 'skills', label: 'Skills', icon: Code },
     { id: 'projects', label: 'Projects', icon: Briefcase },

@@ -31,7 +31,6 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
       // Check if studentProfile has an ID
       const studentId = studentProfile?.id || studentProfile?.student_id;
       if (!studentId) {
-        console.warn('[useAIJobMatching] No student ID found in profile, skipping match');
         setMatchedJobs([]);
         setLoading(false);
         return;
@@ -40,12 +39,6 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
       try {
         setLoading(true);
         setError(null);
-
-        console.log('[useAIJobMatching] Fetching matches for student:', {
-          id: studentProfile?.id,
-          email: studentProfile?.email,
-          name: studentProfile?.name
-        });
 
         // Call the API - it handles opportunities fetching internally
         const matches = await matchJobsWithAI(studentProfile, topN, false);
@@ -59,10 +52,8 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
         }
 
         setMatchedJobs(matches);
-        console.log('[useAIJobMatching] Got matches:', matches.length);
 
       } catch (err) {
-        console.error('❌ Error in AI job matching:', err);
         setError(err.message || 'Failed to match jobs');
         setMatchedJobs([]);
       } finally {
@@ -103,7 +94,6 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
 
       setMatchedJobs(matches);
     } catch (err) {
-      console.error('Error refreshing matches:', err);
       setError(err.message);
     } finally {
       setLoading(false);

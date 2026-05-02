@@ -4,10 +4,14 @@
  * This is a simplified version using native canvas API
  */
 
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('chart-download');
+
 export const downloadChartAsPNG = async (elementId: string, filename: string) => {
   const element = document.getElementById(elementId);
   if (!element) {
-    console.error(`Element with id "${elementId}" not found`);
+    logger.error(`Element with id "${elementId}" not found`);
     return;
   }
 
@@ -36,7 +40,7 @@ export const downloadChartAsPNG = async (elementId: string, filename: string) =>
       await downloadSVGChart(element, filename);
     }
   } catch (error) {
-    console.error('Error downloading chart:', error);
+    logger.error('Error downloading chart', error as Error);
     alert('Failed to download chart. Please try again.');
   }
 };
@@ -153,7 +157,7 @@ export const copyChartToClipboard = async (elementId: string) => {
       });
     }
   } catch (error) {
-    console.error('Error copying chart:', error);
+    logger.error('Error copying chart', error as Error);
     alert('Failed to copy chart');
   }
 };

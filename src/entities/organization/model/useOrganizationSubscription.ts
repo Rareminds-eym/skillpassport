@@ -27,10 +27,13 @@ import {
     type OrganizationSubscription,
     type PricingBreakdown,
 } from '@/entities/organization';
+import { getLogger } from '@/shared/config';
 import { useCallback, useEffect, useState } from 'react';
 // TODO: This hook previously imported useAuth from @/features/auth
 // If authentication context is needed, it should be passed as a parameter
 // or accessed through a shared authentication context provider
+
+const logger = getLogger('useOrganizationSubscription');
 
 interface UseOrganizationSubscriptionOptions {
   organizationId: string;
@@ -97,7 +100,7 @@ export function useOrganizationSubscription(
       const data = await licenseManagementService.getLicensePools(organizationId);
       setLicensePools(data);
     } catch (err) {
-      console.error('Failed to fetch license pools:', err);
+      logger.error('Failed to fetch license pools', err as Error);
     }
   }, [organizationId]);
   
@@ -122,7 +125,7 @@ export function useOrganizationSubscription(
       const counts = await organizationMemberService.getMemberCounts(organizationId, organizationType);
       setMemberCounts(counts);
     } catch (err) {
-      console.error('Failed to fetch members:', err);
+      logger.error('Failed to fetch organization members', err as Error);
     } finally {
       setIsMembersLoading(false);
     }
@@ -133,9 +136,8 @@ export function useOrganizationSubscription(
     try {
       const data = await organizationBillingService.getBillingDashboard(organizationId, organizationType);
       setBillingData(data);
-    } catch (err) {
-      console.error('Failed to fetch billing data:', err);
-    }
+    } catch (error) {
+      logger.error('Failed to fetch billing data', error as Error);}
   }, [organizationId, organizationType]);
   
   const fetchInvitations = useCallback(async () => {
@@ -143,9 +145,8 @@ export function useOrganizationSubscription(
     try {
       const data = await memberInvitationService.getPendingInvitations(organizationId);
       setPendingInvitations(data);
-    } catch (err) {
-      console.error('Failed to fetch invitations:', err);
-    }
+    } catch (error) {
+      logger.error('Failed to fetch pending invitations', error as Error);}
   }, [organizationId]);
 
   

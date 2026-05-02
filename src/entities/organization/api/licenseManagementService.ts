@@ -37,6 +37,9 @@
  */
 
 import { supabase } from '@/shared/api';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('licenseManagement');
 
 // ============================================================================
 // Types & Interfaces
@@ -145,7 +148,7 @@ export class LicenseManagementService {
 
       return this.mapToLicensePool(data);
     } catch (error) {
-      console.error('Error creating license pool:', error);
+      logger.error('Error creating license pool', error as Error);
       throw error;
     }
   }
@@ -173,7 +176,7 @@ export class LicenseManagementService {
 
       return (data || []).map(this.mapToLicensePool);
     } catch (error) {
-      console.error('Error fetching license pools:', error);
+      logger.error('Error fetching license pools', error as Error);
       throw error;
     }
   }
@@ -219,7 +222,7 @@ export class LicenseManagementService {
 
       return this.mapToLicensePool(data);
     } catch (error) {
-      console.error('Error updating pool allocation:', error);
+      logger.error('Error updating pool allocation', error as Error);
       throw error;
     }
   }
@@ -280,7 +283,7 @@ export class LicenseManagementService {
 
       return this.mapToLicenseAssignment(data);
     } catch (error) {
-      console.error('Error assigning license:', error);
+      logger.error('Error assigning license', error as Error);
       throw error;
     }
   }
@@ -307,7 +310,7 @@ export class LicenseManagementService {
 
       if (error) throw error;
     } catch (error) {
-      console.error('Error unassigning license:', error);
+      logger.error('Error unassigning license', error as Error);
       throw error;
     }
   }
@@ -367,7 +370,7 @@ export class LicenseManagementService {
 
       return this.mapToLicenseAssignment(newAssignment);
     } catch (error) {
-      console.error('Error transferring license:', error);
+      logger.error('Error transferring license', error as Error);
       throw error;
     }
   }
@@ -413,7 +416,7 @@ export class LicenseManagementService {
 
       return (data || []).map(this.mapToLicenseAssignment);
     } catch (error) {
-      console.error('Error fetching user assignments:', error);
+      logger.error('Error fetching user assignments', error as Error);
       throw error;
     }
   }
@@ -433,7 +436,7 @@ export class LicenseManagementService {
 
       return (data || []).map(this.mapToLicenseAssignment);
     } catch (error) {
-      console.error('Error fetching pool assignments:', error);
+      logger.error('Error fetching pool assignments', error as Error);
       throw error;
     }
   }
@@ -457,7 +460,7 @@ export class LicenseManagementService {
 
       return (data || []).reduce((sum, pool) => sum + pool.available_seats, 0);
     } catch (error) {
-      console.error('Error fetching available seats:', error);
+      logger.error('Error fetching available seats', error as Error);
       throw error;
     }
   }
@@ -486,7 +489,7 @@ export class LicenseManagementService {
 
       return this.mapToLicensePool(data);
     } catch (error) {
-      console.error('Error configuring auto-assignment:', error);
+      logger.error('Error configuring auto-assignment', error as Error);
       throw error;
     }
   }
@@ -523,7 +526,7 @@ export class LicenseManagementService {
 
       return assignments;
     } catch (error) {
-      console.error('Error processing auto-assignments:', error);
+      logger.error('Error processing auto-assignments', error as Error);
       throw error;
     }
   }

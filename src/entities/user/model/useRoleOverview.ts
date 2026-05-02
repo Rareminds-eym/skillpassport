@@ -10,6 +10,9 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('role-overview-hook');
 
 // Types moved to shared for FSD compliance
 // TODO: Import types from @/shared/types instead
@@ -65,16 +68,13 @@ function checkCache(roleName: string, clusterTitle: string): RoleOverviewData | 
 
   // Only return cached data if it's not fallback data
   if (entry && entry.data && !entry.isFallback) {
-    console.log(`[RoleOverview] Cache hit for ${roleName} (real API data)`);
     return entry.data;
   }
 
   if (entry && entry.isFallback) {
-    console.log(`[RoleOverview] Cache contains fallback data for ${roleName}, will retry API`);
     return null; // Don't return fallback data from cache, try API again
   }
 
-  console.log(`[RoleOverview] Cache miss for ${roleName}`);
   return null;
 }
 
@@ -89,7 +89,6 @@ function setCache(roleName: string, clusterTitle: string, data: RoleOverviewData
     clusterTitle,
     isFallback,
   };
-  console.log(`[RoleOverview] Cached ${isFallback ? 'fallback' : 'API'} data for ${roleName}:`, data);
 }
 
 /**
@@ -168,11 +167,9 @@ export function useRoleOverview(
     setError(null);
 
     try {
-      console.log(`[RoleOverview Hook] Fetching overview for: ${role}`);
       const result = await counsellingAPI.generateRoleOverview(role, cluster, attempt);
 
       if (currentRequestRef.current === requestKey) {
-        console.log(`[RoleOverview Hook] Successfully received data for: ${role}`);
         setResponsibilities(result.responsibilities);
         setDemandData(result.industryDemand);
         setCareerProgression(result.careerProgression);
@@ -187,11 +184,10 @@ export function useRoleOverview(
       }
     } catch (err) {
       if (currentRequestRef.current === requestKey) {
-        console.error('[RoleOverview Hook] Error fetching role overview:', err);
+        logger.error('Failed to fetch role overview', err instanceof Error ? err : new Error(String(err)), { role });
         setError(err instanceof Error ? err : new Error('Failed to generate role overview'));
 
         // Return fallback without exposing error to user
-        console.log(`[RoleOverview Hook] Using fallback data for: ${role}`);
         const fallback = counsellingAPI.getFallbackRoleOverview(role);
         setResponsibilities(fallback.responsibilities);
         setDemandData(fallback.industryDemand);

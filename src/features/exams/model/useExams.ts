@@ -356,7 +356,6 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
       
 
     } catch (err) {
-      console.error('Error loading exam data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {
       setLoading(false);
@@ -382,7 +381,6 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
       setStudents(studentsData);
       return studentsData;
     } catch (err) {
-      console.error('Error loading students:', err);
       throw err;
     }
   }, [schoolId, collegeId]);
@@ -487,7 +485,6 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
       setExams(prev => [...prev, newExam]);
       return newExam;
     } catch (err) {
-      console.error('Error creating exam:', err);
       throw err;
     }
   }, [schoolId, collegeId, transformAssessmentToExam]);
@@ -514,7 +511,6 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
         exam.id === examId ? { ...exam, ...updates } : exam
       ));
     } catch (err) {
-      console.error('Error updating exam:', err);
       throw err;
     }
   }, []);
@@ -616,7 +612,6 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
       // Return the new entry so the component can use it if needed
       return newUIEntry;
     } catch (err) {
-      console.error('Error creating timetable entry:', err);
       throw err;
     }
   }, [exams, schoolId]);
@@ -637,9 +632,8 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
       ));
       
       // Optional: Refresh the exam data in background for consistency (but don't await it)
-      loadData().catch(console.error);
+      loadData().catch(() => {});
     } catch (err) {
-      console.error('Error deleting timetable entry:', err);
       throw err;
     }
   }, [loadData]);
@@ -721,7 +715,6 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
       // Return the new duty so the component can use it if needed
       return newDuty;
     } catch (err) {
-      console.error('Error creating invigilation assignment:', err);
       throw err;
     }
   }, [exams, loadData]);
@@ -742,9 +735,8 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
       ));
       
       // Optional: Refresh data in background for consistency (but don't await it)
-      loadData().catch(console.error);
+      loadData().catch(() => {});
     } catch (err) {
-      console.error('Error deleting invigilation assignment:', err);
       throw err;
     }
   }, [loadData]);
@@ -811,7 +803,6 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
         return exam;
       }));
     } catch (err) {
-      console.error('Error saving marks:', err);
       throw err;
     }
   }, []);
@@ -831,7 +822,6 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
           : exam
       ));
     } catch (err) {
-      console.error('Error publishing exam:', err);
       throw err;
     }
   }, []);
@@ -849,10 +839,9 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
   }) => {
     try {
       await examsService.moderateMarks(markEntryId, moderationData);
-      
+
       // Don't refresh data here - let the calling code handle it to avoid race conditions
     } catch (err) {
-      console.error('Error moderating marks:', err);
       throw err;
     }
   }, []);
@@ -896,10 +885,9 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
       
       // Refresh the exam data in background to ensure consistency
       setTimeout(() => {
-        loadData(true).catch(console.error); // Force refresh
+        loadData(true).catch(() => {}); // Force refresh
       }, 100);
     } catch (err) {
-      console.error('Error approving subject moderation:', err);
       throw err;
     }
   }, [loadData]);
@@ -953,11 +941,10 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
   // Get class room for the exam
   const getClassRoom = useCallback(async (grade: string, section?: string): Promise<string | null> => {
     if (!schoolId) return null;
-    
+
     try {
       return await examsService.getClassRoom(schoolId, grade, section);
     } catch (error) {
-      console.error('Error getting class room:', error);
       return null;
     }
   }, [schoolId]);

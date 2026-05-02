@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('course-progress-service');
 
 /**
  * Course Progress Tracking Service
@@ -44,7 +47,7 @@ export const courseProgressService = {
       if (error) throw error;
       return { success: true };
     } catch (error) {
-      console.error('Error saving video position:', error);
+      logger.error('Error saving video position', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   },
@@ -67,7 +70,7 @@ export const courseProgressService = {
       if (error) throw error;
       return data || null;
     } catch (error) {
-      console.error('Error getting video position:', error);
+      logger.error('Error getting video position', error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   },
@@ -94,7 +97,7 @@ export const courseProgressService = {
       if (error) throw error;
       return { success: true };
     } catch (error) {
-      console.error('Error marking video completed:', error);
+      logger.error('Error marking video completed', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   },
@@ -112,8 +115,6 @@ export const courseProgressService = {
         return { success: false, error: 'Missing required parameters' };
       }
 
-      console.log('💾 Saving restore point:', { studentId, courseId, moduleIndex, lessonIndex, lessonId });
-
       const { error } = await supabase
         .from('course_enrollments')
         .update({
@@ -127,14 +128,13 @@ export const courseProgressService = {
         .eq('course_id', courseId);
 
       if (error) {
-        console.error('❌ Error saving restore point:', error);
+        logger.error('Error saving restore point', error instanceof Error ? error : new Error(String(error)));
         throw error;
       }
       
-      console.log('✅ Restore point saved successfully');
       return { success: true };
     } catch (error) {
-      console.error('Error saving restore point:', error);
+      logger.error('Error saving restore point', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   },
@@ -180,7 +180,7 @@ export const courseProgressService = {
       }
       return null;
     } catch (error) {
-      console.error('Error getting restore point:', error);
+      logger.error('Error getting restore point', error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   },
@@ -204,7 +204,7 @@ export const courseProgressService = {
       if (error) throw error;
       return { success: true };
     } catch (error) {
-      console.error('Error clearing restore point:', error);
+      logger.error('Error clearing restore point', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   },
@@ -231,7 +231,7 @@ export const courseProgressService = {
       if (error) throw error;
       return data || null;
     } catch (error) {
-      console.error('Error getting lesson progress:', error);
+      logger.error('Error getting lesson progress', error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   },
@@ -262,7 +262,7 @@ export const courseProgressService = {
       if (error) throw error;
       return { success: true };
     } catch (error) {
-      console.error('Error updating lesson status:', error);
+      logger.error('Error updating lesson status', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   },
@@ -299,7 +299,7 @@ export const courseProgressService = {
       if (error) throw error;
       return { success: true, totalTime: newTime };
     } catch (error) {
-      console.error('Error saving time spent:', error);
+      logger.error('Error saving time spent', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   },
@@ -359,7 +359,7 @@ export const courseProgressService = {
       if (error) throw error;
       return { success: true, data, resumed: false };
     } catch (error) {
-      console.error('Error starting quiz attempt:', error);
+      logger.error('Error starting quiz attempt', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   },
@@ -395,7 +395,7 @@ export const courseProgressService = {
       if (error) throw error;
       return { success: true };
     } catch (error) {
-      console.error('Error saving quiz answer:', error);
+      logger.error('Error saving quiz answer', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   },
@@ -418,7 +418,7 @@ export const courseProgressService = {
       if (error) throw error;
       return data || null;
     } catch (error) {
-      console.error('Error getting quiz progress:', error);
+      logger.error('Error getting quiz progress', error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   },
@@ -455,7 +455,7 @@ export const courseProgressService = {
 
       return { success: true, data, score: scorePercentage, passed };
     } catch (error) {
-      console.error('Error submitting quiz:', error);
+      logger.error('Error submitting quiz', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   },
@@ -509,7 +509,7 @@ export const courseProgressService = {
         lessonProgress: lessonProgress || []
       };
     } catch (error) {
-      console.error('Error getting course progress summary:', error);
+      logger.error('Error getting course progress summary', error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   },
@@ -538,7 +538,7 @@ export const courseProgressService = {
       if (error) throw error;
       return data || [];
     } catch (error) {
-      console.error('Error getting all courses progress:', error);
+      logger.error('Error getting all courses progress', error instanceof Error ? error : new Error(String(error)));
       return [];
     }
   },
@@ -569,7 +569,7 @@ export const courseProgressService = {
       if (error) throw error;
       return { success: true, totalTime: newTotal };
     } catch (error) {
-      console.error('Error updating course total time:', error);
+      logger.error('Error updating course total time', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   }

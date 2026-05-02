@@ -2,6 +2,9 @@ import React, { useEffect, useState } from "react";
 import { X, CheckCircle, Clock } from "lucide-react";
 import { StudentFeeSummary, FeePayment, PaymentStatus } from '@/features/student-profile/model';
 import { supabase } from "@/shared/api/supabaseClient";
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('student-ledger-modal');
 
 interface Props {
   isOpen: boolean;
@@ -39,7 +42,7 @@ export const StudentLedgerModal: React.FC<Props> = ({ isOpen, onClose, student }
       if (error) throw error;
       setPayments(data || []);
     } catch (err) {
-      console.error("Failed to load payments:", err);
+      logger.error("Failed to load payments", err instanceof Error ? err : new Error(String(err)));
     } finally {
       setLoadingPayments(false);
     }

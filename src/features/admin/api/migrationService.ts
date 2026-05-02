@@ -12,6 +12,9 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('migrationService');
 
 class MigrationService {
   /**
@@ -38,7 +41,7 @@ class MigrationService {
         if (planError.code === 'PGRST116') {
           return { success: false, error: 'PLAN_NOT_FOUND' };
         }
-        console.error('Error fetching plan:', planError);
+        logger.error('Failed to fetch subscription plan', planError as Error);
         return { success: false, error: planError.message };
       }
 
@@ -50,7 +53,7 @@ class MigrationService {
         .eq('is_included', true);
 
       if (featuresError) {
-        console.error('Error fetching plan features:', featuresError);
+        logger.error('Failed to fetch plan features', featuresError as Error);
         return { success: false, error: featuresError.message };
       }
 
@@ -61,7 +64,7 @@ class MigrationService {
         .eq('is_addon', true);
 
       if (addOnsError) {
-        console.error('Error fetching add-ons:', addOnsError);
+        logger.error('Failed to fetch add-ons', addOnsError as Error);
         return { success: false, error: addOnsError.message };
       }
 
@@ -91,7 +94,7 @@ class MigrationService {
         }
       };
     } catch (error) {
-      console.error('Error in getMigrationMapping:', error);
+      logger.error('Failed to get migration mapping', error as Error);
       return { success: false, error: error.message };
     }
   }
@@ -123,7 +126,7 @@ class MigrationService {
         if (subError.code === 'PGRST116') {
           return { success: false, error: 'NO_ACTIVE_SUBSCRIPTION' };
         }
-        console.error('Error fetching subscription:', subError);
+        logger.error('Failed to fetch subscription', subError as Error);
         return { success: false, error: subError.message };
       }
 
@@ -177,7 +180,7 @@ class MigrationService {
         .single();
 
       if (migrationError) {
-        console.error('Error creating migration record:', migrationError);
+        logger.error('Failed to create migration record', migrationError as Error);
         return { success: false, error: migrationError.message };
       }
 
@@ -207,7 +210,7 @@ class MigrationService {
           .update({ migration_status: 'failed' })
           .eq('id', migration.id);
         
-        console.error('Error creating entitlements:', entError);
+        logger.error('Failed to create entitlements', entError as Error);
         return { success: false, error: entError.message };
       }
 
@@ -226,7 +229,7 @@ class MigrationService {
         }
       };
     } catch (error) {
-      console.error('Error in migrateUser:', error);
+      logger.error('Failed to migrate user', error as Error);
       return { success: false, error: error.message };
     }
   }
@@ -258,7 +261,7 @@ class MigrationService {
         if (subError.code === 'PGRST116') {
           return { success: false, error: 'NO_ACTIVE_SUBSCRIPTION' };
         }
-        console.error('Error fetching subscription:', subError);
+        logger.error('Failed to fetch subscription', subError as Error);
         return { success: false, error: subError.message };
       }
 
@@ -304,7 +307,7 @@ class MigrationService {
         }
       };
     } catch (error) {
-      console.error('Error in calculatePriceProtection:', error);
+      logger.error('Failed to calculate price protection', error as Error);
       return { success: false, error: error.message };
     }
   }
@@ -374,7 +377,7 @@ class MigrationService {
           .single();
 
         if (updateError) {
-          console.error('Error updating migration notification:', updateError);
+          logger.error('Failed to update migration notification', updateError as Error);
           return { success: false, error: updateError.message };
         }
 
@@ -420,7 +423,7 @@ class MigrationService {
         .single();
 
       if (insertError) {
-        console.error('Error creating migration notification:', insertError);
+        logger.error('Failed to create migration notification', insertError as Error);
         return { success: false, error: insertError.message };
       }
 
@@ -443,7 +446,7 @@ class MigrationService {
         }
       };
     } catch (error) {
-      console.error('Error in scheduleMigrationNotification:', error);
+      logger.error('Failed to schedule migration notification', error as Error);
       return { success: false, error: error.message };
     }
   }
@@ -469,7 +472,7 @@ class MigrationService {
           }
         });
     } catch (error) {
-      console.error('Error tracking migration event:', error);
+      logger.error('Failed to track migration event', error as Error);
       // Non-critical error, don't throw
     }
   }
@@ -504,7 +507,7 @@ class MigrationService {
             } 
           };
         }
-        console.error('Error fetching migration status:', error);
+        logger.error('Failed to fetch migration status', error as Error);
         return { success: false, error: error.message };
       }
 
@@ -523,7 +526,7 @@ class MigrationService {
         }
       };
     } catch (error) {
-      console.error('Error in getMigrationStatus:', error);
+      logger.error('Failed to get migration status', error as Error);
       return { success: false, error: error.message };
     }
   }
@@ -545,13 +548,13 @@ class MigrationService {
         .limit(limit);
 
       if (error) {
-        console.error('Error fetching pending migrations:', error);
+        logger.error('Failed to fetch pending migrations', error as Error);
         return { success: false, error: error.message };
       }
 
       return { success: true, data: data || [] };
     } catch (error) {
-      console.error('Error in getPendingMigrations:', error);
+      logger.error('Failed to get pending migrations', error as Error);
       return { success: false, error: error.message };
     }
   }
@@ -583,7 +586,7 @@ class MigrationService {
         if (error.code === 'PGRST116') {
           return { success: false, error: 'NO_PENDING_MIGRATION' };
         }
-        console.error('Error opting out of migration:', error);
+        logger.error('Failed to opt out of migration', error as Error);
         return { success: false, error: error.message };
       }
 
@@ -600,7 +603,7 @@ class MigrationService {
         }
       };
     } catch (error) {
-      console.error('Error in optOutOfMigration:', error);
+      logger.error('Failed to opt out of migration', error as Error);
       return { success: false, error: error.message };
     }
   }

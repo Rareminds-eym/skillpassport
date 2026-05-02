@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('clubs-service');
 
 export interface Club {
     club_id: string;
@@ -52,8 +55,6 @@ export interface ClubAttendanceRecord {
 // Get current user's school_id using the same logic as students
 async function getCurrentUserSchoolId(): Promise<string | null> {
     try {
-        console.log('🚀 [Clubs Service] Fetching school_id with school filtering...');
-        
         let schoolId: string | null = null;
 
         // First, check if user is logged in via AuthContext (for school admins)
@@ -61,13 +62,11 @@ async function getCurrentUserSchoolId(): Promise<string | null> {
         if (storedUser) {
             try {
                 const userData = JSON.parse(storedUser);
-                console.log('📦 Found user in localStorage:', userData.email, 'role:', userData.role);
                 if (userData.role === 'school_admin' && userData.schoolId) {
                     schoolId = userData.schoolId;
-                    console.log('✅ School admin detected, using schoolId from localStorage:', schoolId);
                 }
             } catch (e) {
-                console.error('Error parsing stored user:', e);
+                logger.error('Failed to parse stored user', e instanceof Error ? e : new Error(String(e)));
             }
         }
 
@@ -75,8 +74,6 @@ async function getCurrentUserSchoolId(): Promise<string | null> {
         if (!schoolId) {
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
-                console.log('🔍 Checking Supabase auth user:', user.email);
-                
                 // Check school_educators table
                 const { data: educator } = await supabase
                     .from('school_educators')
@@ -86,7 +83,6 @@ async function getCurrentUserSchoolId(): Promise<string | null> {
 
                 if (educator?.school_id) {
                     schoolId = educator.school_id;
-                    console.log('✅ Found school_id in school_educators:', schoolId);
                 } else {
                     // Check organizations table by email
                     const { data: org } = await supabase
@@ -95,18 +91,15 @@ async function getCurrentUserSchoolId(): Promise<string | null> {
                         .eq('organization_type', 'school')
                         .eq('email', user.email)
                         .maybeSingle();
-                    
+
                     schoolId = org?.id || null;
-                    if (schoolId) {
-                        console.log('✅ Found school_id in organizations table:', schoolId);
-                    }
                 }
             }
         }
 
         return schoolId;
     } catch (error) {
-        console.error('Error getting school_id:', error);
+        logger.error('Failed to get school ID', error instanceof Error ? error : new Error(String(error)));
         return null;
     }
 }
@@ -142,7 +135,9 @@ async function getCurrentUserInfo(): Promise<{ type: 'educator' | 'admin', id: s
 
         return null;
     } catch (error) {
-        console.error('Error getting user info:', error);
+        logger.error('Failed to get user info', error instanceof Error ? error : new Error(String(error)), {
+            userEmail: localStorage.getItem('userEmail')
+        });
         return null;
     }
 }
@@ -150,16 +145,12 @@ async function getCurrentUserInfo(): Promise<{ type: 'educator' | 'admin', id: s
 // Fetch all clubs for current school
 export async function fetchClubs(): Promise<Club[]> {
     try {
-        console.log('🔍 [clubsService.fetchClubs] Starting fetch...');
         const schoolId = await getCurrentUserSchoolId();
-        console.log('🏫 [clubsService.fetchClubs] Using school_id:', schoolId);
-        
+
         if (!schoolId) {
-            console.log('❌ [clubsService.fetchClubs] School ID not found');
             throw new Error('School ID not found');
         }
 
-        console.log('📡 [clubsService.fetchClubs] Querying clubs table...');
         const { data, error } = await supabase
             .from('clubs')
             .select('*')
@@ -168,11 +159,11 @@ export async function fetchClubs(): Promise<Club[]> {
             .order('name');
 
         if (error) {
-            console.error('❌ [clubsService.fetchClubs] Database error:', error);
+            logger.error('Failed to fetch clubs', error instanceof Error ? error : new Error(String(error)), {
+                schoolId
+            });
             throw error;
         }
-
-        console.log('📦 [clubsService.fetchClubs] Found', data?.length || 0, 'clubs');
 
         // Fetch member counts for each club
         const clubsWithMembers = await Promise.all(
@@ -190,8 +181,6 @@ export async function fetchClubs(): Promise<Club[]> {
                     .eq('club_id', club.club_id)
                     .eq('status', 'active');
 
-                console.log(`👥 [clubsService.fetchClubs] Club "${club.name}" has ${count || 0} members`);
-
                 return {
                     ...club,
                     member_count: count || 0,
@@ -200,10 +189,9 @@ export async function fetchClubs(): Promise<Club[]> {
             })
         );
 
-        console.log('✅ [clubsService.fetchClubs] Successfully fetched clubs with members');
         return clubsWithMembers;
     } catch (error) {
-        console.error('❌ [clubsService.fetchClubs] Error fetching clubs:', error);
+        logger.error('Failed to fetch clubs', error instanceof Error ? error : new Error(String(error)));
         throw error;
     }
 }
@@ -224,28 +212,18 @@ export async function createClub(clubData: {
     school_id?: string;
 }): Promise<Club> {
     try {
-        console.log('🎯 [createClub] Starting club creation...');
-        console.log('📝 [createClub] Input data:', clubData);
-        
         // Use provided school_id or fetch it
         const schoolId = clubData.school_id || await getCurrentUserSchoolId();
-        console.log('🏫 [createClub] School ID:', schoolId);
-        
+
         const userInfo = await getCurrentUserInfo();
-        console.log('👤 [createClub] User info:', userInfo);
 
         if (!schoolId) {
-            console.error('❌ [createClub] No school ID found');
             throw new Error('School ID not found. Please ensure you are logged in as a school admin or educator.');
         }
 
         if (!userInfo) {
-            console.error('❌ [createClub] User authentication failed');
             throw new Error('User authentication failed. Please ensure you are logged in.');
         }
-
-        console.log('🏫 [createClub] Creating club with school_id:', schoolId);
-        console.log('📝 [createClub] Club data:', clubData);
 
         // Try to find mentor educator if email is provided
         let mentorType = clubData.mentor_type || null;
@@ -253,7 +231,6 @@ export async function createClub(clubData: {
         let mentorSchoolId = clubData.mentor_school_id || null;
 
         if (clubData.mentor_email && !mentorEducatorId) {
-            console.log('🔍 Looking up educator with email:', clubData.mentor_email);
             const { data: educatorData } = await supabase
                 .from('school_educators')
                 .select('id')
@@ -264,9 +241,6 @@ export async function createClub(clubData: {
             if (educatorData?.id) {
                 mentorType = 'educator';
                 mentorEducatorId = educatorData.id;
-                console.log('✅ Found educator, linking as mentor:', educatorData.id);
-            } else {
-                console.log('ℹ️ No educator found with that email, storing name only');
             }
         }
 
@@ -286,18 +260,12 @@ export async function createClub(clubData: {
             is_active: true,
             ...(userInfo ? {
                 created_by_type: userInfo.type,
-                ...(userInfo.type === 'educator' 
+                ...(userInfo.type === 'educator'
                     ? { created_by_educator_id: userInfo.id }
                     : { created_by_admin_id: userInfo.id }
                 )
             } : {})
         };
-
-        // Only add mentor_name if it's provided and we're sure the column exists
-        // For now, we'll skip this field to avoid database errors
-        // The mentor_name field doesn't exist in the current database schema
-
-        console.log('💾 [createClub] Inserting club into database:', newClub);
 
         const { data, error } = await supabase
             .from('clubs')
@@ -306,27 +274,27 @@ export async function createClub(clubData: {
             .single();
 
         if (error) {
-            console.error('❌ [createClub] Database error:', error);
-            console.error('❌ [createClub] Error code:', error.code);
-            console.error('❌ [createClub] Error message:', error.message);
-            console.error('❌ [createClub] Error details:', error.details);
-            console.error('❌ [createClub] Error hint:', error.hint);
-            
+            logger.error('Failed to create club', error instanceof Error ? error : new Error(String(error)), {
+                clubName: clubData.name,
+                schoolId,
+                errorCode: (error as any).code
+            });
+
             // Provide more specific error messages
-            if (error.code === '23505') {
+            if ((error as any).code === '23505') {
                 throw new Error(`A club named "${clubData.name}" already exists in your school.`);
-            } else if (error.code === '23503') {
+            } else if ((error as any).code === '23503') {
                 throw new Error('Invalid reference: Please check school ID or mentor information.');
             } else {
-                throw new Error(`Failed to create club: ${error.message || 'Unknown database error'}`);
+                throw new Error(`Failed to create club: ${(error as any).message || 'Unknown database error'}`);
             }
         }
 
-        console.log('✅ Club created successfully:', data);
-
         return { ...data, member_count: 0, members: [] };
     } catch (error) {
-        console.error('❌ Error creating club:', error);
+        logger.error('Failed to create club', error instanceof Error ? error : new Error(String(error)), {
+            clubName: clubData.name
+        });
         if (error instanceof Error) {
             throw error;
         }
@@ -342,8 +310,6 @@ export async function enrollStudent(clubId: string, studentEmail: string): Promi
             throw new Error('User authentication failed');
         }
 
-        console.log('🔍 [enrollStudent] Checking for existing membership...');
-        
         // First, check if there's already a membership record (active or withdrawn)
         const { data: existingMembership, error: checkError } = await supabase
             .from('club_memberships')
@@ -354,21 +320,20 @@ export async function enrollStudent(clubId: string, studentEmail: string): Promi
 
         if (checkError && checkError.code !== 'PGRST116') {
             // PGRST116 means no rows found, which is fine
-            console.error('Error checking existing membership:', checkError);
+            logger.error('Failed to check existing membership', checkError instanceof Error ? checkError : new Error(String(checkError)), {
+                clubId,
+                studentEmail
+            });
             throw checkError;
         }
 
         if (existingMembership) {
-            console.log('📝 [enrollStudent] Found existing membership:', existingMembership);
-            
             if (existingMembership.status === 'active') {
                 throw new Error('Student is already enrolled in this club');
             }
-            
+
             // If status is 'withdrawn', reactivate the membership
             if (existingMembership.status === 'withdrawn') {
-                console.log('🔄 [enrollStudent] Reactivating withdrawn membership...');
-                
                 const { data, error } = await supabase
                     .from('club_memberships')
                     .update({
@@ -386,15 +351,12 @@ export async function enrollStudent(clubId: string, studentEmail: string): Promi
                     .single();
 
                 if (error) throw error;
-                
-                console.log('✅ [enrollStudent] Membership reactivated successfully');
+
                 return data;
             }
         }
 
         // No existing membership found, create a new one
-        console.log('➕ [enrollStudent] Creating new membership...');
-        
         const membership = {
             club_id: clubId,
             student_email: studentEmail,
@@ -414,10 +376,12 @@ export async function enrollStudent(clubId: string, studentEmail: string): Promi
 
         if (error) throw error;
 
-        console.log('✅ [enrollStudent] New membership created successfully');
         return data;
     } catch (error) {
-        console.error('Error enrolling student:', error);
+        logger.error('Failed to enroll student', error instanceof Error ? error : new Error(String(error)), {
+            clubId,
+            studentEmail
+        });
         throw error;
     }
 }
@@ -433,7 +397,10 @@ export async function removeStudent(clubId: string, studentEmail: string): Promi
 
         if (error) throw error;
     } catch (error) {
-        console.error('Error removing student:', error);
+        logger.error('Failed to remove student', error instanceof Error ? error : new Error(String(error)), {
+            clubId,
+            studentEmail
+        });
         throw error;
     }
 }
@@ -452,7 +419,9 @@ export async function getClubMembers(clubId: string): Promise<ClubMembership[]> 
 
         return data || [];
     } catch (error) {
-        console.error('Error fetching club members:', error);
+        logger.error('Failed to fetch club members', error instanceof Error ? error : new Error(String(error)), {
+            clubId
+        });
         throw error;
     }
 }
@@ -470,8 +439,6 @@ export async function markClubAttendance(
             throw new Error('User authentication failed');
         }
 
-        console.log('🎯 [markAttendance] Starting attendance marking for club:', clubId, 'date:', sessionDate);
-
         // Check if attendance session already exists for this club and date
         const { data: existingSession, error: checkError } = await supabase
             .from('club_attendance')
@@ -481,15 +448,16 @@ export async function markClubAttendance(
             .maybeSingle();
 
         if (checkError) {
-            console.error('❌ [markAttendance] Error checking existing session:', checkError);
+            logger.error('Failed to check existing session', checkError instanceof Error ? checkError : new Error(String(checkError)), {
+                clubId,
+                sessionDate
+            });
             throw checkError;
         }
 
         let sessionData;
 
         if (existingSession) {
-            console.log('📝 [markAttendance] Found existing session, will update:', existingSession.attendance_id);
-            
             // Update the session topic
             const { error: updateError } = await supabase
                 .from('club_attendance')
@@ -499,15 +467,14 @@ export async function markClubAttendance(
                 .eq('attendance_id', existingSession.attendance_id);
 
             if (updateError) {
-                console.error('❌ [markAttendance] Error updating session topic:', updateError);
+                logger.error('Failed to update session topic', updateError instanceof Error ? updateError : new Error(String(updateError)), {
+                    attendanceId: existingSession.attendance_id
+                });
                 throw updateError;
             }
 
-            console.log('✅ [markAttendance] Updated session topic');
             sessionData = existingSession;
         } else {
-            console.log('➕ [markAttendance] Creating new attendance session');
-            
             // Create new attendance session
             const attendanceSession = {
                 club_id: clubId,
@@ -527,17 +494,17 @@ export async function markClubAttendance(
                 .single();
 
             if (sessionError) {
-                console.error('❌ [markAttendance] Error creating session:', sessionError);
+                logger.error('Failed to create attendance session', sessionError instanceof Error ? sessionError : new Error(String(sessionError)), {
+                    clubId,
+                    sessionDate
+                });
                 throw sessionError;
             }
 
             sessionData = newSession;
-            console.log('✅ [markAttendance] Created new session:', sessionData.attendance_id);
         }
 
         // Create attendance records - use regular insert with proper error handling
-        console.log('📊 [markAttendance] Inserting', attendanceRecords.length, 'attendance records');
-
         const records = attendanceRecords.map(record => ({
             attendance_id: sessionData.attendance_id,
             student_email: record.student_email,
@@ -554,12 +521,8 @@ export async function markClubAttendance(
             .insert(records);
 
         if (recordsError) {
-            console.error('❌ [markAttendance] Error creating records:', recordsError);
-            
             // If it's a duplicate key error, try to delete existing records first
-            if (recordsError.code === '23505') {
-                console.log('🔄 [markAttendance] Duplicate records detected, clearing and retrying...');
-                
+            if ((recordsError as any).code === '23505') {
                 // Delete existing records for this session
                 const { error: deleteError } = await supabase
                     .from('club_attendance_records')
@@ -567,7 +530,9 @@ export async function markClubAttendance(
                     .eq('attendance_id', sessionData.attendance_id);
 
                 if (deleteError) {
-                    console.error('❌ [markAttendance] Error deleting existing records:', deleteError);
+                    logger.error('Failed to delete existing attendance records', deleteError instanceof Error ? deleteError : new Error(String(deleteError)), {
+                        attendanceId: sessionData.attendance_id
+                    });
                     throw deleteError;
                 }
 
@@ -577,19 +542,25 @@ export async function markClubAttendance(
                     .insert(records);
 
                 if (retryError) {
-                    console.error('❌ [markAttendance] Error on retry insert:', retryError);
+                    logger.error('Failed to insert attendance records on retry', retryError instanceof Error ? retryError : new Error(String(retryError)), {
+                        attendanceId: sessionData.attendance_id,
+                        recordCount: records.length
+                    });
                     throw retryError;
                 }
-
-                console.log('✅ [markAttendance] Successfully inserted records on retry');
             } else {
+                logger.error('Failed to create attendance records', recordsError instanceof Error ? recordsError : new Error(String(recordsError)), {
+                    attendanceId: sessionData.attendance_id,
+                    recordCount: records.length
+                });
                 throw recordsError;
             }
-        } else {
-            console.log('✅ [markAttendance] Successfully marked attendance for', attendanceRecords.length, 'students');
         }
     } catch (error) {
-        console.error('❌ [markAttendance] Error marking attendance:', error);
+        logger.error('Failed to mark attendance', error instanceof Error ? error : new Error(String(error)), {
+            clubId,
+            sessionDate
+        });
         throw error;
     }
 }
@@ -604,7 +575,9 @@ export async function getClubDetails(clubId: string): Promise<any> {
 
         return data?.[0] || null;
     } catch (error) {
-        console.error('Error fetching club details:', error);
+        logger.error('Failed to fetch club details', error instanceof Error ? error : new Error(String(error)), {
+            clubId
+        });
         throw error;
     }
 }
@@ -622,14 +595,12 @@ export async function updateClub(clubId: string, clubData: {
     try {
         // Remove any undefined, null, or empty values
         const cleanData = Object.fromEntries(
-            Object.entries(clubData).filter(([key, value]) => 
-                value !== undefined && 
-                value !== null && 
+            Object.entries(clubData).filter(([_, value]) =>
+                value !== undefined &&
+                value !== null &&
                 value !== ""
             )
         );
-
-        console.log('🔄 [updateClub] Updating club with data:', cleanData);
 
         const { error } = await supabase
             .from('clubs')
@@ -640,13 +611,15 @@ export async function updateClub(clubId: string, clubData: {
             .eq('club_id', clubId);
 
         if (error) {
-            console.error('❌ [updateClub] Database error details:', error);
+            logger.error('Failed to update club', error instanceof Error ? error : new Error(String(error)), {
+                clubId
+            });
             throw error;
         }
-
-        console.log('✅ [updateClub] Club updated successfully');
     } catch (error) {
-        console.error('❌ [updateClub] Error updating club:', error);
+        logger.error('Failed to update club', error instanceof Error ? error : new Error(String(error)), {
+            clubId
+        });
         throw error;
     }
 }
@@ -656,7 +629,7 @@ export async function deleteClub(clubId: string): Promise<void> {
     try {
         const { error } = await supabase
             .from('clubs')
-            .update({ 
+            .update({
                 is_active: false,
                 updated_at: new Date().toISOString()
             })
@@ -664,7 +637,9 @@ export async function deleteClub(clubId: string): Promise<void> {
 
         if (error) throw error;
     } catch (error) {
-        console.error('Error deleting club:', error);
+        logger.error('Failed to delete club', error instanceof Error ? error : new Error(String(error)), {
+            clubId
+        });
         throw error;
     }
 }

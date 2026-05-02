@@ -1,16 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 import { secureStorage } from '@/shared/lib/secureStorage';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('supabase-client');
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-// Debug logging for Supabase initialization
-console.log('[SUPABASE INIT] URL configured:', !!supabaseUrl, supabaseUrl?.substring(0, 30) + '...');
-console.log('[SUPABASE INIT] Anon key configured:', !!supabaseAnonKey, supabaseAnonKey?.substring(0, 20) + '...');
-
 if (!supabaseUrl || !supabaseAnonKey) {
-  // eslint-disable-next-line no-console
-  console.warn('Supabase URL or Anon Key not configured');
+  logger.warn('Supabase URL or Anon Key not configured');
 }
 
 export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
@@ -28,5 +26,3 @@ export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
     },
   },
 });
-
-console.log('[SUPABASE INIT] Client created successfully');

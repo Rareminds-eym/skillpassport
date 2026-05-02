@@ -25,6 +25,9 @@ import {
 } from 'lucide-react';
 import { memo, useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('invitation-manager');
 
 interface LicensePool {
   id: string;
@@ -96,7 +99,7 @@ function InvitationManager({
       setInvitations(invitationsData);
       setStats(statsData);
     } catch (err) {
-      console.error('Error fetching invitations:', err);
+      logger.error('Failed to fetch invitations', err instanceof Error ? err : new Error(String(err)));
       setError(err instanceof Error ? err.message : 'Failed to load invitations');
     } finally {
       setIsLoading(false);
@@ -145,7 +148,7 @@ function InvitationManager({
       
       await fetchInvitations();
     } catch (err) {
-      console.error('Error sending invitation:', err);
+      logger.error('Failed to send invitation', err instanceof Error ? err : new Error(String(err)));
       toast.error(err instanceof Error ? err.message : 'Failed to send invitation');
     } finally {
       setIsSending(false);
@@ -158,7 +161,7 @@ function InvitationManager({
       toast.success('Invitation resent');
       await fetchInvitations();
     } catch (err) {
-      console.error('Error resending invitation:', err);
+      logger.error('Failed to resend invitation', err instanceof Error ? err : new Error(String(err)));
       toast.error(err instanceof Error ? err.message : 'Failed to resend invitation');
     }
   }, [fetchInvitations]);
@@ -179,7 +182,7 @@ function InvitationManager({
       setInvitationToCancel(null);
       await fetchInvitations();
     } catch (err) {
-      console.error('Error cancelling invitation:', err);
+      logger.error('Failed to cancel invitation', err instanceof Error ? err : new Error(String(err)));
       toast.error(err instanceof Error ? err.message : 'Failed to cancel invitation');
     } finally {
       setIsCancelling(false);

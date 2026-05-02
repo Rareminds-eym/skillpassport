@@ -1,9 +1,12 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 
 /**
  * University Service
  * Handles university-related database operations using the unified organizations table
  */
+
+const logger = getLogger('university-service');
 
 /**
  * Get all universities for dropdown selection from organizations table
@@ -18,13 +21,13 @@ export const getUniversities = async () => {
             .order('name', { ascending: true });
 
         if (error) {
-            console.error('❌ Error fetching universities:', error);
+            logger.error('Error fetching universities', error as Error);
             return { success: false, data: null, error: error.message };
         }
 
         return { success: true, data: data || [], error: null };
     } catch (error) {
-        console.error('❌ Unexpected error fetching universities:', error);
+        logger.error('Unexpected error fetching universities', error as Error);
         return { success: false, data: null, error: error.message };
     }
 };
@@ -44,13 +47,13 @@ export const getUniversityById = async (universityId) => {
             .maybeSingle();
 
         if (error) {
-            console.error('❌ Error fetching university:', error);
+            logger.error('Error fetching university', error as Error);
             return { success: false, data: null, error: error.message };
         }
 
         return { success: true, data, error: null };
     } catch (error) {
-        console.error('❌ Unexpected error fetching university:', error);
+        logger.error('Unexpected error fetching university', error as Error);
         return { success: false, data: null, error: error.message };
     }
 };
@@ -70,13 +73,13 @@ export const getUniversityByOwner = async (userId) => {
             .maybeSingle();
 
         if (error) {
-            console.error('Error fetching university by owner:', error);
+            logger.error('Error fetching university by owner', error as Error);
             return { success: false, data: null, error: error.message };
         }
 
         return { success: true, data, error: null };
     } catch (error) {
-        console.error('Unexpected error fetching university by owner:', error);
+        logger.error('Unexpected error fetching university by owner', error as Error);
         return { success: false, data: null, error: error.message };
     }
 };
@@ -123,13 +126,13 @@ export const createUniversity = async (universityData, userId = null) => {
             .single();
 
         if (error) {
-            console.error('❌ Error creating university:', error);
+            logger.error('Error creating university', error as Error);
             return { success: false, data: null, error: error.message };
         }
 
         return { success: true, data, error: null };
     } catch (error) {
-        console.error('❌ Unexpected error creating university:', error);
+        logger.error('Unexpected error creating university', error as Error);
         return { success: false, data: null, error: error.message };
     }
 };
@@ -150,13 +153,13 @@ export const checkUniversityCollegeCode = async (universityId, code) => {
             .maybeSingle();
 
         if (error) {
-            console.error('Error checking college code:', error);
+            logger.error('Error checking college code', error as Error);
             return { isUnique: false, error: error.message };
         }
 
         return { isUnique: !data, error: null };
     } catch (error) {
-        console.error('Unexpected error checking college code:', error);
+        logger.error('Unexpected error checking college code', error as Error);
         return { isUnique: false, error: error.message };
     }
 };
@@ -194,13 +197,13 @@ export const createUniversityCollege = async (collegeData, userId = null) => {
             .single();
 
         if (error) {
-            console.error('❌ Error creating university college:', error);
+            logger.error('Error creating university college', error as Error);
             return { success: false, data: null, error: error.message };
         }
 
         return { success: true, data, error: null };
     } catch (error) {
-        console.error('❌ Unexpected error creating university college:', error);
+        logger.error('Unexpected error creating university college', error as Error);
         return { success: false, data: null, error: error.message };
     }
 };
@@ -225,13 +228,13 @@ export const getUniversityCollegeByOwner = async (userId) => {
             .maybeSingle();
 
         if (error) {
-            console.error('Error fetching university college by owner:', error);
+            logger.error('Error fetching university college by owner', error as Error);
             return { success: false, data: null, error: error.message };
         }
 
         return { success: true, data, error: null };
     } catch (error) {
-        console.error('Unexpected error fetching university college by owner:', error);
+        logger.error('Unexpected error fetching university college by owner', error as Error);
         return { success: false, data: null, error: error.message };
     }
 };
@@ -250,13 +253,13 @@ export const getActiveUniversities = async () => {
             .order('name', { ascending: true });
 
         if (error) {
-            console.error('❌ Error fetching active universities:', error);
+            logger.error('Error fetching active universities', error as Error);
             return { success: false, data: null, error: error.message };
         }
 
         return { success: true, data: data || [], error: null };
     } catch (error) {
-        console.error('❌ Unexpected error fetching active universities:', error);
+        logger.error('Unexpected error fetching active universities', error as Error);
         return { success: false, data: null, error: error.message };
     }
 };

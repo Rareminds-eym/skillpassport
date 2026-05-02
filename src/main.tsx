@@ -6,23 +6,23 @@ import './index.css';
 import { QueryProvider } from './app/providers/QueryProvider';
 import { GlobalErrorBoundary } from './app/providers/GlobalErrorBoundary';
 import { validateFileSizeConfig } from './shared/config/fileSizeLimits';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('main');
 
 // Validate file size configuration at startup
 try {
   validateFileSizeConfig();
-  console.log('✅ File size configuration validated successfully');
-} catch (error) {
-  console.error('❌ File size configuration validation failed:', error);
-  throw error; // Prevent application startup
+} catch (error: unknown) {
+  logger.error('File size configuration validation failed', error instanceof Error ? error : new Error(String(error)));
+  throw error;
 }
 
 // Initialize Zustand stores
 import { initializeStores } from '@/shared/model/authStore';
 
 // Initialize stores before rendering
-initializeStores().then(() => {
-  console.log('[Zustand] Stores initialized');
-});
+initializeStores();
 
 // Unregister any existing service workers to prevent Workbox warnings
 if ('serviceWorker' in navigator) {

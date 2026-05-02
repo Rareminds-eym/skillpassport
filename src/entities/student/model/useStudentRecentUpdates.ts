@@ -41,7 +41,6 @@ export const useStudentRecentUpdates = (email, limit = 10, since = null) => {
         setRecentUpdates([]);
       }
     } catch (err) {
-      console.error('❌ Error in useStudentRecentUpdates:', err);
       setError(err.message);
       setRecentUpdates([]);
     } finally {

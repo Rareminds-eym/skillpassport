@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
 import { Student } from '@/shared/types';
+import { getLogger } from '@/shared/config/logging';
 import {
   BriefcaseIcon,
   AcademicCapIcon,
@@ -22,6 +23,8 @@ import {
   MagnifyingGlassIcon,
   BellIcon,
 } from '@heroicons/react/24/outline';
+
+const logger = getLogger('overview-tab');
 
 interface OverviewTabProps {
   student: Student;
@@ -246,7 +249,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
         .limit(10);
 
       if (quizProgressError) {
-        console.warn('Error fetching quiz progress:', quizProgressError);
+        logger.warn('Error fetching quiz progress', { error: quizProgressError.message });
         setQuizProgress([]);
       } else if (quizProgressData && quizProgressData.length > 0) {
         // Fetch quiz titles separately
@@ -337,7 +340,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       setInterviews(interviewsData || []);
 
     } catch (error) {
-      console.error('Error fetching data:', error);
+      logger.error('Error fetching data', error as Error);
     } finally {
       setLoading(false);
     }

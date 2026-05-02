@@ -1,4 +1,7 @@
 import OpenAI from 'openai';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('ai-career-path');
 
 // Lazy initialization of OpenAI client to avoid errors when API key is not set
 let openaiInstance: OpenAI | null = null;
@@ -239,7 +242,6 @@ Generate a detailed JSON response with:
 Be specific with Indian job market context if the college is in India. Include realistic salary ranges based on 2024-2025 market rates.
 Ensure all arrays are properly formatted and the JSON is valid.`;
 
-    console.log('Calling OpenRouter API...');
     const completion = await client.chat.completions.create({
       model: 'openai/gpt-4o-mini',
       messages: [
@@ -254,12 +256,7 @@ Ensure all arrays are properly formatted and the JSON is valid.`;
       ],
       max_tokens: 1500,
       temperature: 0.7,
-    }).catch((err) => {
-      console.error('OpenRouter API call failed:', err);
-      throw err;
     });
-    
-    console.log('API response received');
 
     const responseContent = completion.choices[0]?.message?.content || '';
     
@@ -283,7 +280,7 @@ Ensure all arrays are properly formatted and the JSON is valid.`;
     
     return careerPath;
   } catch (error) {
-    console.error('Error generating career path:', error);
+    logger.error('Career path generation failed', error instanceof Error ? error : new Error(String(error)));
     
     if (error instanceof OpenAI.APIError) {
       if (error.status === 402) {
@@ -386,7 +383,7 @@ function parseResponsibilitiesResponse(content: string, roleName: string): strin
  * @returns string[] - Array of 3 generic responsibility strings
  */
 export function getFallbackResponsibilities(roleName: string): string[] {
-  console.warn(`⚠️ USING FALLBACK RESPONSIBILITIES - AI generation failed for: ${roleName}`);
+  logger.warn('AI generation failed, using fallback responsibilities', { roleName });
   return [
     `[AI UNAVAILABLE] Design and develop solutions in the ${roleName} domain`,
     `[AI UNAVAILABLE] Collaborate with cross-functional teams on projects`,
@@ -448,7 +445,7 @@ Return ONLY a JSON array of 3 strings, nothing else. Example format:
 
     return parseResponsibilitiesResponse(responseContent, roleName);
   } catch (error) {
-    console.error('Error generating role responsibilities:', error);
+    logger.error('Role responsibilities generation failed', error instanceof Error ? error : new Error(String(error)), { roleName });
     return getFallbackResponsibilities(roleName);
   }
 }
@@ -520,7 +517,7 @@ export interface IndustryDemandData {
  * @returns IndustryDemandData - Fallback industry demand data
  */
 export function getFallbackIndustryDemand(roleName: string): IndustryDemandData {
-  console.warn(`⚠️ USING FALLBACK INDUSTRY DEMAND - AI generation failed for: ${roleName}`);
+  logger.warn('AI generation failed, using fallback industry demand', { roleName });
   // Generate varied fallback based on role name hash to avoid always showing "High"
   const hash = roleName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const levels: Array<{ level: IndustryDemandData['demandLevel']; percentage: number }> = [
@@ -640,7 +637,7 @@ Return ONLY a JSON object with these exact keys:
 
     return parseIndustryDemandResponse(responseContent, roleName);
   } catch (error) {
-    console.error('Error generating industry demand:', error);
+    logger.error('Industry demand generation failed', error instanceof Error ? error : new Error(String(error)), { roleName });
     return getFallbackIndustryDemand(roleName);
   }
 }
@@ -724,7 +721,7 @@ export interface RoleOverviewData {
  * The backend AI should ALWAYS generate real, personalized career progression
  */
 export function getFallbackCareerProgression(roleName: string): CareerStage[] {
-  console.warn(`⚠️ USING FALLBACK CAREER PROGRESSION - AI generation failed for: ${roleName}`);
+  logger.warn('AI generation failed, using fallback career progression', { roleName });
   return [
     { title: `[AI UNAVAILABLE] Junior ${roleName}`, yearsExperience: '0-2 yrs' },
     { title: `[AI UNAVAILABLE] ${roleName}`, yearsExperience: '2-5 yrs' },
@@ -739,7 +736,7 @@ export function getFallbackCareerProgression(roleName: string): CareerStage[] {
  * The backend AI should ALWAYS generate real, personalized learning roadmap
  */
 export function getFallbackLearningRoadmap(roleName: string): RoadmapPhase[] {
-  console.warn(`⚠️ USING FALLBACK LEARNING ROADMAP - AI generation failed for: ${roleName}`);
+  logger.warn('AI generation failed, using fallback learning roadmap', { roleName });
   return [
     {
       month: 'Month 1-2',
@@ -786,7 +783,7 @@ export function getFallbackLearningRoadmap(roleName: string): RoadmapPhase[] {
  * The backend AI should ALWAYS generate real, personalized course recommendations
  */
 export function getFallbackRecommendedCourses(roleName: string): RecommendedCourse[] {
-  console.warn(`⚠️ USING FALLBACK RECOMMENDED COURSES - AI generation failed for: ${roleName}`);
+  logger.warn('AI generation failed, using fallback recommended courses', { roleName });
   return [
     {
       title: `[AI UNAVAILABLE] ${roleName} Fundamentals`,
@@ -825,7 +822,7 @@ export function getFallbackRecommendedCourses(roleName: string): RecommendedCour
  * The backend AI should ALWAYS generate real, personalized free resources
  */
 export function getFallbackFreeResources(roleName: string): FreeResource[] {
-  console.warn(`⚠️ USING FALLBACK FREE RESOURCES - AI generation failed for: ${roleName}`);
+  logger.warn('AI generation failed, using fallback free resources', { roleName });
   const searchQuery = encodeURIComponent(roleName + ' tutorial');
   return [
     {
@@ -855,7 +852,7 @@ export function getFallbackFreeResources(roleName: string): FreeResource[] {
  * The backend AI should ALWAYS generate real, personalized action items
  */
 export function getFallbackActionItems(roleName: string): ActionItem[] {
-  console.warn(`⚠️ USING FALLBACK ACTION ITEMS - AI generation failed for: ${roleName}`);
+  logger.warn('AI generation failed, using fallback action items', { roleName });
   return [
     { title: '[AI UNAVAILABLE] Start Learning', description: `Enroll in a ${roleName} foundational course` },
     { title: '[AI UNAVAILABLE] Build Daily Habits', description: 'Dedicate 1-2 hours daily to practice' },
@@ -870,7 +867,7 @@ export function getFallbackActionItems(roleName: string): ActionItem[] {
  * The backend AI should ALWAYS generate real, personalized project suggestions
  */
 export function getFallbackSuggestedProjects(roleName: string): SuggestedProject[] {
-  console.warn(`⚠️ USING FALLBACK SUGGESTED PROJECTS - AI generation failed for: ${roleName}`);
+  logger.warn('AI generation failed, using fallback suggested projects', { roleName });
   return [
     {
       title: `[AI UNAVAILABLE] Build Your First ${roleName} Project`,
@@ -1070,7 +1067,7 @@ function parseRoleOverviewResponse(content: string, roleName: string): RoleOverv
       };
     }
   } catch (e) {
-    console.error('Error parsing role overview response:', e);
+    logger.error('Failed to parse role overview response', e instanceof Error ? e : new Error(String(e)), { roleName });
   }
   
   return getFallbackRoleOverview(roleName);
@@ -1095,16 +1092,13 @@ export async function generateRoleOverview(
   attemptId?: string
 ): Promise<RoleOverviewData> {
   if (!roleName || roleName.trim() === '') {
-    console.warn('[RoleOverview] Empty role name provided, using fallback');
     return getFallbackRoleOverview('professional');
   }
 
   // Step 1: Check if data exists in DB
   if (attemptId) {
     try {
-      console.log(`[RoleOverview] Checking DB for: ${roleName} (attempt: ${attemptId})`);
       const storageUrl = `${ROLE_OVERVIEW_API_URL}/storage?attemptId=${encodeURIComponent(attemptId)}&roleName=${encodeURIComponent(roleName)}`;
-      console.log(`[RoleOverview] Storage URL: ${storageUrl}`);
       const dbResponse = await fetch(storageUrl, {
         method: 'GET',
         headers: {
@@ -1112,27 +1106,20 @@ export async function generateRoleOverview(
         },
       });
 
-      console.log(`[RoleOverview] DB response status: ${dbResponse.status}`);
       if (dbResponse.ok) {
         const dbResult = await dbResponse.json() as { exists: boolean; data: RoleOverviewData | null };
-        console.log(`[RoleOverview] DB result:`, dbResult);
         if (dbResult.exists && dbResult.data) {
-          console.log(`[RoleOverview] ✅ Found in DB for: ${roleName}`);
           return dbResult.data;
         }
-        console.log(`[RoleOverview] Cache miss for ${roleName}`);
       } else {
-        console.warn(`[RoleOverview] DB check failed with status: ${dbResponse.status}`);
+        logger.warn('Role overview DB check returned non-OK status', { roleName, status: dbResponse.status });
       }
     } catch (dbError: any) {
-      console.warn('[RoleOverview] DB check failed, proceeding to AI generation:', dbError.message);
+      logger.warn('Role overview DB check failed, proceeding to AI generation', { roleName, error: dbError.message });
     }
-  } else {
-    console.log(`[RoleOverview] No attemptId provided, skipping DB check`);
   }
 
   // Step 2: Generate via AI
-  console.log(`[RoleOverview] Calling worker API for: ${roleName} in ${clusterTitle}`);
 
   try {
     const response = await fetch(`${ROLE_OVERVIEW_API_URL}/role-overview`, {
@@ -1148,7 +1135,7 @@ export async function generateRoleOverview(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[RoleOverview] Worker API error ${response.status}:`, errorText);
+      logger.error('Role overview worker API error', new Error(errorText), { roleName, status: response.status });
       throw new Error(`Worker API error: ${response.status}`);
     }
 
@@ -1160,16 +1147,13 @@ export async function generateRoleOverview(
     };
 
     if (!result.success || !result.data) {
-      console.error('[RoleOverview] Worker returned error:', result.error);
+      logger.error('Role overview worker returned error', new Error(result.error || 'Worker returned no data'), { roleName });
       throw new Error(result.error || 'Worker returned no data');
     }
-
-    console.log(`[RoleOverview] Success via ${result.source} for: ${roleName}`);
 
     // Step 3: Store in DB if attemptId provided
     if (attemptId && result.data) {
       try {
-        console.log(`[RoleOverview] Storing in DB for: ${roleName}`);
         const storeResponse = await fetch(`${ROLE_OVERVIEW_API_URL}/storage`, {
           method: 'POST',
           headers: {
@@ -1182,22 +1166,17 @@ export async function generateRoleOverview(
           }),
         });
 
-        if (storeResponse.ok) {
-          console.log(`[RoleOverview] ✅ Stored in DB for: ${roleName}`);
-        } else {
-          console.warn('[RoleOverview] Failed to store in DB, but continuing with generated data');
+        if (!storeResponse.ok) {
+          logger.warn('Failed to store role overview in DB', { roleName, status: storeResponse.status });
         }
       } catch (storeError: any) {
-        console.warn('[RoleOverview] DB storage failed:', storeError.message);
+        logger.warn('Role overview DB storage failed', { roleName, error: storeError.message });
       }
     }
 
     return result.data;
   } catch (error: any) {
-    console.error('[RoleOverview] Worker API call failed:', error.message);
-    
-    // Fallback to local static data if worker is unavailable
-    console.log(`[RoleOverview] Using local fallback for: ${roleName}`);
+    logger.error('Role overview worker API call failed', error instanceof Error ? error : new Error(error.message), { roleName });
     return getFallbackRoleOverview(roleName);
   }
 }
@@ -1237,16 +1216,12 @@ export async function matchCoursesForRole(
 ): Promise<CourseMatchingResult> {
   // Validate inputs
   if (!roleName || roleName.trim() === '') {
-    console.warn('[CourseMatching] Empty role name provided');
     return { matchedCourseIds: [], reasoning: 'No role specified' };
   }
 
   if (!courses || courses.length === 0) {
-    console.warn('[CourseMatching] No courses provided');
     return { matchedCourseIds: [], reasoning: 'No courses available' };
   }
-
-  console.log(`[CourseMatching] Matching ${courses.length} courses for: ${roleName}`);
 
   try {
     const response = await fetch(`${ROLE_OVERVIEW_API_URL}/match-courses`, {
@@ -1269,7 +1244,7 @@ export async function matchCoursesForRole(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[CourseMatching] Worker API error ${response.status}:`, errorText);
+      logger.error('Course matching worker API error', new Error(errorText), { roleName, status: response.status });
       throw new Error(`Worker API error: ${response.status}`);
     }
 
@@ -1281,14 +1256,13 @@ export async function matchCoursesForRole(
     };
 
     if (!result.success || !result.data) {
-      console.error('[CourseMatching] Worker returned error:', result.error);
+      logger.error('Course matching worker returned error', new Error(result.error || 'Worker returned no data'), { roleName });
       throw new Error(result.error || 'Worker returned no data');
     }
 
-    console.log(`[CourseMatching] Success via ${result.source}:`, result.data.matchedCourseIds);
     return result.data;
   } catch (error: any) {
-    console.error('[CourseMatching] Worker API call failed:', error.message);
+    logger.error('Course matching worker API call failed', error instanceof Error ? error : new Error(error.message), { roleName });
     
     // Return empty result on failure - let the UI handle fallback
     return { 

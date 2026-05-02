@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('curriculum-service');
 
 /**
  * College Curriculum Service
@@ -70,11 +73,9 @@ export interface CurriculumWithDetails extends CollegeCurriculum {
 async function getCurrentUserCollegeId(): Promise<string | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    console.log('❌ No authenticated user found');
+    logger.error('No authenticated user found', new Error('User not authenticated'), {});
     return null;
   }
-
-  console.log(`🔍 Getting college ID for user: ${user.email}`);
 
   // Try to get from college_lecturers table
   const { data: lecturerData } = await supabase
@@ -84,7 +85,6 @@ async function getCurrentUserCollegeId(): Promise<string | null> {
     .maybeSingle();
 
   if (lecturerData?.collegeId) {
-    console.log(`✅ Found college ID from college_lecturers table: ${lecturerData.collegeId}`);
     return lecturerData.collegeId;
   }
 
@@ -97,11 +97,10 @@ async function getCurrentUserCollegeId(): Promise<string | null> {
     .maybeSingle();
 
   if (orgData?.id) {
-    console.log(`✅ Found college ID from organizations table: ${orgData.id}`);
     return orgData.id;
   }
 
-  console.log('❌ No college ID found for user');
+  logger.error('No college ID found for user', new Error('College ID not found'), { userId: user.id });
   return null;
 }
 
@@ -179,8 +178,6 @@ export const curriculumService = {
    */
   async getCurriculumById(id: string): Promise<{ success: boolean; data?: CurriculumWithDetails; error?: any }> {
     try {
-      console.log(`🔍 Fetching curriculum with ID: ${id}`);
-      
       // Get curriculum with department, program names, and course details
       const { data: curriculum, error: curriculumError } = await supabase
         .from('college_curriculums')
@@ -194,11 +191,9 @@ export const curriculumService = {
         .single();
 
       if (curriculumError) {
-        console.error('❌ Error fetching curriculum:', curriculumError);
+        logger.error('Error fetching curriculum', curriculumError as Error, { curriculumId: id });
         throw curriculumError;
       }
-
-      console.log(`✅ Curriculum fetched - Status: ${curriculum.status}`);
 
       // Get semester from course mapping
       const { data: mapping } = await supabase
@@ -206,7 +201,7 @@ export const curriculumService = {
         .select('semester')
         .eq('program_id', curriculum.program_id)
         .eq('course_id', curriculum.course_id)
-        .limit(1); // Get first result instead of .single()
+        .limit(1);
 
       // Get units
       const { data: units, error: unitsError } = await supabase
@@ -216,11 +211,9 @@ export const curriculumService = {
         .order('order_index');
 
       if (unitsError) {
-        console.error('❌ Error fetching units:', unitsError);
+        logger.error('Error fetching curriculum units', unitsError as Error, { curriculumId: id });
         throw unitsError;
       }
-
-      console.log(`✅ Units fetched: ${units?.length || 0} units`);
 
       // Get outcomes
       const { data: outcomes, error: outcomesError } = await supabase
@@ -229,11 +222,9 @@ export const curriculumService = {
         .eq('curriculum_id', id);
 
       if (outcomesError) {
-        console.error('❌ Error fetching outcomes:', outcomesError);
+        logger.error('Error fetching curriculum outcomes', outcomesError as Error, { curriculumId: id });
         throw outcomesError;
       }
-
-      console.log(`✅ Outcomes fetched: ${outcomes?.length || 0} outcomes`);
 
       const result: CurriculumWithDetails = {
         ...curriculum,
@@ -248,7 +239,7 @@ export const curriculumService = {
 
       return { success: true, data: result };
     } catch (error: any) {
-      console.error('❌ Error in getCurriculumById:', error);
+      logger.error('Error in getCurriculumById', error, { curriculumId: id });
       return {
         success: false,
         error: {

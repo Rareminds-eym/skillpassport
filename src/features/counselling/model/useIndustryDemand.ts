@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { generateIndustryDemand, getFallbackIndustryDemand, IndustryDemandData } from '@/features/counselling';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('industry-demand-hook');
 
 /**
  * Cache structure for storing industry demand data
@@ -32,13 +35,11 @@ function getCacheKey(roleName: string, clusterTitle: string): string {
 export function checkCache(roleName: string, clusterTitle: string): IndustryDemandData | null {
   const key = getCacheKey(roleName, clusterTitle);
   const entry = sessionCache[key];
-  
+
   if (entry && entry.data) {
-    console.log(`[IndustryDemand] Cache hit for ${roleName}:`, entry.data);
     return entry.data;
   }
-  
-  console.log(`[IndustryDemand] Cache miss for ${roleName}`);
+
   return null;
 }
 
@@ -52,7 +53,6 @@ function setCache(roleName: string, clusterTitle: string, data: IndustryDemandDa
     timestamp: Date.now(),
     clusterTitle,
   };
-  console.log(`[IndustryDemand] Cached data for ${roleName}:`, data);
 }
 
 /**
@@ -115,12 +115,10 @@ export function useIndustryDemand(
         setLoading(false);
       }
     } catch (err) {
-      // Only update state if this is still the current request
       if (currentRequestRef.current === requestKey) {
-        console.error('Error fetching industry demand:', err);
+        logger.error('Error fetching industry demand', err instanceof Error ? err : new Error(String(err)));
         setError(err instanceof Error ? err : new Error('Failed to generate industry demand'));
-        
-        // Return fallback without exposing error to user
+
         const fallback = getFallbackIndustryDemand(role);
         setDemandData(fallback);
         setLoading(false);

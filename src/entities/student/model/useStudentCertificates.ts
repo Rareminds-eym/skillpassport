@@ -89,7 +89,6 @@ export const useStudentCertificates = (
 
       setCertificates(transformedData);
     } catch (err: any) {
-      console.error('Error fetching certificates:', err);
       setError(err.message);
     } finally {
       setLoading(false);

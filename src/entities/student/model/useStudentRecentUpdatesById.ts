@@ -41,7 +41,6 @@ export const useStudentRecentUpdatesById = (studentId, limit = 10, since = null)
         setRecentUpdates([]);
       }
     } catch (err) {
-      console.error('❌ Error in useStudentRecentUpdatesById:', err);
       setError(err.message);
       setRecentUpdates([]);
     } finally {

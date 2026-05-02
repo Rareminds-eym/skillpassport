@@ -24,6 +24,9 @@ import ScheduleInterviewModal from './modals/ScheduleInterviewModal';
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '@/shared/api/supabaseClient';
 import { File } from 'lucide-react';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('CandidateProfileDrawer');
 
 const Badge = ({ type }) => {
   const badgeConfig = {
@@ -628,7 +631,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
               setLoadingProjects(false);
             })
             .catch(error => {
-              console.error('Error fetching projects:', error);
+              logger.error('Failed to fetch projects', error as Error);
               setProjects([]);
               setLoadingProjects(false);
             })
@@ -651,7 +654,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
               setLoadingCertificates(false);
             })
             .catch(error => {
-              console.error('Error fetching certificates:', error);
+              logger.error('Failed to fetch certificates', error as Error);
               setCertificates([]);
               setLoadingCertificates(false);
             })
@@ -686,7 +689,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
             setLoadingAssessments(false);
           })
           .catch(error => {
-            console.error('Error fetching assignments:', error);
+            logger.error('Failed to fetch assignments', error as Error);
             setAssessments([]);
             setLoadingAssessments(false);
           })

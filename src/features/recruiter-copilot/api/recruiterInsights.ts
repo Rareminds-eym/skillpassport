@@ -1,5 +1,8 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 import { CandidateSummary, CandidateMatchResult } from '@/features/student-profile/model';
+
+const logger = getLogger('recruiter-insights');
 
 /**
  * Recruiter Insights Service
@@ -24,7 +27,7 @@ class RecruiterInsightsService {
         .limit(limit * 2);
 
       if (error || !students || students.length === 0) {
-        console.error('Error fetching students:', error);
+        logger.error('Error fetching students', new Error(error?.message || 'No students found'));
         return [];
       }
 
@@ -91,7 +94,7 @@ class RecruiterInsightsService {
         .slice(0, limit);
 
     } catch (error) {
-      console.error('Error in getTopCandidates:', error);
+      logger.error('Error in getTopCandidates', error as Error);
       return [];
     }
   }
@@ -142,7 +145,7 @@ class RecruiterInsightsService {
       return await this.getCandidatesByIds(topStudents);
 
     } catch (error) {
-      console.error('Error in findCandidatesBySkills:', error);
+      logger.error('Error in findCandidatesBySkills', error as Error);
       return [];
     }
   }
@@ -163,7 +166,7 @@ class RecruiterInsightsService {
         .single();
 
       if (error || !opp) {
-        console.error('Error fetching opportunity:', error);
+        logger.error('Error fetching opportunity', new Error(error?.message || 'Opportunity not found'));
         return [];
       }
 
@@ -235,7 +238,7 @@ class RecruiterInsightsService {
         .slice(0, limit);
 
     } catch (error) {
-      console.error('Error matching candidates:', error);
+      logger.error('Error matching candidates', error as Error);
       return [];
     }
   }
@@ -289,7 +292,7 @@ class RecruiterInsightsService {
         })
       );
     } catch (error) {
-      console.error('Error fetching candidates by IDs:', error);
+      logger.error('Error fetching candidates by IDs', error as Error);
       return [];
     }
   }
@@ -679,7 +682,7 @@ class RecruiterInsightsService {
               missingSkills
             };
           } catch (error) {
-            console.error(`Error analyzing applicant ${applicant.id}:`, error);
+            logger.error(`Error analyzing applicant ${applicant.id}`, error as Error);
             return null;
           }
         })
@@ -703,7 +706,7 @@ class RecruiterInsightsService {
         summary
       };
     } catch (error) {
-      console.error('Error analyzing applicants:', error);
+      logger.error('Error analyzing applicants', error as Error);
       return {
         topRecommendations: [],
         summary: {

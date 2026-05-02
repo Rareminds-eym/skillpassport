@@ -5,6 +5,9 @@
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { getRecommendedCourses } from './recommendationService';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('recommendation-storage');
 
 /**
  * Save course recommendations to the database.
@@ -23,7 +26,6 @@ export const saveRecommendations = async (
   recommendationType = 'assessment'
 ) => {
   if (!studentId || !recommendations || recommendations.length === 0) {
-    console.warn('Missing required parameters for saving recommendations');
     return [];
   }
 
@@ -51,13 +53,13 @@ export const saveRecommendations = async (
       .select();
 
     if (error) {
-      console.error('Failed to save recommendations:', error.message);
+      logger.error('Failed to save recommendations', error instanceof Error ? error : new Error(String(error)));
       throw new Error(`Database error: ${error.message}`);
     }
 
     return data || [];
   } catch (error) {
-    console.error('Error saving recommendations:', error);
+    logger.error('Error saving recommendations', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 };
@@ -74,7 +76,6 @@ export const saveRecommendations = async (
  */
 export const getSavedRecommendations = async (studentId, options = {}) => {
   if (!studentId) {
-    console.warn('Student ID required to get saved recommendations');
     return [];
   }
 
@@ -107,13 +108,13 @@ export const getSavedRecommendations = async (studentId, options = {}) => {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Failed to get saved recommendations:', error.message);
+      logger.error('Failed to get saved recommendations', error instanceof Error ? error : new Error(String(error)));
       throw new Error(`Database error: ${error.message}`);
     }
 
     return data || [];
   } catch (error) {
-    console.error('Error getting saved recommendations:', error);
+    logger.error('Error getting saved recommendations', error instanceof Error ? error : new Error(String(error)));
     return [];
   }
 };
@@ -155,13 +156,13 @@ export const updateRecommendationStatus = async (recommendationId, status, dismi
       .single();
 
     if (error) {
-      console.error('Failed to update recommendation status:', error.message);
+      logger.error('Failed to update recommendation status', error instanceof Error ? error : new Error(String(error)));
       throw new Error(`Database error: ${error.message}`);
     }
 
     return data;
   } catch (error) {
-    console.error('Error updating recommendation status:', error);
+    logger.error('Error updating recommendation status', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 };
@@ -177,7 +178,6 @@ export const updateRecommendationStatus = async (recommendationId, status, dismi
  */
 export const getAndSaveRecommendations = async (studentId, assessmentResults, assessmentResultId = null) => {
   if (!studentId || !assessmentResults) {
-    console.warn('Student ID and assessment results required');
     return [];
   }
 
@@ -194,7 +194,7 @@ export const getAndSaveRecommendations = async (studentId, assessmentResults, as
     
     return recommendations;
   } catch (error) {
-    console.error('Error in getAndSaveRecommendations:', error);
+    logger.error('Error in getAndSaveRecommendations', error instanceof Error ? error : new Error(String(error)));
     // Return recommendations even if save fails
     return await getRecommendedCourses(assessmentResults);
   }

@@ -3,6 +3,9 @@ import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getRecentActivity } from '@/features/analytics/api/dashboardService';
 import { queryKeys } from '@/shared/lib/queryKeys';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('realtime-activities');
 
 /**
  * Custom hook for real-time activity tracking
@@ -68,10 +71,6 @@ export const useRealtimeActivities = (limit = 15) => {
 
       // Store deletion activity in ref (persists across refetches)
       deletionActivitiesRef.current = [deletedActivity, ...deletionActivitiesRef.current].slice(0, 10);
-
-      // Show console warning if we don't have full data
-      if (!payload.old) {
-      }
     }
 
     // Force refetch to get fresh data (will merge with deletion activities)
@@ -79,11 +78,6 @@ export const useRealtimeActivities = (limit = 15) => {
       queryKey: queryKeys.analytics.realtime.all,
       refetchType: 'active'
     });
-
-    if (payload.eventType === 'INSERT') {
-    } else if (payload.eventType === 'UPDATE') {
-    } else if (payload.eventType === 'DELETE') {
-    }
   }, [queryClient]);
 
   // Set up real-time subscriptions for all tables
@@ -127,10 +121,10 @@ export const useRealtimeActivities = (limit = 15) => {
       if (status === 'SUBSCRIBED') {
         isSubscribedRef.current = true;
       } else if (status === 'CHANNEL_ERROR') {
-        console.error('❌ Real-time subscription error');
+        logger.error('Real-time subscription error', undefined, { channel: channelName });
         isSubscribedRef.current = false;
       } else if (status === 'TIMED_OUT') {
-        console.error('⏰ Real-time subscription timed out');
+        logger.error('Real-time subscription timed out', undefined, { channel: channelName });
         isSubscribedRef.current = false;
       }
     });

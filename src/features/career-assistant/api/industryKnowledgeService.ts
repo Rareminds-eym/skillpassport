@@ -5,6 +5,9 @@
  */
 
 import { getOpenAIClient, DEFAULT_MODEL } from './openAIClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('industry-knowledge-service');
 
 export interface DomainDetectionResult {
   domain: string;
@@ -121,11 +124,6 @@ Identify the industry/domain being discussed. Consider ALL possible domains incl
       });
 
       const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
-      console.log('🌍 Domain Detected:', result.domain);
-      console.log('📊 Sub-domain:', result.subDomain || 'General');
-      console.log('🎯 Confidence:', `${(result.confidence * 100).toFixed(0)}%`);
-      console.log('🔗 Related:', result.relatedDomains?.join(', ') || 'None');
 
       return {
         domain: result.domain || 'General Technology',
@@ -135,7 +133,10 @@ Identify the industry/domain being discussed. Consider ALL possible domains incl
         relatedDomains: result.relatedDomains || []
       };
     } catch (error) {
-      console.error('Domain detection error:', error);
+      logger.error('Failed to detect industry domain', error as Error, {
+        hasProfile: !!studentProfile,
+        messageLength: message.length
+      });
       return {
         domain: 'General Technology',
         confidence: 0.5,
@@ -220,12 +221,6 @@ ${studentSkills ? `**Student Skills:** ${studentSkills.join(', ')}` : ''}
       });
 
       const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
-      console.log('📚 Industry Knowledge Retrieved:', {
-        problems: result.commonProblems?.length || 0,
-        technologies: result.popularTechnologies?.length || 0,
-        trends: result.industryTrends?.length || 0
-      });
 
       return {
         domain,
@@ -237,7 +232,11 @@ ${studentSkills ? `**Student Skills:** ${studentSkills.join(', ')}` : ''}
         typicalProjects: result.typicalProjects || []
       };
     } catch (error) {
-      console.error('Industry research error:', error);
+      logger.error('Failed to research industry knowledge', error as Error, {
+        domain,
+        subDomain,
+        hasStudentSkills: !!studentSkills && studentSkills.length > 0
+      });
       return {
         domain,
         commonProblems: [],

@@ -24,6 +24,9 @@ import toast from "react-hot-toast";
 import { curriculumApprovalService } from '@/features/college-admin';
 import { curriculumChangeRequestService } from '@/features/college-admin';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('college-admin:CollegeCurriculumBuilderUI');
 
 /* ==============================
    TYPES & INTERFACES (College-adapted)
@@ -806,7 +809,7 @@ const CloneCurriculumModal = ({
       setAvailableSourceCurriculums(mockSources);
       setSelectedSourceId(currentCurriculumId || "");
     } catch (error) {
-      console.error('Failed to load source curriculums:', error);
+      logger.error('Failed to load source curriculums', error as Error);
     } finally {
       setLoadingSources(false);
     }
@@ -1203,16 +1206,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
         // Use the improved service function
         const affiliationResult = await curriculumApprovalService.checkCollegeAffiliation();
         
-        console.log('🔍 Affiliation Check Result:', affiliationResult);
-        
         if (affiliationResult.success && affiliationResult.data) {
-          console.log('✅ College Affiliation Data:', {
-            isAffiliated: affiliationResult.data.isAffiliated,
-            collegeId: affiliationResult.data.collegeId,
-            universityId: affiliationResult.data.universityId,
-            universityName: affiliationResult.data.universityName
-          });
-          
           setCollegeAffiliation({
             isAffiliated: affiliationResult.data.isAffiliated,
             collegeId: affiliationResult.data.collegeId || undefined,
@@ -1221,11 +1215,10 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
             loading: false
           });
         } else {
-          console.log('❌ Affiliation check failed or no data');
           setCollegeAffiliation({ isAffiliated: false, loading: false });
         }
       } catch (error) {
-        console.error('❌ Error checking college affiliation:', error);
+        logger.error('Error checking college affiliation', error as Error);
         setCollegeAffiliation({ isAffiliated: false, loading: false });
       }
     };
@@ -1252,7 +1245,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
             setLastRefreshTime(Date.now());
           }
         } catch (error) {
-          console.error('Error fetching pending changes:', error);
+          logger.error('Error fetching pending changes', error as Error);
         } finally {
           if (showLoading) {
             setIsRefreshingChanges(false);
@@ -1287,7 +1280,6 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
             filter: `id=eq.${props.curriculumId}`
           },
           (payload) => {
-            console.log('🔄 Curriculum updated, refreshing pending changes...', payload);
             setIsAutoRefreshing(true);
             fetchPendingChanges();
             setTimeout(() => setIsAutoRefreshing(false), 1000);
@@ -1299,14 +1291,11 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
               
               if (newChanges.length < oldChanges.length) {
                 // Changes were approved - refresh the entire curriculum data
-                console.log('🔄 Changes approved, refreshing curriculum data...');
-                
                 // Call parent refresh function if available
                 if (props.onRefreshCurriculum) {
                   props.onRefreshCurriculum();
                 } else {
                   // Fallback: reload the page to get fresh data
-                  console.log('🔄 No refresh function available, reloading page...');
                   window.location.reload();
                 }
                 
@@ -1744,7 +1733,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
         toast.error(result.error || 'Failed to submit change request');
       }
     } catch (error) {
-      console.error('Error submitting change request:', error);
+      logger.error('Error submitting change request', error as Error);
       toast.error('Failed to submit change request');
     }
   };
@@ -1761,7 +1750,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
         toast.success('Pending changes refreshed!', { duration: 2000 });
       }
     } catch (error) {
-      console.error('Error refreshing pending changes:', error);
+      logger.error('Error refreshing pending changes', error as Error);
       toast.error('Failed to refresh pending changes');
     } finally {
       setIsRefreshingChanges(false);
@@ -1861,7 +1850,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
         toast.success("Curriculum submitted for approval!");
       }
     } catch (error) {
-      console.error('Error submitting curriculum for approval:', error);
+      logger.error('Error submitting curriculum for approval', error as Error);
       toast.error("Failed to submit curriculum for approval");
       return;
     }
@@ -2009,10 +1998,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
         if (currentStats.completionRate !== previousStats.completionRate) {
           changes.push(`Completion: ${previousStats.completionRate}% → ${currentStats.completionRate}%`);
         }
-        
-        if (changes.length > 0) {
-          console.log('📊 Stats auto-updated:', changes.join(', '));
-        }
+      
       }
     }
   }, [totalUnits, totalOutcomes, totalCredits, completionRate, previousStats]);
@@ -2902,15 +2888,6 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                     
                     {isCollegeAdmin && (
                       <>
-                        {/* Debug: Log affiliation status */}
-                        {console.log('🎯 Button Render - Affiliation Status:', {
-                          isAffiliated: collegeAffiliation.isAffiliated,
-                          loading: collegeAffiliation.loading,
-                          universityName: collegeAffiliation.universityName,
-                          showRequestButton: collegeAffiliation.isAffiliated && !collegeAffiliation.loading,
-                          showPublishButton: !collegeAffiliation.isAffiliated && !collegeAffiliation.loading
-                        })}
-                        
                         {/* Show Request for Approval button for affiliated colleges */}
                         {collegeAffiliation.isAffiliated && !collegeAffiliation.loading && (
                           <button
@@ -2948,7 +2925,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                                   toast.success("Curriculum published successfully! It is now active and available.");
                                 }
                               } catch (error) {
-                                console.error('Error publishing curriculum:', error);
+                                logger.error('Error publishing curriculum', error as Error);
                                 toast.error("Failed to publish curriculum");
                               }
                             }}
@@ -3015,7 +2992,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                             toast.success("Curriculum published successfully! It is now active and available.");
                           }
                         } catch (error) {
-                          console.error('Error publishing curriculum:', error);
+                          logger.error('Error publishing curriculum', error as Error);
                           toast.error("Failed to publish curriculum");
                         }
                       }}

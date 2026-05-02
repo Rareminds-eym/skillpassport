@@ -51,7 +51,6 @@ export function useOrganizationCheck(
   // Reset initialization when user changes
   useEffect(() => {
     if (user?.id !== lastUserId.current) {
-      console.log(`[useOrganizationCheck] User changed, resetting initialization`);
       hasInitialized.current = false;
       lastUserId.current = user?.id || null;
     }
@@ -60,18 +59,15 @@ export function useOrganizationCheck(
   const fetchOrganization = useCallback(async () => {
     // Prevent multiple fetches
     if (hasInitialized.current) {
-      console.log(`[useOrganizationCheck] Skipping fetch - already initialized`);
       return;
     }
 
     if (!user?.id) {
-      console.log(`[useOrganizationCheck] No user ID, setting loading to false`);
       setLoading(false);
       setError('User not authenticated');
       return;
     }
 
-    console.log(`[useOrganizationCheck] Fetching ${organizationType} for user:`, user.id);
     setLoading(true);
     setError(null);
 
@@ -85,20 +81,16 @@ export function useOrganizationCheck(
         .maybeSingle();
 
       if (fetchError) {
-        console.error(`[useOrganizationCheck] Error fetching ${organizationType}:`, fetchError);
         setError(`Failed to check ${organizationType} status`);
         setOrganization(null);
       } else if (data) {
-        console.log(`[useOrganizationCheck] Found ${organizationType}:`, data.name);
         setOrganization(data as Organization);
       } else {
         // No organization found - this is expected for new admins
-        console.log(`[useOrganizationCheck] No ${organizationType} found for user`);
         setOrganization(null);
       }
       hasInitialized.current = true;
     } catch (err) {
-      console.error(`[useOrganizationCheck] Unexpected error:`, err);
       setError('An unexpected error occurred');
       setOrganization(null);
       hasInitialized.current = true;
@@ -113,7 +105,6 @@ export function useOrganizationCheck(
 
   // Refetch function that resets initialization to force a new fetch
   const refetch = useCallback(async () => {
-    console.log(`[useOrganizationCheck] Refetch called, resetting initialization`);
     hasInitialized.current = false;
     await fetchOrganization();
   }, [fetchOrganization]);

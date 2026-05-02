@@ -1,5 +1,8 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('global-error-boundary');
 
 interface Props {
     children: ReactNode;
@@ -77,7 +80,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     }
 
     componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-        console.error('[GlobalErrorBoundary] Uncaught error:', error, errorInfo);
+        logger.error('Uncaught error in component tree', error, { componentStack: errorInfo.componentStack });
     }
 
     handleReload = () => {

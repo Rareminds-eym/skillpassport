@@ -57,7 +57,6 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ student, loading: externalL
       setDocuments(docs);
     } catch (err) {
       setError('Failed to load documents');
-      console.error('Error loading documents:', err);
     } finally {
       setLoading(false);
     }
@@ -73,11 +72,9 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ student, loading: externalL
       setDownloading(document.url);
       setDownloadError(null);
       setDownloadSuccess(null);
-      
-      console.log('Downloading document:', document.name);
+
       const downloadUrl = getStudentDocumentUrl(document.url, 'download');
-      console.log('Download URL:', downloadUrl);
-      
+
       const link = window.document.createElement('a');
       link.href = downloadUrl;
       link.download = document.name;
@@ -85,18 +82,13 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ student, loading: externalL
       window.document.body.appendChild(link);
       link.click();
       window.document.body.removeChild(link);
-      
-      console.log('Download initiated for:', document.name);
-      
-      // Set success state
+
       setDownloadSuccess(document.url);
       setDownloading(null);
     } catch (error) {
-      console.error('Download failed:', error);
       setDownloadError(document.url);
       setDownloading(null);
-      
-      // Fallback: open in new tab if download fails
+
       const viewUrl = getStudentDocumentUrl(document.url, 'inline');
       window.open(viewUrl, '_blank');
     }

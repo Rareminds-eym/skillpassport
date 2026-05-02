@@ -5,6 +5,9 @@
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { checkAuthentication } from '@/features/auth';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('organization-service');
 
 /**
  * Get organization subscription details
@@ -34,7 +37,7 @@ export const getOrganizationSubscription = async (organizationId: string) => {
       error: null
     };
   } catch (error: any) {
-    console.error('Error fetching organization subscription:', error);
+    logger.error('Error fetching organization subscription', error);
     return {
       success: false,
       data: null,
@@ -69,7 +72,7 @@ export const getOrganizationMembers = async (organizationId: string) => {
       error: null
     };
   } catch (error: any) {
-    console.error('Error fetching organization members:', error);
+    logger.error('Error fetching organization members', error);
     return {
       success: false,
       data: null,
@@ -110,7 +113,7 @@ export const getUserLicenseAssignment = async (userId: string) => {
       error: null
     };
   } catch (error: any) {
-    console.error('Error fetching license assignment:', error);
+    logger.error('Error fetching license assignment', error);
     return {
       success: false,
       data: null,

@@ -77,7 +77,6 @@ export function useSubscriptionPlansData(options = {}) {
       });
 
       const url = `${PAYMENTS_API_URL}/subscription-plans?${params}`;
-      console.log('[useSubscriptionPlansData] Fetching from:', url);
 
       try {
         const response = await fetch(url);
@@ -90,7 +89,6 @@ export function useSubscriptionPlansData(options = {}) {
         }
 
         const data = await response.json();
-        console.log('[useSubscriptionPlansData] API Response:', data);
 
         if (!data.success) {
           throw new Error(data.error || 'API returned unsuccessful response');
@@ -107,15 +105,10 @@ export function useSubscriptionPlansData(options = {}) {
 
         // Retry with exponential backoff
         if (retryCount < MAX_RETRIES) {
-          console.warn(
-            `[SubscriptionPlans] Fetch failed (attempt ${retryCount + 1}/${MAX_RETRIES + 1}), retrying…`,
-            err.message
-          );
           await sleep(RETRY_DELAY_MS * (retryCount + 1));
           return fetchPlans(retryCount + 1);
         }
 
-        console.error('[SubscriptionPlans] All fetch attempts failed:', err);
         setError(err);
         setPlans([]); // explicitly empty — not null — so caller knows we finished
         setLoading(false);
@@ -188,7 +181,6 @@ export function useSubscriptionPlan(planCode) {
         }
       } catch (err) {
         if (!cancelled) {
-          console.error('[useSubscriptionPlan] Error:', err);
           setError(err);
         }
       } finally {
@@ -243,7 +235,6 @@ export function useSubscriptionFeaturesComparison() {
         }
       } catch (err) {
         if (!cancelled) {
-          console.error('[useSubscriptionFeaturesComparison] Error:', err);
           setError(err);
         }
       } finally {

@@ -14,6 +14,9 @@ import { useState, useEffect, useCallback } from 'react';
 //   updateStudentSettings, 
 //   updateStudentPassword 
 // } from '@/features/student-profile/api';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('student-settings');
 
 export interface UseStudentSettingsOptions {
   email: string | null;
@@ -67,7 +70,7 @@ export const useStudentSettings = ({ email, enabled = true }: UseStudentSettings
         setError(result.error || 'Failed to fetch settings');
       }
     } catch (err: any) {
-      console.error('Error fetching student settings:', err);
+      logger.error('Error fetching student settings', err);
       setError(err.message || 'Failed to fetch settings');
     } finally {
       setLoading(false);
@@ -109,7 +112,7 @@ export const useStudentSettings = ({ email, enabled = true }: UseStudentSettings
         throw new Error(result.error);
       }
     } catch (err: any) {
-      console.error('Error updating password:', err);
+      logger.error('Error updating password', err);
       throw err;
     }
   };

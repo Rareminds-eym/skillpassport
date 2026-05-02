@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('circulars-service');
 
 export interface Circular {
   id: string;
@@ -78,7 +81,7 @@ class CircularsService {
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error fetching circulars:', error);
+        logger.error('Failed to fetch circulars', error instanceof Error ? error : new Error(String(error)));
         return { data: null, error };
       }
 
@@ -93,7 +96,9 @@ class CircularsService {
 
       return { data: transformedData, error: null };
     } catch (error) {
-      console.error('Error in getCirculars:', error);
+      logger.error('Exception in getCirculars', error instanceof Error ? error : new Error(String(error)), {
+        filters
+      });
       return { data: null, error };
     }
   }
@@ -108,7 +113,9 @@ class CircularsService {
         .single();
 
       if (error) {
-        console.error('Error fetching circular:', error);
+        logger.error('Failed to fetch circular by ID', error instanceof Error ? error : new Error(String(error)), {
+          circularId: id
+        });
         return { data: null, error };
       }
 
@@ -120,7 +127,9 @@ class CircularsService {
 
       return { data: transformedData, error: null };
     } catch (error) {
-      console.error('Error in getCircularById:', error);
+      logger.error('Exception in getCircularById', error instanceof Error ? error : new Error(String(error)), {
+        circularId: id
+      });
       return { data: null, error };
     }
   }
@@ -130,7 +139,7 @@ class CircularsService {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        console.warn('No authenticated user found');
+        logger.warn('No authenticated user found for college lookup');
         return null;
       }
 
@@ -158,19 +167,20 @@ class CircularsService {
       }
 
       if (error) {
-        console.error('Error fetching college for user:', error);
+        logger.error('Failed to fetch college for user', error instanceof Error ? error : new Error(String(error)));
         return null;
       }
 
       if (!data) {
-        console.warn('No college found for user:', user.id);
+        logger.warn('No college found for user', {
+          userId: user.id
+        });
         return null;
       }
 
-      console.log('Found college for user:', { collegeId: data.id, collegeName: data.name });
       return data.id;
     } catch (error) {
-      console.error('Error getting user college ID:', error);
+      logger.error('Exception getting user college ID', error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }
@@ -197,7 +207,10 @@ class CircularsService {
         .single();
 
       if (error) {
-        console.error('Error creating circular:', error);
+        logger.error('Failed to create circular', error instanceof Error ? error : new Error(String(error)), {
+          title: circularData.title,
+          audience: circularData.audience
+        });
         return { data: null, error };
       }
 
@@ -209,7 +222,9 @@ class CircularsService {
 
       return { data: transformedData, error: null };
     } catch (error) {
-      console.error('Error in createCircular:', error);
+      logger.error('Exception in createCircular', error instanceof Error ? error : new Error(String(error)), {
+        title: circularData.title
+      });
       return { data: null, error };
     }
   }
@@ -230,7 +245,9 @@ class CircularsService {
         .single();
 
       if (error) {
-        console.error('Error updating circular:', error);
+        logger.error('Failed to update circular', error instanceof Error ? error : new Error(String(error)), {
+          circularId: id
+        });
         return { data: null, error };
       }
 
@@ -242,7 +259,9 @@ class CircularsService {
 
       return { data: transformedData, error: null };
     } catch (error) {
-      console.error('Error in updateCircular:', error);
+      logger.error('Exception in updateCircular', error instanceof Error ? error : new Error(String(error)), {
+        circularId: id
+      });
       return { data: null, error };
     }
   }
@@ -256,13 +275,17 @@ class CircularsService {
         .eq('id', id);
 
       if (error) {
-        console.error('Error deleting circular:', error);
+        logger.error('Failed to delete circular', error instanceof Error ? error : new Error(String(error)), {
+          circularId: id
+        });
         return { error };
       }
 
       return { error: null };
     } catch (error) {
-      console.error('Error in deleteCircular:', error);
+      logger.error('Exception in deleteCircular', error instanceof Error ? error : new Error(String(error)), {
+        circularId: id
+      });
       return { error };
     }
   }
@@ -283,7 +306,10 @@ class CircularsService {
         .single();
 
       if (error) {
-        console.error('Error toggling circular status:', error);
+        logger.error('Failed to toggle circular status', error instanceof Error ? error : new Error(String(error)), {
+          circularId: id,
+          newStatus
+        });
         return { data: null, error };
       }
 
@@ -295,7 +321,9 @@ class CircularsService {
 
       return { data: transformedData, error: null };
     } catch (error) {
-      console.error('Error in toggleCircularStatus:', error);
+      logger.error('Exception in toggleCircularStatus', error instanceof Error ? error : new Error(String(error)), {
+        circularId: id
+      });
       return { data: null, error };
     }
   }
@@ -326,7 +354,9 @@ class CircularsService {
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error fetching circulars stats:', error);
+        logger.error('Failed to fetch circulars stats', error instanceof Error ? error : new Error(String(error)), {
+          collegeId
+        });
         return { data: null, error };
       }
 
@@ -339,7 +369,7 @@ class CircularsService {
 
       return { data: stats, error: null };
     } catch (error) {
-      console.error('Error in getCircularsStats:', error);
+      logger.error('Exception in getCircularsStats', error instanceof Error ? error : new Error(String(error)));
       return { data: null, error };
     }
   }

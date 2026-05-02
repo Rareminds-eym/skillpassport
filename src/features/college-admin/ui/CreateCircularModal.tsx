@@ -7,7 +7,10 @@ import {
   UserGroupIcon,
 } from '@heroicons/react/24/outline';
 import { circularService, type Circular, type CreateCircularData } from '@/features/college-admin';
+import { getLogger } from '@/shared/config/logging';
 import toast from 'react-hot-toast';
+
+const logger = getLogger('college-admin:CreateCircularModal');
 
 interface CreateCircularModalProps {
   circular?: Circular | null;
@@ -72,7 +75,7 @@ const CreateCircularModal: React.FC<CreateCircularModalProps> = ({
       }
       onSuccess();
     } catch (error) {
-      console.error('Error saving circular:', error);
+      logger.error('Error saving circular', error as Error);
       toast.error('Failed to save circular');
     } finally {
       setLoading(false);
@@ -103,7 +106,7 @@ const CreateCircularModal: React.FC<CreateCircularModalProps> = ({
       
       toast.success('File attached successfully');
     } catch (error) {
-      console.error('Error uploading file:', error);
+      logger.error('Error uploading file', error as Error);
       toast.error('Failed to attach file');
     } finally {
       setUploadingFile(false);

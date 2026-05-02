@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('department-service');
 
 export interface Department {
   id: string;
@@ -216,8 +219,6 @@ export const departmentService = {
       insertData.college_id = department.college_id;
     }
 
-    console.log('Inserting department:', insertData);
-    
     const { data, error } = await supabase
       .from('departments')
       .insert(insertData)
@@ -225,7 +226,7 @@ export const departmentService = {
       .single();
 
     if (error) {
-      console.error('Department insert error:', error);
+      logger.error('Failed to insert department', error as Error, { departmentName: department.name, collegeId: department.college_id });
       throw error;
     }
 
@@ -233,9 +234,8 @@ export const departmentService = {
     if (data && department.metadata?.hod_id) {
       try {
         await this.assignHODToDepartment(data.id, department.metadata.hod_id);
-        console.log('HOD assigned to new department:', department.metadata.hod_id);
       } catch (hodError) {
-        console.error('Error assigning HOD to new department:', hodError);
+        logger.error('Failed to assign HOD to new department', hodError as Error, { departmentId: data.id, lecturerId: department.metadata.hod_id });
         // Don't throw error here - department was created successfully
         // HOD can be assigned later if needed
       }
@@ -276,10 +276,9 @@ export const departmentService = {
         // Only update if HOD has changed
         if (!currentHOD || currentHOD.lecturer_id !== updates.metadata.hod_id) {
           await this.assignHODToDepartment(id, updates.metadata.hod_id);
-          console.log('HOD assignment updated for department:', id, 'new HOD:', updates.metadata.hod_id);
         }
       } catch (hodError) {
-        console.error('Error updating HOD assignment:', hodError);
+        logger.error('Failed to update HOD assignment', hodError as Error, { departmentId: id, newHodId: updates.metadata.hod_id });
         // Don't throw error here - department was updated successfully
         // HOD can be assigned manually if needed
       }
@@ -605,7 +604,7 @@ export const departmentService = {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error validating department code:', error);
+      logger.error('Failed to validate department code', error as Error, { collegeId, code });
       return { isValid: false, message: 'Error validating department code. Please try again.' };
     }
 

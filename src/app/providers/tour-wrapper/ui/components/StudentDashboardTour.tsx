@@ -1,9 +1,12 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Joyride, { CallBackProps, STATUS } from 'react-joyride';
+import { getLogger } from '@/shared/config/logging';
 
 import { TOUR_KEYS } from '@/app/providers/tour-wrapper/lib/constants';
 import { waitForElement } from '@/shared/lib/utils';
 import { useTour } from '@/shared/model/tourStore';
+
+const logger = getLogger('StudentDashboardTour');
 import {
   DASHBOARD_TOUR_STEPS,
   DASHBOARD_TOUR_OPTIONS,
@@ -15,10 +18,10 @@ import {
 const scrollToElementSmooth = (element: Element, stepIndex: number) => {
   const elementRect = element.getBoundingClientRect();
   const absoluteElementTop = elementRect.top + window.pageYOffset;
-  
+
   // Different scroll offsets for different types of elements
   let offset = 120; // Default offset
-  
+
   if (stepIndex >= 1 && stepIndex <= 5) {
     // Navigation elements need to scroll to top with minimal offset
     offset = 80;
@@ -29,18 +32,9 @@ const scrollToElementSmooth = (element: Element, stepIndex: number) => {
     // Tab elements need less offset
     offset = 100;
   }
-  
+
   const targetScrollTop = absoluteElementTop - offset;
-  
-  console.log(`📍 Scrolling to step ${stepIndex}:`, {
-    element: element.tagName,
-    elementRect,
-    absoluteElementTop,
-    offset,
-    targetScrollTop: Math.max(0, targetScrollTop),
-    currentScrollY: window.scrollY
-  });
-  
+
   window.scrollTo({
     top: Math.max(0, targetScrollTop),
     behavior: 'smooth'
@@ -61,7 +55,6 @@ const StudentDashboardTour: React.FC = () => {
   // STEP 1: Wait for prerequisites - simplified (route check removed, handled by TourWrapper)
   useEffect(() => {
     if (!loading && isEligible(TOUR_KEYS.DASHBOARD) && !isReady && !tourStarted.current) {
-      console.log('✅ Dashboard tour: Prerequisites met');
       setIsReady(true);
     }
   }, [loading, isEligible, isReady]);
@@ -75,8 +68,6 @@ const StudentDashboardTour: React.FC = () => {
     checkInProgress.current = true;
 
     const startTourWhenReady = async () => {
-      console.log('🎯 Dashboard tour: Waiting for dashboard elements...');
-      
       // Wait for both critical elements with a reasonable timeout
       const [assessmentCard, opportunitiesCard] = await Promise.all([
         waitForElement('[data-tour="assessment-card"]', 15000),
@@ -84,12 +75,10 @@ const StudentDashboardTour: React.FC = () => {
       ]);
       
       if (!assessmentCard || !opportunitiesCard) {
-        console.warn('❌ Dashboard tour: Required elements not found, tour will not start');
+        logger.warn('Required elements not found, tour will not start');
         checkInProgress.current = false;
         return;
       }
-      
-      console.log('✅ Dashboard tour: All elements ready, starting tour');
       
       // Mark as started to prevent duplicate starts
       tourStarted.current = true;
@@ -120,7 +109,6 @@ const StudentDashboardTour: React.FC = () => {
 
     // Tour completion
     if (status === STATUS.FINISHED) {
-      console.log('✅ Dashboard tour: Finished');
       setShouldRun(false);
       completeTour(TOUR_KEYS.DASHBOARD);
     } else if (status === STATUS.SKIPPED) {
@@ -136,7 +124,6 @@ const StudentDashboardTour: React.FC = () => {
       checkInProgress.current = false;
       setIsReady(false);
       setShouldRun(false);
-      console.log('🔄 StudentDashboardTour unmounted - state reset');
     };
   }, []);
 

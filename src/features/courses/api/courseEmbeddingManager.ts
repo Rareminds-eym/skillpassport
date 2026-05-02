@@ -2,13 +2,16 @@
  * Course Embedding Manager
  * Manages the generation and storage of vector embeddings for courses
  * to enable semantic similarity search in course recommendations.
- * 
+ *
  * Feature: rag-course-recommendations
  * Requirements: 1.1, 1.4, 1.5
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl } from '@/shared/api/apiUtils';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('course-embedding-manager');
 
 // API URL for embedding generation (uses career-api Cloudflare worker)
 const EMBEDDING_API_URL = getApiUrl('career');
@@ -121,7 +124,6 @@ export const buildCourseText = (course) => {
  * @returns {Promise<Object|null>} - Course object with skills or null if not found
  */
 const fetchCourseWithSkills = async (courseId) => {
-  // Fetch course basic data
   const { data: course, error: courseError } = await supabase
     .from('courses')
     .select('course_id, title, description, target_outcomes, status')
@@ -129,18 +131,17 @@ const fetchCourseWithSkills = async (courseId) => {
     .maybeSingle();
 
   if (courseError || !course) {
-    console.error(`Failed to fetch course ${courseId}:`, courseError?.message);
+    logger.error(`Failed to fetch course ${courseId}`, courseError ? new Error(courseError.message) : new Error('Course not found'));
     return null;
   }
 
-  // Fetch skills for this course
   const { data: skillsData, error: skillsError } = await supabase
     .from('course_skills')
     .select('skill_name')
     .eq('course_id', courseId);
 
   if (skillsError) {
-    console.warn(`Failed to fetch skills for course ${courseId}:`, skillsError.message);
+    logger.warn(`Failed to fetch skills for course ${courseId}`, { error: skillsError.message });
   }
 
   return {
@@ -160,10 +161,9 @@ const fetchCourseWithSkills = async (courseId) => {
  */
 export const embedCourse = async (courseId) => {
   try {
-    // Get auth token
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
-    
+
     if (!token) {
       return {
         success: false,
@@ -172,24 +172,20 @@ export const embedCourse = async (courseId) => {
       };
     }
 
-    // Try using the backend API first (preferred - handles everything server-side)
     const response = await fetch(`${EMBEDDING_API_URL}/regenerate?table=courses&id=${courseId}`, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       }
     });
 
     if (response.ok) {
-      const result = await response.json();
-      console.log(`✅ Successfully embedded course via API: ${courseId}`);
       return { success: true, courseId };
     }
 
-    // Fallback: Generate locally if API doesn't support courses
     const course = await fetchCourseWithSkills(courseId);
-    
+
     if (!course) {
       return {
         success: false,
@@ -198,22 +194,17 @@ export const embedCourse = async (courseId) => {
       };
     }
 
-    // Build text for embedding
     const courseText = buildCourseText(course);
-    
-    // Generate embedding via API
     const embedding = await generateEmbedding(courseText);
-    
-    // Store embedding in database
     const embeddingString = `[${embedding.join(',')}]`;
-    
+
     const { error: updateError } = await supabase
       .from('courses')
       .update({ embedding: embeddingString })
       .eq('course_id', courseId);
 
     if (updateError) {
-      console.error(`Failed to store embedding for course ${courseId}:`, updateError.message);
+      logger.error(`Failed to store embedding for course ${courseId}`, new Error(updateError.message));
       return {
         success: false,
         courseId,
@@ -221,17 +212,16 @@ export const embedCourse = async (courseId) => {
       };
     }
 
-    console.log(`✅ Successfully embedded course: ${course.title} (${courseId})`);
     return {
       success: true,
       courseId
     };
   } catch (error) {
-    console.error(`Failed to embed course ${courseId}:`, error.message);
+    logger.error(`Failed to embed course ${courseId}`, error instanceof Error ? error : new Error(String(error)));
     return {
       success: false,
       courseId,
-      error: error.message
+      error: error instanceof Error ? error.message : 'Unknown error'
     };
   }
 };
@@ -254,7 +244,6 @@ export const embedAllCourses = async () => {
   };
 
   try {
-    // Fetch all active courses without embeddings
     const { data: courses, error: fetchError } = await supabase
       .from('courses')
       .select('course_id, title')
@@ -263,29 +252,20 @@ export const embedAllCourses = async () => {
       .is('deleted_at', null);
 
     if (fetchError) {
-      console.error('Failed to fetch courses:', fetchError.message);
+      logger.error('Failed to fetch courses', new Error(fetchError.message));
       throw new Error(`Failed to fetch courses: ${fetchError.message}`);
     }
 
     if (!courses || courses.length === 0) {
-      console.log('✅ No courses need embedding');
       return results;
     }
 
-    console.log(`📋 Found ${courses.length} courses to embed`);
-
-    // Process in batches
     for (let i = 0; i < courses.length; i += BATCH_SIZE) {
       const batch = courses.slice(i, i + BATCH_SIZE);
-      const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
-      const totalBatches = Math.ceil(courses.length / BATCH_SIZE);
-      
-      console.log(`\n📦 Processing batch ${batchNumber}/${totalBatches} (${batch.length} courses)`);
 
-      // Process each course in the batch
       for (const course of batch) {
         const result = await embedCourse(course.course_id);
-        
+
         if (result.success) {
           results.success++;
         } else {
@@ -297,23 +277,14 @@ export const embedAllCourses = async () => {
         }
       }
 
-      // Add delay between batches to avoid rate limiting (except for last batch)
       if (i + BATCH_SIZE < courses.length) {
-        console.log(`⏳ Waiting ${BATCH_DELAY_MS}ms before next batch...`);
         await sleep(BATCH_DELAY_MS);
       }
     }
 
-    console.log(`\n✅ Embedding complete: ${results.success} success, ${results.failed} failed`);
-    
-    if (results.errors.length > 0) {
-      console.log('❌ Failed courses:');
-      results.errors.forEach(e => console.log(`  - ${e.courseId}: ${e.error}`));
-    }
-
     return results;
   } catch (error) {
-    console.error('Batch embedding failed:', error.message);
+    logger.error('Batch embedding failed', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 };

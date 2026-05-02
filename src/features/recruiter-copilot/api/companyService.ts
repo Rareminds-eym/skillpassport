@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('CompanyService');
 
 export interface Company {
   id: string;
@@ -66,13 +69,12 @@ class CompanyService {
         .order('createdAt', { ascending: false });
 
       if (error) {
-        console.error('Error fetching companies:', error);
         throw error;
       }
 
       return data || [];
     } catch (error) {
-      console.error('Error in getAllCompanies:', error);
+      logger.error("Failed to fetch companies", error as Error);
       throw error;
     }
   }
@@ -114,13 +116,13 @@ class CompanyService {
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error fetching filtered companies:', error);
         throw error;
       }
 
       return data || [];
     } catch (error) {
-      console.error('Error in getFilteredCompanies:', error);
+
+      logger.error("Failed to fetch filtered companies", error as Error);
       throw error;
     }
   }
@@ -168,13 +170,13 @@ class CompanyService {
         .single();
 
       if (error) {
-        console.error('Error adding company:', error);
+        // Error handled
         throw error;
       }
 
       return data;
     } catch (error) {
-      console.error('Error in addCompany:', error);
+      logger.error("Failed to add company", error as Error);
       throw error;
     }
   }
@@ -184,7 +186,7 @@ class CompanyService {
     try {
       // Separate metadata fields from regular fields
       const { companyDescription, specialRequirements, ...regularFields } = companyData;
-      
+
       const updateData: any = {
         ...regularFields,
         updatedAt: new Date().toISOString()
@@ -205,7 +207,7 @@ class CompanyService {
           .single();
 
         const currentMetadata = currentCompany?.metadata || {};
-        
+
         updateData.metadata = {
           ...currentMetadata,
           ...(companyDescription !== undefined && { companyDescription }),
@@ -221,13 +223,13 @@ class CompanyService {
         .single();
 
       if (error) {
-        console.error('Error updating company:', error);
+        // Error handled
         throw error;
       }
 
       return data;
     } catch (error) {
-      console.error('Error in updateCompany:', error);
+      logger.error("Failed to update company", error as Error);
       throw error;
     }
   }
@@ -246,13 +248,13 @@ class CompanyService {
         .single();
 
       if (error) {
-        console.error('Error updating company status:', error);
+        // Error handled
         throw error;
       }
 
       return data;
     } catch (error) {
-      console.error('Error in updateCompanyStatus:', error);
+      logger.error("Failed to update company status", error as Error);
       throw error;
     }
   }
@@ -266,11 +268,11 @@ class CompanyService {
         .eq('id', id);
 
       if (error) {
-        console.error('Error deleting company:', error);
+        // Error handled
         throw error;
       }
     } catch (error) {
-      console.error('Error in deleteCompany:', error);
+      logger.error("Failed to delete company", error as Error);
       throw error;
     }
   }
@@ -285,13 +287,13 @@ class CompanyService {
         .single();
 
       if (error) {
-        console.error('Error fetching company by ID:', error);
+        // Error handled
         throw error;
       }
 
       return data;
     } catch (error) {
-      console.error('Error in getCompanyById:', error);
+      logger.error("Failed to fetch company by ID", error as Error);
       throw error;
     }
   }
@@ -313,7 +315,7 @@ class CompanyService {
         .select('accountStatus');
 
       if (error) {
-        console.error('Error fetching companies stats:', error);
+        // Error handled
         throw error;
       }
 
@@ -336,7 +338,7 @@ class CompanyService {
 
       return stats;
     } catch (error) {
-      console.error('Error in getCompaniesStats:', error);
+      logger.error("Failed to fetch companies statistics", error as Error);
       throw error;
     }
   }

@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('lesson-plan-service');
 
 /**
  * College Lesson Plan Service
@@ -226,19 +229,10 @@ export const lessonPlanService = {
   async getCurriculumUnits(courseId: string, programId: string, academicYear: string): Promise<{ success: boolean; data?: any[]; curriculumId?: string; error?: any }> {
     try {
       const collegeId = await getCurrentUserCollegeId();
-      console.log('🏫 College ID for curriculum lookup:', collegeId);
-      
+
       if (!collegeId) {
         return { success: false, error: { message: 'Unable to determine user college' } };
       }
-
-      console.log('🔍 Searching for curriculum with:', {
-        college_id: collegeId,
-        program_id: programId,
-        course_id: courseId,
-        academic_year: academicYear,
-        status: 'published OR approved OR draft'
-      });
 
       // First find the curriculum - try published first, then approved, then draft
       let { data: curriculum, error: curriculumError } = await supabase
@@ -253,7 +247,6 @@ export const lessonPlanService = {
 
       // If no published curriculum found, try approved
       if (curriculumError || !curriculum) {
-        console.log('📝 No published curriculum found, trying approved...');
         const { data: approvedCurriculum, error: approvedError } = await supabase
           .from('college_curriculums')
           .select('id, status, created_at')
@@ -263,14 +256,13 @@ export const lessonPlanService = {
           .eq('academic_year', academicYear)
           .eq('status', 'approved')
           .single();
-        
+
         curriculum = approvedCurriculum;
         curriculumError = approvedError;
       }
 
       // If no approved curriculum found, try draft
       if (curriculumError || !curriculum) {
-        console.log('📝 No approved curriculum found, trying draft...');
         const { data: draftCurriculum, error: draftError } = await supabase
           .from('college_curriculums')
           .select('id, status, created_at')
@@ -280,29 +272,14 @@ export const lessonPlanService = {
           .eq('academic_year', academicYear)
           .eq('status', 'draft')
           .single();
-        
+
         curriculum = draftCurriculum;
         curriculumError = draftError;
       }
 
-      console.log('📊 Curriculum query result:', { curriculum, curriculumError });
-
       if (curriculumError || !curriculum) {
-        // Let's also check if there are any curriculums for this combination with different status
-        const { data: allCurriculums, error: allError } = await supabase
-          .from('college_curriculums')
-          .select('id, status, created_at')
-          .eq('college_id', collegeId)
-          .eq('program_id', programId)
-          .eq('course_id', courseId)
-          .eq('academic_year', academicYear);
-        
-        console.log('📋 All curriculums for this combination:', { allCurriculums, allError });
-        
-        return { success: true, data: [], curriculumId: undefined }; // No curriculum found, return empty array
+        return { success: true, data: [], curriculumId: undefined };
       }
-
-      console.log('✅ Found curriculum:', curriculum.id, 'with status:', curriculum.status);
 
       // Get units for this curriculum
       const { data: units, error: unitsError } = await supabase
@@ -311,13 +288,11 @@ export const lessonPlanService = {
         .eq('curriculum_id', curriculum.id)
         .order('order_index');
 
-      console.log('📚 Units query result:', { units: units?.length, unitsError });
-
       if (unitsError) throw unitsError;
 
       return { success: true, data: units || [], curriculumId: curriculum.id };
     } catch (error: any) {
-      console.error('❌ Error in getCurriculumUnits:', error);
+      logger.error('Error in getCurriculumUnits', error, { courseId, programId, academicYear });
       return {
         success: false,
         error: {
@@ -384,8 +359,8 @@ export const lessonPlanService = {
         .single();
 
       if (error) {
-        console.error('❌ Database error creating lesson plan:', error);
-        
+        logger.error('Database error creating lesson plan', error as Error, { userId: user.id, collegeId });
+
         // Handle specific constraint violations
         if (error.message?.includes('session_date') && error.message?.includes('not-null')) {
           throw new Error('Session date is required and cannot be empty');

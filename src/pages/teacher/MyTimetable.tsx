@@ -19,6 +19,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import { SwapRequestModal } from '@/features/college-admin';
 import { supabase } from '@/shared/api/supabaseClient';
 import { usePermission } from '@/entities/user/model/usePermissions';
+import { getLogger } from '@/shared/config/logging';
 import {
     createSwapRequest,
     getAvailableSlotsForSwap,
@@ -41,6 +42,8 @@ import {
   extractClassIds,
   transformClassesForDisplay,
 } from '@/features/courses/lib';
+
+const logger = getLogger('my-timetable');
 
 // Types
 interface DepartmentInfo {
@@ -179,7 +182,6 @@ const MyTimetable: React.FC = () => {
     }
     
     if (user?.role !== 'educator' && user?.role !== 'college_educator') {
-      console.error('Unauthorized access attempt to timetable page')
       navigate('/auth/login')
       return
     }
@@ -188,7 +190,6 @@ const MyTimetable: React.FC = () => {
   // Permission check - redirect if no view permission - same as Program Sections
   useEffect(() => {
     if (!canView) {
-      console.warn('Access denied: No view permission for Classroom Management')
       navigate('/educator/dashboard')
       return
     }
@@ -256,7 +257,7 @@ const MyTimetable: React.FC = () => {
           await loadAssignedClasses(collegeLecturerData.id);
           return;
         }
-        console.log("College lecturer lookup returned no results, trying school_educators...");
+        // College lecturer lookup returned no results, trying school_educators...
       }
 
       // Try school_educators table (for school educators or fallback)
@@ -276,14 +277,12 @@ const MyTimetable: React.FC = () => {
 
       // If college educator but not found in either table, show helpful message
       if (userRole === 'college_educator') {
-        console.error("College educator profile not found in college_lecturers or school_educators");
         throw new Error("Your educator profile has not been set up yet. Please contact your administrator.");
       }
 
-      console.error("Educator lookup error:", educatorError);
       throw new Error("Educator profile not found");
     } catch (error) {
-      console.error("Error loading educator data:", error);
+      logger.error('Error loading educator data', error as Error);
       setLoading(false);
     }
   };
@@ -316,7 +315,7 @@ const MyTimetable: React.FC = () => {
         }
       }
     } catch (error) {
-      console.log("No department assignment found for educator");
+      logger.error('Error loading department info', error as Error);
     }
   };
 
@@ -344,7 +343,7 @@ const MyTimetable: React.FC = () => {
         }
       }
     } catch (error) {
-      console.log("No class assignments found for educator");
+      logger.error('Error loading assigned classes', error as Error);
     }
   };
 
@@ -415,7 +414,7 @@ const MyTimetable: React.FC = () => {
         if (classesData) setClasses(classesData);
       }
     } catch (error) {
-      console.error("Error loading timetable data:", error);
+      logger.error('Error loading timetable data', error as Error);
     }
   };
 
@@ -458,7 +457,7 @@ const MyTimetable: React.FC = () => {
         setSlots(transformedSlots);
       }
     } catch (error) {
-      console.error("Error loading slots:", error);
+      logger.error('Error loading slots', error as Error);
     } finally {
       setLoading(false);
     }
@@ -490,7 +489,7 @@ const MyTimetable: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error("Error loading periods:", error);
+      logger.error('Error loading periods', error as Error);
     }
   };
 
@@ -511,7 +510,7 @@ const MyTimetable: React.FC = () => {
       const count = await getPendingSwapCount(educatorId);
       setPendingSwapCount(count);
     } catch (error) {
-      console.error('Error loading pending swap count:', error);
+      logger.error('Error loading pending swap count', error as Error);
     }
   };
 
@@ -524,29 +523,15 @@ const MyTimetable: React.FC = () => {
         setActiveSwapRequests(data);
       }
     } catch (error) {
-      console.error('Error loading active swap requests:', error);
+      logger.error('Error loading active swap requests', error as Error);
     }
   };
 
   const handleInitiateSwap = async (slot: TimetableSlot) => {
     if (!canCreate) {
-      console.log('❌ [MyTimetable] Action Blocked: Initiate Swap - No Create Permission');
       alert('❌ Access Denied: You need CREATE permission to send swap requests');
       return;
     }
-    
-    console.log('📅 [MyTimetable] Action: Initiate Swap Request', {
-      userRole: user?.role,
-      module: 'Classroom Management',
-      action: 'Send Swap Request',
-      permissions: {
-        canView: canView.allowed,
-        canCreate: canCreate.allowed,
-        canEdit: canEdit.allowed
-      },
-      slotId: slot.id,
-      timestamp: new Date().toISOString()
-    });
     
     setSelectedSlotForSwap(slot);
     
@@ -840,21 +825,9 @@ const MyTimetable: React.FC = () => {
             <button
               onClick={() => {
                 if (!canView) {
-                  console.log('❌ [MyTimetable] Action Blocked: View All Requests - No View Permission');
                   alert('❌ Access Denied: You need VIEW permission to view swap requests');
                   return;
                 }
-                console.log('📅 [MyTimetable] Action: View All Requests Clicked', {
-                  userRole: user?.role,
-                  module: 'Classroom Management',
-                  action: 'View Swap Requests',
-                  permissions: {
-                    canView: canView.allowed,
-                    canCreate: canCreate.allowed,
-                    canEdit: canEdit.allowed
-                  },
-                  timestamp: new Date().toISOString()
-                });
                 setShowSwapDashboard(true);
               }}
               disabled={!canView.allowed}
@@ -925,21 +898,9 @@ const MyTimetable: React.FC = () => {
               <button 
                 onClick={() => {
                   if (!canView) {
-                    console.log('❌ [MyTimetable] Action Blocked: Swap Requests Button - No View Permission');
                     alert('❌ Access Denied: You need VIEW permission to view swap requests');
                     return;
                   }
-                  console.log('📅 [MyTimetable] Action: Swap Requests Button Clicked', {
-                    userRole: user?.role,
-                    module: 'Classroom Management',
-                    action: 'View Swap Requests',
-                    permissions: {
-                      canView: canView.allowed,
-                      canCreate: canCreate.allowed,
-                      canEdit: canEdit.allowed
-                    },
-                    timestamp: new Date().toISOString()
-                  });
                   setShowSwapDashboard(true);
                 }}
                 disabled={!canView.allowed}

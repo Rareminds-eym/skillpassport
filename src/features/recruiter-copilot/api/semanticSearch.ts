@@ -49,7 +49,6 @@ class SemanticSearchService {
       );
 
       if (error) {
-        console.error('Semantic search error:', error);
         return [];
       }
 
@@ -57,7 +56,6 @@ class SemanticSearchService {
       return await this.enrichCandidates(matches || []);
       
     } catch (error) {
-      console.error('Error in semantic search:', error);
       return [];
     }
   }
@@ -79,7 +77,6 @@ class SemanticSearchService {
         .single();
 
       if (oppError || !opportunity || !opportunity.embedding) {
-        console.error('Opportunity not found or no embedding:', oppError);
         return [];
       }
 
@@ -94,14 +91,12 @@ class SemanticSearchService {
       );
 
       if (error) {
-        console.error('Opportunity matching error:', error);
         return [];
       }
 
       return await this.enrichCandidatesWithScore(matches || []);
       
     } catch (error) {
-      console.error('Error matching candidates to opportunity:', error);
       return [];
     }
   }
@@ -115,19 +110,7 @@ class SemanticSearchService {
     limit: number = 25
   ): Promise<CandidateSummary[]> {
     try {
-      console.log('🔍 Hybrid search with:', {
-        skills: parsedQuery.required_skills,
-        locations: parsedQuery.locations,
-        min_cgpa: parsedQuery.min_cgpa,
-        experience_level: parsedQuery.experience_level
-      });
-
-      // Debug: Check total students with names
-      const { count: totalWithNames } = await supabase
-        .from('students')
-        .select('user_id', { count: 'exact', head: true })
-        .not('name', 'is', null);
-      console.log(`📊 Total students with names in DB: ${totalWithNames}`);
+      // Build SQL query with filters
 
       // Build SQL query with filters
       let query = supabase
@@ -149,8 +132,7 @@ class SemanticSearchService {
       }
 
       // Execute base query
-      console.log('📡 Executing Supabase query...');
-      
+
       // FIRST: Try to get students who have skills (prioritize them)
       const { data: studentsWithSkills } = await supabase
         .from('students')
@@ -166,8 +148,7 @@ class SemanticSearchService {
         .eq('enabled', true);
       
       const uniqueStudentIdsWithSkills = [...new Set(skillsData?.map(s => s.student_id) || [])];
-      console.log(`📊 Found ${uniqueStudentIdsWithSkills.length} students with skills in database`);
-      
+
       // If we have students with skills, prioritize them
       let priorityQuery = query;
       if (uniqueStudentIdsWithSkills.length > 0) {
@@ -176,20 +157,15 @@ class SemanticSearchService {
       }
       
       const { data: initialStudents, error: baseError } = await priorityQuery.limit(limit * 3);
-      console.log('📊 Query result:', { count: initialStudents?.length, error: baseError?.message });
       let baseStudents = initialStudents;
 
       if (baseError) {
-        console.error('❌ Supabase query error:', baseError);
         return [];
       }
 
       if (!baseStudents || baseStudents.length === 0) {
-        console.log('⚠️ No students found matching CGPA/institution filters');
         return [];
       }
-
-      console.log(`✅ Found ${baseStudents.length} students matching base filters`);
 
       // Now filter by skills and enrich
       const candidates = await this.filterBySkillsAndEnrich(
@@ -197,7 +173,6 @@ class SemanticSearchService {
         parsedQuery.required_skills,
         parsedQuery.preferred_skills
       );
-      console.log(`🎯 After skill filtering: ${candidates.length} candidates`);
 
       // Apply additional filters
       let filtered = candidates;
@@ -234,7 +209,6 @@ class SemanticSearchService {
       return this.rankCandidates(withLocationScore as any, parsedQuery).slice(0, limit);
 
     } catch (error) {
-      console.error('Error in hybrid search:', error);
       return [];
     }
   }
@@ -252,34 +226,17 @@ class SemanticSearchService {
     if (studentIds.length === 0) return [];
 
     // Fetch all skills for these students
-    console.log('🔍 Fetching skills for student IDs:', studentIds.slice(0, 5), '... (total:', studentIds.length, ')');
     const { data: allSkills, error: skillsError } = await supabase
       .from('skills')
       .select('student_id, name, level, type')
       .in('student_id', studentIds)
       .eq('enabled', true);
 
-    console.log('📊 Skills query result:', {
-      totalSkills: allSkills?.length || 0,
-      error: skillsError?.message,
-      sampleSkills: allSkills?.slice(0, 3)
-    });
-
     // Group skills by student
     const skillsByStudent = new Map<string, any[]>();
     allSkills?.forEach(skill => {
       const existing = skillsByStudent.get(skill.student_id) || [];
       skillsByStudent.set(skill.student_id, [...existing, skill]);
-    });
-
-    console.log('🗺️ Skills grouped by student:', {
-      studentsWithSkills: skillsByStudent.size,
-      totalStudents: students.length,
-      sampleMapping: Array.from(skillsByStudent.entries()).slice(0, 2).map(([id, skills]) => ({
-        student_id: id,
-        skillCount: skills.length,
-        skills: skills.map(s => s.name)
-      }))
     });
 
     // Filter students who have required skills (if specified)
@@ -300,10 +257,8 @@ class SemanticSearchService {
       
       if (studentsWithMatchingSkills.length > 0) {
         matchingStudents = studentsWithMatchingSkills;
-        console.log(`✅ Found ${studentsWithMatchingSkills.length} students with matching skills`);
       } else {
         // HONEST APPROACH: Return empty when skills don't exist
-        console.log(`❌ No students have the required skills: ${requiredSkills.join(', ')}`);
         matchingStudents = []; // Return empty, not all students
       }
     }

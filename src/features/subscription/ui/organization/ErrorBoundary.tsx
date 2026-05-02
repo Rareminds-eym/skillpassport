@@ -7,6 +7,9 @@
 
 import { AlertCircle, RefreshCw, WifiOff, X } from 'lucide-react';
 import { Component, ErrorInfo, ReactNode, memo, useCallback, useState } from 'react';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('error-boundary');
 
 // Error Boundary Class Component
 interface ErrorBoundaryProps {
@@ -31,7 +34,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    logger.error('Caught error in boundary', error, { componentStack: errorInfo.componentStack });
     this.props.onError?.(error, errorInfo);
   }
 

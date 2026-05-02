@@ -23,7 +23,7 @@ export async function fetchShortlistTags(): Promise<string[]> {
 
     return Array.from(allTags).sort();
   } catch (error) {
-    console.error('Error fetching shortlist tags:', error);
+    // Error silently handled
     return [];
   }
 }
@@ -50,7 +50,7 @@ export async function fetchShortlistCreators(): Promise<string[]> {
 
     return Array.from(creators).sort();
   } catch (error) {
-    console.error('Error fetching shortlist creators:', error);
+    // Error silently handled
     return [];
   }
 }
@@ -76,7 +76,7 @@ export async function fetchDepartments(): Promise<string[]> {
 
     return Array.from(departments).sort();
   } catch (error) {
-    console.error('Error fetching departments:', error);
+    // Error silently handled
     return [];
   }
 }
@@ -102,7 +102,7 @@ export async function fetchLocations(): Promise<string[]> {
 
     return Array.from(locations).sort();
   } catch (error) {
-    console.error('Error fetching locations:', error);
+    // Error silently handled
     return [];
   }
 }

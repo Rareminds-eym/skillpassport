@@ -5,6 +5,9 @@
 
 import { getOpenAIClient, DEFAULT_MODEL } from './openAIClient';
 import { StudentProfile } from '@/features/student-profile/model';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('intent-detection-service');
 
 export type Intent =
   | 'find-jobs'
@@ -135,15 +138,12 @@ class IntentDetectionService {
     const isSimpleGreeting = /^(hi|hello|hey|thanks|thank you|ok|okay)$/i.test(message.trim());
     
     if (wordCount > 2 && !isSimpleGreeting) {
-      console.log('🧠 AI-FIRST: Letting AI think and reason about the query...');
       return await this.aiFirstDetection(message, profile, conversationHistory);
     }
-    
+
     // For very simple queries, use quick detection
     const normalizedMessage = this.normalizeMessage(message);
     const quickIntent = this.quickIntentDetection(normalizedMessage);
-    
-    console.log('⚡ Quick detection for simple query:', quickIntent.primary);
     return quickIntent;
   }
 
@@ -372,11 +372,6 @@ Analyze the query deeply and determine:
       });
 
       const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
-      console.log('🧠 AI Reasoning:', result.reasoning);
-      console.log('🎯 Detected Intent:', result.primary_intent, `(${result.confidence * 100}%)`);
-      console.log('🌍 Domain:', result.domain_detected || 'None');
-      console.log('💡 User Goal:', result.user_goal);
 
       // Build entities from AI's understanding
       const entities: any = {};
@@ -396,7 +391,11 @@ Analyze the query deeply and determine:
         clarificationQuestion: undefined
       };
     } catch (error) {
-      console.error('AI-first detection error:', error);
+      logger.error('Failed to detect intent with AI-first approach', error as Error, {
+        messageLength: message.length,
+        hasProfile: !!profile,
+        hasConversationHistory: !!conversationHistory && conversationHistory.length > 0
+      });
       // Fallback to quick detection
       return this.quickIntentDetection(this.normalizeMessage(message));
     }
@@ -486,7 +485,11 @@ Classify the user's intent. Available intents:
         extractedEntities: result.entities || {}
       };
     } catch (error) {
-      console.error('AI intent detection error:', error);
+      logger.error('Failed to detect intent with AI-enhanced approach', error as Error, {
+        messageLength: message.length,
+        hasProfile: !!profile,
+        hasConversationHistory: !!conversationHistory && conversationHistory.length > 0
+      });
       return this.quickIntentDetection(message);
     }
   }

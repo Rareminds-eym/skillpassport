@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('analytics-service');
 
 export type FunnelRangePreset = '7d' | '30d' | '90d' | 'ytd' | 'custom';
 
@@ -126,7 +129,7 @@ export const getRecruitmentFunnelStats = async (
 
     return { data, error: null };
   } catch (error) {
-    console.error('Error fetching recruitment funnel stats:', error);
+    logger.error('Error fetching recruitment funnel stats', error instanceof Error ? error : new Error(String(error)), { preset });
     return { data: null, error };
   }
 };
@@ -349,7 +352,7 @@ export const getAnalyticsKPIMetrics = async (
 
     return { data, error: null };
   } catch (error) {
-    console.error('Error fetching analytics KPI metrics:', error);
+    logger.error('Error fetching analytics KPI metrics', error instanceof Error ? error : new Error(String(error)), { preset });
     return { data: null, error };
   }
 };

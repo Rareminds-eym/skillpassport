@@ -193,7 +193,6 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType,
         throw new Error(`Failed to create ${getOrganizationLabel().toLowerCase()}: ${createError.message}`);
       }
 
-      console.log(`[OrganizationSetup] ${getOrganizationLabel()} created successfully:`, newOrg.id);
       setStep('success');
 
       // Wait a moment to show success, then call onComplete
@@ -202,7 +201,6 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType,
       }, 2000);
 
     } catch (err) {
-      console.error('[OrganizationSetup] Error creating organization:', err);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
       setStep('error');
     }

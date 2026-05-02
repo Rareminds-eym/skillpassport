@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('curriculumService');
 
 export interface CopyCurriculumParams {
   sourceCurriculumId: string;
@@ -29,7 +32,7 @@ class CurriculumService {
     );
 
     if (error) {
-      console.error('Error copying curriculum template:', error);
+      logger.error('Failed to copy curriculum template', error as Error);
       throw error;
     }
 

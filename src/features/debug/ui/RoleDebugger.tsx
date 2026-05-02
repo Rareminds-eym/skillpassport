@@ -3,9 +3,11 @@ import { supabase } from "@/shared/api/supabaseClient";
 // Note: This debug component imports from higher layers - consider moving to features/debug
 import { useUserRole } from '@/entities/user';
 import { useUser, useUserRole as useUserRoleFromStore } from '@/shared/model/authStore';
+import { getLogger } from '@/shared/config/logging';
 
 
 const RoleDebugger: React.FC = () => {
+  const logger = getLogger('RoleDebugger');
   const authUser = useUser();
   const { role: authRole } = useUserRoleFromStore();
   const [userInfo, setUserInfo] = useState<any>(null);
@@ -21,11 +23,8 @@ const RoleDebugger: React.FC = () => {
     try {
       // Check session first
       const { data: { session } } = await supabase.auth.getSession();
-      console.log('Session exists:', !!session);
 
       const { data: { user }, error } = await supabase.auth.getUser();
-      console.log('User fetch error:', error);
-      console.log('User exists:', !!user);
 
       setUserInfo(user || { error: error?.message || 'No user found' });
 
@@ -35,7 +34,6 @@ const RoleDebugger: React.FC = () => {
           .select('*')
           .eq('email', user.email)
           .maybeSingle();
-        console.log('Teacher query error:', teacherError);
         setTeacherData(teacher);
 
         const { data: educator, error: educatorError } = await supabase
@@ -43,11 +41,10 @@ const RoleDebugger: React.FC = () => {
           .select('*')
           .eq('user_id', user.id)
           .maybeSingle();
-        console.log('Educator query error:', educatorError);
         setEducatorData(educator);
       }
     } catch (err) {
-      console.error('Debug fetch error:', err);
+      logger.error('Debug fetch error', err as Error);
     }
   };
 

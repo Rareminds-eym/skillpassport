@@ -73,7 +73,6 @@ export const getStudentExams = async (studentId: string): Promise<StudentExam[]>
       .single();
 
     if (studentError || !student?.school_class_id) {
-      console.log('Student not found or not assigned to a class');
       return [];
     }
 
@@ -166,7 +165,6 @@ export const getStudentExams = async (studentId: string): Promise<StudentExam[]>
 
     return exams;
   } catch (error) {
-    console.error('Error fetching student exams:', error);
     throw error;
   }
 };
@@ -207,7 +205,6 @@ export const getGroupedStudentExams = async (studentId: string): Promise<Grouped
       return aDate.getTime() - bDate.getTime();
     });
   } catch (error) {
-    console.error('Error fetching grouped student exams:', error);
     throw error;
   }
 };
@@ -225,7 +222,6 @@ export const getStudentResults = async (studentId: string): Promise<StudentResul
       .single();
 
     if (studentError || !student?.school_class_id) {
-      console.log('Student not found or not assigned to a class');
       return [];
     }
 
@@ -361,7 +357,6 @@ export const getStudentResults = async (studentId: string): Promise<StudentResul
       new Date(b.exam_date).getTime() - new Date(a.exam_date).getTime()
     );
   } catch (error) {
-    console.error('Error fetching student results:', error);
     throw error;
   }
 };
@@ -407,7 +402,6 @@ export const getStudentResultStats = async (studentId: string): Promise<{
       averagePercentage: Math.round(averagePercentage * 10) / 10
     };
   } catch (error) {
-    console.error('Error calculating result stats:', error);
     return {
       totalExams: 0,
       passed: 0,

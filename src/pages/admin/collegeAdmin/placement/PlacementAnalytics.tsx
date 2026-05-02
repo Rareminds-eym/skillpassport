@@ -22,6 +22,9 @@ import {
   DepartmentAnalytics,
   PlacementStats 
 } from '@/features/placement';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('placement-analytics');
 
 const PlacementAnalytics: React.FC = () => {
   const [selectedAnalyticsDepartment, setSelectedAnalyticsDepartment] = useState("");
@@ -91,7 +94,7 @@ const PlacementAnalytics: React.FC = () => {
         .limit(10);
 
       if (recentError) {
-        console.error('Error fetching recent placements:', recentError);
+        logger.error('Error fetching recent placements:', recentError as Error);
       }
 
       // Transform recent placements data
@@ -115,7 +118,7 @@ const PlacementAnalytics: React.FC = () => {
         .select('branch_field, course_name, id');
 
       if (studentsError) {
-        console.error('Error fetching students:', studentsError);
+        logger.error('Error fetching students data:', studentsError as Error);
       }
 
       // Get all placements for department analytics
@@ -137,7 +140,7 @@ const PlacementAnalytics: React.FC = () => {
         .eq('application_status', 'accepted');
 
       if (placementsError) {
-        console.error('Error fetching all placements:', placementsError);
+        logger.error('Error fetching placements data:', placementsError as Error);
       }
 
       // Calculate department-wise analytics
@@ -270,7 +273,6 @@ const PlacementAnalytics: React.FC = () => {
       setPlacementRecords(transformedRecentPlacements);
 
     } catch (error) {
-      console.error('Error loading placement data:', error);
       toast.error('Failed to load placement data');
     } finally {
       setLoading(false);
@@ -324,7 +326,6 @@ const PlacementAnalytics: React.FC = () => {
       toast.success("Placement analytics report exported successfully");
     } catch (error) {
       toast.error("Failed to export report");
-      console.error("Export error:", error);
     }
   };
 
@@ -366,7 +367,6 @@ const PlacementAnalytics: React.FC = () => {
       toast.success("Recent placements report exported successfully");
     } catch (error) {
       toast.error("Failed to export recent placements");
-      console.error("Export error:", error);
     }
   };
 

@@ -3,6 +3,9 @@ import { supabase } from '@/shared/api/supabaseClient';
 import { Student } from '@/features/student-profile/model';
 import toast from 'react-hot-toast';
 import { isCollegeStudent as checkIsCollegeStudent, isSchoolStudent as checkIsSchoolStudent } from '@/entities/student/lib/studentType';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('student-actions');
 
 export const useStudentActions = (student: Student | null) => {
   const [actionLoading, setActionLoading] = useState(false);
@@ -16,7 +19,7 @@ export const useStudentActions = (student: Student | null) => {
       const newStartYear = parseInt(startYear) + yearsProgressed;
       return `${newStartYear}-${(newStartYear + 1).toString().slice(-2)}`;
     } catch (error) {
-      console.error('Error calculating academic year:', error);
+      logger.error('Error calculating academic year', error as Error);
       // Fallback to current year calculation
       const currentYear = new Date().getFullYear();
       return `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
@@ -27,28 +30,14 @@ export const useStudentActions = (student: Student | null) => {
   const getCurrentSemester = () => {
     if (!student) return 1;
 
-    // Debug: Log the student object to see what fields are available
-    console.log('🔍 Student data for semester calculation:', {
-      id: student.id,
-      name: student.name,
-      semester: (student as any).semester,
-      current_semester: (student as any).current_semester,
-      grade: student.grade,
-      college_id: student.college_id,
-      school_id: student.school_id,
-      enrollmentDate: student.enrollmentDate
-    });
-
     // First, check if semester is directly available in the student record
     if ((student as any).semester && (student as any).semester > 0) {
-      console.log('✅ Using semester field:', (student as any).semester);
       return (student as any).semester;
     }
 
     // Also check current_semester field
     if ((student as any).current_semester && (student as any).current_semester > 0) {
       const parsed = parseInt((student as any).current_semester);
-      console.log('✅ Using current_semester field:', parsed);
       return parsed || 1;
     }
 
@@ -61,7 +50,6 @@ export const useStudentActions = (student: Student | null) => {
 
       // Assuming 6 months per semester
       const calculatedSemester = Math.floor(monthsDiff / 6) + 1;
-      console.log('✅ Calculated semester from enrollment date:', calculatedSemester);
       return Math.max(1, calculatedSemester);
     }
 
@@ -69,13 +57,11 @@ export const useStudentActions = (student: Student | null) => {
     if (checkIsSchoolStudent(student) && student.grade) {
       const gradeNum = parseInt(student.grade);
       if (!isNaN(gradeNum)) {
-        console.log('✅ Using grade as semester:', gradeNum);
         return gradeNum;
       }
     }
 
     // Fallback to manual current_semester field or default
-    console.log('⚠️ Using fallback semester: 1');
     return parseInt(student.current_semester || '1') || 1;
   };
 
@@ -176,7 +162,7 @@ export const useStudentActions = (student: Student | null) => {
       // Refresh the page or update local state
       window.location.reload();
     } catch (error) {
-      console.error('Error updating student status:', error);
+      logger.error('Error updating student status', error as Error);
       toast.error(`Failed to ${action} student: ${(error as any)?.message || 'Please try again.'}`);
     } finally {
       setActionLoading(false);
@@ -208,8 +194,6 @@ export const useStudentActions = (student: Student | null) => {
       const academicYear = student.admission_academic_year
         ? calculateAcademicYear(student.admission_academic_year, currentSem)
         : `${new Date().getFullYear()}-${(new Date().getFullYear() + 1).toString().slice(-2)}`; // Fallback
-
-      console.log('📅 Using academic year for promotion:', academicYear, 'from admission year:', student.admission_academic_year);
 
       // Get current user ID and find the appropriate admin record
       const { data: { user } } = await supabase.auth.getUser();
@@ -267,11 +251,8 @@ export const useStudentActions = (student: Student | null) => {
         .select();
 
       if (promotionError) {
-        console.error('Promotion error:', promotionError);
-
         // Handle specific error cases
         if (promotionError.code === '23503') { // Foreign key constraint violation
-          console.warn('Skipping promotion record due to foreign key constraint. Proceeding with semester update.');
           // Continue with student semester update even if promotion record fails
         } else if (promotionError.code === '23505') { // Unique constraint violation
           toast.error(`Student already has a promotion record for academic year ${academicYear}.`);
@@ -281,7 +262,7 @@ export const useStudentActions = (student: Student | null) => {
           return;
         }
       } else {
-        console.log('Promotion record created:', promotionResult);
+        logger.info('Promotion record created', { promotionResult });
       }
 
       // 2. Update student's current semester in students table
@@ -296,10 +277,9 @@ export const useStudentActions = (student: Student | null) => {
         .eq('id', student.id);
 
       if (studentUpdateError) {
-        console.error('Student update error:', studentUpdateError);
+        logger.error('Student update error', studentUpdateError);
         // If student update fails, we should ideally rollback the promotion record
         // For now, we'll just log the error and continue
-        console.warn('Promotion record created but student semester update failed');
       }
 
       toast.success(`Student promoted successfully from Semester ${currentSem} to ${nextSem}!`);
@@ -310,7 +290,7 @@ export const useStudentActions = (student: Student | null) => {
       }, 1500);
 
     } catch (error) {
-      console.error('Error promoting student:', error);
+      logger.error('Error promoting student', error as Error);
       toast.error(`Failed to promote student: ${(error as any)?.message || 'Please try again.'}`);
     } finally {
       setActionLoading(false);
@@ -356,7 +336,7 @@ export const useStudentActions = (student: Student | null) => {
       // Refresh the page or update local state
       window.location.reload();
     } catch (error) {
-      console.error('Error marking student as graduated:', error);
+      logger.error('Error marking student as graduated', error as Error);
       toast.error(`Failed to mark student as graduated: ${(error as any)?.message || 'Please try again.'}`);
     } finally {
       setActionLoading(false);

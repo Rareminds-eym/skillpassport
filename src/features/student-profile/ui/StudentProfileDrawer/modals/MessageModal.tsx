@@ -10,6 +10,9 @@ import toast from 'react-hot-toast';
 import { supabase } from '@/shared/api/supabaseClient';
 import { MessageService } from '@/features/messaging';
 import { Student } from '@/features/student-profile/model';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('message-modal');
 
 interface MessageModalProps {
   isOpen: boolean;
@@ -231,7 +234,7 @@ const MessageModal: React.FC<MessageModalProps> = ({
       setShowInternalMessage(false);
       onClose();
     } catch (error) {
-      console.error('Error sending message:', error);
+      logger.error('Error sending message', error as Error);
       toast.error('Failed to send message');
     } finally {
       setIsSending(false);

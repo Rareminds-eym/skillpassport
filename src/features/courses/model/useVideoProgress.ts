@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { courseProgressService } from '@/features/courses';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('use-video-progress');
 
 /**
  * Custom hook for video progress tracking
@@ -46,7 +49,7 @@ export const useVideoProgress = (studentId, courseId, lessonId, options = {}) =>
           }
         }
       } catch (error) {
-        console.error('Error loading video position:', error);
+        logger.error('Error loading video position', error instanceof Error ? error : new Error(String(error)));
       } finally {
         setIsLoading(false);
       }

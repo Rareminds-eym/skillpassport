@@ -5,6 +5,9 @@ import autoTable from "jspdf-autotable";
 import { Faculty, CollegeClass, ScheduleSlot, TimePeriod, Break } from "@/features/college-admin/ui/components/Timetable/types";
 import { DAYS } from "@/features/college-admin/ui/components/Timetable/constants";
 import { formatDate, isHoliday, getHolidayName } from "@/features/college-admin/ui/components/Timetable/utils";
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('timetable-export');
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -222,7 +225,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
 
       onClose();
     } catch (error) {
-      console.error("Export error:", error);
+      logger.error('Export error', error as Error);
       alert("Failed to export PDF. Please try again.");
     } finally {
       setExporting(false);

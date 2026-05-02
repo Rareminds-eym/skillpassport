@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Trophy, Users, Calendar, MapPin, Clock, Award, Star, Target, BookOpen, Activity } from 'lucide-react';
 import { supabase } from '@/shared/api/supabaseClient';
 import { isCollegeStudent as checkIsCollegeStudent, isSchoolStudent as checkIsSchoolStudent } from '@/entities/student/lib/studentType';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('clubs-competitions-tab');
 
 interface Club {
   club_id: string;
@@ -125,7 +128,7 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
         await fetchEventRegistrations();
       }
     } catch (error) {
-      console.error('Error fetching student activities:', error);
+      logger.error('Error fetching student activities', error as Error);
     } finally {
       setDataLoading(false);
     }
@@ -145,7 +148,7 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
       if (error) throw error;
       setClubMemberships(data || []);
     } catch (error) {
-      console.error('Error fetching club memberships:', error);
+      logger.error('Error fetching club memberships', error as Error);
     }
   };
 
@@ -175,7 +178,7 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
       if (resultError) throw resultError;
       setCompetitionResults(results || []);
     } catch (error) {
-      console.error('Error fetching competition data:', error);
+      logger.error('Error fetching competition data', error as Error);
     }
   };
 
@@ -221,13 +224,13 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
         .eq('student_id', studentId);
 
       if (error) {
-        console.error('Error in event registrations query:', error);
+        logger.error('Error in event registrations query', error);
         return;
       }
 
       setEventRegistrations(data || []);
     } catch (error) {
-      console.error('Error fetching event registrations:', error);
+      logger.error('Error fetching event registrations', error as Error);
     }
   };
 

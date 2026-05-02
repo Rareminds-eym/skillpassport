@@ -39,7 +39,6 @@ export const useClassmatesData = (
       setClassmates(classmatesData);
       setHasFetched(true);
     } catch (err) {
-      console.error('Error fetching classmates:', err);
       setError(err as Error);
     } finally {
       setLoading(false);

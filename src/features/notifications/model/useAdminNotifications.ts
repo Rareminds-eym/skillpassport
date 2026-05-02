@@ -208,7 +208,6 @@ export function useAdminNotifications(
         lastCursorRef.current = data[data.length - 1].created_at;
       }
     } catch (err: any) {
-      console.error('❌ [useAdminNotifications] Error:', err);
       setError(err.message || "Failed to fetch notifications");
     } finally {
       setLoading(false);

@@ -10,6 +10,9 @@
  */
 
 import { useState, useEffect } from 'react';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('requisitions-hook');
 
 export const useRequisitions = (
   getRequisitions: () => Promise<{ data: any; error: any }>
@@ -29,13 +32,13 @@ export const useRequisitions = (
 
       if (fetchError) {
         setError(fetchError);
-        console.error('Error fetching requisitions:', fetchError);
+        logger.error('Failed to fetch requisitions', new Error(fetchError));
       } else {
         setRequisitions(data || []);
       }
     } catch (err) {
       setError(err);
-      console.error('Error in useRequisitions:', err);
+      logger.error('Failed to fetch requisitions', err instanceof Error ? err : new Error(String(err)));
     } finally {
       setLoading(false);
     }

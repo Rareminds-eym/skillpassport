@@ -112,7 +112,6 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
       const companiesData = await companyService.getAllCompanies();
       setCompanies(companiesData);
     } catch (error) {
-      console.error('Error loading companies:', error);
       toast.error('Failed to load companies');
     } finally {
       setIsLoading(false);
@@ -263,7 +262,6 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
         onStatsUpdate();
       }
     } catch (error) {
-      console.error('Error updating company status:', error);
       toast.error('Failed to update company status');
       throw error; // Re-throw to let modal handle it
     } finally {
@@ -375,8 +373,6 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
       }
       
     } catch (error) {
-      console.error("Error updating company:", error);
-      
       // More specific error messages
       if (error instanceof Error) {
         if (error.message.includes('duplicate') || error.message.includes('unique')) {
@@ -459,7 +455,6 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
       }
       
     } catch (error) {
-      console.error("Error adding company:", error);
       toast.error("Error adding company. Please try again.");
     } finally {
       setIsSubmitting(false);

@@ -1,6 +1,7 @@
 import { AlertCircle, FileText, IndianRupee, TrendingUp } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 import { DepartmentBudgetsTab } from "./components/DepartmentBudgetsTab";
 import { ExpenditureReportsTab } from "./components/ExpenditureReportsTab";
 import { FeeStructureFormModal } from "./components/FeeStructureFormModal";
@@ -14,6 +15,8 @@ import { useFeeTracking } from "./hooks/useFeeTracking";
 import { usePrograms } from "./hooks/usePrograms";
 import { FeeStructure, StudentFeeSummary } from '@/features/student-profile/model';
 import { authSessionService } from '@/features/auth';
+
+const logger = getLogger('finance-module');
 
 const tabs = [
   { id: "fees", label: "Fee Structure Setup" },
@@ -36,59 +39,46 @@ const FinanceModule: React.FC = () => {
   useEffect(() => {
     const fetchCollegeId = async () => {
       try {
-        console.log('🚀 [Finance] Fetching college ID...');
-        
-        // First, check if user is logged in via AuthContext (for college admins)
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
           try {
             const userData = JSON.parse(storedUser);
-            console.log('📦 Found user in localStorage:', userData.email, 'role:', userData.role);
-            
+
             if (userData.role === 'college_admin' && userData.collegeId) {
-              console.log('✅ College admin detected, using collegeId from localStorage:', userData.collegeId);
               setCollegeId(userData.collegeId);
               return;
             }
           } catch (e) {
-            console.error('Error parsing stored user:', e);
+            logger.error('Error parsing stored user', e instanceof Error ? e : new Error(String(e)));
           }
         }
-        
-        // If not found in localStorage, try Supabase Auth
+
         const { data: { user } } = await authSessionService.getUser();
         if (user) {
-          console.log('🔍 Checking Supabase auth user:', user.email);
-          
-          // Check for college admin by matching email in organizations table
           const { data: org } = await supabase
             .from('organizations')
             .select('id, name, email')
             .eq('organization_type', 'college')
             .or(`admin_id.eq.${user.id},email.ilike.${user.email}`)
             .maybeSingle();
-          
+
           if (org?.id) {
-            console.log('✅ Found college_id for college admin:', org.id, 'College:', org.name);
             setCollegeId(org.id);
             return;
           }
-          
-          // Fallback: check college_lecturers table
+
           const { data: lecturer } = await supabase.from("college_lecturers").select("collegeId").or(`userId.eq.${user.id},user_id.eq.${user.id}`).single();
-          if (lecturer?.collegeId) { 
-            console.log('✅ Found college via lecturer:', lecturer.collegeId);
-            setCollegeId(lecturer.collegeId); 
-            return; 
+          if (lecturer?.collegeId) {
+            setCollegeId(lecturer.collegeId);
+            return;
           }
-          
+
           if (user.user_metadata?.college_id) {
-            console.log('✅ Found college in user metadata:', user.user_metadata.college_id);
             setCollegeId(user.user_metadata.college_id);
           }
         }
-      } catch (error) { 
-        console.error("Error fetching college ID:", error); 
+      } catch (error) {
+        logger.error("Error fetching college ID", error instanceof Error ? error : new Error(String(error)));
       }
     };
     fetchCollegeId();

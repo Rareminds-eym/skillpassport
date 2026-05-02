@@ -25,13 +25,8 @@ export interface ProfileCompletenessResult {
  * @returns Object containing array of incomplete section names and overall completion status
  */
 export function checkProfileCompleteness(student: Student | null): ProfileCompletenessResult {
-  const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
-  
   // If no student data, return all sections as incomplete
   if (!student) {
-    if (isDevelopment) {
-      console.log('[Profile Completeness] No student data provided');
-    }
     return {
       incompleteSections: [
         'Personal Info',
@@ -49,9 +44,6 @@ export function checkProfileCompleteness(student: Student | null): ProfileComple
 
   // Validate student data structure
   if (typeof student !== 'object') {
-    if (isDevelopment) {
-      console.error('[Profile Completeness] Invalid student data type:', typeof student);
-    }
     return {
       incompleteSections: [
         'Personal Info',
@@ -171,35 +163,11 @@ export function checkProfileCompleteness(student: Student | null): ProfileComple
 
     const isComplete = incompleteSections.length === 0;
 
-    // Development mode logging
-    if (isDevelopment) {
-      console.log('[Profile Completeness] Check results:', {
-        studentId: student.id,
-        studentEmail: student.email,
-        incompleteSections,
-        isComplete,
-        sectionDetails: {
-          personalInfo: hasPersonalInfo,
-          education: hasEducation,
-          skills: hasSkills,
-          languages: hasLanguages,
-          projects: hasProjects,
-          achievements: hasAchievements,
-          hobbies: hasHobbies,
-          interests: hasInterests,
-        },
-      });
-    }
-
     return {
       incompleteSections,
       isComplete,
     };
-  } catch (error) {
-    if (isDevelopment) {
-      console.error('[Profile Completeness] Error during completeness check:', error);
-    }
-    
+  } catch {
     // Return safe fallback on error
     return {
       incompleteSections: [

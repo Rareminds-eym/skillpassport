@@ -4,7 +4,10 @@ import { Send, Plus, ArrowDown, Square, Bot, User, Sparkles } from 'lucide-react
 import { useCounsellingStore } from '../model';
 import { counsellingService } from '../api';
 import { counsellingConfig } from '../lib/config';
+import { getLogger } from '@/shared/config/logging';
 import type { CounsellingMessage, CounsellingTopicType, StudentContext } from '../model/types';
+
+const logger = getLogger('counselling-chat');
 
 const CounsellingChat: React.FC = () => {
   const [messages, setMessages] = useState<CounsellingMessage[]>([]);
@@ -161,12 +164,11 @@ const CounsellingChat: React.FC = () => {
         }
       }
 
-      // Generate suggestions based on topic
       const topicSuggestions = counsellingConfig.suggestions[detectedTopic] || [];
       setSuggestions(topicSuggestions.slice(0, 3));
     } catch (error) {
-      console.error('Counselling Error:', error);
-      
+      logger.error('Counselling error', error instanceof Error ? error : new Error(String(error)));
+
       const errorMessage: CounsellingMessage = {
         id: (Date.now() + 1).toString(),
         session_id: 'current-session',
@@ -174,7 +176,7 @@ const CounsellingChat: React.FC = () => {
         content: "I'm sorry, I encountered an error. Please make sure your OpenAI API key is configured correctly.",
         timestamp: new Date().toISOString()
       };
-      
+
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setLoading(false);

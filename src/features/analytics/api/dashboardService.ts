@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('dashboard-service');
 
 /**
  * Helper function to generate realistic candidate names and details
@@ -38,13 +41,7 @@ export const getDashboardKPIs = async () => {
     const now = new Date();
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-    
-    console.log({
-      now: now.toISOString(),
-      oneWeekAgo: oneWeekAgo.toISOString(),
-      twoWeeksAgo: twoWeeksAgo.toISOString()
-    });
-    
+
     // Since your tables might be empty or have different structures, let's start with basic counts
     // and make the queries more robust
     
@@ -118,9 +115,9 @@ export const getDashboardKPIs = async () => {
     };
     
     return result;
-    
+
   } catch (error) {
-    console.error('❌ Error fetching dashboard KPIs:', error);
+    logger.error('Error fetching dashboard KPIs', error instanceof Error ? error : new Error(String(error)));
     return { data: null, error };
   }
 };
@@ -423,13 +420,12 @@ export const getRecentActivity = async (limit = 15) => {
     // Take only the requested limit
     const recentActivities = allActivities.slice(0, limit);
 
-    
     return {
       data: recentActivities,
       error: null
     };
   } catch (error) {
-    console.error('❌ Error fetching recent activity:', error);
+    logger.error('Error fetching recent activity', error instanceof Error ? error : new Error(String(error)), { limit });
     return { data: [], error };
   }
 };
@@ -448,7 +444,7 @@ export const getDashboardAlerts = async () => {
       error: null
     };
   } catch (error) {
-    console.error('Error fetching dashboard alerts:', error);
+    logger.error('Error fetching dashboard alerts', error instanceof Error ? error : new Error(String(error)));
     return { data: [], error };
   }
 };
@@ -506,7 +502,7 @@ export const getRecentShortlists = async (limit = 5) => {
       error: null
     };
   } catch (error) {
-    console.error('❌ Error fetching recent shortlists:', error);
+    logger.error('Error fetching recent shortlists', error instanceof Error ? error : new Error(String(error)), { limit });
     return { data: [], error };
   }
 };
@@ -527,7 +523,7 @@ export const getSavedSearches = async () => {
       error: result.error
     };
   } catch (error) {
-    console.error('Error fetching saved searches:', error);
+    logger.error('Error fetching saved searches', error instanceof Error ? error : new Error(String(error)));
     // Fallback to simple array format for backward compatibility
     const defaultSearches = [
       { id: 'default-1', name: 'React + Node.js', search_criteria: { skills: ['React', 'Node.js'] } },
@@ -569,7 +565,7 @@ export const getDashboardData = async () => {
       }
     };
   } catch (error) {
-    console.error('Error fetching dashboard data:', error);
+    logger.error('Error fetching dashboard data', error instanceof Error ? error : new Error(String(error)));
     return {
       data: null,
       error

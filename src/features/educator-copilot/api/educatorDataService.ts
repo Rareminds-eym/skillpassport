@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('educator-data-service');
 
 /**
  * Educator Data Service
@@ -137,13 +140,13 @@ class EducatorDataService {
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error fetching students:', error);
+        logger.error('Fetch students failed', new Error(error.message), { universityId });
         return [];
       }
 
       return (data || []) as StudentProfile[];
     } catch (error) {
-      console.error('Exception fetching students:', error);
+      logger.error('Fetch students exception', error instanceof Error ? error : new Error(String(error)), { universityId });
       return [];
     }
   }
@@ -160,13 +163,13 @@ class EducatorDataService {
         .single();
 
       if (error) {
-        console.error('Error fetching student:', error);
+        logger.error('Fetch student failed', new Error(error.message), { studentId });
         return null;
       }
 
       return data as StudentProfile;
     } catch (error) {
-      console.error('Exception fetching student:', error);
+      logger.error('Fetch student exception', error instanceof Error ? error : new Error(String(error)), { studentId });
       return null;
     }
   }
@@ -185,13 +188,13 @@ class EducatorDataService {
         .limit(limit);
 
       if (error) {
-        console.error('Error fetching opportunities:', error);
+        logger.error('Fetch opportunities failed', new Error(error.message), { limit });
         return [];
       }
 
       return (data || []) as Opportunity[];
     } catch (error) {
-      console.error('Exception fetching opportunities:', error);
+      logger.error('Fetch opportunities exception', error instanceof Error ? error : new Error(String(error)), { limit });
       return [];
     }
   }
@@ -214,13 +217,13 @@ class EducatorDataService {
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error fetching assignments:', error);
+        logger.error('Fetch assignments failed', new Error(error.message), { educatorId });
         return [];
       }
 
       return (data || []) as Assignment[];
     } catch (error) {
-      console.error('Exception fetching assignments:', error);
+      logger.error('Fetch assignments exception', error instanceof Error ? error : new Error(String(error)), { educatorId });
       return [];
     }
   }
@@ -238,13 +241,13 @@ class EducatorDataService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching certificates:', error);
+        logger.error('Fetch pending certificates failed', new Error(error.message));
         return [];
       }
 
       return (data || []) as Certificate[];
     } catch (error) {
-      console.error('Exception fetching certificates:', error);
+      logger.error('Fetch pending certificates exception', error instanceof Error ? error : new Error(String(error)));
       return [];
     }
   }
@@ -262,13 +265,13 @@ class EducatorDataService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching student certificates:', error);
+        logger.error('Fetch student certificates failed', new Error(error.message), { studentId });
         return [];
       }
 
       return (data || []) as Certificate[];
     } catch (error) {
-      console.error('Exception fetching student certificates:', error);
+      logger.error('Fetch student certificates exception', error instanceof Error ? error : new Error(String(error)), { studentId });
       return [];
     }
   }

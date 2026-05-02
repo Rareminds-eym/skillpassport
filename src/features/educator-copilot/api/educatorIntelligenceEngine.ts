@@ -5,6 +5,9 @@ import { EducatorAIResponse, EducatorIntent } from '@/features/student-profile/m
 import { educatorInsights } from './educatorInsights';
 import { dataFetcherService } from './dataFetcherService';
 import { educatorAnalyticsService } from './educatorAnalyticsService';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('educator-intelligence-engine');
 
 // Initialize OpenRouter client (same as student AI)
 let openai: OpenAI | null = null;
@@ -14,11 +17,9 @@ const getOpenAIClient = (): OpenAI => {
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
 
     if (!apiKey || apiKey === '') {
-      console.error('❌ VITE_OPENAI_API_KEY is not set in .env file!');
+      logger.error('OpenAI API key not configured', new Error('VITE_OPENAI_API_KEY is missing'));
       throw new Error('OpenAI API key is not configured. Please add VITE_OPENAI_API_KEY to your .env file.');
     }
-
-    console.log('✅ Educator AI client initializing with OpenRouter:', apiKey.substring(0, 10) + '...');
 
     openai = new OpenAI({
       baseURL: "https://openrouter.ai/api/v1",
@@ -52,11 +53,8 @@ class EducatorIntelligenceEngine {
     conversationId?: string
   ): Promise<EducatorAIResponse> {
     try {
-      console.log('🎯 Educator AI processing (STREAMING):', query);
-
       const educatorContext = await buildEducatorContext(educatorId);
       const intent = await this.classifyIntent(query);
-      console.log('📊 Detected intent:', intent);
 
       const history = this.getConversationHistory(conversationId || educatorId);
 
@@ -85,7 +83,7 @@ class EducatorIntelligenceEngine {
       this.updateConversationHistory(conversationId || educatorId, query, response.message || '');
       return response;
     } catch (error) {
-      console.error('❌ Educator AI Error:', error);
+      logger.error('Process query stream failed', error instanceof Error ? error : new Error(String(error)), { educatorId });
       return {
         success: false,
         error: 'I encountered an error processing your request. Please try again.',
@@ -103,14 +101,11 @@ class EducatorIntelligenceEngine {
     conversationId?: string
   ): Promise<EducatorAIResponse> {
     try {
-      console.log('🎓 Educator AI processing:', query);
-
       // Step 1: Build educator context
       const educatorContext = await buildEducatorContext(educatorId);
 
       // Step 2: Classify intent
       const intent = await this.classifyIntent(query);
-      console.log('📊 Detected intent:', intent);
 
       // Step 3: Get conversation history
       const history = this.getConversationHistory(conversationId || educatorId);
@@ -128,7 +123,7 @@ class EducatorIntelligenceEngine {
 
       return response;
     } catch (error) {
-      console.error('❌ Educator AI Error:', error);
+      logger.error('Process query failed', error instanceof Error ? error : new Error(String(error)), { educatorId });
       return {
         success: false,
         error: 'I encountered an error processing your request. Please try again.',
@@ -168,7 +163,7 @@ class EducatorIntelligenceEngine {
 
       return validIntents.includes(intent) ? intent : 'general';
     } catch (error) {
-      console.error('Intent classification error:', error);
+      logger.error('Intent classification failed', error instanceof Error ? error : new Error(String(error)));
       return 'general';
     }
   }
@@ -364,7 +359,7 @@ class EducatorIntelligenceEngine {
         }
       };
     } catch (error) {
-      console.error('Response generation error:', error);
+      logger.error('Generate intelligent response failed', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -555,7 +550,7 @@ class EducatorIntelligenceEngine {
         }
       };
     } catch (error) {
-      console.error('Streaming error:', error);
+      logger.error('Generate streaming response failed', error instanceof Error ? error : new Error(String(error)));
       // Fallback to non-streaming
       return await this.generateIntelligentResponse(query, intent, educatorContext, history);
     }

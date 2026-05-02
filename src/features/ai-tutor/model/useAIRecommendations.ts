@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import AIRecommendationService from '@/features/ai-tutor/api/aiRecommendationService';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('use-ai-recommendations');
 
 /**
  * Custom hook for AI-powered job recommendations using vector similarity
@@ -76,7 +79,7 @@ export const useAIRecommendations = ({
         'view'
       );
     } catch (err) {
-      console.error('Error tracking view:', err);
+      logger.error('Error tracking view', err instanceof Error ? err : new Error(String(err)), { studentId, opportunityId, action: 'view' });
     }
   }, [studentId]);
 
@@ -93,7 +96,7 @@ export const useAIRecommendations = ({
         'save'
       );
     } catch (err) {
-      console.error('Error tracking save:', err);
+      logger.error('Error tracking save', err instanceof Error ? err : new Error(String(err)), { studentId, opportunityId, action: 'save' });
     }
   }, [studentId]);
 
@@ -112,7 +115,7 @@ export const useAIRecommendations = ({
       // Invalidate cache after apply
       await AIRecommendationService.invalidateCache(studentId);
     } catch (err) {
-      console.error('Error tracking apply:', err);
+      logger.error('Error tracking apply', err instanceof Error ? err : new Error(String(err)), { studentId, opportunityId, action: 'apply' });
     }
   }, [studentId]);
 
@@ -127,7 +130,7 @@ export const useAIRecommendations = ({
       // Remove from current recommendations
       setRecommendations(prev => prev.filter(rec => rec.id !== opportunityId));
     } catch (err) {
-      console.error('Error dismissing opportunity:', err);
+      logger.error('Error dismissing opportunity', err instanceof Error ? err : new Error(String(err)), { studentId, opportunityId });
     }
   }, [studentId]);
 

@@ -6,6 +6,9 @@
 
 import { useState, useEffect } from 'react';
 import { getStudentById } from '@/entities/student/api/studentService';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('student-data-hook');
 
 export const useStudentDataById = (studentId, fallbackToMock = true) => {
   const [studentData, setStudentData] = useState(null);
@@ -35,16 +38,17 @@ export const useStudentDataById = (studentId, fallbackToMock = true) => {
             errorMsg.toLowerCase().includes('rls') ||
             errorMsg.toLowerCase().includes('permission denied')) {
             setError('⚠️ Database access blocked. Please disable RLS in Supabase. See FIX_RLS.md');
-            console.error('🔒 RLS is blocking access! Run this in Supabase SQL Editor:');
-            console.error('ALTER TABLE students DISABLE ROW LEVEL SECURITY;');
+            logger.error('RLS policy blocking student data access', undefined, { studentId });
           } else {
             setError(errorMsg);
+            logger.warn('Failed to fetch student data', { studentId, error: errorMsg });
           }
           setStudentData(null);
         }
       } catch (err) {
-        console.error('❌ useStudentDataById error:', err);
-        setError(err.message || 'Failed to fetch student data');
+        const error = err instanceof Error ? err : new Error(String(err));
+        logger.error('Failed to fetch student data', error, { studentId });
+        setError(error.message || 'Failed to fetch student data');
         setStudentData(null);
       } finally {
         setLoading(false);

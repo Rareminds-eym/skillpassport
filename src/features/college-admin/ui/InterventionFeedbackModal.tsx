@@ -8,6 +8,9 @@ import {
   UserIcon,
 } from '@heroicons/react/24/outline';
 import { ConfirmModal } from '@/shared/ui/ConfirmModal';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('college-admin:InterventionFeedbackModal');
 
 interface InterventionFeedbackModalProps {
   note: {
@@ -83,7 +86,7 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
       });
       onClose();
     } catch (error: any) {
-      console.error('Error saving feedback:', error);
+      logger.error('Error saving feedback', error);
       const errorMessage = error?.message || 'Failed to save feedback. Please try again.';
       alert(errorMessage);
     } finally {
@@ -111,7 +114,7 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
       await onResolve!();
       onClose();
     } catch (error: any) {
-      console.error('Error resolving note:', error);
+      logger.error('Error resolving note', error);
       const errorMessage = error?.message || 'Failed to resolve note. Please try again.';
       alert(errorMessage);
     } finally {

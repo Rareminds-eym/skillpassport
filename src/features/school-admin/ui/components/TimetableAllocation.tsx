@@ -166,7 +166,7 @@ const TimetableAllocationPage: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error("Error fetching school ID:", error);
+      // Error handled silently - school ID will be empty
     }
   };
 
@@ -286,7 +286,7 @@ const TimetableAllocationPage: React.FC = () => {
 
       if (conflictData) setConflicts(conflictData);
     } catch (error) {
-      console.error('Error loading teacher workload:', error);
+      // Error handled silently - workload will remain null
     }
   };
 

@@ -1,12 +1,15 @@
 // AI Counselling Service - OpenAI Integration
 
 import OpenAI from 'openai';
-import type { 
-  CounsellingRequest, 
-  StudentContext, 
+import type {
+  CounsellingRequest,
+  StudentContext,
   CounsellingTopicType,
-  MessageRole 
+  MessageRole
 } from '../model/types';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('counselling-service');
 
 // Lazy-load OpenAI client to avoid initialization errors when API key is missing
 let openai: OpenAI | null = null;
@@ -163,7 +166,9 @@ export async function* streamResponse(
       }
     }
   } catch (error) {
-    console.error('Error streaming counselling response:', error);
+    logger.error('Streaming counselling response failed', error instanceof Error ? error : new Error(String(error)), {
+      topic: request.topic
+    });
     if (error instanceof OpenAI.APIError) {
       throw new Error(`OpenAI API Error: ${error.message}`);
     }
@@ -204,7 +209,9 @@ export async function getResponse(
 
     return completion.choices[0]?.message?.content || '';
   } catch (error) {
-    console.error('Error getting counselling response:', error);
+    logger.error('Counselling response generation failed', error instanceof Error ? error : new Error(String(error)), {
+      topic: request.topic
+    });
     if (error instanceof OpenAI.APIError) {
       throw new Error(`OpenAI API Error: ${error.message}`);
     }
@@ -241,7 +248,9 @@ export async function generateSessionSummary(
 
     return completion.choices[0]?.message?.content || 'No summary available';
   } catch (error) {
-    console.error('Error generating session summary:', error);
+    logger.error('Session summary generation failed', error instanceof Error ? error : new Error(String(error)), {
+      topic
+    });
     return 'Failed to generate summary';
   }
 }

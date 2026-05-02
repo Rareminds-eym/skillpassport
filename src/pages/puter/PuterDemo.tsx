@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('puter-demo');
 
 // Puter AI response type
 interface PuterAIResponse {
@@ -372,7 +375,7 @@ const PuterDemo = () => {
       setPuterLoaded(true);
       checkAuthStatus();
     };
-    script.onerror = () => console.error('Failed to load Puter.js');
+    script.onerror = () => logger.error('Failed to load Puter.js');
     document.body.appendChild(script);
   }, []);
 
@@ -389,10 +392,9 @@ const PuterDemo = () => {
       if (window.puter?.auth?.getMonthlyUsage) {
         const usage = await window.puter.auth.getMonthlyUsage();
         setPuterUsage(usage);
-        console.log('Puter Usage:', usage);
       }
     } catch (error) {
-      console.log('Usage fetch error:', error);
+      logger.error('Usage fetch error', error as Error);
     }
   };
 
@@ -407,7 +409,7 @@ const PuterDemo = () => {
         }
       }
     } catch (error) {
-      console.log('Auth check:', error);
+      logger.error('Auth check error', error as Error);
     }
   };
 
@@ -419,7 +421,7 @@ const PuterDemo = () => {
       setPuterUser(user);
       fetchUsage();
     } catch (error) {
-      console.error('Sign in error:', error);
+      logger.error('Sign in error', error as Error);
     } finally {
       setAuthLoading(false);
     }
@@ -431,7 +433,7 @@ const PuterDemo = () => {
       await window.puter.auth.signOut();
       setPuterUser(null);
     } catch (error) {
-      console.error('Sign out error:', error);
+      logger.error('Sign out error', error as Error);
     }
   };
 
@@ -460,7 +462,7 @@ const PuterDemo = () => {
         }
         setTables(results);
       } catch (error) {
-        console.error('Error fetching tables:', error);
+        logger.error('Error fetching tables', error as Error);
       } finally {
         setLoadingTables(false);
       }
@@ -500,7 +502,7 @@ const PuterDemo = () => {
       const responseText = extractAIResponse(response);
       setMessages(prev => [...prev, { role: 'assistant', content: responseText, timestamp: new Date() }]);
     } catch (error) {
-      console.error('Puter AI error:', error);
+      logger.error('Puter AI error', error as Error);
       setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, an error occurred. Please try again.', timestamp: new Date() }]);
     } finally {
       setLoading(false);
@@ -638,7 +640,6 @@ const PuterDemo = () => {
         quality: selectedQuality,
       };
 
-      console.log('Generating image with options:', options, 'prompt:', fullPrompt);
       const result = await window.puter.ai.txt2img(fullPrompt, options);
       
       // Handle different response formats
@@ -667,7 +668,7 @@ const PuterDemo = () => {
       setGeneratedImage(imageSrc);
       setImageHistory(prev => [{ prompt: finalPrompt, src: imageSrc! }, ...prev.slice(0, 4)]);
     } catch (error: unknown) {
-      console.error('Image generation error:', error);
+      logger.error('Image generation error', error as Error);
       stopProgressSimulation(false);
       
       // Extract error message - ensure it's always a string
@@ -840,7 +841,7 @@ showpage
       
       setShowDownloadMenu(false);
     } catch (error) {
-      console.error('Download error:', error);
+      logger.error('Download error', error as Error);
       // Fallback to direct download
       const link = document.createElement('a');
       link.href = generatedImage;

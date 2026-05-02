@@ -15,6 +15,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { authSessionService } from '@/features/auth';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('invitation-acceptance');
 
 type PageState = 'loading' | 'valid' | 'invalid' | 'expired' | 'accepted' | 'already_accepted' | 'error' | 'not_logged_in';
 
@@ -84,7 +87,7 @@ export default function AcceptInvitationPage() {
         setPageState('valid');
       }
     } catch (err) {
-      console.error('Error loading invitation:', err);
+      logger.error('Failed to load invitation', err instanceof Error ? err : new Error(String(err)));
       setPageState('error');
       setError(err instanceof Error ? err.message : 'Failed to load invitation');
     }
@@ -126,7 +129,7 @@ export default function AcceptInvitationPage() {
         navigate(dashboardPath);
       }, 2000);
     } catch (err) {
-      console.error('Error accepting invitation:', err);
+      logger.error('Failed to accept invitation', err instanceof Error ? err : new Error(String(err)));
       toast.error(err instanceof Error ? err.message : 'Failed to accept invitation');
       setError(err instanceof Error ? err.message : 'Failed to accept invitation');
     } finally {

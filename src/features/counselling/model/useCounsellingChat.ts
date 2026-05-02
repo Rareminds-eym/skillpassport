@@ -1,12 +1,15 @@
 // Custom Hook for Counselling Chat Management (Local State Only)
 
 import { useState, useCallback, useRef } from 'react';
-import type { 
-  CounsellingMessage, 
+import type {
+  CounsellingMessage,
   CounsellingTopicType,
-  StudentContext 
+  StudentContext
 } from '@/features/student-profile/model';
 import { counsellingService } from '../api';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('counselling-chat-hook');
 
 export interface UseCounsellingChatOptions {
   sessionId?: string;
@@ -93,7 +96,7 @@ export function useCounsellingChat(options: UseCounsellingChatOptions) {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to send message';
       setError(errorMessage);
-      console.error('Error sending message:', err);
+      logger.error('Error sending message', err instanceof Error ? err : new Error(String(err)));
     } finally {
       setIsStreaming(false);
       abortControllerRef.current = null;

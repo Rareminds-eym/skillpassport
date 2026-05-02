@@ -88,7 +88,6 @@ export const useStudentLearning = (studentId, enabled = true) => {
 
       setLearning(result);
     } catch (err) {
-      console.error('Error fetching learning:', err);
       setError(err.message);
     } finally {
       setLoading(false);

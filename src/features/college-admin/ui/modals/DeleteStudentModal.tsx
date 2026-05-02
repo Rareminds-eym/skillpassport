@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { softDeleteStudent } from '@/features/student-profile/api';
 import { getCurrentEducator } from '@/features/educator-copilot';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('delete-student');
 
 interface Student {
   id: string;
@@ -60,7 +63,7 @@ const DeleteStudentModal: React.FC<DeleteStudentModalProps> = ({
         setError(result.error || 'Failed to delete student');
       }
     } catch (err) {
-      console.error('Error deleting student:', err);
+      logger.error('Error deleting student', err instanceof Error ? err : new Error(String(err)));
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
       setLoading(false);

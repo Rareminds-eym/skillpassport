@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, AlertCircle } from 'lucide-react';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('fee-structure-modal');
 
 interface FeeStructure {
   id: string;
@@ -145,7 +148,7 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
         onClose();
       }
     } catch (error) {
-      console.error('Error saving fee structure:', error);
+      logger.error('Failed to save fee structure', error instanceof Error ? error : new Error(String(error)));
     } finally {
       setLoading(false);
     }

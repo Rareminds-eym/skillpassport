@@ -50,7 +50,6 @@ export const useOpportunities = (options = {}) => {
       if (serverSidePagination) {
         // Validate page number before fetching
         if (page < 1) {
-          console.warn(`Invalid page number ${page}, skipping fetch`);
           setOpportunities([]);
           setTotalCount(0);
           setTotalPages(1);
@@ -93,9 +92,8 @@ export const useOpportunities = (options = {}) => {
       setTotalCount(count);
       setTotalPages(calculatedTotalPages);
     } catch (err) {
-      console.error('❌ Error fetching opportunities:', err);
       setError(err.message || 'Failed to fetch opportunities');
-      
+
       // Fallback to empty array on error
       setOpportunities([]);
       setTotalCount(0);
@@ -133,7 +131,6 @@ export const useOpportunities = (options = {}) => {
       setTotalCount(formattedOpportunities.length);
       setTotalPages(Math.max(1, Math.ceil(formattedOpportunities.length / pageSize)));
     } catch (err) {
-      console.error('Error filtering opportunities:', err);
       setError(err.message || 'Failed to filter opportunities');
     } finally {
       setLoading(false);
@@ -169,7 +166,6 @@ export const useOpportunities = (options = {}) => {
       setTotalCount(formattedOpportunities.length);
       setTotalPages(Math.max(1, Math.ceil(formattedOpportunities.length / pageSize)));
     } catch (err) {
-      console.error('Error searching opportunities:', err);
       setError(err.message || 'Failed to search opportunities');
     } finally {
       setLoading(false);
