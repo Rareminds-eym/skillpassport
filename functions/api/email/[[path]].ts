@@ -35,9 +35,12 @@ export const onRequest: PagesFunction = async (context) => {
   const path = url.pathname.replace('/api/email', '');
 
   try {
-    // Health check
-    if (path === '' || path === '/') {
-      if (request.method === 'GET') {
+    const supabase = createSupabaseClient(env);
+
+    // GET routes (PDF download and health check)
+    if (request.method === 'GET') {
+      // Health check
+      if (path === '' || path === '/') {
         return jsonResponse({
           status: 'ok',
           service: 'email-api',
@@ -53,12 +56,7 @@ export const onRequest: PagesFunction = async (context) => {
           timestamp: new Date().toISOString()
         });
       }
-    }
 
-    const supabase = createSupabaseClient(env);
-
-    // GET routes (PDF download)
-    if (request.method === 'GET') {
       const pdfMatch = path.match(/^\/download-receipt\/(.+)$/);
       if (pdfMatch) {
         const orderId = pdfMatch[1];
@@ -96,7 +94,7 @@ export const onRequest: PagesFunction = async (context) => {
       return await handleEventOTP(body, env, supabase);
     }
     
-    if (path === '/' || path === '/send') {
+    if (path === '' || path === '/' || path === '/send') {
       return await handleGenericEmail(body, env, supabase);
     }
 

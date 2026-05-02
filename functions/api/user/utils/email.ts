@@ -4,6 +4,7 @@
  */
 
 import type { PagesEnv } from '../../../../src/functions-lib/types';
+import { apiLogger } from '../../../lib/logger';
 
 const EMAIL_API_URL = 'https://skillpassport.rareminds.in/api/email';
 const FROM_EMAIL = 'noreply@rareminds.in';
@@ -37,15 +38,15 @@ async function sendEmailViaWorker(
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('Email API error:', error);
+      apiLogger.error('Email API error', undefined, { error });
       return false;
     }
 
     const result = await response.json();
-    console.log('Email sent successfully:', result);
+    apiLogger.info('Email sent successfully', { result });
     return true;
   } catch (error) {
-    console.error('Failed to send email:', error);
+    apiLogger.error('Failed to send email', error as Error);
     return false;
   }
 }
@@ -88,12 +89,9 @@ export async function sendWelcomeEmail(
           
           <div class="credentials">
             <p><strong>Email:</strong> ${email}</p>
-            <p><strong>Temporary Password:</strong> ${password}</p>
             <p><strong>Role:</strong> ${role}</p>
             ${additionalInfo ? `<p>${additionalInfo}</p>` : ''}
           </div>
-          
-          <p>Please change your password after your first login for security.</p>
           
           <a href="https://skillpassport.rareminds.in/login" class="button">Login Now</a>
           
@@ -107,7 +105,7 @@ export async function sendWelcomeEmail(
     </html>
   `;
 
-  const text = `Welcome to SkillPassport!\n\nHello ${name},\n\nYour account has been created successfully.\n\nEmail: ${email}\nTemporary Password: ${password}\nRole: ${role}\n\nPlease change your password after your first login.\n\nLogin at: https://skillpassport.rareminds.in/login`;
+  const text = `Welcome to SkillPassport!\n\nHello ${name},\n\nYour account has been created successfully.\n\nEmail: ${email}\nRole: ${role}\n\nLogin at: https://skillpassport.rareminds.in/login`;
 
   const emailApiUrl = `${baseUrl}/api/email`;
   try {
@@ -124,10 +122,10 @@ export async function sendWelcomeEmail(
       }),
     });
     if (!response.ok) {
-      console.error('Welcome email failed:', await response.text());
+      apiLogger.error('Welcome email failed', undefined, { error: await response.text() });
     }
   } catch (error) {
-    console.error('Welcome email failed:', error);
+    apiLogger.error('Welcome email failed', error as Error);
   }
 }
 

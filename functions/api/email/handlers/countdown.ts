@@ -9,6 +9,7 @@ import type { CountdownEmailRequest } from '../types';
 import { EMAIL_STATUS } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib';
 import { generateCountdownEmailHtml, getCountdownSubject } from '../services/templates';
+import { apiLogger } from '../../../lib/logger';
 import { 
   findPreRegistrationByEmail, 
   createEmailTracking, 
@@ -58,14 +59,22 @@ export async function handleCountdownEmail(
     }
 
     // Generate and send email
+    if (!env.INTERNAL_API_KEY) {
+      throw new Error('INTERNAL_API_KEY environment variable is not configured');
+    }
+    if (!env.EMAIL_WORKER_URL) {
+      throw new Error('EMAIL_WORKER_URL environment variable is not configured');
+    }
+
     const html = generateCountdownEmailHtml({ fullName, countdownDay, launchDate });
     const subject = getCountdownSubject(countdownDay);
 
-    const response = await fetch(env.EMAIL_WORKER_URL || 'http://127.0.0.1:8787/send', {
+    const response = await fetch(`${env.EMAIL_WORKER_URL}/send`, {
+
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Internal-Api-Key': env.INTERNAL_API_KEY || 'dev-test1232312',
+        'X-Internal-Api-Key': env.INTERNAL_API_KEY,
       },
       body: JSON.stringify({ to, subject, html }),
     });
@@ -92,7 +101,7 @@ export async function handleCountdownEmail(
     });
 
   } catch (error: any) {
-    console.error('Error in handleCountdownEmail:', error);
+    apiLogger.error('Error in handleCountdownEmail', error);
 
     // Update tracking status to failed
     if (trackingId && supabase) {

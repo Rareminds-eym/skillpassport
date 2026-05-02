@@ -9,6 +9,7 @@ if [ -z "$TYPE" ]; then
   echo "Available types:"
   echo "  invitation"
   echo "  event-confirmation"
+  echo "  event-otp"
   echo "  generic"
   echo "  countdown"
   exit 1
@@ -69,6 +70,18 @@ case "$TYPE" in
     echo ""
     ;;
 
+  event-otp)
+    echo ">>> Testing: Event OTP Email → POST $BASE_URL/event-otp"
+    curl -s -X POST "$BASE_URL/event-otp" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "email": "anandhageethan333@gmail.com",
+        "otp": "123456",
+        "name": "Anand"
+      }' | cat
+    echo ""
+    ;;
+
   *)
     echo "Unknown type: $TYPE"
     echo ""
@@ -77,6 +90,7 @@ case "$TYPE" in
     echo "Available types:"
     echo "  invitation"
     echo "  event-confirmation"
+    echo "  event-otp"
     echo "  generic"
     echo "  countdown"
     exit 1
