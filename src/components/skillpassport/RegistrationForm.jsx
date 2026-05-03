@@ -58,9 +58,9 @@ const validateForm = (form, emailVerified, phoneVerified, consentGiven) => {
   if (!form.phone?.trim() || !phoneRegex.test(form.phone.replace(/\D/g, ''))) {
     errors.phone = 'Please enter a valid 10-digit phone number';
   }
-  if (!phoneVerified) {
-    errors.phone = 'Please verify your phone number';
-  }
+  // if (!phoneVerified) {
+  //   errors.phone = 'Please verify your phone number';
+  // }
   if (!consentGiven) {
     errors.consent = 'Please agree to the terms and payment consent';
   }
@@ -840,33 +840,35 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                       onChange={(e) => updateField('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
                       placeholder="10-digit mobile number"
                       error={errors.phone}
-                      verified={phoneVerified}
-                      disabled={phoneVerified}
-                      rightElement={
-                        !phoneVerified && (
-                          <button
-                            type="button"
-                            onClick={handleSendPhoneOTP}
-                            disabled={sendingPhoneOTP || !form.phone || form.phone.length !== 10}
-                            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
-                          >
-                            {sendingPhoneOTP ? (
-                              <>
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                                <span className="hidden sm:inline">Sending...</span>
-                                <span className="sm:hidden">...</span>
-                              </>
-                            ) : phoneOtpSent ? (
-                              'Resend'
-                            ) : (
-                              'Verify'
-                            )}
-                          </button>
-                        )
-                      }
+                      // Phone verification UI disabled — number is collected but not verified
+                      // verified={phoneVerified}
+                      // disabled={phoneVerified}
+                      // rightElement={
+                      //   !phoneVerified && (
+                      //     <button
+                      //       type="button"
+                      //       onClick={handleSendPhoneOTP}
+                      //       disabled={sendingPhoneOTP || !form.phone || form.phone.length !== 10}
+                      //       className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
+                      //     >
+                      //       {sendingPhoneOTP ? (
+                      //         <>
+                      //           <Loader2 className="w-3 h-3 animate-spin" />
+                      //           <span className="hidden sm:inline">Sending...</span>
+                      //           <span className="sm:hidden">...</span>
+                      //         </>
+                      //       ) : phoneOtpSent ? (
+                      //         'Resend'
+                      //       ) : (
+                      //         'Verify'
+                      //       )}
+                      //     </button>
+                      //   )
+                      // }
                     />
 
-                    <AnimatePresence>
+                    {/* Phone OTP input — disabled */}
+                    {/* <AnimatePresence>
                       {phoneOtpSent && !phoneVerified && (
                         <motion.div
                           key={phoneVerificationId}
@@ -884,14 +886,12 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                                 setPhoneOtpValue(code);
                                 setVerifyingPhoneOTP(true);
                                 setPhoneOtpError('');
-                                
                                 try {
                                   const result = await validatePhoneOTP(
                                     form.phone.replace(/\D/g, ''),
                                     phoneVerificationId,
                                     code
                                   );
-                                  
                                   if (result.verified) {
                                     setPhoneVerified(true);
                                     setPhoneOtpSent(false);
@@ -913,9 +913,10 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                           </div>
                         </motion.div>
                       )}
-                    </AnimatePresence>
+                    </AnimatePresence> */}
 
-                    <AnimatePresence>
+                    {/* Phone verified badge — disabled */}
+                    {/* <AnimatePresence>
                       {phoneVerified && (
                         <motion.div
                           initial={{ opacity: 0, y: -10 }}
@@ -926,7 +927,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                           <span className="text-xs sm:text-sm font-semibold">Phone verified successfully</span>
                         </motion.div>
                       )}
-                    </AnimatePresence>
+                    </AnimatePresence> */}
                   </div>
                 </div>
 
@@ -1292,33 +1293,35 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                   onChange={(e) => updateField('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
                   placeholder="10-digit mobile number"
                   error={errors.phone}
-                  verified={phoneVerified}
-                  disabled={phoneVerified}
-                  rightElement={
-                    !phoneVerified && (
-                      <button
-                        type="button"
-                        onClick={handleSendPhoneOTP}
-                        disabled={sendingPhoneOTP || !form.phone || form.phone.length !== 10}
-                        className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
-                      >
-                        {sendingPhoneOTP ? (
-                          <>
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                            <span className="hidden sm:inline">Sending...</span>
-                            <span className="sm:hidden">...</span>
-                          </>
-                        ) : phoneOtpSent ? (
-                          'Resend'
-                        ) : (
-                          'Verify'
-                        )}
-                      </button>
-                    )
-                  }
+                  // Phone verification UI disabled — number is collected but not verified
+                  // verified={phoneVerified}
+                  // disabled={phoneVerified}
+                  // rightElement={
+                  //   !phoneVerified && (
+                  //     <button
+                  //       type="button"
+                  //       onClick={handleSendPhoneOTP}
+                  //       disabled={sendingPhoneOTP || !form.phone || form.phone.length !== 10}
+                  //       className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
+                  //     >
+                  //       {sendingPhoneOTP ? (
+                  //         <>
+                  //           <Loader2 className="w-3 h-3 animate-spin" />
+                  //           <span className="hidden sm:inline">Sending...</span>
+                  //           <span className="sm:hidden">...</span>
+                  //         </>
+                  //       ) : phoneOtpSent ? (
+                  //         'Resend'
+                  //       ) : (
+                  //         'Verify'
+                  //       )}
+                  //     </button>
+                  //   )
+                  // }
                 />
 
-                <AnimatePresence>
+                {/* Phone OTP input — disabled */}
+                {/* <AnimatePresence>
                   {phoneOtpSent && !phoneVerified && (
                     <motion.div
                       key={phoneVerificationId}
@@ -1336,14 +1339,12 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                             setPhoneOtpValue(code);
                             setVerifyingPhoneOTP(true);
                             setPhoneOtpError('');
-                            
                             try {
                               const result = await validatePhoneOTP(
                                 form.phone.replace(/\D/g, ''),
                                 phoneVerificationId,
                                 code
                               );
-                              
                               if (result.verified) {
                                 setPhoneVerified(true);
                                 setPhoneOtpSent(false);
@@ -1365,9 +1366,10 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                       </div>
                     </motion.div>
                   )}
-                </AnimatePresence>
+                </AnimatePresence> */}
 
-                <AnimatePresence>
+                {/* Phone verified badge — disabled */}
+                {/* <AnimatePresence>
                   {phoneVerified && (
                     <motion.div
                       initial={{ opacity: 0, y: -10 }}
@@ -1378,7 +1380,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                       <span className="text-xs sm:text-sm font-semibold">Phone verified successfully</span>
                     </motion.div>
                   )}
-                </AnimatePresence>
+                </AnimatePresence> */}
               </div>
 
               <motion.div
