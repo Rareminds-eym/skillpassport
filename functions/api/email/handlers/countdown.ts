@@ -49,9 +49,9 @@ export async function handleCountdownEmail(
           }
         });
 
-        if (tracking) {
+        if (tracking?.id) {
           trackingId = tracking.id;
-          await updateEmailTracking(supabase, trackingId, {
+          await updateEmailTracking(supabase, tracking.id, {
             email_status: EMAIL_STATUS.SENDING
           });
         }
@@ -88,7 +88,7 @@ export async function handleCountdownEmail(
 
     // Update tracking status to sent
     if (trackingId && supabase) {
-      await updateEmailTracking(supabase, trackingId, {
+      await updateEmailTracking(supabase, trackingId as string, {
         email_status: EMAIL_STATUS.SENT,
         sent_at: new Date().toISOString()
       });
@@ -113,7 +113,7 @@ export async function handleCountdownEmail(
     // Update tracking status to failed (only if trackingId exists)
     if (trackingId && supabase) {
       try {
-        await updateEmailTracking(supabase, trackingId, {
+        await updateEmailTracking(supabase, trackingId as string, {
           email_status: EMAIL_STATUS.FAILED,
           failed_at: new Date().toISOString(),
           error_message: errorMessage,

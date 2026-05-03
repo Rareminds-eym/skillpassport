@@ -12,7 +12,7 @@ import { apiLogger } from '../../../lib/logger';
 export async function handleGenericEmail(
   body: GenericEmailRequest,
   env: PagesEnv,
-  supabase: SupabaseClient
+  _supabase: SupabaseClient
 ): Promise<Response> {
   const { to, subject, html, text, from, fromName } = body;
 
