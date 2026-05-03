@@ -12,7 +12,7 @@ import { apiLogger } from '../../../lib/logger';
 export async function handleGenericEmail(
   body: GenericEmailRequest,
   env: PagesEnv,
-  _supabase: SupabaseClient
+  _supabase: SupabaseClient // Required by API contract but not used in this handler
 ): Promise<Response> {
   const { to, subject, html, text, from, fromName } = body;
 
@@ -45,7 +45,14 @@ export async function handleGenericEmail(
       throw new Error(`Email worker failed with status ${response.status}: ${errorText}`);
     }
 
-    const result = await response.json();
+    // Parse JSON response with error handling
+    let result;
+    try {
+      result = await response.json();
+    } catch (parseError) {
+      const errorMessage = parseError instanceof Error ? parseError.message : 'Unknown parsing error';
+      throw new Error(`Email worker returned invalid JSON response: ${errorMessage}`);
+    }
     apiLogger.info('Generic email sent via email-worker', { to, subject });
 
     return jsonResponse({

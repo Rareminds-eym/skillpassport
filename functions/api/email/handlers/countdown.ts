@@ -81,14 +81,21 @@ export async function handleCountdownEmail(
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Email worker failed: ${errorText}`);
+      throw new Error(`Email worker failed with status ${response.status}: ${errorText}`);
     }
 
-    const result = await response.json();
+    // Parse JSON response with error handling
+    let result;
+    try {
+      result = await response.json();
+    } catch (parseError) {
+      const errorMessage = parseError instanceof Error ? parseError.message : 'Unknown parsing error';
+      throw new Error(`Email worker returned invalid JSON response: ${errorMessage}`);
+    }
 
     // Update tracking status to sent
     if (trackingId && supabase) {
-      await updateEmailTracking(supabase, trackingId as string, {
+      await updateEmailTracking(supabase, trackingId, {
         email_status: EMAIL_STATUS.SENT,
         sent_at: new Date().toISOString()
       });
@@ -113,7 +120,7 @@ export async function handleCountdownEmail(
     // Update tracking status to failed (only if trackingId exists)
     if (trackingId && supabase) {
       try {
-        await updateEmailTracking(supabase, trackingId as string, {
+        await updateEmailTracking(supabase, trackingId, {
           email_status: EMAIL_STATUS.FAILED,
           failed_at: new Date().toISOString(),
           error_message: errorMessage,

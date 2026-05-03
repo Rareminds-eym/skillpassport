@@ -31,7 +31,18 @@ class FunctionLogger {
   private formatMessage(level: LogLevel, message: string, metadata?: LogMetadata): string {
     const timestamp = new Date().toISOString();
     const prefix = `[${timestamp}] [${level.toUpperCase()}] [${this.category}]`;
-    const metaStr = metadata ? ` ${JSON.stringify(metadata)}` : '';
+    
+    // Safe JSON serialization with circular reference handling
+    let metaStr = '';
+    if (metadata) {
+      try {
+        metaStr = ` ${JSON.stringify(metadata)}`;
+      } catch (serializationError) {
+        // Fallback for circular references or non-serializable values
+        metaStr = ` [Metadata serialization failed: ${serializationError instanceof Error ? serializationError.message : 'Unknown error'}]`;
+      }
+    }
+    
     return `${prefix} ${message}${metaStr}`;
   }
 
