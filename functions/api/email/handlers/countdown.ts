@@ -4,7 +4,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Env } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../../src/functions-lib/types';
 import type { CountdownEmailRequest } from '../types';
 import { EMAIL_STATUS } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib';
@@ -18,7 +18,7 @@ import {
 
 export async function handleCountdownEmail(
   body: CountdownEmailRequest,
-  env: Env,
+  env: PagesEnv,
   supabase: SupabaseClient
 ): Promise<Response> {
   const { to, fullName, countdownDay, launchDate } = body;
@@ -100,22 +100,36 @@ export async function handleCountdownEmail(
       data: result
     });
 
-  } catch (error: any) {
-    apiLogger.error('Error in handleCountdownEmail', error);
+  } catch (error: unknown) {
+    // Type-safe error handling
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : 'Failed to send countdown email';
+    
+    const errorObject = error instanceof Error ? error : new Error(String(error));
+    
+    apiLogger.error('Error in handleCountdownEmail', errorObject);
 
-    // Update tracking status to failed
+    // Update tracking status to failed (only if trackingId exists)
     if (trackingId && supabase) {
-      await updateEmailTracking(supabase, trackingId, {
-        email_status: EMAIL_STATUS.FAILED,
-        failed_at: new Date().toISOString(),
-        error_message: error.message,
-        retry_count: 1
-      });
+      try {
+        await updateEmailTracking(supabase, trackingId, {
+          email_status: EMAIL_STATUS.FAILED,
+          failed_at: new Date().toISOString(),
+          error_message: errorMessage,
+          retry_count: 1
+        });
+      } catch (trackingError) {
+        // Log tracking update failure but don't throw
+        apiLogger.error('Failed to update email tracking status', 
+          trackingError instanceof Error ? trackingError : new Error(String(trackingError))
+        );
+      }
     }
 
     return jsonResponse({
       success: false,
-      error: error.message || 'Failed to send countdown email'
+      error: errorMessage
     }, 500);
   }
 }

@@ -4,13 +4,14 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Env } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../../src/functions-lib/types';
 import type { GenericEmailRequest } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib';
+import { apiLogger } from '../../../lib/logger';
 
 export async function handleGenericEmail(
   body: GenericEmailRequest,
-  env: Env,
+  env: PagesEnv,
   supabase: SupabaseClient
 ): Promise<Response> {
   const { to, subject, html, text, from, fromName } = body;
@@ -45,18 +46,26 @@ export async function handleGenericEmail(
     }
 
     const result = await response.json();
-    console.log('Generic email sent via email-worker:', { to, subject });
+    apiLogger.info('Generic email sent via email-worker', { to, subject });
 
     return jsonResponse({
       success: true,
       message: 'Email sent successfully',
       data: result
     });
-  } catch (error: any) {
-    apiLogger.error('Error sending email', error);
+  } catch (error: unknown) {
+    // Type-safe error handling
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : 'Failed to send email';
+    
+    const errorObject = error instanceof Error ? error : new Error(String(error));
+    
+    apiLogger.error('Error sending email', errorObject);
+    
     return jsonResponse({
       success: false,
-      error: error.message || 'Failed to send email'
+      error: errorMessage
     }, 500);
   }
 }

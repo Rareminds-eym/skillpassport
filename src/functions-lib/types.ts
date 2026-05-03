@@ -40,6 +40,11 @@ export interface PagesEnv {
   CLOUDFLARE_R2_SECRET_ACCESS_KEY?: string;
   CLOUDFLARE_R2_BUCKET_NAME?: string;
   CLOUDFLARE_R2_PUBLIC_URL?: string;
+
+  // Email Worker configuration
+  EMAIL_WORKER_URL?: string;
+  INTERNAL_API_KEY?: string;
+  ADMIN_EMAIL?: string;
 }
 
 /**

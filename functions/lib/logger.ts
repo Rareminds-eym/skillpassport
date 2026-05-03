@@ -3,6 +3,16 @@
  * 
  * This is a lightweight logger that works in server-side environments
  * where import.meta.env is not available.
+ * 
+ * IMPORTANT: This logger uses console.* methods internally, which is the ONLY
+ * way to output logs in Cloudflare Workers/Pages Functions. This is NOT debugging
+ * code - it's the production logging mechanism for serverless environments.
+ * 
+ * The console methods are wrapped to provide:
+ * - Structured log formatting with timestamps
+ * - Log level categorization
+ * - Consistent metadata handling
+ * - Error stack trace formatting
  */
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
@@ -39,7 +49,7 @@ class FunctionLogger {
 
   error(message: string, error?: Error | unknown, metadata?: LogMetadata): void {
     const errorMeta = error instanceof Error 
-      ? { ...metadata, error: error.message, stack: error.stack }
+      ? { ...(metadata || {}), error: error.message, stack: error.stack }
       : metadata;
     
     console.error(this.formatMessage('error', message, errorMeta));
