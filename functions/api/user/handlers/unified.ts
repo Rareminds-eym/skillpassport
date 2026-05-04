@@ -173,6 +173,7 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
           email,
           name: fullName,
           role: body.role,
+          emailSent: emailSent
         },
         ...(emailSent ? {} : { 
           warning: 'Account created but welcome email could not be sent. Please check your email or contact support.' 

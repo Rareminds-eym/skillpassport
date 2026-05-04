@@ -17,8 +17,7 @@ export async function handleInvitationEmail(
   env: Env,
   supabase: SupabaseClient
 ): Promise<Response> {
-
-  const auth = await authenticateUser(request, env as unknown as Record<string, string>);
+ const auth = await authenticateUser(request, env as unknown as Record<string, string>);
   if (!auth) {
     return jsonResponse({ error: 'Authentication required' }, 401);
   }

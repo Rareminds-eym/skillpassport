@@ -90,13 +90,18 @@ export async function handleEventConfirmation(
           'X-Internal-Api-Key': env.INTERNAL_API_KEY,
         },
         body: JSON.stringify({ to: email, subject: userSubject, html: userHtml }),
-      }).then((res) => {
-        if (!res.ok) {
-          return res.text().then(errorText => {
-            throw new Error(`Email worker failed with status ${res.status}: ${errorText}`);
-          });
-        }
-      }),
+      })
+        .then(async (res) => {
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(`User email failed with status ${res.status}: ${errorText}`);
+          }
+          return res;
+        })
+        .catch((error) => {
+          apiLogger.error('User confirmation email error', error);
+          throw error;
+        }),
       // Admin notification email
       fetch(emailWorkerUrl, {
         method: 'POST',
@@ -105,13 +110,18 @@ export async function handleEventConfirmation(
           'X-Internal-Api-Key': env.INTERNAL_API_KEY,
         },
         body: JSON.stringify({ to: env.ADMIN_EMAIL, subject: adminSubject, html: adminHtml }),
-      }).then((res) => {
-        if (!res.ok) {
-          return res.text().then(errorText => {
-            throw new Error(`Email worker failed with status ${res.status}: ${errorText}`);
-          });
-        }
-      }),
+      })
+        .then(async (res) => {
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(`Admin email failed with status ${res.status}: ${errorText}`);
+          }
+          return res;
+        })
+        .catch((error) => {
+          apiLogger.error('Admin notification email error', error);
+          throw error;
+        }),
     ]);
 
     return jsonResponse({
