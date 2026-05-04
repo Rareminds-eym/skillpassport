@@ -141,14 +141,14 @@ const InputField = ({ label, icon: Icon, error, verified, disabled, rightElement
         {...props}
         disabled={disabled}
         className={`
-          w-full h-11 sm:h-12 md:h-14 bg-white border-2 rounded-xl outline-none transition-all duration-200
+          w-full h-11 sm:h-12 md:h-14 bg-white border-2 rounded-xl outline-none focus:outline-none transition-all duration-200
           ${Icon ? 'pl-10 sm:pl-11 md:pl-12' : 'pl-3 sm:pl-4'} ${rightElement ? 'pr-24 sm:pr-32' : 'pr-3 sm:pr-4'}
           ${disabled ? 'bg-gray-50 cursor-not-allowed text-gray-500' : ''}
           ${verified
             ? 'border-emerald-400 bg-emerald-50/30 shadow-sm shadow-emerald-100'
             : error
-              ? 'border-red-400 focus:border-red-500 focus:ring-4 focus:ring-red-50 shadow-sm shadow-red-100'
-              : 'border-gray-200 hover:border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 shadow-sm hover:shadow-md'
+              ? 'border-red-400 focus:border-red-500 shadow-sm shadow-red-100'
+              : 'border-gray-200 hover:border-gray-300 focus:border-blue-500 shadow-sm hover:shadow-md focus:shadow-lg'
           }
           text-gray-900 placeholder:text-gray-400 text-sm sm:text-base
         `}
@@ -930,7 +930,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
               <div className="bg-white rounded-none sm:rounded-2xl md:rounded-3xl shadow-xl border-0 sm:border border-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 overflow-hidden">
                 
                 {/* Fee summary - Moved above form fields */}
-                <div className="border border-gray-200 rounded-xl overflow-hidden mb-4 sm:mb-6 w-full">
+                <div className="border border-gray-200 rounded-none sm:rounded-xl overflow-hidden mb-4 sm:mb-6 w-full">
                   <div className="p-3 sm:p-4 border-b border-gray-100 bg-gray-50 w-full">
                     <h3 className="text-base font-bold text-gray-900 mb-2 leading-tight">
                       Build Your Entire Job Application System in{' '}

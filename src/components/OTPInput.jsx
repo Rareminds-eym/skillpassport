@@ -205,14 +205,14 @@ const OTPInput = ({
       </div>
 
       {/* OTP Input Boxes */}
-      <div className="flex gap-1.5 sm:gap-2 md:gap-3 justify-center mb-4 sm:mb-6 w-full overflow-x-auto px-1">
+      <div className="flex gap-1.5 sm:gap-2 md:gap-3 justify-center mb-4 sm:mb-6 w-full">
         {otp.map((digit, index) => (
           <motion.div
             key={index}
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: index * 0.05 }}
-            className="flex-shrink-0"
+            className="flex-1 max-w-[48px] sm:max-w-[56px] md:max-w-[64px]"
           >
             <input
               ref={(el) => (inputRefs.current[index] = el)}
@@ -226,7 +226,7 @@ const OTPInput = ({
               onFocus={() => setActiveIndex(index)}
               disabled={isVerifying || isSuccess}
               className={`
-                w-10 h-12 sm:w-12 sm:h-14 md:w-14 md:h-16 text-center text-lg sm:text-xl md:text-2xl font-bold rounded-lg sm:rounded-xl
+                w-full aspect-square text-center text-lg sm:text-xl md:text-2xl font-bold rounded-lg sm:rounded-xl
                 border-2 outline-none transition-all duration-200
                 ${isSuccess
                   ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
@@ -239,7 +239,7 @@ const OTPInput = ({
                         : 'border-gray-200 bg-white text-gray-400 hover:border-gray-300'
                 }
                 ${isVerifying || isSuccess ? 'cursor-not-allowed opacity-60' : 'cursor-text'}
-                focus:ring-2 sm:focus:ring-4 focus:ring-blue-100
+                focus:ring-2 sm:focus:ring-4 focus:ring-blue-100 focus:outline-none
               `}
               aria-label={`Digit ${index + 1}`}
             />
