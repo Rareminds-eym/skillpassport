@@ -35,9 +35,12 @@ export const onRequest: PagesFunction = async (context) => {
   const path = url.pathname.replace('/api/email', '');
 
   try {
-    // Health check
-    if (path === '' || path === '/') {
-      if (request.method === 'GET') {
+    const supabase = createSupabaseClient(env);
+
+    // GET routes (PDF download and health check)
+    if (request.method === 'GET') {
+      // Health check
+      if (path === '' || path === '/') {
         return jsonResponse({
           status: 'ok',
           service: 'email-api',
@@ -53,12 +56,7 @@ export const onRequest: PagesFunction = async (context) => {
           timestamp: new Date().toISOString()
         });
       }
-    }
 
-    const supabase = createSupabaseClient(env);
-
-    // GET routes (PDF download)
-    if (request.method === 'GET') {
       const pdfMatch = path.match(/^\/download-receipt\/(.+)$/);
       if (pdfMatch) {
         const orderId = pdfMatch[1];
@@ -73,11 +71,20 @@ export const onRequest: PagesFunction = async (context) => {
       return jsonResponse({ success: false, error: 'Method not allowed' }, 405);
     }
 
-    const body = await request.json().catch(() => ({}));
+    // Parse JSON body with proper error handling
+    let body;
+    try {
+      body = await request.json();
+    } catch (error) {
+      return jsonResponse({ 
+        success: false, 
+        error: 'Invalid JSON in request body' 
+      }, 400);
+    }
 
     // Route to appropriate handler
     if (path === '/invitation') {
-      return await handleInvitationEmail(body, env, supabase);
+      return await handleInvitationEmail(request, body, env, supabase);
     }
     
     if (path === '/countdown') {
@@ -96,7 +103,7 @@ export const onRequest: PagesFunction = async (context) => {
       return await handleEventOTP(body, env, supabase);
     }
     
-    if (path === '/' || path === '/send') {
+    if (path === '' || path === '/' || path === '/send') {
       return await handleGenericEmail(body, env, supabase);
     }
 

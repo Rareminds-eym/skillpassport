@@ -155,7 +155,12 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
       await createRoleSpecificRecord(supabaseAdmin, userId, email, fullName, firstName, lastName, body);
 
       // 4. Send welcome email
-      await sendWelcomeEmail(env, email, fullName, body.password, body.role, '');
+      const baseUrl = new URL(request.url).origin;
+      try {
+        await sendWelcomeEmail(env, baseUrl, email, fullName, body.role, '');
+      } catch (emailError) {
+        console.error('Welcome email failed:', emailError);
+      }
 
       return jsonResponse({
         success: true,

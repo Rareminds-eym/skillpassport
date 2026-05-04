@@ -8,7 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Env } from '../../../../src/functions-lib/types';
 import type { EventConfirmationRequest, EventOTPRequest } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib';
-import { sendEmail } from '../services/mailer';
+import { apiLogger } from '../../../lib/logger';
 import {
   generateUserConfirmationHtml,
   generateAdminNotificationHtml,
@@ -38,8 +38,22 @@ export async function handleEventConfirmation(
   }
 
   try {
-    // Determine base URL for PDF download link
-    const baseUrl = env.APP_URL || 'https://skillpassport.rareminds.in';
+    // Validate required env vars
+    if (!env.INTERNAL_API_KEY) {
+      throw new Error('INTERNAL_API_KEY environment variable is not configured');
+    }
+    if (!env.ADMIN_EMAIL) {
+      throw new Error('ADMIN_EMAIL environment variable is not configured');
+    }
+    if (!env.EMAIL_WORKER_URL) {
+      throw new Error('EMAIL_WORKER_URL environment variable is not configured');
+    }
+    if (!env.APP_URL) {
+      throw new Error('APP_URL environment variable is not configured');
+    }
+
+    // Base URL for PDF download link
+    const baseUrl = env.APP_URL;
     
     // Generate email templates
     const userHtml = generateUserConfirmationHtml({
@@ -65,24 +79,31 @@ export async function handleEventConfirmation(
     const adminSubject = getAdminNotificationSubject(name, amount);
 
     // Send both emails in parallel
+    const emailWorkerUrl = `${env.EMAIL_WORKER_URL}/send`;
+
     await Promise.all([
       // User confirmation email
-      sendEmail(env, {
-        to: email,
-        subject: userSubject,
-        html: userHtml,
-        text: `Thank you for registering! Your order ID is ${orderId}. Amount paid: ₹${amount}`,
-        from: env.FROM_EMAIL || 'noreply@rareminds.in',
-        fromName: env.FROM_NAME || 'Skill Passport',
+      fetch(emailWorkerUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Internal-Api-Key': env.INTERNAL_API_KEY,
+        },
+        body: JSON.stringify({ to: email, subject: userSubject, html: userHtml }),
+      }).then(async (res) => {
+        if (!res.ok) throw new Error(`Email worker failed with status ${res.status}`);
       }),
       // Admin notification email
-      sendEmail(env, {
-        to: 'naveen@rareminds.in',
-        subject: adminSubject,
-        html: adminHtml,
-        from: env.FROM_EMAIL || 'noreply@rareminds.in',
-        fromName: env.FROM_NAME || 'Skill Passport',
-      })
+      fetch(emailWorkerUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Internal-Api-Key': env.INTERNAL_API_KEY,
+        },
+        body: JSON.stringify({ to: env.ADMIN_EMAIL, subject: adminSubject, html: adminHtml }),
+      }).then(async (res) => {
+        if (!res.ok) throw new Error(`Email worker failed with status ${res.status}`);
+      }),
     ]);
 
     return jsonResponse({
@@ -90,12 +111,12 @@ export async function handleEventConfirmation(
       message: 'Confirmation emails sent successfully',
       data: {
         userEmail: email,
-        adminEmail: 'naveen@rareminds.in'
+        adminEmail: env.ADMIN_EMAIL
       }
     });
 
   } catch (error: any) {
-    console.error('Error sending event confirmation emails:', error);
+    apiLogger.error('Error sending event confirmation emails', error);
     return jsonResponse({
       success: false,
       error: error.message || 'Failed to send confirmation emails'
@@ -122,25 +143,39 @@ export async function handleEventOTP(
   }
 
   try {
+    if (!env.INTERNAL_API_KEY) {
+      throw new Error('INTERNAL_API_KEY environment variable is not configured');
+    }
+    if (!env.EMAIL_WORKER_URL) {
+      throw new Error('EMAIL_WORKER_URL environment variable is not configured');
+    }
+
     const html = generateOTPEmailHtml({ otp, name });
     const subject = getOTPSubject(otp);
 
-    await sendEmail(env, {
-      to: email,
-      subject,
-      html,
-      from: env.FROM_EMAIL || 'noreply@rareminds.in',
-      fromName: env.FROM_NAME || 'Skill Passport',
+    const response = await fetch(`${env.EMAIL_WORKER_URL}/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Api-Key': env.INTERNAL_API_KEY,
+      },
+      body: JSON.stringify({ to: email, subject, html }),
     });
+
+    if (!response.ok) {
+      throw new Error(`Email worker failed with status ${response.status}`);
+    }
+
+    const result = await response.json();
 
     return jsonResponse({
       success: true,
       message: 'OTP email sent successfully',
-      data: { email }
+      data: { email, result }
     });
 
   } catch (error: any) {
-    console.error('Error sending OTP email:', error);
+    apiLogger.error('Error sending OTP email', error);
     return jsonResponse({
       success: false,
       error: error.message || 'Failed to send OTP email'

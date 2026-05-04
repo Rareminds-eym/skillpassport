@@ -8,8 +8,8 @@ import type { Env } from '../../../../src/functions-lib/types';
 import type { InvitationEmailRequest } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib';
 import { authenticateUser } from '../../shared/auth';
-import { sendEmail } from '../services/mailer';
 import { generateInvitationEmailHtml, getInvitationSubject } from '../services/templates';
+import { apiLogger } from '../../../lib/logger';
 
 export async function handleInvitationEmail(
   request: Request,
@@ -17,7 +17,7 @@ export async function handleInvitationEmail(
   env: Env,
   supabase: SupabaseClient
 ): Promise<Response> {
-  // Simple auth check
+
   const auth = await authenticateUser(request, env as unknown as Record<string, string>);
   if (!auth) {
     return jsonResponse({ error: 'Authentication required' }, 401);
@@ -33,6 +33,14 @@ export async function handleInvitationEmail(
   }
 
   try {
+    // Validate required env vars
+    if (!env.INTERNAL_API_KEY) {
+      throw new Error('INTERNAL_API_KEY environment variable is not configured');
+    }
+    if (!env.EMAIL_WORKER_URL) {
+      throw new Error('EMAIL_WORKER_URL environment variable is not configured');
+    }
+
     const html = generateInvitationEmailHtml({
       organizationName,
       memberType,
@@ -43,13 +51,27 @@ export async function handleInvitationEmail(
 
     const subject = getInvitationSubject(organizationName);
 
-    const result = await sendEmail(env, {
-      to,
-      subject,
-      html,
-      from: env.FROM_EMAIL || 'noreply@rareminds.in',
-      fromName: env.FROM_NAME || 'Skill Passport',
+  const response = await fetch(`${env.EMAIL_WORKER_URL}/send`, {
+
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Api-Key': env.INTERNAL_API_KEY,
+      },
+      body: JSON.stringify({
+        to,
+        subject,
+        html,
+        from: env.FROM_EMAIL || 'noreply@rareminds.in',
+        fromName: env.FROM_NAME || 'Skill Passport',
+      }),
     });
+
+    if (!response.ok) {
+      throw new Error(`Email worker failed with status ${response.status}`);
+    }
+
+    const result = await response.json();
 
     return jsonResponse({
       success: true,
@@ -57,7 +79,7 @@ export async function handleInvitationEmail(
       data: result
     });
   } catch (error: any) {
-    console.error('Error sending invitation email:', error);
+    apiLogger.error('Error sending invitation email', error);
     return jsonResponse({
       success: false,
       error: error.message || 'Failed to send invitation email'
