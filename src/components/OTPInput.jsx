@@ -165,26 +165,26 @@ const OTPInput = ({
       className="w-full"
     >
       {/* Header with email and timer */}
-      <div className="mb-6">
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div className="flex-1">
-            <p className="text-sm text-gray-700 font-medium mb-1">
+      <div className="mb-4 sm:mb-6 w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-start justify-between gap-2 sm:gap-4 mb-3 sm:mb-4">
+          <div className="flex-1 w-full overflow-hidden">
+            <p className="text-xs sm:text-sm text-gray-700 font-medium mb-1">
               Enter verification code
             </p>
-            <p className="text-xs text-gray-500">
-              Sent to <span className="font-semibold text-gray-700">{email}</span>
+            <p className="text-xs text-gray-500 break-words">
+              Sent to <span className="font-semibold text-gray-700 break-all">{email}</span>
             </p>
           </div>
 
           {/* Timer */}
-          <div className="flex items-center gap-2">
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className={`flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg ${
               timeLeft <= 60 
                 ? 'bg-red-50 text-red-700' 
                 : 'bg-blue-50 text-blue-700'
             }`}>
-              <Clock className="w-4 h-4" />
-              <span className="text-sm font-semibold font-mono">
+              <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="text-xs sm:text-sm font-semibold font-mono">
                 {formatTime(timeLeft)}
               </span>
             </div>
@@ -205,13 +205,14 @@ const OTPInput = ({
       </div>
 
       {/* OTP Input Boxes */}
-      <div className="flex gap-3 justify-center mb-6">
+      <div className="flex gap-1.5 sm:gap-2 md:gap-3 justify-center mb-4 sm:mb-6 w-full overflow-x-auto px-1">
         {otp.map((digit, index) => (
           <motion.div
             key={index}
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: index * 0.05 }}
+            className="flex-shrink-0"
           >
             <input
               ref={(el) => (inputRefs.current[index] = el)}
@@ -225,7 +226,7 @@ const OTPInput = ({
               onFocus={() => setActiveIndex(index)}
               disabled={isVerifying || isSuccess}
               className={`
-                w-14 h-16 text-center text-2xl font-bold rounded-xl
+                w-10 h-12 sm:w-12 sm:h-14 md:w-14 md:h-16 text-center text-lg sm:text-xl md:text-2xl font-bold rounded-lg sm:rounded-xl
                 border-2 outline-none transition-all duration-200
                 ${isSuccess
                   ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
@@ -238,7 +239,7 @@ const OTPInput = ({
                         : 'border-gray-200 bg-white text-gray-400 hover:border-gray-300'
                 }
                 ${isVerifying || isSuccess ? 'cursor-not-allowed opacity-60' : 'cursor-text'}
-                focus:ring-4 focus:ring-blue-100
+                focus:ring-2 sm:focus:ring-4 focus:ring-blue-100
               `}
               aria-label={`Digit ${index + 1}`}
             />
@@ -253,10 +254,10 @@ const OTPInput = ({
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -5 }}
-            className="flex items-center justify-center gap-2 text-blue-600 mb-4"
+            className="flex items-center justify-center gap-2 text-blue-600 mb-3 sm:mb-4"
           >
-            <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm font-medium">Verifying code...</span>
+            <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <span className="text-xs sm:text-sm font-medium">Verifying code...</span>
           </motion.div>
         )}
 
@@ -265,10 +266,10 @@ const OTPInput = ({
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className="flex items-center justify-center gap-2 text-emerald-600 mb-4"
+            className="flex items-center justify-center gap-2 text-emerald-600 mb-3 sm:mb-4"
           >
-            <CheckCircle2 className="w-5 h-5" />
-            <span className="text-sm font-semibold">Verified successfully!</span>
+            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="text-xs sm:text-sm font-semibold">Verified successfully!</span>
           </motion.div>
         )}
 
@@ -277,36 +278,36 @@ const OTPInput = ({
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -5 }}
-            className="flex items-center justify-center gap-2 text-red-600 mb-4"
+            className="flex items-center justify-center gap-2 text-red-600 mb-3 sm:mb-4 px-2"
           >
-            <AlertCircle className="w-5 h-5" />
-            <span className="text-sm font-medium">{error}</span>
+            <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+            <span className="text-xs sm:text-sm font-medium break-words text-center">{error}</span>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Resend Button */}
-      <div className="text-center">
+      <div className="text-center w-full overflow-hidden">
         <button
           type="button"
           onClick={handleResend}
           disabled={!canResend || isVerifying || isSuccess}
           className={`
-            inline-flex items-center gap-2 px-5 py-2.5 rounded-xl
-            text-sm font-semibold transition-all duration-200
+            inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl
+            text-xs sm:text-sm font-semibold transition-all duration-200
             ${canResend && !isVerifying && !isSuccess
               ? 'text-blue-600 hover:text-blue-700 hover:bg-blue-50 cursor-pointer'
               : 'text-gray-400 cursor-not-allowed'
             }
           `}
         >
-          <RefreshCw className={`w-4 h-4 ${canResend && !isVerifying && !isSuccess ? 'hover:rotate-180 transition-transform duration-500' : ''}`} />
-          {canResend ? 'Resend Code' : `Resend in ${formatTime(timeLeft)}`}
+          <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${canResend && !isVerifying && !isSuccess ? 'hover:rotate-180 transition-transform duration-500' : ''}`} />
+          <span className="whitespace-nowrap">{canResend ? 'Resend Code' : `Resend in ${formatTime(timeLeft)}`}</span>
         </button>
       </div>
 
       {/* Helper Text */}
-      <p className="text-center text-xs text-gray-500 mt-4">
+      <p className="text-center text-xs text-gray-500 mt-3 sm:mt-4 px-2 break-words">
         Didn't receive the code? Check your spam folder or try resending.
       </p>
     </motion.div>

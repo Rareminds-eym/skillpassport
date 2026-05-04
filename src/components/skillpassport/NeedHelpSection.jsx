@@ -40,12 +40,7 @@ export default function NeedHelpSection() {
 
           {/* Right Column - Compact Contact Info */}
           <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="space-y-3 md:space-y-4 lg:space-y-5 order-2"
-          >
+                >
             {/* Email Card */}
             <motion.a
               href="mailto:marketing@rareminds.in"

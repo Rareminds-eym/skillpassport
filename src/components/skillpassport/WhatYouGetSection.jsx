@@ -333,7 +333,7 @@ export default function WhatYouGetSection() {
             return (
               <motion.div
                 key={idx}
-                initial={{ opacity: 0, x: isEven ? 50 : -50 }}
+                // initial={{ opacity: 0, x: isEven ? 50 : -50 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: idx * 0.15 }}
