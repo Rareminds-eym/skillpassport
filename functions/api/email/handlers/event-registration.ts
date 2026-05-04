@@ -81,7 +81,7 @@ export async function handleEventConfirmation(
     // Send both emails in parallel
     const emailWorkerUrl = `${env.EMAIL_WORKER_URL}/send`;
 
-    await Promise.all([
+    const results = await Promise.all([
       // User confirmation email
       fetch(emailWorkerUrl, {
         method: 'POST',
@@ -123,6 +123,14 @@ export async function handleEventConfirmation(
           throw error;
         }),
     ]);
+
+    // Log successful email sends
+    apiLogger.info('Both confirmation emails sent successfully', {
+      userEmail: email,
+      adminEmail: env.ADMIN_EMAIL,
+      userStatus: results[0].status,
+      adminStatus: results[1].status
+    });
 
     return jsonResponse({
       success: true,
