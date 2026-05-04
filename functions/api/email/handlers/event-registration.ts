@@ -37,20 +37,33 @@ export async function handleEventConfirmation(
     }, 400);
   }
 
+  // Validate required env vars first (fail-fast)
+  if (!env.INTERNAL_API_KEY) {
+    return jsonResponse({
+      success: false,
+      error: 'INTERNAL_API_KEY environment variable is not configured'
+    }, 500);
+  }
+  if (!env.ADMIN_EMAIL) {
+    return jsonResponse({
+      success: false,
+      error: 'ADMIN_EMAIL environment variable is not configured'
+    }, 500);
+  }
+  if (!env.EMAIL_WORKER_URL) {
+    return jsonResponse({
+      success: false,
+      error: 'EMAIL_WORKER_URL environment variable is not configured'
+    }, 500);
+  }
+  if (!env.APP_URL) {
+    return jsonResponse({
+      success: false,
+      error: 'APP_URL environment variable is not configured'
+    }, 500);
+  }
+
   try {
-    // Validate required env vars
-    if (!env.INTERNAL_API_KEY) {
-      throw new Error('INTERNAL_API_KEY environment variable is not configured');
-    }
-    if (!env.ADMIN_EMAIL) {
-      throw new Error('ADMIN_EMAIL environment variable is not configured');
-    }
-    if (!env.EMAIL_WORKER_URL) {
-      throw new Error('EMAIL_WORKER_URL environment variable is not configured');
-    }
-    if (!env.APP_URL) {
-      throw new Error('APP_URL environment variable is not configured');
-    }
 
     // Base URL for PDF download link
     const baseUrl = env.APP_URL;
