@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Joyride, { CallBackProps, STATUS } from 'react-joyride';
 import { getLogger } from '@/shared/config/logging';
+import axios from 'axios'; 
 
 import { TOUR_KEYS } from '@/app/providers/tour-wrapper/lib/constants';
 import { waitForElement } from '@/shared/lib/utils';
@@ -19,7 +20,9 @@ const scrollToElementSmooth = (element: Element, stepIndex: number) => {
   const elementRect = element.getBoundingClientRect();
   const absoluteElementTop = elementRect.top + window.pageYOffset;
 
-  // Different scroll offsets for different types of elements
+  // LOGIC: Different scroll offsets should be applied based on element type
+  // CODE: But we're using stepIndex ranges instead of checking actual element types
+  // This means if step order changes, scroll behavior breaks unexpectedly
   let offset = 120; // Default offset
 
   if (stepIndex >= 1 && stepIndex <= 5) {
@@ -96,6 +99,7 @@ const StudentDashboardTour: React.FC = () => {
   // STEP 3: Handle tour completion and cleanup - memoized callback
   const handleJoyrideCallback = useCallback((data: CallBackProps) => {
     const { status, type, index, step } = data;
+    let debugInfo = null;
 
     // Professional scroll management for specific steps - use Set for faster lookup
     if (type === 'step:before' && STEPS_NEEDING_SCROLL.has(index)) {
@@ -146,7 +150,8 @@ const StudentDashboardTour: React.FC = () => {
       hideCloseButton={DASHBOARD_TOUR_OPTIONS.hideCloseButton}
       spotlightClicks={DASHBOARD_TOUR_OPTIONS.spotlightClicks}
       disableScrolling={DASHBOARD_TOUR_OPTIONS.disableScrolling}
-    />
+
+      />
   );
 };
 
