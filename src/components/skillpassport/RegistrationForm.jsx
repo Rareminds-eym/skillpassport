@@ -20,6 +20,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import toast from 'react-hot-toast';
 import OTPInput from '../OTPInput';
 import paymentsApiService from '../../services/paymentsApiService';
 import { ShinyButton } from '../ui/shiny-button';
@@ -125,11 +126,12 @@ const InputField = ({ label, icon: Icon, error, verified, disabled, rightElement
     initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.3 }}
+    className="w-full overflow-hidden"
   >
-    <label className="block text-sm sm:text-base font-semibold text-gray-800 mb-2">
+    <label className="block text-sm sm:text-base font-semibold text-gray-800 mb-2 break-words">
       {label} {required && <span className="text-blue-600">*</span>}
     </label>
-    <div className="relative">
+    <div className="relative w-full">
       {Icon && (
         <div className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 ${verified ? 'text-emerald-600' : 'text-gray-400'} transition-colors`}>
           <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -139,14 +141,14 @@ const InputField = ({ label, icon: Icon, error, verified, disabled, rightElement
         {...props}
         disabled={disabled}
         className={`
-          w-full h-11 sm:h-12 md:h-14 bg-white border-2 rounded-xl outline-none transition-all duration-200
+          w-full h-11 sm:h-12 md:h-14 bg-white border-2 rounded-xl outline-none focus:outline-none transition-all duration-200
           ${Icon ? 'pl-10 sm:pl-11 md:pl-12' : 'pl-3 sm:pl-4'} ${rightElement ? 'pr-24 sm:pr-32' : 'pr-3 sm:pr-4'}
           ${disabled ? 'bg-gray-50 cursor-not-allowed text-gray-500' : ''}
           ${verified
             ? 'border-emerald-400 bg-emerald-50/30 shadow-sm shadow-emerald-100'
             : error
-              ? 'border-red-400 focus:border-red-500 focus:ring-4 focus:ring-red-50 shadow-sm shadow-red-100'
-              : 'border-gray-200 hover:border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 shadow-sm hover:shadow-md'
+              ? 'border-red-400 focus:border-red-500 shadow-sm shadow-red-100'
+              : 'border-gray-200 hover:border-gray-300 focus:border-blue-500 shadow-sm hover:shadow-md focus:shadow-lg'
           }
           text-gray-900 placeholder:text-gray-400 text-sm sm:text-base
         `}
@@ -173,6 +175,137 @@ const InputField = ({ label, icon: Icon, error, verified, disabled, rightElement
     )}
   </motion.div>
 );
+const UpsellModal = ({ isOpen, onClose, onConfirm, currentUpsell, onToggleUpsell, baseFee, comboFee }) => {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/60 backdrop-blur-sm"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] sm:max-h-[85vh] overflow-hidden"
+          >
+            <div className="p-4 sm:p-6 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-blue-600 to-blue-700">
+              <h3 className="text-lg sm:text-xl font-bold text-white">Complete Your Registration</h3>
+              <button onClick={onClose} className="text-white/80 hover:text-white transition-colors p-1 hover:bg-white/10 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
+              </button>
+            </div>
+            
+            <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-200px)] sm:max-h-[calc(85vh-200px)]">
+              {/* Upsell Option */}
+              <div
+                onClick={onToggleUpsell}
+                className={`border-2 cursor-pointer transition-all duration-200 p-4 rounded-xl mb-4 ${
+                  currentUpsell ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                <div className="flex gap-3 items-start mb-3">
+                  <div className={`w-6 h-6 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-200 ${
+                    currentUpsell ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
+                  }`}>
+                    {currentUpsell && (
+                      <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
+                        <path d="M2.5 6l2.5 2.5 4.5-4.5" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xs text-orange-500 font-bold uppercase tracking-wide mb-1">
+                      ⬇ Add This to Make It Work Better
+                    </div>
+                    <div className="text-sm sm:text-base font-bold text-gray-900">
+                      Yes, I want to track my progress with SkillPassport
+                    </div>
+                    <div className="flex gap-2 items-center mt-2">
+                      <span className="text-sm text-gray-400 line-through">₹4,999</span>
+                      <span className="text-xl sm:text-2xl font-bold text-blue-600">₹{comboFee}</span>
+                      <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-green-200">
+                        90% OFF
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="border-t border-gray-200 pt-3 mt-3">
+                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+                    What You Get with SkillPassport
+                  </p>
+                  {[
+                    "400+ courses across in-demand skills",
+                    "Structured path + portfolio so you always have proof of work",
+                    "Exclusive job and internship opportunities based on your actual skills and progress"
+                  ].map((item, i) => (
+                    <div key={i} className="flex gap-2 mb-2 items-start">
+                      <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center mt-0.5 flex-shrink-0">
+                        <Check className="w-2.5 h-2.5 text-green-600" strokeWidth={3} />
+                      </div>
+                      <span className="text-xs sm:text-sm font-medium text-gray-800 leading-relaxed">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Base Option */}
+              <div
+                onClick={() => onToggleUpsell()}
+                className={`border-2 cursor-pointer transition-all duration-200 p-4 rounded-xl ${
+                  !currentUpsell ? 'border-gray-400 bg-gray-50' : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                <div className="flex gap-3 items-start">
+                  <div className={`w-6 h-6 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-200 ${
+                    !currentUpsell ? 'bg-gray-600 border-gray-600' : 'bg-white border-gray-300'
+                  }`}>
+                    {!currentUpsell && (
+                      <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
+                        <path d="M2.5 6l2.5 2.5 4.5-4.5" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm sm:text-base font-bold text-gray-900 mb-1">
+                      No thanks, just the 1-Day Job-Ready System
+                    </div>
+                    <div className="text-xl sm:text-2xl font-bold text-gray-600">₹{baseFee}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Total */}
+              <div className="mt-4 p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-semibold text-gray-700">Total Amount</span>
+                  <span className="text-2xl sm:text-3xl font-bold text-blue-600">
+                    ₹{currentUpsell ? comboFee : baseFee}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 sm:p-6 bg-gray-50 border-t border-gray-100">
+              <button
+                onClick={onConfirm}
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-3 sm:py-4 rounded-xl transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+              >
+                <Lock className="w-4 h-4" />
+                Proceed to Payment
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
 const TermsModal = ({ isOpen, onClose, onAccept, registrationFee }) => {
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
   const scrollContainerRef = useRef(null);
@@ -344,11 +477,24 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
   const [hasReadTerms, setHasReadTerms] = useState(false);
   const [upsell, setUpsell] = useState(true);
   const [whatsappOptIn, setWhatsappOptIn] = useState(true);
+  const [showUpsellModal, setShowUpsellModal] = useState(false);
+  const [tempUpsell, setTempUpsell] = useState(true);
 
   // Calculate registration fee based on type and upsell
   const REGISTRATION_FEE = isCorporate 
     ? REGISTRATION_FEE_CORPORATE 
     : upsell ? COMBO_FEE_STUDENT : BASE_FEE_STUDENT;
+
+  // Add global style to prevent horizontal overflow
+  useEffect(() => {
+    document.body.style.overflowX = 'hidden';
+    // Force scrollbar to always show to prevent layout shift
+    document.documentElement.style.overflowY = 'scroll';
+    return () => {
+      document.body.style.overflowX = '';
+      document.documentElement.style.overflowY = '';
+    };
+  }, []);
 
   useEffect(() => {
     loadRazorpay()
@@ -437,6 +583,18 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
       return;
     }
 
+    // Show upsell modal for student registration only
+    if (!isCorporate) {
+      setTempUpsell(upsell);
+      setShowUpsellModal(true);
+      return;
+    }
+
+    // For corporate, proceed directly
+    processPayment();
+  };
+
+  const processPayment = async (selectedUpsell = null) => {
     if (!razorpayReady || !window.Razorpay) {
       setPaymentError('Payment gateway is loading. Please wait.');
       return;
@@ -445,9 +603,15 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
     setLoading(true);
     setPaymentError(null);
 
+    // Use the passed parameter if available, otherwise use current state
+    const finalUpsell = selectedUpsell !== null ? selectedUpsell : upsell;
+    const paymentAmount = isCorporate 
+      ? REGISTRATION_FEE_CORPORATE 
+      : finalUpsell ? COMBO_FEE_STUDENT : BASE_FEE_STUDENT;
+
     try {
       const orderData = await paymentsApiService.createEventOrder({
-        amount: REGISTRATION_FEE * 100,
+        amount: paymentAmount * 100,
         currency: 'INR',
         planName: `Pre-Registration - ${campaign}`,
         userEmail: form.email.trim(),
@@ -487,9 +651,9 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                 name: form.name.trim(),
                 email: form.email.trim(),
                 phone: form.phone.replace(/\D/g, ''),
-                amount: REGISTRATION_FEE,
+                amount: paymentAmount,
                 orderId: response.razorpay_order_id,
-                product: upsell ? 'guide-skillpassport-combo' : 'skillpassport-basic',
+                product: finalUpsell ? 'guide-skillpassport-combo' : 'skillpassport-basic',
                 type: 'registration',
                 status: 'completed',
                 whatsappOptIn,
@@ -500,7 +664,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
               name: form.name.trim(),
               email: form.email.trim(),
               phone: form.phone.replace(/\D/g, ''),
-              amount: REGISTRATION_FEE,
+              amount: paymentAmount,
               orderId: response.razorpay_order_id,
               campaign,
             });
@@ -508,7 +672,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
             setOrderDetails({
               orderId: response.razorpay_order_id,
               paymentId: response.razorpay_payment_id,
-              amount: REGISTRATION_FEE,
+              amount: paymentAmount,
               email: form.email.trim(),
               name: form.name.trim(),
             });
@@ -517,7 +681,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
             console.error('Update error:', err);
             setOrderDetails({
               orderId: response.razorpay_order_id,
-              amount: REGISTRATION_FEE,
+              amount: paymentAmount,
               email: form.email.trim(),
               name: form.name.trim(),
             });
@@ -544,12 +708,40 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
         }
 
         setPaymentError(response.error?.description || 'Payment failed. Please try again.');
+        toast.error(response.error?.description || 'Payment failed. Please try again.', {
+          duration: 4000,
+          position: 'top-center',
+        });
         setLoading(false);
       });
       razorpay.open();
     } catch (error) {
       console.error('Payment error:', error);
-      setPaymentError(error.message || 'Something went wrong. Please try again.');
+      const errorMessage = error.message || 'Something went wrong. Please try again.';
+      
+      // Show toast notification for specific errors
+      if (errorMessage.toLowerCase().includes('already registered')) {
+        toast.error('You have already registered with this email. Please check your inbox for confirmation.', {
+          duration: 5000,
+          position: 'top-center',
+          style: {
+            background: '#FEE2E2',
+            color: '#991B1B',
+            fontWeight: '600',
+            padding: '16px',
+            borderRadius: '12px',
+            border: '2px solid #FCA5A5',
+          }
+    
+        });
+      } else {
+        toast.error(errorMessage, {
+          duration: 4000,
+          position: 'top-center',
+        });
+      }
+      
+      setPaymentError(errorMessage);
       setLoading(false);
     }
   };
@@ -616,15 +808,15 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
   }
   // Registration Form
   return (
-    <section id="registration-form" className="py-8 sm:py-12 md:py-16 lg:py-20 bg-gradient-to-br from-gray-50 via-slate-50 to-gray-100">
+    <section id="registration-form" className="pt-0 pb-8 sm:py-12 md:py-16 lg:py-20 bg-gradient-to-br from-gray-50 via-slate-50 to-gray-100 overflow-x-hidden">
       {!isCorporate ? (
         // Student Registration - Two Column Layout
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="w-full max-w-6xl mx-auto px-0 sm:px-4 md:px-6">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="text-center mb-6 sm:mb-8"
+            className="text-center mb-0 sm:mb-8"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -681,9 +873,9 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                     </p>
                     <div className="space-y-3">
                       {[
-                        "1-day strategy with zero guesswork",
-                        "Resume + AI setup that actually gets you interviews", 
-                        "Outreach + interview flow that gets responses"
+                        "1-day strategy",
+                        "Resume + AI setup", 
+                        "Outreach + interview flow"
                       ].map((item, i) => (
                         <div key={i} className="flex items-start gap-3">
                           <div className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center mt-0.5 flex-shrink-0">
@@ -733,10 +925,49 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="w-full"
+              className="w-full overflow-hidden"
             >
-              <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl border border-gray-100 p-5 sm:p-6 md:p-8 lg:p-10">
-                <div className="space-y-4 sm:space-y-5">
+              <div className="bg-white rounded-none sm:rounded-2xl md:rounded-3xl shadow-xl border-0 sm:border border-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 overflow-hidden">
+                
+                {/* Fee summary - Moved above form fields */}
+                <div className="border border-gray-200 rounded-none sm:rounded-xl overflow-hidden mb-4 sm:mb-6 w-full">
+                  <div className="p-3 sm:p-4 border-b border-gray-100 bg-gray-50 w-full">
+                    <h3 className="text-base font-bold text-gray-900 mb-2 leading-tight">
+                      Build Your Entire Job Application System in{' '}
+                      <span className="text-blue-600">1 Day</span> Using AI
+                    </h3>
+                    <p className="text-gray-600 text-xs mb-3 leading-relaxed break-words">
+                      Stop applying randomly. Set up a system that gets you interviews.
+                    </p>
+                    <div className="border-t border-gray-200 pt-3 space-y-2">
+                      {[
+                        "1-day strategy",
+                        "Resume + AI setup",
+                        "Outreach + interview flow"
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <div className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center mt-0.5 flex-shrink-0">
+                            <Check className="w-2.5 h-2.5 text-blue-600" strokeWidth={3} />
+                          </div>
+                          <span className="text-xs text-gray-700 leading-relaxed break-words">{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="p-3 sm:p-4 w-full">
+                    <div className="flex justify-between items-center gap-2 flex-wrap">
+                      <span className="text-xs sm:text-sm text-gray-600 break-words">1-Day Job-Ready System</span>
+                      <span className="text-xs sm:text-sm font-semibold whitespace-nowrap">Starting from ₹{BASE_FEE_STUDENT}</span>
+                    </div>
+                  </div>
+                  <div className="p-2 sm:p-3 flex justify-between items-center border-t-2 border-blue-600 bg-blue-50 gap-2 w-full">
+                    <span className="text-xs sm:text-sm font-semibold text-gray-700 break-words flex-1">Choose your plan in next step</span>
+                    <span className="text-base sm:text-lg font-bold text-blue-600 flex-shrink-0">→</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4 sm:space-y-5 w-full overflow-hidden">
                   <InputField
                     label="Full Name"
                     icon={User}
@@ -788,9 +1019,9 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
-                          className="mt-2 sm:mt-3 overflow-hidden"
+                          className="mt-2 sm:mt-3 overflow-hidden w-full"
                         >
-                          <div className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl border-2 border-blue-100 shadow-lg">
+                          <div className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl border-2 border-blue-100 shadow-lg w-full overflow-hidden">
                             <OTPInput
                               length={6}
                               email={form.email}
@@ -802,6 +1033,8 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                                     setEmailVerified(true);
                                     setOtpSent(false);
                                     setOtpError('');
+                                    // Clear email error when verified
+                                    setErrors(prev => ({ ...prev, email: null }));
                                   } else {
                                     setOtpError('Invalid verification code. Please try again.');
                                   }
@@ -929,226 +1162,114 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                       )}
                     </AnimatePresence> */}
                   </div>
+
+                  {/* WhatsApp Opt-in - Moved here */}
+                  <div className="mb-0">
+                    <label className="flex gap-2 sm:gap-3 items-start cursor-pointer" onClick={() => setWhatsappOptIn(v => !v)}>
+                      <div className={`w-5 h-5 sm:w-4 sm:h-4 min-w-[20px] sm:min-w-[16px] rounded border-2 flex items-center justify-center flex-shrink-0 mt-[1px] transition-all duration-200 ${
+                        whatsappOptIn ? 'bg-green-500 border-green-500' : 'border-gray-300'
+                      }`}>
+                        {whatsappOptIn && (
+                          <svg width="12" height="12" viewBox="0 0 10 10" fill="none" className="sm:w-[10px] sm:h-[10px]">
+                            <path d="M1.5 5l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-sm text-gray-600 leading-[1.4] flex-1 pt-[1px]">
+                        I'd like to receive updates & reminders on WhatsApp and email
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* Terms - Moved here */}
+                  <div className="mb-4 items-center justify-center">
+                    <label className="flex gap-2 sm:gap-3 items-center">
+                      <div
+                        onClick={() => { 
+                          setConsentGiven(v => !v); 
+                          if (errors.consent) setErrors(p => ({ ...p, consent: null })); 
+                        }}
+                        className={`w-5 h-5 sm:w-4 sm:h-4 min-w-[20px] sm:min-w-[16px] rounded border-2 flex items-center justify-center flex-shrink-0 mt-[1px] cursor-pointer transition-all duration-200 ${
+                          errors.consent ? 'border-red-400' : consentGiven ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
+                        }`}
+                      >
+                        {consentGiven && (
+                          <svg width="12" height="12" viewBox="0 0 10 10" fill="none" className="sm:w-[10px] sm:h-[10px]">
+                            <path d="M1.5 5l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-sm text-gray-600 leading-[1.4] flex-1 pt-[1px]">
+                        I agree to the <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShowTerms(true);
+                          }}
+                          className="text-blue-600 underline cursor-pointer inline"
+                        >Terms & Conditions</button>
+                      </span>
+                    </label>
+                    {errors.consent && (
+                      <div className="text-sm text-orange-500 mt-1 pl-7 sm:pl-7 font-medium">
+                        {errors.consent}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Register Button - Moved here */}
+                  <ShinyButton
+                    onClick={handlePayment}
+                    disabled={loading || !consentGiven}
+                    className={`w-full mb-4 ${loading || !consentGiven ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {loading ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Processing...</span>
+                      </div>
+                    ) : (
+                      <span className="flex items-center justify-center gap-2">
+                        <Lock className="w-4 h-4" /> Register Now ›
+                      </span>
+                    )}
+                  </ShinyButton>
+                   {/* 7-Day Refund Guarantee - Moved here */}
+                  <MobileRefundBadge />
+
+                  {/* Trust badges - Moved here */}
+                  <div className="flex flex-wrap justify-center gap-3 sm:gap-5 mb-4 w-full">
+                    {[["🔒", "SSL Secured"], ["🛡️", "Razorpay Protected"]].map(([icon, label]) => (
+                      <div key={label} className="flex items-center gap-1 text-xs text-gray-500">
+                        {icon} {label}
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
            
-                <div className="lg:hidden mt-4 mb-4">
+                <div className="lg:hidden mt-4 mb-4 w-full overflow-hidden">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.4 }}
-                    className="bg-white rounded-lg py-4 px-2.5 border border-gray-200 shadow-sm"
+                    className="bg-white rounded-lg py-3 px-2 border border-gray-200 shadow-sm w-full"
                   >
-                    <div className="flex items-center justify-around text-center">
+                    <div className="flex items-center justify-around text-center gap-2 w-full">
                       {[
                         ["2,400+", "Students"],
                         ["4.9★", "Rating"],
                         ["1 Day", "System"]
                       ].map(([value, label]) => (
-                        <div key={label}>
-                          <div className="text-sm font-bold text-blue-600">{value}</div>
-                          <div className="text-xs text-gray-500">{label}</div>
+                        <div key={label} className="flex-1 min-w-0">
+                          <div className="text-sm font-bold text-blue-600 truncate">{value}</div>
+                          <div className="text-xs text-gray-500 truncate">{label}</div>
                         </div>
                       ))}
                     </div>
                   </motion.div>
                 </div>
-
-                {/* Fee summary */}
-                <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
-                  <div className="p-4 flex gap-3 items-center border-b border-gray-100">
-                    <div className="w-3 h-3 rounded-full bg-orange-500 flex-shrink-0" />
-                    <div>
-                      <div className="text-sm font-semibold text-gray-900">Registration Fee</div>
-                      <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                        <Lock className="w-3 h-3" /> Secure payment via Razorpay
-                      </div>
-                    </div>
-                  </div>
-
-                
-                  <div className="lg:hidden p-4 border-b border-gray-100 bg-gray-50">
-                    <div className="inline-block bg-blue-50 text-blue-600 text-xs font-semibold uppercase tracking-wider rounded-full px-3 py-1 mb-3 border border-blue-200">
-                      AI-Powered Career System
-                    </div>
-                    <h3 className="text-base font-bold text-gray-900 mb-2 leading-tight">
-                      Build Your Entire Job Application System in{' '}
-                      <span className="text-blue-600">1 Day</span> Using AI
-                    </h3>
-                    <p className="text-gray-600 text-xs mb-3 leading-relaxed">
-                      Stop applying randomly. Set up a system that gets you interviews.
-                    </p>
-                    <div className="border-t border-gray-200 pt-3 space-y-2">
-                      {[
-                        "1-day strategy with zero guesswork",
-                        "Resume + AI setup that actually gets you interviews",
-                        "Outreach + interview flow that gets responses"
-                      ].map((item, i) => (
-                        <div key={i} className="flex items-start gap-2">
-                          <div className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center mt-0.5 flex-shrink-0">
-                            <Check className="w-2.5 h-2.5 text-blue-600" strokeWidth={3} />
-                          </div>
-                          <span className="text-xs text-gray-700 leading-relaxed">{item}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* UPSELL - between Registration Fee and line item */}
-                  <div
-                    onClick={() => setUpsell(v => !v)}
-                    className={`border-b cursor-pointer transition-all duration-200 p-4 ${
-                      upsell ? 'border-blue-200 bg-blue-50' : 'border-gray-100 bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex gap-3 items-start mb-3">
-                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-200 ${
-                        upsell ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
-                      }`}>
-                        {upsell && (
-                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                            <path d="M2.5 6l2.5 2.5 4.5-4.5" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-xs text-orange-500 font-bold uppercase tracking-wide mb-1">
-                          ⬇ Add This to Make It Work Better
-                        </div>
-                        <div className="text-sm font-bold text-gray-900">
-                          Yes, I want to track my progress with SkillPassport
-                        </div>
-                        <div className="flex gap-2 items-center mt-1">
-                          <span className="text-sm text-gray-400 line-through">₹4,999</span>
-                          <span className="text-lg font-bold text-blue-600">₹{COMBO_FEE_STUDENT}</span>
-                          <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-green-200">
-                            90% OFF
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="border-t border-blue-200 pt-3">
-                      <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
-                        What You Get with SkillPassport
-                      </p>
-                      {[
-                        "400+ courses across in-demand skills",
-                        "Structured path + portfolio so you always have proof of work",
-                        "Exclusive job and internship opportunities based on your actual skills and progress"
-                      ].map((item, i) => (
-                        <div key={i} className="flex gap-2 mb-2 items-start">
-                          <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center mt-0.5 flex-shrink-0">
-                            <Check className="w-2.5 h-2.5 text-green-600" strokeWidth={3} />
-                          </div>
-                          <span className="text-sm font-bold text-gray-800 leading-relaxed">{item}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="p-4">
-                    {upsell ? (
-                      <div className="flex justify-between">
-                        <span className="text-sm font-bold text-gray-800">Guide + SkillPassport Combo</span>
-                        <span className="text-sm font-semibold">₹{COMBO_FEE_STUDENT}</span>
-                      </div>
-                    ) : (
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-600">1-Day Job-Ready System</span>
-                        <span className="text-sm font-semibold">₹{BASE_FEE_STUDENT}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-3 flex justify-between items-center border-t-2 border-blue-600 bg-blue-50">
-                    <span className="text-sm font-semibold text-gray-700">Total Amount</span>
-                    <span className="text-xl font-bold text-blue-600">₹{REGISTRATION_FEE}</span>
-                  </div>
-                </div>
-
-                {/* WhatsApp Opt-in */}
-                <div className="mb-4">
-                  <label className="flex gap-3 items-start cursor-pointer" onClick={() => setWhatsappOptIn(v => !v)}>
-                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-200 ${
-                      whatsappOptIn ? 'bg-green-500 border-green-500' : 'border-gray-300'
-                    }`}>
-                      {whatsappOptIn && (
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                          <path d="M1.5 5l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      )}
-                    </div>
-                    <span className="text-sm text-gray-600 leading-relaxed">
-                       I'd like to receive updates & reminders on WhatsApp
-                    </span>
-                  </label>
-                </div>
-
-                {/* Terms */}
-                <div className="mb-4">
-                  <label className="flex gap-3 items-start cursor-pointer">
-                    <div
-                      onClick={() => { 
-                        setConsentGiven(v => !v); 
-                        if (errors.consent) setErrors(p => ({ ...p, consent: null })); 
-                      }}
-                      className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-200 ${
-                        errors.consent ? 'border-red-400' : consentGiven ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
-                      }`}
-                    >
-                      {consentGiven && (
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                          <path d="M1.5 5l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      )}
-                    </div>
-                    <span className="text-sm text-gray-600 leading-relaxed">
-                      I agree to the{' '}
-                      <button
-                        type="button"
-                        onClick={() => setShowTerms(true)}
-                        className="text-blue-600 underline cursor-pointer"
-                      >
-                        Terms & Conditions
-                      </button>
-                      {' '}and consent to the payment of ₹{REGISTRATION_FEE} for registration.
-                    </span>
-                  </label>
-                  {errors.consent && (
-                    <div className="text-sm text-orange-500 mt-1 pl-7 font-medium">
-                      {errors.consent}
-                    </div>
-                  )}
-                </div>
-
-                {/* CTA */}
-                {/* CTA */}
-                <ShinyButton
-                  onClick={handlePayment}
-                  disabled={loading || !consentGiven}
-                  className={`w-full ${loading || !consentGiven ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {loading ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Processing...</span>
-                    </div>
-                  ) : (
-                    <span className="flex items-center justify-center gap-2">
-                      <Lock className="w-4 h-4" /> Register Now ›
-                    </span>
-                  )}
-                </ShinyButton>
-
-                {/* Trust badges */}
-                <div className="flex justify-center gap-5 mt-4">
-                  {[["🔒", "SSL Secured"], ["🛡️", "Razorpay Protected"]].map(([icon, label]) => (
-                    <div key={label} className="flex items-center gap-1 text-xs text-gray-500">
-                      {icon} {label}
-                    </div>
-                  ))}
-                </div>
-
-                <MobileRefundBadge />
               </div>
             </motion.div>
           </div>
@@ -1254,6 +1375,8 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                                 setEmailVerified(true);
                                 setOtpSent(false);
                                 setOtpError('');
+                                // Clear email error when verified
+                                setErrors(prev => ({ ...prev, email: null }));
                               } else {
                                 setOtpError('Invalid verification code. Please try again.');
                               }
@@ -1383,6 +1506,111 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                 </AnimatePresence> */}
               </div>
 
+              {/* WhatsApp Opt-in - Moved here */}
+              <div className="mb-0">
+                <label className="flex gap-2 sm:gap-3 items-start cursor-pointer" onClick={() => setWhatsappOptIn(v => !v)}>
+                  <div className={`w-5 h-5 sm:w-4 sm:h-4 min-w-[20px] sm:min-w-[16px] rounded border-2 flex items-center justify-center flex-shrink-0 mt-[1px] transition-all duration-200 ${
+                    whatsappOptIn ? 'bg-green-500 border-green-500' : 'border-gray-300'
+                  }`}>
+                    {whatsappOptIn && (
+                      <svg width="12" height="12" viewBox="0 0 10 10" fill="none" className="sm:w-[10px] sm:h-[10px]">
+                        <path d="M1.5 5l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="text-sm text-gray-600 leading-[1.4] flex-1 pt-[1px]">
+                    I'd like to receive updates & reminders on WhatsApp and email
+                  </span>
+                </label>
+              </div>
+
+              {/* Terms - Moved here */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="mb-4"
+              >
+                <label className="flex gap-2 sm:gap-3 items-start">
+                  <div
+                    onClick={() => { 
+                      setConsentGiven(v => !v); 
+                      if (errors.consent) setErrors(p => ({ ...p, consent: null })); 
+                    }}
+                    className={`w-5 h-5 sm:w-4 sm:h-4 min-w-[20px] sm:min-w-[16px] rounded border-2 flex items-center justify-center flex-shrink-0 mt-[1px] cursor-pointer transition-all duration-200 ${
+                      errors.consent ? 'border-red-400' : consentGiven ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
+                    }`}
+                  >
+                    {consentGiven && (
+                      <svg width="12" height="12" viewBox="0 0 10 10" fill="none" className="sm:w-[10px] sm:h-[10px]">
+                        <path d="M1.5 5l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="text-sm text-gray-600 leading-[1.4] flex-1 pt-[1px]">
+                    I agree to the <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowTerms(true);
+                      }}
+                      className="text-blue-600 underline cursor-pointer inline"
+                    >Terms & Conditions</button>
+                  </span>
+                </label>
+                {errors.consent && (
+                  <div className="text-sm text-orange-500 mt-1 pl-7 font-medium">
+                    {errors.consent}
+                  </div>
+                )}
+              </motion.div>
+
+              {/* Register Button - Moved here */}
+              <AnimatePresence>
+                {paymentError && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="mb-3 sm:mb-4 p-3 bg-red-50 border-2 border-red-200 rounded-lg sm:rounded-xl shadow-sm"
+                  >
+                    <p className="text-xs sm:text-sm text-red-700 flex items-center gap-2 font-medium">
+                      <X className="w-4 h-4" />
+                      {paymentError}
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <button
+                onClick={handlePayment}
+                disabled={loading || !consentGiven}
+                className={`w-full bg-gradient-to-r from-gray-600 to-gray-700 border-none rounded-full py-4 text-sm font-bold text-white cursor-pointer flex items-center justify-center gap-2 font-inherit shadow-lg transition-opacity duration-150 ${
+                  loading || !consentGiven ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
+                }`}
+              >
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Processing...</span>
+                  </div>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4" /> Register Now ›
+                  </>
+                )}
+              </button>
+
+              {/* Trust badges */}
+              <div className="flex justify-center gap-5 mt-4">
+                {[["🔒", "SSL Secured"], ["🛡️", "Razorpay Protected"]].map(([icon, label]) => (
+                  <div key={label} className="flex items-center gap-1 text-xs text-gray-500">
+                    {icon} {label}
+                  </div>
+                ))}
+              </div>
+
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1429,91 +1657,6 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                   <div className="h-1 sm:h-1.5 bg-blue-600" />
                 </div>
               </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-                className="mt-5 sm:mt-6"
-              >
-                <label className="flex gap-3 items-start cursor-pointer">
-                  <div
-                    onClick={() => { 
-                      setConsentGiven(v => !v); 
-                      if (errors.consent) setErrors(p => ({ ...p, consent: null })); 
-                    }}
-                    className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-200 ${
-                      errors.consent ? 'border-red-400' : consentGiven ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
-                    }`}
-                  >
-                    {consentGiven && (
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <path d="M1.5 5l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </div>
-                  <span className="text-sm text-gray-600 leading-relaxed">
-                    I agree to the{' '}
-                    <button
-                      type="button"
-                      onClick={() => setShowTerms(true)}
-                      className="text-blue-600 underline cursor-pointer"
-                    >
-                      Terms & Conditions
-                    </button>
-                    {' '}and consent to the payment of ₹{REGISTRATION_FEE} for registration.
-                  </span>
-                </label>
-                {errors.consent && (
-                  <div className="text-sm text-orange-500 mt-1 pl-7 font-medium">
-                    {errors.consent}
-                  </div>
-                )}
-              </motion.div>
-
-              <AnimatePresence>
-                {paymentError && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="mt-3 sm:mt-4 p-3 bg-red-50 border-2 border-red-200 rounded-lg sm:rounded-xl shadow-sm"
-                  >
-                    <p className="text-xs sm:text-sm text-red-700 flex items-center gap-2 font-medium">
-                      <X className="w-4 h-4" />
-                      {paymentError}
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <button
-                onClick={handlePayment}
-                disabled={loading || !consentGiven}
-                className={`w-full bg-gradient-to-r from-gray-600 to-gray-700 border-none rounded-full py-4 text-sm font-bold text-white cursor-pointer flex items-center justify-center gap-2 font-inherit shadow-lg transition-opacity duration-150 ${
-                  loading || !consentGiven ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
-                }`}
-              >
-                {loading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Processing...</span>
-                  </div>
-                ) : (
-                  <>
-                    <Lock className="w-4 h-4" /> Register Now ›
-                  </>
-                )}
-              </button>
-
-              {/* Trust badges */}
-              <div className="flex justify-center gap-5 mt-4">
-                {[["🔒", "SSL Secured"], ["🛡️", "Razorpay Protected"]].map(([icon, label]) => (
-                  <div key={label} className="flex items-center gap-1 text-xs text-gray-500">
-                    {icon} {label}
-                  </div>
-                ))}
-              </div>
             </div>
           </motion.div>
 
@@ -1531,10 +1674,27 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
         </div>
       )}
 
+      <UpsellModal
+        isOpen={showUpsellModal}
+        onClose={() => setShowUpsellModal(false)}
+        onConfirm={() => {
+          setUpsell(tempUpsell);
+          setShowUpsellModal(false);
+          processPayment(tempUpsell);
+        }}
+        currentUpsell={tempUpsell}
+        onToggleUpsell={() => setTempUpsell(v => !v)}
+        baseFee={BASE_FEE_STUDENT}
+        comboFee={COMBO_FEE_STUDENT}
+      />
+
       <TermsModal
         isOpen={showTerms}
         onClose={() => setShowTerms(false)}
-        onAccept={() => setHasReadTerms(true)}
+        onAccept={() => {
+          setHasReadTerms(true);
+          setConsentGiven(true);
+        }}
         registrationFee={REGISTRATION_FEE}
       />
     </section>
