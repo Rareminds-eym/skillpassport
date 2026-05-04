@@ -105,11 +105,12 @@ export async function handleEventConfirmation(
         body: JSON.stringify({ to: email, subject: userSubject, html: userHtml }),
       })
         .then(async (res) => {
+          const status = res.status;
           if (!res.ok) {
             const errorText = await res.text();
-            throw new Error(`User email failed with status ${res.status}: ${errorText}`);
+            throw new Error(`User email failed with status ${status}: ${errorText}`);
           }
-          return res;
+          return { status, success: true };
         })
         .catch((error) => {
           apiLogger.error('User confirmation email error', error);
@@ -125,11 +126,12 @@ export async function handleEventConfirmation(
         body: JSON.stringify({ to: env.ADMIN_EMAIL, subject: adminSubject, html: adminHtml }),
       })
         .then(async (res) => {
+          const status = res.status;
           if (!res.ok) {
             const errorText = await res.text();
-            throw new Error(`Admin email failed with status ${res.status}: ${errorText}`);
+            throw new Error(`Admin email failed with status ${status}: ${errorText}`);
           }
-          return res;
+          return { status, success: true };
         })
         .catch((error) => {
           apiLogger.error('Admin notification email error', error);
