@@ -1,4 +1,5 @@
 /**
+ * 
  * RegistrationForm - Embedded form component for Skill Passport
  * Extracted from SimpleEventRegistration - contains only the form logic
  */
@@ -407,7 +408,7 @@ const TermsModal = ({ isOpen, onClose, onAccept, registrationFee }) => {
 const MobileRefundBadge = () => {
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className="lg:hidden mt-4">
+    <div className="mt-4">
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -867,7 +868,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                     Stop applying randomly. Set up a system that gets you interviews.
                   </p>
                   
-                  <div className="border-t border-gray-100 pt-5">
+                  <div className="border-t border-gray-100 pt-5 mb-5">
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
                       What You'll Get
                     </p>
@@ -886,19 +887,16 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                       ))}
                     </div>
                   </div>
-                </div>
 
-                {/* Guarantee Card */}
-                <div className="bg-white rounded-xl p-5 sm:p-6 border border-emerald-200 shadow-lg">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <Shield className="w-5 h-5 text-emerald-600" />
+                  {/* Pricing Section */}
+                  <div className="border-t border-gray-100 pt-5">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-gray-600">1-Day Job-Ready System</span>
+                      <span className="text-sm font-semibold text-gray-900">Starting from ₹{BASE_FEE_STUDENT}</span>
                     </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900 mb-1">7-Day Refund Guarantee</h4>
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        If you don't find it useful, get your money back. No questions asked.
-                      </p>
+                    <div className="flex justify-between items-center py-2 px-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <span className="text-sm font-semibold text-gray-700">Choose your plan in next step</span>
+                      <span className="text-lg font-bold text-blue-600">→</span>
                     </div>
                   </div>
                 </div>
@@ -929,8 +927,8 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
             >
               <div className="bg-white rounded-none sm:rounded-2xl md:rounded-3xl shadow-xl border-0 sm:border border-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 overflow-hidden">
                 
-                {/* Fee summary - Moved above form fields */}
-                <div className="border border-gray-200 rounded-none sm:rounded-xl overflow-hidden mb-4 sm:mb-6 w-full">
+                {/* Fee summary - Mobile only (shows job system info) */}
+                <div className="lg:hidden border border-gray-200 rounded-none sm:rounded-xl overflow-hidden mb-4 sm:mb-6 w-full">
                   <div className="p-3 sm:p-4 border-b border-gray-100 bg-gray-50 w-full">
                     <h3 className="text-base font-bold text-gray-900 mb-2 leading-tight">
                       Build Your Entire Job Application System in{' '}
@@ -966,6 +964,8 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                     <span className="text-base sm:text-lg font-bold text-blue-600 flex-shrink-0">→</span>
                   </div>
                 </div>
+
+
 
                 <div className="space-y-4 sm:space-y-5 w-full overflow-hidden">
                   <InputField
@@ -1235,7 +1235,8 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                       </span>
                     )}
                   </ShinyButton>
-                   {/* 7-Day Refund Guarantee - Moved here */}
+
+                   {/* 7-Day Refund Guarantee - Both mobile and desktop */}
                   <MobileRefundBadge />
 
                   {/* Trust badges - Moved here */}
@@ -1278,7 +1279,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.7 }}
-            className="text-center text-xs sm:text-sm text-gray-500 mt-5 sm:mt-6 px-4"
+            className="text-center text-xs sm:text-sm text-gray-500 mt-5 sm:mt-6 px-4 mx-auto max-w-md"
           >
             Need help?{' '}
             <a href="https://rareminds.in/contact" className="text-blue-600 hover:text-blue-700 font-semibold underline underline-offset-2">
@@ -1664,7 +1665,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.7 }}
-            className="text-center text-xs sm:text-sm text-gray-500 mt-5 sm:mt-6 px-4"
+            className="text-center text-xs sm:text-sm text-gray-500 mt-5 sm:mt-6 px-4 mx-auto max-w-md"
           >
             Need help?{' '}
             <a href="https://rareminds.in/contact" className="text-blue-600 hover:text-blue-700 font-semibold underline underline-offset-2">
