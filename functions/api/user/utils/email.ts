@@ -21,10 +21,19 @@ async function sendEmailViaWorker(
   text?: string
 ): Promise<boolean> {
   try {
-    const response = await fetch(EMAIL_API_URL, {
+    // Validate required env vars
+    if (!env.EMAIL_WORKER_URL) {
+      throw new Error('EMAIL_WORKER_URL environment variable is not configured');
+    }
+    if (!env.INTERNAL_API_KEY) {
+      throw new Error('INTERNAL_API_KEY environment variable is not configured');
+    }
+
+    const response = await fetch(`${env.EMAIL_WORKER_URL}/send`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-Internal-Api-Key': env.INTERNAL_API_KEY,
       },
       body: JSON.stringify({
         to,
@@ -37,8 +46,8 @@ async function sendEmailViaWorker(
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      apiLogger.error('Email API error', undefined, { error });
+      const errorText = await response.text();
+      apiLogger.error('Email API error', new Error(`HTTP ${response.status}: ${errorText}`));
       return false;
     }
 
@@ -98,7 +107,7 @@ export async function sendWelcomeEmail(
             ${additionalInfo ? `<p>${additionalInfo}</p>` : ''}
           </div>
           
-          <a href="https://skillpassport.rareminds.in/login" class="button">Login Now</a>
+          <a href="${baseUrl}/login" class="button">Login Now</a>
           
           <p>If you have any questions, please don't hesitate to contact our support team.</p>
         </div>
@@ -110,30 +119,27 @@ export async function sendWelcomeEmail(
     </html>
   `;
 
-  const text = `Welcome to SkillPassport!\n\nHello ${name},\n\nYour account has been created successfully.\n\nEmail: ${email}\nRole: ${role}\n\nLogin at: https://skillpassport.rareminds.in/login`;
+  const text = `Welcome to SkillPassport!\n\nHello ${name},\n\nYour account has been created successfully.\n\nEmail: ${email}\nRole: ${role}\n\nLogin at: ${baseUrl}/login`;
 
-  const emailApiUrl = `${baseUrl}/api/email`;
-  try {
-    const response = await fetch(emailApiUrl, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'X-Internal-Api-Key': env.INTERNAL_API_KEY
-      },
-      body: JSON.stringify({
-        to: email,
-        subject,
-        html,
-        text,
-        from: FROM_EMAIL,
-        fromName: FROM_NAME,
-      }),
-    });
-    if (!response.ok) {
-      apiLogger.error('Welcome email failed', undefined, { error: await response.text() });
-    }
-  } catch (error) {
-    apiLogger.error('Welcome email failed', error as Error);
+  const response = await fetch(`${env.EMAIL_WORKER_URL}/send`, {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'X-Internal-Api-Key': env.INTERNAL_API_KEY
+    },
+    body: JSON.stringify({
+      to: email,
+      subject,
+      html,
+      text,
+      from: FROM_EMAIL,
+      fromName: FROM_NAME,
+    }),
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Welcome email failed with status ${response.status}: ${errorText}`);
   }
 }
 

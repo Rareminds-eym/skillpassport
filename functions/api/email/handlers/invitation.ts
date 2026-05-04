@@ -51,8 +51,7 @@ export async function handleInvitationEmail(
 
     const subject = getInvitationSubject(organizationName);
 
-  const response = await fetch(`${env.EMAIL_WORKER_URL}/send`, {
-
+    const response = await fetch(`${env.EMAIL_WORKER_URL}/send`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -62,8 +61,8 @@ export async function handleInvitationEmail(
         to,
         subject,
         html,
-        from: env.FROM_EMAIL || 'noreply@rareminds.in',
-        fromName: env.FROM_NAME || 'Skill Passport',
+        from: 'noreply@rareminds.in',
+        fromName: 'Skill Passport',
       }),
     });
 
@@ -78,11 +77,12 @@ export async function handleInvitationEmail(
       message: 'Invitation email sent successfully',
       data: result
     });
-  } catch (error: any) {
-    apiLogger.error('Error sending invitation email', error);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to send invitation email';
+    apiLogger.error('Error sending invitation email', error as Error);
     return jsonResponse({
       success: false,
-      error: error.message || 'Failed to send invitation email'
+      error: errorMessage
     }, 500);
   }
 }

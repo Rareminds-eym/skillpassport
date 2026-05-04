@@ -90,8 +90,12 @@ export async function handleEventConfirmation(
           'X-Internal-Api-Key': env.INTERNAL_API_KEY,
         },
         body: JSON.stringify({ to: email, subject: userSubject, html: userHtml }),
-      }).then(async (res) => {
-        if (!res.ok) throw new Error(`Email worker failed with status ${res.status}`);
+      }).then((res) => {
+        if (!res.ok) {
+          return res.text().then(errorText => {
+            throw new Error(`Email worker failed with status ${res.status}: ${errorText}`);
+          });
+        }
       }),
       // Admin notification email
       fetch(emailWorkerUrl, {
@@ -101,8 +105,12 @@ export async function handleEventConfirmation(
           'X-Internal-Api-Key': env.INTERNAL_API_KEY,
         },
         body: JSON.stringify({ to: env.ADMIN_EMAIL, subject: adminSubject, html: adminHtml }),
-      }).then(async (res) => {
-        if (!res.ok) throw new Error(`Email worker failed with status ${res.status}`);
+      }).then((res) => {
+        if (!res.ok) {
+          return res.text().then(errorText => {
+            throw new Error(`Email worker failed with status ${res.status}: ${errorText}`);
+          });
+        }
       }),
     ]);
 
@@ -115,11 +123,12 @@ export async function handleEventConfirmation(
       }
     });
 
-  } catch (error: any) {
-    apiLogger.error('Error sending event confirmation emails', error);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to send confirmation emails';
+    apiLogger.error('Error sending event confirmation emails', error as Error);
     return jsonResponse({
       success: false,
-      error: error.message || 'Failed to send confirmation emails'
+      error: errorMessage
     }, 500);
   }
 }
@@ -174,11 +183,12 @@ export async function handleEventOTP(
       data: { email, result }
     });
 
-  } catch (error: any) {
-    apiLogger.error('Error sending OTP email', error);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to send OTP email';
+    apiLogger.error('Error sending OTP email', error as Error);
     return jsonResponse({
       success: false,
-      error: error.message || 'Failed to send OTP email'
+      error: errorMessage
     }, 500);
   }
 }

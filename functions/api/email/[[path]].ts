@@ -20,6 +20,7 @@ import { handleCountdownEmail } from './handlers/countdown';
 import { handleBulkCountdownEmail } from './handlers/bulk-countdown';
 import { handleEventConfirmation, handleEventOTP } from './handlers/event-registration';
 import { handlePDFReceipt } from './handlers/pdf-receipt';
+import { apiLogger } from '../../lib/logger';
 
 // ==================== MAIN HANDLER ====================
 
@@ -109,10 +110,11 @@ export const onRequest: PagesFunction = async (context) => {
 
     return jsonResponse({ success: false, error: 'Route not found' }, 404);
 
-  } catch (error: any) {
-    console.error('Email API Error:', error);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    apiLogger.error('Email API Error', error as Error);
     return jsonResponse(
-      { success: false, error: error.message || 'Internal server error' },
+      { success: false, error: errorMessage },
       500
     );
   }

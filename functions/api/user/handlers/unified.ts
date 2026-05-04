@@ -10,6 +10,7 @@ import { jsonResponse } from '../../../../src/functions-lib/response';
 import type { PagesEnv } from '../../../../src/functions-lib/types';
 import type { UnifiedSignupRequest } from '../types';
 import { sendWelcomeEmail } from '../utils/email';
+import { apiLogger } from '../../../lib/logger';
 import {
   capitalizeFirstLetter,
   validateEmail,
@@ -156,10 +157,12 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
 
       // 4. Send welcome email
       const baseUrl = new URL(request.url).origin;
+      let emailSent = true;
       try {
         await sendWelcomeEmail(env, baseUrl, email, fullName, body.role, '');
       } catch (emailError) {
-        console.error('Welcome email failed:', emailError);
+        emailSent = false;
+        apiLogger.error('Welcome email failed', emailError as Error);
       }
 
       return jsonResponse({
@@ -171,6 +174,9 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
           name: fullName,
           role: body.role,
         },
+        ...(emailSent ? {} : { 
+          warning: 'Account created but welcome email could not be sent. Please check your email or contact support.' 
+        })
       });
     } catch (error) {
       // ROLLBACK: Delete auth user if any subsequent step fails
