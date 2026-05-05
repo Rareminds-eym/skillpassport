@@ -26,7 +26,7 @@ import {
 import { EMBEDDING_CONFIG } from '../config/constants';
 
 // Database record types (matching actual Supabase schema)
-interface StudentRecord {
+export interface StudentRecord {
   id: string;
   name: string | null;
   age: number | null;
@@ -117,41 +117,51 @@ interface TrainingRecord {
  * 
  * @param supabase - Supabase client
  * @param studentId - Student UUID
+ * @param preFetchedStudent - Optional pre-fetched student record (prevents TOCTOU race condition)
  * @returns Enriched text string (typically 2000-4000 chars)
  * @throws EmbeddingError if insufficient data
  */
 export async function buildStudentTextFromDatabase(
   supabase: SupabaseClient,
-  studentId: string
+  studentId: string,
+  preFetchedStudent?: StudentRecord
 ): Promise<string> {
   try {
-    // Fetch student with ALL relevant data for comprehensive embedding
-    const { data: student, error: studentError } = await supabase
-      .from('students')
-      .select(`
-        id, name, age, date_of_birth, dateOfBirth, gender, bio,
-        branch_field, course_name, university, college_school_name, 
-        city, state, country,
-        grade, semester, currentCgpa,
-        interests, hobbies, languages,
-        work_experience, gap_in_studies, gap_years, gap_reason,
-        github_link, linkedin_link, portfolio_link,
-        resumeUrl, profilePicture,
-        contact_number, contactNumber, email
-      `)
-      .eq('id', studentId)
-      .single();
+    // Use pre-fetched data if available (prevents TOCTOU race condition)
+    let studentRecord: StudentRecord;
+    
+    if (preFetchedStudent) {
+      console.log(`[TextBuilder] Using pre-fetched student data for ${studentId}, skipping profile query`);
+      studentRecord = preFetchedStudent;
+    } else {
+      // Fetch student with ALL relevant data for comprehensive embedding
+      const { data: student, error: studentError } = await supabase
+        .from('students')
+        .select(`
+          id, name, age, date_of_birth, dateOfBirth, gender, bio,
+          branch_field, course_name, university, college_school_name, 
+          city, state, country,
+          grade, semester, currentCgpa,
+          interests, hobbies, languages,
+          work_experience, gap_in_studies, gap_years, gap_reason,
+          github_link, linkedin_link, portfolio_link,
+          resumeUrl, profilePicture,
+          contact_number, contactNumber, email
+        `)
+        .eq('id', studentId)
+        .single();
 
-    if (studentError || !student) {
-      throw new EmbeddingError(
-        `Failed to fetch student: ${studentError?.message || 'Not found'}`,
-        'INSUFFICIENT_DATA',
-        { studentId, error: studentError }
-      );
+      if (studentError || !student) {
+        throw new EmbeddingError(
+          `Failed to fetch student: ${studentError?.message || 'Not found'}`,
+          'INSUFFICIENT_DATA',
+          { studentId, error: studentError }
+        );
+      }
+
+      // Type-safe student record
+      studentRecord = student as StudentRecord;
     }
-
-    // Type-safe student record
-    const studentRecord = student as StudentRecord;
 
     // Fetch ALL related data in parallel for maximum performance
     // This reduces total query time from ~500ms (sequential) to ~100ms (parallel)
@@ -458,14 +468,22 @@ export async function buildStudentTextFromDatabase(
  * 
  * @param supabase - Supabase client
  * @param courseId - Course UUID
+ * @param preFetchedCourse - Optional pre-fetched course data (prevents TOCTOU race condition)
  * @returns Course text
  * @throws EmbeddingError on failure
  */
 export async function buildCourseTextFromDatabase(
   supabase: SupabaseClient,
-  courseId: string
+  courseId: string,
+  preFetchedCourse?: CourseData
 ): Promise<string> {
   try {
+    // Use pre-fetched data if available (prevents TOCTOU race condition)
+    if (preFetchedCourse) {
+      console.log(`[TextBuilder] Using pre-fetched course data for ${courseId}, skipping DB query`);
+      return buildCourseText(preFetchedCourse);
+    }
+
     const { data: course, error } = await supabase
       .from('courses')
       .select('*')
@@ -527,14 +545,22 @@ export function buildCourseText(course: CourseData): string {
  * 
  * @param supabase - Supabase client
  * @param opportunityId - Opportunity UUID
+ * @param preFetchedOpportunity - Optional pre-fetched opportunity data (prevents TOCTOU race condition)
  * @returns Opportunity text
  * @throws EmbeddingError if no skills_required
  */
 export async function buildOpportunityTextFromDatabase(
   supabase: SupabaseClient,
-  opportunityId: string
+  opportunityId: string,
+  preFetchedOpportunity?: OpportunityData
 ): Promise<string> {
   try {
+    // Use pre-fetched data if available (prevents TOCTOU race condition)
+    if (preFetchedOpportunity) {
+      console.log(`[TextBuilder] Using pre-fetched opportunity data for ${opportunityId}, skipping DB query`);
+      return buildOpportunityText(preFetchedOpportunity);
+    }
+
     const { data: opportunity, error } = await supabase
       .from('opportunities')
       .select('*')

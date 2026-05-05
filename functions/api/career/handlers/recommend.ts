@@ -155,8 +155,16 @@ export async function handleRecommendOpportunities(request: Request, env: Record
       console.log(`[AUTO-EMBED] Built text of length ${text.length} for student ${studentId}`);
       
       // Generate embedding vector
-      const embedding = await callEmbeddingWorker(text, env);
-      console.log(`[AUTO-EMBED] Generated embedding with ${embedding.length} dimensions for student ${studentId}`);
+      let embedding: number[];
+      try {
+        embedding = await callEmbeddingWorker(text, env);
+        if (!Array.isArray(embedding) || embedding.length === 0) {
+          throw new Error('Invalid embedding response');
+        }
+        console.log(`[AUTO-EMBED] Generated embedding with ${embedding.length} dimensions for student ${studentId}`);
+      } catch (embeddingError) {
+        throw embeddingError;
+      }
       
       // Persist to database for future requests
       await updateEmbedding(supabase, 'students', studentId, embedding);
