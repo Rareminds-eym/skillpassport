@@ -1,9 +1,6 @@
 // Auth UI Components - Public API
 // Alphabetically sorted exports
 
-export { default as DebugRoles } from './DebugRoles';
-export { default as EducatorForgotPassword } from './EducatorForgotPassword';
-export { default as ForgotPassword } from './ForgotPassword';
 export { default as LoginAdmin } from './LoginAdmin';
 export { default as LoginEducator } from './LoginEducator';
 export { default as LoginRecruiter } from './LoginRecruiter';

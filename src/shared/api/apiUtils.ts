@@ -33,7 +33,7 @@ export function validatePassword(password: string): { valid: boolean; code?: str
     return { valid: false, code: 'PASSWORD_REQUIRED' };
   }
 
-  if (password.length < 6) {
+  if (password.length < 8) {
     return { valid: false, code: 'PASSWORD_TOO_WEAK' };
   }
 

@@ -1,8 +1,7 @@
 /**
  * Auth Session Service (SSO Adapter)
  *
- * This module previously called supabase.auth directly.
- * It now delegates to the SSO auth store for backward compatibility
+ * Delegates to the SSO auth store for backward compatibility
  * with the 20+ consumer files that import it.
  *
  * @deprecated Consumers should migrate to using `useAuthStore` or `useUser()` directly.

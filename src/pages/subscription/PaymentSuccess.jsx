@@ -32,7 +32,6 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { usePaymentVerificationFromURL, useSubscriptionQuery } from '@/features/subscription/model';
 import { downloadReceipt, generateReceiptBase64 } from '@/features/subscription/lib';
 import { getPaymentReceiptUrl, uploadPaymentReceipt } from '@/shared/api';
-import { clearPendingUserData } from '@/features/auth/lib';
 
 import { useSubscription } from '@/features/subscription/model/subscriptionStore';
 import { useUser, useUserRole } from '@/shared/model/authStore';
@@ -575,7 +574,7 @@ function PaymentSuccess() {
           if (mountedRef.current) setShowConfetti(false);
         }, CONFIG.CONFETTI_DURATION_MS);
 
-        clearPendingUserData();
+        
 
         // Handle email status
         if (transactionDetails.email_sent === false) {
@@ -621,7 +620,7 @@ function PaymentSuccess() {
         }
       } else {
         // Existing subscription
-        clearPendingUserData();
+        
         setEmailStatus(EMAIL_STATES.SKIPPED);
 
         const storedReceiptUrl = transactionDetails.receipt_url ||
@@ -637,12 +636,12 @@ function PaymentSuccess() {
     } else if (transactionDetails.subscription_error) {
       log.warn('Subscription creation issue:', transactionDetails.subscription_error);
       setActivationStatus(ACTIVATION_STATES.ACTIVATED);
-      clearPendingUserData();
+      
       setEmailStatus(EMAIL_STATES.SENT);
       toast('Payment successful! Your subscription will be activated shortly.', { duration: 5000, icon: '⏳' });
     } else {
       setActivationStatus(ACTIVATION_STATES.ACTIVATED);
-      clearPendingUserData();
+      
       setEmailStatus(EMAIL_STATES.SENT);
     }
   }, [verificationStatus, transactionDetails, activationStatus, user, cacheRefresh, uploadReceiptToR2]);

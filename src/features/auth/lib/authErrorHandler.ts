@@ -1,5 +1,3 @@
-import { supabase } from '@/shared/api/supabaseClient';
-
 // ============================================================================
 // CONSTANTS
 // ============================================================================
@@ -68,7 +66,7 @@ export const validatePassword = (password: string): ValidationResult => {
     return { valid: false, code: AUTH_ERROR_CODES.INVALID_INPUT_FORMAT };
   }
   
-  if (password.length < 6) {
+  if (password.length < 8) {
     return { valid: false, code: AUTH_ERROR_CODES.PASSWORD_TOO_WEAK };
   }
   
@@ -151,22 +149,19 @@ export const handleAuthError = async (error: any, context: Record<string, any> =
   if (isJwtExpiryError(error)) {
     console.warn('JWT expired detected, checking session validity...');
     
-    // Check if session is still valid (Supabase may have auto-refreshed)
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        console.log('✅ Session is valid after JWT expiry check');
-        return { success: true, session };
-      }
-      
-      // Session is truly invalid - user needs to re-authenticate
-      console.warn('❌ Session invalid, user needs to re-authenticate');
-      return { success: false, error: 'Session expired. Please log in again.' };
-    } catch (e) {
-      console.error('Error checking session:', e);
-      return { success: false, error: 'Authentication error. Please log in again.' };
+    // In SSO mode, auth-client handles token refresh automatically.
+    // If we get here, the session is likely still valid (auth-client retried).
+    const { useAuthStore } = await import('@/shared/model/authStore');
+    const isAuthenticated = useAuthStore.getState().isAuthenticated;
+    
+    if (isAuthenticated) {
+      console.log('✅ Session is valid (SSO auth-client handles refresh)');
+      return { success: true, session: null };
     }
+    
+    // Session is truly invalid - user needs to re-authenticate
+    console.warn('❌ Session invalid, user needs to re-authenticate');
+    return { success: false, error: 'Session expired. Please log in again.' };
   }
 
   // Generic error return for non-fatal errors
