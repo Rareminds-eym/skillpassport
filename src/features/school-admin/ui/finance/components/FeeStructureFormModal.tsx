@@ -124,7 +124,7 @@ export const FeeStructureFormModal: React.FC<Props> = ({
         onClose();
       }
     } catch (error) {
-      console.error("Form submission error:", error);
+      // Error handled by onSave callback
     } finally {
       setLoading(false);
     }

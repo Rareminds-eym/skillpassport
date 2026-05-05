@@ -23,6 +23,10 @@ import {
   updateStudentSettings,
   updateStudentPassword
 } from '@/entities/student/api/studentSettingsService';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('student-settings-hook');
+
 export const useStudentSettings = (email) => {
   const [studentData, setStudentData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -47,7 +51,6 @@ export const useStudentSettings = (email) => {
         setError(result.error);
       }
     } catch (err) {
-      console.error('❌ Error fetching student settings:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -83,7 +86,7 @@ export const useStudentSettings = (email) => {
         throw new Error(result.error);
       }
     } catch (err) {
-      console.error('❌ Error updating password:', err);
+      logger.error('Error updating password', err instanceof Error ? err : new Error(String(err)));
       throw err;
     }
   };

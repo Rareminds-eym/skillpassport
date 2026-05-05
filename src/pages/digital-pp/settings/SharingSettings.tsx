@@ -3,8 +3,12 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { copyToClipboard, downloadQRCode, generateQRCode, generateShareableLink, sharePortfolio } from '@/features/digital-portfolio';
+import { getLogger } from '@/shared/config/logging';
 
 import { usePortfolio } from '@/features/digital-portfolio/model/portfolioStore';
+
+const logger = getLogger('sharing-settings');
+
 const SharingSettings: React.FC = () => {
   const navigate = useNavigate();
   const { student } = usePortfolio();
@@ -23,7 +27,7 @@ const SharingSettings: React.FC = () => {
     generateQRCode(link).then(url => {
       setQrCodeUrl(url);
     }).catch(err => {
-      console.error('Failed to generate QR code:', err);
+      logger.error('Failed to generate QR code', err as Error);
     });
   }, [student?.id]);
 
@@ -32,8 +36,8 @@ const SharingSettings: React.FC = () => {
       await copyToClipboard(shareLink);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      console.error('Failed to copy link:', error);
+    } catch (error: unknown) {
+      logger.error('Failed to copy link', error as Error);
     }
   };
 
@@ -46,7 +50,7 @@ const SharingSettings: React.FC = () => {
     generateQRCode(newLink).then(url => {
       setQrCodeUrl(url);
     }).catch(err => {
-      console.error('Failed to generate QR code:', err);
+      logger.error('Failed to generate QR code', err as Error);
     });
   };
 

@@ -36,12 +36,6 @@ export class ProfileCompletionErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
-    
-    if (isDevelopment) {
-      console.error('[ProfileCompletionErrorBoundary] Modal render error:', error, errorInfo);
-    }
-    
     this.props.onError?.(error, errorInfo);
   }
 

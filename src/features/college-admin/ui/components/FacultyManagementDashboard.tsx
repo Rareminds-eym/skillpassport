@@ -10,6 +10,7 @@ import {
 import React, { useEffect, useState } from 'react';
 
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 import { getFacultyStatistics } from '@/features/college-admin';
 import FacultyLeaveManagement from '@/features/college-admin/ui/FacultyLeaveManagement';
 import CalendarTimetable from './CalendarTimetable';
@@ -18,6 +19,8 @@ import FacultyList from './FacultyList';
 import FacultyOnboarding from './FacultyOnboarding';
 import FacultyPerformanceAnalytics from './FacultyPerformanceAnalytics';
 import SwapRequestsManagement from './SwapRequestsManagement';
+
+const logger = getLogger('college-admin:FacultyManagementDashboard');
 
 import { useUser } from '@/shared/model/authStore';
 const FacultyManagementDashboard: React.FC = () => {
@@ -41,7 +44,7 @@ const FacultyManagementDashboard: React.FC = () => {
 
   const fetchCollegeId = async () => {
     if (!user?.email) {
-      console.error('No user email found');
+      logger.error('No user email found');
       setLoading(false);
       return;
     }
@@ -55,13 +58,11 @@ const FacultyManagementDashboard: React.FC = () => {
         .maybeSingle();
 
       if (educatorData?.collegeId) {
-        console.log('Found college_id from college_lecturers:', educatorData.collegeId);
         setCollegeId(educatorData.collegeId);
         return;
       }
 
       // If not found in college_lecturers, check if user is a college admin in organizations table
-      console.log('Not found in college_lecturers, checking organizations table...');
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
         .select('id')
@@ -70,11 +71,10 @@ const FacultyManagementDashboard: React.FC = () => {
         .maybeSingle();
 
       if (orgError) {
-        console.error('Error fetching from organizations:', orgError);
+        logger.error('Error fetching from organizations', orgError);
       }
 
       if (orgData?.id) {
-        console.log('Found college_id from organizations table:', orgData.id);
         setCollegeId(orgData.id);
         return;
       }
@@ -88,22 +88,21 @@ const FacultyManagementDashboard: React.FC = () => {
         .maybeSingle();
 
       if (orgByAdmin?.id) {
-        console.log('Found college_id from admin_id:', orgByAdmin.id);
         setCollegeId(orgByAdmin.id);
         return;
       }
 
-      console.error('No college_id found for user in any table');
+      logger.error('No college_id found for user in any table');
       setLoading(false);
     } catch (error) {
-      console.error('Error in fetchCollegeId:', error);
+      logger.error('Error in fetchCollegeId', error as Error);
       setLoading(false);
     }
   };
 
   const loadStatistics = async () => {
     if (!collegeId) {
-      console.error('No college_id available for statistics');
+      logger.error('No college_id available for statistics');
       setLoading(false);
       return;
     }
@@ -112,7 +111,7 @@ const FacultyManagementDashboard: React.FC = () => {
       const statistics = await getFacultyStatistics(collegeId);
       setStats(statistics);
     } catch (error) {
-      console.error('Failed to load statistics:', error);
+      logger.error('Failed to load statistics', error as Error);
     } finally {
       setLoading(false);
     }

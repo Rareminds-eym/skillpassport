@@ -1,5 +1,8 @@
 import { supabase } from '@/shared/api/supabaseClient';
 import { buildDateRange, type FunnelRangePreset } from '@/features/analytics';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('course-performance-service');
 
 export interface CoursePerformance {
     name: string;
@@ -50,7 +53,7 @@ export const getCoursePerformance = async (
 
         return { data, error: null };
     } catch (error) {
-        console.error('Error fetching course performance:', error);
+        logger.error('Error fetching course performance', error instanceof Error ? error : new Error(String(error)));
         return { data: null, error };
     }
 };

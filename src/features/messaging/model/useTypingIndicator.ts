@@ -1,6 +1,9 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { getLogger } from '@/shared/config/logging';
 import RealtimeService, { TypingIndicator } from '@/shared/api/realtimeService';
 import type { UserRole, ConversationType } from '../api/types';
+
+const logger = getLogger('UseTypingIndicator');
 
 interface UseTypingIndicatorProps {
   conversationId: string;
@@ -148,7 +151,7 @@ export const useTypingIndicator = ({
           }, 3000);
         }
       } catch (error) {
-        console.error('❌ Error sending typing indicator:', error);
+        logger.error('Failed to send typing indicator', error as Error);
       }
     },
     [conversationId, currentUserId, currentUserName]

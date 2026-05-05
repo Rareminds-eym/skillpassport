@@ -9,8 +9,11 @@
  */
 
 import { useEffect } from 'react';
+import { getLogger } from '@/shared/config/logging';
 import { useMessages } from './useMessages';
 import type { Conversation } from '../api/types';
+
+const logger = getLogger('UseConversation');
 
 interface UseConversationReturn {
     conversation: Conversation | null;
@@ -81,7 +84,8 @@ export function useConversation(
                     subject,
                 },
             }).catch((error) => {
-                console.error('[useConversation] Error creating conversation:', error);
+                const errorMessage = error?.message || error?.error_description || String(error) || 'Unknown error';
+                logger.error('Failed to create conversation', new Error(errorMessage));
             });
         }
     }, [

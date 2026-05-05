@@ -88,7 +88,6 @@ export const uploadStudentDocument = async (
       document
     };
   } catch (error) {
-    console.error('Document upload error:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Upload failed'
@@ -108,13 +107,11 @@ export const getStudentDocuments = async (studentId: string): Promise<StudentDoc
       .single();
 
     if (error) {
-      console.error('Failed to fetch student documents:', error);
       return [];
     }
 
     return student?.documents || [];
   } catch (error) {
-    console.error('Error fetching student documents:', error);
     return [];
   }
 };
@@ -135,7 +132,6 @@ export const deleteStudentDocument = async (
       .single();
 
     if (fetchError) {
-      console.error('Failed to fetch student:', fetchError);
       return false;
     }
 
@@ -153,19 +149,14 @@ export const deleteStudentDocument = async (
       .eq('id', studentId);
 
     if (updateError) {
-      console.error('Failed to update student record:', updateError);
       return false;
     }
 
     // Delete file from storage
-    const deleteSuccess = await deleteFile(documentUrl);
-    if (!deleteSuccess) {
-      console.warn('Failed to delete file from storage, but removed from database');
-    }
+    await deleteFile(documentUrl);
 
     return true;
   } catch (error) {
-    console.error('Error deleting student document:', error);
     return false;
   }
 };
@@ -194,7 +185,6 @@ export const updateStudentDocument = async (
       .single();
 
     if (fetchError) {
-      console.error('Failed to fetch student:', fetchError);
       return false;
     }
 
@@ -215,13 +205,11 @@ export const updateStudentDocument = async (
       .eq('id', studentId);
 
     if (updateError) {
-      console.error('Failed to update student record:', updateError);
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error('Error updating student document:', error);
     return false;
   }
 };

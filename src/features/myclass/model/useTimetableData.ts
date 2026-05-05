@@ -30,7 +30,6 @@ export const useTimetableData = (classId: string | undefined): UseTimetableDataR
       setTimetable(timetableData);
       setHasFetched(true);
     } catch (err) {
-      console.error('Error fetching timetable:', err);
       setError(err as Error);
     } finally {
       setLoading(false);

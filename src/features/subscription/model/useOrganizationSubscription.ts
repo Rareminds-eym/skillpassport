@@ -31,6 +31,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { useUser } from '@/shared/model/authStore';
 // @ts-ignore - useUser is from Zustand store
 
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('use-organization-subscription');
 
 interface UseOrganizationSubscriptionOptions {
   organizationId: string;
@@ -99,7 +102,7 @@ export function useOrganizationSubscription(
       const data = await licenseManagementService.getLicensePools(organizationId);
       setLicensePools(data);
     } catch (err) {
-      console.error('Failed to fetch license pools:', err);
+      logger.error('Error fetching license pools', err as Error);
     }
   }, [organizationId]);
   
@@ -124,7 +127,7 @@ export function useOrganizationSubscription(
       const counts = await organizationMemberService.getMemberCounts(organizationId, organizationType);
       setMemberCounts(counts);
     } catch (err) {
-      console.error('Failed to fetch members:', err);
+      logger.error('Error fetching members', err as Error);
     } finally {
       setIsMembersLoading(false);
     }
@@ -136,7 +139,7 @@ export function useOrganizationSubscription(
       const data = await organizationBillingService.getBillingDashboard(organizationId, organizationType);
       setBillingData(data);
     } catch (err) {
-      console.error('Failed to fetch billing data:', err);
+      logger.error('Error fetching billing data', err as Error);
     }
   }, [organizationId, organizationType]);
   
@@ -146,7 +149,7 @@ export function useOrganizationSubscription(
       const data = await memberInvitationService.getPendingInvitations(organizationId);
       setPendingInvitations(data);
     } catch (err) {
-      console.error('Failed to fetch invitations:', err);
+      logger.error('Error fetching pending invitations', err as Error);
     }
   }, [organizationId]);
 

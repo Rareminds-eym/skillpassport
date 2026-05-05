@@ -47,7 +47,6 @@ const PlacementManagement: React.FC = () => {
         { label: "Placement Rate", value: `${placementStats.placementRate}%`, icon: TrendingUp, color: "bg-orange-500" },
       ]);
     } catch (error) {
-      console.error('Error loading placement stats:', error);
       // Fallback to default values on error
       setPlacementStats([
         { label: "Total Companies", value: "0", icon: Building2, color: "bg-blue-500" },

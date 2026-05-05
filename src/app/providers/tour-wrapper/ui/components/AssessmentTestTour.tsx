@@ -1,9 +1,12 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Joyride, { CallBackProps, STATUS } from 'react-joyride';
+import { getLogger } from '@/shared/config/logging';
 
 import { TOUR_KEYS } from '@/app/providers/tour-wrapper/lib/constants';
 import { waitForElement } from '@/shared/lib/utils';
 import { useTour } from '@/shared/model/tourStore';
+
+const logger = getLogger('AssessmentTestTour');
 import {
   ASSESSMENT_TEST_TOUR_STEPS,
   ASSESSMENT_TEST_TOUR_OPTIONS,
@@ -23,7 +26,6 @@ const AssessmentTestTour: React.FC = () => {
   // Wait for prerequisites - simplified (route check removed, handled by TourWrapper)
   useEffect(() => {
     if (!loading && isEligible(TOUR_KEYS.ASSESSMENT_TEST) && !isReady && !tourStarted.current) {
-      console.log('✅ Assessment test tour: Prerequisites met');
       setIsReady(true);
     }
   }, [loading, isEligible, isReady]);
@@ -35,8 +37,6 @@ const AssessmentTestTour: React.FC = () => {
     }
 
     const checkAndStartTour = async () => {
-      console.log('🎯 Assessment test tour: Checking elements...');
-
       const requiredSelectors = [
         '[data-tour="section-progress"]',
         '[data-tour="navigation-controls"]'
@@ -60,15 +60,12 @@ const AssessmentTestTour: React.FC = () => {
         const someOptionalFound = optionalResults.some(el => el !== null);
 
         if (allRequiredFound && someOptionalFound) {
-          console.log('✅ Assessment test tour: All elements ready, starting tour');
           tourStarted.current = true;
           setShouldRun(true);
           startTour(TOUR_KEYS.ASSESSMENT_TEST);
-        } else {
-          console.log('⏭️ Assessment test tour: Required elements not found');
         }
       } catch (error) {
-        console.error('❌ Assessment test tour: Error waiting for elements', error);
+        logger.error('Error waiting for elements', error as Error);
       }
     };
 
@@ -128,9 +125,7 @@ const AssessmentTestTour: React.FC = () => {
 
   // Handle tour completion
   const handleJoyrideCallback = useCallback((data: CallBackProps) => {
-    const { status, action, lifecycle, type, index } = data;
-
-    console.log('🎯 Assessment test tour callback:', { status, action, lifecycle, type, index });
+    const { status, action, lifecycle } = data;
 
     // Remove title attributes from buttons to prevent browser tooltips
     if (lifecycle === 'tooltip' && action === 'update') {
@@ -142,11 +137,9 @@ const AssessmentTestTour: React.FC = () => {
     }
 
     if (status === STATUS.FINISHED) {
-      console.log('✅ Assessment test tour: Finished');
       setShouldRun(false);
       completeTour(TOUR_KEYS.ASSESSMENT_TEST);
     } else if (status === STATUS.SKIPPED) {
-      console.log('⏭️ Assessment test tour: Skipped');
       setShouldRun(false);
       skipTour(TOUR_KEYS.ASSESSMENT_TEST);
     }
@@ -168,18 +161,12 @@ const AssessmentTestTour: React.FC = () => {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
-
-      console.log('🔄 Assessment test tour unmounted');
     };
   }, []);
-
-  console.log('🔍 Assessment test tour render:', { shouldRun, tourStarted: tourStarted.current, isReady });
 
   if (!shouldRun || !tourStarted.current) {
     return null;
   }
-
-  console.log('✅ Rendering Joyride for assessment test tour');
 
   return (
     <Joyride

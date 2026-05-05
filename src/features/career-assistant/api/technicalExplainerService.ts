@@ -6,6 +6,9 @@
  */
 
 import { getOpenAIClient, DEFAULT_MODEL } from './openAIClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('technical-explainer');
 
 export interface TechnicalExplanation {
   topic: string;
@@ -42,8 +45,6 @@ class TechnicalExplainerService {
   ): Promise<TechnicalExplanation> {
     
     try {
-      console.log(`📚 Technical Explainer: Explaining ${topic}...`);
-      
       const prompt = `You are a technical educator. Explain this technology/concept clearly and comprehensively.
 
 **TOPIC TO EXPLAIN:** ${topic}
@@ -139,13 +140,14 @@ class TechnicalExplainerService {
       });
       
       const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
-      console.log('✅ Technical explanation generated');
-      
+
       return result as TechnicalExplanation;
       
     } catch (error) {
-      console.error('Technical explanation error:', error);
+      logger.error('Failed to generate technical explanation', error instanceof Error ? error : new Error(String(error)), {
+        topic,
+        studentLevel
+      });
       throw new Error('Failed to generate explanation');
     }
   }
@@ -212,7 +214,7 @@ Provide:
       return JSON.parse(completion.choices[0]?.message?.content || '{}');
       
     } catch (error) {
-      console.error('Comparison error:', error);
+      logger.error('Failed to generate technology comparison', error instanceof Error ? error : new Error(String(error)));
       throw new Error('Failed to generate comparison');
     }
   }
@@ -283,7 +285,7 @@ Provide:
       return JSON.parse(completion.choices[0]?.message?.content || '{}');
       
     } catch (error) {
-      console.error('How-to guide error:', error);
+      logger.error('Failed to generate how-to guide', error instanceof Error ? error : new Error(String(error)));
       throw new Error('Failed to generate guide');
     }
   }

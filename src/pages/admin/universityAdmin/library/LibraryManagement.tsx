@@ -18,6 +18,9 @@ import {
 } from 'lucide-react';
 import { libraryService, LibraryBook, LibraryBookIssue, LibraryStats } from '@/features/library';
 import { KPICard } from '@/features/analytics';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('library-management');
 
 const LibraryManagement = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -78,7 +81,8 @@ const LibraryManagement = () => {
       }
       
     } catch (err) {
-      console.error('Failed to load data:', err);
+      // Error handled silently
+      logger.error('Error loading data:', err as Error);
     } finally {
       setLoading(false);
     }
@@ -92,7 +96,8 @@ const LibraryManagement = () => {
       await libraryService.deleteBook(bookId);
       await loadData();
     } catch (err) {
-      console.error('Failed to delete book:', err);
+      // Error handled silently
+      logger.error('Error deleting book:', err as Error);
     } finally {
       setLoading(false);
     }
@@ -100,7 +105,6 @@ const LibraryManagement = () => {
 
   const openEditModal = (book: LibraryBook) => {
     // Note: Modal functionality would need to be implemented
-    console.log('Edit modal would open for book:', book.title);
   };
 
   const handleViewDetails = (issue: LibraryBookIssue) => {
@@ -242,7 +246,9 @@ ${issue.fine_amount ? `Fine Amount: ₹${issue.fine_amount}` : ''}`);
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h3 className="text-lg font-semibold text-gray-800">Book Inventory ({books.length})</h3>
         <button 
-          onClick={() => console.log('Add book functionality would be implemented here')}
+          onClick={() => {
+            // Add book functionality would be implemented here
+          }}
           className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
         >
           <Plus className="h-4 w-4" />
@@ -387,7 +393,9 @@ ${issue.fine_amount ? `Fine Amount: ₹${issue.fine_amount}` : ''}`);
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h3 className="text-lg font-semibold text-gray-800">Library Transactions ({issues.length})</h3>
         <button 
-          onClick={() => console.log('Issue book functionality would be implemented here')}
+          onClick={() => {
+            // Issue book functionality would be implemented here
+          }}
           className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
         >
           <Plus className="h-4 w-4" />

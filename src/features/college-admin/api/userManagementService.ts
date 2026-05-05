@@ -1,7 +1,10 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 // @ts-ignore - userApiService is a .js file
 import type { ApiResponse, BulkImportResult, User } from '@/shared/types/college';
 import userApiService from '@/entities/user/api/userApiService';
+
+const logger = getLogger('user-management-service');
 
 /**
  * User Management Service
@@ -16,7 +19,6 @@ export const userManagementService = {
    */
   async createUser(userData: Partial<User>): Promise<ApiResponse<User>> {
     try {
-      console.log('🆕 Creating user via Edge Function:', userData);
 
       // Validate required fields
       if (!userData.email || !userData.name) {
@@ -85,7 +87,6 @@ export const userManagementService = {
       }
 
       if (!collegeId) {
-        console.warn('No college ID found, using first available college');
         const { data: firstCollege } = await supabase
           .from('organizations')
           .select('id')
@@ -139,7 +140,6 @@ export const userManagementService = {
           updated_at: new Date().toISOString(),
         };
 
-        console.log('✅ Staff user created successfully:', createdUser);
         return { success: true, data: createdUser };
       } else {
         // For non-staff users, use unified signup
@@ -175,11 +175,10 @@ export const userManagementService = {
           updated_at: new Date().toISOString(),
         };
 
-        console.log('✅ User created successfully:', createdUser);
         return { success: true, data: createdUser };
       }
     } catch (error: any) {
-      console.error('❌ Error creating user:', error);
+      logger.error('Error creating user', error as Error);
       return {
         success: false,
         error: {
@@ -384,9 +383,6 @@ export const userManagementService = {
 
       if (updateError) throw updateError;
 
-      console.log('✅ Password reset for user:', lecturer.email);
-      console.log('📧 New temporary password:', tempPassword);
-
       return { success: true, data: undefined };
     } catch (error: any) {
       return {
@@ -437,7 +433,6 @@ export const userManagementService = {
     search?: string;
   }): Promise<ApiResponse<User[]>> {
     try {
-      console.log('🔍 Fetching users with filters:', filters);
       const users: User[] = [];
 
       // Get current user's college ID
@@ -468,7 +463,7 @@ export const userManagementService = {
       }
 
       if (!collegeId) {
-        console.error('❌ No college ID found for current user');
+        logger.error('No college ID found for current user', new Error('College ID lookup failed'));
         return {
           users: [],
           total: 0,
@@ -510,13 +505,8 @@ export const userManagementService = {
 
       const { data: lecturers, error: lecturersError } = await lecturersQuery;
 
-      console.log('📚 Lecturers query result:', { 
-        count: lecturers?.length || 0, 
-        error: lecturersError 
-      });
-
       if (lecturersError) {
-        console.error('❌ Error fetching lecturers:', lecturersError);
+        logger.error('Error fetching lecturers', lecturersError as Error, { collegeId });
       } else if (lecturers && lecturers.length > 0) {
         // Fetch user details separately for each lecturer
         const userIds = lecturers
@@ -619,19 +609,6 @@ export const userManagementService = {
           user.roles?.some(role => role.toLowerCase().includes(filters.role!.toLowerCase()))
         );
       }
-
-      console.log('✅ Total staff users fetched:', {
-        total: users.length,
-        filtered: filteredUsers.length,
-        byRole: {
-          'College Admin': filteredUsers.filter(u => u.roles?.includes('College Admin')).length,
-          'HoD': filteredUsers.filter(u => u.roles?.includes('HoD')).length,
-          'Faculty': filteredUsers.filter(u => u.roles?.includes('Faculty')).length,
-          'Lecturer': filteredUsers.filter(u => u.roles?.includes('Lecturer')).length,
-          'Exam Cell': filteredUsers.filter(u => u.roles?.includes('Exam Cell')).length,
-          'Finance Admin': filteredUsers.filter(u => u.roles?.includes('Finance Admin')).length,
-        }
-      });
 
       return { success: true, data: filteredUsers };
     } catch (error: any) {

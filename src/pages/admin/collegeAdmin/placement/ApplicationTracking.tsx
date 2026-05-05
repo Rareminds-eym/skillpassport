@@ -26,6 +26,9 @@ import type { Opportunity } from '@/features/opportunities';
 import { applicationTrackingService } from '@/features/opportunities';
 import type { ApplicationTrackingData, ApplicationStats } from '@/features/opportunities';
 import { authSessionService } from '@/features/auth';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('application-tracking');
 
 const ApplicationTracking: React.FC = () => {
   const [applicationSearchTerm, setApplicationSearchTerm] = useState("");
@@ -98,7 +101,7 @@ const ApplicationTracking: React.FC = () => {
         setSelectedJobDetails(opportunitiesData[0]);
       }
     } catch (error) {
-      console.error('Error loading opportunities:', error);
+      logger.error('Error loading opportunities', error as Error);
       setHasError(true);
       toast.error('Failed to load job opportunities');
       setOpportunities([]);
@@ -140,7 +143,7 @@ const ApplicationTracking: React.FC = () => {
       }
 
       if (!collegeId) {
-        console.error('❌ No college ID found for current user');
+        logger.error('No college ID found for current user');
         setApplications([]);
         setApplicationStats({
           total: 0,
@@ -167,7 +170,7 @@ const ApplicationTracking: React.FC = () => {
       setApplicationStats(statsData);
 
     } catch (error) {
-      console.error('Error loading applications:', error);
+      logger.error('Error loading applications', error as Error);
       setApplicationError('Failed to load application data. Please try again.');
       toast.error('Failed to load applications');
     } finally {
@@ -274,7 +277,7 @@ const ApplicationTracking: React.FC = () => {
       setPipelineModalView('pipeline');
       setShowPipelineModal(true);
     } catch (error) {
-      console.error('Error loading pipeline data:', error);
+      logger.error('Error loading pipeline data', error as Error);
       toast.error('Failed to load pipeline data');
     }
   };
@@ -312,7 +315,7 @@ const ApplicationTracking: React.FC = () => {
         setNewApplicationStage("");
         setNewApplicationStatus("");
       } catch (error) {
-        console.error('Error updating application:', error);
+        logger.error('Error updating application', error as Error);
         toast.error("Failed to update application. Please try again.");
       } finally {
         setIsUpdating(false);

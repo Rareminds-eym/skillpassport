@@ -4,6 +4,9 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('college-admin-notification-service');
 
 export class CollegeAdminNotificationService {
   /**
@@ -20,13 +23,18 @@ export class CollegeAdminNotificationService {
       });
 
       if (error) {
-        console.error('Error fetching college admin notifications:', error);
+        logger.error('Failed to fetch college admin notifications', error instanceof Error ? error : new Error(String(error)), {
+          collegeId,
+          unreadOnly: (options as any).unreadOnly
+        });
         throw error;
       }
 
       return data || [];
     } catch (error) {
-      console.error('Error fetching college admin notifications:', error);
+      logger.error('Failed to fetch college admin notifications', error instanceof Error ? error : new Error(String(error)), {
+        collegeId
+      });
       throw error;
     }
   }
@@ -44,13 +52,17 @@ export class CollegeAdminNotificationService {
       });
 
       if (error) {
-        console.error('Error fetching unread count:', error);
+        logger.error('Failed to fetch unread notification count', error instanceof Error ? error : new Error(String(error)), {
+          collegeId
+        });
         return 0;
       }
 
       return data || 0;
     } catch (error) {
-      console.error('Error fetching unread count:', error);
+      logger.error('Failed to fetch unread notification count', error instanceof Error ? error : new Error(String(error)), {
+        collegeId
+      });
       return 0;
     }
   }
@@ -62,8 +74,6 @@ export class CollegeAdminNotificationService {
    */
   static async getPendingTrainings(collegeId) {
     try {
-      console.log('🎓 Fetching trainings for college admin using approval_authority:', collegeId);
-      
       // Get trainings where approval_authority = 'college_admin' and student belongs to this college
       const { data, error } = await supabase
         .from('trainings')
@@ -84,7 +94,9 @@ export class CollegeAdminNotificationService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Error fetching trainings:', error);
+        logger.error('Failed to fetch pending trainings', error instanceof Error ? error : new Error(String(error)), {
+          collegeId
+        });
         throw error;
       }
 
@@ -103,11 +115,11 @@ export class CollegeAdminNotificationService {
         student_college_id: training.student?.university_college_id
       }));
 
-      console.log('✅ Found trainings for college admin:', formattedTrainings.length);
-      console.log('ℹ️ Using database approval_authority field (automatic routing)');
       return formattedTrainings;
     } catch (error) {
-      console.error('❌ Error fetching pending trainings:', error);
+      logger.error('Failed to fetch pending trainings', error instanceof Error ? error : new Error(String(error)), {
+        collegeId
+      });
       throw error;
     }
   }
@@ -119,8 +131,6 @@ export class CollegeAdminNotificationService {
    */
   static async getPendingExperiences(collegeId) {
     try {
-      console.log('🎓 Fetching experiences for college admin using approval_authority:', collegeId);
-      
       // Get experiences where approval_authority = 'college_admin' and student belongs to this college
       const { data, error } = await supabase
         .from('experience')
@@ -141,7 +151,9 @@ export class CollegeAdminNotificationService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Error fetching experiences:', error);
+        logger.error('Failed to fetch pending experiences', error instanceof Error ? error : new Error(String(error)), {
+          collegeId
+        });
         throw error;
       }
 
@@ -161,11 +173,11 @@ export class CollegeAdminNotificationService {
         student_type: experience.student?.student_type
       }));
 
-      console.log('✅ Found experiences for college admin:', formattedExperiences.length);
-      console.log('ℹ️ Using database approval_authority field (automatic routing)');
       return formattedExperiences;
     } catch (error) {
-      console.error('❌ Error fetching pending experiences:', error);
+      logger.error('Failed to fetch pending experiences', error instanceof Error ? error : new Error(String(error)), {
+        collegeId
+      });
       throw error;
     }
   }
@@ -182,13 +194,17 @@ export class CollegeAdminNotificationService {
       });
 
       if (error) {
-        console.error('Error marking notification as read:', error);
+        logger.error('Failed to mark notification as read', error instanceof Error ? error : new Error(String(error)), {
+          notificationId
+        });
         return false;
       }
 
       return true;
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      logger.error('Failed to mark notification as read', error instanceof Error ? error : new Error(String(error)), {
+        notificationId
+      });
       return false;
     }
   }
@@ -218,8 +234,11 @@ export class CollegeAdminNotificationService {
         .single();
 
       if (error) {
-        console.error('Error approving training:', error);
-        throw new Error(error.message || 'Failed to approve training');
+        logger.error('Failed to approve training', error instanceof Error ? error : new Error(String(error)), {
+          trainingId,
+          approverId
+        });
+        throw new Error((error as any).message || 'Failed to approve training');
       }
 
       if (!data) {
@@ -232,7 +251,9 @@ export class CollegeAdminNotificationService {
         training_id: trainingId
       };
     } catch (error) {
-      console.error('Error approving training:', error);
+      logger.error('Failed to approve training', error instanceof Error ? error : new Error(String(error)), {
+        trainingId
+      });
       throw error;
     }
   }
@@ -266,8 +287,11 @@ export class CollegeAdminNotificationService {
         .single();
 
       if (error) {
-        console.error('Error rejecting training:', error);
-        throw new Error(error.message || 'Failed to reject training');
+        logger.error('Failed to reject training', error instanceof Error ? error : new Error(String(error)), {
+          trainingId,
+          rejectorId
+        });
+        throw new Error((error as any).message || 'Failed to reject training');
       }
 
       if (!data) {
@@ -281,7 +305,9 @@ export class CollegeAdminNotificationService {
         reason: notes
       };
     } catch (error) {
-      console.error('Error rejecting training:', error);
+      logger.error('Failed to reject training', error instanceof Error ? error : new Error(String(error)), {
+        trainingId
+      });
       throw error;
     }
   }
@@ -312,8 +338,11 @@ export class CollegeAdminNotificationService {
         .single();
 
       if (error) {
-        console.error('Error approving experience:', error);
-        throw new Error(error.message || 'Failed to approve experience');
+        logger.error('Failed to approve experience', error instanceof Error ? error : new Error(String(error)), {
+          experienceId,
+          approverId
+        });
+        throw new Error((error as any).message || 'Failed to approve experience');
       }
 
       if (!data) {
@@ -326,7 +355,9 @@ export class CollegeAdminNotificationService {
         experience_id: experienceId
       };
     } catch (error) {
-      console.error('Error approving experience:', error);
+      logger.error('Failed to approve experience', error instanceof Error ? error : new Error(String(error)), {
+        experienceId
+      });
       throw error;
     }
   }
@@ -347,22 +378,29 @@ export class CollegeAdminNotificationService {
       });
 
       if (error) {
-        console.error('Error rejecting experience:', error);
-        throw new Error(error.message || 'Failed to reject experience');
+        logger.error('Failed to reject experience', error instanceof Error ? error : new Error(String(error)), {
+          experienceId,
+          rejectorId
+        });
+        throw new Error((error as any).message || 'Failed to reject experience');
       }
 
       // The function returns a JSON object, data should contain the result
       const result = data;
-      
+
       if (!result || !result.success) {
         const errorMessage = result?.error || 'Unknown error occurred';
-        console.error('Experience rejection failed:', errorMessage);
+        logger.error('Experience rejection failed', new Error(errorMessage), {
+          experienceId
+        });
         throw new Error(errorMessage);
       }
 
       return result;
     } catch (error) {
-      console.error('Error rejecting experience:', error);
+      logger.error('Failed to reject experience', error instanceof Error ? error : new Error(String(error)), {
+        experienceId
+      });
       throw error;
     }
   }
@@ -374,8 +412,6 @@ export class CollegeAdminNotificationService {
    */
   static async getPendingProjects(collegeId) {
     try {
-      console.log('🎓 Fetching projects for college admin using approval_authority:', collegeId);
-      
       // Get projects where approval_authority = 'college_admin' and student belongs to this college
       const { data, error } = await supabase
         .from('projects')
@@ -396,7 +432,9 @@ export class CollegeAdminNotificationService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Error fetching projects:', error);
+        logger.error('Failed to fetch pending projects', error instanceof Error ? error : new Error(String(error)), {
+          collegeId
+        });
         throw error;
       }
 
@@ -415,11 +453,11 @@ export class CollegeAdminNotificationService {
         student_college_id: project.student?.university_college_id
       }));
 
-      console.log('✅ Found projects for college admin:', formattedProjects.length);
-      console.log('ℹ️ Using database approval_authority field (automatic routing)');
       return formattedProjects;
     } catch (error) {
-      console.error('❌ Error fetching pending projects:', error);
+      logger.error('Failed to fetch pending projects', error instanceof Error ? error : new Error(String(error)), {
+        collegeId
+      });
       throw error;
     }
   }
@@ -449,8 +487,11 @@ export class CollegeAdminNotificationService {
         .single();
 
       if (error) {
-        console.error('Error approving project:', error);
-        throw new Error(error.message || 'Failed to approve project');
+        logger.error('Failed to approve project', error instanceof Error ? error : new Error(String(error)), {
+          projectId,
+          approverId
+        });
+        throw new Error((error as any).message || 'Failed to approve project');
       }
 
       if (!data) {
@@ -463,7 +504,9 @@ export class CollegeAdminNotificationService {
         project_id: projectId
       };
     } catch (error) {
-      console.error('Error approving project:', error);
+      logger.error('Failed to approve project', error instanceof Error ? error : new Error(String(error)), {
+        projectId
+      });
       throw error;
     }
   }
@@ -497,8 +540,11 @@ export class CollegeAdminNotificationService {
         .single();
 
       if (error) {
-        console.error('Error rejecting project:', error);
-        throw new Error(error.message || 'Failed to reject project');
+        logger.error('Failed to reject project', error instanceof Error ? error : new Error(String(error)), {
+          projectId,
+          rejectorId
+        });
+        throw new Error((error as any).message || 'Failed to reject project');
       }
 
       if (!data) {
@@ -512,7 +558,9 @@ export class CollegeAdminNotificationService {
         reason: notes
       };
     } catch (error) {
-      console.error('Error rejecting project:', error);
+      logger.error('Failed to reject project', error instanceof Error ? error : new Error(String(error)), {
+        projectId
+      });
       throw error;
     }
   }
@@ -532,10 +580,6 @@ export class CollegeAdminNotificationService {
         table: 'training_notifications',
         filter: `college_id=eq.${collegeId}`
       }, (payload) => {
-        const notificationType = payload.new.training_id ? 'training' : 
-                               payload.new.experience_id ? 'experience' : 
-                               payload.new.project_id ? 'project' : 'unknown';
-        console.log(`🔔 New ${notificationType} notification received:`, payload.new);
         callback(payload.new);
       })
       .subscribe();

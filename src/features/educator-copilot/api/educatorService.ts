@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('educator-service');
 
 /**
  * Get the current logged-in educator's record (school_educator or college_lecturer)
@@ -22,7 +25,7 @@ export const getCurrentEducator = async () => {
       .maybeSingle();
 
     if (schoolError && schoolError.code !== 'PGRST116') {
-      console.error('Error fetching school educator:', schoolError);
+      logger.error('Fetch school educator failed', new Error(schoolError.message), { userId: user.id });
       return { data: null, error: schoolError.message };
     }
 
@@ -38,7 +41,7 @@ export const getCurrentEducator = async () => {
       .maybeSingle();
 
     if (collegeError && collegeError.code !== 'PGRST116') {
-      console.error('Error fetching college lecturer:', collegeError);
+      logger.error('Fetch college lecturer failed', new Error(collegeError.message), { userId: user.id });
       return { data: null, error: collegeError.message };
     }
 
@@ -56,10 +59,10 @@ export const getCurrentEducator = async () => {
     // Not found in either table
     return { data: null, error: 'Educator record not found' };
   } catch (error) {
-    console.error('Error in getCurrentEducator:', error);
-    return { 
-      data: null, 
-      error: error?.message || 'Failed to fetch educator information' 
+    logger.error('Get current educator exception', error instanceof Error ? error : new Error(String(error)));
+    return {
+      data: null,
+      error: error?.message || 'Failed to fetch educator information'
     };
   }
 };

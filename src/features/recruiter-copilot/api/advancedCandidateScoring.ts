@@ -146,7 +146,6 @@ class AdvancedCandidateScoringService {
         .limit(limit);
 
       if (error || !students) {
-        console.error('Error fetching students:', error);
         return [];
       }
 
@@ -198,7 +197,6 @@ class AdvancedCandidateScoringService {
         )
       );
     } catch (error) {
-      console.error('Error in fetchEnrichedCandidates:', error);
       return [];
     }
   }

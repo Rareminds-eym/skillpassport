@@ -8,6 +8,9 @@ import { storageService } from '@/shared/api';
 import { createTeacher } from '@/features/educator-copilot';
 import { validateDocument } from "@/entities/user/lib/teacherValidation";
 import { authSessionService } from '@/features/auth';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('TeacherOnboarding');
 
 import { useUser } from '@/shared/model/authStore';
 interface SubjectExpertise {
@@ -226,7 +229,6 @@ const TeacherOnboardingPage: React.FC = () => {
             );
           }
         } catch (error) {
-          console.error(`Error uploading ${file.name}:`, error);
           setDocumentUploadProgress(prev =>
             prev.map((item, idx) =>
               idx === i ? {
@@ -419,9 +421,6 @@ const TeacherOnboardingPage: React.FC = () => {
       const userStr = localStorage.getItem('user');
       const userEmail = localStorage.getItem('userEmail');
 
-      console.log("User from localStorage:", userStr);
-      console.log("User email:", userEmail);
-
       if (!userEmail) {
         throw new Error("User not authenticated. Please log in again.");
       }
@@ -433,14 +432,10 @@ const TeacherOnboardingPage: React.FC = () => {
         .eq("email", userEmail)
         .maybeSingle();
 
-      console.log("Educator data:", educatorData);
-      console.log("Educator error:", educatorError);
-
       let schoolId = educatorData?.school_id;
 
       // If not found in school_educators, check organizations table
       if (!schoolId) {
-        console.log("Not found in school_educators, checking organizations table...");
         const { data: { user } } = await authSessionService.getUser();
         const { data: schoolData } = await supabase
           .from("organizations")
@@ -451,16 +446,12 @@ const TeacherOnboardingPage: React.FC = () => {
 
         if (schoolData?.id) {
           schoolId = schoolData.id;
-          console.log("Found school_id from organizations table:", schoolId);
         }
       }
 
       if (!schoolId) {
-        console.error(`No school found for email: ${userEmail}`);
         throw new Error("School ID not found. Please ensure you're logged in as a school admin.");
       }
-
-      console.log("Using school_id:", schoolId);
 
       // Get auth token for worker API
       const { data: { session } } = await authSessionService.getSession();
@@ -497,8 +488,6 @@ const TeacherOnboardingPage: React.FC = () => {
         }
       };
 
-      console.log('📤 Sending teacher data to API:', teacherData);
-
       const teacherResult = await createTeacher(teacherData, session.access_token);
 
       if (!teacherResult.success) {
@@ -509,8 +498,6 @@ const TeacherOnboardingPage: React.FC = () => {
       const teacherId = teacherResult.data.teacherId;
       const tempPassword = teacherResult.data.password;
 
-      console.log("Created teacher via Worker API:", { userId, teacherId });
-
       // Step 2: Upload documents if any exist
       let documentUrls: {
         degreeUrl: string | null;
@@ -520,14 +507,11 @@ const TeacherOnboardingPage: React.FC = () => {
       const hasDocuments = documents.degree_certificate || documents.id_proof || documents.experience_letters.length > 0;
 
       if (hasDocuments) {
-        console.log(`📁 Uploading documents for teacher ${teacherId}...`);
-
         try {
           documentUrls = await uploadDocumentsAfterTeacherCreation(teacherId);
-          console.log('✅ Documents uploaded:', documentUrls);
         } catch (uploadError) {
-          console.warn('⚠️ Document upload failed:', uploadError);
           // Don't fail the entire operation if document upload fails
+          logger.error('Failed to upload teacher documents', uploadError as Error);
           setMessage({
             type: "error",
             text: `Teacher created successfully, but some documents failed to upload: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`
@@ -548,13 +532,11 @@ const TeacherOnboardingPage: React.FC = () => {
             .eq('id', teacherId);
 
           if (updateError) {
-            console.warn('⚠️ Failed to update teacher record with document URLs:', updateError);
-            // Don't fail the operation, documents are uploaded but not linked
-          } else {
-            console.log('✅ Teacher record updated with document URLs');
+            throw updateError;
           }
         } catch (updateError) {
-          console.warn('⚠️ Failed to update teacher record with document URLs:', updateError);
+          logger.error('Failed to update teacher record with document URLs', updateError as Error);
+          throw updateError;
         }
       }
 

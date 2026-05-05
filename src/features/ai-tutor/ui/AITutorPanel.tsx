@@ -23,6 +23,9 @@ import { useTutorChat } from '@/features/ai-tutor/model/useTutorChat';
 import { Link } from 'react-router-dom';
 
 import { useUser } from '@/shared/model/authStore';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('ai-tutor-panel');
 interface LessonContext {
   lessonId?: string;
   lessonTitle?: string;
@@ -177,7 +180,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
       await deleteConversation(convId);
       setDeleteConfirmId(null);
     } catch (err) {
-      console.error('Failed to delete conversation:', err);
+      logger.error('Failed to delete conversation', err instanceof Error ? err : new Error(String(err)), { conversationId: convId });
     } finally {
       setIsDeleting(false);
     }

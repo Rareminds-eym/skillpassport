@@ -4,6 +4,9 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('school-admin-notification');
 
 export class SchoolAdminNotificationService {
   /**
@@ -20,13 +23,13 @@ export class SchoolAdminNotificationService {
       });
 
       if (error) {
-        console.error('Error fetching school admin notifications:', error);
+        logger.error('Failed to fetch school admin notifications', new Error('Failed to retrieve notifications'));
         throw error;
       }
 
       return data || [];
     } catch (error) {
-      console.error('Error fetching school admin notifications:', error);
+      logger.error('Failed to fetch school admin notifications', error instanceof Error ? error : new Error('Unknown error'));
       throw error;
     }
   }
@@ -44,13 +47,13 @@ export class SchoolAdminNotificationService {
       });
 
       if (error) {
-        console.error('Error fetching unread count:', error);
+        logger.error('Failed to fetch unread notification count', new Error('Failed to retrieve count'));
         return 0;
       }
 
       return data || 0;
     } catch (error) {
-      console.error('Error fetching unread count:', error);
+      logger.error('Failed to fetch unread notification count', error instanceof Error ? error : new Error('Unknown error'));
       return 0;
     }
   }
@@ -62,8 +65,6 @@ export class SchoolAdminNotificationService {
    */
   static async getPendingTrainings(schoolId) {
     try {
-      console.log('🏫 Fetching trainings for school admin using approval_authority:', schoolId);
-      
       // First try: Get trainings where approval_authority = 'school_admin'
       const { data, error } = await supabase
         .from('trainings')
@@ -83,7 +84,7 @@ export class SchoolAdminNotificationService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Error fetching trainings:', error);
+        logger.error('Failed to fetch pending trainings', new Error('Failed to retrieve trainings'));
         throw error;
       }
 
@@ -93,12 +94,8 @@ export class SchoolAdminNotificationService {
         return studentSchoolId === schoolId;
       });
 
-      console.log('📊 Found trainings with approval_authority=school_admin:', filteredTrainings.length);
-
       // FALLBACK: If no trainings found, check for Rareminds trainings that should be school_admin
       if (filteredTrainings.length === 0) {
-        console.log('🔄 No trainings found with approval_authority=school_admin, checking fallback...');
-        
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('trainings')
           .select(`
@@ -116,7 +113,7 @@ export class SchoolAdminNotificationService {
           .order('created_at', { ascending: false });
 
         if (fallbackError) {
-          console.error('❌ Error in fallback query:', fallbackError);
+          logger.error('Failed to fetch trainings (fallback query)', new Error('Failed to retrieve trainings'));
           throw fallbackError;
         }
 
@@ -125,19 +122,14 @@ export class SchoolAdminNotificationService {
           const provider = (training.organization || '').toLowerCase();
           const studentSchoolId = training.student?.school_id;
           const studentType = training.student?.student_type;
-          
+
           // Show Rareminds trainings from non-college students in this school
-          return provider === 'rareminds' && 
-                 studentSchoolId === schoolId && 
+          return provider === 'rareminds' &&
+                 studentSchoolId === schoolId &&
                  studentType !== 'college_student';
         });
 
-        console.log('📊 Found trainings via fallback logic:', fallbackTrainings.length);
-        
         if (fallbackTrainings.length > 0) {
-          console.log('⚠️ IMPORTANT: These trainings should have approval_authority=school_admin');
-          console.log('💡 Run the SQL fix to update approval_authority for existing records');
-          
           // Format fallback trainings
           const formattedFallback = fallbackTrainings.map(training => ({
             ...training,
@@ -145,7 +137,7 @@ export class SchoolAdminNotificationService {
             student_email: training.student?.email || 'No email',
             student_school_id: training.student?.school_id,
             student_college_id: training.student?.university_college_id,
-            _needsApprovalAuthorityFix: true // Flag for debugging
+            _needsApprovalAuthorityFix: true
           }));
 
           return formattedFallback;
@@ -161,11 +153,9 @@ export class SchoolAdminNotificationService {
         student_college_id: training.student?.university_college_id
       }));
 
-      console.log('✅ Final trainings for school admin:', formattedTrainings.length);
-      console.log('ℹ️ Using database approval_authority field (automatic routing)');
       return formattedTrainings;
     } catch (error) {
-      console.error('❌ Error fetching pending trainings:', error);
+      logger.error('Failed to fetch pending trainings', error instanceof Error ? error : new Error('Unknown error'));
       throw error;
     }
   }
@@ -177,8 +167,6 @@ export class SchoolAdminNotificationService {
    */
   static async getPendingExperiences(schoolId) {
     try {
-      console.log('🏫 Fetching experiences for school admin using approval_authority:', schoolId);
-      
       // Get experiences where approval_authority = 'school_admin' and student belongs to this school
       const { data, error } = await supabase
         .from('experience')
@@ -198,7 +186,7 @@ export class SchoolAdminNotificationService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Error fetching experiences:', error);
+        logger.error('Failed to fetch pending experiences', new Error('Failed to retrieve experiences'));
         throw error;
       }
 
@@ -218,11 +206,9 @@ export class SchoolAdminNotificationService {
         student_type: experience.student?.student_type
       }));
 
-      console.log('✅ Found experiences for school admin:', formattedExperiences.length);
-      console.log('ℹ️ Using database approval_authority field (automatic routing)');
       return formattedExperiences;
     } catch (error) {
-      console.error('❌ Error fetching pending experiences:', error);
+      logger.error('Failed to fetch pending experiences', error instanceof Error ? error : new Error('Unknown error'));
       throw error;
     }
   }
@@ -239,13 +225,13 @@ export class SchoolAdminNotificationService {
       });
 
       if (error) {
-        console.error('Error marking notification as read:', error);
+        logger.error('Failed to mark notification as read', new Error('Failed to update notification'));
         return false;
       }
 
       return true;
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      logger.error('Failed to mark notification as read', error instanceof Error ? error : new Error('Unknown error'));
       return false;
     }
   }
@@ -275,7 +261,7 @@ export class SchoolAdminNotificationService {
         .single();
 
       if (error) {
-        console.error('Error approving training:', error);
+        logger.error('Failed to approve training', new Error('Failed to update training approval status'));
         throw new Error(error.message || 'Failed to approve training');
       }
 
@@ -289,7 +275,7 @@ export class SchoolAdminNotificationService {
         training_id: trainingId
       };
     } catch (error) {
-      console.error('Error approving training:', error);
+      logger.error('Failed to approve training', error instanceof Error ? error : new Error('Unknown error'));
       throw error;
     }
   }
@@ -323,7 +309,7 @@ export class SchoolAdminNotificationService {
         .single();
 
       if (error) {
-        console.error('Error rejecting training:', error);
+        logger.error('Failed to reject training', new Error('Failed to update training rejection status'));
         throw new Error(error.message || 'Failed to reject training');
       }
 
@@ -338,7 +324,7 @@ export class SchoolAdminNotificationService {
         reason: notes
       };
     } catch (error) {
-      console.error('Error rejecting training:', error);
+      logger.error('Failed to reject training', error instanceof Error ? error : new Error('Unknown error'));
       throw error;
     }
   }
@@ -369,7 +355,7 @@ export class SchoolAdminNotificationService {
         .single();
 
       if (error) {
-        console.error('Error approving experience:', error);
+        logger.error('Failed to approve experience', new Error('Failed to update experience approval status'));
         throw new Error(error.message || 'Failed to approve experience');
       }
 
@@ -383,7 +369,7 @@ export class SchoolAdminNotificationService {
         experience_id: experienceId
       };
     } catch (error) {
-      console.error('Error approving experience:', error);
+      logger.error('Failed to approve experience', error instanceof Error ? error : new Error('Unknown error'));
       throw error;
     }
   }
@@ -404,22 +390,22 @@ export class SchoolAdminNotificationService {
       });
 
       if (error) {
-        console.error('Error rejecting experience:', error);
+        logger.error('Failed to reject experience', new Error('Failed to update experience rejection status'));
         throw new Error(error.message || 'Failed to reject experience');
       }
 
       // The function returns a JSON object, data should contain the result
       const result = data;
-      
+
       if (!result || !result.success) {
         const errorMessage = result?.error || 'Unknown error occurred';
-        console.error('Experience rejection failed:', errorMessage);
+        logger.error('Failed to reject experience', new Error('Experience rejection failed'));
         throw new Error(errorMessage);
       }
 
       return result;
     } catch (error) {
-      console.error('Error rejecting experience:', error);
+      logger.error('Failed to reject experience', error instanceof Error ? error : new Error('Unknown error'));
       throw error;
     }
   }
@@ -431,8 +417,6 @@ export class SchoolAdminNotificationService {
    */
   static async getPendingProjects(schoolId) {
     try {
-      console.log('🏫 Fetching projects for school admin using approval_authority:', schoolId);
-      
       // First try: Get projects where approval_authority = 'school_admin'
       const { data, error } = await supabase
         .from('projects')
@@ -452,7 +436,7 @@ export class SchoolAdminNotificationService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Error fetching projects:', error);
+        logger.error('Failed to fetch pending projects', new Error('Failed to retrieve projects'));
         throw error;
       }
 
@@ -462,12 +446,8 @@ export class SchoolAdminNotificationService {
         return studentSchoolId === schoolId;
       });
 
-      console.log('📊 Found projects with approval_authority=school_admin:', filteredProjects.length);
-
       // FALLBACK: If no projects found, check for projects that should be school_admin
       if (filteredProjects.length === 0) {
-        console.log('🔄 No projects found with approval_authority=school_admin, checking fallback...');
-        
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('projects')
           .select(`
@@ -485,7 +465,7 @@ export class SchoolAdminNotificationService {
           .order('created_at', { ascending: false });
 
         if (fallbackError) {
-          console.error('❌ Error in fallback query:', fallbackError);
+          logger.error('Failed to fetch projects (fallback query)', new Error('Failed to retrieve projects'));
           throw fallbackError;
         }
 
@@ -493,18 +473,13 @@ export class SchoolAdminNotificationService {
         const fallbackProjects = (fallbackData || []).filter(project => {
           const studentSchoolId = project.student?.school_id;
           const studentType = project.student?.student_type;
-          
+
           // Show projects from non-college students in this school
-          return studentSchoolId === schoolId && 
+          return studentSchoolId === schoolId &&
                  studentType !== 'college_student';
         });
 
-        console.log('📊 Found projects via fallback logic:', fallbackProjects.length);
-        
         if (fallbackProjects.length > 0) {
-          console.log('⚠️ IMPORTANT: These projects should have approval_authority=school_admin');
-          console.log('💡 Run the SQL fix to update approval_authority for existing records');
-          
           // Format fallback projects
           const formattedFallback = fallbackProjects.map(project => ({
             ...project,
@@ -512,7 +487,7 @@ export class SchoolAdminNotificationService {
             student_email: project.student?.email || 'No email',
             student_school_id: project.student?.school_id,
             student_college_id: project.student?.university_college_id,
-            _needsApprovalAuthorityFix: true // Flag for debugging
+            _needsApprovalAuthorityFix: true
           }));
 
           return formattedFallback;
@@ -528,11 +503,9 @@ export class SchoolAdminNotificationService {
         student_college_id: project.student?.university_college_id
       }));
 
-      console.log('✅ Final projects for school admin:', formattedProjects.length);
-      console.log('ℹ️ Using database approval_authority field (automatic routing)');
       return formattedProjects;
     } catch (error) {
-      console.error('❌ Error fetching pending projects:', error);
+      logger.error('Failed to fetch pending projects', error instanceof Error ? error : new Error('Unknown error'));
       throw error;
     }
   }
@@ -554,8 +527,6 @@ export class SchoolAdminNotificationService {
         throw new Error('Invalid approver ID - user not authenticated');
       }
 
-      console.log('🔍 Approving project:', { projectId, approverId });
-
       // Direct database update since approve_project function doesn't exist
       const { data, error } = await supabase
         .from('projects')
@@ -572,7 +543,7 @@ export class SchoolAdminNotificationService {
         .single();
 
       if (error) {
-        console.error('Error approving project:', error);
+        logger.error('Failed to approve project', new Error('Failed to update project approval status'));
         throw new Error(error.message || 'Failed to approve project');
       }
 
@@ -586,7 +557,7 @@ export class SchoolAdminNotificationService {
         project_id: projectId
       };
     } catch (error) {
-      console.error('Error approving project:', error);
+      logger.error('Failed to approve project', error instanceof Error ? error : new Error('Unknown error'));
       throw error;
     }
   }
@@ -612,8 +583,6 @@ export class SchoolAdminNotificationService {
         throw new Error('Invalid rejector ID - user not authenticated');
       }
 
-      console.log('🔍 Rejecting project:', { projectId, rejectorId });
-
       // Direct database update since reject_project function doesn't exist
       const { data, error } = await supabase
         .from('projects')
@@ -630,7 +599,7 @@ export class SchoolAdminNotificationService {
         .single();
 
       if (error) {
-        console.error('Error rejecting project:', error);
+        logger.error('Failed to reject project', new Error('Failed to update project rejection status'));
         throw new Error(error.message || 'Failed to reject project');
       }
 
@@ -645,7 +614,7 @@ export class SchoolAdminNotificationService {
         reason: notes
       };
     } catch (error) {
-      console.error('Error rejecting project:', error);
+      logger.error('Failed to reject project', error instanceof Error ? error : new Error('Unknown error'));
       throw error;
     }
   }
@@ -665,10 +634,6 @@ export class SchoolAdminNotificationService {
         table: 'training_notifications',
         filter: `school_id=eq.${schoolId}`
       }, (payload) => {
-        const notificationType = payload.new.training_id ? 'training' : 
-                               payload.new.experience_id ? 'experience' : 
-                               payload.new.project_id ? 'project' : 'unknown';
-        console.log(`🔔 New ${notificationType} notification received:`, payload.new);
         callback(payload.new);
       })
       .subscribe();

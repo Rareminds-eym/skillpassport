@@ -1,6 +1,9 @@
 import { EducatorContext } from '@/features/student-profile/model';
 import { EducatorWithSchool } from '@/shared/types/database';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('EducatorContextBuilder');
 
 /**
  * Build educator context for AI prompts
@@ -9,7 +12,6 @@ import { supabase } from '@/shared/api/supabaseClient';
  */
 export const buildEducatorContext = async (educatorId: string): Promise<EducatorContext> => {
   try {
-    console.log('🔍 Fetching educator context for:', educatorId);
 
     // Fetch educator profile with school details (only necessary columns)
     const { data: educator, error: educatorError } = await supabase
@@ -42,12 +44,12 @@ export const buildEducatorContext = async (educatorId: string): Promise<Educator
       .single();
 
     if (educatorError) {
-      console.warn('⚠️ Educator not found in school_educators table, using fallback:', educatorError.message);
+      logger.error('Failed to fetch educator from school_educators table', educatorError as Error);
       return buildFallbackContext();
     }
 
     if (!educator) {
-      console.warn('⚠️ No educator data returned');
+      logger.error('No educator data returned from query', new Error('Empty response'));
       return buildFallbackContext();
     }
 
@@ -76,7 +78,7 @@ export const buildEducatorContext = async (educatorId: string): Promise<Educator
       .eq('universityId', educatorData.school_id);
 
     if (countError) {
-      console.warn('⚠️ Error counting students:', countError.message);
+      logger.error('Failed to count students', countError as Error);
     }
 
     // Build rich context for AI
@@ -97,17 +99,10 @@ export const buildEducatorContext = async (educatorId: string): Promise<Educator
       ].filter(Boolean)
     };
 
-    console.log('✅ Educator context built successfully:', {
-      name: context.name,
-      institution: context.institution,
-      department: context.department,
-      total_students: context.total_students,
-      subjects_count: context.subjects_taught.length
-    });
 
     return context;
   } catch (error) {
-    console.error('❌ Error building educator context:', error);
+    logger.error('Failed to build educator context', error as Error);
     return buildFallbackContext();
   }
 };

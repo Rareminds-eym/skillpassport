@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('opportunitiesService');
 
 export interface Opportunity {
   id: number;
@@ -104,13 +107,11 @@ class OpportunitiesService {
       const { data, error } = await query;
 
       if (error) {
-        console.error('OpportunitiesService: Error fetching opportunities:', error);
         throw error;
       }
 
       return data || [];
     } catch (error) {
-      console.error('OpportunitiesService: Error in getAllOpportunities:', error);
       throw error;
     }
   }
@@ -124,13 +125,11 @@ class OpportunitiesService {
         .single();
 
       if (error) {
-        console.error('Error fetching opportunity:', error);
         throw error;
       }
 
       return data;
     } catch (error) {
-      console.error('Error in getOpportunityById:', error);
       throw error;
     }
   }
@@ -144,13 +143,11 @@ class OpportunitiesService {
         .single();
 
       if (error) {
-        console.error('Error creating opportunity:', error);
         throw error;
       }
 
       return data;
     } catch (error) {
-      console.error('Error in createOpportunity:', error);
       throw error;
     }
   }
@@ -165,13 +162,11 @@ class OpportunitiesService {
         .single();
 
       if (error) {
-        console.error('Error updating opportunity:', error);
         throw error;
       }
 
       return data;
     } catch (error) {
-      console.error('Error in updateOpportunity:', error);
       throw error;
     }
   }
@@ -184,11 +179,9 @@ class OpportunitiesService {
         .eq('id', id);
 
       if (error) {
-        console.error('Error deleting opportunity:', error);
         throw error;
       }
     } catch (error) {
-      console.error('Error in deleteOpportunity:', error);
       throw error;
     }
   }
@@ -203,7 +196,6 @@ class OpportunitiesService {
         .single();
 
       if (fetchError) {
-        console.error('Error fetching current view count:', fetchError);
         throw fetchError;
       }
 
@@ -216,11 +208,10 @@ class OpportunitiesService {
         .eq('id', id);
 
       if (error) {
-        console.error('Error incrementing view count:', error);
         throw error;
       }
     } catch (error) {
-      console.error('Error in incrementViewCount:', error);
+      logger.error('Failed to increment view count', error as Error);
       throw error;
     }
   }
@@ -303,13 +294,12 @@ class OpportunitiesService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error searching opportunities:', error);
         throw error;
       }
 
       return data || [];
     } catch (error) {
-      console.error('Error in searchOpportunities:', error);
+      logger.error('Failed to search opportunities', error as Error);
       throw error;
     }
   }
@@ -451,9 +441,6 @@ class OpportunitiesService {
       const { data: allIds, error: countError } = countResult;
       const { data, error } = dataResult;
       
-      if (countError) {
-        console.error('❌ Error fetching count:', countError);
-      }
       
       const realCount = allIds?.length || 0;
 
@@ -474,7 +461,6 @@ class OpportunitiesService {
             count: realCount
           };
         }
-        console.error('Error fetching paginated opportunities:', error);
         return {
           data: [],
           count: 0
@@ -486,7 +472,6 @@ class OpportunitiesService {
         count: realCount
       };
     } catch (error: any) {
-      console.error('Error in getPaginatedOpportunities:', error);
       if (error?.message?.includes('416') || error?.message?.includes('Range Not Satisfiable')) {
         return {
           data: [],
@@ -538,7 +523,7 @@ class OpportunitiesService {
       const { count: totalStudents, error: totalError } = await studentsQuery;
 
       if (totalError) {
-        console.error('Error fetching total students count:', totalError);
+        logger.error('Failed to fetch total students count', totalError as Error);
         throw totalError;
       }
 
@@ -589,7 +574,6 @@ class OpportunitiesService {
       const { data: placements, error: placementError } = await placementQuery;
 
       if (placementError) {
-        console.error('Error fetching placements:', placementError);
         throw placementError;
       }
 
@@ -644,7 +628,6 @@ class OpportunitiesService {
         highestCTC
       };
     } catch (error) {
-      console.error('Error in getPlacementStats:', error);
       return {
         studentsPlaced: 0,
         placementRate: 0,
@@ -671,7 +654,6 @@ class OpportunitiesService {
         .select('*', { count: 'exact', head: true });
 
       if (totalError) {
-        console.error('Error fetching total opportunities count:', totalError);
         throw totalError;
       }
 
@@ -682,7 +664,6 @@ class OpportunitiesService {
         .or('status.eq.open,is_active.eq.true');
 
       if (activeError) {
-        console.error('Error fetching active opportunities count:', activeError);
         throw activeError;
       }
 
@@ -693,7 +674,6 @@ class OpportunitiesService {
         .eq('status', 'draft');
 
       if (draftError) {
-        console.error('Error fetching draft opportunities count:', draftError);
         throw draftError;
       }
 
@@ -704,7 +684,6 @@ class OpportunitiesService {
         .eq('status', 'closed');
 
       if (closedError) {
-        console.error('Error fetching closed opportunities count:', closedError);
         throw closedError;
       }
 
@@ -715,7 +694,6 @@ class OpportunitiesService {
         .eq('status', 'cancelled');
 
       if (cancelledError) {
-        console.error('Error fetching cancelled opportunities count:', cancelledError);
         throw cancelledError;
       }
 
@@ -727,7 +705,6 @@ class OpportunitiesService {
         cancelled: cancelled || 0,
       };
     } catch (error) {
-      console.error('Error in getOpportunitiesStats:', error);
       throw error;
     }
   }

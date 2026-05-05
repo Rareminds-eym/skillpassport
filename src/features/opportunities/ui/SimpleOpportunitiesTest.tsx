@@ -17,14 +17,12 @@ const SimpleOpportunitiesTest = () => {
           .limit(5);
 
         if (testError) {
-          console.error('❌ SimpleTest Error:', testError);
           setError(testError.message);
           return;
         }
 
         setData(testData);
       } catch (err) {
-        console.error('❌ SimpleTest Exception:', err);
         setError(err.message);
       } finally {
         setLoading(false);

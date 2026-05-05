@@ -1,7 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
+import { getLogger } from '@/shared/config/logging';
 import { MessageService } from '@/features/messaging';
 import { queryKeys } from '@/shared/lib/queryKeys';
+
+const logger = getLogger('UseUnreadMessagesCount');
 
 /**
  * @deprecated This hook is deprecated and will be removed in a future version.
@@ -32,7 +35,7 @@ export const useUnreadMessagesCount = (recruiterId: string | undefined) => {
           0
         );
       } catch (error) {
-        console.error('Failed to fetch unread count:', error);
+        logger.error('Failed to fetch unread count', error as Error);
         return 0;
       }
     },

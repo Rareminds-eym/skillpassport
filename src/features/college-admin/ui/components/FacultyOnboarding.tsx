@@ -2,12 +2,15 @@ import { AlertCircle, CheckCircle, FileText, Loader2, Upload, X } from "lucide-r
 import React, { useEffect, useState } from "react";
 
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 import { uploadFile, uploadMultipleFiles, validateFile } from '@/shared/api';
 // @ts-ignore - userApiService is a .js file
 import { userApiService } from '@/entities/user';
 import { authSessionService } from '@/features/auth';
 
 import { useUser } from '@/shared/model/authStore';
+
+const logger = getLogger('college-admin:FacultyOnboarding');
 // Global flag to prevent redirects during faculty onboarding
 declare global {
   interface Window {
@@ -361,8 +364,6 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
       const facultyId = staffResult.data.staffId;
       const tempPassword = staffResult.data.password;
 
-      console.log("Created faculty via Worker API:", { userId, facultyId });
-
       // Step 2: Upload documents if any exist and update the faculty record
       let uploadedDegreeUrl: string | null = degreeUrl || null;
       let uploadedIdProofUrl: string | null = idProofUrl || null;
@@ -373,7 +374,7 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
           const result = await uploadFile(documents.degree_certificate, `faculty/${facultyId}/degree`);
           uploadedDegreeUrl = result.url || null;
         } catch (err) {
-          console.warn('Failed to upload degree certificate:', err);
+          logger.warn('Failed to upload degree certificate', err as Error);
         }
       }
 
@@ -382,7 +383,7 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
           const result = await uploadFile(documents.id_proof, `faculty/${facultyId}/id_proof`);
           uploadedIdProofUrl = result.url || null;
         } catch (err) {
-          console.warn('Failed to upload ID proof:', err);
+          logger.warn('Failed to upload ID proof', err as Error);
         }
       }
 
@@ -391,7 +392,7 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
           const results = await uploadMultipleFiles(documents.experience_letters, `faculty/${facultyId}/experience`);
           uploadedExperienceUrls = results.map(r => r.url).filter((url): url is string => url !== undefined);
         } catch (err) {
-          console.warn('Failed to upload experience letters:', err);
+          logger.warn('Failed to upload experience letters', err as Error);
         }
       }
 
@@ -407,7 +408,7 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
         .eq('id', facultyId);
 
       if (updateError) {
-        console.warn('Failed to update faculty record with documents:', updateError);
+        logger.warn('Failed to update faculty record with documents', updateError);
       }
 
       setMessage({

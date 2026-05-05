@@ -4,12 +4,12 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Env } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../../src/functions-lib/types';
 import type { CountdownEmailRequest } from '../types';
 import { EMAIL_STATUS } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib';
-import { sendEmail } from '../services/mailer';
 import { generateCountdownEmailHtml, getCountdownSubject } from '../services/templates';
+import { apiLogger } from '../../../lib/logger';
 import { 
   findPreRegistrationByEmail, 
   createEmailTracking, 
@@ -18,7 +18,7 @@ import {
 
 export async function handleCountdownEmail(
   body: CountdownEmailRequest,
-  env: Env,
+  env: PagesEnv,
   supabase: SupabaseClient
 ): Promise<Response> {
   const { to, fullName, countdownDay, launchDate } = body;
@@ -49,9 +49,9 @@ export async function handleCountdownEmail(
           }
         });
 
-        if (tracking) {
+        if (tracking?.id) {
           trackingId = tracking.id;
-          await updateEmailTracking(supabase, trackingId, {
+          await updateEmailTracking(supabase, tracking.id, {
             email_status: EMAIL_STATUS.SENDING
           });
         }
@@ -59,16 +59,39 @@ export async function handleCountdownEmail(
     }
 
     // Generate and send email
+    if (!env.INTERNAL_API_KEY) {
+      throw new Error('INTERNAL_API_KEY environment variable is not configured');
+    }
+    if (!env.EMAIL_WORKER_URL) {
+      throw new Error('EMAIL_WORKER_URL environment variable is not configured');
+    }
+
     const html = generateCountdownEmailHtml({ fullName, countdownDay, launchDate });
     const subject = getCountdownSubject(countdownDay);
 
-    const result = await sendEmail(env, {
-      to,
-      subject,
-      html,
-      from: env.FROM_EMAIL || 'noreply@rareminds.in',
-      fromName: env.FROM_NAME || 'Skill Passport',
+    const response = await fetch(`${env.EMAIL_WORKER_URL}/send`, {
+
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Api-Key': env.INTERNAL_API_KEY,
+      },
+      body: JSON.stringify({ to, subject, html }),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Email worker failed with status ${response.status}: ${errorText}`);
+    }
+
+    // Parse JSON response with error handling
+    let result;
+    try {
+      result = await response.json();
+    } catch (parseError) {
+      const errorMessage = parseError instanceof Error ? parseError.message : 'Unknown parsing error';
+      throw new Error(`Email worker returned invalid JSON response: ${errorMessage}`);
+    }
 
     // Update tracking status to sent
     if (trackingId && supabase) {
@@ -84,22 +107,36 @@ export async function handleCountdownEmail(
       data: result
     });
 
-  } catch (error: any) {
-    console.error('Error in handleCountdownEmail:', error);
+  } catch (error: unknown) {
+    // Type-safe error handling
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : 'Failed to send countdown email';
+    
+    const errorObject = error instanceof Error ? error : new Error(String(error));
+    
+    apiLogger.error('Error in handleCountdownEmail', errorObject);
 
-    // Update tracking status to failed
+    // Update tracking status to failed (only if trackingId exists)
     if (trackingId && supabase) {
-      await updateEmailTracking(supabase, trackingId, {
-        email_status: EMAIL_STATUS.FAILED,
-        failed_at: new Date().toISOString(),
-        error_message: error.message,
-        retry_count: 1
-      });
+      try {
+        await updateEmailTracking(supabase, trackingId, {
+          email_status: EMAIL_STATUS.FAILED,
+          failed_at: new Date().toISOString(),
+          error_message: errorMessage,
+          retry_count: 1
+        });
+      } catch (trackingError) {
+        // Log tracking update failure but don't throw
+        apiLogger.error('Failed to update email tracking status', 
+          trackingError instanceof Error ? trackingError : new Error(String(trackingError))
+        );
+      }
     }
 
     return jsonResponse({
       success: false,
-      error: error.message || 'Failed to send countdown email'
+      error: errorMessage
     }, 500);
   }
 }

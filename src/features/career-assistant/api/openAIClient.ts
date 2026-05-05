@@ -1,4 +1,7 @@
 import OpenAI from 'openai';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('openai-client');
 
 /**
  * OpenAI Client Service
@@ -11,14 +14,20 @@ let openai: OpenAI | null = null;
 export const getOpenAIClient = (): OpenAI => {
   if (!openai) {
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-    
+
     if (!apiKey || apiKey === '') {
-      console.error('❌ VITE_OPENAI_API_KEY is not set in .env file!');
+      logger.error('OpenAI API key is not configured', undefined, {
+        environment: 'client',
+        requiredEnvVar: 'VITE_OPENAI_API_KEY'
+      });
       throw new Error('OpenAI API key is not configured. Please add VITE_OPENAI_API_KEY to your .env file.');
     }
-    
-    console.log('✅ OpenAI client initializing with API key:', apiKey.substring(0, 10) + '...');
-    
+
+    logger.info('OpenAI client initialized', {
+      baseURL: 'https://openrouter.ai/api/v1',
+      model: DEFAULT_MODEL
+    });
+
     openai = new OpenAI({
       baseURL: "https://openrouter.ai/api/v1",
       apiKey: apiKey,
@@ -26,10 +35,10 @@ export const getOpenAIClient = (): OpenAI => {
         "HTTP-Referer": typeof window !== 'undefined' ? window.location.origin : '',
         "X-Title": "SkillPassport Career AI",
       },
-      dangerouslyAllowBrowser: true // Required for browser usage
+      dangerouslyAllowBrowser: true
     });
   }
   return openai;
 };
 
-export const DEFAULT_MODEL = 'nvidia/nemotron-nano-12b-v2-vl:free'; // Fast and cost-effective model
+export const DEFAULT_MODEL = 'nvidia/nemotron-nano-12b-v2-vl:free';

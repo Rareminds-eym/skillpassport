@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 import { CollegeEvent } from '@/features/student-profile/model';
 import { collegeEventsService, organizationsService } from "@/features/college-admin";
+
+const logger = getLogger('college-admin:useEvents');
 
 export const useEvents = (collegeId: string | null) => {
   const [events, setEvents] = useState<CollegeEvent[]>([]);
@@ -54,7 +57,10 @@ export const useEvents = (collegeId: string | null) => {
       const counts: Record<string, number> = {};
       (data || []).forEach((r) => { counts[r.event_id] = (counts[r.event_id] || 0) + 1; });
       setEventRegCounts(counts);
-    } catch { console.error("Failed to load registration counts"); }
+    } catch { 
+      logger.error('Failed to load registration counts', new Error('Failed to load registration counts'));
+      toast.error("Failed to load registration counts"); 
+    }
   }, [collegeId]);
 
   useEffect(() => {

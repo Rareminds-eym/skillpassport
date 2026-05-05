@@ -254,7 +254,7 @@ export const generateBadges = (userData) => {
         });
       }
     } catch (error) {
-      console.error(`Error evaluating badge ${badge.id}:`, error);
+      // Silently handle badge evaluation errors
     }
   });
 
@@ -392,7 +392,6 @@ export const saveBadgesToDatabase = async (studentId, badges) => {
     if (error) throw error;
     return { success: true, data };
   } catch (error) {
-    console.error('Error saving badges:', error);
     return { success: false, error };
   }
 };

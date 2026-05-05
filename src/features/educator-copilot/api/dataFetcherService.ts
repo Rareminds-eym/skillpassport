@@ -1,5 +1,8 @@
 import { supabase } from '@/shared/api/supabaseClient';
 import { StudentProfile, Opportunity, Assignment } from './educatorDataService';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('data-fetcher-service');
 
 /**
  * Enhanced Data Fetcher Service
@@ -52,7 +55,7 @@ class DataFetcherService {
       const { data: students, error: studentsError } = await studentsQuery;
 
       if (studentsError) {
-        console.error('Error fetching students:', studentsError);
+        logger.error('Students fetch failed', new Error(studentsError.message), { universityId });
         return [];
       }
 
@@ -66,17 +69,16 @@ class DataFetcherService {
       
       if (userIds.length > 0) {
         try {
-          console.log('Querying student_assignments with user_ids:', userIds.slice(0, 3));
-          
           // Try simple query first to test access
           const { data: testData, error: testError } = await supabase
             .from('student_assignments')
             .select('student_assignment_id, student_id, status')
             .limit(5);
-          
+
           if (testError) {
-            console.error('❌ Simple test query failed:', testError);
-            console.log('RLS or permissions issue - continuing without assignments');
+            logger.warn('Student assignments table access check failed - RLS or permissions issue', {
+              error: testError.message
+            });
             return students.map(s => ({
               ...s,
               assignments: [],
@@ -91,32 +93,32 @@ class DataFetcherService {
             } as StudentWithAssignments));
           }
           
-          console.log('✅ Test query succeeded, fetching full data...');
-          
           // Batch queries in chunks of 100 to avoid query size limits
           const BATCH_SIZE = 100;
           const allAssignments = [];
-          
+
           for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
             const batchIds = userIds.slice(i, i + BATCH_SIZE);
             const { data: batchData, error: batchError } = await supabase
               .from('student_assignments')
               .select('*')
               .in('student_id', batchIds);
-            
+
             if (batchError) {
-              console.error(`❌ Batch ${Math.floor(i/BATCH_SIZE) + 1} failed:`, batchError);
+              logger.warn('Batch student assignments fetch failed', {
+                batchNumber: Math.floor(i / BATCH_SIZE) + 1,
+                error: batchError.message
+              });
               // Continue with next batch
             } else if (batchData) {
               allAssignments.push(...batchData);
             }
           }
-          
+
           assignments = allAssignments;
-          console.log(`✅ Fetched ${assignments.length} student assignments from ${Math.ceil(userIds.length/BATCH_SIZE)} batch(es)`);
         
         } catch (tableError: any) {
-          console.error('Exception querying student_assignments:', tableError);
+          logger.error('Student assignments query exception', tableError instanceof Error ? tableError : new Error(String(tableError)));
         }
       }
 
@@ -154,7 +156,7 @@ class DataFetcherService {
         } as StudentWithAssignments;
       });
     } catch (error) {
-      console.error('Exception fetching students with assignments:', error);
+      logger.error('Fetch students with assignments exception', error instanceof Error ? error : new Error(String(error)));
       return [];
     }
   }
@@ -171,7 +173,7 @@ class DataFetcherService {
         .single();
 
       if (studentError || !student) {
-        console.error('Error fetching student:', studentError);
+        logger.error('Student fetch failed', studentError instanceof Error ? studentError : new Error(String(studentError)), { studentId });
         return null;
       }
 
@@ -184,7 +186,7 @@ class DataFetcherService {
         .eq('student_id', studentUserId);
 
       if (assignmentsError) {
-        console.error('Error fetching assignments:', assignmentsError);
+        logger.error('Assignments fetch failed', new Error(assignmentsError.message), { studentId });
       }
 
       const studentAssignments = (assignments || []) as StudentAssignment[];
@@ -209,7 +211,7 @@ class DataFetcherService {
         },
       } as StudentWithAssignments;
     } catch (error) {
-      console.error('Exception fetching student with assignments:', error);
+      logger.error('Fetch student with assignments exception', error instanceof Error ? error : new Error(String(error)), { studentId });
       return null;
     }
   }
@@ -232,7 +234,7 @@ class DataFetcherService {
       const { data: assignments, error: assignmentsError } = await assignmentsQuery;
 
       if (assignmentsError) {
-        console.error('Error fetching assignments:', assignmentsError);
+        logger.error('Assignments fetch failed', new Error(assignmentsError.message), { educatorId });
         return [];
       }
 
@@ -251,7 +253,7 @@ class DataFetcherService {
           .in('assignment_id', assignmentIds);
 
         if (submissionsError) {
-          console.error('Error fetching submissions:', submissionsError);
+          logger.error('Submissions fetch failed', new Error(submissionsError.message));
           // Don't fail - proceed with no submissions
         } else {
           studentAssignments = submissionsData || [];
@@ -289,7 +291,7 @@ class DataFetcherService {
         };
       });
     } catch (error) {
-      console.error('Exception fetching assignments with stats:', error);
+      logger.error('Fetch assignments with stats exception', error instanceof Error ? error : new Error(String(error)), { educatorId });
       return [];
     }
   }
@@ -308,13 +310,13 @@ class DataFetcherService {
         .limit(limit);
 
       if (error) {
-        console.error('Error fetching opportunities:', error);
+        logger.error('Opportunities fetch failed', new Error(error.message), { limit });
         return [];
       }
 
       return (data || []) as Opportunity[];
     } catch (error) {
-      console.error('Exception fetching opportunities:', error);
+      logger.error('Fetch opportunities exception', error instanceof Error ? error : new Error(String(error)), { limit });
       return [];
     }
   }

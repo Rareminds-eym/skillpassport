@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { XMarkIcon, CheckIcon } from '@heroicons/react/24/outline'
 import { getShortlists, addCandidateToShortlist } from '@/features/opportunities'
+import { getLogger } from '@/shared/config/logging'
+
+const logger = getLogger('AddToShortlistModal')
 
 interface Props {
   isOpen: boolean
@@ -29,7 +32,7 @@ const AddToShortlistModal: React.FC<Props> = ({ isOpen, onClose, candidate, onSu
       if (error) throw error
       setShortlists(data || [])
     } catch (err: any) {
-      console.error('Error fetching shortlists:', err)
+      logger.error('Failed to fetch shortlists', err as Error);
       setError('Failed to load shortlists')
     } finally {
       setLoadingShortlists(false)
@@ -55,7 +58,7 @@ const AddToShortlistModal: React.FC<Props> = ({ isOpen, onClose, candidate, onSu
       onSuccess?.()
       onClose()
     } catch (err: any) {
-      console.error('Error adding to shortlist:', err)
+      logger.error('Failed to add candidate to shortlist', err as Error);
       setError(err.message)
     } finally {
       setLoading(false)

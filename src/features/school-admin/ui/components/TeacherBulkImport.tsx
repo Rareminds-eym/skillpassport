@@ -70,7 +70,6 @@ Jane,Smith,jane.smith@school.edu,+1234567891,class_teacher,Class Teacher,Science
         validateData(parsedData);
       },
       error: (error) => {
-        console.error('CSV parsing error:', error);
         toast.error('Failed to parse CSV file');
       },
     });
@@ -192,7 +191,6 @@ Jane,Smith,jane.smith@school.edu,+1234567891,class_teacher,Class Teacher,Science
         setData([]);
       }
     } catch (error: any) {
-      console.error('Import failed:', error);
       toast.error(`Import failed: ${error.message}`);
     } finally {
       setImporting(false);

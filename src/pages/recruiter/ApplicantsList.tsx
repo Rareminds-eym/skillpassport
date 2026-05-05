@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { AppliedJobsService } from '@/features/opportunities';
 import { getAllPipelineCandidatesByStage, moveCandidateToStage } from '@/features/opportunities';
 import { supabase } from '@/shared/api/supabaseClient';
-import { EyeIcon, ChatBubbleLeftIcon, MagnifyingGlassIcon, FunnelIcon, ArrowDownTrayIcon, UsersIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon, SparklesIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, ChatBubbleLeftIcon, MagnifyingGlassIcon, ArrowDownTrayIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon, SparklesIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { MessageModal } from '@/features/messaging';
 import { useMessageNotifications } from '@/features/messaging';
+import { useQuery } from '@tanstack/react-query';
 
 import { recruiterInsights } from '@/features/recruiter-copilot';
 import { getLogger } from '@/shared/config/logging';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('ApplicantsList');
@@ -63,13 +65,11 @@ interface PipelineStage {
 
 const ApplicantsList: React.FC = () => {
   const user = useUser();
-  const [applicants, setApplicants] = useState<Applicant[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState<'name' | 'date' | 'rating'>('date');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sortOrder] = useState<'asc' | 'desc'>('desc');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedRequisition, setSelectedRequisition] = useState<string>('all');
 
@@ -129,82 +129,100 @@ const ApplicantsList: React.FC = () => {
     }
   });
 
-  useEffect(() => {
-    fetchApplicants();
-  }, []);
+  // Fetch applicants using React Query
+  const { data: applicants = [], isLoading: loading } = useQuery({
+    queryKey: queryKeys.recruiter.applicants(),
+    queryFn: async () => {
+      try {
+        // Fetch all applicants from applied_jobs table with pipeline data
+        const applicantsData = await AppliedJobsService.getAllApplicants();
 
-  const fetchApplicants = async () => {
-    setLoading(true);
-    try {
-      // Fetch all applicants from applied_jobs table with pipeline data
-      const applicantsData = await AppliedJobsService.getAllApplicants();
+        logger.info('[ApplicantsList] Fetched applicants data', {
+          count: applicantsData?.length,
+          sample: applicantsData?.[0]
+        });
 
-      logger.info('[ApplicantsList] Fetched applicants data', {
-        count: applicantsData?.length,
-        sample: applicantsData?.[0]
-      });
+        // Get unique opportunity IDs for the dropdown
+        const uniqueOpportunities = [...new Set(
+          applicantsData
+            ?.filter((app: any) => app.opportunity_id)
+            .map((app: any) => ({
+              id: app.opportunity_id,
+              title: app.opportunity?.job_title || app.opportunity?.title
+            }))
+        )];
+        setAvailableRequisitions(uniqueOpportunities);
 
-      // Get unique opportunity IDs for the dropdown
-      const uniqueOpportunities = [...new Set(
-        applicantsData
-          ?.filter((app: any) => app.opportunity_id)
-          .map((app: any) => ({
-            id: app.opportunity_id,
-            title: app.opportunity?.job_title || app.opportunity?.title
-          }))
-      )];
-      setAvailableRequisitions(uniqueOpportunities);
+        // Fetch pipeline data for each opportunity
+        const applicantsWithPipeline = await Promise.all(
+          (applicantsData || []).map(async (applicant: any) => {
+            if (applicant.opportunity_id) {
+              try {
+                // Get pipeline data for this opportunity
+                const { data: pipelineData } = await getAllPipelineCandidatesByStage(applicant.opportunity_id);
 
-      // Fetch pipeline data for each opportunity
-      const applicantsWithPipeline = await Promise.all(
-        (applicantsData || []).map(async (applicant: any) => {
-          if (applicant.opportunity_id) {
-            try {
-              // Get pipeline data for this opportunity
-              const { data: pipelineData } = await getAllPipelineCandidatesByStage(applicant.opportunity_id);
+                // Find this student in the pipeline data
+                let pipelineStage = null;
+                let pipelineCandidateId = null;
 
-              // Find this student in the pipeline data
-              let pipelineStage = null;
-              let pipelineCandidateId = null;
-
-              if (pipelineData) {
-                for (const [stage, candidates] of Object.entries(pipelineData)) {
-                  const found = (candidates as any[]).find(c => c.student_id === applicant.student_id);
-                  if (found) {
-                    pipelineStage = stage;
-                    pipelineCandidateId = found.id;
-                    break;
+                if (pipelineData) {
+                  for (const [stage, candidates] of Object.entries(pipelineData)) {
+                    const found = (candidates as any[]).find(c => c.student_id === applicant.student_id);
+                    if (found) {
+                      pipelineStage = stage;
+                      pipelineCandidateId = found.id;
+                      break;
+                    }
                   }
                 }
+
+                return {
+                  ...applicant,
+                  pipeline_stage: pipelineStage,
+                  pipeline_candidate_id: pipelineCandidateId,
+                  opportunity_id: applicant.opportunity_id
+                };
+              } catch (error) {
+                logger.error('Error fetching pipeline data for opportunity', error, { opportunityId: applicant.opportunity_id });
+                return applicant;
               }
-
-              return {
-                ...applicant,
-                pipeline_stage: pipelineStage,
-                pipeline_candidate_id: pipelineCandidateId,
-                opportunity_id: applicant.opportunity_id
-              };
-            } catch (error) {
-              logger.error('Error fetching pipeline data for opportunity', error, { opportunityId: applicant.opportunity_id });
-              return applicant;
             }
-          }
-          return applicant;
-        })
-      );
+            return applicant;
+          })
+        );
 
-      setApplicants(applicantsWithPipeline);
+        // Update pipeline stage counts
+        updatePipelineCounts(applicantsWithPipeline);
 
-      // Update pipeline stage counts
-      updatePipelineCounts(applicantsWithPipeline);
+        return applicantsWithPipeline;
+      } catch (error) {
+        logger.error('Error fetching applicants', error);
+        throw error;
+      }
+    },
+    staleTime: 30000, // 30 seconds
+  });
 
-      // AI recommendations will be fetched on-demand when user clicks the button
+  const updatePipelineCounts = (applicantsList: Applicant[]) => {
+    const counts = {
+      sourced: 0,
+      screened: 0,
+      interview_1: 0,
+      interview_2: 0,
+      offer: 0,
+      hired: 0
+    };
 
-    } catch (error) {
-      logger.error('Error fetching applicants', error);
-    } finally {
-      setLoading(false);
-    }
+    applicantsList.forEach(app => {
+      if (app.pipeline_stage && counts.hasOwnProperty(app.pipeline_stage)) {
+        counts[app.pipeline_stage as keyof typeof counts]++;
+      }
+    });
+
+    setPipelineStages(prev => prev.map(stage => ({
+      ...stage,
+      count: counts[stage.stage as keyof typeof counts] || 0
+    })));
   };
 
   const fetchAIRecommendations = async (applicantsList: Applicant[]) => {
@@ -280,29 +298,6 @@ const ApplicantsList: React.FC = () => {
       await fetchAIRecommendations(applicants);
       setShowRecommendations(true);
     }
-  };
-
-  const updatePipelineCounts = (applicantsList: Applicant[]) => {
-    const counts = {
-      sourced: 0,
-      screened: 0,
-      interview_1: 0,
-      interview_2: 0,
-      offer: 0,
-      hired: 0
-    };
-
-    applicantsList.forEach(applicant => {
-      // Only count actual pipeline stages, not application statuses
-      if (applicant.pipeline_stage && counts.hasOwnProperty(applicant.pipeline_stage)) {
-        counts[applicant.pipeline_stage as keyof typeof counts]++;
-      }
-    });
-
-    setPipelineStages(prev => prev.map(stage => ({
-      ...stage,
-      count: counts[stage.stage as keyof typeof counts] || 0
-    })));
   };
 
   const handleMoveToPipelineStage = async (applicant: Applicant, newStage: string) => {
@@ -642,8 +637,8 @@ const ApplicantsList: React.FC = () => {
                 <div
                   key={stage.stage}
                   className={`relative p-4 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${statusFilter === stage.stage
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
                     }`}
                   onClick={() => setStatusFilter(statusFilter === stage.stage ? 'all' : stage.stage)}
                 >
@@ -1174,8 +1169,8 @@ const ApplicantsList: React.FC = () => {
                     key={page}
                     onClick={() => setCurrentPage(page)}
                     className={`px-3 py-1 border rounded text-sm ${currentPage === page
-                        ? 'bg-primary-600 text-white border-primary-600'
-                        : 'border-gray-300 hover:bg-gray-50'
+                      ? 'bg-primary-600 text-white border-primary-600'
+                      : 'border-gray-300 hover:bg-gray-50'
                       }`}
                   >
                     {page}

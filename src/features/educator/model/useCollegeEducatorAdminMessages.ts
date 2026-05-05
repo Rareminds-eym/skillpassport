@@ -43,14 +43,11 @@ export const useCollegeEducatorAdminMessages = ({
     queryFn: async () => {
       if (!conversationId) return [];
 
-      console.log('🔍 [useCollegeEducatorAdminMessages] Fetching messages for conversation:', conversationId);
-
       const messages = await MessageService.getConversationMessages(conversationId, {
         useCache: true,
         limit: 100
       });
 
-      console.log('✅ [useCollegeEducatorAdminMessages] Messages loaded:', messages.length);
       return messages;
     },
     enabled: enabled && !!conversationId,
@@ -63,16 +60,6 @@ export const useCollegeEducatorAdminMessages = ({
   // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async ({ senderId, senderType, receiverId, receiverType, messageText, subject }) => {
-      console.log('📤 [useCollegeEducatorAdminMessages] Sending message:', {
-        conversationId,
-        senderId,
-        senderType,
-        receiverId,
-        receiverType,
-        messageText: messageText.substring(0, 50) + '...',
-        subject
-      });
-
       const message = await MessageService.sendMessage(
         conversationId,
         senderId,
@@ -86,7 +73,6 @@ export const useCollegeEducatorAdminMessages = ({
         subject
       );
 
-      console.log('✅ [useCollegeEducatorAdminMessages] Message sent:', message.id);
       return message;
     },
     onSuccess: (newMessage) => {
@@ -103,7 +89,6 @@ export const useCollegeEducatorAdminMessages = ({
       });
     },
     onError: (error) => {
-      console.error('❌ [useCollegeEducatorAdminMessages] Error sending message:', error);
       throw error;
     }
   });
@@ -112,12 +97,6 @@ export const useCollegeEducatorAdminMessages = ({
   const markAsReadMutation = useMutation({
     mutationFn: async () => {
       if (!conversationId || !userId) return;
-
-      console.log('👁️ [useCollegeEducatorAdminMessages] Marking conversation as read:', {
-        conversationId,
-        userId,
-        userType
-      });
 
       await MessageService.markConversationAsRead(conversationId, userId);
     },
@@ -129,15 +108,12 @@ export const useCollegeEducatorAdminMessages = ({
       });
     },
     onError: (error) => {
-      console.error('❌ [useCollegeEducatorAdminMessages] Error marking as read:', error);
     }
   });
 
   // Subscribe to real-time message updates
   useEffect(() => {
     if (!enabled || !conversationId) return;
-
-    console.log('🔄 [useCollegeEducatorAdminMessages] Setting up message subscription for:', conversationId);
 
     // Clean up existing subscription
     if (subscriptionRef.current) {
@@ -148,8 +124,6 @@ export const useCollegeEducatorAdminMessages = ({
     subscriptionRef.current = MessageService.subscribeToConversation(
       conversationId,
       (newMessage) => {
-        console.log('🔄 [useCollegeEducatorAdminMessages] Real-time message received:', newMessage);
-
         // Add new message to cache
         queryClient.setQueryData(queryKeys.college.admin.messages(conversationId), (oldMessages) => {
           if (!oldMessages) return [newMessage];
@@ -170,7 +144,6 @@ export const useCollegeEducatorAdminMessages = ({
     );
 
     return () => {
-      console.log('🔄 [useCollegeEducatorAdminMessages] Cleaning up message subscription');
       if (subscriptionRef.current) {
         subscriptionRef.current.unsubscribe();
         subscriptionRef.current = null;

@@ -1,10 +1,12 @@
 import OpenAI from 'openai';
+import { getLogger } from '@/shared/config/logging';
 
 /**
  * OpenAI Client for University AI Counselling
  * Reuses the same pattern as career-assistant
  */
 
+const logger = getLogger('university-ai-openai');
 let openai: OpenAI | null = null;
 
 export const getOpenAIClient = (): OpenAI => {
@@ -12,11 +14,9 @@ export const getOpenAIClient = (): OpenAI => {
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
     
     if (!apiKey || apiKey === '') {
-      console.error('❌ VITE_OPENAI_API_KEY is not set in .env file!');
+      logger.error('VITE_OPENAI_API_KEY is not set in .env file');
       throw new Error('OpenAI API key is not configured. Please add VITE_OPENAI_API_KEY to your .env file.');
     }
-    
-    console.log('✅ University AI initializing with API key');
     
     openai = new OpenAI({
       baseURL: "https://openrouter.ai/api/v1",

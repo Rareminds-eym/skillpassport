@@ -1,5 +1,8 @@
 import { supabase } from '@/shared/api/supabaseClient';
 import storageApiService from '@/shared/api/storageApiService';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('assignments-service');
 
 /**
  * Assignments Service
@@ -84,7 +87,9 @@ export const getAssignmentsByStudentId = async (studentId) => {
     return flattenedData;
 
   } catch (error) {
-    console.error('Error fetching assignments:', error);
+    logger.error('Fetch assignments failed', error instanceof Error ? error : new Error(String(error)), {
+      studentId
+    });
     throw error;
   }
 };
@@ -135,7 +140,10 @@ export const getAssignmentsByStatus = async (studentId, status) => {
     
     return flattenedData;
   } catch (error) {
-    console.error('Error fetching assignments by status:', error);
+    logger.error('Fetch assignments by status failed', error instanceof Error ? error : new Error(String(error)), {
+      studentId,
+      status
+    });
     throw error;
   }
 };
@@ -199,7 +207,11 @@ export const getAssignmentsByDateRange = async (studentId, startDate, endDate) =
     
     return flattenedData;
   } catch (error) {
-    console.error('Error fetching assignments by date range:', error);
+    logger.error('Fetch assignments by date range failed', error instanceof Error ? error : new Error(String(error)), {
+      studentId,
+      startDate,
+      endDate
+    });
     throw error;
   }
 };
@@ -254,7 +266,9 @@ export const getAssignmentStats = async (studentId) => {
 
     return stats;
   } catch (error) {
-    console.error('Error fetching assignment stats:', error);
+    logger.error('Fetch assignment stats failed', error instanceof Error ? error : new Error(String(error)), {
+      studentId
+    });
     throw error;
   }
 };
@@ -296,7 +310,10 @@ export const updateAssignmentStatus = async (studentAssignmentId, newStatus) => 
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Error updating assignment status:', error);
+    logger.error('Update assignment status failed', error instanceof Error ? error : new Error(String(error)), {
+      studentAssignmentId,
+      newStatus
+    });
     throw error;
   }
 };
@@ -346,7 +363,7 @@ export const getAssignmentWithAttachments = async (studentId, assignmentId) => {
     
     return flattened;
   } catch (error) {
-    console.error('Error fetching assignment with attachments:', error);
+    logger.error('Fetch assignment with attachments failed', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 };
@@ -395,7 +412,7 @@ export const getStudentAssignment = async (studentId, assignmentId) => {
     
     return flattened;
   } catch (error) {
-    console.error('Error fetching student assignment:', error);
+    logger.error('Fetch student assignment failed', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 };
@@ -415,7 +432,7 @@ export const deleteStudentAssignment = async (studentAssignmentId) => {
     if (error) throw error;
     return true;
   } catch (error) {
-    console.error('Error deleting student assignment:', error);
+    logger.error('Delete student assignment failed', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 };
@@ -446,7 +463,9 @@ export const submitAssignmentWithFile = async (studentAssignmentId, submissionDa
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Error submitting assignment with file:', error);
+    logger.error('Submit assignment with file failed', error instanceof Error ? error : new Error(String(error)), {
+      studentAssignmentId
+    });
     throw error;
   }
 };
@@ -477,7 +496,9 @@ export const submitAssignment = async (studentAssignmentId, submissionData) => {
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Error submitting assignment:', error);
+    logger.error('Submit assignment failed', error instanceof Error ? error : new Error(String(error)), {
+      studentAssignmentId
+    });
     throw error;
   }
 };
@@ -500,7 +521,9 @@ export const updateStudentAssignment = async (studentAssignmentId, updateData) =
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Error updating student assignment:', error);
+    logger.error('Update student assignment failed', error instanceof Error ? error : new Error(String(error)), {
+      studentAssignmentId
+    });
     throw error;
   }
 };
@@ -617,7 +640,10 @@ export const getStudentSubmissionFiles = async (assignmentId, studentAssignmentI
     
     return filesWithOriginalNames;
   } catch (error) {
-    console.error('Error fetching student submission files:', error);
+    logger.error('Fetch student submission files failed', error instanceof Error ? error : new Error(String(error)), {
+      assignmentId,
+      studentAssignmentId
+    });
     throw error;
   }
 };
@@ -652,7 +678,10 @@ export const getAssignmentWithFiles = async (studentId, assignmentId) => {
       submission_files: submissionFiles
     };
   } catch (error) {
-    console.error('Error fetching assignment with files:', error);
+    logger.error('Fetch assignment with files failed', error instanceof Error ? error : new Error(String(error)), {
+      studentId,
+      assignmentId
+    });
     throw error;
   }
 };
@@ -683,7 +712,10 @@ export const deleteStudentSubmissionFile = async (attachmentId, studentAssignmen
     try {
       await storageApiService.deleteFile(fileKey, token);
     } catch (storageError) {
-      console.warn('Failed to delete file from storage:', storageError);
+      logger.warn('Failed to delete submission file from storage', {
+        attachmentId,
+        error: storageError instanceof Error ? storageError.message : String(storageError)
+      });
       // Continue with database deletion even if storage deletion fails
     }
     
@@ -696,7 +728,10 @@ export const deleteStudentSubmissionFile = async (attachmentId, studentAssignmen
     if (error) throw error;
     return true;
   } catch (error) {
-    console.error('Error deleting student submission file:', error);
+    logger.error('Delete student submission file failed', error instanceof Error ? error : new Error(String(error)), {
+      attachmentId,
+      studentAssignmentId
+    });
     throw error;
   }
 };
@@ -740,7 +775,9 @@ export const uploadInstructionFile = async (assignmentId, file, token) => {
       url: uploadResult.url
     };
   } catch (error) {
-    console.error('Error uploading instruction file:', error);
+    logger.error('Upload instruction file failed', error instanceof Error ? error : new Error(String(error)), {
+      assignmentId
+    });
     throw error;
   }
 };
@@ -770,7 +807,10 @@ export const deleteInstructionFile = async (attachmentId, token) => {
     try {
       await storageApiService.deleteFile(fileKey, token);
     } catch (storageError) {
-      console.warn('Failed to delete file from storage:', storageError);
+      logger.warn('Failed to delete instruction file from storage', {
+        attachmentId,
+        error: storageError instanceof Error ? storageError.message : String(storageError)
+      });
     }
     
     // Delete from database
@@ -782,7 +822,9 @@ export const deleteInstructionFile = async (attachmentId, token) => {
     if (error) throw error;
     return true;
   } catch (error) {
-    console.error('Error deleting instruction file:', error);
+    logger.error('Delete instruction file failed', error instanceof Error ? error : new Error(String(error)), {
+      attachmentId
+    });
     throw error;
   }
 };

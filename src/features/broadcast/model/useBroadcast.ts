@@ -1,5 +1,8 @@
 import { useEffect, useCallback } from 'react';
 import RealtimeService, { BroadcastMessage } from '@/shared/api/realtimeService';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('broadcast');
 
 interface UseBroadcastProps {
   channelName: string;
@@ -55,7 +58,7 @@ export const useBroadcast = ({
         const result = await RealtimeService.sendBroadcast(channelName, message);
         return result;
       } catch (error) {
-        console.error('❌ Error sending broadcast:', error);
+        logger.error('Error sending broadcast', error instanceof Error ? error : new Error(String(error)), { channelName, messageType: message.type });
         throw error;
       }
     },

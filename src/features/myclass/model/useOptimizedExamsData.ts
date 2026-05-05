@@ -51,7 +51,6 @@ export const useOptimizedExamsData = (studentId: string | undefined): UseExamsDa
       setResults(resultsData as SchoolStudentResult[]);
       setResultStats(resultStatsData);
     } catch (err) {
-      console.error('Error fetching exams data:', err);
       setError(err as Error);
     } finally {
       setLoading(false);

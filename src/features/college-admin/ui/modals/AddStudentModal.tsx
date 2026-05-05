@@ -7,6 +7,7 @@ import userApiService from '@/entities/user/api/userApiService'
 import { usePermission } from '@/entities/user/model/usePermissions'
 import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/utils/fileValidation'
 import { getFileSizeLimit } from '@/shared/config/fileSizeLimits'
+import { getLogger } from '@/shared/config/logging'
 
 interface DocumentUploadProgress {
   file: string
@@ -53,6 +54,8 @@ interface StudentFormData {
   documents: File[]
 }
 
+const logger = getLogger('add-student-modal')
+
 const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -81,8 +84,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           setIsAdmin(true);
         }
       }
-    } catch (e) {
-      console.warn('Could not parse user data for admin check');
+    } catch (error: unknown) {
+      logger.error('Error parsing user data from localStorage', error instanceof Error ? error : new Error(String(error)))
     }
   }, []);
 
@@ -165,7 +168,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       userRole = userData.role || null
       isCollegeContext = !!(collegeId || userRole === 'college_admin')
     } catch (e) {
-      console.warn('Could not parse user data from localStorage')
+      logger.error('Error parsing user data from localStorage', e instanceof Error ? e : new Error(String(e)))
     }
 
     let sampleData
@@ -348,8 +351,6 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       const userEmail = localStorage.getItem('userEmail')
       const userStr = localStorage.getItem('user')
 
-      console.log('Current user from localStorage:', { userEmail, user: userStr })
-
       if (!userEmail) {
         throw new Error('You are not logged in. Please login and try again.')
       }
@@ -367,12 +368,11 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         collegeId = userData.collegeId || null
         userRole = userData.role || null
       } catch (e) {
-        console.warn('Could not parse user data from localStorage')
+        logger.error('Error parsing user data from localStorage', e instanceof Error ? e : new Error(String(e)))
       }
 
       // If schoolId not in localStorage but user is school_admin, fetch from organizations table
       if (!schoolId && userRole === 'school_admin' && userEmail) {
-        console.log('🔍 Fetching schoolId from organizations table for school admin:', userEmail)
         const { data: org } = await supabase
           .from('organizations')
           .select('id')
@@ -382,10 +382,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
         if (org?.id) {
           schoolId = org.id
-          console.log('✅ Found schoolId from organizations:', schoolId)
         } else if (authUser?.id) {
           // Also try school_educators table
-          console.log('🔍 Trying school_educators table...')
           const { data: educator } = await supabase
             .from('school_educators')
             .select('school_id')
@@ -394,14 +392,12 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           
           if (educator?.school_id) {
             schoolId = educator.school_id
-            console.log('✅ Found schoolId from school_educators:', schoolId)
           }
         }
       }
 
       // If collegeId not in localStorage but user is college_admin, fetch from organizations table
       if (!collegeId && userRole === 'college_admin' && authUser?.id) {
-        console.log('🔍 Fetching collegeId from organizations table for college admin')
         
         const { data: org } = await supabase
           .from('organizations')
@@ -412,30 +408,21 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
         if (org?.id) {
           collegeId = org.id
-          console.log('✅ Found collegeId:', collegeId)
         }
       }
 
-      console.log('✅ User authenticated:', userEmail, 'School ID:', schoolId, 'College ID:', collegeId, 'Role:', userRole)
-
       // Refresh session to ensure we have a valid token
-      console.log('🔄 Refreshing session...')
       const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
       
       if (refreshError) {
-        console.warn('Session refresh failed:', refreshError)
         // Try to get existing session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
         if (sessionError || !session) {
-          console.error('No valid session available')
+          logger.error('No valid session available', new Error('No valid session available'))
           throw new Error('Authentication expired. Please login again.')
         }
-        
-        console.log('🔑 Using existing session')
-      } else {
-        console.log('✅ Session refreshed successfully')
-      }
+      } 
 
       const finalSession = refreshData?.session || (await supabase.auth.getSession()).data.session
       
@@ -446,18 +433,11 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       const token = finalSession.access_token
 
       if (!token) {
-        console.error('No access token in session')
+        logger.error('No access token in session', new Error('No access token in session'))
         throw new Error('No authentication token available')
       }
 
-      console.log('🔑 Token obtained, length:', token.length)
-
       // Call Cloudflare Worker via userApiService
-      console.log('Calling create-student via userApiService with data:', {
-        name: formData.name,
-        email: formData.email,
-        contactNumber: formData.contactNumber
-      })
 
       const data = await userApiService.createStudent({
         userEmail: userEmail,
@@ -489,11 +469,10 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           // Note: No documents sent initially
         }
       }, token)
-      console.log('Edge Function Response:', JSON.stringify(data, null, 2))
 
       // Check if operation failed
       if (!data?.success) {
-        console.error('Function returned error:', data)
+        logger.error('Function returned error', new Error(JSON.stringify(data)))
         throw new Error(data?.error || data?.details || 'Failed to create student')
       }
 
@@ -502,18 +481,13 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         throw new Error('Student created but no ID returned')
       }
 
-      console.log('✅ Student created with ID:', studentId)
-
       // Step 2: Upload documents if any exist
       let uploadedDocuments: Array<{name: string, url: string, size: number, type: string}> = []
       if (formData.documents.length > 0) {
-        console.log(`📁 Uploading ${formData.documents.length} documents...`)
         
         try {
           uploadedDocuments = await uploadDocumentsAfterStudentCreation(formData.documents, studentId)
-          console.log('✅ Documents uploaded:', uploadedDocuments.length)
         } catch (uploadError) {
-          console.warn('⚠️ Document upload failed:', uploadError)
           // Don't fail the entire operation if document upload fails
           setError(`Student created successfully, but some documents failed to upload: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`)
         }
@@ -523,9 +497,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       if (uploadedDocuments.length > 0) {
         try {
           await updateStudentDocuments(studentId, uploadedDocuments)
-          console.log('✅ Student record updated with document URLs')
         } catch (updateError) {
-          console.warn('⚠️ Failed to update student record with document URLs:', updateError)
+          logger.error('Error updating student documents', updateError instanceof Error ? updateError : new Error(String(updateError)))
           // Don't fail the operation, documents are uploaded but not linked
         }
       }
@@ -543,8 +516,6 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       setTimeout(() => {
         onClose()
       }, 1500)
-
-      console.log('✅ Student created successfully!')
     } catch (err: any) {
       setError(err.message || 'Failed to create student. Please try again.')
       setSuccess(null)
@@ -612,8 +583,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       if (!isNaN(dateObj.getTime())) {
         return dateObj.toISOString().split('T')[0]
       }
-    } catch (e) {
-      console.warn('Failed to parse date:', trimmed)
+    } catch (e: unknown) {
+      logger.error('Error parsing date', e instanceof Error ? e : new Error(String(e)))
     }
     
     return null
@@ -709,8 +680,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               )
             )
           }
-        } catch (error) {
-          console.error(`Error uploading ${file.name}:`, error)
+        } catch (error: unknown) {
+          logger.error(`Error uploading ${file.name}`, error instanceof Error ? error : new Error(String(error)))
           setDocumentUploadProgress(prev => 
             prev.map((item, idx) => 
               idx === i ? { 
@@ -743,8 +714,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
       // Use the API service to update documents
       await userApiService.updateStudentDocuments(studentId, documents, token)
-    } catch (error) {
-      console.error('Error updating student documents:', error)
+    } catch (error: unknown) {
+      logger.error('Error updating student documents', error instanceof Error ? error : new Error(String(error)))
       throw error
     }
   }
@@ -804,18 +775,12 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             schoolId = userData.schoolId || null
             collegeId = userData.collegeId || null
             userRole = userData.role || null
-          } catch (e) {
-            console.warn('Could not parse user data from localStorage')
+          } catch (error: unknown) {
+            logger.error('Error parsing user data', error instanceof Error ? error : new Error(String(error)))
           }
-
-          console.log('🔍 DEBUG: Initial schoolId from localStorage:', schoolId)
-          console.log('🔍 DEBUG: Initial collegeId from localStorage:', collegeId)
-          console.log('🔍 DEBUG: User role:', userRole)
-          console.log('🔍 DEBUG: User email:', userEmail)
 
           // If collegeId not in localStorage but user is college_admin, fetch from organizations table
           if (!collegeId && userRole === 'college_admin' && userEmail) {
-            console.log('🔍 DEBUG: Fetching collegeId from organizations table for college admin:', userEmail)
             const { data: org } = await supabase
               .from('organizations')
               .select('id')
@@ -825,13 +790,11 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
             if (org?.id) {
               collegeId = org.id
-              console.log('✅ Found collegeId:', collegeId)
             }
           }
 
           // If schoolId not in localStorage but user is school_admin, fetch from organizations table
           if (!schoolId && userRole === 'school_admin' && userEmail) {
-            console.log('🔍 DEBUG: Fetching schoolId from organizations table for school admin:', userEmail)
             const { data: org } = await supabase
               .from('organizations')
               .select('id')
@@ -841,13 +804,11 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
             if (org?.id) {
               schoolId = org.id
-              console.log('✅ Found schoolId from organizations:', schoolId)
             }
           }
 
           // If schoolId not in localStorage, fetch from database (for educators)
           if (!schoolId && !collegeId && userEmail) {
-            console.log('🔍 DEBUG: Fetching schoolId from database for user:', userEmail)
 
             // Check school_educators table
             const { data: educatorData, error: educatorError } = await supabase
@@ -858,9 +819,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
             if (!educatorError && educatorData) {
               schoolId = educatorData.school_id
-              console.log('🔍 DEBUG: Found schoolId from school_educators:', schoolId)
             } else {
-              console.log('🔍 DEBUG: No educator found, checking users table...')
 
               // Check users.organizationId
               const { data: userData, error: userError } = await supabase
@@ -871,7 +830,6 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
               if (!userError && userData) {
                 schoolId = userData.organizationId
-                console.log('🔍 DEBUG: Found schoolId from users.organizationId:', schoolId)
               }
             }
           }
@@ -889,16 +847,11 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               }
             })
 
-          console.log('🔍 DEBUG: Classes to check from CSV:', Array.from(classesToCheck.entries()))
-          console.log('🔍 DEBUG: School ID:', schoolId)
-          console.log('🔍 DEBUG: College ID:', collegeId)
-
           // Check which classes exist in database and store their IDs (only for schools)
           const existingClasses = new Set<string>()
           const classIdMap = new Map<string, string>() // Map of "grade-section" to class_id
 
           if (schoolId && classesToCheck.size > 0) {
-            console.log('🔍 DEBUG: Checking classes in database for school:', schoolId)
 
             const { data: classes, error: classError } = await supabase
               .from('school_classes')
@@ -906,22 +859,15 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               .eq('school_id', schoolId)
               .eq('account_status', 'active')
 
-            console.log('🔍 DEBUG: Database query result:', { classes, error: classError })
-
             if (!classError && classes) {
               classes.forEach((cls: { id: string; grade: string; section: string; name: string; academic_year: string }) => {
                 const key = `${cls.grade}-${cls.section}`
                 existingClasses.add(key)
                 classIdMap.set(key, cls.id)
-                console.log(`🔍 DEBUG: Found class in DB: ${key} (id: ${cls.id}, name: ${cls.name}, year: ${cls.academic_year})`)
               })
-              console.log('🔍 DEBUG: All existing classes:', Array.from(existingClasses))
-              console.log('🔍 DEBUG: Class ID map:', Array.from(classIdMap.entries()))
             } else if (classError) {
-              console.error('🔍 DEBUG: Error fetching classes:', classError)
+              logger.error('Error fetching classes', classError instanceof Error ? classError : new Error(String(classError)))
             }
-          } else {
-            console.log('🔍 DEBUG: Skipping class check - schoolId:', schoolId, 'classesToCheck.size:', classesToCheck.size)
           }
 
           // Validate ALL rows and create enhanced preview
@@ -949,26 +895,19 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             const section = student.section || student.division
             let schoolClassId: string | null = null
 
-            console.log(`🔍 DEBUG Row ${rowNum}: grade="${grade}", section="${section}", student.grade="${student.grade}", student.section="${student.section}"`)
-
             if (grade && section) {
               const classKey = `${grade}-${section}`
               const exists = existingClasses.has(classKey)
-              console.log(`🔍 DEBUG Row ${rowNum}: Checking class "${classKey}" - exists: ${exists}`)
               if (!exists) {
                 errors.push(`Class ${grade}-${section} does not exist. Please create the class first.`)
-                console.log(`🔍 DEBUG Row ${rowNum}: Added error - class not found`)
               } else {
                 // Get the class ID
                 schoolClassId = classIdMap.get(classKey) || null
-                console.log(`🔍 DEBUG Row ${rowNum}: Found class ID: ${schoolClassId}`)
               }
             } else if (grade && !section) {
               errors.push('Section is required when grade is provided')
-              console.log(`🔍 DEBUG Row ${rowNum}: Missing section`)
             } else if (!grade && section) {
               errors.push('Grade is required when section is provided')
-              console.log(`🔍 DEBUG Row ${rowNum}: Missing grade`)
             }
 
             // Validate date format if provided
@@ -1056,8 +995,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               schoolId = userData.schoolId || null
               collegeId = userData.collegeId || null
               userRole = userData.role || null
-            } catch (e) {
-              console.warn('Could not parse user data from localStorage')
+            } catch (error: unknown) {
+              logger.error('Error parsing user data from localStorage', error instanceof Error ? error : new Error(String(error)))
             }
 
             // If collegeId not in localStorage but user is college_admin, fetch from organizations table
@@ -1122,8 +1061,6 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               })
             }
 
-            console.log('🔍 CSV SUBMIT: Class ID map:', Array.from(classIdMap.entries()))
-
             // Validate and prepare students data
             const validStudents: any[] = []
             const errors: string[] = []
@@ -1167,7 +1104,6 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               if (grade && section) {
                 const classKey = `${grade}-${section}`
                 schoolClassId = classIdMap.get(classKey) || null
-                console.log(`🔍 CSV SUBMIT Row ${rowNum}: grade=${grade}, section=${section}, classKey=${classKey}, schoolClassId=${schoolClassId}`)
               }
 
               validStudents.push({

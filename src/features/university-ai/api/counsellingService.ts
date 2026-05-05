@@ -1,11 +1,14 @@
 import { getOpenAIClient, DEFAULT_MODEL } from './openAIClient';
 import { CounsellingTopic, Message, StudentContext, CounsellingResponse } from '../model';
 import { COUNSELLING_PROMPTS, buildStudentContextPrompt, getFollowUpSuggestions } from '../lib/prompts/counsellingPrompts';
+import { getLogger } from '@/shared/config/logging';
 
 /**
  * University AI Counselling Service
  * Provides streaming AI responses for student counselling
  */
+
+const logger = getLogger('university-counselling');
 
 class UniversityCounsellingService {
   /**
@@ -73,7 +76,7 @@ class UniversityCounsellingService {
         }
       };
     } catch (error) {
-      console.error('University AI Error:', error);
+      logger.error('University AI counselling error', error as Error);
       throw error;
     }
   }

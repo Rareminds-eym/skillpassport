@@ -276,7 +276,9 @@ const StudentServiceRequests = () => {
         </div>
         <div className="flex gap-2">
           <button 
-            onClick={() => console.log('View request:', request)}
+            onClick={() => {
+              // View request details
+            }}
             className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-xl hover:bg-gray-200 flex items-center gap-1 font-medium transition-all duration-200"
           >
             <EyeIcon className="h-4 w-4" />

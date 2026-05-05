@@ -5,6 +5,9 @@
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl } from '@/shared/api/apiUtils';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('certificate-service');
 
 const STORAGE_API_URL = getApiUrl('storage');
 
@@ -164,7 +167,7 @@ export const generateCourseCertificate = async (studentId, studentName, courseId
       const blob = dataURLtoBlob(certificateDataUrl);
       certificateUrl = await uploadToR2(blob, studentId, courseId, credentialId);
     } catch (err) {
-      console.warn('R2 upload failed, using data URL:', err.message);
+      logger.error('Failed to upload certificate to R2 storage', err instanceof Error ? err : new Error('Unknown error'));
     }
 
     // Save to database
@@ -194,7 +197,7 @@ export const generateCourseCertificate = async (studentId, studentName, courseId
 
     return { success: true, certificateUrl, credentialId };
   } catch (error) {
-    console.error('Certificate generation error:', error);
+    logger.error('Failed to generate course certificate', error instanceof Error ? error : new Error('Unknown error'));
     return { success: false, error: error.message };
   }
 };
@@ -248,8 +251,8 @@ export const downloadCertificate = async (certificateUrl, courseName) => {
     // Clean up the blob URL
     window.URL.revokeObjectURL(url);
   } catch (error) {
-    console.error('Certificate download error:', error);
-    throw error; // Re-throw so caller can handle it
+    logger.error('Failed to download certificate', error instanceof Error ? error : new Error('Unknown error'));
+    throw error;
   }
 };
 

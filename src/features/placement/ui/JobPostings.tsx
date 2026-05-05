@@ -125,7 +125,6 @@ const JobPostings: React.FC = () => {
       });
       setOpportunities(opportunitiesData);
     } catch (error) {
-      console.error('Error loading opportunities:', error);
       setHasError(true);
       toast.error('Failed to load job opportunities');
       setOpportunities([]);
@@ -266,7 +265,6 @@ const JobPostings: React.FC = () => {
         loadOpportunities();
       }
     } catch (error) {
-      console.error('Error viewing job details:', error);
       toast.error('Failed to load job details');
     }
   };
@@ -298,7 +296,6 @@ const JobPostings: React.FC = () => {
         setShowAddJobModal(true);
       }
     } catch (error) {
-      console.error('Error loading job for editing:', error);
       toast.error('Failed to load job for editing');
     }
   };
@@ -461,7 +458,6 @@ const JobPostings: React.FC = () => {
       resetForm();
       loadOpportunities();
     } catch (error) {
-      console.error('Error updating job:', error);
       toast.error('Failed to update job posting');
     }
   };

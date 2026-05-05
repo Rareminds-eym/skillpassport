@@ -675,15 +675,6 @@ const StudentCollegeAdminCommunication = () => {
         }
 
         const isOnline = isUserOnlineGlobal(conv.college_educator?.user_id);
-        console.log('🔍 [CollegeAdmin] Educator online check:', {
-          educatorId: conv.educator_id,
-          educatorUserId: conv.college_educator?.user_id,
-          educatorName,
-          isOnline,
-          checkedWith: 'isUserOnlineGlobal(college_educator.user_id)',
-          note: 'Fixed: Using user_id instead of educator_id for presence check',
-          conversationData: conv.college_educator
-        });
 
         return {
           id: conv.id,
@@ -748,7 +739,6 @@ const StudentCollegeAdminCommunication = () => {
 
     // Check if already sending
     if (isSending || isSendingRef.current) {
-      console.log('⚠️ Already sending message, ignoring duplicate call');
       return;
     }
 
@@ -1363,14 +1353,11 @@ const StudentCollegeAdminCommunication = () => {
           collegeId={collegeId}
           onCreateConversation={async ({ adminId, educatorId, collegeId: cId, subject, initialMessage }) => {
             try {
-              console.log('🚀 Creating college admin-educator conversation:', { adminId, educatorId, collegeId: cId, subject, initialMessage });
-
               const conversation = await MessageService.getOrCreateCollegeEducatorAdminConversation(
                 educatorId,
                 cId,
                 subject
               );
-              console.log('✅ College admin-educator conversation created:', conversation);
 
               // Send the initial message if provided
               if (initialMessage && initialMessage.trim()) {
@@ -1386,7 +1373,6 @@ const StudentCollegeAdminCommunication = () => {
                   null, // classId
                   subject
                 );
-                console.log('✅ Initial message sent to college educator');
               }
 
               // Refetch conversations and select the new one
@@ -1395,7 +1381,7 @@ const StudentCollegeAdminCommunication = () => {
 
               toast.success('Conversation started with college educator!');
             } catch (error) {
-              console.error('❌ Error creating college admin-educator conversation:', error);
+              logger.error('Error creating college admin-educator conversation', error as Error);
               toast.error('Failed to start conversation with college educator');
             }
           }}

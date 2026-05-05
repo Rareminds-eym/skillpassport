@@ -1,20 +1,19 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('dashboard-api');
 
 // Shared function to get authenticated educator data with class assignments
 async function getAuthenticatedEducator() {
-  console.log('🔍 Starting educator authentication check...');
-  
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.user) {
-    console.error('❌ No authenticated user found');
+    logger.error('Authentication failed: no authenticated user found');
     throw new Error('No authenticated user');
   }
-  
+
   const user = session.user;
-  console.log('✅ Authenticated user found:', user.email);
 
   // First check if they are a school educator
-  console.log('🏫 Checking school_educators table...');
   const { data: schoolEducatorData, error: schoolEducatorError } = await supabase
     .from('school_educators')
     .select('id, school_id, role')
@@ -22,17 +21,14 @@ async function getAuthenticatedEducator() {
     .maybeSingle();
 
   if (schoolEducatorError && schoolEducatorError.code !== 'PGRST116') {
-    console.error('❌ School educator query error:', schoolEducatorError);
+    logger.error('School educator query failed', new Error(schoolEducatorError.message), { userId: user.id });
     throw schoolEducatorError;
   }
 
-  console.log('🏫 School educator data:', schoolEducatorData);
-
   if (schoolEducatorData?.school_id) {
-    console.log('✅ Found school educator, getting class assignments...');
     // Get assigned class IDs for this educator (if not admin)
     let assignedClassIds: string[] = [];
-    
+
     if (schoolEducatorData.role !== 'admin') {
       const { data: classAssignments, error: classError } = await supabase
         .from('school_educator_class_assignments')
@@ -42,21 +38,17 @@ async function getAuthenticatedEducator() {
       if (!classError && classAssignments) {
         assignedClassIds = classAssignments.map(assignment => assignment.class_id);
       }
-      console.log('📚 Class assignments:', assignedClassIds);
-    } else {
-      console.log('👑 School admin - can see all classes');
     }
 
-    return { 
-      user, 
-      educatorData: schoolEducatorData, 
+    return {
+      user,
+      educatorData: schoolEducatorData,
       educatorType: 'school' as const,
-      assignedClassIds 
+      assignedClassIds
     };
   }
 
   // Check if they are a college lecturer
-  console.log('🎓 Checking college_lecturers table...');
   const { data: collegeLecturerData, error: collegeLecturerError } = await supabase
     .from('college_lecturers')
     .select('id, collegeId, department')
@@ -64,20 +56,17 @@ async function getAuthenticatedEducator() {
     .maybeSingle();
 
   if (collegeLecturerError && collegeLecturerError.code !== 'PGRST116') {
-    console.error('❌ College lecturer query error:', collegeLecturerError);
+    logger.error('College lecturer query failed', new Error(collegeLecturerError.message), { userId: user.id });
     throw collegeLecturerError;
   }
 
-  console.log('🎓 College lecturer data:', collegeLecturerData);
-
   if (collegeLecturerData?.collegeId) {
-    console.log('✅ Found college lecturer, getting course assignments...');
     // Check if lecturer is an admin (department = 'Administration')
     const isCollegeAdmin = collegeLecturerData.department === 'Administration';
-    
+
     // Get assigned course IDs for this lecturer (if not admin)
     let assignedCourseIds: string[] = [];
-    
+
     if (!isCollegeAdmin) {
       const { data: courseAssignments, error: courseError } = await supabase
         .from('college_course_mappings')
@@ -87,70 +76,60 @@ async function getAuthenticatedEducator() {
       if (!courseError && courseAssignments) {
         assignedCourseIds = courseAssignments.map(assignment => assignment.course_id);
       }
-      console.log('📚 Course assignments:', assignedCourseIds);
-      console.log('📚 Course assignment query error:', courseError);
-    } else {
-      console.log('👑 College admin - can see all courses');
     }
 
-    return { 
-      user, 
-      educatorData: { 
-        id: collegeLecturerData.id, 
+    return {
+      user,
+      educatorData: {
+        id: collegeLecturerData.id,
         school_id: collegeLecturerData.collegeId,
         role: isCollegeAdmin ? 'admin' : 'lecturer'
-      }, 
+      },
       educatorType: 'college' as const,
       assignedClassIds: assignedCourseIds // For college, this represents course IDs
     };
   }
 
   // Check if they are an educator in the users table (college_educator, school_educator, etc.)
-  console.log('👤 Checking users table for educator role...');
   const { data: userData, error: userError } = await supabase
     .from('users')
     .select('*')
     .eq('id', user.id)
     .maybeSingle();
 
-  console.log('👤 Users table data:', userData);
-
   if (!userError && userData && userData.role) {
     const userRole = userData.role as string;
-    console.log('👤 User role found:', userRole);
-    
+
     // Handle college_educator role
     if (userRole === 'college_educator') {
-      console.log('✅ Found college_educator role in users table');
-      return { 
-        user, 
-        educatorData: { 
-          id: userData.id, 
+      return {
+        user,
+        educatorData: {
+          id: userData.id,
           school_id: userData.organizationId, // Use organizationId as college/school ID
           role: 'educator'
-        }, 
+        },
         educatorType: 'college' as const,
         assignedClassIds: [] // College educators see all college students
       };
     }
-    
+
     // Handle school_educator role
     if (userRole === 'school_educator') {
-      console.log('✅ Found school_educator role in users table');
-      return { 
-        user, 
-        educatorData: { 
-          id: userData.id, 
+      return {
+        user,
+        educatorData: {
+          id: userData.id,
           school_id: userData.organizationId, // Use organizationId as school ID
           role: 'educator'
-        }, 
+        },
         educatorType: 'school' as const,
         assignedClassIds: [] // For now, let them see all school students
       };
     }
   }
 
-  console.error('❌ Educator not found in any table');
+  logger.error('Educator authentication failed: not found in any table', new Error('Educator not registered'), { userId: user.id });
   throw new Error('Educator not registered with any school or college. Please contact your administrator.');
 }
 
@@ -189,14 +168,10 @@ export interface Announcement {
 export const dashboardApi = {
   async getKPIs(): Promise<DashboardKPIs> {
     try {
-      console.log('📊 Starting KPIs fetch...');
       const { user, educatorData, educatorType, assignedClassIds } = await getAuthenticatedEducator();
-      
-      console.log('📊 Educator info:', { user, educatorType, role: educatorData.role, assignedClassIds: assignedClassIds.length });
 
       // Check if educator has no class assignments (and is not admin)
       if (educatorType === 'school' && educatorData.role !== 'admin' && assignedClassIds.length === 0) {
-        console.log('⚠️ School educator with no class assignments - returning zeros');
         // School educators with no class assignments should see no students
         return {
           totalStudents: 0,
@@ -212,7 +187,6 @@ export const dashboardApi = {
 
       // Check if college lecturer has no course assignments (and is not admin)
       if (educatorType === 'college' && educatorData.role !== 'admin' && assignedClassIds.length === 0) {
-        console.log('⚠️ College lecturer with no course assignments - showing all college students');
         // For college lecturers with no course assignments, show all students in their college
         // This is different from school educators who need specific class assignments
       }
@@ -223,19 +197,15 @@ export const dashboardApi = {
         .eq('is_deleted', false)
         .not('student_id', 'is', null);  // Exclude students without student_id
 
-      console.log('👥 Building students query for:', educatorType);
-
       // Apply filtering based on educator type and role
       if (educatorType === 'school') {
         // For school educators, check if they have class assignments
         if (educatorData.role === 'admin') {
-          console.log('👑 School admin - querying all students in school:', educatorData.school_id);
           // School admins can see all students in their school
           studentsQuery = studentsQuery
             .eq('school_id', educatorData.school_id)
             .is('college_id', null);  // Exclude college students
         } else if (assignedClassIds.length > 0) {
-          console.log('📚 Regular educator - querying students in assigned classes:', assignedClassIds);
           // Regular educators can only see students in their assigned classes
           studentsQuery = studentsQuery
             .eq('school_id', educatorData.school_id)
@@ -243,9 +213,6 @@ export const dashboardApi = {
             .is('college_id', null);  // Exclude college students
         }
       } else if (educatorType === 'college') {
-        console.log('🎓 College educator - using exact program section filtering (program_id + semester + section) to match student management');
-        console.log('🔍 Using user.id:', user.id);
-        
         // Step 1: Get program sections (same as getProgramSectionStudents)
         const { data: sections, error: sectionsError } = await supabase
           .from('program_sections')
@@ -253,15 +220,12 @@ export const dashboardApi = {
           .eq('faculty_id', user.id)
           .eq('status', 'active');
 
-        console.log('📚 Program sections query result:', { data: sections, error: sectionsError });
-
         if (sectionsError) {
-          console.error('❌ Error fetching lecturer program sections:', sectionsError);
+          logger.error('Fetch lecturer program sections failed', new Error(sectionsError.message), { userId: user.id });
           throw sectionsError;
         }
 
         if (!sections || sections.length === 0) {
-          console.log('  No program sections found - returning zeros');
           return {
             totalStudents: 0,
             activeStudents: 0,
@@ -284,38 +248,25 @@ export const dashboardApi = {
 
         // Apply filtering for each program section combination
         // Build a complex OR condition: (program_id=X AND semester=Y AND section=Z) OR (program_id=A AND semester=B AND section=C)
-        const orConditions = sections.map(section => 
+        const orConditions = sections.map(section =>
           `and(program_id.eq.${section.program_id},semester.eq.${section.semester},section.eq.${section.section})`
         ).join(',');
-
-        console.log('🔍 Applying exact filtering conditions:', orConditions);
 
         // Use the or() method to combine all conditions
         studentsQuery = studentsQuery.or(orConditions);
 
         const { data: studentsData, error: studentsError } = await studentsQuery;
 
-        console.log('📊 Students query result:', { 
-          count: studentsData?.length || 0, 
-          error: studentsError,
-          sampleData: studentsData?.slice(0, 2)
-        });
-
         if (studentsError) {
-          console.error('❌ Students query error:', studentsError);
+          logger.error('Students query failed', new Error(studentsError.message));
           throw studentsError;
         }
 
         const totalStudents = studentsData?.length || 0;
         const studentUserIds = studentsData?.map(s => s.user_id).filter(id => id !== null && id !== undefined) || [];
         const studentIds = studentsData?.map(s => s.id).filter(id => id !== null && id !== undefined) || [];
-        
-        console.log('👥 Students with user_id:', studentUserIds.length, 'out of', totalStudents);
-        console.log('👥 Students with valid IDs:', studentIds.length);
-        console.log("📊 Total students found:", totalStudents);
 
         if (totalStudents === 0) {
-          console.log('⚠️ No students found - returning zeros');
           return {
             totalStudents: 0,
             activeStudents: 0,
@@ -329,7 +280,6 @@ export const dashboardApi = {
         }
 
         // Continue with activity fetching using the same logic as the rest of the function
-        console.log('📊 Fetching activities for', studentUserIds.length, 'students...');
 
         // Get activities from all relevant tables
         const [
@@ -351,23 +301,6 @@ export const dashboardApi = {
           // For college educators, use college_lecturer_id
           supabase.from('mentor_notes').select('id').eq('college_lecturer_id', (educatorData as any).id).in('student_id', studentIds)
         ]);
-
-        console.log('📊 Activities found:', {
-          projects: projectsData.data?.length || 0,
-          trainings: trainingsData.data?.length || 0,
-          certificates: certificatesData.data?.length || 0,
-          attendance: attendanceData.data?.length || 0,
-          assessments: assessmentData.data?.length || 0,
-          assignments: assignmentData.data?.length || 0,
-          mentorNotes: mentorNotesData.data?.length || 0
-        });
-
-        console.log('🔍 Attendance query details:', {
-          studentIds: studentIds.slice(0, 5),
-          totalStudentIds: studentIds.length,
-          attendanceRecords: attendanceData.data?.slice(0, 3),
-          attendanceError: attendanceData.error
-        });
 
         // Combine all activities for verification metrics (excluding assignments - they have separate grading workflow)
         const verifiableActivities = [
@@ -402,39 +335,22 @@ export const dashboardApi = {
           totalMentorNotes: mentorNotesData.data?.length || 0,
         };
 
-        console.log('✅ KPIs calculated for college educator:', result);
         return result;
       }
-
-      console.log('🔍 Executing students query...');
       // At this point, we know educatorType is 'school' because college returned early
       const currentEducatorType = educatorType as 'school';
       const { data: studentsData, error: studentsError } = await studentsQuery;
 
-      console.log('📊 Students query result:', { 
-        count: studentsData?.length || 0, 
-        error: studentsError,
-        sampleData: studentsData?.slice(0, 2) // Show first 2 students for debugging
-      });
-
       if (studentsError) {
-        console.error('❌ Students query error:', studentsError);
+        logger.error('Students query failed', new Error(studentsError.message));
         throw studentsError;
       }
-
-      console.log('👥 Students found:', studentsData?.length || 0);
 
       const studentUserIds = studentsData?.map(s => s.user_id).filter(id => id !== null && id !== undefined) || [];
       const studentIds = studentsData?.map(s => s.id).filter(id => id !== null && id !== undefined) || [];
       const totalStudents = studentsData?.length || 0; // Count ALL students, not just those with user_id
 
-      console.log("total students", totalStudents);
-      console.log('👥 Students with user_id:', studentUserIds.length, 'out of', totalStudents);
-      console.log('👥 Students with valid IDs:', studentIds.length);
-      console.log("  Total students found:", totalStudents);
-
       if (totalStudents === 0) {
-        console.log('⚠️ No students found - returning zeros');
         return {
           totalStudents: 0,
           activeStudents: 0,
@@ -446,8 +362,6 @@ export const dashboardApi = {
           totalMentorNotes: 0,
         };
       }
-
-      console.log('📊 Fetching activities for', studentUserIds.length, 'students...');
 
       // Get activities from all relevant tables
       const [
@@ -470,16 +384,6 @@ export const dashboardApi = {
           ? supabase.from('mentor_notes').select('id').eq('school_educator_id', (educatorData as any).id).in('student_id', studentIds)
           : supabase.from('mentor_notes').select('id').eq('college_lecturer_id', (educatorData as any).id).in('student_id', studentIds)
       ]);
-
-      console.log('📊 Activities found:', {
-        projects: projectsData.data?.length || 0,
-        trainings: trainingsData.data?.length || 0,
-        certificates: certificatesData.data?.length || 0,
-        attendance: attendanceData.data?.length || 0,
-        assessments: assessmentData.data?.length || 0,
-        assignments: assignmentData.data?.length || 0,
-        mentorNotes: mentorNotesData.data?.length || 0
-      });
 
       // Combine all activities for verification metrics (excluding assignments - they have separate grading workflow)
       const verifiableActivities = [
@@ -514,10 +418,9 @@ export const dashboardApi = {
         totalMentorNotes: mentorNotesData.data?.length || 0,
       };
 
-      console.log('✅ KPIs calculated:', result);
       return result;
     } catch (error) {
-      console.error('❌ Error fetching KPIs:', error);
+      logger.error('KPI calculation failed', error instanceof Error ? error : new Error(String(error)));
       return {
         totalStudents: 0,
         activeStudents: 0,
@@ -568,18 +471,12 @@ export const dashboardApi = {
       const studentIds = studentsData?.map(s => s.id).filter(id => id !== null && id !== undefined) || [];
       const studentMap: { [key: string]: string } = {};
       const studentIdMap: { [key: string]: string } = {};
-      
-      console.log('🎓 Found students:', studentsData?.length || 0);
-      console.log('  Valid student user IDs:', studentUserIds.length);
-      console.log('👥 Valid student IDs:', studentIds.length);
-      
+
       studentsData?.forEach(student => {
         const studentName = student.name || `Student ${student.id.substring(0, 8)}`;
         studentMap[student.user_id] = studentName;
         studentIdMap[student.id] = studentName;
-        console.log(`👤 Student: ${studentName} (ID: ${student.id})`);
       });
-      console.log("Checking student data",studentsData)
       if (studentUserIds.length === 0) {
         return [];
       }
@@ -859,17 +756,13 @@ export const dashboardApi = {
       });
 
       // Add assignments (only submitted ones - already filtered by query)
-      console.log('🔍 Assignment data received:', assignmentData.data?.length || 0, 'assignments');
       assignmentData.data?.forEach((assignment: any) => {
-        console.log('📝 Processing assignment:', assignment.assignments?.title, 'by student ID:', assignment.student_id);
-        
         const statusMap: { [key: string]: 'pending' | 'sent_to_admin' | 'approved' | 'rejected' } = {
           'submitted': 'sent_to_admin', // Keep blue badge but change display text in UI
           'graded': 'approved'
         };
-        
+
         const studentName = studentIdMap[assignment.student_id] || 'Unknown Student';
-        console.log('👤 Student name resolved:', studentName);
         
         activities.push({
           id: `assignment-${assignment.student_assignment_id}`,
@@ -974,7 +867,7 @@ export const dashboardApi = {
         .slice(0, limit);
 
     } catch (error) {
-      console.error('Error fetching recent activities:', error);
+      logger.error('Fetch recent activities failed', error instanceof Error ? error : new Error(String(error)));
       return [];
     }
   },
@@ -1108,7 +1001,7 @@ export const dashboardApi = {
         skillDistribution: skillDistribution.length > 0 ? skillDistribution : [],
       };
     } catch (error) {
-      console.error('Error fetching skill analytics:', error);
+      logger.error('Fetch skill analytics failed', error instanceof Error ? error : new Error(String(error)));
       return {
         skillParticipation: [],
         skillDistribution: [],
@@ -1133,7 +1026,7 @@ export const dashboardApi = {
         },
       ];
     } catch (error) {
-      console.error('Error fetching announcements:', error);
+      logger.error('Fetch announcements failed', error instanceof Error ? error : new Error(String(error)));
       return [];
     }
   },
@@ -1142,10 +1035,9 @@ export const dashboardApi = {
     try {
       // For now, just return true since we don't have an announcements table
       // In a real implementation, you would insert into an announcements table
-      console.log('Adding announcement:', message);
       return true;
     } catch (error) {
-      console.error('Error adding announcement:', error);
+      logger.error('Add announcement failed', error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   },

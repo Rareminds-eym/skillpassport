@@ -5,6 +5,9 @@ import {
     getVideoSummaryRobust,
     processVideo
 } from '@/features/ai-tutor';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('use-video-summarizer');
 
 interface UseVideoSummarizerOptions {
   videoUrl?: string;
@@ -82,7 +85,7 @@ export function useVideoSummarizer(options: UseVideoSummarizerOptions): UseVideo
           setProcessingProgress(prev => Math.min(prev + 5, 90));
         }
       } catch (err) {
-        console.error('Polling error:', err);
+        logger.error('Error polling processing status', err instanceof Error ? err : new Error(String(err)), { summaryId });
       }
     }, 5000); // Poll every 5 seconds
 

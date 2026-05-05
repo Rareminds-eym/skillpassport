@@ -19,6 +19,10 @@ import { FeatureGate } from '@/features/subscription'
 import { KPICard } from '@/features/analytics'
 import type { KPIDashboardProps, KPIData } from '..'
 
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('kpi-dashboard');
+
 const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({ 
   schoolId,
   refreshInterval = 15 * 60 * 1000 // 15 minutes
@@ -55,7 +59,7 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
           }
         }
       } catch (err) {
-        console.warn('Failed to fetch students:', err)
+        logger.warn('Failed to fetch students', { error: err });
       }
 
       // Fetch Attendance Today
@@ -78,7 +82,7 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
           attendancePercentage = Math.round((presentCount / totalAttendance) * 100)
         }
       } catch (err) {
-        console.warn('Failed to fetch attendance:', err)
+        logger.warn('Failed to fetch attendance', { error: err });
       }
 
       // Fetch Exams Scheduled
@@ -98,7 +102,7 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
           examsScheduled = count || 0
         }
       } catch (err) {
-        console.warn('Failed to fetch exams:', err)
+        logger.warn('Failed to fetch exams', { error: err });
       }
 
       // Fetch Pending Assessments
@@ -118,7 +122,7 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
           pendingAssessments = count || 0
         }
       } catch (err) {
-        console.warn('Failed to fetch assessments:', err)
+        logger.warn('Failed to fetch assessments', { error: err });
       }
 
       // Fetch Fee Collection - Daily
@@ -134,7 +138,7 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
           dailyTotal = dailyFees.reduce((sum, fee) => sum + (fee.amount || 0), 0)
         }
       } catch (err) {
-        console.warn('Failed to fetch daily fees:', err)
+        logger.warn('Failed to fetch daily fees', { error: err });
       }
 
       // Fetch Fee Collection - Weekly
@@ -151,7 +155,7 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
           weeklyTotal = weeklyFees.reduce((sum, fee) => sum + (fee.amount || 0), 0)
         }
       } catch (err) {
-        console.warn('Failed to fetch weekly fees:', err)
+        logger.warn('Failed to fetch weekly fees', { error: err });
       }
 
       // Fetch Fee Collection - Monthly
@@ -168,7 +172,7 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
           monthlyTotal = monthlyFees.reduce((sum, fee) => sum + (fee.amount || 0), 0)
         }
       } catch (err) {
-        console.warn('Failed to fetch monthly fees:', err)
+        logger.warn('Failed to fetch monthly fees', { error: err });
       }
 
       // Career Readiness Index - placeholder
@@ -192,7 +196,7 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
           libraryOverdue = count || 0
         }
       } catch (err) {
-        console.warn('Failed to fetch library data:', err)
+        logger.warn('Failed to fetch library data', { error: err });
       }
 
       setKpiData({
@@ -211,8 +215,8 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
 
       setLoading(false)
     } catch (err: any) {
-      console.error('Unexpected error fetching KPI data:', err)
-      setError('An unexpected error occurred. Please check the console for details.')
+      logger.error('Unexpected error fetching KPI data', err);
+      setError('An unexpected error occurred. Please check the logs for details.')
       setLoading(false)
     }
   }

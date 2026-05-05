@@ -1,5 +1,8 @@
 import { supabase } from '@/shared/api/supabaseClient';
 import { careerApiService } from '@/features/counselling';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('ai-recommendation-service');
 
 /**
  * AI-Powered Job Recommendation Service
@@ -30,9 +33,8 @@ class AIRecommendationService {
       let data, error;
       try {
         data = await careerApiService.getRecommendations(studentId, { forceRefresh: true });
-      } catch (err) {
-        error = err;
-        console.error('Error fetching recommendations:', err);
+      } catch (err: unknown) {
+        logger.error('Error fetching recommendations', err instanceof Error ? err : new Error(String(err)));
         throw err;
       }
 
@@ -49,7 +51,7 @@ class AIRecommendationService {
         reason: data?.reason
       };
     } catch (error) {
-      console.error('❌ Failed to get recommendations:', error);
+      logger.error('Failed to get recommendations', error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
         recommendations: [],
@@ -66,7 +68,7 @@ class AIRecommendationService {
       // recommendation_cache table doesn't exist, return null to force fresh fetch
       return null;
     } catch (error) {
-      console.error('Error fetching cached recommendations:', error);
+      logger.error('Error fetching cached recommendations', error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }
@@ -79,7 +81,7 @@ class AIRecommendationService {
       // recommendation_cache table doesn't exist, skip caching
       return;
     } catch (error) {
-      console.error('Error caching recommendations:', error);
+      logger.error('Error caching recommendations', error instanceof Error ? error : new Error(String(error)));
     }
   }
 
@@ -131,7 +133,7 @@ class AIRecommendationService {
 
       return { success: true, ...data };
     } catch (error) {
-      console.error('❌ Failed to generate opportunity embedding:', error);
+      logger.error('Failed to generate opportunity embedding', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   }
@@ -180,7 +182,7 @@ class AIRecommendationService {
 
       return { success: true, ...data };
     } catch (error) {
-      console.error('❌ Failed to generate student embedding:', error);
+      logger.error('Failed to generate student embedding', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   }
@@ -214,7 +216,7 @@ class AIRecommendationService {
 
       return { success: true };
     } catch (error) {
-      console.error('Error tracking interaction:', error);
+      logger.error('Error tracking interaction', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   }
@@ -234,7 +236,7 @@ class AIRecommendationService {
       // recommendation_cache table doesn't exist, nothing to invalidate
       return { success: true };
     } catch (error) {
-      console.error('Error invalidating cache:', error);
+      logger.error('Error invalidating cache', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   }
@@ -269,7 +271,7 @@ class AIRecommendationService {
         results
       };
     } catch (error) {
-      console.error('Error generating batch embeddings:', error);
+      logger.error('Error generating batch embeddings', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   }
@@ -298,7 +300,7 @@ class AIRecommendationService {
 
       return { success: true };
     } catch (error) {
-      console.error('Error updating student profile:', error);
+      logger.error('Error updating student profile', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   }

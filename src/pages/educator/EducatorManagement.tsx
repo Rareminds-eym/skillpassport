@@ -152,36 +152,26 @@ const EducatorManagement = () => {
       delete cleanData.created_at;
       delete cleanData.updated_at;
 
-      logger.info('Saving educator data', { editingId });
-
       if (editingId) {
-        // Update existing record
-        logger.info('Attempting UPDATE', { educatorId: editingId });
         const { data, error } = await supabase
           .from('school_educators')
           .update(cleanData)
           .eq('id', editingId)
           .select();
 
-        logger.info('Update response', { success: !error });
         if (error) {
-          logger.error('Update error details:', error);
           throw new Error(`Update failed: ${error.message}`);
         }
         if (!data || data.length === 0) {
           throw new Error('Update returned no data. Record may not exist.');
         }
       } else {
-        // Create new record
-        logger.info('Attempting INSERT');
         const { data, error } = await supabase
           .from('school_educators')
           .insert([cleanData])
           .select();
 
-        logger.info('Insert response', { success: !error });
         if (error) {
-          logger.error('Insert error details:', error);
           throw new Error(`Insert failed: ${error.message}`);
         }
         if (!data || data.length === 0) {

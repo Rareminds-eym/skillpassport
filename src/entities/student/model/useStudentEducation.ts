@@ -57,7 +57,6 @@ export const useStudentEducation = (studentId, enabled = true) => {
 
       setEducation(transformedData);
     } catch (err) {
-      console.error('Error fetching education:', err);
       setError(err.message);
     } finally {
       setLoading(false);

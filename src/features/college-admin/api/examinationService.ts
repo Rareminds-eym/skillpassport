@@ -1,8 +1,11 @@
 import { supabase } from '@/shared/api';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('examination-service');
 
 // ============================================
 // EXAMINATION MANAGEMENT SERVICE
-// Connects to: exam_windows, exam_registrations, exam_rooms, 
+// Connects to: exam_windows, exam_registrations, exam_rooms,
 //              exam_seating_arrangements, invigilator_assignments
 // ============================================
 
@@ -214,7 +217,7 @@ export async function bulkIssueHallTickets(examWindowId: string): Promise<number
       await issueHallTicket(reg.id);
       issued++;
     } catch (error) {
-      console.error(`Failed to issue hall ticket for ${reg.id}:`, error);
+      logger.error('Failed to issue hall ticket', error as Error, { registrationId: reg.id, examWindowId });
     }
   }
 

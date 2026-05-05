@@ -3,6 +3,10 @@
  * Helper functions for parsing, scoring, and matching.
  */
 
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('course-utils');
+
 /**
  * Parse embedding from database format to array.
  * Handles both string format '[0.1, 0.2, ...]' and array format.
@@ -28,7 +32,6 @@ export const parseEmbedding = (embedding) => {
         const cleaned = embedding.replace(/[\[\]]/g, '');
         return cleaned.split(',').map(Number);
       } catch {
-        console.warn('Failed to parse embedding:', embedding.substring(0, 50));
         return null;
       }
     }

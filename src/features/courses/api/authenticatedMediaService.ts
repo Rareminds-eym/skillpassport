@@ -1,12 +1,15 @@
 /**
  * Authenticated Media Service
- * 
+ *
  * Handles fetching authenticated URLs for course media (videos, PDFs, etc.)
  * Ensures media can only be accessed by enrolled users on their registered device.
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { getBrowserFingerprint, getDeviceContext } from '@/shared/lib/fingerprint';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('authenticated-media-service');
 
 interface AuthenticatedUrlResponse {
   success: boolean;
@@ -29,20 +32,16 @@ export async function getAuthenticatedMediaUrl(
   lessonId?: string
 ): Promise<string | null> {
   try {
-    // Get current session token
     const { data: { session } } = await supabase.auth.getSession();
-    
+
     if (!session?.access_token) {
-      console.error('[AuthMedia] No active session');
       return null;
     }
 
-    // Get browser fingerprint and session ID
     const fingerprint = await getBrowserFingerprint();
     const deviceContext = getDeviceContext();
     const sessionId = deviceContext.sessionId;
 
-    // Call authenticated URL endpoint
     const response = await fetch('/api/storage/get-authenticated-url', {
       method: 'POST',
       headers: {
@@ -60,22 +59,21 @@ export async function getAuthenticatedMediaUrl(
 
     if (!response.ok) {
       const error = await response.json();
-      console.error('[AuthMedia] Failed to get authenticated URL:', error);
+      logger.error('Failed to get authenticated URL', new Error(JSON.stringify(error)));
       return null;
     }
 
     const data: AuthenticatedUrlResponse = await response.json();
-    
+
     if (!data.success || !data.url) {
-      console.error('[AuthMedia] Invalid response:', data);
+      logger.error('Invalid authenticated URL response', new Error(JSON.stringify(data)));
       return null;
     }
 
-    // Append fingerprint to URL for validation (NOT session ID - that's validated separately)
     const urlWithFp = `${data.url}&fp=${encodeURIComponent(fingerprint)}`;
     return urlWithFp;
   } catch (error) {
-    console.error('[AuthMedia] Error getting authenticated URL:', error);
+    logger.error('Error getting authenticated URL', error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }
@@ -148,14 +146,12 @@ export function needsAuthentication(url: string): boolean {
  */
 export function extractFileKey(url: string): string | null {
   if (!url) return null;
-  
+
   try {
-    // Direct file key
     if (!url.includes('://') && !url.startsWith('/')) {
       return url;
     }
 
-    // R2 presigned URL
     if (url.includes('.r2.cloudflarestorage.com/')) {
       const match = url.match(/\.r2\.cloudflarestorage\.com\/[^/]+\/(.+?)(\?|$)/);
       if (match) {
@@ -163,7 +159,6 @@ export function extractFileKey(url: string): string | null {
       }
     }
 
-    // Public R2 URL
     if (url.includes('.r2.dev/')) {
       const parts = url.split('.r2.dev/');
       if (parts.length > 1) {
@@ -171,20 +166,17 @@ export function extractFileKey(url: string): string | null {
       }
     }
 
-    // Path-based URL
     const urlObj = new URL(url);
     const pathname = urlObj.pathname;
     const key = pathname.startsWith('/') ? pathname.substring(1) : pathname;
-    
-    // Return if it looks like a valid file key
-    // Support both formats: courses/... or courseId/lessons/...
+
     if (key.includes('courses/') || key.includes('/lessons/')) {
       return decodeURIComponent(key);
     }
 
     return null;
   } catch (error) {
-    console.error('[AuthMedia] Error extracting file key:', error);
+    logger.error('Error extracting file key', error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }

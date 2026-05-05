@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { softDeleteStudent } from '@/features/student-profile/api';
 import { getCurrentEducator } from '@/features/educator-copilot';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('bulk-delete-students');
 
 interface Student {
   id: string;
@@ -73,7 +76,7 @@ const BulkDeleteStudentsModal: React.FC<BulkDeleteStudentsModalProps> = ({
         onClose();
       }
     } catch (err) {
-      console.error('Error bulk deleting students:', err);
+      logger.error('Error bulk deleting students', err instanceof Error ? err : new Error(String(err)));
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
       setLoading(false);

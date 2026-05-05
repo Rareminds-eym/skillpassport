@@ -14,6 +14,9 @@
  */
 
 import { useCallback, useRef, useEffect } from 'react';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('conversation-switcher-hook');
 
 export interface UseConversationSwitcherProps {
   loadConversation: (id: string) => Promise<void>;
@@ -78,8 +81,7 @@ export function useConversationSwitcher({
     try {
       await loadConversation(id);
     } catch (error) {
-      console.error('Failed to load conversation:', error);
-      // Error handling can be added here
+      logger.error('Failed to load conversation', error instanceof Error ? error : new Error(String(error)));
     }
   }, [loadConversation, onMessagesCleared, onWelcomeStateChange]);
 

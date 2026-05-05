@@ -1,5 +1,8 @@
 import { supabase } from '@/shared/api/supabaseClient';
 import userApiService from '@/entities/user/api/userApiService';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('interviewService');
 
 // ==================== INTERVIEW CRUD OPERATIONS ====================
 
@@ -16,7 +19,6 @@ export const getInterviews = async () => {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error fetching interviews:', error);
     return { data: null, error };
   }
 };
@@ -35,7 +37,6 @@ export const getInterviewById = async (interviewId: string) => {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error fetching interview:', error);
     return { data: null, error };
   }
 };
@@ -54,7 +55,6 @@ export const getInterviewsForStudent = async (studentId: string) => {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error fetching student interviews:', error);
     return { data: null, error };
   }
 };
@@ -71,7 +71,6 @@ export const getUpcomingInterviews = async () => {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error fetching upcoming interviews:', error);
     return { data: null, error };
   }
 };
@@ -88,7 +87,6 @@ export const getPendingScorecards = async () => {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error fetching pending scorecards:', error);
     return { data: null, error };
   }
 };
@@ -124,7 +122,6 @@ export const createInterview = async (interviewData: {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error creating interview:', error);
     return { data: null, error };
   }
 };
@@ -164,7 +161,6 @@ export const updateInterview = async (
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error updating interview:', error);
     return { data: null, error };
   }
 };
@@ -182,7 +178,6 @@ export const deleteInterview = async (interviewId: string) => {
     if (error) throw error;
     return { error: null };
   } catch (error) {
-    console.error('Error deleting interview:', error);
     return { error };
   }
 };
@@ -212,7 +207,6 @@ export const updateInterviewStatus = async (
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error updating interview status:', error);
     return { data: null, error };
   }
 };
@@ -247,7 +241,7 @@ export const updateScorecard = async (
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error updating scorecard:', error);
+    logger.error('Failed to update scorecard', error as Error);
     return { data: null, error };
   }
 };
@@ -273,7 +267,7 @@ export const logInterviewReminder = async (reminderData: {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error logging reminder:', error);
+    logger.error('Failed to log reminder', error as Error);
     return { data: null, error };
   }
 };
@@ -292,7 +286,7 @@ export const getReminderHistory = async (interviewId: string) => {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error fetching reminder history:', error);
+    logger.error('Failed to fetch reminder history', error as Error);
     return { data: null, error };
   }
 };
@@ -327,7 +321,7 @@ export const sendInterviewReminder = async (
 
     return { data, error: null };
   } catch (error) {
-    console.error('Error sending reminder:', error);
+    logger.error('Failed to send reminder', error as Error);
     return { data: null, error };
   }
 };
@@ -365,14 +359,9 @@ export const sendReminder = async (interviewId: string, recipientEmail?: string,
 
       return { data, error: null };
     } catch (error) {
-      console.error('Interview reminder error:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
       return { data: null, error };
     }
   } catch (error) {
-    console.error('Error sending reminder:', error);
-    console.error('Error message:', error?.message);
-    console.error('Error context:', error?.context);
     return { data: null, error };
   }
 };
@@ -425,7 +414,7 @@ export const getInterviewStatistics = async () => {
       error: null
     };
   } catch (error) {
-    console.error('Error getting statistics:', error);
+    logger.error('Failed to get interview statistics', error as Error);
     return { data: null, error };
   }
 };

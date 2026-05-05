@@ -12,6 +12,9 @@ import {
     UserGroupIcon,
 } from '@heroicons/react/24/outline'
 import { useAdminNotifications, AdminNotificationType } from '@/features/notifications';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('notification-panel');
 
 interface NotificationPanelProps {
     isOpen: boolean
@@ -70,7 +73,6 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
         const newIds = [...currentIds].filter((id) => !prevIds.has(id));
         if (newIds.length > 0) {
-            console.log('🆕 New admin notifications detected:', newIds);
             setNewNotificationIds(new Set(newIds));
             setShowNewNotificationToast(true);
 
@@ -225,16 +227,10 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
     }
 
     if (!isOpen) {
-        console.log('❌ Admin NotificationPanel: Panel is closed, not rendering');
         return null;
     }
 
-    // Log loading and error states
-    if (loading) console.log('⏳ Showing loading state');
-    if (error) console.error('❌ Error in admin notifications:', error);
-    if (!loading && filteredNotifications.length === 0) console.log('📭 No admin notifications to display');
-
-    console.log('✅ Admin NotificationPanel: Rendering panel with', filteredNotifications?.length ?? 0, 'filtered notifications');
+    if (error) logger.error('Admin notifications error', new Error(typeof error === 'string' ? error : String(error)), { userId });
 
     return (
         <>
@@ -414,10 +410,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                     {hasMore && (
                         <div className="p-3 border-t border-gray-100 text-center">
                             <button
-                                onClick={() => {
-                                    console.log('🔵 Load more clicked');
-                                    loadMore();
-                                }}
+                                onClick={loadMore}
                                 className="text-sm text-blue-600 hover:underline"
                             >
                                 Load more

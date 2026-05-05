@@ -359,8 +359,6 @@ export function useAdminStudents(options: UseStudentsOptions = {}) {
       setLoading(true)
       setError(null)
       try {
-        console.log('🚀 [UPDATED CODE v4.0] Fetching students with school/college filtering...');
-        
         // Get current user's school_id or college_id
         let schoolId: string | null = null;
         let collegeId: string | null = null;
@@ -373,21 +371,17 @@ export function useAdminStudents(options: UseStudentsOptions = {}) {
         if (storedUser) {
           try {
             const userData = JSON.parse(storedUser);
-            console.log('📦 Found user in localStorage:', userData.email, 'role:', userData.role);
             userRole = userData.role;
             
             if (userData.role === 'school_admin' && userData.schoolId) {
               schoolId = userData.schoolId;
-              console.log('✅ School admin detected, using schoolId from localStorage:', schoolId);
             } else if (userData.role === 'college_admin' && userData.collegeId) {
               collegeId = userData.collegeId;
-              console.log('✅ College admin detected, using collegeId from localStorage:', collegeId);
             } else if (userData.role === 'university_admin' && (userData.universityId || userData.organizationId)) {
               universityId = userData.universityId || userData.organizationId;
-              console.log('✅ University admin detected, using universityId from localStorage:', universityId);
             }
           } catch (e) {
-            console.error('Error parsing stored user:', e);
+            // Silently fail - will try Supabase auth next
           }
         }
         
@@ -396,7 +390,6 @@ export function useAdminStudents(options: UseStudentsOptions = {}) {
           const { data: { user } } = await supabase.auth.getUser();
           
           if (user) {
-            console.log('🔍 Checking Supabase auth user:', user.email);
             userId = user.id;
             
             // Get user role from users table
@@ -407,7 +400,6 @@ export function useAdminStudents(options: UseStudentsOptions = {}) {
               .maybeSingle();
             
             userRole = userRecord?.role || null;
-            console.log('👤 User role from database:', userRole);
             
             // Check for college admin (using unified organizations table)
             if (userRole === 'college_admin') {
@@ -421,15 +413,6 @@ export function useAdminStudents(options: UseStudentsOptions = {}) {
               
               if (college?.id) {
                 collegeId = college.id;
-                console.log('✅ Found college_id for college admin:', collegeId, 'College:', college.name);
-              } else {
-                console.warn('⚠️ College admin but no matching college found for user:', user.id);
-                // Try fetching all colleges to debug
-                const { data: allColleges } = await supabase
-                  .from('organizations')
-                  .select('id, name, email, admin_id')
-                  .eq('organization_type', 'college');
-                console.log('📋 All colleges in database:', allColleges);
               }
             }
             // Check for school admin/educator
@@ -443,7 +426,6 @@ export function useAdminStudents(options: UseStudentsOptions = {}) {
               
               if (educator?.school_id) {
                 schoolId = educator.school_id;
-                console.log('✅ Found school_id in school_educators:', schoolId);
               } else {
                 // Check organizations table for school by admin_id or email
                 const { data: school } = await supabase
@@ -454,9 +436,6 @@ export function useAdminStudents(options: UseStudentsOptions = {}) {
                   .maybeSingle();
                 
                 schoolId = school?.id || null;
-                if (schoolId) {
-                  console.log('✅ Found school_id in organizations table:', schoolId);
-                }
               }
             }
           }
@@ -472,7 +451,6 @@ export function useAdminStudents(options: UseStudentsOptions = {}) {
           
           if (dbUser?.organizationId) {
             universityId = dbUser.organizationId;
-            console.log('✅ Got universityId from users table:', universityId);
           }
         }
         
@@ -480,7 +458,6 @@ export function useAdminStudents(options: UseStudentsOptions = {}) {
         
         // If university admin, get all colleges under this university (from organizations table)
         if (universityId) {
-          console.log('🏫 Fetching colleges for university:', universityId);
           // Note: This assumes colleges have a reference to their parent university
           // You may need to adjust based on your actual data model
           const { data: colleges, error: collegesError } = await supabase
@@ -488,11 +465,8 @@ export function useAdminStudents(options: UseStudentsOptions = {}) {
             .select('id')
             .eq('organization_type', 'college');
           
-          if (collegesError) {
-            console.error('Error fetching colleges:', collegesError);
-          } else if (colleges && colleges.length > 0) {
+          if (!collegesError && colleges && colleges.length > 0) {
             collegeIds = colleges.map(c => c.id);
-            console.log('✅ Found', collegeIds.length, 'colleges');
           }
         }
         
@@ -538,22 +512,15 @@ export function useAdminStudents(options: UseStudentsOptions = {}) {
         
         // Filter by school_id, college_id, or universityId based on user role
         if (schoolId) {
-          console.log('✅ Filtering students by school_id:', schoolId);
           query = query.eq('school_id', schoolId);
         } else if (collegeId) {
-          console.log('✅ Filtering students by college_id:', collegeId);
           query = query.eq('college_id', collegeId);
         } else if (universityId) {
-          console.log('✅ Filtering students by universityId:', universityId);
           query = query.eq('universityId', universityId);
-        } else {
-          console.warn('⚠️ No school_id, college_id, or universityId found - User role:', userRole);
-          console.warn('⚠️ This will fetch ALL students - this should not happen for admins');
         }
         
         // Apply search filter to main query (same as count query)
         if (searchTerm && searchTerm.trim()) {
-          // console.log('🔍 Applying search filter to main query:', searchTerm);
           query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,contact_number.ilike.%${searchTerm}%,grade.ilike.%${searchTerm}%,section.ilike.%${searchTerm}%,roll_number.ilike.%${searchTerm}%`);
         }
         
@@ -561,7 +528,6 @@ export function useAdminStudents(options: UseStudentsOptions = {}) {
         
         // If full query fails, try simpler query
         if (result.error) {
-          console.warn('Full query failed, trying simple query:', result.error);
           let simpleQuery = supabase
             .from('students')
             .select('*')
@@ -579,7 +545,6 @@ export function useAdminStudents(options: UseStudentsOptions = {}) {
           
           // Apply search filter to simple query as well
           if (searchTerm && searchTerm.trim()) {
-            // console.log('🔍 Applying search filter to simple query:', searchTerm);
             simpleQuery = simpleQuery.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,contact_number.ilike.%${searchTerm}%,grade.ilike.%${searchTerm}%,section.ilike.%${searchTerm}%,roll_number.ilike.%${searchTerm}%`);
           }
           
@@ -587,33 +552,20 @@ export function useAdminStudents(options: UseStudentsOptions = {}) {
         }
         
         if (result.error) {
-          console.error('Supabase query error:', result.error);
           throw result.error;
         }
         
         if (!isMounted) return;
         
-        const filterType = schoolId ? 'school_id' : collegeId ? 'college_id' : 'ALL';
-        const filterId = schoolId || collegeId || 'ALL';
-        console.log(`✅ Fetched ${result.data?.length || 0} students for ${filterType}: ${filterId}`);
-        
         // Log sample data to verify related tables are loaded
         if (result.data && result.data.length > 0) {
           const sample = result.data[0] as StudentRow;
-          console.log('Sample student data structure:', {
-            hasSkills: Array.isArray(sample.skills) && sample.skills.length > 0,
-            hasCertificates: Array.isArray(sample.certificates) && sample.certificates.length > 0,
-            hasProjects: Array.isArray(sample.projects) && sample.projects.length > 0,
-            hasEducation: Array.isArray(sample.education) && sample.education.length > 0,
-            hasExperience: Array.isArray(sample.experience) && sample.experience.length > 0,
-            hasTrainings: Array.isArray(sample.trainings) && sample.trainings.length > 0,
-          });
+          // Silently verify data structure - no logging needed
         }
         
         const mapped = (result.data as StudentRow[]).map(mapToUICandidate);
         setData(mapped);
       } catch (e: any) {
-        console.error('Error in fetchStudents:', e);
         if (!isMounted) return;
         
         let errorMessage = 'Failed to load students';

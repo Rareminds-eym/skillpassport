@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('college-service');
 
 /**
  * College Service
@@ -52,11 +55,14 @@ export const createCollege = async (collegeData, userId = null) => {
             .single();
 
         if (error) {
-            console.error('❌ Error creating college:', error);
+            logger.error('Failed to create college', error instanceof Error ? error : new Error(String(error)), {
+                collegeName: collegeData.name,
+                userId: uid
+            });
             return {
                 success: false,
                 data: null,
-                error: error.message
+                error: (error as any).message
             };
         }
 
@@ -66,11 +72,13 @@ export const createCollege = async (collegeData, userId = null) => {
             error: null
         };
     } catch (error) {
-        console.error('❌ Unexpected error creating college:', error);
+        logger.error('Failed to create college', error instanceof Error ? error : new Error(String(error)), {
+            collegeName: collegeData.name
+        });
         return {
             success: false,
             data: null,
-            error: error.message
+            error: (error as any).message
         };
     }
 };
@@ -90,8 +98,10 @@ export const checkCollegeCode = async (name) => {
             .maybeSingle();
 
         if (error) {
-            console.error('Error checking college name:', error);
-            return { isUnique: false, error: error.message };
+            logger.error('Failed to check college name', error instanceof Error ? error : new Error(String(error)), {
+                collegeName: name
+            });
+            return { isUnique: false, error: (error as any).message };
         }
 
         return {
@@ -99,8 +109,10 @@ export const checkCollegeCode = async (name) => {
             error: null
         };
     } catch (error) {
-        console.error('Unexpected error checking college name:', error);
-        return { isUnique: false, error: error.message };
+        logger.error('Failed to check college name', error instanceof Error ? error : new Error(String(error)), {
+            collegeName: name
+        });
+        return { isUnique: false, error: (error as any).message };
     }
 };
 
@@ -119,11 +131,13 @@ export const getCollegeByOwner = async (userId) => {
             .maybeSingle();
 
         if (error) {
-            console.error('Error fetching college by owner:', error);
+            logger.error('Failed to fetch college by owner', error instanceof Error ? error : new Error(String(error)), {
+                userId
+            });
             return {
                 success: false,
                 data: null,
-                error: error.message
+                error: (error as any).message
             };
         }
 
@@ -133,11 +147,13 @@ export const getCollegeByOwner = async (userId) => {
             error: null
         };
     } catch (error) {
-        console.error('Unexpected error fetching college by owner:', error);
+        logger.error('Failed to fetch college by owner', error instanceof Error ? error : new Error(String(error)), {
+            userId
+        });
         return {
             success: false,
             data: null,
-            error: error.message
+            error: (error as any).message
         };
     }
 };
@@ -157,11 +173,13 @@ export const getCollegeById = async (collegeId) => {
             .single();
 
         if (error) {
-            console.error('Error fetching college by ID:', error);
+            logger.error('Failed to fetch college by ID', error instanceof Error ? error : new Error(String(error)), {
+                collegeId
+            });
             return {
                 success: false,
                 data: null,
-                error: error.message
+                error: (error as any).message
             };
         }
 
@@ -171,11 +189,13 @@ export const getCollegeById = async (collegeId) => {
             error: null
         };
     } catch (error) {
-        console.error('Unexpected error fetching college by ID:', error);
+        logger.error('Failed to fetch college by ID', error instanceof Error ? error : new Error(String(error)), {
+            collegeId
+        });
         return {
             success: false,
             data: null,
-            error: error.message
+            error: (error as any).message
         };
     }
 };
@@ -193,11 +213,11 @@ export const getAllColleges = async () => {
             .order('name');
 
         if (error) {
-            console.error('Error fetching colleges:', error);
+            logger.error('Failed to fetch colleges', error instanceof Error ? error : new Error(String(error)));
             return {
                 success: false,
                 data: null,
-                error: error.message
+                error: (error as any).message
             };
         }
 
@@ -207,11 +227,11 @@ export const getAllColleges = async () => {
             error: null
         };
     } catch (error) {
-        console.error('Unexpected error fetching colleges:', error);
+        logger.error('Failed to fetch colleges', error instanceof Error ? error : new Error(String(error)));
         return {
             success: false,
             data: null,
-            error: error.message
+            error: (error as any).message
         };
     }
 };

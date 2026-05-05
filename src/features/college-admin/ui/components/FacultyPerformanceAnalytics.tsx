@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 import {
   Users,
   UserCheck,
@@ -25,6 +26,8 @@ import {
   Pie,
   Cell,
 } from 'recharts';
+
+const logger = getLogger('college-admin:FacultyPerformanceAnalytics');
 
 interface FacultyPerformanceAnalyticsProps {
   collegeId: string | null;
@@ -122,7 +125,7 @@ const FacultyPerformanceAnalytics: React.FC<FacultyPerformanceAnalyticsProps> = 
 
       setFacultyData(processedData);
     } catch (error) {
-      console.error('Error loading faculty analytics:', error);
+      logger.error('Error loading faculty analytics', error as Error);
     } finally {
       setLoading(false);
     }

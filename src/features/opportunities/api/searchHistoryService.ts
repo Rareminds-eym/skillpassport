@@ -241,6 +241,9 @@
 
 
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('SearchHistoryService');
 
 /**
  * Service for managing search history
@@ -275,7 +278,6 @@ export class SearchHistoryService {
 
 
       if (existingError) {
-        console.error('❌ Error checking existing:', existingError);
         throw existingError;
       }
 
@@ -292,7 +294,6 @@ export class SearchHistoryService {
           .single();
 
         if (error) {
-          console.error('❌ Update error:', error);
           throw error;
         }
 
@@ -311,7 +312,6 @@ export class SearchHistoryService {
 
 
       if (countError) {
-        console.error('❌ Error getting count:', countError);
         throw countError;
       }
 
@@ -326,7 +326,7 @@ export class SearchHistoryService {
           .maybeSingle();
 
         if (oldestError) {
-          console.error('❌ Error getting oldest:', oldestError);
+          logger.error('Error finding oldest search term:', oldestError as Error);
         }
 
         if (oldestEntry) {
@@ -334,11 +334,10 @@ export class SearchHistoryService {
             .from('search_history')
             .delete()
             .eq('id', oldestEntry.id);
-          
+
           if (deleteError) {
-            console.error('❌ Error deleting oldest:', deleteError);
-          } else {
-          }
+            logger.error('Error deleting oldest search term:', deleteError as Error);
+          } 
         }
       }
 
@@ -355,7 +354,6 @@ export class SearchHistoryService {
         .single();
 
       if (error) {
-        console.error('❌ Insert error:', error);
         throw error;
       }
 
@@ -365,7 +363,6 @@ export class SearchHistoryService {
         data
       };
     } catch (error) {
-      console.error('❌ Error in addSearchTerm:', error);
       return {
         success: false,
         message: error.message || 'Failed to save search term',
@@ -394,13 +391,11 @@ export class SearchHistoryService {
         .limit(5);
 
       if (error) {
-        console.error('❌ Get history error:', error);
         throw error;
       }
 
       return data || [];
     } catch (error) {
-      console.error('❌ Error in getSearchHistory:', error);
       return [];
     }
   }
@@ -425,7 +420,6 @@ export class SearchHistoryService {
         .eq('student_id', studentId);
 
       if (error) {
-        console.error('❌ Delete error:', error);
         throw error;
       }
 
@@ -434,7 +428,6 @@ export class SearchHistoryService {
         message: 'Search term deleted'
       };
     } catch (error) {
-      console.error('❌ Error in deleteSearchTerm:', error);
       return {
         success: false,
         message: error.message || 'Failed to delete search term',
@@ -461,7 +454,6 @@ export class SearchHistoryService {
         .eq('student_id', studentId);
 
       if (error) {
-        console.error('❌ Clear error:', error);
         throw error;
       }
 
@@ -470,7 +462,6 @@ export class SearchHistoryService {
         message: 'Search history cleared'
       };
     } catch (error) {
-      console.error('❌ Error in clearSearchHistory:', error);
       return {
         success: false,
         message: error.message || 'Failed to clear search history',
@@ -500,13 +491,11 @@ export class SearchHistoryService {
         .limit(limit);
 
       if (error) {
-        console.error('❌ Get most searched error:', error);
         throw error;
       }
 
       return data || [];
     } catch (error) {
-      console.error('❌ Error in getMostSearchedTerms:', error);
       return [];
     }
   }

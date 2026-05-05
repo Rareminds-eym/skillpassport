@@ -123,22 +123,9 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
   const handleAccept = async () => {
     if (!onAccept) return;
     if (!canEdit.allowed) {
-      console.log('❌ [SwapRequestCard] Action Blocked: Accept Request - No Edit Permission');
       alert('❌ Access Denied: You need EDIT permission to accept swap requests');
       return;
     }
-    
-    console.log('📅 [SwapRequestCard] Action: Accept Swap Request', {
-      userRole: user?.role,
-      module: 'Classroom Management',
-      action: 'Accept Swap Request',
-      permissions: {
-        canView: canView.allowed,
-        canEdit: canEdit.allowed
-      },
-      requestId: request.id,
-      timestamp: new Date().toISOString()
-    });
     
     setIsProcessing(true);
     try {
@@ -151,23 +138,9 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
   const handleReject = async () => {
     if (!onReject) return;
     if (!canEdit.allowed) {
-      console.log('❌ [SwapRequestCard] Action Blocked: Reject Request - No Edit Permission');
       alert('❌ Access Denied: You need EDIT permission to reject swap requests');
       return;
     }
-    
-    console.log('📅 [SwapRequestCard] Action: Reject Swap Request', {
-      userRole: user?.role,
-      module: 'Classroom Management',
-      action: 'Reject Swap Request',
-      permissions: {
-        canView: canView.allowed,
-        canEdit: canEdit.allowed
-      },
-      requestId: request.id,
-      rejectReason: rejectReason,
-      timestamp: new Date().toISOString()
-    });
     
     setIsProcessing(true);
     try {
@@ -182,24 +155,11 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
   const handleCancel = async () => {
     if (!onCancel) return;
     if (!canEdit.allowed) {
-      console.log('❌ [SwapRequestCard] Action Blocked: Cancel Request - No Edit Permission');
       alert('❌ Access Denied: You need EDIT permission to cancel swap requests');
       return;
     }
     
     if (!confirm('Are you sure you want to cancel this swap request?')) return;
-    
-    console.log('📅 [SwapRequestCard] Action: Cancel Swap Request', {
-      userRole: user?.role,
-      module: 'Classroom Management',
-      action: 'Cancel Swap Request',
-      permissions: {
-        canView: canView.allowed,
-        canEdit: canEdit.allowed
-      },
-      requestId: request.id,
-      timestamp: new Date().toISOString()
-    });
     
     setIsProcessing(true);
     try {
@@ -211,22 +171,9 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
 
   const handleViewDetails = () => {
     if (!canView.allowed) {
-      console.log('❌ [SwapRequestCard] Action Blocked: View Details - No View Permission');
       alert('❌ Access Denied: You need VIEW permission to view swap request details');
       return;
     }
-    
-    console.log('📅 [SwapRequestCard] Action: View Details Clicked', {
-      userRole: user?.role,
-      module: 'Classroom Management',
-      action: 'View Swap Request Details',
-      permissions: {
-        canView: canView.allowed,
-        canEdit: canEdit.allowed
-      },
-      requestId: request.id,
-      timestamp: new Date().toISOString()
-    });
     
     onViewDetails?.(request.id);
   };
@@ -435,7 +382,6 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
               <button
                 onClick={() => {
                   if (!canEdit.allowed) {
-                    console.log('❌ [SwapRequestCard] Action Blocked: Reject Button - No Edit Permission');
                     alert('❌ Access Denied: You need EDIT permission to reject swap requests');
                     return;
                   }

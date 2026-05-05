@@ -1,10 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Joyride, { CallBackProps, STATUS } from 'react-joyride';
+import { getLogger } from '@/shared/config/logging';
 
 import { TOUR_KEYS } from '@/app/providers/tour-wrapper/lib/constants';
 import { waitForElement } from '@/shared/lib/utils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { useTour } from '@/shared/model/tourStore';
+
+const logger = getLogger('After12AssessmentResultTour');
 import {
   AFTER12_TOUR_STEPS,
   AFTER12_TOUR_OPTIONS,
@@ -29,7 +32,6 @@ const After12AssessmentResultTour: React.FC = () => {
 
   useEffect(() => {
     if (!loading && isEligible(TOUR_KEYS.ASSESSMENT_RESULT_AFTER12) && !isReady && !tourStarted.current) {
-      console.log('✅ AFTER-12 tour: Prerequisites met');
       setIsReady(true);
     }
   }, [loading, isEligible, isReady]);
@@ -40,12 +42,9 @@ const After12AssessmentResultTour: React.FC = () => {
     }
 
     const startTourWhenReady = async () => {
-      console.log('🎯 AFTER-12 tour: Checking assessment result grade_level...');
-      
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          console.log('⏭️ AFTER-12 tour: No user found');
           return;
         }
 
@@ -57,7 +56,6 @@ const After12AssessmentResultTour: React.FC = () => {
           .maybeSingle();
 
         if (studentError || !studentData) {
-          console.log('⏭️ AFTER-12 tour: No student record found');
           return;
         }
 
@@ -71,19 +69,15 @@ const After12AssessmentResultTour: React.FC = () => {
           .maybeSingle();
 
         if (error || !resultData) {
-          console.log('⏭️ AFTER-12 tour: No assessment result found');
           return;
         }
 
         // Check if this is an after12 assessment
         if (resultData.grade_level !== 'after12') {
-          console.log('⏭️ AFTER-12 tour: Not after12 assessment (grade_level:', resultData.grade_level, ')');
           return;
         }
-
-        console.log('✅ AFTER-12 tour: Validated as after12 assessment');
       } catch (validationError) {
-        console.error('❌ AFTER-12 tour: Error validating assessment', validationError);
+        logger.error('Error validating assessment', validationError as Error);
         return;
       }
       
@@ -102,15 +96,12 @@ const After12AssessmentResultTour: React.FC = () => {
         const allFound = results.every(el => el !== null);
 
         if (allFound) {
-          console.log('✅ AFTER-12 tour: All elements ready');
           tourStarted.current = true;
           setShouldRun(true);
           startTour(TOUR_KEYS.ASSESSMENT_RESULT_AFTER12);
-        } else {
-          console.warn('❌ AFTER-12 tour: Some elements not found');
         }
       } catch (error) {
-        console.error('❌ AFTER-12 tour: Error waiting for elements', error);
+        logger.error('Error waiting for elements', error as Error);
       }
     };
 
@@ -121,7 +112,7 @@ const After12AssessmentResultTour: React.FC = () => {
     const { status, index, action, lifecycle, type } = data;
 
     if (type === 'error:target_not_found') {
-      console.error('❌ AFTER-12 tour: Target not found, ending tour');
+      logger.error('Target not found, ending tour', new Error('Target element not found'));
       setShouldRun(false);
       completeTour(TOUR_KEYS.ASSESSMENT_RESULT_AFTER12);
       return;
@@ -133,11 +124,10 @@ const After12AssessmentResultTour: React.FC = () => {
 
     // Handle automatic tab switch FORWARD after "Top 3 Recommended Programs" step
     if (
-      action === 'next' && 
+      action === 'next' &&
       lifecycle === 'complete' &&
       tourSteps[index]?.target === '[data-tour="recommended-programs"]'
     ) {
-      console.log('🔄 AFTER-12 tour: Triggering automatic tab switch...');
       setShouldRun(false);
       switchToCareerTab();
       return;
@@ -145,95 +135,84 @@ const After12AssessmentResultTour: React.FC = () => {
 
     // Handle automatic tab switch BACKWARD when going back from career tracks
     if (
-      action === 'prev' && 
+      action === 'prev' &&
       lifecycle === 'complete' &&
       tourSteps[index]?.target === '[data-tour="career-track-1"]'
     ) {
-      console.log('🔄 AFTER-12 tour: Going back - switching to Programs tab...');
       setShouldRun(false);
       switchToProgramsTab();
       return;
     }
 
     if (status === STATUS.FINISHED) {
-      console.log('✅ AFTER-12 tour: Finished');
       setShouldRun(false);
       completeTour(TOUR_KEYS.ASSESSMENT_RESULT_AFTER12);
     } else if (status === STATUS.SKIPPED) {
-      console.log('⏭️ AFTER-12 tour: Skipped');
       setShouldRun(false);
       skipTour(TOUR_KEYS.ASSESSMENT_RESULT_AFTER12);
     }
   };
 
   const switchToCareerTab = async () => {
-    console.log('🔄 Switching to Career Recommendations tab...');
-    
     const careerTab = document.querySelector('[data-tour="career-tab-button"]') as HTMLElement;
-    
+
     if (!careerTab) {
-      console.error('❌ Career tab button not found');
+      logger.error('Career tab button not found', new Error('Career tab not found'));
       completeTour(TOUR_KEYS.ASSESSMENT_RESULT_AFTER12);
       return;
     }
 
     careerTab.click();
-    console.log('✅ Career tab clicked, waiting for content...');
     await new Promise(resolve => setTimeout(resolve, 300));
-    
+
     try {
       const careerTrack1 = await waitForElement('[data-tour="career-track-1"]', 10000);
-      
+
       if (careerTrack1) {
-        console.log('✅ Career tab content loaded');
         const nextIndex = stepIndex + 1;
-        
+
         setTimeout(() => {
           setStepIndex(nextIndex);
           setShouldRun(true);
         }, 500);
       } else {
-        console.error('❌ Career tracks not found after tab switch');
+        logger.error('Career tracks not found after tab switch', new Error('Career tracks not found'));
         completeTour(TOUR_KEYS.ASSESSMENT_RESULT_AFTER12);
       }
     } catch (error) {
-      console.error('❌ Error waiting for career tracks:', error);
+      logger.error('Error waiting for career tracks', error as Error);
       completeTour(TOUR_KEYS.ASSESSMENT_RESULT_AFTER12);
     }
   };
 
   const switchToProgramsTab = async () => {
-    console.log('🔄 Switching back to Recommended Programs tab...');
-    
     const programsTab = document.querySelector('[data-tour="programs-tab-button"]') as HTMLElement;
-    
+
     if (!programsTab) {
-      console.error('❌ Programs tab button not found');
+      logger.error('Programs tab button not found', new Error('Programs tab not found'));
       completeTour(TOUR_KEYS.ASSESSMENT_RESULT_AFTER12);
       return;
     }
 
     programsTab.click();
-    console.log('✅ Programs tab clicked, waiting for content...');
     await new Promise(resolve => setTimeout(resolve, 300));
-    
+
     try {
       const programsSection = await waitForElement('[data-tour="recommended-programs"]', 5000);
-      
+
       if (programsSection) {
-        console.log('✅ Programs tab content loaded');
         const prevIndex = stepIndex - 1;
-        
+
         setTimeout(() => {
           setStepIndex(prevIndex);
           setShouldRun(true);
         }, 500);
       } else {
-        console.error('❌ Programs section not found after tab switch');
+        logger.error('Programs section not found after tab switch', new Error('Programs section not found'));
         completeTour(TOUR_KEYS.ASSESSMENT_RESULT_AFTER12);
       }
     } catch (error) {
-      console.error('❌ Error waiting for programs section:', error);
+      logger.error('Error waiting for programs section', error as Error);
       completeTour(TOUR_KEYS.ASSESSMENT_RESULT_AFTER12);
     }
   };
@@ -243,7 +222,6 @@ const After12AssessmentResultTour: React.FC = () => {
       tourStarted.current = false;
       setIsReady(false);
       setShouldRun(false);
-      console.log('🔄 AFTER-12 Tour unmounted');
     };
   }, []);
 

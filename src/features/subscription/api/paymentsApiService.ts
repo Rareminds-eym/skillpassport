@@ -19,10 +19,6 @@
 
 const WORKER_URL = import.meta.env.VITE_PAYMENTS_API_URL || 'https://payments-api.dark-mode-d021.workers.dev';
 
-if (!import.meta.env.VITE_PAYMENTS_API_URL) {
-  console.warn('⚠️ VITE_PAYMENTS_API_URL not configured. Using default production URL.');
-}
-
 const getBaseUrl = () => {
   if (!WORKER_URL) {
     throw new Error('VITE_PAYMENTS_API_URL environment variable is required');
@@ -59,7 +55,6 @@ export async function createOrder({ amount, currency = 'INR', planId, planName, 
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    console.error('[createOrder] API Error:', error);
     // Include razorpay error details if available
     const errorMessage = error.razorpay_error
       ? `${error.error}: ${error.razorpay_error}`

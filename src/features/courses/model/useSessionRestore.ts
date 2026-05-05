@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { courseProgressService } from '../api/courseProgressService';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('use-session-restore');
 
 /**
  * Custom hook for session restoration logic
@@ -20,36 +23,28 @@ export const useSessionRestore = (studentId, courseId, options = {}) => {
   // Check for restore point on mount
   useEffect(() => {
     if (!enabled || !studentId || !courseId) {
-      console.log('🔄 useSessionRestore: Skipping - enabled:', enabled, 'studentId:', studentId, 'courseId:', courseId);
       setIsLoading(false);
       return;
     }
 
     const checkRestorePoint = async () => {
       setIsLoading(true);
-      console.log('🔄 useSessionRestore: Checking restore point for student:', studentId, 'course:', courseId);
 
       try {
         const point = await courseProgressService.getRestorePoint(studentId, courseId);
-        console.log('🔄 useSessionRestore: Got restore point:', point);
 
         if (point && point.progress >= minProgressForRestore && point.progress < 100) {
-          console.log('🔄 useSessionRestore: Valid restore point found, progress:', point.progress);
           setRestorePoint(point);
 
           // Auto-restore for high progress without showing modal
           if (point.progress >= autoRestoreThreshold) {
-            console.log('🔄 useSessionRestore: Auto-restoring (high progress)');
             setShouldAutoRestore(true);
           } else {
-            console.log('🔄 useSessionRestore: Showing restore modal');
             setShowRestoreModal(true);
           }
-        } else {
-          console.log('🔄 useSessionRestore: No valid restore point - point:', point, 'minProgress:', minProgressForRestore);
         }
       } catch (error) {
-        console.error('Error checking restore point:', error);
+        logger.error('Error checking restore point', error instanceof Error ? error : new Error(String(error)));
       } finally {
         setIsLoading(false);
       }

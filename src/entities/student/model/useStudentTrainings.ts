@@ -6,6 +6,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from "@/shared/api/supabaseClient";
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('student-trainings-hook');
 
 /**
  * @param {string} studentId - Student UUID
@@ -72,7 +75,7 @@ export const useStudentTrainings = (studentId, options = {}) => {
       const { data: trainingsData, error: trainingsError } = await trainingsQuery;
 
       if (trainingsError) {
-        console.error('❌ Error fetching trainings:', trainingsError);
+        logger.warn('Failed to fetch trainings', { error: trainingsError.message });
       }
 
       // Fetch from course_enrollments table with optimized query
@@ -82,7 +85,7 @@ export const useStudentTrainings = (studentId, options = {}) => {
         .eq('student_id', studentId);
 
       if (enrollmentsError) {
-        console.error('❌ Error fetching enrollments:', enrollmentsError);
+        logger.warn('Failed to fetch course enrollments', { error: enrollmentsError.message });
       }
 
       // Optimize: Get all course lesson counts in a single query instead of N+1 queries
@@ -100,7 +103,7 @@ export const useStudentTrainings = (studentId, options = {}) => {
             .in('course_id', courseIds);
 
           if (lessonsError) {
-            console.error('❌ Error fetching course lessons:', lessonsError);
+            logger.warn('Failed to fetch course lessons', { error: lessonsError.message });
           } else if (allCourseLessons) {
             // Build lesson counts map
             courseLessonCounts = allCourseLessons.reduce((acc, module) => {
@@ -283,7 +286,7 @@ export const useStudentTrainings = (studentId, options = {}) => {
       await fetchStats();
 
     } catch (err) {
-      console.error('❌ useStudentTrainings exception:', err);
+      logger.error('Failed to fetch student trainings', err instanceof Error ? err : new Error(String(err)), { studentId });
       setError(err.message);
       setTrainings([]);
     } finally {
@@ -307,7 +310,7 @@ export const useStudentTrainings = (studentId, options = {}) => {
         .is('course_id', null);
 
       if (externalError) {
-        console.error('❌ Error fetching external trainings:', externalError);
+        logger.warn('Failed to fetch external trainings stats', { error: externalError.message });
       }
 
       // Get course enrollments with progress > 0 (internal courses)
@@ -317,7 +320,7 @@ export const useStudentTrainings = (studentId, options = {}) => {
         .eq('student_id', studentId);
 
       if (internalError) {
-        console.error('❌ Error fetching internal courses:', internalError);
+        logger.warn('Failed to fetch internal courses stats', { error: internalError.message });
       }
 
       // Calculate stats for external trainings
@@ -351,7 +354,7 @@ export const useStudentTrainings = (studentId, options = {}) => {
         ongoing: typeof ongoing === 'number' ? ongoing : 0,
       });
     } catch (err) {
-      console.error('❌ Error fetching stats:', err);
+      logger.error('Failed to fetch training statistics', err instanceof Error ? err : new Error(String(err)), { studentId });
       setStats({ total: 0, completed: 0, ongoing: 0 });
     }
   }, [studentId]);

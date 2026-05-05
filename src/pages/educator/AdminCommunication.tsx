@@ -20,7 +20,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import toast from 'react-hot-toast';
 import { useLocation } from 'react-router-dom';
 import { DeleteConversationModal } from '@/features/messaging';
-import { useAuth } from '@/features/auth';
+import { useUser } from '@/shared/model/authStore';
 
 import { useEducatorMessages, useConversationActions } from '@/features/messaging';
 import { useNotificationBroadcast } from '@/features/broadcast';
@@ -29,8 +29,12 @@ import { useTypingIndicator } from '@/features/messaging';
 import { supabase } from '@/shared/api/supabaseClient';
 import { MessageService, Conversation } from '@/features/messaging';
 import { queryKeys } from '@/shared/lib/queryKeys';
+import { getLogger } from '@/shared/config/logging';
 
 import { useGlobalPresence } from '@/shared/model/globalPresenceStore';
+
+const logger = getLogger('AdminCommunication');
+
 const AdminCommunication = () => {
   const location = useLocation();
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
@@ -55,7 +59,8 @@ const AdminCommunication = () => {
 
   // Get educator details and school ID
   const { data: educatorData } = useQuery({
-    queryKey: ['educator-details', educatorId],
+    queryKey: queryKeys.educator.detail(educatorId || ''),
+    enabled: !!educatorId,
     queryFn: async () => {
       if (!educatorId) return null;
       const { data, error } = await supabase
@@ -67,7 +72,6 @@ const AdminCommunication = () => {
       if (error) throw error;
       return data;
     },
-    enabled: !!educatorId,
   });
 
   const schoolId = educatorData?.school_id;

@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('alerts-service');
 
 export interface Alert {
   id: string;
@@ -44,8 +47,7 @@ export const getTalentPoolAlerts = async (): Promise<Alert[]> => {
       .or('verified.is.null,verified.eq.false');
 
     if (error) {
-      console.error('Error fetching unverified students:', error);
-      return alerts;
+      throw error;
     }
 
     if (unverifiedCount && unverifiedCount > 0) {
@@ -88,7 +90,7 @@ export const getTalentPoolAlerts = async (): Promise<Alert[]> => {
     }
 
   } catch (error) {
-    console.error('Error fetching talent pool alerts:', error);
+    logger.error('Failed to fetch talent pool alerts', error as Error);
   }
 
   return alerts;
@@ -163,7 +165,7 @@ export const getShortlistAlerts = async (): Promise<Alert[]> => {
     }
 
   } catch (error) {
-    console.error('Error fetching shortlist alerts:', error);
+    logger.error('Failed to fetch shortlist alerts', error as Error);
   }
 
   return alerts;
@@ -254,7 +256,7 @@ export const getInterviewAlerts = async (): Promise<Alert[]> => {
     }
 
   } catch (error) {
-    console.error('Error fetching interview alerts:', error);
+    logger.error('Failed to fetch interview alerts', error as Error);
   }
 
   return alerts;
@@ -349,7 +351,7 @@ export const getOffersAlerts = async (): Promise<Alert[]> => {
     }
 
   } catch (error) {
-    console.error('Error fetching offers alerts:', error);
+    logger.error('Failed to fetch offers alerts', error as Error);
   }
 
   return alerts;
@@ -439,7 +441,7 @@ export const getPipelineAlerts = async (): Promise<Alert[]> => {
     }
 
   } catch (error) {
-    console.error('Error fetching pipeline alerts:', error);
+    logger.error('Failed to fetch pipeline alerts', error as Error);
   }
 
   return alerts;
@@ -482,7 +484,7 @@ export const getAllAlerts = async (): Promise<Alert[]> => {
 
     return allAlerts;
   } catch (error) {
-    console.error('❌ Error fetching all alerts:', error);
+    logger.error('Failed to fetch all alerts', error as Error);
     return [];
   }
 };

@@ -62,16 +62,6 @@ export const useEducatorAdminMessages = ({ conversationId, enabled = true }) => 
     setIsSending(true);
 
     try {
-      console.log('📤 Sending educator-admin message:', {
-        conversationId,
-        senderId,
-        senderType,
-        receiverId,
-        receiverType,
-        messageText: messageText.substring(0, 50) + '...',
-        subject
-      });
-
       const message = await MessageService.sendMessage(
         conversationId,
         senderId,
@@ -84,8 +74,6 @@ export const useEducatorAdminMessages = ({ conversationId, enabled = true }) => 
         undefined, // classId
         subject
       );
-
-      console.log('✅ Educator-admin message sent:', message);
 
       // Optimistically update the messages list
       queryClient.setQueryData(queryKeys.educator.admin.messages(conversationId), (oldMessages) => {
@@ -111,7 +99,6 @@ export const useEducatorAdminMessages = ({ conversationId, enabled = true }) => 
 
       return message;
     } catch (error) {
-      console.error('❌ Error sending educator-admin message:', error);
       throw error;
     } finally {
       setIsSending(false);
@@ -122,13 +109,9 @@ export const useEducatorAdminMessages = ({ conversationId, enabled = true }) => 
   useEffect(() => {
     if (!conversationId || !enabled) return;
 
-    console.log('🔄 Setting up real-time subscription for educator-admin conversation:', conversationId);
-
     const subscription = MessageService.subscribeToConversation(
       conversationId,
       (newMessage) => {
-        console.log('📨 New educator-admin message received:', newMessage);
-
         // Update messages cache
         queryClient.setQueryData(queryKeys.educator.admin.messages(conversationId), (oldMessages) => {
           if (!oldMessages) return [newMessage];
@@ -153,7 +136,6 @@ export const useEducatorAdminMessages = ({ conversationId, enabled = true }) => 
     );
 
     return () => {
-      console.log('🔄 Cleaning up educator-admin message subscription');
       subscription.unsubscribe();
     };
   }, [conversationId, enabled, queryClient]);

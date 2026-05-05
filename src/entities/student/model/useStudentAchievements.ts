@@ -143,7 +143,6 @@ export const useStudentAchievements = (studentId, email) => {
       setBadges(generatedBadges);
 
     } catch (err) {
-      console.error('Error fetching achievements:', err);
       setError(err.message);
     } finally {
       setLoading(false);

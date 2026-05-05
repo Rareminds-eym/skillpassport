@@ -173,7 +173,6 @@ export function useNotifications(
         lastCursorRef.current = data[data.length - 1].created_at;
       }
     } catch (err: any) {
-      console.error('❌ [useNotifications] Error:', err);
       setError(err.message || "Failed to fetch notifications");
     } finally {
       setLoading(false);

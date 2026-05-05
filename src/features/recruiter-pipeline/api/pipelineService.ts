@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('pipelineService');
 
 // ==================== REQUISITION OPERATIONS ====================
 
@@ -14,8 +17,8 @@ export const getRequisitions = async () => {
 
     if (error) throw error;
     return { data, error: null };
-  } catch (error) {
-    console.error('Error fetching requisitions:', error);
+  } catch (error: unknown) {
+    logger.error('Failed to fetch requisitions', error as Error);
     return { data: null, error };
   }
 };
@@ -33,8 +36,9 @@ export const getRequisitionById = async (requisitionId: string) => {
 
     if (error) throw error;
     return { data, error: null };
-  } catch (error) {
-    console.error('Error fetching requisition:', error);
+  } catch (error: unknown) {
+    logger.error('Failed to fetch requisition', error as Error);
+    // Error handled
     return { data: null, error };
   }
 };
@@ -52,8 +56,9 @@ export const getOpportunityById = async (opportunityId: string) => {
 
     if (error) throw error;
     return { data, error: null };
-  } catch (error) {
-    console.error('Error fetching opportunity:', error);
+  } catch (error: unknown) {
+    logger.error('Failed to fetch opportunity', error as Error);
+    // Error handled
     return { data: null, error };
   }
 };
@@ -70,8 +75,9 @@ export const getRequisitionsWithStats = async () => {
 
     if (error) throw error;
     return { data, error: null };
-  } catch (error) {
-    console.error('Error fetching requisitions with stats:', error);
+  } catch (error: unknown) {
+    logger.error('Failed to fetch requisitions with stats', error as Error);
+    // Error handled
     return { data: null, error };
   }
 };
@@ -97,8 +103,9 @@ export const getPipelineCandidates = async (opportunityId?: string) => {
 
     if (error) throw error;
     return { data, error: null };
-  } catch (error) {
-    console.error('Error fetching pipeline candidates:', error);
+  } catch (error: unknown) {
+    logger.error('Failed to fetch pipeline candidates', error as Error);
+    // Error handled
     return { data: null, error };
   }
 };
@@ -118,12 +125,7 @@ export const getPipelineCandidatesByStage = async (opportunityId: string, stage:
       .order('updated_at', { ascending: false });
 
     if (pcError) {
-      console.error(`[Pipeline Service] Error fetching stage ${stage}:`, {
-        message: pcError.message,
-        details: pcError.details,
-        hint: pcError.hint,
-        code: pcError.code
-      });
+      logger.error(`Failed to fetch pipeline candidates for stage ${stage}`, pcError);
       throw pcError;
     }
 
@@ -146,12 +148,7 @@ export const getPipelineCandidatesByStage = async (opportunityId: string, stage:
       .in('id', studentIds);
 
     if (studentsError) {
-      console.error(`[Pipeline Service] Error fetching students for stage ${stage}:`, {
-        message: studentsError.message,
-        details: studentsError.details,
-        hint: studentsError.hint,
-        code: studentsError.code
-      });
+      logger.error('Failed to fetch student data', studentsError);       
       // Continue without student data rather than failing completely
     }
 
@@ -184,7 +181,7 @@ export const getPipelineCandidatesByStage = async (opportunityId: string, stage:
 
     return { data, error: null };
   } catch (error) {
-    console.error('[Pipeline Service] Error fetching pipeline candidates by stage:', error);
+    // Error handled
     return { data: null, error };
   }
 };
@@ -318,8 +315,7 @@ export const getPipelineCandidatesWithFilters = async (
       .in('id', studentIds);
 
     if (studentsError) {
-      console.error('Error fetching students for filters:', studentsError);
-      // Continue without student data
+      logger.error('Failed to fetch student data', studentsError);
     }
 
     // Create a map of students by id for quick lookup
@@ -423,7 +419,7 @@ export const getPipelineCandidatesWithFilters = async (
 
     return { data: filteredData, error: null };
   } catch (error) {
-    console.error('Error fetching pipeline candidates with filters:', error);
+    // Error handled
     return { data: null, error };
   }
 };
@@ -455,7 +451,7 @@ export const getAllPipelineCandidatesByStage = async (opportunityId: string) => 
 
     return { data: grouped, error: null };
   } catch (error) {
-    console.error('Error grouping pipeline candidates:', error);
+    // Error handled
     return { data: null, error };
   }
 };
@@ -488,7 +484,7 @@ export const addCandidateToPipeline = async (pipelineData: {
       .maybeSingle();
 
     if (checkError) {
-      console.error('Error checking for existing candidate:', checkError);
+      logger.error('Failed to check existing candidate in pipeline', checkError);
     }
 
     if (existingCandidate) {
@@ -621,9 +617,8 @@ export const addCandidateToPipeline = async (pipelineData: {
         }
         // If no existing application, the candidate was added from talent pool
         // and doesn't have an applied_jobs record yet - that's okay
-      } catch (syncError) {
-        console.error('Error syncing with applied_jobs:', syncError);
-        // Don't fail the main operation if sync fails
+      } catch (syncError: any) {
+        logger.error('Failed to sync candidate with applied_jobs table', syncError);
       }
     }
 
@@ -645,7 +640,7 @@ export const addCandidateToPipeline = async (pipelineData: {
 
     return { data, error: null };
   } catch (error) {
-    console.error('Error adding candidate to pipeline:', error);
+    // Error handled
     return { data: null, error };
   }
 };
@@ -662,13 +657,6 @@ export const moveCandidateToStage = async (
   // Convert to string if number (for backward compatibility)
   const candidateIdStr = String(candidateId);
   
-  console.log('[Pipeline Service] moveCandidateToStage called:', {
-    candidateId,
-    candidateIdStr,
-    newStage,
-    performedBy,
-    notes
-  });
   
   try {
     // Get current candidate data with student info
@@ -678,10 +666,7 @@ export const moveCandidateToStage = async (
       .eq('id', candidateIdStr)
       .single();
 
-    console.log('[Pipeline Service] Fetch current data result:', {
-      data: currentData,
-      error: fetchError
-    });
+    
 
     if (fetchError) throw fetchError;
 
@@ -705,11 +690,7 @@ export const moveCandidateToStage = async (
 
     const previousStage = currentData.stage;
 
-    console.log('[Pipeline Service] Updating candidate stage:', {
-      candidateIdStr,
-      previousStage,
-      newStage
-    });
+    
 
     // Update the candidate
     const { data, error } = await supabase
@@ -724,10 +705,6 @@ export const moveCandidateToStage = async (
       .select()
       .single();
 
-    console.log('[Pipeline Service] Update result:', {
-      data,
-      error
-    });
 
     if (error) throw error;
 
@@ -761,7 +738,8 @@ export const moveCandidateToStage = async (
           .eq('student_id', currentData.student_id)
           .eq('opportunity_id', currentData.opportunity_id);
       } catch (syncError) {
-        console.error('Error syncing with applied_jobs:', syncError);
+        logger.error('Failed to sync candidate stage change with applied_jobs table', syncError);
+        // Sync error silently handled
         // Don't fail the main operation if sync fails
       }
     }
@@ -779,13 +757,7 @@ export const moveCandidateToStage = async (
 
     return { data, error: null };
   } catch (error) {
-    console.error('[Pipeline Service] Error moving candidate:', error);
-    console.error('[Pipeline Service] Error details:', {
-      message: (error as any)?.message,
-      details: (error as any)?.details,
-      hint: (error as any)?.hint,
-      code: (error as any)?.code
-    });
+    // Error handled
     return { data: null, error };
   }
 };
@@ -816,7 +788,7 @@ export const updateNextAction = async (
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error updating next action:', error);
+    // Error handled
     return { data: null, error };
   }
 };
@@ -859,7 +831,7 @@ export const rejectCandidate = async (
 
     return { data, error: null };
   } catch (error) {
-    console.error('Error rejecting candidate:', error);
+    // Error handled
     return { data: null, error };
   }
 };
@@ -888,7 +860,7 @@ export const updateCandidateRating = async (
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error updating rating:', error);
+    // Error handled
     return { data: null, error };
   }
 };
@@ -924,7 +896,7 @@ export const assignCandidate = async (
 
     return { data, error: null };
   } catch (error) {
-    console.error('Error assigning candidate:', error);
+    // Error handled
     return { data: null, error };
   }
 };
@@ -944,7 +916,7 @@ export const removeCandidateFromPipeline = async (candidateId: string | number) 
     if (error) throw error;
     return { error: null };
   } catch (error) {
-    console.error('Error removing candidate:', error);
+    // Error handled
     return { error };
   }
 };
@@ -973,7 +945,7 @@ export const logPipelineActivity = async (activityData: {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error logging activity:', error);
+    // Error silently handled
     return { data: null, error };
   }
 };
@@ -992,7 +964,7 @@ export const getCandidateActivities = async (candidateId: string) => {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error fetching activities:', error);
+    // Error handled
     return { data: null, error };
   }
 };
@@ -1019,7 +991,7 @@ export const bulkMoveCandidates = async (
 
     return { data: results.map(r => r.data), error: null };
   } catch (error) {
-    console.error('Error bulk moving candidates:', error);
+    // Error handled
     return { data: null, error };
   }
 };
@@ -1044,7 +1016,7 @@ export const bulkRejectCandidates = async (
 
     return { data: results.map(r => r.data), error: null };
   } catch (error) {
-    console.error('Error bulk rejecting candidates:', error);
+    // Error handled
     return { data: null, error };
   }
 };
@@ -1079,7 +1051,7 @@ export const getPipelineStatistics = async (opportunityId: string) => {
 
     return { data: stats, error: null };
   } catch (error) {
-    console.error('Error getting statistics:', error);
+    logger.error('Failed to get pipeline statistics', error as Error);
     return { data: null, error };
   }
 };

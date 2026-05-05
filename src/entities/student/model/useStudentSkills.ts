@@ -52,7 +52,6 @@ export const useStudentSkills = (studentId, skillType, enabled = true) => {
 
       setSkills(transformedData);
     } catch (err) {
-      console.error(`Error fetching ${skillType} skills:`, err);
       setError(err.message);
     } finally {
       setLoading(false);

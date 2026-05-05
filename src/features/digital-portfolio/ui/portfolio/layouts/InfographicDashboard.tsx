@@ -26,20 +26,6 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
     showDownloadResume: true,
   }
 }) => {
-  console.log('🎨 InfographicDashboard received student:', {
-    name: student?.name,
-    email: student?.email,
-    hasProfile: !!student?.profile,
-    profileKeys: student?.profile ? Object.keys(student.profile) : [],
-    profileProjects: student?.profile?.projects?.length || 0,
-    profileSkills: student?.profile?.skills?.length || 0,
-    profileEducation: student?.profile?.education?.length || 0,
-    profileAchievements: student?.profile?.achievements?.length || 0,
-    directProjects: student?.projects?.length || 0,
-    directSkills: student?.skills?.length || 0,
-    fullProfileData: student?.profile
-  });
-
   const [countedProjects, setCountedProjects] = useState(0);
   const [countedSkills, setCountedSkills] = useState(0);
   const [countedAchievements, setCountedAchievements] = useState(0);
@@ -52,15 +38,6 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
     ...(student.skills || [])
   ];
   
-  console.log('🔍 Skills breakdown:', {
-    profileSkills: student.profile?.skills?.length || 0,
-    profileTechnicalSkills: student.profile?.technicalSkills?.length || 0,
-    directTechnicalSkills: student.technicalSkills?.length || 0,
-    directSkills: student.skills?.length || 0,
-    allSkillsBeforeDedup: allSkills.length,
-    allSkillsData: allSkills
-  });
-  
   // Remove duplicates by id
   const uniqueSkills = allSkills.filter((skill, index, self) => 
     index === self.findIndex((s) => s.id === skill.id)
@@ -69,14 +46,6 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
   const projectCount = student.profile?.projects?.length || student.projects?.length || 0;
   const skillCount = uniqueSkills.length;
   const achievementCount = student.profile?.achievements?.length || 0;
-  
-  console.log('📊 Final Counts:', { 
-    projectCount, 
-    skillCount, 
-    achievementCount, 
-    uniqueSkillsCount: uniqueSkills.length,
-    uniqueSkills: uniqueSkills.map(s => ({ name: s.name, level: s.level }))
-  });
 
   // Animated counters
   useEffect(() => {
@@ -106,7 +75,6 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
   // Skills radar chart simulation (simplified visual representation)
   // Use uniqueSkills instead of just profile.skills
   const topSkills = uniqueSkills.slice(0, 8);
-  console.log('🎯 Top skills extracted:', topSkills);
   
   const skillLevelMap: { [key: string]: number } = {
     'Beginner': 25,

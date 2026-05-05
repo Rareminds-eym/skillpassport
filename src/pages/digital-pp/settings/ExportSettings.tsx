@@ -3,8 +3,12 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { exportAsJSON, exportResume } from '@/features/digital-portfolio';
+import { getLogger } from '@/shared/config/logging';
 
 import { usePortfolio } from '@/features/digital-portfolio/model/portfolioStore';
+
+const logger = getLogger('export-settings');
+
 const ExportSettings: React.FC = () => {
   const navigate = useNavigate();
   const { student, settings } = usePortfolio();
@@ -65,8 +69,8 @@ const ExportSettings: React.FC = () => {
       setTimeout(() => {
         setShowExportConfirmation(false);
       }, 3000);
-    } catch (error) {
-      console.error('Export error:', error);
+    } catch (error: unknown) {
+      logger.error('Export error', error as Error);
       setExportError(`Failed to export ${type}. Please try again.`);
     } finally {
       setIsExporting(false);

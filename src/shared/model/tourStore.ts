@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { immer } from 'zustand/middleware/immer';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('tour-store');
 
 // Types (from TourProvider)
 export type TourKey =
@@ -337,7 +340,7 @@ export const useTourStore = create<TourStore>()(
           store.loadedForStudentId = studentId;
         });
       } catch (error) {
-        console.error('Failed to load tour progress:', error);
+        logger.error('Failed to load tour progress', error as Error);
         // Fallback to localStorage
         const progress = getTourProgressFromStorage();
         set((store) => {
@@ -362,7 +365,7 @@ export const useTourStore = create<TourStore>()(
             .eq('user_id', studentId);
 
           if (error) {
-            console.error('Failed to save tour progress to database:', error);
+            logger.error('Failed to save tour progress to database', new Error(error.message));
           }
         }
 
@@ -373,7 +376,7 @@ export const useTourStore = create<TourStore>()(
           store.state.progress = progress;
         });
       } catch (error) {
-        console.error('Failed to save tour progress:', error);
+        logger.error('Failed to save tour progress', error as Error);
         // Still update localStorage
         saveTourProgressToStorage(progress);
         set((store) => {

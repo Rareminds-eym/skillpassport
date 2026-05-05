@@ -61,7 +61,6 @@ const EventsTab: React.FC<EventsTabProps> = ({ student, loading: externalLoading
           .eq('student_id', student.id);
         
         if (regError) {
-          console.error('Error fetching student events:', regError);
           // Fallback: try direct query if join fails
           const { data: directRegs } = await supabase
             .from('college_event_registrations')
@@ -99,7 +98,6 @@ const EventsTab: React.FC<EventsTabProps> = ({ student, loading: externalLoading
           setEvents(studentEvents);
         }
       } catch (err) {
-        console.error('Error:', err);
         setEvents([]);
       } finally {
         setLoading(false);

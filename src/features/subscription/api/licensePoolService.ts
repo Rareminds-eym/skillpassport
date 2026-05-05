@@ -24,11 +24,10 @@ export const getLicensePools = async (organizationId: string) => {
       error: null
     };
   } catch (error: any) {
-    console.error('Error fetching license pools:', error);
     return {
       success: false,
       data: null,
-      error: error.message
+      error: error instanceof Error ? error.message : 'Unknown error'
     };
   }
 };
@@ -52,11 +51,10 @@ export const getLicensePoolById = async (poolId: string) => {
       error: null
     };
   } catch (error: any) {
-    console.error('Error fetching license pool:', error);
     return {
       success: false,
       data: null,
-      error: error.message
+      error: error instanceof Error ? error.message : 'Unknown error'
     };
   }
 };
@@ -87,11 +85,10 @@ export const getPoolAssignments = async (poolId: string) => {
       error: null
     };
   } catch (error: any) {
-    console.error('Error fetching pool assignments:', error);
     return {
       success: false,
       data: null,
-      error: error.message
+      error: error instanceof Error ? error.message : 'Unknown error'
     };
   }
 };

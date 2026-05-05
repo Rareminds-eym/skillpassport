@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('factory-visits-service');
 
 export interface FactoryVisit {
   id: string;
@@ -44,13 +47,13 @@ class FactoryVisitsService {
       const { data, error } = await query;
 
       if (error) {
-        console.error('FactoryVisitsService: Error fetching factory visits:', error);
+        logger.error('Error fetching factory visits', error as Error, { filters });
         throw error;
       }
 
       return data || [];
     } catch (error) {
-      console.error('FactoryVisitsService: Error in getAllFactoryVisits:', error);
+      logger.error('Error in getAllFactoryVisits', error as Error, { filters });
       throw error;
     }
   }
@@ -65,13 +68,13 @@ class FactoryVisitsService {
         .single();
 
       if (error) {
-        console.error('FactoryVisitsService: Error fetching factory visit:', error);
+        logger.error('Error fetching factory visit by ID', error as Error, { visitId: id });
         throw error;
       }
 
       return data;
     } catch (error) {
-      console.error('FactoryVisitsService: Error in getFactoryVisitById:', error);
+      logger.error('Error in getFactoryVisitById', error as Error, { visitId: id });
       throw error;
     }
   }
@@ -89,15 +92,13 @@ class FactoryVisitsService {
       const uniqueSectors = [...new Set(data?.map(item => item.sector).filter(Boolean))];
       return uniqueSectors;
     } catch (error) {
-      console.error('FactoryVisitsService: Error fetching sectors:', error);
+      logger.error('Error fetching sectors', error as Error);
       return [];
     }
   }
 
   async registerForVisit(studentId: number, visitId: string): Promise<{ success: boolean; message: string }> {
     try {
-      console.log('Registering for visit:', { studentId, visitId });
-      
       // Check if student profile is complete (has name and contactNumber)
       const { data: studentData, error: studentError } = await supabase
         .from('students')
@@ -105,10 +106,8 @@ class FactoryVisitsService {
         .eq('id', studentId)
         .single();
 
-      console.log('Student data fetch result:', { studentData, studentError });
-
       if (studentError) {
-        console.error('Error fetching student data:', studentError);
+        logger.error('Error fetching student data during visit registration', studentError as Error, { studentId, visitId });
         return { success: false, message: `Failed to verify student profile: ${studentError.message}` };
       }
 
@@ -120,10 +119,10 @@ class FactoryVisitsService {
         const missingFields = [];
         if (!studentData.name) missingFields.push('Full Name');
         if (!studentData.contactNumber) missingFields.push('Phone Number');
-        
-        return { 
-          success: false, 
-          message: `Please complete your profile (${missingFields.join(', ')}) in Settings before registering` 
+
+        return {
+          success: false,
+          message: `Please complete your profile (${missingFields.join(', ')}) in Settings before registering`
         };
       }
 
@@ -150,13 +149,13 @@ class FactoryVisitsService {
         });
 
       if (insertError) {
-        console.error('Error registering for visit:', insertError);
+        logger.error('Error registering student for visit', insertError as Error, { studentId, visitId });
         return { success: false, message: `Failed to register for visit: ${insertError.message}` };
       }
 
       return { success: true, message: 'Successfully registered for the visit!' };
     } catch (error) {
-      console.error('FactoryVisitsService: Error in registerForVisit:', error);
+      logger.error('Error in registerForVisit', error as Error, { studentId, visitId });
       return { success: false, message: 'An error occurred while registering' };
     }
   }
@@ -187,13 +186,13 @@ class FactoryVisitsService {
         .order('applied_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching student registrations:', error);
+        logger.error('Error fetching student registrations', error as Error, { studentId });
         throw error;
       }
 
       return data || [];
     } catch (error) {
-      console.error('FactoryVisitsService: Error in getStudentRegistrations:', error);
+      logger.error('Error in getStudentRegistrations', error as Error, { studentId });
       return [];
     }
   }

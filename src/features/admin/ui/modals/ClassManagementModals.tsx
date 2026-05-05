@@ -5,6 +5,9 @@ import { useState, useEffect } from "react"
 import { supabase } from '@/shared/api/supabaseClient'
 import toast from "react-hot-toast"
 import { XMarkIcon, UserPlusIcon, UserMinusIcon } from "@heroicons/react/24/outline"
+import { getLogger } from '@/shared/config/logging'
+
+const logger = getLogger('class-management-modals')
 
 interface Student {
   id: string
@@ -106,15 +109,15 @@ export const ManageStudentsModal = ({
       const studentNames = students.filter(s => selectedStudents.includes(s.id))
       
       toast.success(
-        addedCount === 1 
-          ? `${studentNames[0]?.name || 'Student'} added` 
+        addedCount === 1
+          ? `${studentNames[0]?.name || 'Student'} added`
           : `${addedCount} students added`
       )
       setSelectedStudents([])
       onUpdate()
     } catch (error: any) {
+      logger.error('Add students failed', error instanceof Error ? error : new Error(String(error)))
       toast.error("Failed to add students")
-      console.error(error)
     } finally {
       setLoading(false)
     }
@@ -143,8 +146,8 @@ export const ManageStudentsModal = ({
       toast.success(`${studentName} removed`)
       onUpdate()
     } catch (error: any) {
+      logger.error('Remove student failed', error instanceof Error ? error : new Error(String(error)), { classId: classItem.id, studentId })
       toast.error("Failed to remove student")
-      console.error(error)
     } finally {
       setLoading(false)
     }
@@ -356,7 +359,7 @@ export const AssignEducatorModal = ({
       if (error) throw error
       setAssignments(data || [])
     } catch (error: any) {
-      console.error("Error fetching assignments:", error)
+      logger.error('Fetch assignments failed', error instanceof Error ? error : new Error(String(error)))
     } finally {
       setLoading(false)
     }
@@ -397,8 +400,8 @@ export const AssignEducatorModal = ({
       fetchAssignments()
       onUpdate()
     } catch (error: any) {
+      logger.error('Assign educator failed', error instanceof Error ? error : new Error(String(error)))
       toast.error("Failed to assign educator")
-      console.error(error)
     } finally {
       setSubmitting(false)
     }
@@ -420,8 +423,8 @@ export const AssignEducatorModal = ({
       fetchAssignments()
       onUpdate()
     } catch (error: any) {
+      logger.error('Remove educator assignment failed', error instanceof Error ? error : new Error(String(error)))
       toast.error("Failed to remove assignment")
-      console.error(error)
     } finally {
       setSubmitting(false)
     }

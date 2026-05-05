@@ -1,5 +1,8 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { getLogger } from '@/shared/config';
+
+const logger = getLogger('pdfReceiptGenerator');
 
 /**
  * PDFReceiptGenerator Service
@@ -53,15 +56,15 @@ export async function generateReceipt(receiptData) {
   try {
     // Load company logo (top left)
     companyLogo = await imageToBase64('/RareMinds.webp');
-  } catch (error) {
-    console.warn('Could not load company logo:', error);
+  } catch (error: any) {
+    logger.warn('Error loading company logo', error);
   }
   
   try {
     // Load watermark logo
     watermarkLogo = await imageToBase64('/RMLogo.webp');
-  } catch (error) {
-    console.warn('Could not load watermark logo:', error);
+  } catch (error: any) {
+    logger.warn('Error loading watermark logo', error);
   }
 
   // Add watermark (behind all content)
@@ -617,7 +620,6 @@ export async function downloadReceipt(receiptData, filename) {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   } catch (error) {
-    console.error('Error downloading receipt:', error);
     throw new Error('Failed to download receipt. Please try again.');
   }
 }
@@ -651,7 +653,6 @@ export async function generatePDFFromHTML(elementId, filename = `receipt-${Date.
     pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
     pdf.save(filename);
   } catch (error) {
-    console.error('Error generating PDF from HTML:', error);
     throw new Error('Failed to generate PDF. Please try again.');
   }
 }

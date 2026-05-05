@@ -29,7 +29,6 @@ class OfferManagementService {
 
       return { success: true, data };
     } catch (error) {
-      console.error('Error accepting offer:', error);
       return { success: false, error: error.message };
     }
   }
@@ -55,7 +54,6 @@ class OfferManagementService {
 
       return { success: true, data };
     } catch (error) {
-      console.error('Error rejecting offer:', error);
       return { success: false, error: error.message };
     }
   }
@@ -78,7 +76,6 @@ class OfferManagementService {
         hasOpenings: data.applications_count > 0 && data.is_active && data.status !== 'filled'
       };
     } catch (error) {
-      console.error('Error checking openings:', error);
       return { success: false, error: error.message };
     }
   }
@@ -102,7 +99,6 @@ class OfferManagementService {
 
       return { success: true, data };
     } catch (error) {
-      console.error('Error fetching opportunity:', error);
       return { success: false, error: error.message };
     }
   }
@@ -120,7 +116,6 @@ class OfferManagementService {
 
       return { success: true, canProceed: data };
     } catch (error) {
-      console.error('Error checking pipeline eligibility:', error);
       return { success: false, error: error.message };
     }
   }

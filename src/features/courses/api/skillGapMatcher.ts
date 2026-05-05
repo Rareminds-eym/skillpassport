@@ -8,6 +8,9 @@ import { generateSkillEmbedding } from './embeddingService';
 import { fetchCoursesWithEmbeddings, fetchCoursesBySkillName } from './courseRepository';
 import { calculateRelevanceScore, generateWhyThisCourse } from './utils';
 import { MAX_COURSES_PER_SKILL_GAP, SKILL_SIMILARITY_THRESHOLD } from './config';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('skill-gap-matcher');
 
 /**
  * Get courses that directly match a skill via the course_skills table.
@@ -33,7 +36,6 @@ export const getSemanticSkillMatches = async (skillName, allCoursesWithEmbedding
     try {
       skillEmbedding = await generateSkillEmbedding(skillName);
     } catch (error) {
-      console.warn('Failed to generate skill embedding:', error.message);
       return [];
     }
 
@@ -69,7 +71,7 @@ export const getSemanticSkillMatches = async (skillName, allCoursesWithEmbedding
 
     return scoredCourses;
   } catch (error) {
-    console.error('Error in getSemanticSkillMatches:', error);
+    logger.error('Error in getSemanticSkillMatches', error instanceof Error ? error : new Error(String(error)));
     return [];
   }
 };
@@ -131,7 +133,6 @@ export const combineAndRankCourses = (directMatches, semanticMatches, skillLower
  */
 export const getCoursesForSkillGap = async (skillGap, allCoursesWithEmbeddings = null) => {
   if (!skillGap || !skillGap.skill) {
-    console.warn('Invalid skill gap provided');
     return [];
   }
 
@@ -160,7 +161,7 @@ export const getCoursesForSkillGap = async (skillGap, allCoursesWithEmbeddings =
 
     return coursesWithExplanations;
   } catch (error) {
-    console.error(`Error getting courses for skill gap "${skillName}":`, error);
+    logger.error(`Error getting courses for skill gap "${skillName}"`, error instanceof Error ? error : new Error(String(error)));
     return [];
   }
 };
@@ -191,7 +192,7 @@ export const getCoursesForMultipleSkillGaps = async (skillGaps) => {
     
     return results;
   } catch (error) {
-    console.error('Error getting courses for multiple skill gaps:', error);
+    logger.error('Error getting courses for multiple skill gaps', error instanceof Error ? error : new Error(String(error)));
     return {};
   }
 };

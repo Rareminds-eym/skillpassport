@@ -44,13 +44,6 @@ export const useCollegeEducatorAdminConversations = ({
     queryFn: async () => {
       if (!userId || !collegeId) return [];
 
-      console.log('🔍 [useCollegeEducatorAdminConversations] Fetching conversations:', {
-        userId,
-        userType,
-        collegeId,
-        includeArchived
-      });
-
       let query = supabase
         .from('conversations')
         .select(`
@@ -59,8 +52,6 @@ export const useCollegeEducatorAdminConversations = ({
         `)
         .eq('conversation_type', 'college_educator_admin')
         .eq('college_id', collegeId);
-
-      console.log('🔍 [useCollegeEducatorAdminConversations] Query setup complete');
 
       // Filter by user type and deleted status
       if (userType === 'college_educator') {
@@ -84,37 +75,27 @@ export const useCollegeEducatorAdminConversations = ({
       const { data, error } = await query;
 
       if (error) {
-        console.error('❌ [useCollegeEducatorAdminConversations] Error:', error);
-        
         // If the conversation type doesn't exist yet, return empty array
         if (error.message?.includes('college_educator_admin') || 
             error.message?.includes('relationship') ||
             error.code === 'PGRST200') {
-          console.log('⚠️ [useCollegeEducatorAdminConversations] Conversation type not yet supported, returning empty array');
           return [];
         }
         
         throw error;
       }
-
-      console.log('✅ [useCollegeEducatorAdminConversations] Raw conversations data:', data);
-      console.log('✅ [useCollegeEducatorAdminConversations] Conversations loaded:', data?.length || 0);
       
       // If we have conversations, fetch educator details separately
       if (data && data.length > 0) {
         const educatorIds = [...new Set(data.map(conv => conv.educator_id).filter(Boolean))];
         
         if (educatorIds.length > 0) {
-          console.log('🔍 [useCollegeEducatorAdminConversations] Fetching educator details for IDs:', educatorIds);
-          
           const { data: educatorData, error: educatorError } = await supabase
             .from('college_lecturers')
             .select('id, first_name, last_name, email, department, specialization, user_id')
             .in('id', educatorIds);
           
           if (!educatorError && educatorData) {
-            console.log('✅ [useCollegeEducatorAdminConversations] Educator details loaded:', educatorData.length);
-            
             // Merge educator data with conversations
             const conversationsWithEducators = data.map(conv => {
               const educator = educatorData.find(edu => edu.id === conv.educator_id);
@@ -124,10 +105,8 @@ export const useCollegeEducatorAdminConversations = ({
               };
             });
             
-            console.log('✅ [useCollegeEducatorAdminConversations] Conversations with educator details:', conversationsWithEducators);
             return conversationsWithEducators;
           } else {
-            console.error('❌ [useCollegeEducatorAdminConversations] Error fetching educator details:', educatorError);
           }
         }
       }
@@ -145,8 +124,6 @@ export const useCollegeEducatorAdminConversations = ({
   useEffect(() => {
     if (!enabled || !userId || !collegeId) return;
 
-    console.log('🔄 [useCollegeEducatorAdminConversations] Setting up real-time subscription');
-
     const subscription = MessageService.subscribeToUserConversations(
       userType === 'college_educator' ? userId : collegeId,
       userType,
@@ -154,15 +131,12 @@ export const useCollegeEducatorAdminConversations = ({
         // Only handle college educator-admin conversations
         if (conversation.conversation_type !== 'college_educator_admin') return;
 
-        console.log('🔄 [useCollegeEducatorAdminConversations] Real-time update:', conversation);
-
         // Check if conversation is deleted for current user
         const isDeleted = userType === 'college_educator' 
           ? conversation.deleted_by_educator 
           : conversation.deleted_by_college_admin;
 
         if (isDeleted) {
-          console.log('❌ [useCollegeEducatorAdminConversations] Ignoring deleted conversation:', conversation.id);
           return;
         }
 
@@ -175,7 +149,6 @@ export const useCollegeEducatorAdminConversations = ({
     );
 
     return () => {
-      console.log('🔄 [useCollegeEducatorAdminConversations] Cleaning up subscription');
       subscription.unsubscribe();
     };
   }, [enabled, userId, userType, collegeId, queryClient]);

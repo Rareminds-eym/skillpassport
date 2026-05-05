@@ -12,6 +12,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('student-activity');
 // TODO: Uncomment when functions are added to studentProfileService
 // import { getStudentRecentUpdatesByEmail, formatRecentUpdate } from '@/features/student-profile/api';
 
@@ -134,7 +137,7 @@ export const useStudentActivity = ({
         fetchRecentUpdates(actualEmail)
       ]);
     } catch (err: any) {
-      console.error('Error fetching activity data:', err);
+      logger.error('Error fetching activity data', err as Error);
       setError(err.message || 'Failed to fetch activity data');
     } finally {
       setLoading(false);
@@ -211,7 +214,7 @@ export const useStudentActivity = ({
 
       setLearning(result);
     } catch (err) {
-      console.error('Error fetching learning:', err);
+      logger.error('Error fetching learning', err as Error);
     }
   };
 
@@ -328,7 +331,7 @@ export const useStudentActivity = ({
       });
       setBadges(generatedBadges);
     } catch (err) {
-      console.error('Error fetching achievements:', err);
+      logger.error('Error fetching achievements', err as Error);
     }
   };
 
@@ -344,7 +347,7 @@ export const useStudentActivity = ({
         setUpdates(formattedUpdates);
       }
     } catch (err) {
-      console.error('Error fetching recent updates:', err);
+      logger.error('Error fetching recent updates', err as Error);
     }
   };
 

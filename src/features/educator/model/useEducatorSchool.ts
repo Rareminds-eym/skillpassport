@@ -98,7 +98,6 @@ export function useEducatorSchool(): EducatorSchoolData {
                 .eq('educator_id', schoolEducatorData.id);
 
               if (classError) {
-                console.warn('Failed to fetch class assignments:', classError);
                 setAssignedClassIds([]);
               } else {
                 const classIds = classAssignments?.map(assignment => assignment.class_id) || [];
@@ -124,13 +123,7 @@ export function useEducatorSchool(): EducatorSchoolData {
           .eq('user_id', user.id)
           .maybeSingle();
 
-        console.log('📊 College lecturer query result:', {
-          data: collegeLecturerData,
-          error: collegeLecturerError
-        });
-
         if (collegeLecturerError && collegeLecturerError.code !== 'PGRST116') {
-          console.log('❌ College lecturer error:', collegeLecturerError);
           throw collegeLecturerError;
         }
 
@@ -143,10 +136,7 @@ export function useEducatorSchool(): EducatorSchoolData {
             .eq('organization_type', 'college')
             .maybeSingle();
 
-          console.log('🏫 College data fetch result:', { collegeData, collegeError });
-
           if (collegeError) {
-            console.warn('Failed to fetch college details:', collegeError);
           }
 
           if (collegeData) {
@@ -163,7 +153,6 @@ export function useEducatorSchool(): EducatorSchoolData {
               .eq('faculty_id', collegeLecturerData.id);
 
             if (collegeClassError) {
-              console.warn('Failed to fetch college class assignments:', collegeClassError);
               setAssignedClassIds([]);
             } else {
               const classIds = collegeClassAssignments?.map(assignment => assignment.class_id) || [];

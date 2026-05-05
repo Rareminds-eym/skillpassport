@@ -18,11 +18,11 @@ const getOpenAIClient = (): OpenAI => {
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
     
     if (!apiKey || apiKey === '') {
-      console.error('❌ VITE_OPENAI_API_KEY is not set in .env file!');
+      // API key not configured
       throw new Error('OpenAI API key is not configured. Please add VITE_OPENAI_API_KEY to your .env file.');
     }
     
-    console.log('✅ Recruiter AI client initializing with OpenRouter:', apiKey.substring(0, 10) + '...');
+    // Client initializing
     
     openai = new OpenAI({
       baseURL: "https://openrouter.ai/api/v1",
@@ -56,7 +56,7 @@ class RecruiterIntelligenceEngine {
     conversationId?: string
   ): Promise<RecruiterAIResponse> {
     try {
-      console.log('🎯 Recruiter AI processing (STREAMING):', query);
+      // Processing query
 
       // Step 1: Build recruiter context
       const recruiterContext = await buildRecruiterContext(recruiterId);
@@ -71,7 +71,7 @@ class RecruiterIntelligenceEngine {
         recruiterContext
       );
       const intent = classifiedIntent.primary;
-      console.log('📊 Detected intent:', intent, `(confidence: ${(classifiedIntent.confidence * 100).toFixed(0)}%)`);
+      // Intent detected
 
       // Step 4: Generate streaming response
       const response = await this.generateStreamingResponse(
@@ -89,7 +89,7 @@ class RecruiterIntelligenceEngine {
 
       return response;
     } catch (error) {
-      console.error('❌ Recruiter AI Error:', error);
+      // Error handled
       return {
         success: false,
         error: 'I encountered an error processing your request. Please try again.',
@@ -107,8 +107,6 @@ class RecruiterIntelligenceEngine {
     conversationId?: string
   ): Promise<RecruiterAIResponse> {
     try {
-      console.log('🎯 Recruiter AI processing:', query);
-
       // Step 1: Build recruiter context
       const recruiterContext = await buildRecruiterContext(recruiterId);
 
@@ -122,15 +120,6 @@ class RecruiterIntelligenceEngine {
         recruiterContext
       );
       const intent = classifiedIntent.primary;
-      console.log('📊 Detected intent:', intent, `(confidence: ${(classifiedIntent.confidence * 100).toFixed(0)}%)`);
-      
-      if (classifiedIntent.detectedEntities.urgency) {
-        console.log('⏰ Urgency detected:', classifiedIntent.detectedEntities.urgency);
-      }
-      
-      if (classifiedIntent.needsClarification && classifiedIntent.clarificationQuestions) {
-        console.log('❓ Needs clarification:', classifiedIntent.clarificationQuestions[0]);
-      }
 
       // Step 4: Handle clarification if needed
       if (classifiedIntent.needsClarification && classifiedIntent.confidence < 0.6) {
@@ -169,7 +158,7 @@ class RecruiterIntelligenceEngine {
 
       return response;
     } catch (error) {
-      console.error('❌ Recruiter AI Error:', error);
+      // Error handled
       return {
         success: false,
         error: 'I encountered an error processing your request. Please try again.',
@@ -247,7 +236,6 @@ class RecruiterIntelligenceEngine {
         }
       };
     } catch (error) {
-      console.error('Streaming error:', error);
       // Fallback to non-streaming
       return await this.generateIntelligentResponse(
         query,
@@ -274,8 +262,6 @@ class RecruiterIntelligenceEngine {
     try {
       // Handle hiring recommendations with AI analysis
       if (intent === 'hiring-recommendations') {
-        console.log('🎯 Generating hiring readiness recommendations...');
-        
         // Get top candidates
         const candidates = await recruiterInsights.getTopCandidates(20);
         
@@ -378,8 +364,6 @@ Format:
 
       // Handle specific candidate lookup queries
       if (intent === 'candidate-query') {
-        console.log('🔍 Looking up specific candidate information...');
-        
         if (!recruiterId) {
           return {
             success: false,
@@ -398,9 +382,7 @@ Format:
             message: `Could not identify a valid candidate name in your query.\n\n**Tips:**\n• Use the candidate's full name (e.g., "John Doe" or "P.DURKADEVID")\n• Check spelling and capitalization\n• Try: "Show all applicants" to see who has applied\n\n**Examples:**\n• "What jobs did John Smith apply to?"\n• "Tell me about Sarah Johnson"\n• "P.DURKADEVID applied for what role?"`
           };
         }
-        
-        console.log('👤 Searching for candidate:', candidateName);
-        
+
         // Fetch recruiter's opportunities
         const { data: opportunities } = await supabase
           .from('opportunities')
@@ -430,8 +412,7 @@ Format:
         }
         
         const studentIds = matchingStudents.map(s => s.user_id);
-        console.log(`🔍 Found ${matchingStudents.length} student(s) matching "${candidateName}":`, matchingStudents.map(s => s.name));
-        
+
         // STEP 2: Get their applications in pipeline_candidates
         const { data: pipelineCandidates } = await supabase
           .from('pipeline_candidates')
@@ -543,12 +524,9 @@ Format:
 
       // Data-first handling for core intents using real DB
       if (intent === 'candidate-search') {
-        console.log('🔍 Parsing query for smart search...');
-        
         // Parse query to extract filters
         const parsedQuery = await queryParser.parseQuery(query);
-        console.log('📊 Parsed query:', parsedQuery);
-        
+
         // Check if requested skills exist in database
         if (parsedQuery.required_skills.length > 0) {
           const skillChecks = await Promise.all(
@@ -558,33 +536,20 @@ Format:
           const missingSkills = parsedQuery.required_skills.filter((_, idx) => !skillChecks[idx]);
           
           if (missingSkills.length > 0) {
-            console.log(`⚠️ Skills not found in database: ${missingSkills.join(', ')}`);
-            
             // Get suggestions for missing skills
             const suggestions = await Promise.all(
               missingSkills.map(skill => dataHealthCheck.suggestSimilarSkills(skill, 3))
             );
-            
-            const flatSuggestions = suggestions.flat();
-            if (flatSuggestions.length > 0) {
-              console.log('💡 Similar skills found:', flatSuggestions);
-            } else {
-              // If no similar skills, show what skills ARE available
-              const availableSkills = await dataHealthCheck.getCommonSkills(15);
-              if (availableSkills.length > 0) {
-                console.log('💡 Available skills in database:', availableSkills.map(s => s.skill).join(', '));
-              }
-            }
+
+            suggestions.flat();
           }
         }
         
         // Use semantic/hybrid search if filters exist, otherwise get top candidates
         let candidates;
         if (parsedQuery.required_skills.length > 0 || parsedQuery.locations.length > 0 || parsedQuery.min_cgpa) {
-          console.log('🎯 Using hybrid search with filters');
           candidates = await semanticSearch.hybridCandidateSearch(parsedQuery, 20);
         } else {
-          console.log('📋 Using general top candidates');
           candidates = await recruiterInsights.getTopCandidates(15);
         }
         
@@ -694,8 +659,6 @@ Format:
       }
 
       if (intent === 'opportunity-applications') {
-        console.log('💼 Fetching candidates who applied to opportunities...');
-        
         if (!recruiterId) {
           return {
             success: false,
@@ -712,7 +675,6 @@ Format:
           .order('created_at', { ascending: false });
         
         if (oppError) {
-          console.error('❌ Error fetching opportunities:', oppError);
           return {
             success: false,
             message: 'Could not fetch your opportunities. Please try again.',
@@ -757,9 +719,6 @@ Format:
           .in('opportunity_id', opportunityIds)
           .order('created_at', { ascending: false });
         
-        if (applError) {
-          console.error('❌ Error fetching applicants:', applError);
-        }
         
         // Group applicants by opportunity
         const applicantsByOpportunity = new Map<number, any[]>();
@@ -844,8 +803,6 @@ Format:
       }
 
       if (intent === 'hiring-decision') {
-        console.log('🧠 Generating AI hiring recommendations from applicants...');
-        
         if (!recruiterId) {
           return {
             success: false,
@@ -992,8 +949,6 @@ Next Step: [action]
       }
 
       if (intent === 'job-matching') {
-        console.log('🎯 Finding candidates for open positions...');
-        
         if (!recruiterId) {
           return {
             success: false,
@@ -1004,11 +959,7 @@ Next Step: [action]
         
         // Parse query to extract specific position name
         const specificPosition = this.extractPositionName(query);
-        
-        if (specificPosition) {
-          console.log('🎯 Specific position requested:', specificPosition);
-        }
-        
+
         // Fetch recruiter's opportunities with optional filtering
         let opportunitiesQuery = supabase
           .from('opportunities')
@@ -1026,7 +977,6 @@ Next Step: [action]
           .limit(specificPosition ? 3 : 10);
         
         if (oppError) {
-          console.error('Error fetching opportunities:', oppError);
           return {
             success: false,
             message: 'Error fetching your opportunities.',
@@ -1056,9 +1006,7 @@ Next Step: [action]
           }
           return acc;
         }, [] as typeof opportunities);
-        
-        console.log(`📊 Matching candidates to ${uniqueOpportunities.length} unique position(s)...`);
-        
+
         // Use intelligent matching for each opportunity
         const allMatches = await Promise.all(
           uniqueOpportunities.map(async (opp) => {
@@ -1358,7 +1306,6 @@ Next Step: [action]
       return await this.generateAIResponse(query, recruiterContext, history);
 
     } catch (error) {
-      console.error('Error generating response:', error);
       return await this.generateAIResponse(query, recruiterContext, history);
     }
   }
@@ -1396,7 +1343,6 @@ Next Step: [action]
         }
       };
     } catch (error) {
-      console.error('AI generation error:', error);
       throw error;
     }
   }

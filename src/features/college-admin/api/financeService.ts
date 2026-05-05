@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('finance-service');
 
 export interface FeeStructure {
   id: string;
@@ -294,7 +297,7 @@ export async function getExpenditureSummary(collegeId: string): Promise<Expendit
   });
 
   if (error) {
-    console.error('Error getting expenditure summary:', error);
+    logger.error('Error getting expenditure summary', error as Error);
     throw error;
   }
 
@@ -316,7 +319,7 @@ export async function getDepartmentExpenditure(collegeId: string): Promise<Depar
   });
 
   if (error) {
-    console.error('Error getting department expenditure:', error);
+    logger.error('Error getting department expenditure', error as Error, { collegeId });
     throw error;
   }
 
@@ -329,7 +332,7 @@ export async function getProgramExpenditure(collegeId: string): Promise<ProgramE
   });
 
   if (error) {
-    console.error('Error getting program expenditure:', error);
+    logger.error('Error getting program expenditure', error as Error, { collegeId });
     throw error;
   }
 

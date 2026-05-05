@@ -1,6 +1,6 @@
 /**
  * 🧠 ENHANCED AI-FIRST REASONING & INTENT DETECTION
- * 
+ *
  * Advanced features:
  * - Deep contextual reasoning (understands nuance)
  * - Multi-intent detection (handles complex queries)
@@ -11,6 +11,9 @@
 
 import { getOpenAIClient, DEFAULT_MODEL } from './openAIClient';
 import { StudentProfile } from '@/features/student-profile/model';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('enhanced-intent-service');
 
 export type EnhancedIntent =
   | 'find-jobs'
@@ -111,8 +114,6 @@ class EnhancedIntentService {
   ): Promise<EnhancedDetectedIntent> {
     
     try {
-      console.log('🧠 ENHANCED AI-FIRST: Deep reasoning with emotional intelligence...');
-      
       const prompt = this.buildDeepReasoningPrompt(
         message,
         profile,
@@ -144,20 +145,15 @@ Think deeply. Be empathetic. Be proactive.`
       });
       
       const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
-      // Log AI's deep understanding
-      console.log('🧠 AI Reasoning:', result.reasoning);
-      console.log('🎯 Primary Intent:', result.primary_intent, `(${result.primary_confidence}%)`);
-      console.log('💭 Emotional Tone:', result.emotional_tone, `(intensity: ${result.emotional_intensity})`);
-      console.log('🎯 User Goal:', result.user_goal);
-      if (result.underlying_problem) {
-        console.log('⚠️ Underlying Problem:', result.underlying_problem);
-      }
-      
       return this.parseAIResponse(result);
-      
+
     } catch (error) {
-      console.error('Enhanced intent detection error:', error);
+      logger.error('Failed to detect enhanced intent with deep reasoning', error as Error, {
+        messageLength: message.length,
+        hasProfile: !!profile,
+        hasConversationHistory: !!conversationHistory && conversationHistory.length > 0,
+        hasRecentChanges: !!recentProfileChanges && recentProfileChanges.length > 0
+      });
       return this.getFallbackIntent(message);
     }
   }

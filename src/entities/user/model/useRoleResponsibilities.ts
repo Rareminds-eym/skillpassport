@@ -10,6 +10,9 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('role-responsibilities-hook');
 
 /**
  * Cache structure for storing role responsibilities
@@ -143,7 +146,7 @@ export function useRoleResponsibilities(
     } catch (err) {
       // Only update state if this is still the current request
       if (currentRequestRef.current === requestKey) {
-        console.error('Error fetching role responsibilities:', err);
+        logger.error('Failed to fetch role responsibilities', err instanceof Error ? err : new Error(String(err)));
         setError(err instanceof Error ? err : new Error('Failed to generate responsibilities'));
 
         // Return fallback without exposing error to user

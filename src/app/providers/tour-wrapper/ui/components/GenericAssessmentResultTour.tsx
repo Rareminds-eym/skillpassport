@@ -1,10 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Joyride, { CallBackProps, STATUS } from 'react-joyride';
+import { getLogger } from '@/shared/config/logging';
 
 import { TOUR_KEYS } from '@/app/providers/tour-wrapper/lib/constants';
 import { waitForElement } from '@/shared/lib/utils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { useTour } from '@/shared/model/tourStore';
+
+const logger = getLogger('GenericAssessmentResultTour');
 import {
   GENERIC_ASSESSMENT_TOUR_STEPS,
   GENERIC_ASSESSMENT_TOUR_OPTIONS,
@@ -30,7 +33,6 @@ const GenericAssessmentResultTour: React.FC = () => {
 
   useEffect(() => {
     if (!loading && isEligible(TOUR_KEYS.ASSESSMENT_RESULT_GENERIC) && !isReady && !tourStarted.current) {
-      console.log('✅ Generic assessment tour: Prerequisites met');
       setIsReady(true);
     }
   }, [loading, isEligible, isReady]);
@@ -41,18 +43,14 @@ const GenericAssessmentResultTour: React.FC = () => {
     }
 
     const startTourWhenReady = async () => {
-      console.log('🎯 Generic assessment tour: Checking assessment result grade_level...');
-      
       // Don't start if another tour is already running
       if (isTourRunning && activeTourKey !== TOUR_KEYS.ASSESSMENT_RESULT_GENERIC) {
-        console.log('⏭️ Generic tour: Another tour is running');
         return;
       }
-      
+
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          console.log('⏭️ Generic tour: No user found');
           return;
         }
 
@@ -64,7 +62,6 @@ const GenericAssessmentResultTour: React.FC = () => {
           .maybeSingle();
 
         if (studentError || !studentData) {
-          console.log('⏭️ Generic tour: No student record found');
           return;
         }
 
@@ -78,56 +75,48 @@ const GenericAssessmentResultTour: React.FC = () => {
           .maybeSingle();
 
         if (error || !resultData) {
-          console.log('⏭️ Generic tour: No assessment result found');
           return;
         }
 
         // Skip if this is after10 or after12 (they have specific tours)
         if (resultData.grade_level === 'after10' || resultData.grade_level === 'after12') {
-          console.log('⏭️ Generic tour: Student has specific tour (grade_level:', resultData.grade_level, ')');
           return;
         }
-
-        console.log('✅ Generic tour: Validated for generic tour (grade_level:', resultData.grade_level, ')');
       } catch (validationError) {
-        console.error('❌ Generic tour: Error validating assessment', validationError);
+        logger.error('Error validating assessment', validationError as Error);
         return;
       }
-      
+
       // Check if After-10 or After-12 specific elements exist
       const after10Running = document.querySelector('[data-tour="recommended-stream"]');
       const after12Running = document.querySelector('[data-tour="recommended-programs"]');
-      
+
       if (after10Running || after12Running) {
-        console.log('⏭️ Generic tour: After-10/12 tour elements found, skipping');
         return;
       }
-      
+
       // For generic tour, check which elements are available
       const hasCareerTracks = document.querySelector('[data-tour="career-track-1"]');
-      
+
       // Base elements that should always exist
       const baseSelectors = [
         '[data-tour="navigation-actions"]',
         '[data-tour="ai-summary"]'
       ];
-      
+
       // Add career tracks if they exist
-      const requiredSelectors = hasCareerTracks 
+      const requiredSelectors = hasCareerTracks
         ? [...baseSelectors, '[data-tour="career-track-1"]', '[data-tour="career-track-2"]', '[data-tour="career-track-3"]']
         : baseSelectors;
 
-      console.log('🔍 Generic tour: Required elements:', requiredSelectors);
-      
       // Filter tour steps based on available elements
       const filteredSteps = GENERIC_ASSESSMENT_TOUR_STEPS.filter(step => {
         if (step.target === 'body') return true; // Always include welcome/finish steps
         if (!hasCareerTracks && step.target.includes('career-track')) return false;
         return true;
       });
-      
+
       setTourSteps(filteredSteps);
-      console.log('🔍 Generic tour: Using', filteredSteps.length, 'steps');
 
       try {
         const results = await Promise.all(
@@ -137,15 +126,12 @@ const GenericAssessmentResultTour: React.FC = () => {
         const allFound = results.every(el => el !== null);
 
         if (allFound) {
-          console.log('✅ Generic assessment tour: All elements ready');
           tourStarted.current = true;
           setShouldRun(true);
           startTour(TOUR_KEYS.ASSESSMENT_RESULT_GENERIC);
-        } else {
-          console.warn('❌ Generic assessment tour: Some elements not found');
         }
       } catch (error) {
-        console.error('❌ Generic assessment tour: Error waiting for elements', error);
+        logger.error('Error waiting for elements', error as Error);
       }
     };
 
@@ -156,7 +142,7 @@ const GenericAssessmentResultTour: React.FC = () => {
     const { status, index, action, type } = data;
 
     if (type === 'error:target_not_found') {
-      console.error('❌ Generic tour: Target not found, ending tour');
+      logger.error('Target not found, ending tour', new Error('Target element not found'));
       setShouldRun(false);
       completeTour(TOUR_KEYS.ASSESSMENT_RESULT_GENERIC);
       return;
@@ -167,11 +153,9 @@ const GenericAssessmentResultTour: React.FC = () => {
     }
 
     if (status === STATUS.FINISHED) {
-      console.log('✅ Generic tour: Finished');
       setShouldRun(false);
       completeTour(TOUR_KEYS.ASSESSMENT_RESULT_GENERIC);
     } else if (status === STATUS.SKIPPED) {
-      console.log('⏭️ Generic tour: Skipped');
       setShouldRun(false);
       skipTour(TOUR_KEYS.ASSESSMENT_RESULT_GENERIC);
     }
@@ -182,7 +166,6 @@ const GenericAssessmentResultTour: React.FC = () => {
       tourStarted.current = false;
       setIsReady(false);
       setShouldRun(false);
-      console.log('🔄 Generic Tour unmounted');
     };
   }, []);
 

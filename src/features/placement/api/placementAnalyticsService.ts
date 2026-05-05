@@ -99,7 +99,6 @@ class PlacementAnalyticsService {
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error fetching placement records:', error);
         throw error;
       }
 
@@ -119,7 +118,6 @@ class PlacementAnalyticsService {
       }));
 
     } catch (error) {
-      console.error('Error in getPlacementRecords:', error);
       return [];
     }
   }
@@ -172,13 +170,11 @@ class PlacementAnalyticsService {
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error fetching applications:', error);
         throw error;
       }
 
       return data || [];
     } catch (error) {
-      console.error('Error in getAllApplications:', error);
       return [];
     }
   }
@@ -196,7 +192,6 @@ class PlacementAnalyticsService {
         .not('branch_field', 'is', null);
 
       if (studentsError) {
-        console.error('Error fetching students:', studentsError);
         throw studentsError;
       }
 
@@ -262,7 +257,6 @@ class PlacementAnalyticsService {
       return analytics.sort((a, b) => b.placed_students - a.placed_students);
 
     } catch (error) {
-      console.error('Error in getDepartmentAnalytics:', error);
       return [];
     }
   }
@@ -324,7 +318,6 @@ class PlacementAnalyticsService {
       };
 
     } catch (error) {
-      console.error('Error in getPlacementStats:', error);
       return {
         totalPlacements: 0,
         totalApplications: 0,
@@ -375,7 +368,6 @@ class PlacementAnalyticsService {
       };
 
     } catch (error) {
-      console.error('Error in getCTCDistribution:', error);
       return {
         above10L: { count: 0, percentage: 0 },
         between5L10L: { count: 0, percentage: 0 },
@@ -393,7 +385,6 @@ class PlacementAnalyticsService {
         .sort((a, b) => new Date(b.placement_date).getTime() - new Date(a.placement_date).getTime())
         .slice(0, limit);
     } catch (error) {
-      console.error('Error in getRecentPlacements:', error);
       return [];
     }
   }
@@ -411,7 +402,6 @@ class PlacementAnalyticsService {
         .eq('application_status', 'accepted');
 
       if (error) {
-        console.error('Error fetching top companies:', error);
         throw error;
       }
 
@@ -431,7 +421,6 @@ class PlacementAnalyticsService {
         .map(([company, placements]) => ({ company, placements }));
 
     } catch (error) {
-      console.error('Error in getTopCompanies:', error);
       return [];
     }
   }
@@ -500,7 +489,6 @@ class PlacementAnalyticsService {
       return csvContent;
 
     } catch (error) {
-      console.error('Error in exportPlacementData:', error);
       throw error;
     }
   }

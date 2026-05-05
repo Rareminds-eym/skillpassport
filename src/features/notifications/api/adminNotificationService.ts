@@ -5,6 +5,9 @@
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { AdminNotificationType } from '@/shared/lib/hooks';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('admin-notification-service');
 
 export class AdminNotificationService {
   /**
@@ -34,14 +37,12 @@ export class AdminNotificationService {
         .single();
 
       if (error) {
-        console.error('Error creating admin notification:', error);
         throw error;
       }
 
-      console.log('✅ Admin notification created:', data);
       return data;
     } catch (error) {
-      console.error('Failed to create admin notification:', error);
+      logger.error('Failed to create admin notification', error as Error, { recipientId, type });
       throw error;
     }
   }
@@ -65,7 +66,6 @@ export class AdminNotificationService {
         .maybeSingle();
 
       if (!schoolAdmin?.user_id) {
-        console.log('No school admin found for school:', schoolId);
         return;
       }
 
@@ -76,7 +76,7 @@ export class AdminNotificationService {
         `${studentName} submitted "${trainingTitle}" for approval`
       );
     } catch (error) {
-      console.error('Failed to notify training submission:', error);
+      logger.error('Failed to notify training submission', error as Error, { schoolId, studentName });
     }
   }
 
@@ -99,7 +99,6 @@ export class AdminNotificationService {
         .maybeSingle();
 
       if (!schoolAdmin?.user_id) {
-        console.log('No school admin found for school:', schoolId);
         return;
       }
 
@@ -110,7 +109,7 @@ export class AdminNotificationService {
         `${studentName} submitted "${experienceTitle}" for approval`
       );
     } catch (error) {
-      console.error('Failed to notify experience submission:', error);
+      logger.error('Failed to notify experience submission', error as Error, { schoolId, studentName });
     }
   }
 
@@ -133,7 +132,6 @@ export class AdminNotificationService {
         .maybeSingle();
 
       if (!schoolAdmin?.user_id) {
-        console.log('No school admin found for school:', schoolId);
         return;
       }
 
@@ -144,7 +142,7 @@ export class AdminNotificationService {
         `${studentName} submitted "${projectTitle}" for approval`
       );
     } catch (error) {
-      console.error('Failed to notify project submission:', error);
+      logger.error('Failed to notify project submission', error as Error, { schoolId, studentName });
     }
   }
 
@@ -168,7 +166,6 @@ export class AdminNotificationService {
         .maybeSingle();
 
       if (!collegeAdmin?.id) {
-        console.log('No college admin found for college:', collegeId);
         return;
       }
 
@@ -179,7 +176,7 @@ export class AdminNotificationService {
         message
       );
     } catch (error) {
-      console.error('Failed to notify college admin:', error);
+      logger.error('Failed to notify college admin', error as Error, { collegeId });
     }
   }
 
@@ -202,7 +199,6 @@ export class AdminNotificationService {
         .maybeSingle();
 
       if (!student?.user_id) {
-        console.log('No user ID found for student:', studentId);
         return;
       }
 
@@ -225,7 +221,7 @@ export class AdminNotificationService {
         message
       );
     } catch (error) {
-      console.error('Failed to notify approval status:', error);
+      logger.error('Failed to notify approval status', error as Error, { studentId, type });
     }
   }
 
@@ -279,14 +275,11 @@ export class AdminNotificationService {
           .insert(notifications);
 
         if (error) {
-          console.error('Error creating system alerts:', error);
           throw error;
         }
-
-        console.log(`✅ System alert sent to ${notifications.length} admins`);
       }
     } catch (error) {
-      console.error('Failed to create system alert:', error);
+      logger.error('Failed to create system alert', error as Error, { adminType });
     }
   }
 }

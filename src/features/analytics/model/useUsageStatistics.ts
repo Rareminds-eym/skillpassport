@@ -6,6 +6,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import usageStatisticsService from '../api/usageStatisticsService';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('usage-statistics');
 
 /**
  * Hook to fetch and manage usage statistics
@@ -15,7 +18,7 @@ import usageStatisticsService from '../api/usageStatisticsService';
 export const useUsageStatistics = (planData) => {
   const [usageStats, setUsageStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   /**
    * Fetch usage statistics
@@ -43,8 +46,8 @@ export const useUsageStatistics = (planData) => {
 
       setUsageStats(combinedStats);
     } catch (err) {
-      console.error('Error in useUsageStatistics:', err);
-      setError(err.message);
+      logger.error('Failed to fetch usage statistics', err instanceof Error ? err : new Error(String(err)), { planData });
+      setError(err instanceof Error ? err.message : String(err));
 
       // Set fallback data on error
       const limits = usageStatisticsService.getSubscriptionLimits(planData);

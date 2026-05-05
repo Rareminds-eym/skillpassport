@@ -14,6 +14,9 @@ import {
 } from '@heroicons/react/24/outline';
 import { CareerPathResponse } from '@/features/counselling';
 import OpenAI from 'openai';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('career-path-drawer');
 
 // Lazy-load OpenAI client to avoid initialization errors when API key is missing
 let openai: OpenAI | null = null;
@@ -175,7 +178,7 @@ IMPORTANT INSTRUCTIONS:
 
       setChatMessages(prev => [...prev, assistantMessage]);
     } catch (err) {
-      console.error('Chat error:', err);
+      logger.error('Career path chat failed', err instanceof Error ? err : new Error(String(err)));
       let errorText = 'Sorry, I encountered an error. Please try again.';
       
       if (err instanceof Error) {

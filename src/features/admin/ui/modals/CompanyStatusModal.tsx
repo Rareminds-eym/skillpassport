@@ -1,5 +1,8 @@
 import React from 'react';
 import { X, CheckCircle, Clock, XCircle, AlertTriangle, Shield } from 'lucide-react';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('company-status-modal');
 
 interface StatusOption {
   value: string;
@@ -106,7 +109,7 @@ const CompanyStatusModal: React.FC<CompanyStatusModalProps> = ({
       await onStatusChange(newStatus);
       onClose();
     } catch (error) {
-      console.error('Error updating status:', error);
+      logger.error('Update company status failed', error instanceof Error ? error : new Error(String(error)));
     }
   };
 

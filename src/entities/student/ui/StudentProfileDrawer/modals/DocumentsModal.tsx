@@ -377,6 +377,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon, DocumentIcon, EyeIcon, ArrowDownTrayIcon, ArrowTopRightOnSquareIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('documents-modal');
 // TODO: DI Pattern - getStudentDocuments and getStudentDocumentUrl should be passed as props
 
 interface Document {
@@ -439,7 +442,7 @@ const DocumentsModal: React.FC<DocumentsModalProps> = ({ isOpen, onClose, studen
       }
     } catch (err) {
       setError('Failed to load documents');
-      console.error('Error loading documents:', err);
+      logger.error('Failed to load documents', err instanceof Error ? err : new Error(String(err)));
     } finally {
       setLoading(false);
     }
@@ -456,9 +459,7 @@ const DocumentsModal: React.FC<DocumentsModalProps> = ({ isOpen, onClose, studen
       setDownloadError(null);
       setDownloadSuccess(null);
 
-      console.log('Downloading document:', document.name);
       const downloadUrl = getStudentDocumentUrl(document.url, 'download');
-      console.log('Download URL:', downloadUrl);
 
       const link = window.document.createElement('a');
       link.href = downloadUrl;
@@ -468,13 +469,11 @@ const DocumentsModal: React.FC<DocumentsModalProps> = ({ isOpen, onClose, studen
       link.click();
       window.document.body.removeChild(link);
 
-      console.log('Download initiated for:', document.name);
-
       // Set success state
       setDownloadSuccess(document.url);
       setDownloading(null);
     } catch (error) {
-      console.error('Download failed:', error);
+      logger.error('Failed to download document', error instanceof Error ? error : new Error(String(error)));
       setDownloadError(document.url);
       setDownloading(null);
 

@@ -17,7 +17,6 @@ export interface PagesEnv {
   CLAUDE_API_KEY?: string;
   VITE_CLAUDE_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
-  OPENROUTER_API_KEY?: string;
 
   // Other service keys
   RAZORPAY_KEY_ID?: string;
@@ -40,7 +39,22 @@ export interface PagesEnv {
   CLOUDFLARE_R2_SECRET_ACCESS_KEY?: string;
   CLOUDFLARE_R2_BUCKET_NAME?: string;
   CLOUDFLARE_R2_PUBLIC_URL?: string;
+
+  /**
+   * Email Worker configuration
+   * EMAIL_WORKER_URL: URL of the email worker service endpoint (e.g., https://email-worker.example.com)
+   * INTERNAL_API_KEY: API key for authenticating requests to the email worker
+   * ADMIN_EMAIL: Email address for admin notifications and system alerts
+   */
+  EMAIL_WORKER_URL?: string;
+  INTERNAL_API_KEY?: string;
+  ADMIN_EMAIL?: string;
 }
+
+/**
+ * Backward compatibility alias
+ */
+export type Env = PagesEnv;
 
 /**
  * Standard API response format

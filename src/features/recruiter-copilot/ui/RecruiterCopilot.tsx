@@ -254,7 +254,7 @@ const RecruiterCopilot: React.FC = () => {
       
       typeMessage();
     } catch (error) {
-      console.error('Error processing query:', error);
+      // Error handled
       
       // Add error message
       const errorMessage: Message = {

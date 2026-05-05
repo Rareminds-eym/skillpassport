@@ -3,6 +3,9 @@
  */
 import { useState, useEffect } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('useInstitutions');
 
 export const useInstitutions = () => {
   const [schools, setSchools] = useState([]);
@@ -34,7 +37,7 @@ export const useInstitutions = () => {
         .order('name');
 
       if (schoolsError) {
-        console.error('❌ Error fetching schools:', schoolsError);
+        logger.error('Error fetching schools', schoolsError as Error);
         setSchools([]);
       } else {
         setSchools(schoolsData || []);
@@ -49,7 +52,7 @@ export const useInstitutions = () => {
         .order('name');
 
       if (collegesError) {
-        console.error('❌ Error fetching colleges:', collegesError);
+        logger.error('Error fetching colleges', collegesError as Error);
         setColleges([]);
       } else {
         setColleges(collegesData || []);
@@ -64,7 +67,7 @@ export const useInstitutions = () => {
         .order('name');
 
       if (universitiesError) {
-        console.error('❌ Error fetching universities:', universitiesError);
+        logger.error('Error fetching universities', universitiesError as Error);
         setUniversities([]);
       } else {
         setUniversities(universitiesData || []);
@@ -77,7 +80,7 @@ export const useInstitutions = () => {
         .order('name');
 
       if (universityCollegesError) {
-        console.error('❌ Error fetching university colleges:', universityCollegesError);
+        logger.error('Error fetching university colleges', universityCollegesError as Error);
         setUniversityColleges([]);
       } else {
         setUniversityColleges(universityCollegesData || []);
@@ -90,7 +93,7 @@ export const useInstitutions = () => {
         .order('name');
 
       if (departmentsError) {
-        console.error('❌ Error fetching departments:', departmentsError);
+        logger.error('Error fetching departments', departmentsError as Error);
         setDepartments([]);
       } else {
         setDepartments(departmentsData || []);
@@ -103,7 +106,7 @@ export const useInstitutions = () => {
         .order('name');
 
       if (programsError) {
-        console.error('❌ Error fetching programs:', programsError);
+        logger.error('Error fetching programs', programsError as Error);
         setPrograms([]);
       } else {
         setPrograms(programsData || []);
@@ -117,7 +120,7 @@ export const useInstitutions = () => {
         .order('section');
 
       if (schoolClassesError) {
-        console.error('❌ Error fetching school classes:', schoolClassesError);
+        logger.error('Error fetching school classes', schoolClassesError as Error);
         setSchoolClasses([]);
       } else {
         setSchoolClasses(schoolClassesData || []);
@@ -131,15 +134,15 @@ export const useInstitutions = () => {
         .order('section');
 
       if (programSectionsError) {
-        console.error('❌ Error fetching program sections:', programSectionsError);
+        logger.error('Error fetching program sections', programSectionsError as Error);
         setProgramSections([]);
       } else {
         setProgramSections(programSectionsData || []);
       }
       
     } catch (err) {
-      console.error('💥 Error fetching institutions:', err);
-      setError(err.message);
+      logger.error('Error fetching institutions', err as Error);
+      setError((err as any).message);
     } finally {
       setLoading(false);
     }

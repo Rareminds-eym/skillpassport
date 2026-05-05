@@ -109,7 +109,6 @@ export const studentEnrollmentService = {
 
       return { success: true, data: filteredData };
     } catch (error: any) {
-      console.error('Error fetching enrolled students:', error);
       return {
         success: false,
         error: {
@@ -146,7 +145,6 @@ export const studentEnrollmentService = {
 
       return { success: true, data: student };
     } catch (error: any) {
-      console.error('Error enrolling student:', error);
       return {
         success: false,
         error: {
@@ -178,7 +176,6 @@ export const studentEnrollmentService = {
 
       return { success: true, data: results };
     } catch (error: any) {
-      console.error('Error bulk enrolling students:', error);
       return {
         success: false,
         error: {
@@ -212,7 +209,6 @@ export const studentEnrollmentService = {
 
       return { success: true, data };
     } catch (error: any) {
-      console.error('Error updating enrollment:', error);
       return {
         success: false,
         error: {
@@ -238,7 +234,6 @@ export const studentEnrollmentService = {
 
       return { success: true, data: data || [] };
     } catch (error: any) {
-      console.error('Error fetching unenrolled students:', error);
       return {
         success: false,
         error: {
@@ -314,7 +309,6 @@ export const studentEnrollmentService = {
 
       return { success: true, data: stats };
     } catch (error: any) {
-      console.error('Error fetching enrollment stats:', error);
       return {
         success: false,
         error: {

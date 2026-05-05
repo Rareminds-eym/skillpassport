@@ -3,8 +3,12 @@
 // Then update all call sites to pass MessageService from @/features/messaging
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import MessageService from '@/shared/api/messageService';
 import { queryKeys } from '@/shared/lib/queryKeys';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('student-college-lecturer-messages');
 /**
  * @deprecated This hook is deprecated and will be removed in a future version.
  * Please migrate to the new unified messaging hooks from @/features/messaging:
@@ -59,8 +63,6 @@ export const useStudentCollegeLecturerMessages = ({
     const subscription = MessageService.subscribeToConversation(
       conversationId,
       (newMessage) => {
-        console.log('📨 [Student-College-Lecturer] New message received:', newMessage);
-
         // Add message to cache optimistically
         queryClient.setQueryData(queryKeys.student.messages.conversation(conversationId!), (oldMessages) => {
           if (!oldMessages) return [newMessage];
@@ -145,7 +147,7 @@ export const useStudentCollegeLecturerMessages = ({
       if (context?.previousMessages) {
         queryClient.setQueryData(queryKeys.student.messages.conversation(conversationId!), context.previousMessages);
       }
-      console.error('❌ [Student-College-Lecturer] Failed to send message:', err);
+      logger.error('Failed to send message', err instanceof Error ? err : new Error(String(err)));
     },
     onSuccess: (data, variables, context) => {
       // Replace optimistic message with real one

@@ -319,7 +319,7 @@ const TrainingUpdates: React.FC = () => {
   // Auto-refresh updates every 30 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      console.log("Checking for new training updates...");
+      // Silent refresh - no logging needed
     }, 30000);
 
     return () => clearInterval(interval);
@@ -1942,7 +1942,9 @@ const TrainingUpdates: React.FC = () => {
                         <DocumentArrowDownIcon className="h-4 w-4 text-gray-500" />
                         <span className="text-sm text-gray-700">{attachment}</span>
                         <button
-                          onClick={() => console.log(`Downloading ${attachment}...`)}
+                          onClick={() => {
+                            // Download attachment
+                          }}
                           className="ml-auto text-indigo-600 hover:text-indigo-800 text-sm"
                         >
                           Download

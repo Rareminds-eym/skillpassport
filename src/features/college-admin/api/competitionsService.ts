@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('competitions-service');
 
 export interface Competition {
     comp_id: string;
@@ -55,16 +58,14 @@ async function getCurrentUserSchoolId(): Promise<string | null> {
             try {
                 const userData = JSON.parse(storedUser);
                 if (userData.role === 'school_admin' && userData.schoolId) {
-                    console.log('✅ [CompetitionsService] Found school ID from localStorage:', userData.schoolId);
                     return userData.schoolId;
                 }
             } catch (e) {
-                console.error('Error parsing stored user:', e);
+                logger.error('Failed to parse stored user', e instanceof Error ? e : new Error(String(e)));
             }
         }
 
         const userEmail = localStorage.getItem('userEmail');
-        console.log('🔍 [CompetitionsService] Getting school ID for user:', userEmail);
 
         // Get current Supabase user
         const { data: { user } } = await supabase.auth.getUser();
@@ -78,7 +79,6 @@ async function getCurrentUserSchoolId(): Promise<string | null> {
                 .maybeSingle();
 
             if (educatorData?.school_id) {
-                console.log('✅ [CompetitionsService] Found school ID from school_educators:', educatorData.school_id);
                 return educatorData.school_id;
             }
         }
@@ -92,7 +92,6 @@ async function getCurrentUserSchoolId(): Promise<string | null> {
                 .maybeSingle();
 
             if (educatorByEmail?.school_id) {
-                console.log('✅ [CompetitionsService] Found school ID from school_educators by email:', educatorByEmail.school_id);
                 return educatorByEmail.school_id;
             }
         }
@@ -107,15 +106,13 @@ async function getCurrentUserSchoolId(): Promise<string | null> {
                 .maybeSingle();
 
             if (orgData?.id) {
-                console.log('✅ [CompetitionsService] Found school ID from organizations table:', orgData.id);
                 return orgData.id;
             }
         }
 
-        console.log('❌ [CompetitionsService] No school ID found for user');
         return null;
     } catch (error) {
-        console.error('❌ [CompetitionsService] Error getting school_id:', error);
+        logger.error('Failed to get school ID', error instanceof Error ? error : new Error(String(error)));
         return null;
     }
 }
@@ -151,7 +148,7 @@ async function getCurrentUserInfo(): Promise<{ type: 'educator' | 'admin', id: s
 
         return null;
     } catch (error) {
-        console.error('Error getting user info:', error);
+        logger.error('Failed to get user info', error instanceof Error ? error : new Error(String(error)));
         return null;
     }
 }
@@ -195,7 +192,7 @@ export async function fetchCompetitions(): Promise<Competition[]> {
 
         return competitionsWithClubs;
     } catch (error) {
-        console.error('Error fetching competitions:', error);
+        logger.error('Failed to fetch competitions', error instanceof Error ? error : new Error(String(error)));
         throw error;
     }
 }
@@ -262,7 +259,9 @@ export async function createCompetition(competitionData: {
 
         return { ...data, participatingClubs: competitionData.participatingClubs || [], results: [] };
     } catch (error) {
-        console.error('Error creating competition:', error);
+        logger.error('Failed to create competition', error instanceof Error ? error : new Error(String(error)), {
+            competitionName: competitionData.name
+        });
         throw error;
     }
 }
@@ -310,7 +309,10 @@ export async function registerForCompetition(
 
         return data;
     } catch (error) {
-        console.error('Error registering for competition:', error);
+        logger.error('Failed to register for competition', error instanceof Error ? error : new Error(String(error)), {
+            competitionId: compId,
+            studentEmail
+        });
         throw error;
     }
 }
@@ -318,7 +320,6 @@ export async function registerForCompetition(
 // Get competition registrations
 export async function getCompetitionRegistrations(compId: string): Promise<CompetitionRegistration[]> {
     try {
-        console.log('🔍 [CompetitionsService] Fetching registrations for competition:', compId);
         const { data, error } = await supabase
             .from('competition_registrations')
             .select('*')
@@ -326,14 +327,17 @@ export async function getCompetitionRegistrations(compId: string): Promise<Compe
             .order('registration_date', { ascending: false });
 
         if (error) {
-            console.error('❌ [CompetitionsService] Error fetching registrations:', error);
+            logger.error('Failed to fetch competition registrations', error instanceof Error ? error : new Error(String(error)), {
+                competitionId: compId
+            });
             throw error;
         }
 
-        console.log('📋 [CompetitionsService] Found registrations:', data?.length || 0, data);
         return data || [];
     } catch (error) {
-        console.error('❌ [CompetitionsService] Error fetching registrations:', error);
+        logger.error('Failed to fetch competition registrations', error instanceof Error ? error : new Error(String(error)), {
+            competitionId: compId
+        });
         throw error;
     }
 }
@@ -382,7 +386,10 @@ export async function addCompetitionResult(
 
         return data;
     } catch (error) {
-        console.error('Error adding competition result:', error);
+        logger.error('Failed to add competition result', error instanceof Error ? error : new Error(String(error)), {
+            competitionId: compId,
+            studentEmail
+        });
         throw error;
     }
 }
@@ -400,7 +407,9 @@ export async function getCompetitionResults(compId: string): Promise<Competition
 
         return data || [];
     } catch (error) {
-        console.error('Error fetching competition results:', error);
+        logger.error('Failed to fetch competition results', error instanceof Error ? error : new Error(String(error)), {
+            competitionId: compId
+        });
         throw error;
     }
 }
@@ -436,7 +445,9 @@ export async function updateCompetitionRegistration(
 
         if (error) throw error;
     } catch (error) {
-        console.error('Error updating competition registration:', error);
+        logger.error('Failed to update competition registration', error instanceof Error ? error : new Error(String(error)), {
+            registrationId
+        });
         throw error;
     }
 }
@@ -451,7 +462,9 @@ export async function deleteCompetitionRegistration(registrationId: string): Pro
 
         if (error) throw error;
     } catch (error) {
-        console.error('Error deleting competition registration:', error);
+        logger.error('Failed to delete competition registration', error instanceof Error ? error : new Error(String(error)), {
+            registrationId
+        });
         throw error;
     }
 }
@@ -535,7 +548,9 @@ export async function updateCompetition(
             }
         }
     } catch (error) {
-        console.error('Error updating competition:', error);
+        logger.error('Failed to update competition', error instanceof Error ? error : new Error(String(error)), {
+            competitionId: compId
+        });
         throw error;
     }
 }
@@ -556,7 +571,9 @@ export async function deleteCompetition(compId: string): Promise<void> {
 
         if (error) throw error;
     } catch (error) {
-        console.error('Error deleting competition:', error);
+        logger.error('Failed to delete competition', error instanceof Error ? error : new Error(String(error)), {
+            competitionId: compId
+        });
         throw error;
     }
 }

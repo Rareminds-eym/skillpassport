@@ -112,7 +112,6 @@ export function useEducatorId(): EducatorIdData {
           setError('Educator record not found');
         }
       } catch (err) {
-        console.error('Error fetching educator ID:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch educator ID');
         setEducatorId(null);
       } finally {

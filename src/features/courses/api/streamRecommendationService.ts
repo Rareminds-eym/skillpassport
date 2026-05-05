@@ -8,6 +8,9 @@
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl } from '@/shared/api/apiUtils';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('stream-recommendation-service');
 
 // API URL for stream recommendation endpoint
 const CAREER_API_URL = getApiUrl('career');
@@ -76,7 +79,7 @@ export const fetchStudentStreamData = async (studentId) => {
     .rpc('get_student_stream_recommendation_data', { p_student_id: studentId });
   
   if (error) {
-    console.error('Error fetching student data:', error);
+    logger.error('Error fetching student data', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
   
@@ -386,7 +389,7 @@ export const saveStreamRecommendationReport = async (recommendation) => {
     .single();
   
   if (error) {
-    console.error('Error saving report:', error);
+    logger.error('Error saving report', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
   
@@ -405,7 +408,7 @@ export const getLatestStreamRecommendation = async (studentId) => {
     .single();
   
   if (error && error.code !== 'PGRST116') { // Ignore "no rows" error
-    console.error('Error fetching report:', error);
+    logger.error('Error fetching report', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
   
@@ -515,8 +518,6 @@ const callAIForStreamRecommendation = async (studentData) => {
 
   const prompt = buildStreamRecommendationPrompt(studentData);
 
-  console.log('🤖 Calling AI for stream recommendation analysis...');
-
   const response = await fetch(`${CAREER_API_URL}/stream-recommendation`, {
     method: 'POST',
     headers: {
@@ -531,7 +532,7 @@ const callAIForStreamRecommendation = async (studentData) => {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    console.error('AI API Error:', errorData);
+    logger.error('AI API Error', errorData instanceof Error ? errorData : new Error(JSON.stringify(errorData)));
     throw new Error(errorData.error || `AI service error: ${response.status}`);
   }
 
@@ -541,7 +542,6 @@ const callAIForStreamRecommendation = async (studentData) => {
     throw new Error('Invalid response from AI service');
   }
 
-  console.log('✅ AI stream recommendation analysis complete');
   return result.data;
 };
 
@@ -598,8 +598,6 @@ export const generateAIStreamRecommendation = async (studentId) => {
       is_ai_generated: true
     };
   } catch (aiError) {
-    console.warn('AI analysis failed, falling back to rule-based:', aiError.message);
-    
     // Fall back to rule-based recommendation
     const ruleBasedResult = await generateStreamRecommendation(studentId);
     return {
@@ -658,7 +656,7 @@ export const generateAndSaveAIStreamRecommendation = async (studentId) => {
     .single();
   
   if (error) {
-    console.error('Error saving AI report:', error);
+    logger.error('Error saving AI report', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
   

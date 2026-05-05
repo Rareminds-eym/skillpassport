@@ -22,6 +22,9 @@ import { ExternalLinkIcon, File } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { isCollegeStudent, isSchoolStudent } from '@/entities/student/lib/studentType';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('student-profile-drawer');
 
 const Badge = ({ type }: { type: string }) => {
   const badgeConfig = {
@@ -102,7 +105,7 @@ const AdmissionNoteModal = ({ isOpen, onClose, student, onSuccess }) => {
       setNote('');
       onClose();
     } catch (error) {
-      console.error('Error saving note:', error);
+      logger.error('Save note failed', error instanceof Error ? error : new Error(String(error)), { studentId: student?.id });
     } finally {
       setIsSubmitting(false);
     }
@@ -871,7 +874,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
         }
       ]);
     } catch (error) {
-      console.error('Error fetching notes:', error);
+      logger.error('Fetch student notes failed', error instanceof Error ? error : new Error(String(error)));
       setAdmissionNotes([]);
     } finally {
       setLoadingNotes(false);
@@ -956,8 +959,6 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      console.log(`${action === 'approve' ? 'Approving' : 'Rejecting'} student:`, student.id, reason);
-
       // In a real implementation, you would update the database here
       const updateData: any = {
         approval_status: action === 'approve' ? 'approved' : 'rejected',
@@ -995,7 +996,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
       // Refresh the page or update local state
       window.location.reload();
     } catch (error) {
-      console.error('Error updating student status:', error);
+      logger.error('Update student status failed', error instanceof Error ? error : new Error(String(error)), { studentId: student?.id, action });
       toast.error(`Failed to ${action} student: ${(error as any)?.message || 'Please try again.'}`);
     } finally {
       setActionLoading(false);
@@ -1015,7 +1016,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
       toast.success('Student promoted successfully!');
 
     } catch (error) {
-      console.error('Error promoting student:', error);
+      logger.error('Promote student failed', error instanceof Error ? error : new Error(String(error)), { studentId: student?.id });
       toast.error('Failed to promote student. Please try again.');
     } finally {
       setActionLoading(false);
@@ -1028,8 +1029,6 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-
-      console.log(`Marking student ${student.id} as graduated`);
 
       // In a real implementation, you would update the database here
       const graduationDate = new Date().toISOString();
@@ -1068,7 +1067,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
       // Refresh the page or update local state
       window.location.reload();
     } catch (error) {
-      console.error('Error marking student as graduated:', error);
+      logger.error('Mark student as graduated failed', error instanceof Error ? error : new Error(String(error)));
       toast.error(`Failed to mark student as graduated: ${(error as any)?.message || 'Please try again.'}`);
     } finally {
       setActionLoading(false);
@@ -1916,12 +1915,6 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
 
                     {/* Student Management Actions - Integrated */}
                     {(() => {
-                      // Debug: Log student status values
-                      console.log('Student status check:', {
-                        approval_status: student.approval_status,
-                        name: student.name
-                      });
-
                       // Show verify button if student needs verification and is not a school student
                       const needsVerification =
                         student.approval_status === 'pending' ||

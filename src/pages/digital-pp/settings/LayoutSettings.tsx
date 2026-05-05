@@ -39,12 +39,6 @@ const LayoutSettings: React.FC = () => {
   };
 
   const roleBasedDefault = getRoleBasedDefault(viewerRole);
-  
-  console.log('🎨 Layout Settings - Role-based defaults:', {
-    viewerRole,
-    roleBasedDefault,
-    currentLayout: selectedLayout
-  });
 
   // const handleResetToDefaults = () => {
   //   resetToRoleDefaults();

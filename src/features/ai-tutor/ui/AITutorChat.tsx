@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Send, 
-  X, 
-  MessageSquare, 
-  Plus, 
-  ThumbsUp, 
+import {
+  Send,
+  X,
+  MessageSquare,
+  Plus,
+  ThumbsUp,
   ThumbsDown,
   Loader2,
   AlertCircle,
@@ -17,6 +17,9 @@ import {
 import ReactMarkdown from 'react-markdown';
 import { useTutorChat } from '@/features/ai-tutor/model/useTutorChat';
 import { ChatMessage } from '@/features/ai-tutor';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('ai-tutor-chat');
 
 interface AITutorChatProps {
   courseId: string;
@@ -138,7 +141,7 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
       await deleteConversation(convId);
       setDeleteConfirmId(null);
     } catch (err) {
-      console.error('Failed to delete conversation:', err);
+      logger.error('Failed to delete conversation', err instanceof Error ? err : new Error(String(err)));
     } finally {
       setIsDeleting(false);
     }

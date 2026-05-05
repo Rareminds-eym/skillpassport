@@ -25,9 +25,6 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
   classes,
   editingCourse
 }) => {
-  console.log('=== MODAL RENDERED ===');
-  console.log('isOpen:', isOpen);
-  console.log('editingCourse:', editingCourse);
 
   const [courseSource, setCourseSource] = useState<'create' | 'import' | null>(null);
   const [importPlatform, setImportPlatform] = useState<string>('');
@@ -48,7 +45,6 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
   // Update courseData when editingCourse changes
   useEffect(() => {
     if (editingCourse) {
-      console.log('Setting course data from editingCourse:', editingCourse);
       setCourseSource('create'); // Editing means it's already created
       setCurrentStep(1); // Skip source selection when editing
       setCourseData({
@@ -124,12 +120,10 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
   ];
 
   const handleSkillToggle = (skill: string) => {
-    console.log('Toggling skill:', skill);
     setCourseData(prev => {
       const newSkills = prev.skillsCovered?.includes(skill)
         ? prev.skillsCovered.filter(s => s !== skill)
         : [...(prev.skillsCovered || []), skill];
-      console.log('New skills array:', newSkills);
       return {
         ...prev,
         skillsCovered: newSkills
@@ -138,12 +132,10 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
   };
 
   const handleClassToggle = (className: string) => {
-    console.log('Toggling class:', className);
     setCourseData(prev => {
       const newClasses = prev.linkedClasses?.includes(className)
         ? prev.linkedClasses.filter(c => c !== className)
         : [...(prev.linkedClasses || []), className];
-      console.log('New classes array:', newClasses);
       return {
         ...prev,
         linkedClasses: newClasses
@@ -152,7 +144,6 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
   };
 
   const handleAddOutcome = () => {
-    console.log('Adding new outcome');
     setCourseData(prev => ({
       ...prev,
       targetOutcomes: [...(prev.targetOutcomes || []), '']
@@ -160,7 +151,6 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
   };
 
   const handleUpdateOutcome = (index: number, value: string) => {
-    console.log('Updating outcome at index:', index, 'with value:', value);
     setCourseData(prev => ({
       ...prev,
       targetOutcomes: prev.targetOutcomes?.map((outcome, i) =>
@@ -170,7 +160,6 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
   };
 
   const handleRemoveOutcome = (index: number) => {
-    console.log('Removing outcome at index:', index);
     setCourseData(prev => ({
       ...prev,
       targetOutcomes: prev.targetOutcomes?.filter((_, i) => i !== index)
@@ -178,7 +167,6 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
   };
 
   const handleAddModule = () => {
-    console.log('Adding module:', newModule);
     if (newModule.title && newModule.description) {
       setCourseData(prev => {
         const newModules = [
@@ -191,7 +179,6 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
             activities: []
           } as CourseModule
         ];
-        console.log('New modules array:', newModules);
         return {
           ...prev,
           modules: newModules
@@ -205,13 +192,10 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
         activities: [],
         order: 0
       });
-    } else {
-      console.log('Cannot add module - missing title or description');
     }
   };
 
   const handleModuleSkillToggle = (skill: string) => {
-    console.log('Toggling module skill:', skill);
     setNewModule(prev => ({
       ...prev,
       skillTags: prev.skillTags?.includes(skill)
@@ -221,20 +205,12 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
   };
 
   const handleSubmit = () => {
-    console.log('=== SUBMIT CLICKED ===');
-    console.log('Current courseData:', courseData);
-    console.log('Calling onSubmit with courseData...');
     onSubmit(courseData);
-    console.log('onSubmit completed');
-    console.log('Calling onClose...');
     onClose();
-    console.log('Calling resetForm...');
     resetForm();
-    console.log('=== SUBMIT COMPLETE ===');
   };
 
   const resetForm = () => {
-    console.log('Resetting form');
     setCourseSource(null);
     setImportPlatform('');
     setCourseData({
@@ -253,46 +229,20 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
   };
 
   const canProceedToNextStep = () => {
-    console.log('=== CHECKING IF CAN PROCEED ===');
-    console.log('Current step:', currentStep);
-    console.log('Course data:', courseData);
-
     switch (currentStep) {
       case 0: {
         // Step 0: Course source must be selected
-        const step0Valid = courseSource !== null && (courseSource === 'create' || importPlatform !== '');
-        console.log('Step 0 validation:', {
-          courseSource,
-          importPlatform,
-          isValid: step0Valid
-        });
-        return step0Valid;
+        return courseSource !== null && (courseSource === 'create' || importPlatform !== '');
       }
       case 1: {
-        const step1Valid = courseData.title && courseData.code && courseData.description && courseData.duration;
-        console.log('Step 1 validation:', {
-          title: courseData.title,
-          code: courseData.code,
-          description: courseData.description,
-          duration: courseData.duration,
-          isValid: step1Valid
-        });
-        return step1Valid;
+        return courseData.title && courseData.code && courseData.description && courseData.duration;
       }
       case 2: {
-        const step2Valid = (courseData.skillsCovered?.length || 0) > 0;
-        console.log('Step 2 validation:', {
-          skillsCovered: courseData.skillsCovered,
-          count: courseData.skillsCovered?.length || 0,
-          isValid: step2Valid
-        });
-        return step2Valid;
+        return (courseData.skillsCovered?.length || 0) > 0;
       }
       case 3:
-        console.log('Step 3 validation: always true (optional step)');
         return true; // Optional step
       default:
-        console.log('Default validation: true');
         return true;
     }
   };
@@ -315,7 +265,6 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
           </div>
           <button
             onClick={() => { 
-              console.log('Close button clicked');
               onClose(); 
               resetForm(); 
             }}
@@ -480,7 +429,6 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                         type="text"
                         value={courseData.title}
                         onChange={(e) => {
-                          console.log('Title changed:', e.target.value);
                           setCourseData({ ...courseData, title: e.target.value });
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -495,7 +443,6 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                         type="text"
                         value={courseData.code}
                         onChange={(e) => {
-                          console.log('Code changed:', e.target.value);
                           setCourseData({ ...courseData, code: e.target.value });
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -514,7 +461,6 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                     <textarea
                       value={courseData.description}
                       onChange={(e) => {
-                        console.log('Description changed:', e.target.value);
                         setCourseData({ ...courseData, description: e.target.value });
                       }}
                       rows={5}
@@ -531,7 +477,6 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                         type="text"
                         value={courseData.duration}
                         onChange={(e) => {
-                          console.log('Duration changed:', e.target.value);
                           setCourseData({ ...courseData, duration: e.target.value });
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -545,7 +490,6 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                       <select
                         value={courseData.status}
                         onChange={(e) => {
-                          console.log('Status changed:', e.target.value);
                           setCourseData({ ...courseData, status: e.target.value as 'Active' | 'Draft' | 'Upcoming' | 'Archived' });
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -562,7 +506,6 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                   <ImageUpload
                     currentImage={courseData.thumbnail}
                     onImageChange={(url) => {
-                      console.log('Thumbnail URL changed:', url);
                       setCourseData({ ...courseData, thumbnail: url });
                     }}
                     folder="courses"
@@ -703,7 +646,6 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                     type="text"
                     value={newModule.title}
                     onChange={(e) => {
-                      console.log('Module title changed:', e.target.value);
                       setNewModule({ ...newModule, title: e.target.value });
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -712,7 +654,6 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                   <textarea
                     value={newModule.description}
                     onChange={(e) => {
-                      console.log('Module description changed:', e.target.value);
                       setNewModule({ ...newModule, description: e.target.value });
                     }}
                     rows={2}
@@ -835,11 +776,9 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
           <button
             onClick={() => {
               if (currentStep === 0 || (currentStep === 1 && editingCourse)) {
-                console.log('Cancel clicked');
                 onClose();
                 resetForm();
               } else {
-                console.log('Back clicked, going to step:', currentStep - 1);
                 setCurrentStep(currentStep - 1);
               }
             }}
@@ -852,7 +791,6 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
             {currentStep < steps[steps.length - 1].number ? (
               <button
                 onClick={() => {
-                  console.log('Next clicked, going to step:', currentStep + 1);
                   setCurrentStep(currentStep + 1);
                 }}
                 disabled={!canProceedToNextStep()}

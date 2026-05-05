@@ -4,6 +4,9 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('file-upload');
 
 const STORAGE_API_URL = 'https://storage-api.dark-mode-d021.workers.dev';
 
@@ -13,15 +16,15 @@ const STORAGE_API_URL = 'https://storage-api.dark-mode-d021.workers.dev';
 async function getAuthToken(): Promise<string | null> {
   try {
     const { data: { session }, error } = await supabase.auth.getSession();
-    
+
     if (error) {
-      console.error('[FileUploadService] Failed to get session:', error);
+      logger.error('Failed to get session', error instanceof Error ? error : new Error(String(error)));
       return null;
     }
-    
+
     return session?.access_token || null;
   } catch (error) {
-    console.error('[FileUploadService] Error retrieving auth token:', error);
+    logger.error('Error retrieving auth token', error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }
@@ -101,7 +104,7 @@ export const uploadFile = async (
       filename: result.filename,
     };
   } catch (error) {
-    console.error('File upload error:', error);
+    logger.error('File upload error', error instanceof Error ? error : new Error(String(error)));
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Upload failed',
@@ -147,9 +150,9 @@ export const deleteFile = async (fileUrl: string): Promise<boolean> => {
   try {
     // Get authentication token
     const token = await getAuthToken();
-    
+
     if (!token) {
-      console.error('Authentication required to delete file');
+      logger.error('Authentication required to delete file', new Error('No auth token available'));
       return false;
     }
 
@@ -165,17 +168,17 @@ export const deleteFile = async (fileUrl: string): Promise<boolean> => {
     if (!response.ok) {
       // Handle authentication errors
       if (response.status === 401) {
-        console.error('Authentication failed. Please refresh the page and log in again.');
+        logger.error('Authentication failed. Please refresh the page and log in again.', new Error('HTTP 401 Unauthorized'), { fileUrl });
         return false;
       }
-      
+
       throw new Error(`Delete failed: ${response.status}`);
     }
 
     const result = await response.json();
     return result.success;
   } catch (error) {
-    console.error('File delete error:', error);
+    logger.error('File delete error', error instanceof Error ? error : new Error(String(error)));
     return false;
   }
 };

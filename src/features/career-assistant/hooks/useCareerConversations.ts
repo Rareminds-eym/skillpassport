@@ -10,10 +10,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 
 import { CONVERSATIONS_PER_PAGE, MAX_MESSAGES_PER_CONVERSATION } from '../constants';
 
 import { useUser } from '@/shared/model/authStore';
+
+const logger = getLogger('career-conversations-hook');
 export interface ConversationMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -79,7 +82,9 @@ export function useCareerConversations(): UseCareerConversationsReturn {
         .range(from, to);
 
       if (fetchError) {
-        console.error('Error fetching conversations:', fetchError);
+        logger.error('Failed to fetch conversations', fetchError instanceof Error ? fetchError : new Error(String(fetchError)), {
+          page: currentPage
+        });
         setError('Failed to load conversations');
         return;
       }
@@ -107,7 +112,9 @@ export function useCareerConversations(): UseCareerConversationsReturn {
       setHasMore(count ? (reset ? newLength : newLength + (currentPage * CONVERSATIONS_PER_PAGE)) < count : false);
 
     } catch (err) {
-      console.error('Error in fetchConversations:', err);
+      logger.error('Exception in fetchConversations', err instanceof Error ? err : new Error(String(err)), {
+        page
+      });
       setError('Failed to load conversations');
     } finally {
       setLoading(false);
@@ -142,7 +149,7 @@ export function useCareerConversations(): UseCareerConversationsReturn {
         .single();
 
       if (fetchError) {
-        console.error('Error loading conversation:', fetchError);
+        logger.error('Failed to load conversation', fetchError instanceof Error ? fetchError : new Error(String(fetchError)));
         setError('Failed to load conversation');
         return;
       }
@@ -157,7 +164,7 @@ export function useCareerConversations(): UseCareerConversationsReturn {
       });
       setCurrentConversationId(id);
     } catch (err) {
-      console.error('Error in loadConversation:', err);
+      logger.error('Exception in loadConversation', err instanceof Error ? err : new Error(String(err)));
       setError('Failed to load conversation');
     } finally {
       setLoading(false);
@@ -192,7 +199,7 @@ export function useCareerConversations(): UseCareerConversationsReturn {
         .eq('student_id', user.id);
 
       if (deleteError) {
-        console.error('Error deleting conversation:', deleteError);
+        logger.error('Failed to delete conversation', deleteError instanceof Error ? deleteError : new Error(String(deleteError)));
         setError('Failed to delete conversation');
         // Rollback on error
         setConversations(previousConversations);
@@ -206,7 +213,7 @@ export function useCareerConversations(): UseCareerConversationsReturn {
         return;
       }
     } catch (err) {
-      console.error('Error in deleteConversation:', err);
+      logger.error('Exception in deleteConversation', err instanceof Error ? err : new Error(String(err)));
       setError('Failed to delete conversation');
       // Rollback on error
       setConversations(previousConversations);

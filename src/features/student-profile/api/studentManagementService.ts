@@ -139,14 +139,7 @@ export const admissionService = {
   // Send admission confirmation
   async sendAdmissionConfirmation(application: AdmissionApplication): Promise<void> {
     // In production, integrate with SMS/Email service
-    // For now, log the notification
-    console.log('Sending admission confirmation:', {
-      to: application.email,
-      phone: application.phone,
-      applicationNumber: application.applicationNumber,
-      studentName: application.studentName
-    });
-
+    // For now, silently handle the notification
     // TODO: Integrate with actual SMS/Email service
     // await smsService.send(application.phone, `Your child's admission application ${application.applicationNumber} has been received.`);
     // await emailService.send(application.email, 'Admission Application Received', emailTemplate);
@@ -518,13 +511,6 @@ export const attendanceService = {
       .single();
 
     if (!student) return;
-
-    console.log('Notifying parent of absence:', {
-      student: student.name,
-      date,
-      phone: student.parent_phone,
-      email: student.parent_email
-    });
 
     // TODO: Integrate with SMS/Email service
     // await smsService.send(student.parent_phone, `Your child ${student.name} was marked absent on ${date}.`);

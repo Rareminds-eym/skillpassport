@@ -11,7 +11,6 @@ export async function fetchDiversityMetrics(filters?: AnalyticsFilters): Promise
     // Placeholder implementation
     return [];
   } catch (error) {
-    console.error('Error fetching diversity metrics:', error);
     throw error;
   }
 }
@@ -25,7 +24,6 @@ export async function fetchGeographicDistribution(filters?: AnalyticsFilters): P
     // Placeholder implementation
     return [];
   } catch (error) {
-    console.error('Error fetching geographic distribution:', error);
     throw error;
   }
 }
@@ -39,7 +37,6 @@ export async function fetchTopColleges(filters?: AnalyticsFilters): Promise<TopC
     // Placeholder implementation
     return [];
   } catch (error) {
-    console.error('Error fetching top colleges:', error);
     throw error;
   }
 }
@@ -55,9 +52,7 @@ export async function exportAnalyticsData(
   try {
     // This would be implemented to generate export files
     // Placeholder implementation
-    console.log('Exporting analytics data:', { format, sections, filters });
   } catch (error) {
-    console.error('Error exporting analytics data:', error);
     throw error;
   }
 }

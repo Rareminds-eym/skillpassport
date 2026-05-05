@@ -6,6 +6,7 @@
 import React, { useState } from 'react'
 import { XMarkIcon, DocumentArrowUpIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline'
 import Papa from 'papaparse'
+import { getLogger } from '@/shared/config/logging'
 import {
   autoMapHeaders,
   processCSVData,
@@ -15,6 +16,8 @@ import {
   MANDATORY_FIELDS
 } from '@/features/college-admin'
 import CSVImportPreview from '../CSVImportPreview'
+
+const logger = getLogger('CSVImportModal')
 
 interface Props {
   isOpen: boolean
@@ -125,9 +128,7 @@ const CSVImportModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             // Auto-map headers
             const headers = results.meta.fields || []
             const headerMapping = autoMapHeaders(headers)
-            
-            console.log('Header mapping:', headerMapping)
-            
+
             // Process and validate data
             const { validatedRows: rows, summary: sum } = await processCSVData(results.data, headerMapping)
             

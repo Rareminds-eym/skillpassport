@@ -6,9 +6,12 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
 import { ProfileCompletionModal, ProfileCompletionErrorBoundary } from '@/features/digital-portfolio';
 import { useProfileCompletionPrompt } from '@/features/student-profile';
+import { getLogger } from '@/shared/config/logging';
 
 import { usePortfolio } from '@/features/digital-portfolio/model/portfolioStore';
 import { useUserRole } from '@/shared/model/authStore';
+
+const logger = getLogger('passport-page');
 const PassportPage: React.FC = () => {
   const navigate = useNavigate();
   const { student, isLoading, loadStudentByEmail } = usePortfolio();
@@ -742,7 +745,7 @@ const PassportPage: React.FC = () => {
       <ProfileCompletionErrorBoundary
         onError={(error, errorInfo) => {
           if (import.meta.env.DEV) {
-            console.error('[PassportPage] ProfileCompletionModal error:', error, errorInfo);
+            logger.error('ProfileCompletionModal error', error as Error, { errorInfo });
           }
         }}
       >

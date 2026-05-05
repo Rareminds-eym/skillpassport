@@ -244,7 +244,7 @@ export const usePromotionalStore = create<PromotionalState>()(
               state.isAssessmentBannerDismissed = bannerDismissed;
             });
           } catch (err) {
-            console.error('Error fetching assessment event:', err);
+            // Error silently handled - assessment feature continues
           } finally {
             setTimeout(() => {
               set((state) => {

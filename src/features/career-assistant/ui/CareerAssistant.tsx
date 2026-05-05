@@ -11,6 +11,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('career-assistant-ui');
 import { 
   Send,
   Mic,
@@ -216,14 +219,16 @@ const CareerAssistantContainer: React.FC = () => {
     // Rate limiting check
     const now = Date.now();
     if (now - lastSendTimeRef.current < MIN_MESSAGE_INTERVAL_MS) {
-      console.warn('Please wait before sending another message');
       return;
     }
 
     // Input validation
     const trimmedInput = input.trim();
     if (trimmedInput.length > MAX_INPUT_LENGTH) {
-      console.error(`Message too long. Maximum ${MAX_INPUT_LENGTH} characters.`);
+      logger.warn('Message exceeds maximum length', {
+        messageLength: trimmedInput.length,
+        maxLength: MAX_INPUT_LENGTH
+      });
       return;
     }
 
@@ -317,8 +322,6 @@ const CareerAssistantContainer: React.FC = () => {
         } : m
       ));
     } catch (error: any) {
-      console.error('Career AI Error:', error);
-      
       // Check if error is from abort (user stopped generation)
       if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
         // Remove any temporary loading message
@@ -327,6 +330,12 @@ const CareerAssistantContainer: React.FC = () => {
         }
         return;
       }
+
+      logger.error('Failed to send message to Career AI', error instanceof Error ? error : new Error(String(error)), {
+        userId: user?.id,
+        conversationId: currentConversationId,
+        inputLength: userInput?.length
+      });
       
       // Remove temporary loading message if it still exists
       if (tempMessageId) {

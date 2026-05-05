@@ -81,7 +81,6 @@ export const buildCourseText = (course) => {
  * @returns {Promise<Object|null>} - Course object with skills or null if not found
  */
 const fetchCourseWithSkills = async (courseId) => {
-  // Fetch course basic data
   const { data: course, error: courseError } = await supabase
     .from('courses')
     .select('course_id, title, description, target_outcomes, status')
@@ -89,18 +88,17 @@ const fetchCourseWithSkills = async (courseId) => {
     .maybeSingle();
 
   if (courseError || !course) {
-    console.error(`Failed to fetch course ${courseId}:`, courseError?.message);
+    logger.error(`Failed to fetch course ${courseId}`, courseError ? new Error(courseError.message) : new Error('Course not found'));
     return null;
   }
 
-  // Fetch skills for this course
   const { data: skillsData, error: skillsError } = await supabase
     .from('course_skills')
     .select('skill_name')
     .eq('course_id', courseId);
 
   if (skillsError) {
-    console.warn(`Failed to fetch skills for course ${courseId}:`, skillsError.message);
+    logger.warn(`Failed to fetch skills for course ${courseId}`, { error: skillsError.message });
   }
 
   return {
@@ -132,7 +130,7 @@ export const embedCourse = async (
     // Get auth token
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
-    
+
     if (!token) {
       const error = new Error('Authentication required');
       console.error(`[CourseEmbedding] ${courseId}:`, error);
@@ -145,7 +143,7 @@ export const embedCourse = async (
 
     // Fetch course with skills
     const course = await fetchCourseWithSkills(courseId);
-    
+
     if (!course) {
       const error = new Error('Course not found');
       console.error(`[CourseEmbedding] ${courseId}:`, error);
@@ -174,7 +172,7 @@ export const embedCourse = async (
     
     // Store embedding in database
     const embeddingString = `[${embedding.join(',')}]`;
-    
+
     const { error: updateError } = await supabase
       .from('courses')
       .update({ embedding: embeddingString })
@@ -265,7 +263,6 @@ export const embedAllCourses = async (signal?: AbortSignal) => {
       
       console.log(`[CourseEmbedding] 📦 Processing batch ${batchNumber}/${totalBatches} (${batch.length} courses)`);
 
-      // Process each course in the batch
       for (const course of batch) {
         // Check cancellation before each course
         if (signal?.aborted) {
@@ -286,7 +283,6 @@ export const embedAllCourses = async (signal?: AbortSignal) => {
         }
       }
 
-      // Add delay between batches to avoid rate limiting (except for last batch)
       if (i + BATCH_SIZE < courses.length) {
         console.log(`[CourseEmbedding] ⏳ Waiting ${BATCH_DELAY_MS}ms before next batch...`);
         await sleep(BATCH_DELAY_MS);

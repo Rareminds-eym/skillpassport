@@ -10,6 +10,9 @@ import { useFeeStructures } from "./hooks/useFeeStructures";
 import { useFeeTracking } from "./hooks/useFeeTracking";
 import { FeeStructure, StudentFeeSummary } from '@/features/student-profile/model';
 import { authSessionService } from '@/features/auth';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('SchoolFinanceModule');
 
 const tabs = [
   { id: "structure", label: "Fee Structure Setup" },
@@ -17,7 +20,6 @@ const tabs = [
 ];
 
 const SchoolFinanceModule: React.FC = () => {
-  console.log('🚀 SchoolFinanceModule component loaded');
   const [activeTab, setActiveTab] = useState("tracking");
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -32,30 +34,24 @@ const SchoolFinanceModule: React.FC = () => {
   useEffect(() => {
     const fetchSchoolId = async () => {
       try {
-        console.log('🚀 [School Finance] Fetching school ID...');
-        
         // First, check if user is logged in via AuthContext (for school admins)
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
           try {
             const userData = JSON.parse(storedUser);
-            console.log('📦 Found user in localStorage:', userData.email, 'role:', userData.role);
             
             if (userData.role === 'school_admin' && userData.schoolId) {
-              console.log('✅ School admin detected, using schoolId from localStorage:', userData.schoolId);
               setSchoolId(userData.schoolId);
               return;
             }
           } catch (e) {
-            console.error('Error parsing stored user:', e);
+            logger.error('Failed to parse stored user', e as Error);
           }
         }
         
         // If not found in localStorage, try Supabase Auth
         const { data: { user } } = await authSessionService.getUser();
         if (user) {
-          console.log('🔍 Checking Supabase auth user:', user.email);
-          
           // Check for school admin by matching email in organizations table
           const { data: org } = await supabase
             .from('organizations')
@@ -65,19 +61,17 @@ const SchoolFinanceModule: React.FC = () => {
             .maybeSingle();
           
           if (org?.id) {
-            console.log('✅ Found school_id for school admin:', org.id, 'School:', org.name);
             setSchoolId(org.id);
             return;
           }
           
           // Fallback: check user metadata
           if (user.user_metadata?.school_id) {
-            console.log('✅ Found school in user metadata:', user.user_metadata.school_id);
             setSchoolId(user.user_metadata.school_id);
           }
         }
       } catch (error) { 
-        console.error("Error fetching school ID:", error); 
+        logger.error('Failed to fetch school ID', error as Error); 
       }
     };
     fetchSchoolId();

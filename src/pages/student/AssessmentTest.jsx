@@ -26,6 +26,11 @@ import {
 import { Button, Card, CardContent } from '@/shared/ui';
 import { Label } from '@/shared/ui';
 import { RadioGroup, RadioGroupItem } from '@/shared/ui';
+import { useQuery } from '@tanstack/react-query';
+import { queryKeys } from '@/shared/lib/queryKeys';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('AssessmentTest');
 
 // Import AI-powered question banks from centralized assessment feature
 import {
@@ -156,94 +161,85 @@ const AssessmentTest = () => {
     const [studentProgram, setStudentProgram] = useState(null); // Program name for college students (BBA, BCA, BSC, etc.)
     const [gradeStartDate, setGradeStartDate] = useState(null); // When student started current grade
     const [monthsInGrade, setMonthsInGrade] = useState(null); // Months since starting current grade
-    const [loadingStudentGrade, setLoadingStudentGrade] = useState(true);
     const [profileData, setProfileData] = useState(null); // Complete profile data for missing field analysis
 
     // Use centralized utility for calculating months in grade
     const calculateMonthsInGrade = calculateMonthsInGradeUtil;
 
-    // Fetch student's grade from database (either from student.grade or from school_classes.grade)
-    useEffect(() => {
-        const fetchStudentGrade = async () => {
+    // Fetch student's grade from database using React Query
+    const { data: studentGradeData, isLoading: loadingStudentGrade } = useQuery({
+        queryKey: queryKeys.student.grade.byUser(user?.id, user?.email),
+        queryFn: async () => {
+            // First try to get student by user_id with school_class grade and program name joined
+            let { data: student, error } = await supabase
+                .from('students')
+                .select('id, grade, grade_start_date, school_class_id, school_id, university_college_id, program_id, course_name, school_classes:school_class_id(grade, academic_year), program:program_id(name, code)')
+                .eq('user_id', user.id)
+                .maybeSingle();
 
-            if (!user?.id) {
-                setLoadingStudentGrade(false);
-                return;
-            }
-
-            try {
-                // First try to get student by user_id with school_class grade and program name joined
-                let { data: student, error } = await supabase
+            // If not found by user_id, try by email
+            if (!student && user.email) {
+                const result = await supabase
                     .from('students')
                     .select('id, grade, grade_start_date, school_class_id, school_id, university_college_id, program_id, course_name, school_classes:school_class_id(grade, academic_year), program:program_id(name, code)')
-                    .eq('user_id', user.id)
+                    .eq('email', user.email)
                     .maybeSingle();
-
-
-                // If not found by user_id, try by email
-                if (!student && user.email) {
-                    const result = await supabase
-                        .from('students')
-                        .select('id, grade, grade_start_date, school_class_id, school_id, university_college_id, program_id, course_name, school_classes:school_class_id(grade, academic_year), program:program_id(name, code)')
-                        .eq('email', user.email)
-                        .maybeSingle();
-                    student = result.data;
-                    error = result.error;
-                }
-
-                if (error) {
-                } else if (student) {
-
-                    // Store complete profile data for missing field analysis
-                    setProfileData(student);
-
-                    // Save student ID for AI question saving
-                    setStudentId(student.id);
-
-                    // Check if student is a college student (using centralized utility)
-                    const isCollege = checkIsCollegeStudent(student);
-                    setIsCollegeStudent(isCollege);
-
-                    // Set program name if available (BBA, BCA, BSC, etc.)
-                    // Priority: program.name > program.code > course_name
-                    const programName = student.program?.name || student.program?.code || student.course_name;
-                    if (programName) {
-                        setStudentProgram(programName);
-                    }
-
-                    // Set grade_start_date and calculate months in grade
-                    if (student.grade_start_date) {
-                        setGradeStartDate(student.grade_start_date);
-                        const months = calculateMonthsInGrade(student.grade_start_date);
-                        setMonthsInGrade(months);
-                    } else if (student.school_classes?.academic_year) {
-                        // Fallback: estimate from academic year (e.g., "2024-2025" -> started June 2024)
-                        const academicYear = student.school_classes.academic_year;
-                        const yearMatch = academicYear.match(/^(\d{4})/);
-                        if (yearMatch) {
-                            const startYear = parseInt(yearMatch[1]);
-                            // Assume academic year starts in June
-                            const estimatedStartDate = `${startYear}-06-01`;
-                            const months = calculateMonthsInGrade(estimatedStartDate);
-                            setMonthsInGrade(months);
-                        }
-                    }
-
-                    // Use student.grade first, if not available use grade from school_classes
-                    const effectiveGrade = student.grade || student.school_classes?.grade;
-
-                    setStudentGrade(effectiveGrade);
-                    setStudentSchoolClassId(student.school_class_id);
-                } else {
-                }
-            } catch (err) {
-            } finally {
-                setLoadingStudentGrade(false);
+                student = result.data;
+                error = result.error;
             }
-        };
 
-        fetchStudentGrade();
-    }, [user?.id, user?.email, shouldFilterByGrade]);
+            if (error) throw error;
+            return student;
+        },
+        enabled: !!user?.id && shouldFilterByGrade,
+        staleTime: 300000, // 5 minutes - student grade rarely changes
+    });
+
+    // Update local state when student grade data changes
+    useEffect(() => {
+        if (studentGradeData) {
+            // Store complete profile data for missing field analysis
+            setProfileData(studentGradeData);
+
+            // Save student ID for AI question saving
+            setStudentId(studentGradeData.id);
+
+            // Check if student is a college student (using centralized utility)
+            const isCollege = checkIsCollegeStudent(studentGradeData);
+            setIsCollegeStudent(isCollege);
+
+            // Set program name if available (BBA, BCA, BSC, etc.)
+            // Priority: program.name > program.code > course_name
+            const programName = studentGradeData.program?.name || studentGradeData.program?.code || studentGradeData.course_name;
+            if (programName) {
+                setStudentProgram(programName);
+            }
+
+            // Set grade_start_date and calculate months in grade
+            if (studentGradeData.grade_start_date) {
+                setGradeStartDate(studentGradeData.grade_start_date);
+                const months = calculateMonthsInGrade(studentGradeData.grade_start_date);
+                setMonthsInGrade(months);
+            } else if (studentGradeData.school_classes?.academic_year) {
+                // Fallback: estimate from academic year (e.g., "2024-2025" -> started June 2024)
+                const academicYear = studentGradeData.school_classes.academic_year;
+                const yearMatch = academicYear.match(/^(\d{4})/);
+                if (yearMatch) {
+                    const startYear = parseInt(yearMatch[1]);
+                    // Assume academic year starts in June
+                    const estimatedStartDate = `${startYear}-06-01`;
+                    const months = calculateMonthsInGrade(estimatedStartDate);
+                    setMonthsInGrade(months);
+                }
+            }
+
+            // Use student.grade first, if not available use grade from school_classes
+            const effectiveGrade = studentGradeData.grade || studentGradeData.school_classes?.grade;
+
+            setStudentGrade(effectiveGrade);
+            setStudentSchoolClassId(studentGradeData.school_class_id);
+        }
+    }, [studentGradeData]);
 
     // Map UI grade level to adaptive aptitude grade level - using centralized utility
     const getAdaptiveGradeLevelValue = () => getAdaptiveGradeLevel(gradeLevel);

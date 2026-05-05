@@ -1,6 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { PhotoIcon, XMarkIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 import { uploadToCloudflareR2 } from '../lib/cloudflareR2Upload';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('image-upload');
 
 interface ImageUploadProps {
   currentImage?: string;
@@ -58,7 +61,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         setPreview(currentImage || null);
       }
     } catch (err) {
-      console.error('Upload error:', err);
+      logger.error('Upload error', err as Error);
       setError('Failed to upload image');
       setPreview(currentImage || null);
     } finally {

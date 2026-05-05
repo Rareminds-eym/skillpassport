@@ -13,6 +13,7 @@ import {
 import { Resource, FileUpload } from '@/shared/types';
 import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/utils/fileValidation';
 import { getFileSizeLimit, formatFileSize as formatFileSizeUtil } from '@/shared/config/fileSizeLimits';
+import { getLogger } from '@/shared/config/logging';
 
 // Extend FileUpload type locally to include serverProgress
 interface ExtendedFileUpload extends FileUpload {
@@ -61,28 +62,17 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
   const [error, setError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logger = getLogger('ResourceUploadComponent');
 
   // Log component initialization
   useEffect(() => {
-    console.log('=== ResourceUploadComponent Initialized ===');
-    console.log('API_BASE_URL:', API_BASE_URL);
-    console.log('CourseId:', courseId);
-    console.log('LessonId:', lessonId);
-    console.log('Existing Resources:', existingResources);
-    console.log('Number of existing resources:', existingResources.length);
-    console.log('Environment variables:', {
-      VITE_EXTERNAL_API_KEY: import.meta.env.VITE_EXTERNAL_API_KEY,
-      MODE: import.meta.env.MODE,
-      DEV: import.meta.env.DEV
-    });
-
     // CRITICAL: Check for missing IDs
     if (!courseId || courseId === 'undefined') {
-      console.error('❌ CRITICAL: courseId is missing or undefined!');
+      logger.error('courseId is missing or undefined');
       setError('Configuration error: Missing course ID. Please refresh the page and try again.');
     }
     if (!lessonId || lessonId === 'undefined') {
-      console.error('❌ CRITICAL: lessonId is missing or undefined!');
+      logger.error('lessonId is missing or undefined');
       setError('Configuration error: Missing lesson ID. Please refresh the page and try again.');
     }
   }, [courseId, lessonId, existingResources]);
@@ -133,7 +123,7 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
 
     // Warn user about large files
     if (file.size > 100 * 1024 * 1024) { // 100MB
-      console.warn('Large file selected:', file.name, (file.size / 1024 / 1024).toFixed(2), 'MB');
+      logger.warn('Large file selected', { fileName: file.name, sizeMB: (file.size / 1024 / 1024).toFixed(2) });
     }
 
     return null;
@@ -141,21 +131,15 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
 
   const uploadToR2 = async (file: File, index: number) => {
     try {
-      console.log('=== Upload Starting (Direct-to-R2) ===');
-      console.log('API_BASE_URL:', API_BASE_URL);
-      console.log('File:', file.name, 'Size:', file.size, 'Type:', file.type);
-      console.log('CourseId:', courseId, 'LessonId:', lessonId);
-
       // Warn user about large file uploads
       if (file.size > 100 * 1024 * 1024) {
-        console.warn('Large file detected:', (file.size / 1024 / 1024).toFixed(2), 'MB');
-        console.warn('Upload may take several minutes depending on your internet connection');
+        logger.warn('Large file upload detected', { sizeMB: (file.size / 1024 / 1024).toFixed(2) });
       }
 
       // CRITICAL: Validate courseId and lessonId are defined
       if (!courseId || courseId === 'undefined') {
         const errorMsg = 'Cannot upload: courseId is missing or undefined';
-        console.error('❌', errorMsg);
+        logger.error(errorMsg);
         setFileUploads(prev =>
           prev.map((fu, i) =>
             i === index ? { ...fu, status: 'error', error: errorMsg } : fu
@@ -166,7 +150,7 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
 
       if (!lessonId || lessonId === 'undefined') {
         const errorMsg = 'Cannot upload: lessonId is missing or undefined';
-        console.error('❌', errorMsg);
+        logger.error(errorMsg);
         setFileUploads(prev =>
           prev.map((fu, i) =>
             i === index ? { ...fu, status: 'error', error: errorMsg } : fu
@@ -182,7 +166,6 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
       );
 
       // STEP 1: Request presigned URL
-      console.log('Step 1: Requesting presigned URL...');
       const presignedResponse = await fetch(`${API_BASE_URL}/api/upload/presigned`, {
         method: 'POST',
         headers: {
@@ -204,10 +187,6 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
 
       const { data: presignedData } = await presignedResponse.json();
       const { uploadUrl, fileKey } = presignedData;
-      console.log('Presigned URL received, fileKey:', fileKey);
-
-      // STEP 2: Upload directly to R2
-      console.log('Step 2: Uploading to R2...');
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
 
@@ -215,7 +194,6 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
         xhr.upload.addEventListener('progress', (e) => {
           if (e.lengthComputable) {
             const progress = (e.loaded / e.total) * 100;
-            console.log(`Upload progress: ${progress.toFixed(2)}%`);
             setFileUploads(prev =>
               prev.map((fu, i) =>
                 i === index ? { ...fu, progress } : fu
@@ -226,9 +204,6 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
 
         // Handle completion
         xhr.addEventListener('load', () => {
-          console.log('=== R2 Upload Complete ===');
-          console.log('Status:', xhr.status);
-
           if (xhr.status === 200) {
             resolve();
           } else {
@@ -238,13 +213,11 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
 
         // Handle errors
         xhr.addEventListener('error', () => {
-          console.error('=== R2 Upload Error ===');
           reject(new Error('Network error during R2 upload'));
         });
 
         // Handle timeout
         xhr.addEventListener('timeout', () => {
-          console.error('=== R2 Upload Timeout ===');
           const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
           reject(new Error(`Upload timed out for ${file.name} (${fileSizeMB}MB)`));
         });
@@ -257,7 +230,6 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
       });
 
       // STEP 3: Confirm upload
-      console.log('Step 3: Confirming upload...');
       const confirmResponse = await fetch(`${API_BASE_URL}/api/upload/confirm`, {
         method: 'POST',
         headers: {
@@ -277,7 +249,6 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
       }
 
       const { data: uploadedData } = await confirmResponse.json();
-      console.log('Upload confirmed:', uploadedData);
 
       setFileUploads(prev =>
         prev.map((fu, i) =>
@@ -292,9 +263,6 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
         )
       );
     } catch (error) {
-      console.error('=== Upload Exception ===');
-      console.error('Error:', error);
-
       let errorMessage = 'Upload failed: ' + (error as Error).message;
 
       // Provide more specific error messages
@@ -370,9 +338,8 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
         await fetch(`${API_BASE_URL}/api/file/${upload.uploadedData.key}`, {
           method: 'DELETE',
         });
-        console.log('Deleted file from R2:', upload.uploadedData.key);
       } catch (error) {
-        console.error('Delete error:', error);
+        logger.error('Failed to delete file from R2', error instanceof Error ? error : new Error('Unknown error'));
       }
     }
     // For pending files, just remove from list (no cleanup needed)
@@ -421,15 +388,9 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
   };
 
   const handleSaveFiles = async () => {
-    console.log('=== handleSaveFiles called ===');
-    console.log('File uploads:', fileUploads);
-
     const pendingUploads = fileUploads.filter(fu => fu.status === 'pending');
     const alreadyCompleted = fileUploads.filter(fu => fu.status === 'completed');
     
-    console.log('Pending uploads:', pendingUploads.length);
-    console.log('Already completed:', alreadyCompleted.length);
-
     if (pendingUploads.length === 0 && alreadyCompleted.length === 0) {
       setError('Please select files to upload');
       return;
@@ -454,7 +415,6 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
       // Get the updated state with completed uploads
       // We need to read from the latest state
     } catch (error) {
-      console.error('Upload error:', error);
       setError('Some files failed to upload. Please try again.');
       setIsUploading(false);
       return;
@@ -483,9 +443,7 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
         size: formatFileSize(fu.file.size)
       }));
 
-      console.log('New resources to be added:', newResources);
       onResourcesAdded(newResources);
-      console.log('✓ Resources sent to parent, closing modal');
       setIsUploading(false);
       onClose();
     } else if (errorUploads.length > 0) {

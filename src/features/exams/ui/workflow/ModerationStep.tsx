@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
-import { 
-  ArrowLeftIcon, 
-  ChevronRightIcon, 
+import { getLogger } from '@/shared/config/logging';
+import {
+  ArrowLeftIcon,
+  ChevronRightIcon,
   ShieldCheckIcon,
   CheckCircleIcon,
   ExclamationCircleIcon,
@@ -13,6 +14,8 @@ import {
   PencilIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
+
+const logger = getLogger('ModerationStep');
 import { UIExam, UIStudentMark } from '@/features/exams';
 import { WorkflowStage, MODERATION_TYPES } from '../types';
 import StatusBadge from '../StatusBadge';
@@ -191,7 +194,7 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
       setModeratingSubjectId(null);
       setModerationData([]);
     } catch (error) {
-      console.error('Error saving moderation:', error);
+      logger.error('Failed to save moderation', error as Error);
       alert('❌ Failed to save moderation. Please try again.');
     } finally {
       setLoading(false);
@@ -208,7 +211,7 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
       await loadData();
       alert(`✅ Moderation approved for ${subject?.name}`);
     } catch (error) {
-      console.error('Error approving moderation:', error);
+      logger.error('Failed to approve moderation', error as Error);
       alert('❌ Failed to approve moderation. Please try again.');
     } finally {
       setLoading(false);

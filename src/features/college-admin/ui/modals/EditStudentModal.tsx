@@ -4,6 +4,9 @@ import { updateStudent } from '@/features/student-profile/api';
 import { Country, State, City } from 'country-state-city';
 import pincodes from 'indian-pincodes';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('edit-student-modal');
 
 interface UpdateStudentData {
   name?: string;
@@ -328,20 +331,15 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
   };
 
   useEffect(() => {
-    // Initialize countries list
     const allCountries = Country.getAllCountries();
     setCountries(allCountries);
-    
-    // Initialize pincodes list
-    console.log('🔵 Loading Indian pincodes...');
+
     try {
       const pincodeData = pincodes.getAllPincodes();
-      console.log('✅ Pincodes loaded:', pincodeData.length, 'entries');
-      console.log('📦 Sample pincode data:', pincodeData.slice(0, 3));
       setAllPincodes(pincodeData);
-      setFilteredPincodes(pincodeData.slice(0, 50)); // Show first 50 initially
+      setFilteredPincodes(pincodeData.slice(0, 50));
     } catch (error) {
-      console.error('❌ Error loading pincodes:', error);
+      logger.error('Error loading pincodes', error instanceof Error ? error : new Error(String(error)));
     }
   }, []);
   
@@ -451,7 +449,7 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
             }
           }
         } catch (err) {
-          console.error('Error fetching academic info:', err);
+          logger.error('Error fetching academic info', err instanceof Error ? err : new Error(String(err)));
         }
 
         // Get date of birth from student data
@@ -527,91 +525,74 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
     }
   }, [isOpen, student, countries]);
 
-  // Handle country search
   const handleCountrySearch = (searchValue: string) => {
-    console.log('🌍 Searching countries for:', searchValue);
     setCountrySearch(searchValue);
-    
+
     if (!searchValue.trim()) {
       setFilteredCountries(countries);
       return;
     }
-    
+
     const filtered = countries.filter((country) =>
       country.name.toLowerCase().includes(searchValue.toLowerCase())
     );
-    console.log('✅ Filtered countries:', filtered.length);
     setFilteredCountries(filtered);
   };
   
-  // Handle state search
   const handleStateSearch = (searchValue: string) => {
-    console.log('🏛️ Searching states for:', searchValue);
     setStateSearch(searchValue);
-    
+
     if (!searchValue.trim()) {
       setFilteredStates(states);
       return;
     }
-    
+
     const filtered = states.filter((state) =>
       state.name.toLowerCase().includes(searchValue.toLowerCase())
     );
-    console.log('✅ Filtered states:', filtered.length);
     setFilteredStates(filtered);
   };
   
-  // Handle city search
   const handleCitySearch = (searchValue: string) => {
-    console.log('🏙️ Searching cities for:', searchValue);
     setCitySearch(searchValue);
-    
+
     if (!searchValue.trim()) {
       setFilteredCities(cities);
       return;
     }
-    
+
     const filtered = cities.filter((city) =>
       city.name.toLowerCase().includes(searchValue.toLowerCase())
     );
-    console.log('✅ Filtered cities:', filtered.length);
     setFilteredCities(filtered);
   };
 
-  // Handle pincode search
   const handlePincodeSearch = (searchValue: string) => {
-    console.log('🔍 Searching pincodes for:', searchValue);
     setPincodeSearch(searchValue);
-    
+
     if (!searchValue.trim()) {
       setFilteredPincodes(allPincodes.slice(0, 50));
-      console.log('📋 Showing first 50 pincodes');
       return;
     }
-    
+
     const filtered = allPincodes.filter((item) => {
       const matchesPincode = item.pincode.toString().includes(searchValue);
-      const matchesName = item.name?.toLowerCase().includes(searchValue.toLowerCase());        // ← Fixed
-      const matchesDistrict = item.district?.toLowerCase().includes(searchValue.toLowerCase()); // ← Fixed
-      const matchesState = item.state?.toLowerCase().includes(searchValue.toLowerCase());       // ← Fixed
+      const matchesName = item.name?.toLowerCase().includes(searchValue.toLowerCase());
+      const matchesDistrict = item.district?.toLowerCase().includes(searchValue.toLowerCase());
+      const matchesState = item.state?.toLowerCase().includes(searchValue.toLowerCase());
       return matchesPincode || matchesName || matchesDistrict || matchesState;
-    }).slice(0, 100); // Limit to 100 results
-    
-    console.log('✅ Filtered pincodes:', filtered.length, 'results');
+    }).slice(0, 100);
+
     setFilteredPincodes(filtered);
   };
   
-  // Handle pincode selection
   const handlePincodeSelect = (pincodeData: any) => {
-    console.log('📍 Pincode selected:', pincodeData);
-    
     const newCountry = pincodeData.country || 'India';
     const newState = pincodeData.state || '';
     const newCity = pincodeData.name || '';
     const newDistrict = pincodeData.district || '';
     const newPincode = pincodeData.pincode.toString();
-    
-    // Update form data
+
     setFormData({
       ...formData,
       pincode: newPincode,
@@ -620,20 +601,18 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
       state: newState,
       country: newCountry
     });
-    
-    // Update search fields to show selected values
+
     setPincodeSearch(newPincode);
     setCountrySearch(newCountry);
     setStateSearch(newState);
     setCitySearch(newCity);
-    
-    // Update location dropdowns
+
     const selectedCountry = countries.find(c => c.name === newCountry);
     if (selectedCountry) {
       const countryStates = State.getStatesOfCountry(selectedCountry.isoCode);
       setStates(countryStates);
       setFilteredStates(countryStates);
-      
+
       const selectedState = countryStates.find(s => s.name === newState);
       if (selectedState) {
         const stateCities = City.getCitiesOfState(selectedCountry.isoCode, selectedState.isoCode);
@@ -641,17 +620,8 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
         setFilteredCities(stateCities);
       }
     }
-    
+
     setShowPincodeDropdown(false);
-    
-    console.log('✅ Location auto-filled from pincode');
-    console.log('📋 Updated form data:', {
-      pincode: newPincode,
-      city: newCity,
-      district: newDistrict,
-      state: newState,
-      country: newCountry
-    });
   };
 
   const handleChange = (
@@ -781,11 +751,8 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
       }
     }
 
-    // Auto-fill district when city is selected
     if (name === 'city' && value) {
-      console.log('🏙️ City selected:', value);
-      console.log('📍 Auto-filling district with city name');
-      newFormData.district_name = value; // Auto-fill district with city name
+      newFormData.district_name = value;
     }
 
     setFormData(newFormData);
@@ -793,15 +760,11 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🔵 Form submitted');
-    console.log('📋 Form data:', formData);
-    console.log('👤 Student ID:', student?.id);
-    
+
     setLoading(true);
     setError(null);
     setSuccessMessage(null);
 
-    // Validate all fields before submission
     const contactError = validatePhone(formData.contact_number);
     const alternateError = validatePhone(formData.alternate_number);
     const dobError = validateDateOfBirth(formData.date_of_birth);
@@ -818,25 +781,6 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
     const universityError = validateAcademicField(formData.university, 'University');
     const branchError = validateAcademicField(formData.branch_field, 'Branch/Department');
     const courseError = validateAcademicField(formData.course_name, 'Course Name');
-
-    console.log('🔍 Validation results:', {
-      contactError,
-      alternateError,
-      dobError,
-      emailError,
-      regError,
-      pincodeError,
-      githubError,
-      linkedinError,
-      portfolioError,
-      twitterError,
-      bioError,
-      addressError,
-      collegeError,
-      universityError,
-      branchError,
-      courseError
-    });
 
     const errors = {
       contact_number: contactError || undefined,
@@ -859,42 +803,34 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
 
     setValidationErrors(errors);
 
-    // Check if there are any validation errors
     if (Object.values(errors).some(error => error !== undefined)) {
-      console.log('❌ Validation failed, not submitting');
       setError('Please fix the validation errors before submitting');
       setLoading(false);
       return;
     }
-
-    console.log('✅ Validation passed, calling updateStudent...');
 
     try {
       if (!student?.id) {
         throw new Error('Student ID is required');
       }
 
-      console.log('📤 Calling updateStudent with:', { studentId: student.id, updates: formData });
       const result = await updateStudent(student.id, formData);
-      console.log('📥 updateStudent result:', result);
-      
+
       if (result.success) {
-        console.log('✅ Update successful');
         setSuccessMessage('Student profile updated successfully!');
         setTimeout(() => {
           onSuccess();
           onClose();
         }, 1500);
       } else {
-        console.log('❌ Update failed:', result.error);
+        logger.error('Failed to update student', new Error(result.error));
         setError(result.error || 'Failed to update student');
       }
     } catch (err) {
-      console.error('❌ Error updating student:', err);
+      logger.error('Error updating student', err instanceof Error ? err : new Error(String(err)));
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
       setLoading(false);
-      console.log('🔵 Form submission complete');
     }
   };
 

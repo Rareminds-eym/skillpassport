@@ -5,6 +5,9 @@
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { StudentProfile } from '@/features/student-profile/model';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('intelligence-service');
 
 export interface CareerReadinessScore {
   overall_score: number;
@@ -371,7 +374,7 @@ class IntelligenceService {
         .slice(0, 20)
         .map(([skill]) => skill);
     } catch (error) {
-      console.error('Error fetching in-demand skills:', error);
+      logger.error('Failed to fetch in-demand skills from database', error as Error);
       return this.getDefaultInDemandSkills();
     }
   }
@@ -404,7 +407,7 @@ class IntelligenceService {
         recommendations: data.recommendations
       });
     } catch (error) {
-      console.error('Error saving readiness score:', error);
+      logger.error('Failed to save career readiness score', error as Error);
     }
   }
 
@@ -572,7 +575,7 @@ class IntelligenceService {
         };
       }
     } catch (error) {
-      console.error('Error fetching peer comparison:', error);
+      logger.error('Failed to fetch peer comparison data', error as Error);
     }
 
     // Return default comparison

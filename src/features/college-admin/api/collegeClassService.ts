@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('college-class-service');
 
 export interface CollegeClassInfo {
   id: string; // This is the student ID, not program_section_id
@@ -61,12 +64,13 @@ export const getCollegeStudentClassInfo = async (studentId: string): Promise<Col
       .single();
 
     if (error) {
-      console.error('Error fetching college class info:', error);
+      logger.error('Failed to fetch college class info', error instanceof Error ? error : new Error(String(error)), {
+        studentId
+      });
       return null;
     }
 
     if (!data || !data.program_id) {
-      console.warn('Student has no program assigned');
       return null;
     }
 
@@ -132,7 +136,9 @@ export const getCollegeStudentClassInfo = async (studentId: string): Promise<Col
       program_section_id: data.program_section_id || undefined,
     };
   } catch (error) {
-    console.error('Error in getCollegeStudentClassInfo:', error);
+    logger.error('Failed to get college student class info', error instanceof Error ? error : new Error(String(error)), {
+      studentId
+    });
     return null;
   }
 };
@@ -173,7 +179,10 @@ export const getCollegeClassmates = async (
     const { data, error } = await query.order('name', { ascending: true });
 
     if (error) {
-      console.error('Error fetching college classmates:', error);
+      logger.error('Failed to fetch college classmates', error instanceof Error ? error : new Error(String(error)), {
+        programId,
+        semester
+      });
       return [];
     }
 
@@ -204,7 +213,10 @@ export const getCollegeClassmates = async (
       admission_number: student.admission_number,
     }));
   } catch (error) {
-    console.error('Error in getCollegeClassmates:', error);
+    logger.error('Failed to get college classmates', error instanceof Error ? error : new Error(String(error)), {
+      programId,
+      semester
+    });
     return [];
   }
 };
@@ -225,14 +237,18 @@ export const isCollegeStudent = async (studentId: string): Promise<boolean> => {
       .single();
 
     if (error) {
-      console.error('Error checking student type:', error);
+      logger.error('Failed to check student type', error instanceof Error ? error : new Error(String(error)), {
+        studentId
+      });
       return false;
     }
 
     const user = Array.isArray(data.users) ? data.users[0] : data.users;
     return user?.role === 'college_student';
   } catch (error) {
-    console.error('Error in isCollegeStudent:', error);
+    logger.error('Failed to check if student is college student', error instanceof Error ? error : new Error(String(error)), {
+      studentId
+    });
     return false;
   }
 };
@@ -260,7 +276,9 @@ export const getStudentTypeInfo = async (studentId: string): Promise<{
       .single();
 
     if (error) {
-      console.error('Error getting student type info:', error);
+      logger.error('Failed to get student type info', error instanceof Error ? error : new Error(String(error)), {
+        studentId
+      });
       return { isCollege: false, isSchool: false, hasProgram: false, hasClass: false };
     }
 
@@ -274,7 +292,9 @@ export const getStudentTypeInfo = async (studentId: string): Promise<{
       hasClass: !!data.school_class_id,
     };
   } catch (error) {
-    console.error('Error in getStudentTypeInfo:', error);
+    logger.error('Failed to get student type info', error instanceof Error ? error : new Error(String(error)), {
+      studentId
+    });
     return { isCollege: false, isSchool: false, hasProgram: false, hasClass: false };
   }
 };

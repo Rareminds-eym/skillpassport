@@ -6,6 +6,10 @@
  * session loss when browser/screen properties change.
  */
 
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('secure-storage');
+
 const STORAGE_KEY_NAME = 'sb-storage-key';
 
 // Get or create a stable obfuscation key
@@ -95,7 +99,7 @@ export const secureStorage: Storage = {
     if (result === null) {
       // Data is corrupted - remove it to prevent repeated failures
       // This will trigger Supabase to request re-authentication
-      console.warn(`[secureStorage] Removing corrupted session data for key: ${key}`);
+      logger.warn(`Removing corrupted session data for key: ${key}`);
       localStorage.removeItem(key);
       return null;
     }
@@ -108,7 +112,7 @@ export const secureStorage: Storage = {
       localStorage.setItem(key, obfuscated);
     } catch (e) {
       // Fallback to plain storage if obfuscation fails
-      console.warn('[secureStorage] Obfuscation failed, storing plain:', e);
+      logger.warn('Obfuscation failed, storing plain', { error: String(e) });
       localStorage.setItem(key, value);
     }
   },

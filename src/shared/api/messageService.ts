@@ -1,4 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('message-service');
 
 // Cache configuration
 const CACHE_DURATION = 30000; // 30 seconds
@@ -106,25 +109,17 @@ export class MessageService {
     if (collegeEducatorConvs.length > 0) {
       const collegeEducatorIds = collegeEducatorConvs.map(c => c.educator_id).filter(Boolean);
       if (collegeEducatorIds.length > 0) {
-        console.log('🎓 Fetching college lecturer details for IDs:', collegeEducatorIds);
-        
         // Match by id field (not user_id) - educator_id stores college_lecturers.id
         const { data: collegeLecturers, error: collegeError } = await supabase
           .from('college_lecturers')
           .select('id, user_id, first_name, last_name, email, phone, department, specialization')
           .in('id', collegeEducatorIds);
 
-        console.log('🎓 College lecturers found:', collegeLecturers);
-        console.log('❌ College lecturers error:', collegeError);
-
         // Add educator details to conversations
         collegeEducatorConvs.forEach(conv => {
           const educator = collegeLecturers?.find(e => e.id === conv.educator_id);
           if (educator) {
-            console.log('✅ Matched college lecturer:', educator.first_name, educator.last_name, 'for conversation:', conv.id);
             (conv as any).educator = educator;
-          } else {
-            console.log('❌ No college lecturer found for educator_id:', conv.educator_id);
           }
         });
       }
@@ -189,7 +184,7 @@ export class MessageService {
             .maybeSingle();
           
           if (appError) {
-            console.warn('Could not find id_old for application UUID:', applicationId, appError);
+            logger.warn('Could not find id_old for application UUID', { applicationId, error: appError.message });
           } else if (appData) {
             applicationIdOld = appData.id_old;
           }
@@ -211,7 +206,7 @@ export class MessageService {
             .maybeSingle();
           
           if (oppError) {
-            console.warn('Could not find id_old for opportunity UUID:', opportunityId, oppError);
+            logger.warn('Could not find id_old for opportunity UUID', { opportunityId, error: oppError.message });
           } else if (oppData) {
             opportunityIdOld = oppData.id_old;
           }
@@ -242,8 +237,6 @@ export class MessageService {
       if (existing) {
         // If conversation was deleted, restore it (WhatsApp behavior)
         if (existing.deleted_by_student || existing.deleted_by_recruiter) {
-          console.log('📥 Restoring previously deleted conversation:', existing.id);
-          
           const { data: restored, error: restoreError } = await supabase
             .from('conversations')
             .update({
@@ -256,16 +249,15 @@ export class MessageService {
             .eq('id', existing.id)
             .select()
             .maybeSingle();
-          
+
           if (restoreError) {
-            console.warn('⚠️ Could not restore conversation, using as-is');
+            logger.warn('Could not restore conversation, using as-is', { conversationId: existing.id });
             return existing as Conversation;
           }
-          
-          console.log('✅ Conversation restored with full message history');
+
           return restored;
         }
-        
+
         return existing as Conversation;
       }
       
@@ -361,8 +353,6 @@ export class MessageService {
       if (existing) {
         // If conversation was deleted, restore it
         if (existing.deleted_by_student || existing.deleted_by_educator) {
-          console.log('📥 Restoring previously deleted student-educator conversation:', existing.id);
-          
           const { data: restored, error: restoreError } = await supabase
             .from('conversations')
             .update({
@@ -375,16 +365,15 @@ export class MessageService {
             .eq('id', existing.id)
             .select()
             .maybeSingle();
-          
+
           if (restoreError) {
-            console.warn('⚠️ Could not restore conversation, using as-is');
+            logger.warn('Could not restore student-educator conversation, using as-is', { conversationId: existing.id });
             return existing as Conversation;
           }
-          
-          console.log('✅ Student-educator conversation restored');
+
           return restored;
         }
-        
+
         return existing as Conversation;
       }
       
@@ -484,8 +473,6 @@ export class MessageService {
       if (existing) {
         // If conversation was deleted, restore it
         if (existing.deleted_by_student || existing.deleted_by_educator) {
-          console.log('📥 Restoring previously deleted student-college lecturer conversation:', existing.id);
-          
           const { data: restored, error: restoreError } = await supabase
             .from('conversations')
             .update({
@@ -498,33 +485,21 @@ export class MessageService {
             .eq('id', existing.id)
             .select()
             .maybeSingle();
-          
+
           if (restoreError) {
-            console.warn('⚠️ Could not restore conversation, using as-is');
+            logger.warn('Could not restore student-college lecturer conversation, using as-is', { conversationId: existing.id });
             return existing as Conversation;
           }
-          
-          console.log('✅ Student-college lecturer conversation restored');
+
           return restored;
         }
-        
+
         return existing as Conversation;
       }
       
       // Create new conversation
       const conversationId = `conv_scl_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      console.log('🔍 INSERT DATA DEBUG:', {
-        id: conversationId,
-        student_id: studentId,
-        educator_id: collegeLecturerId,
-        college_id: collegeId,
-        program_section_id: programSectionId,
-        subject: subject || 'General Discussion',
-        conversation_type: 'student_college_educator',
-        status: 'active'
-      });
-      
+
       const { data, error } = await supabase
         .from('conversations')
         .insert({
@@ -617,21 +592,18 @@ export class MessageService {
       if (subject) messageData.subject = subject;
       if (attachments && attachments.length > 0) messageData.attachments = attachments;
 
-      console.log('📤 Sending message with data:', messageData);
-
       const { data, error } = await supabase
         .from('messages')
         .insert(messageData)
         .select('id, conversation_id, sender_id, sender_type, receiver_id, receiver_type, message_text, is_read, read_at, created_at, updated_at')
         .single();
-      
+
       if (error) {
-        console.error('❌ Database error sending message:', error);
-        throw new Error(`Failed to send message: ${error.message}`);
+        const messageError = new Error(`Failed to send message: ${error.message}`);
+        logger.error('Failed to send message', messageError, { conversationId, code: error.code });
+        throw messageError;
       }
-      
-      console.log('✅ Message sent successfully:', data);
-      
+
       // Clear caches after sending message
       this.clearMessageCache(conversationId);
       this.clearConversationCache(senderId);
@@ -639,7 +611,7 @@ export class MessageService {
       
       return data;
     } catch (error) {
-      console.error('❌ Error in sendMessage:', error);
+      logger.error('Error in sendMessage', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -657,38 +629,31 @@ export class MessageService {
     attachments?: any[]
   ): Promise<Message> {
     try {
-      console.log('📨 Sending student-educator message:', {
-        conversationId,
-        studentId,
-        messageText: messageText.substring(0, 50) + '...',
-        classId,
-        subject
-      });
-
       // Get conversation details to find the educator
       const { data: conversation, error: convError } = await supabase
         .from('conversations')
         .select('educator_id, class_id, subject')
         .eq('id', conversationId)
         .maybeSingle();
-      
+
       if (convError && convError.code !== 'PGRST116') {
-        console.error('❌ Error fetching conversation:', convError);
-        throw new Error(`Conversation not found: ${convError.message}`);
-      }
-      
-      if (!conversation) {
-        console.error('❌ Conversation not found:', conversationId);
-        throw new Error('Conversation not found');
-      }
-      
-      if (!conversation?.educator_id) {
-        console.error('❌ No educator found in conversation:', conversation);
-        throw new Error('Educator not found in conversation');
+        const fetchError = new Error(`Error fetching conversation: ${convError.message}`);
+        logger.error('Error fetching conversation', fetchError, { conversationId, code: convError.code });
+        throw fetchError;
       }
 
-      console.log('✅ Found conversation:', conversation);
-      
+      if (!conversation) {
+        const notFoundError = new Error('Conversation not found');
+        logger.error('Conversation not found', notFoundError, { conversationId });
+        throw notFoundError;
+      }
+
+      if (!conversation?.educator_id) {
+        const noEducatorError = new Error('Educator not found in conversation');
+        logger.error('No educator found in conversation', noEducatorError, { conversationId });
+        throw noEducatorError;
+      }
+
       return this.sendMessage(
         conversationId,
         studentId,
@@ -703,7 +668,7 @@ export class MessageService {
         attachments
       );
     } catch (error) {
-      console.error('❌ Error in sendStudentEducatorMessage:', error);
+      logger.error('Error in sendStudentEducatorMessage', error instanceof Error ? error : new Error(String(error)), { conversationId, studentId });
       throw error;
     }
   }
@@ -716,89 +681,47 @@ export class MessageService {
     conversationId: string,
     options?: { limit?: number; offset?: number; useCache?: boolean }
   ): Promise<Message[]> {
-    console.log('🔍 [MessageService] === GET CONVERSATION MESSAGES START ===');
-    console.log('📋 Parameters:', { conversationId, options });
-    
     const { limit, offset = 0, useCache = true } = options || {};
     const cacheKey = `${conversationId}:${limit || 'all'}:${offset}`;
-    
-    console.log('🔑 Cache key:', cacheKey);
-    
+
     // Check cache
     if (useCache) {
       const cached = messageCache.get(cacheKey);
       if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-        console.log('✅ [MessageService] Returning cached messages:', cached.data.length);
         return cached.data;
-      } else if (cached) {
-        console.log('⏰ [MessageService] Cache expired, fetching fresh data');
-      } else {
-        console.log('❌ [MessageService] No cache found, fetching fresh data');
       }
     }
-    
+
     // Deduplicate concurrent requests
     if (pendingRequests.has(cacheKey)) {
-      console.log('⏳ [MessageService] Request already pending, waiting...');
       return pendingRequests.get(cacheKey);
     }
-    
+
     const request = (async () => {
       try {
-        console.log('🚀 [MessageService] Building Supabase query...');
         let query = supabase
           .from('messages')
           .select('id, conversation_id, sender_id, sender_type, receiver_id, receiver_type, message_text, is_read, read_at, created_at, updated_at')
           .eq('conversation_id', conversationId)
           .order('created_at', { ascending: true });
-        
+
         if (limit) {
           query = query.range(offset, offset + limit - 1);
-          console.log('📄 [MessageService] Added pagination:', { limit, offset });
         }
-        
-        console.log('📡 [MessageService] Executing Supabase query...');
+
         const { data, error } = await query;
-        
-        console.log('📊 [MessageService] Query result:', { 
-          error: error?.message, 
-          dataCount: data?.length || 0,
-          hasData: !!data 
-        });
-        
+
         if (error) {
-          console.error('❌ [MessageService] Supabase error:', error);
+          logger.error('Failed to fetch conversation messages', new Error(error.message), { conversationId, code: error.code });
           throw error;
         }
-        
+
         const messages = data || [];
-        
-        console.log('📨 [MessageService] Messages details:', {
-          count: messages.length,
-          conversationId,
-          firstMessage: messages[0] ? {
-            id: messages[0].id,
-            sender_type: messages[0].sender_type,
-            receiver_type: messages[0].receiver_type,
-            text: messages[0].message_text?.substring(0, 50) + '...'
-          } : null
-        });
-        
-        if (messages.length > 0) {
-          console.log('🔍 [MessageService] All message types:', 
-            messages.map(msg => ({
-              id: msg.id,
-              sender_type: msg.sender_type,
-              receiver_type: msg.receiver_type
-            }))
-          );
-        }
-        
+
         // Update cache
         if (useCache) {
           messageCache.set(cacheKey, { data: messages, timestamp: Date.now() });
-          console.log('💾 [MessageService] Messages cached');
-          
+
           // Cleanup old cache entries
           if (messageCache.size > 50) {
             const oldestKey = messageCache.keys().next().value;
@@ -807,21 +730,18 @@ export class MessageService {
             }
           }
         }
-        
-        console.log('✅ [MessageService] Returning messages:', messages.length);
+
         return messages;
       } catch (error) {
-        console.error('❌ [MessageService] Error in getConversationMessages:', error);
+        logger.error('Error in getConversationMessages', error instanceof Error ? error : new Error(String(error)));
         throw error;
       }
     })();
-    
+
     pendingRequests.set(cacheKey, request);
-    
+
     try {
-      const result = await request;
-      console.log('🏁 [MessageService] === GET CONVERSATION MESSAGES END ===');
-      return result;
+      return await request;
     } finally {
       pendingRequests.delete(cacheKey);
     }
@@ -1234,7 +1154,7 @@ export class MessageService {
       ]);
       
       if (messageResult.status === 'rejected') {
-        console.error('❌ Error marking messages as read:', messageResult.reason);
+        logger.error('Error marking messages as read', messageResult.reason instanceof Error ? messageResult.reason : new Error(String(messageResult.reason)));
         throw messageResult.reason;
       }
       
@@ -1311,7 +1231,7 @@ export class MessageService {
             }
           } else {
             // Handle case where college_id is missing - just update student count if applicable
-            console.warn('College ID missing for college admin conversation:', conversationId);
+            logger.warn('College ID missing for college admin conversation', { conversationId });
             if (isStudent) {
               await supabase
                 .from('conversations')
@@ -1390,6 +1310,9 @@ export class MessageService {
             .then(() => {
               // Clear conversation cache after update
               this.clearConversationCache(userId);
+            })
+            .catch((error) => {
+              logger.error('Failed to update conversation unread count', error instanceof Error ? error : new Error(String(error)), { conversationId, updateField });
             });
         }
       }
@@ -1676,7 +1599,7 @@ export class MessageService {
       
       return conversation;
     } catch (error) {
-      console.error('Error creating student-admin conversation:', error);
+      logger.error('Error creating student-admin conversation', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -1728,10 +1651,10 @@ export class MessageService {
           updated_at: new Date().toISOString()
         })
         .eq('id', conversationId);
-      
+
       if (error) throw error;
     } catch (error) {
-      console.error('Error deleting conversation:', error);
+      logger.error('Error deleting conversation', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -1782,10 +1705,10 @@ export class MessageService {
           updated_at: new Date().toISOString()
         })
         .eq('id', conversationId);
-      
+
       if (error) throw error;
     } catch (error) {
-      console.error('Error restoring conversation:', error);
+      logger.error('Error restoring conversation', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -1802,10 +1725,10 @@ export class MessageService {
         .from('conversations')
         .delete()
         .eq('id', conversationId);
-      
+
       if (error) throw error;
     } catch (error) {
-      console.error('Error permanently deleting conversation:', error);
+      logger.error('Error permanently deleting conversation', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -1889,10 +1812,10 @@ export class MessageService {
           (conversation as any).college = orgData;
         }
       }
-      
+
       return conversation;
     } catch (error) {
-      console.error('Error creating student-college_admin conversation:', error);
+      logger.error('Error creating student-college_admin conversation', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -1959,10 +1882,10 @@ export class MessageService {
         .single();
 
       if (fetchError) throw fetchError;
-      
+
       return conversation;
     } catch (error) {
-      console.error('Error creating educator-admin conversation:', error);
+      logger.error('Error creating educator-admin conversation', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -2028,10 +1951,10 @@ export class MessageService {
         .single();
 
       if (fetchError) throw fetchError;
-      
+
       return conversation;
     } catch (error) {
-      console.error('Error creating college educator-admin conversation:', error);
+      logger.error('Error creating college educator-admin conversation', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }

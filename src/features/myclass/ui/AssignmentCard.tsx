@@ -187,7 +187,6 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
   const getAccessibleFileUrl = (fileUrl: string) => {
     const storageApiUrl = import.meta.env.VITE_STORAGE_API_URL;
     if (!storageApiUrl) {
-      console.error('VITE_STORAGE_API_URL not configured');
       return fileUrl; // Fallback to direct URL
     }
     
@@ -208,16 +207,12 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
 
   // Helper function to open file with error handling
   const openFile = (fileUrl: string, fileName: string = 'file') => {
-    console.log(`Opening ${fileName}:`, fileUrl);
-    
     const storageApiUrl = getApiUrl('storage');
     
     // Generate proxy URL
     const accessibleUrl = fileUrl.includes('/document-access') 
       ? fileUrl 
       : `${storageApiUrl}/document-access?url=${encodeURIComponent(fileUrl)}&mode=inline`;
-    
-    console.log('Opening URL:', accessibleUrl);
     
     // Open directly without testing
     window.open(accessibleUrl, '_blank');

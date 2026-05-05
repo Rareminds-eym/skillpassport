@@ -1,10 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Joyride, { CallBackProps, STATUS } from 'react-joyride';
+import { getLogger } from '@/shared/config/logging';
 
 import { TOUR_KEYS } from '@/app/providers/tour-wrapper/lib/constants';
 import { waitForElement } from '@/shared/lib/utils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { useTour } from '@/shared/model/tourStore';
+
+const logger = getLogger('after10-assessment-tour');
 import {
   ASSESSMENT_RESULT_TOUR_STEPS,
   ASSESSMENT_RESULT_TOUR_OPTIONS,
@@ -28,7 +31,6 @@ const After10AssessmentResultTour: React.FC = () => {
 
   useEffect(() => {
     if (!loading && isEligible(TOUR_KEYS.ASSESSMENT_RESULT) && !isReady && !tourStarted.current) {
-      console.log('✅ AFTER-10 tour: Prerequisites met');
       setIsReady(true);
     }
   }, [loading, isEligible, isReady]);
@@ -39,12 +41,10 @@ const After10AssessmentResultTour: React.FC = () => {
     }
 
     const startTourWhenReady = async () => {
-      console.log('🎯 AFTER-10 tour: Checking assessment result grade_level...');
       
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          console.log('⏭️ AFTER-10 tour: No user found');
           return;
         }
 
@@ -56,7 +56,6 @@ const After10AssessmentResultTour: React.FC = () => {
           .maybeSingle();
 
         if (studentError || !studentData) {
-          console.log('⏭️ AFTER-10 tour: No student record found');
           return;
         }
 
@@ -70,19 +69,16 @@ const After10AssessmentResultTour: React.FC = () => {
           .maybeSingle();
 
         if (error || !resultData) {
-          console.log('⏭️ AFTER-10 tour: No assessment result found');
           return;
         }
 
         // Check if this is an after10 assessment
         if (resultData.grade_level !== 'after10') {
-          console.log('⏭️ AFTER-10 tour: Not after10 assessment (grade_level:', resultData.grade_level, ')');
           return;
         }
 
-        console.log('✅ AFTER-10 tour: Validated as after10 assessment');
       } catch (validationError) {
-        console.error('❌ AFTER-10 tour: Error validating assessment', validationError);
+        logger.error('Error validating assessment', validationError as Error, {});
         return;
       }
       
@@ -101,15 +97,12 @@ const After10AssessmentResultTour: React.FC = () => {
         const allFound = results.every(el => el !== null);
 
         if (allFound) {
-          console.log('✅ AFTER-10 tour: All elements ready');
           tourStarted.current = true;
           setShouldRun(true);
           startTour(TOUR_KEYS.ASSESSMENT_RESULT);
-        } else {
-          console.log('⏭️ AFTER-10 tour: Elements not found after 15s');
         }
-      } catch (error) {
-        console.error('❌ AFTER-10 tour: Error waiting for elements', error);
+      } catch (error: unknown) {
+        logger.error('Error waiting for elements', error as Error);
       }
     };
 
@@ -120,7 +113,6 @@ const After10AssessmentResultTour: React.FC = () => {
     const { status, index, action, lifecycle, type } = data;
 
     if (type === 'error:target_not_found') {
-      console.error('❌ AFTER-10 tour: Target not found, ending tour');
       setShouldRun(false);
       completeTour(TOUR_KEYS.ASSESSMENT_RESULT);
       return;
@@ -132,21 +124,18 @@ const After10AssessmentResultTour: React.FC = () => {
       action === 'next' &&
       ASSESSMENT_RESULT_TOUR_STEPS[index]?.target === '[data-tour="recommended-stream"]'
     ) {
-      console.log('🔄 AFTER-10 tour: Auto-switching to Career Clusters...');
       
       setShouldRun(false);
       
       setTimeout(() => {
         const button = document.querySelector('[data-tour="view-career-clusters-button"]') as HTMLElement;
         if (button) {
-          console.log('🔄 Auto-clicking View Career Clusters button...');
           button.click();
           
           setTimeout(async () => {
             try {
               const careerTrack1 = await waitForElement('[data-tour="career-track-1"]', 10000);
               if (careerTrack1) {
-                console.log('✅ Career Clusters loaded, resuming tour...');
                 const careerTrack1Index = ASSESSMENT_RESULT_TOUR_STEPS.findIndex(
                   step => step.target === '[data-tour="career-track-1"]'
                 );
@@ -158,17 +147,15 @@ const After10AssessmentResultTour: React.FC = () => {
                     setShouldRun(true);
                   }, 300);
                 } else {
-                  console.error('❌ Career track 1 step not found in tour config');
                   completeTour(TOUR_KEYS.ASSESSMENT_RESULT);
                 }
               }
             } catch (error) {
-              console.error('❌ Error waiting for career tracks:', error);
+              logger.error('Error waiting for career tracks', error as Error, {});
               completeTour(TOUR_KEYS.ASSESSMENT_RESULT);
             }
           }, 500);
         } else {
-          console.error('❌ View Career Clusters button not found');
           completeTour(TOUR_KEYS.ASSESSMENT_RESULT);
         }
       }, 300);
@@ -185,25 +172,21 @@ const After10AssessmentResultTour: React.FC = () => {
       lifecycle === 'complete' &&
       ASSESSMENT_RESULT_TOUR_STEPS[index]?.target === '[data-tour="career-track-1"]'
     ) {
-      console.log('🔄 AFTER-10 tour: Going back to Stream...');
       setShouldRun(false);
       switchBackToStream();
       return;
     }
 
     if (status === STATUS.FINISHED) {
-      console.log('✅ AFTER-10 tour: Finished');
       setShouldRun(false);
       completeTour(TOUR_KEYS.ASSESSMENT_RESULT);
     } else if (status === STATUS.SKIPPED) {
-      console.log('⏭️ AFTER-10 tour: Skipped');
       setShouldRun(false);
       skipTour(TOUR_KEYS.ASSESSMENT_RESULT);
     }
   };
 
   const switchBackToStream = async () => {
-    console.log('🔄 Going back to Stream...');
     
     const backButton = Array.from(document.querySelectorAll('button')).find(
       btn => btn.textContent?.includes('Back to Stream')
@@ -224,7 +207,6 @@ const After10AssessmentResultTour: React.FC = () => {
         setShouldRun(true);
       }, 300);
     } else {
-      console.error('❌ Stream step not found in tour config');
       completeTour(TOUR_KEYS.ASSESSMENT_RESULT);
     }
   };
@@ -234,7 +216,6 @@ const After10AssessmentResultTour: React.FC = () => {
       tourStarted.current = false;
       setIsReady(false);
       setShouldRun(false);
-      console.log('🔄 AFTER-10 Tour unmounted');
     };
   }, []);
 
