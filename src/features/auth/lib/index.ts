@@ -32,6 +32,9 @@ export {
   redirectToRoleDashboard,
 } from './roleBasedRouter';
 
+// SSO Login Helper
+export { ssoLoginWithRoleCheck, type SsoLoginResult } from './ssoLogin';
+
 // Token Monitor
 export {
   getGlobalTokenMonitor,

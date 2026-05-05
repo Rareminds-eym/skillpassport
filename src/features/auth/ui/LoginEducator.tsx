@@ -13,10 +13,9 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import educatorIllustration from "/login/yyu.png";
 
-import { supabase } from "@/shared/api";
+import { ssoLoginWithRoleCheck } from "@/features/auth/lib";
 import { FeatureCard } from "@/shared/ui";
 
-import { useAuthActions } from '@/shared/model/authStore';
 export default function LoginEducator() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,7 +24,6 @@ export default function LoginEducator() {
   const [error, setError] = useState("");
 
   const navigate = useNavigate();
-  const { login } = useAuthActions();
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,82 +32,18 @@ export default function LoginEducator() {
     setLoading(true);
 
     try {
-      // Validate email format
-      if (!email.includes("@")) {
-        setError("Invalid email address");
-        setLoading(false);
-        return;
-      }
-
-      if (!password || password.length < 6) {
-        setError("Password must be at least 6 characters");
-        setLoading(false);
-        return;
-      }
-
-      // Sign in with Supabase
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (authError) {
-        setError(authError.message || "Failed to sign in. Please check your credentials.");
-        setLoading(false);
-        return;
-      }
-
-      if (!authData.user) {
-        setError("Authentication failed. Please try again.");
-        setLoading(false);
-        return;
-      }
-
-      // Fetch educator profile - check both tables efficiently
-      // Use Promise.allSettled to query both tables simultaneously
-      const [schoolResult, collegeResult] = await Promise.allSettled([
-        supabase
-          .from("school_educators")
-          .select("*")
-          .eq("user_id", authData.user.id)
-          .maybeSingle(),
-        supabase
-          .from("college_lecturers")
-          .select("*")
-          .eq("user_id", authData.user.id)
-          .maybeSingle()
+      const result = await ssoLoginWithRoleCheck(email, password, [
+        'educator',
+        'school_educator',
+        'college_educator',
       ]);
 
-      // Extract data from results
-      const educatorData = schoolResult.status === 'fulfilled' ? schoolResult.value.data : null;
-      const collegeEducatorData = collegeResult.status === 'fulfilled' ? collegeResult.value.data : null;
-
-      // Check if user is either a school educator or college lecturer
-      if (!educatorData && !collegeEducatorData) {
-        setError("No educator profile found. Please contact your administrator.");
+      if (!result.success) {
+        setError(result.error || 'Login failed. Please check your credentials.');
         setLoading(false);
         return;
       }
 
-      // Update AuthContext with user data
-      const userData = {
-        id: authData.user.id,
-        email: authData.user.email,
-        role: educatorData ? "educator" : "college_educator",
-        full_name: educatorData?.first_name && educatorData?.last_name
-          ? `${educatorData.first_name} ${educatorData.last_name}`
-          : collegeEducatorData?.metadata?.first_name && collegeEducatorData?.metadata?.last_name
-          ? `${collegeEducatorData.metadata.first_name} ${collegeEducatorData.metadata.last_name}`
-          : educatorData?.first_name || collegeEducatorData?.metadata?.first_name || authData.user.email?.split("@")[0] || "Educator",
-        educator_id: educatorData?.id || collegeEducatorData?.id,
-        school_id: educatorData?.school_id,
-        college_id: collegeEducatorData?.collegeId,
-        educator_type: educatorData ? "school" : "college",
-      };
-
-      login(userData);
-
-      // Redirect to educator dashboard
       navigate("/educator/dashboard");
     } catch (err) {
       console.error("Login error:", err);
@@ -162,6 +96,7 @@ export default function LoginEducator() {
             type={showPassword ? "text" : "password"}
             id="password"
             required
+            minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter your password"

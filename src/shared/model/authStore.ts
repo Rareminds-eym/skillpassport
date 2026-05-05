@@ -1,13 +1,24 @@
+/**
+ * Auth Store (SSO-only)
+ *
+ * Uses @rareminds-eym/auth-client to communicate with the SSO worker.
+ * All auth state (user, roles, session) derives from the SSO JWT.
+ * No Supabase Auth calls are made from this store.
+ *
+ * The public API (hooks and types) is preserved from the legacy store
+ * so existing consumers continue to work without import changes.
+ */
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { supabase } from '@/shared/api/supabaseClient';
-import { secureStorage } from '@/shared/lib/secureStorage';
+import { ssoClient } from '@/shared/api/ssoClient';
 import { getLogger } from '@/shared/config/logging';
+import type { MeResponse, LoginResponse } from '@rareminds-eym/auth-client';
 
 const logger = getLogger('auth-store');
 
-// Types
+// ─── Types ─────────────────────────────────────────────────────
+
 interface ErrorNotification {
   title: string;
   message: string;
@@ -18,15 +29,35 @@ interface ErrorNotification {
   };
 }
 
+/**
+ * User shape — kept compatible with the legacy store's User type.
+ * All fields except `id` are optional so existing consumers continue to work.
+ */
 export interface User {
   id: string;
   email?: string;
   name?: string;
   role?: string;
   user_metadata?: any;
+  /** @deprecated Demo mode removed — always false in SSO mode. */
   isDemoMode?: boolean;
+  /** SSO-specific: the org the user is active in */
+  orgId?: string;
+  /** SSO-specific: full role list from the JWT */
+  roles?: string[];
+  /** SSO-specific: products the user has access to */
+  products?: string[];
+  /** SSO-specific: membership status */
+  membershipStatus?: string;
+  /** SSO-specific: whether the email has been verified */
+  isEmailVerified?: boolean;
 }
 
+/**
+ * Session shape — kept for backward compatibility.
+ * In SSO mode, the access token is held in memory by auth-client (not persisted here).
+ * The `session` field will be null — use `isAuthenticated` instead.
+ */
 export interface Session {
   access_token: string;
   refresh_token?: string;
@@ -35,13 +66,11 @@ export interface Session {
 }
 
 interface AuthState {
-  // User data
   user: User | null;
   session: Session | null;
   loading: boolean;
   isAuthenticated: boolean;
 
-  // Role helpers
   role: string | null;
   isStudent: boolean;
   isEducator: boolean;
@@ -49,128 +78,263 @@ interface AuthState {
   isRecruiter: boolean;
   isLearner: boolean;
 
-  // Error notifications
   errorNotification: ErrorNotification | null;
 
-  // Auth actions
-  login: (userData: User, sessionData?: Session) => void;
+  // Actions
+  login: (emailOrUser: string | User, passwordOrSession?: string | Session) => Promise<LoginResponse | void>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
   setUser: (user: User | null) => void;
   setSession: (session: Session | null) => void;
   setLoading: (loading: boolean) => void;
 
-  // Error notification actions
   showErrorNotification: (notification: ErrorNotification) => void;
   dismissErrorNotification: () => void;
 
-  // Session management
   initialize: () => Promise<void>;
   refreshSession: () => Promise<boolean>;
   checkSessionValidity: () => Promise<Session | null>;
 
-  // Utilities
+  /** @deprecated No longer needed in SSO mode. Kept for compatibility. */
   restoreUserFromStorage: (sessionUser: any) => User;
 }
 
-// Role checks
-const isStudentRole = (role: string | null | undefined): boolean =>
-  role === 'student' || role === 'school_student' || role === 'college_student';
+// ─── Role helpers ──────────────────────────────────────────────
 
-const isEducatorRole = (role: string | null | undefined): boolean =>
-  role === 'educator' || role === 'school_educator' || role === 'college_educator';
+const isStudentRole = (roles: string[]): boolean =>
+  roles.some((r) => r === 'student' || r === 'school_student' || r === 'college_student');
 
-const isAdminRole = (role: string | null | undefined): boolean =>
-  role === 'admin' ||
-  role === 'school_admin' ||
-  role === 'college_admin' ||
-  role === 'university_admin';
+const isEducatorRole = (roles: string[]): boolean =>
+  roles.some((r) => r === 'educator' || r === 'school_educator' || r === 'college_educator');
 
-const isRecruiterRole = (role: string | null | undefined): boolean =>
-  role === 'recruiter' || role === 'hr';
+const isAdminRole = (roles: string[]): boolean =>
+  roles.some(
+    (r) =>
+      r === 'admin' ||
+      r === 'school_admin' ||
+      r === 'college_admin' ||
+      r === 'university_admin' ||
+      r === 'owner',
+  );
 
-const isLearnerRole = (role: string | null | undefined): boolean =>
-  role === 'learner';
+const isRecruiterRole = (roles: string[]): boolean =>
+  roles.some((r) => r === 'recruiter' || r === 'hr');
 
-// Helper to get specific admin role from storage
-const getSpecificAdminRole = (sessionUser: any, storedUser: User | null): string => {
-  const sessionRole = sessionUser.user_metadata?.user_role ||
-    sessionUser.user_metadata?.role ||
-    'user';
+const isLearnerRole = (roles: string[]): boolean =>
+  roles.some((r) => r === 'learner');
 
-  // Handle legacy "admin" role - resolve to specific admin type
-  if (sessionRole === 'admin') {
-    // Check stored user for specific role
-    if (storedUser?.role) {
-      const specificRoles = ['school_admin', 'college_admin', 'university_admin'];
-      if (specificRoles.includes(storedUser.role)) {
-        return storedUser.role;
-      }
-    }
-
-    // Infer from stored user context fields
-    if (storedUser) {
-      const s = storedUser as any;
-      if (s.collegeId || s.collegeName) return 'college_admin';
-      if (s.schoolId || s.schoolName) return 'school_admin';
-      if (s.universityId || s.universityName) return 'university_admin';
-    }
+/**
+ * Pick the most specific role for the legacy `role` field.
+ * Prefers specific admin/student/educator roles over generic ones.
+ */
+function pickPrimaryRole(roles: string[]): string | null {
+  if (roles.length === 0) return null;
+  const priority = [
+    'university_admin',
+    'college_admin',
+    'school_admin',
+    'owner',
+    'admin',
+    'college_educator',
+    'school_educator',
+    'educator',
+    'college_student',
+    'school_student',
+    'student',
+    'recruiter',
+    'hr',
+    'learner',
+    'member',
+  ];
+  for (const p of priority) {
+    if (roles.includes(p)) return p;
   }
+  return roles[0];
+}
 
-  return sessionRole;
-};
+function mapMeToUser(me: MeResponse): User {
+  return {
+    id: me.sub,
+    email: me.email,
+    role: pickPrimaryRole(me.roles) ?? undefined,
+    orgId: me.org_id,
+    roles: me.roles,
+    products: me.products,
+    membershipStatus: me.membership_status,
+    isEmailVerified: me.is_email_verified,
+    isDemoMode: false,
+  };
+}
+
+function computeRoleFlags(roles: string[]) {
+  return {
+    isStudent: isStudentRole(roles),
+    isEducator: isEducatorRole(roles),
+    isAdmin: isAdminRole(roles),
+    isRecruiter: isRecruiterRole(roles),
+    isLearner: isLearnerRole(roles),
+  };
+}
+
+// ─── Store ─────────────────────────────────────────────────────
+
+/** Storage key for the persisted auth state. Bumping this value invalidates all existing sessions. */
+const AUTH_STORAGE_KEY = 'skillpassport-auth-v1';
+/** Current persisted state version. Increment when making breaking shape changes. */
+const AUTH_STORAGE_VERSION = 1;
 
 export const useAuthStore = create<AuthState>()(
-  immer(
-    persist(
-      (set, get) => ({
-        // Initial state
-        user: null,
-        session: null,
-        loading: true,
-        isAuthenticated: false,
-        role: null,
-        isStudent: false,
-        isEducator: false,
-        isAdmin: false,
-        isRecruiter: false,
-        isLearner: false,
-        errorNotification: null,
+  persist(
+    immer((set, get) => ({
+    // Initial state
+    user: null,
+    session: null,
+    loading: true,
+    isAuthenticated: false,
+    role: null,
+    isStudent: false,
+    isEducator: false,
+    isAdmin: false,
+    isRecruiter: false,
+    isLearner: false,
+    errorNotification: null,
 
-        // Login
-        login: (userData, sessionData) => {
+    /**
+     * login() accepts either:
+     *  - (email, password) — performs SSO login via auth-client
+     *  - (user, session?) — legacy signature; sets user directly (used by signup flows that already have user data)
+     */
+    login: async (emailOrUser, passwordOrSession) => {
+      // Legacy signature: called with (User, Session?)
+      if (typeof emailOrUser !== 'string') {
+        const userData = emailOrUser;
+        const sessionData = typeof passwordOrSession === 'string' ? null : (passwordOrSession ?? null);
+        const roles = userData.roles ?? (userData.role ? [userData.role] : []);
+        set((state) => {
+          state.user = { ...state.user, ...userData };
+          if (sessionData) state.session = sessionData;
+          state.isAuthenticated = true;
+          state.role = userData.role ?? pickPrimaryRole(roles);
+          Object.assign(state, computeRoleFlags(roles));
+        });
+        return;
+      }
+
+      // SSO signature: (email, password)
+      const email = emailOrUser;
+      const password = passwordOrSession as string;
+      const res = await ssoClient.login({ email, password });
+      const me = await ssoClient.getMe();
+      const user = mapMeToUser(me);
+      set((state) => {
+        state.user = user;
+        state.isAuthenticated = true;
+        state.role = user.role ?? null;
+        Object.assign(state, computeRoleFlags(me.roles));
+      });
+      return res;
+    },
+
+    logout: async () => {
+      try {
+        await ssoClient.logout();
+      } catch (err) {
+        logger.error('SSO logout failed', err as Error);
+      }
+
+      set((state) => {
+        state.user = null;
+        state.session = null;
+        state.isAuthenticated = false;
+        state.role = null;
+        state.isStudent = false;
+        state.isEducator = false;
+        state.isAdmin = false;
+        state.isRecruiter = false;
+        state.isLearner = false;
+      });
+    },
+
+    updateUser: (userData) => {
+      set((state) => {
+        if (state.user) {
+          state.user = { ...state.user, ...userData };
+          if (userData.roles) {
+            state.role = pickPrimaryRole(userData.roles);
+            Object.assign(state, computeRoleFlags(userData.roles));
+          } else if (userData.role) {
+            state.role = userData.role;
+            Object.assign(state, computeRoleFlags([userData.role]));
+          }
+        }
+      });
+    },
+
+    setUser: (user) => {
+      set((state) => {
+        state.user = user;
+        state.isAuthenticated = !!user;
+        const roles = user?.roles ?? (user?.role ? [user.role] : []);
+        state.role = user?.role ?? pickPrimaryRole(roles);
+        Object.assign(state, computeRoleFlags(roles));
+      });
+    },
+
+    setSession: (session) => {
+      set((state) => {
+        state.session = session;
+      });
+    },
+
+    setLoading: (loading) => {
+      set((state) => {
+        state.loading = loading;
+      });
+    },
+
+    showErrorNotification: (notification) => {
+      set((state) => {
+        state.errorNotification = notification;
+      });
+    },
+
+    dismissErrorNotification: () => {
+      set((state) => {
+        state.errorNotification = null;
+      });
+    },
+
+    /**
+     * Initialize auth state from the SSO worker.
+     * Called once at app startup before rendering protected routes.
+     *
+     * Strategy (for fast initial render):
+     *  1. Persisted user data from Zustand is already rehydrated (UI renders immediately).
+     *  2. Call initSession() to validate the session with SSO (refresh cookie).
+     *  3. If valid, fetch fresh /auth/me and update state.
+     *  4. If invalid, clear the persisted state.
+     */
+    initialize: async () => {
+      set((state) => {
+        state.loading = true;
+      });
+
+      try {
+        const { authenticated } = await ssoClient.initSession();
+        if (authenticated) {
+          const me = await ssoClient.getMe();
+          const user = mapMeToUser(me);
           set((state) => {
-            state.user = { ...state.user, ...userData };
-            if (sessionData) {
-              state.session = sessionData;
-            }
+            state.user = user;
             state.isAuthenticated = true;
-            state.role = userData.role || null;
-            state.isStudent = isStudentRole(userData.role);
-            state.isEducator = isEducatorRole(userData.role);
-            state.isAdmin = isAdminRole(userData.role);
-            state.isRecruiter = isRecruiterRole(userData.role);
-            state.isLearner = isLearnerRole(userData.role);
+            state.role = user.role ?? null;
+            Object.assign(state, computeRoleFlags(me.roles));
+            state.loading = false;
           });
-
-          // Persist to localStorage (legacy compatibility)
-          localStorage.setItem('user', JSON.stringify(userData));
-          if (userData.email) {
-            localStorage.setItem('userEmail', userData.email);
-          }
-        },
-
-        // Logout
-        logout: async () => {
-          try {
-            await supabase.auth.signOut();
-          } catch (err) {
-            logger.error('Error signing out', err as Error);
-          }
-
+        } else {
+          // No valid session — clear any stale persisted state
           set((state) => {
             state.user = null;
-            state.session = null;
             state.isAuthenticated = false;
             state.role = null;
             state.isStudent = false;
@@ -178,266 +342,120 @@ export const useAuthStore = create<AuthState>()(
             state.isAdmin = false;
             state.isRecruiter = false;
             state.isLearner = false;
+            state.loading = false;
           });
-
-          localStorage.removeItem('user');
-          localStorage.removeItem('userEmail');
-          localStorage.removeItem('pendingUser');
-        },
-
-        // Update user
-        updateUser: (userData) => {
-          set((state) => {
-            if (state.user) {
-              state.user = { ...state.user, ...userData };
-              if (userData.role) {
-                state.role = userData.role;
-                state.isStudent = isStudentRole(userData.role);
-                state.isEducator = isEducatorRole(userData.role);
-                state.isAdmin = isAdminRole(userData.role);
-                state.isRecruiter = isRecruiterRole(userData.role);
-                state.isLearner = isLearnerRole(userData.role);
-              }
-              localStorage.setItem('user', JSON.stringify(state.user));
-            }
-          });
-        },
-
-        // Set user directly
-        setUser: (user) => {
-          set((state) => {
-            state.user = user;
-            state.isAuthenticated = !!user;
-            state.role = user?.role || null;
-            state.isStudent = isStudentRole(user?.role || null);
-            state.isEducator = isEducatorRole(user?.role || null);
-            state.isAdmin = isAdminRole(user?.role || null);
-            state.isRecruiter = isRecruiterRole(user?.role || null);
-            state.isLearner = isLearnerRole(user?.role || null);
-          });
-        },
-
-        // Set session
-        setSession: (session) => {
-          set((state) => {
-            state.session = session;
-            if (session?.user) {
-              const currentRole = state.role;
-              const specificRoles = ['school_admin', 'college_admin', 'university_admin'];
-              const user = get().restoreUserFromStorage(session.user);
-
-              // Don't downgrade a specific admin role to generic 'admin'
-              if (currentRole && specificRoles.includes(currentRole) && user.role === 'admin') {
-                user.role = currentRole;
-              }
-
-              state.user = user;
-              state.isAuthenticated = true;
-              state.role = user.role || null;
-              state.isStudent = isStudentRole(user.role);
-              state.isEducator = isEducatorRole(user.role);
-              state.isAdmin = isAdminRole(user.role);
-              state.isRecruiter = isRecruiterRole(user.role);
-              state.isLearner = isLearnerRole(user.role);
-              localStorage.setItem('user', JSON.stringify(user));
-            }
-          });
-        },
-
-        // Set loading
-        setLoading: (loading) => {
-          set((state) => {
-            state.loading = loading;
-          });
-        },
-
-        // Error notifications
-        showErrorNotification: (notification) => {
-          set((state) => {
-            state.errorNotification = notification;
-          });
-        },
-
-        dismissErrorNotification: () => {
-          set((state) => {
-            state.errorNotification = null;
-          });
-        },
-
-        // Initialize auth state from Supabase
-        initialize: async () => {
-          set((state) => {
-            state.loading = true;
-          });
-
-          try {
-            const { data: { session }, error } = await supabase.auth.getSession();
-
-            if (error) {
-              logger.error('Error getting session', new Error(error.message));
-              set((state) => {
-                state.loading = false;
-              });
-              return;
-            }
-
-            if (session?.user) {
-              const userData = get().restoreUserFromStorage(session.user);
-              set((state) => {
-                state.user = userData;
-                state.session = session as Session;
-                state.isAuthenticated = true;
-                state.role = userData.role || null;
-                state.isStudent = isStudentRole(userData.role);
-                state.isEducator = isEducatorRole(userData.role);
-                state.isAdmin = isAdminRole(userData.role);
-                state.isRecruiter = isRecruiterRole(userData.role);
-                state.isLearner = isLearnerRole(userData.role);
-              });
-              localStorage.setItem('user', JSON.stringify(userData));
-            } else {
-              // Check for demo users in localStorage
-              const storedUser = localStorage.getItem('user');
-              if (storedUser) {
-                try {
-                  const parsedUser = JSON.parse(storedUser);
-                  if (parsedUser.isDemoMode || parsedUser.id?.includes('-001')) {
-                    set((state) => {
-                      state.user = parsedUser;
-                      state.isAuthenticated = true;
-                      state.role = parsedUser.role || null;
-                    });
-                  }
-                } catch {
-                  // Invalid stored user
-                }
-              }
-            }
-          } catch (err) {
-            logger.error('Error initializing auth', err as Error);
-          } finally {
-            set((state) => {
-              state.loading = false;
-            });
-          }
-        },
-
-        // Refresh session
-        refreshSession: async () => {
-          try {
-            const { data, error } = await supabase.auth.refreshSession();
-
-            if (error) {
-              logger.warn('Session refresh failed', { message: error.message });
-              return false;
-            }
-
-            if (data?.session) {
-              get().setSession(data.session as Session);
-              return true;
-            }
-
-            return false;
-          } catch (err) {
-            logger.error('Session refresh error', err as Error);
-            return false;
-          }
-        },
-
-        // Check session validity
-        checkSessionValidity: async () => {
-          try {
-            const { data: { session }, error } = await supabase.auth.getSession();
-
-            if (error) {
-              logger.error('Session check error', new Error(error.message));
-              return null;
-            }
-
-            return session as Session | null;
-          } catch (err) {
-            logger.error('Session validity check failed', err as Error);
-            return null;
-          }
-        },
-
-        // Restore user from storage/session
-        restoreUserFromStorage: (sessionUser) => {
-          // First check localStorage for stored user with specific role
-          const storedUser = localStorage.getItem('user');
-          let parsedStoredUser: User | null = null;
-          if (storedUser) {
-            try {
-              const parsed = JSON.parse(storedUser);
-              const userMatches =
-                parsed.user_id === sessionUser.id ||
-                parsed.id === sessionUser.id ||
-                parsed.email === sessionUser.email;
-              if (userMatches) {
-                parsedStoredUser = parsed;
-              }
-            } catch {
-              // Ignore parse errors
-            }
-          }
-
-          // Use stored user OR current state user for role resolution
-          const sessionRole = getSpecificAdminRole(sessionUser, parsedStoredUser || get().user);
-
-          if (parsedStoredUser) {
-            return {
-              ...parsedStoredUser,
-              id: sessionUser.id,
-              role: sessionRole,
-            };
-          }
-
-          // Create new user from session
-          return {
-            id: sessionUser.id,
-            email: sessionUser.email,
-            role: sessionRole,
-            name: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name,
-            user_metadata: sessionUser.user_metadata,
-          };
-        },
-      }),
-      {
-        name: 'auth-storage',
-        storage: secureStorage as any, // Use secure storage for auth data
-        partialize: (state) => ({
-          user: state.user,
-          role: state.role,
-          isAuthenticated: state.isAuthenticated,
-          // Don't persist error notifications
-        }),
+        }
+      } catch (err) {
+        logger.error('Error initializing auth', err as Error);
+        set((state) => {
+          state.user = null;
+          state.isAuthenticated = false;
+          state.role = null;
+          state.isStudent = false;
+          state.isEducator = false;
+          state.isAdmin = false;
+          state.isRecruiter = false;
+          state.isLearner = false;
+          state.loading = false;
+        });
       }
-    )
-  )
+    },
+
+    refreshSession: async () => {
+      try {
+        await ssoClient.refresh();
+        const me = await ssoClient.getMe();
+        const user = mapMeToUser(me);
+        set((state) => {
+          state.user = user;
+          state.isAuthenticated = true;
+          state.role = user.role ?? null;
+          Object.assign(state, computeRoleFlags(me.roles));
+        });
+        return true;
+      } catch (err) {
+        logger.warn('Session refresh failed', { message: (err as Error).message });
+        return false;
+      }
+    },
+
+    checkSessionValidity: async () => {
+      // In SSO mode, we don't have a Session object. Return null always.
+      // Consumers should use isAuthenticated instead.
+      return get().session;
+    },
+
+    restoreUserFromStorage: (sessionUser) => {
+      // Legacy method — no longer used in SSO mode. Return a minimal user.
+      return {
+        id: sessionUser?.id ?? sessionUser?.sub ?? '',
+        email: sessionUser?.email,
+      };
+    },
+  })),
+    {
+      name: AUTH_STORAGE_KEY,
+      version: AUTH_STORAGE_VERSION,
+      storage: createJSONStorage(() => localStorage),
+      /**
+       * Only persist non-sensitive user data. Never persist:
+       * - Access/refresh tokens (auth-client handles these)
+       * - Session objects (derived from SSO)
+       * - Loading state (always starts fresh)
+       * - Error notifications (ephemeral)
+       */
+      partialize: (state) => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+        role: state.role,
+        isStudent: state.isStudent,
+        isEducator: state.isEducator,
+        isAdmin: state.isAdmin,
+        isRecruiter: state.isRecruiter,
+        isLearner: state.isLearner,
+      }),
+      /**
+       * When rehydrating from storage, reset transient fields
+       * so the UI correctly shows a loading state until initialize() completes.
+       */
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.loading = true;
+          state.session = null;
+          state.errorNotification = null;
+        }
+      },
+    },
+  ),
 );
 
-// Setup Supabase auth state change listener
+// ─── Cross-tab sync via auth-client ────────────────────────────
+
 if (typeof window !== 'undefined') {
-  supabase.auth.onAuthStateChange((event, session) => {
+  ssoClient.onAuthStateChange(async (event) => {
     const store = useAuthStore.getState();
 
-    if (event === 'SIGNED_IN' && session?.user) {
-      store.setSession(session as Session);
-    } else if (event === 'SIGNED_OUT') {
+    if (event === 'LOGOUT') {
       store.setUser(null);
-      localStorage.removeItem('user');
-      localStorage.removeItem('userEmail');
-    } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-      store.setSession(session as Session);
-    } else if (event === 'USER_UPDATED' && session?.user) {
-      const userData = store.restoreUserFromStorage(session.user);
-      store.setUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
+    } else if (event === 'LOGIN' || event === 'REFRESH') {
+      try {
+        const me = await ssoClient.getMe();
+        const user = mapMeToUser(me);
+        useAuthStore.setState({
+          user,
+          isAuthenticated: true,
+          role: user.role ?? null,
+          ...computeRoleFlags(me.roles),
+        });
+      } catch {
+        // Session expired during rehydration — ignore
+      }
     }
   });
 }
 
-// Convenience hooks
+// ─── Convenience hooks (same API as legacy store) ──────────────
+
 export const useUser = () => useAuthStore((state) => state.user);
 export const useSession = () => useAuthStore((state) => state.session);
 export const useIsAuthenticated = () => useAuthStore((state) => state.isAuthenticated);
@@ -451,7 +469,6 @@ export const useUserRole = () => {
   const isAdmin = useAuthStore((state) => state.isAdmin);
   const isRecruiter = useAuthStore((state) => state.isRecruiter);
   const isLearner = useAuthStore((state) => state.isLearner);
-
   return { role, isStudent, isEducator, isAdmin, isRecruiter, isLearner };
 };
 
@@ -463,33 +480,21 @@ export const useAuthActions = () => {
   const refreshSession = useAuthStore((state) => state.refreshSession);
   const showErrorNotification = useAuthStore((state) => state.showErrorNotification);
   const dismissErrorNotification = useAuthStore((state) => state.dismissErrorNotification);
-
-  return {
-    login,
-    logout,
-    updateUser,
-    initialize,
-    refreshSession,
-    showErrorNotification,
-    dismissErrorNotification,
-  };
+  return { login, logout, updateUser, initialize, refreshSession, showErrorNotification, dismissErrorNotification };
 };
 
-// Token Refresh Error Notification
 export const useTokenRefreshErrorNotification = () => {
   const showErrorNotification = useAuthStore((state) => state.showErrorNotification);
   const dismissErrorNotification = useAuthStore((state) => state.dismissErrorNotification);
-
   return { showErrorNotification, dismissErrorNotification };
 };
-
 
 // Export store for direct access
 export default useAuthStore;
 
 /**
- * Initialize all stores
- * Called once at app startup to initialize auth state
+ * Initialize all stores.
+ * Called once at app startup to initialize auth state via SSO.
  */
 export const initializeStores = async () => {
   await useAuthStore.getState().initialize();

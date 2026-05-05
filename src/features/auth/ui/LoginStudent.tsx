@@ -16,10 +16,8 @@ import {
     Share2,
 } from "lucide-react";
 
-import { loginStudent } from "@/features/auth/api";
+import { ssoLoginWithRoleCheck } from "@/features/auth/lib";
 import { FeatureCard } from "@/shared/ui";
-
-import { useAuthActions } from '@/shared/model/authStore';
 export default function LoginStudent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,7 +25,6 @@ export default function LoginStudent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const { login } = useAuthActions();
   const navigate = useNavigate();
 
   const primary = "#3261A5";
@@ -39,38 +36,20 @@ export default function LoginStudent() {
     setLoading(true);
 
     try {
-      // Validate inputs
-      if (!email || !password) {
-        setError("Please enter both email and password.");
-        setLoading(false);
-        return;
-      }
-
-      // Authenticate student with Supabase Auth
-      const result = await loginStudent(email, password);
+      // SSO login — verifies the user has a student role
+      const result = await ssoLoginWithRoleCheck(email, password, [
+        'student',
+        'school_student',
+        'college_student',
+      ]);
 
       if (!result.success) {
-        setError(result.error || "Login failed. Please check your credentials.");
+        setError(result.error || 'Login failed. Please check your credentials.');
         setLoading(false);
         return;
       }
 
-      // Store student data in context
-      const studentData = result.student;
-      login({ 
-        id: studentData.id,
-        user_id: studentData.user_id,
-        name: studentData.name || studentData.profile?.name || '',
-        email: studentData.email,
-        role: "student",
-        school_id: studentData.school_id,
-        university_college_id: studentData.university_college_id,
-        school: studentData.schools,
-        university_college: studentData.university_colleges,
-        approval_status: studentData.approval_status
-      });
-
-      // Navigate to dashboard
+      // Navigate to student dashboard
       navigate("/student/dashboard");
     } catch (err) {
       console.error("Login error:", err);
@@ -128,6 +107,7 @@ export default function LoginStudent() {
               type={showPassword ? "text" : "password"}
               id="password"
               required
+              minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"

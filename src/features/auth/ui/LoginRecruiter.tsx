@@ -14,10 +14,9 @@ import {
     Mail,
     Zap,
 } from "lucide-react";
-import { loginRecruiter } from "@/features/auth/api";
+import { ssoLoginWithRoleCheck } from "@/features/auth/lib";
 import { FeatureCard } from "@/shared/ui";
 
-import { useAuthActions } from '@/shared/model/authStore';
 export default function LoginRecruiter() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,7 +24,6 @@ export default function LoginRecruiter() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const { login } = useAuthActions();
   const navigate = useNavigate();
 
   const primary = "#0a6aba";
@@ -37,30 +35,13 @@ export default function LoginRecruiter() {
     setLoading(true);
 
     try {
-      // Validate inputs
-      if (!email || !password) {
-        setError("Please enter both email and password.");
+      const result = await ssoLoginWithRoleCheck(email, password, ['recruiter', 'hr']);
+
+      if (!result.success) {
+        setError(result.error || 'Login failed. Please check your credentials.');
         setLoading(false);
         return;
       }
-
-      // Authenticate with Supabase Auth
-      const { success, data, error: errMsg } = await loginRecruiter(email, password);
-
-      if (!success) {
-        setError(errMsg || "Login failed. Please check your credentials.");
-        setLoading(false);
-        return;
-      }
-
-      // Save recruiter session in context
-      login({
-        id: data.id,
-        user_id: data.user_id,
-        name: data.name,
-        email: data.email,
-        role: "recruiter",
-      });
 
       navigate("/recruitment");
     } catch (err) {
@@ -117,6 +98,7 @@ export default function LoginRecruiter() {
             type={showPassword ? "text" : "password"}
             id="password"
             required
+            minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter your password"

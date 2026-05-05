@@ -1,4 +1,5 @@
 import { initAuth, withAuth, requireRole, requireProduct } from '@rareminds-eym/auth-core';
+import { getServiceClient } from './supabase';
 
 /**
  * Auth-core is initialized lazily on first request.
@@ -18,5 +19,5 @@ function ensureInit(ssoDomain?: string) {
 // Pages Functions will call ensureInit() on first request if SSO_DOMAIN env is set.
 ensureInit();
 
-export { withAuth, requireRole, requireProduct, ensureInit };
+export { withAuth, requireRole, requireProduct, ensureInit, getServiceClient };
 

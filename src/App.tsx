@@ -1,6 +1,7 @@
 import { Toaster as HotToaster } from 'react-hot-toast';
 import { BrowserRouter } from 'react-router-dom';
 import { useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { TourWrapper } from './app/providers/tour-wrapper';
 import { TokenRefreshErrorNotification } from './app/providers/token-refresh-notification';
 import AppRoutes from './app/routes/AppRoutes';
@@ -9,8 +10,9 @@ import { getLogger } from '@/shared/config/logging';
 const logger = getLogger('app');
 
 // Zustand stores - state management migrated from Context
-import { initializeStores, useUser } from '@/shared/model/authStore';
+import { initializeStores, useUser, useAuthLoading, useIsAuthenticated } from '@/shared/model/authStore';
 import { useSubscriptionStore } from '@/features/subscription/model/subscriptionStore';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 /**
  * SubscriptionInitializer
@@ -56,6 +58,40 @@ function App() {
   useEffect(() => {
     initializeStores();
   }, []);
+
+  const authLoading = useAuthLoading();
+  const isAuthenticated = useIsAuthenticated();
+  const queryClient = useQueryClient();
+
+  // Clear TanStack Query cache on logout (prevent stale data from previous user)
+  useEffect(() => {
+    if (!isAuthenticated) {
+      queryClient.clear();
+    }
+  }, [isAuthenticated, queryClient]);
+
+  // Clear TanStack Query cache on org switch
+  useEffect(() => {
+    const unsub = ssoClient.onAuthStateChange((event) => {
+      if (event === 'REFRESH') {
+        // Org switch triggers a REFRESH event with new org_id in the JWT
+        queryClient.invalidateQueries();
+      }
+    });
+    return unsub;
+  }, [queryClient]);
+
+  // Show loading state during session initialization
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-500 text-sm">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
 

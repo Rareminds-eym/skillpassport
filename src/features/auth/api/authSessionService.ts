@@ -1,134 +1,71 @@
-import { supabase } from '@/shared/api/supabaseClient';
-import { logAuthEvent, generateCorrelationId, mapSupabaseError } from '@/features/auth/lib';
-
 /**
- * Auth Session Service
- * Centralized service for all Supabase auth session operations
- * Extracted from page components to maintain FSD architecture
+ * Auth Session Service (SSO Adapter)
+ *
+ * This module previously called supabase.auth directly.
+ * It now delegates to the SSO auth store for backward compatibility
+ * with the 20+ consumer files that import it.
+ *
+ * @deprecated Consumers should migrate to using `useAuthStore` or `useUser()` directly.
  */
-
-// ============================================================================
-// SESSION MANAGEMENT
-// ============================================================================
+import { useAuthStore } from '@/shared/model/authStore';
 
 /**
- * Get current session
- * @returns {Promise<{ session: object | null, error: any | null }>}
- */
-export const getSession = async () => {
-  const correlationId = generateCorrelationId();
-
-  try {
-    const { data: { session }, error } = await supabase.auth.getSession();
-
-    if (error) {
-      logAuthEvent('warn', 'Get session failed', { correlationId, errorCode: mapSupabaseError(error) });
-      return { data: { session: null }, error };
-    }
-
-    return { data: { session }, error: null };
-  } catch (error) {
-    logAuthEvent('error', 'Get session error', { correlationId });
-    return { data: { session: null }, error };
-  }
-};
-
-/**
- * Get current authenticated user
- * @returns {Promise<{ user: object | null, error: any | null }>}
+ * Get current user from the SSO auth store.
+ * @deprecated Use `useAuthStore.getState().user` or `useUser()` hook instead.
  */
 export const getUser = async () => {
-  const correlationId = generateCorrelationId();
-
-  try {
-    const { data: { user }, error } = await supabase.auth.getUser();
-
-    if (error) {
-      logAuthEvent('warn', 'Get user failed', { correlationId, errorCode: mapSupabaseError(error) });
-      return { data: { user: null }, error };
-    }
-
-    return { data: { user }, error: null };
-  } catch (error) {
-    logAuthEvent('error', 'Get user error', { correlationId });
-    return { data: { user: null }, error };
+  const { user } = useAuthStore.getState();
+  if (!user) {
+    return { data: { user: null }, error: { message: 'Not authenticated' } };
   }
+  return {
+    data: {
+      user: {
+        id: user.id,
+        email: user.email,
+        user_metadata: {
+          role: user.role,
+          user_role: user.role,
+        },
+      },
+    },
+    error: null,
+  };
 };
 
 /**
- * Subscribe to auth state changes
- * @param {Function} callback - Callback function to handle auth state changes
- * @returns {object} Subscription object with unsubscribe method
+ * Get current session info from the SSO auth store.
+ * @deprecated Use `useAuthStore.getState().isAuthenticated` instead.
  */
-export const onAuthStateChange = (callback: (event: string, session: any) => void) => {
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(callback);
-  return subscription;
+export const getSession = async () => {
+  const { user, isAuthenticated } = useAuthStore.getState();
+  if (!isAuthenticated || !user) {
+    return { data: { session: null }, error: null };
+  }
+  return {
+    data: {
+      session: {
+        user: {
+          id: user.id,
+          email: user.email,
+          user_metadata: {
+            role: user.role,
+            user_role: user.role,
+          },
+        },
+      },
+    },
+    error: null,
+  };
 };
 
 /**
- * Sign in with password
- * @param {string} email
- * @param {string} password
- * @returns {Promise<{ data: object | null, error: any | null }>}
+ * Bundled service object for backward compatibility.
+ * @deprecated Import individual functions or use the auth store directly.
  */
-export const signInWithPassword = async (email: string, password: string) => {
-  const correlationId = generateCorrelationId();
-
-  try {
-    logAuthEvent('info', 'Sign in with password attempt', { correlationId });
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      logAuthEvent('error', 'Sign in with password failed', { correlationId, errorCode: mapSupabaseError(error) });
-      return { data: null, error };
-    }
-
-    logAuthEvent('info', 'Sign in with password successful', { correlationId, userId: data.user?.id });
-    return { data, error: null };
-  } catch (error) {
-    logAuthEvent('error', 'Sign in with password error', { correlationId });
-    return { data: null, error };
-  }
-};
-
-// ============================================================================
-// ADMIN OPERATIONS
-// ============================================================================
-
-/**
- * List all users (admin only)
- * @returns {Promise<{ users: array | null, error: any | null }>}
- */
-export const listUsers = async () => {
-  const correlationId = generateCorrelationId();
-
-  try {
-    const { data, error } = await supabase.auth.admin.listUsers();
-
-    if (error) {
-      logAuthEvent('error', 'List users failed', { correlationId, errorCode: mapSupabaseError(error) });
-      return { users: null, error };
-    }
-
-    return { users: data?.users || [], error: null };
-  } catch (error) {
-    logAuthEvent('error', 'List users error', { correlationId });
-    return { users: null, error };
-  }
-};
-
-// ============================================================================
-// EXPORTS
-// ============================================================================
-
 export const authSessionService = {
-  getSession,
   getUser,
-  onAuthStateChange,
-  signInWithPassword,
-  listUsers,
+  getSession,
 };
+
+export default authSessionService;

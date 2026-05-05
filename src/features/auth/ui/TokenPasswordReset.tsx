@@ -10,6 +10,8 @@ import {
   Eye, 
   EyeOff
 } from 'lucide-react';
+import { ssoClient } from '@/shared/api/ssoClient';
+import { AuthFetchError } from '@rareminds-eym/auth-client';
 
 interface TokenPasswordResetState {
   step: 'loading' | 'email-input' | 'reset' | 'success' | 'error';
@@ -51,8 +53,8 @@ const TokenPasswordReset = () => {
       return;
     }
 
-    // Validate token format (32 character hex string)
-    if (!/^[a-f0-9]{32}$/.test(tokenFromUrl)) {
+    // Validate token format (UUID format from SSO worker)
+    if (!/^[a-f0-9-]{36}$/.test(tokenFromUrl) && !/^[a-f0-9]{32}$/.test(tokenFromUrl)) {
       setState(prev => ({
         ...prev,
         step: 'error',
@@ -87,38 +89,9 @@ const TokenPasswordReset = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      console.log('🔐 Sending password reset request for:', state.email);
-      
-      // Use user-api to send reset link
-      const userApiUrl = import.meta.env.VITE_USER_API_URL || 'http://localhost:3001';
-      console.log('📡 User API URL:', userApiUrl);
-      
-      const response = await fetch(`${userApiUrl}/reset-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'send',
-          email: state.email
-        })
-      });
+      await ssoClient.forgotPassword({ email: state.email });
 
-      console.log('📡 Response status:', response.status);
-      const result = await response.json();
-      console.log('📡 Response data:', result);
-
-      if (!response.ok || !result.success) {
-        console.error('❌ Failed to send reset link:', result.error);
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: result.error || 'Failed to send reset link'
-        }));
-        return;
-      }
-
-      console.log('✅ Reset link sent successfully');
+      // Always show success (prevents email enumeration)
       setState(prev => ({
         ...prev,
         loading: false,
@@ -127,12 +100,21 @@ const TokenPasswordReset = () => {
       }));
 
     } catch (error) {
-      console.error('❌ Send reset link error:', error);
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: 'An unexpected error occurred. Please try again'
-      }));
+      if (error instanceof AuthFetchError && error.status === 429) {
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: 'Too many requests. Please try again in a few minutes.'
+        }));
+      } else {
+        // Show success regardless (prevents enumeration)
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          step: 'success',
+          email: state.email
+        }));
+      }
     }
   };
 
@@ -144,8 +126,8 @@ const TokenPasswordReset = () => {
       return;
     }
 
-    if (state.newPassword.length < 6) {
-      setState(prev => ({ ...prev, error: 'Password must be at least 6 characters long' }));
+    if (state.newPassword.length < 8) {
+      setState(prev => ({ ...prev, error: 'Password must be at least 8 characters long' }));
       return;
     }
 
@@ -157,53 +139,28 @@ const TokenPasswordReset = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      console.log('🔐 Resetting password with token');
-      console.log('Token:', state.token);
-      
-      // Use user-api to reset password with token
-      const userApiUrl = import.meta.env.VITE_USER_API_URL || 'http://localhost:3001';
-      console.log('📡 User API URL:', userApiUrl);
-      
-      const response = await fetch(`${userApiUrl}/reset-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'reset-with-token',
-          otp: state.token, // Using 'otp' field for token for API compatibility
-          newPassword: state.newPassword
-        })
+      await ssoClient.resetPassword({
+        token: state.token,
+        password: state.newPassword,
       });
 
-      console.log('📡 Response status:', response.status);
-      const result = await response.json();
-      console.log('📡 Response data:', result);
-
-      if (!response.ok || !result.success) {
-        console.error('❌ Failed to reset password:', result.error);
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: result.error || 'Failed to reset password'
-        }));
-        return;
-      }
-
-      console.log('✅ Password reset successfully');
       setState(prev => ({
         ...prev,
         loading: false,
         step: 'success',
-        email: result.email || ''
       }));
 
     } catch (error) {
-      console.error('❌ Password reset error:', error);
+      let errorMessage = 'An unexpected error occurred. Please try again';
+      if (error instanceof AuthFetchError) {
+        if (error.status === 400) errorMessage = 'This reset link has expired or already been used. Please request a new one.';
+        else if (error.status === 429) errorMessage = 'Too many attempts. Please try again later.';
+        else errorMessage = error.message || errorMessage;
+      }
       setState(prev => ({
         ...prev,
         loading: false,
-        error: 'An unexpected error occurred. Please try again'
+        error: errorMessage
       }));
     }
   };
