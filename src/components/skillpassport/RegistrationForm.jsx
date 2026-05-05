@@ -54,15 +54,16 @@ const validateForm = (form, emailVerified, phoneVerified, consentGiven) => {
   if (!form.email?.trim() || !emailRegex.test(form.email)) {
     errors.email = 'Please enter a valid email address';
   }
-  if (!emailVerified) {
-    errors.email = 'Please verify your email address';
-  }
+  // Email verification disabled
+  // if (!emailVerified) {
+  //   errors.email = 'Please verify your email address';
+  // }
   if (!form.phone?.trim() || !phoneRegex.test(form.phone.replace(/\D/g, ''))) {
     errors.phone = 'Please enter a valid 10-digit phone number';
   }
-  // if (!phoneVerified) {
-  //   errors.phone = 'Please verify your phone number';
-  // }
+  if (!phoneVerified) {
+    errors.phone = 'Please verify your phone number';
+  }
   if (!consentGiven) {
     errors.consent = 'Please agree to the terms and payment consent';
   }
@@ -531,25 +532,55 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
       setPhoneOtpTimeout(60);
     }
   }, [errors]);
-  const handleSendOTP = async () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!form.email?.trim() || !emailRegex.test(form.email)) {
-      setErrors(prev => ({ ...prev, email: 'Please enter a valid email address' }));
-      return;
-    }
+  // Email verification disabled
+  // const handleSendOTP = async () => {
+  //   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  //   if (!form.email?.trim() || !emailRegex.test(form.email)) {
+  //     setErrors(prev => ({ ...prev, email: 'Please enter a valid email address' }));
+  //     return;
+  //   }
 
+  //   setSendingOTP(true);
+  //   setOtpError('');
+
+  //   try {
+  //     const otp = generateOTP();
+  //     setGeneratedOTP(otp);
+  //     await sendOTPEmail(form.email.trim(), otp, form.name.trim());
+  //     setOtpSent(true);
+  //   } catch (error) {
+  //     setOtpError('Failed to send verification code. Please try again.');
+  //   } finally {
+  //     setSendingOTP(false);
+  //   }
+  // };
+
+  // Post-payment email verification
+  const handleSendPostPaymentOTP = async () => {
+    if (!orderDetails?.email) return;
+    
     setSendingOTP(true);
     setOtpError('');
 
     try {
       const otp = generateOTP();
       setGeneratedOTP(otp);
-      await sendOTPEmail(form.email.trim(), otp, form.name.trim());
+      await sendOTPEmail(orderDetails.email, otp, orderDetails.name);
       setOtpSent(true);
     } catch (error) {
       setOtpError('Failed to send verification code. Please try again.');
     } finally {
       setSendingOTP(false);
+    }
+  };
+
+  const handleVerifyPostPaymentOTP = (code) => {
+    if (code === generatedOTP) {
+      setEmailVerified(true);
+      setOtpSent(false);
+      setOtpError('');
+    } else {
+      setOtpError('Invalid verification code. Please try again.');
     }
   };
 
@@ -801,6 +832,84 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                   </p>
                 </div>
               </div>
+
+              {/* Post-payment Email Verification */}
+              {!emailVerified && (
+                <div className="mt-6 sm:mt-8">
+                  <div className="p-4 sm:p-5 bg-orange-50 rounded-xl sm:rounded-2xl border-2 border-orange-200">
+                    <div className="flex items-start gap-3 mb-4">
+                      <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <ShieldCheck className="w-5 h-5 text-orange-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-1">Verify Your Email</h3>
+                        <p className="text-xs sm:text-sm text-gray-600">
+                          Please verify your email to complete your registration and access your account.
+                        </p>
+                      </div>
+                    </div>
+
+                    {!otpSent ? (
+                      <button
+                        onClick={handleSendPostPaymentOTP}
+                        disabled={sendingOTP}
+                        className="w-full py-3 sm:py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        {sendingOTP ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Sending...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="w-4 h-4" />
+                            <span>Send Verification Code</span>
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <div className="space-y-3">
+                        <p className="text-sm text-gray-700 font-medium">
+                          Enter the 6-digit code sent to <span className="font-bold">{orderDetails.email}</span>
+                        </p>
+                        <OTPInput
+                          length={6}
+                          email={orderDetails.email}
+                          expirySeconds={600}
+                          onComplete={(code) => {
+                            setOtpValue(code);
+                            setTimeout(() => {
+                              handleVerifyPostPaymentOTP(code);
+                            }, 500);
+                          }}
+                          onResend={handleSendPostPaymentOTP}
+                          error={otpError}
+                          isVerifying={verifyingOTP}
+                          isSuccess={emailVerified}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {emailVerified && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-6 sm:mt-8 p-4 sm:p-5 bg-emerald-50 rounded-xl sm:rounded-2xl border-2 border-emerald-200"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-emerald-900">Email Verified!</h3>
+                      <p className="text-sm text-emerald-700">Your account is now fully activated.</p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
             </div>
           </motion.div>
         </div>
@@ -987,33 +1096,35 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                       onChange={(e) => updateField('email', e.target.value)}
                       placeholder="you@example.com"
                       error={errors.email}
-                      verified={emailVerified}
-                      disabled={emailVerified}
-                      rightElement={
-                        !emailVerified && (
-                          <button
-                            type="button"
-                            onClick={handleSendOTP}
-                            disabled={sendingOTP || !form.email}
-                            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
-                          >
-                            {sendingOTP ? (
-                              <>
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                                <span className="hidden sm:inline">Sending...</span>
-                                <span className="sm:hidden">...</span>
-                              </>
-                            ) : otpSent ? (
-                              'Resend'
-                            ) : (
-                              'Verify'
-                            )}
-                          </button>
-                        )
-                      }
+                      // Email verification disabled
+                      // verified={emailVerified}
+                      // disabled={emailVerified}
+                      // rightElement={
+                      //   !emailVerified && (
+                      //     <button
+                      //       type="button"
+                      //       onClick={handleSendOTP}
+                      //       disabled={sendingOTP || !form.email}
+                      //       className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
+                      //     >
+                      //       {sendingOTP ? (
+                      //         <>
+                      //           <Loader2 className="w-3 h-3 animate-spin" />
+                      //           <span className="hidden sm:inline">Sending...</span>
+                      //           <span className="sm:hidden">...</span>
+                      //         </>
+                      //       ) : otpSent ? (
+                      //         'Resend'
+                      //       ) : (
+                      //         'Verify'
+                      //       )}
+                      //     </button>
+                      //   )
+                      // }
                     />
 
-                    <AnimatePresence>
+                    {/* Email OTP verification UI - disabled */}
+                    {/* <AnimatePresence>
                       {otpSent && !emailVerified && (
                         <motion.div
                           initial={{ opacity: 0, height: 0 }}
@@ -1048,9 +1159,10 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                           </div>
                         </motion.div>
                       )}
-                    </AnimatePresence>
+                    </AnimatePresence> */}
 
-                    <AnimatePresence>
+                    {/* Email verified badge - disabled */}
+                    {/* <AnimatePresence>
                       {emailVerified && (
                         <motion.div
                           initial={{ opacity: 0, y: -10 }}
@@ -1061,7 +1173,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                           <span className="text-xs sm:text-sm font-semibold">Email verified successfully</span>
                         </motion.div>
                       )}
-                    </AnimatePresence>
+                    </AnimatePresence> */}
                   </div>
                   <div>
                     <InputField
@@ -1073,35 +1185,33 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                       onChange={(e) => updateField('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
                       placeholder="10-digit mobile number"
                       error={errors.phone}
-                      // Phone verification UI disabled — number is collected but not verified
-                      // verified={phoneVerified}
-                      // disabled={phoneVerified}
-                      // rightElement={
-                      //   !phoneVerified && (
-                      //     <button
-                      //       type="button"
-                      //       onClick={handleSendPhoneOTP}
-                      //       disabled={sendingPhoneOTP || !form.phone || form.phone.length !== 10}
-                      //       className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
-                      //     >
-                      //       {sendingPhoneOTP ? (
-                      //         <>
-                      //           <Loader2 className="w-3 h-3 animate-spin" />
-                      //           <span className="hidden sm:inline">Sending...</span>
-                      //           <span className="sm:hidden">...</span>
-                      //         </>
-                      //       ) : phoneOtpSent ? (
-                      //         'Resend'
-                      //       ) : (
-                      //         'Verify'
-                      //       )}
-                      //     </button>
-                      //   )
-                      // }
+                      verified={phoneVerified}
+                      disabled={phoneVerified}
+                      rightElement={
+                        !phoneVerified && (
+                          <button
+                            type="button"
+                            onClick={handleSendPhoneOTP}
+                            disabled={sendingPhoneOTP || !form.phone || form.phone.length !== 10}
+                            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
+                          >
+                            {sendingPhoneOTP ? (
+                              <>
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                <span className="hidden sm:inline">Sending...</span>
+                                <span className="sm:hidden">...</span>
+                              </>
+                            ) : phoneOtpSent ? (
+                              'Resend'
+                            ) : (
+                              'Verify'
+                            )}
+                          </button>
+                        )
+                      }
                     />
 
-                    {/* Phone OTP input — disabled */}
-                    {/* <AnimatePresence>
+                    <AnimatePresence>
                       {phoneOtpSent && !phoneVerified && (
                         <motion.div
                           key={phoneVerificationId}
@@ -1129,6 +1239,8 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                                     setPhoneVerified(true);
                                     setPhoneOtpSent(false);
                                     setPhoneOtpError('');
+                                    // Clear phone error when verified
+                                    setErrors(prev => ({ ...prev, phone: null }));
                                   } else {
                                     setPhoneOtpError('Invalid OTP. Please try again.');
                                   }
@@ -1146,10 +1258,9 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                           </div>
                         </motion.div>
                       )}
-                    </AnimatePresence> */}
+                    </AnimatePresence>
 
-                    {/* Phone verified badge — disabled */}
-                    {/* <AnimatePresence>
+                    <AnimatePresence>
                       {phoneVerified && (
                         <motion.div
                           initial={{ opacity: 0, y: -10 }}
@@ -1160,7 +1271,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                           <span className="text-xs sm:text-sm font-semibold">Phone verified successfully</span>
                         </motion.div>
                       )}
-                    </AnimatePresence> */}
+                    </AnimatePresence>
                   </div>
 
                   {/* WhatsApp Opt-in - Moved here */}
@@ -1330,33 +1441,35 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                   onChange={(e) => updateField('email', e.target.value)}
                   placeholder="you@example.com"
                   error={errors.email}
-                  verified={emailVerified}
-                  disabled={emailVerified}
-                  rightElement={
-                    !emailVerified && (
-                      <button
-                        type="button"
-                        onClick={handleSendOTP}
-                        disabled={sendingOTP || !form.email}
-                        className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
-                      >
-                        {sendingOTP ? (
-                          <>
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                            <span className="hidden sm:inline">Sending...</span>
-                            <span className="sm:hidden">...</span>
-                          </>
-                        ) : otpSent ? (
-                          'Resend'
-                        ) : (
-                          'Verify'
-                        )}
-                      </button>
-                    )
-                  }
+                  // Email verification disabled
+                  // verified={emailVerified}
+                  // disabled={emailVerified}
+                  // rightElement={
+                  //   !emailVerified && (
+                  //     <button
+                  //       type="button"
+                  //       onClick={handleSendOTP}
+                  //       disabled={sendingOTP || !form.email}
+                  //       className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
+                  //     >
+                  //       {sendingOTP ? (
+                  //         <>
+                  //           <Loader2 className="w-3 h-3 animate-spin" />
+                  //           <span className="hidden sm:inline">Sending...</span>
+                  //           <span className="sm:hidden">...</span>
+                  //         </>
+                  //       ) : otpSent ? (
+                  //         'Resend'
+                  //       ) : (
+                  //         'Verify'
+                  //       )}
+                  //     </button>
+                  //   )
+                  // }
                 />
 
-                <AnimatePresence>
+                {/* Email OTP verification UI - disabled */}
+                {/* <AnimatePresence>
                   {otpSent && !emailVerified && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
@@ -1391,9 +1504,10 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                       </div>
                     </motion.div>
                   )}
-                </AnimatePresence>
+                </AnimatePresence> */}
 
-                <AnimatePresence>
+                {/* Email verified badge - disabled */}
+                {/* <AnimatePresence>
                   {emailVerified && (
                     <motion.div
                       initial={{ opacity: 0, y: -10 }}
@@ -1404,7 +1518,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                       <span className="text-xs sm:text-sm font-semibold">Email verified successfully</span>
                     </motion.div>
                   )}
-                </AnimatePresence>
+                </AnimatePresence> */}
               </div>
 
               <div>
@@ -1417,35 +1531,33 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                   onChange={(e) => updateField('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
                   placeholder="10-digit mobile number"
                   error={errors.phone}
-                  // Phone verification UI disabled — number is collected but not verified
-                  // verified={phoneVerified}
-                  // disabled={phoneVerified}
-                  // rightElement={
-                  //   !phoneVerified && (
-                  //     <button
-                  //       type="button"
-                  //       onClick={handleSendPhoneOTP}
-                  //       disabled={sendingPhoneOTP || !form.phone || form.phone.length !== 10}
-                  //       className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
-                  //     >
-                  //       {sendingPhoneOTP ? (
-                  //         <>
-                  //           <Loader2 className="w-3 h-3 animate-spin" />
-                  //           <span className="hidden sm:inline">Sending...</span>
-                  //           <span className="sm:hidden">...</span>
-                  //         </>
-                  //       ) : phoneOtpSent ? (
-                  //         'Resend'
-                  //       ) : (
-                  //         'Verify'
-                  //       )}
-                  //     </button>
-                  //   )
-                  // }
+                  verified={phoneVerified}
+                  disabled={phoneVerified}
+                  rightElement={
+                    !phoneVerified && (
+                      <button
+                        type="button"
+                        onClick={handleSendPhoneOTP}
+                        disabled={sendingPhoneOTP || !form.phone || form.phone.length !== 10}
+                        className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
+                      >
+                        {sendingPhoneOTP ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            <span className="hidden sm:inline">Sending...</span>
+                            <span className="sm:hidden">...</span>
+                          </>
+                        ) : phoneOtpSent ? (
+                          'Resend'
+                        ) : (
+                          'Verify'
+                        )}
+                      </button>
+                    )
+                  }
                 />
 
-                {/* Phone OTP input — disabled */}
-                {/* <AnimatePresence>
+                <AnimatePresence>
                   {phoneOtpSent && !phoneVerified && (
                     <motion.div
                       key={phoneVerificationId}
@@ -1473,6 +1585,8 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                                 setPhoneVerified(true);
                                 setPhoneOtpSent(false);
                                 setPhoneOtpError('');
+                                // Clear phone error when verified
+                                setErrors(prev => ({ ...prev, phone: null }));
                               } else {
                                 setPhoneOtpError('Invalid OTP. Please try again.');
                               }
@@ -1490,10 +1604,9 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                       </div>
                     </motion.div>
                   )}
-                </AnimatePresence> */}
+                </AnimatePresence>
 
-                {/* Phone verified badge — disabled */}
-                {/* <AnimatePresence>
+                <AnimatePresence>
                   {phoneVerified && (
                     <motion.div
                       initial={{ opacity: 0, y: -10 }}
@@ -1504,7 +1617,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                       <span className="text-xs sm:text-sm font-semibold">Phone verified successfully</span>
                     </motion.div>
                   )}
-                </AnimatePresence> */}
+                </AnimatePresence>
               </div>
 
               {/* WhatsApp Opt-in - Moved here */}
