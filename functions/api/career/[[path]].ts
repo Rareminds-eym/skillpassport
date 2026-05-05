@@ -18,7 +18,7 @@ import { getAPIKeys } from '../shared/ai-config';
 import { handleCareerChat } from './handlers/chat';
 import { handleRecommendOpportunities } from './handlers/recommend';
 import { handleAnalyzeAssessment } from './handlers/analyze-assessment';
-import { handleGenerateEmbedding } from './handlers/generate-embedding';
+import { handleGenerateEmbedding } from '../embedding/handlers/generateEmbedding';
 import { handleGenerateFieldKeywords } from './handlers/field-keywords';
 import { handleParseResume } from './handlers/parse-resume';
 import { handleGetActions } from './handlers/get-actions';
