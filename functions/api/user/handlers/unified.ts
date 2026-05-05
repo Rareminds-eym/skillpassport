@@ -10,6 +10,7 @@ import { jsonResponse } from '../../../../src/functions-lib/response';
 import type { PagesEnv } from '../../../../src/functions-lib/types';
 import type { UnifiedSignupRequest } from '../types';
 import { sendWelcomeEmail } from '../utils/email';
+import { apiLogger } from '../../../lib/logger';
 import {
   capitalizeFirstLetter,
   validateEmail,
@@ -155,7 +156,14 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
       await createRoleSpecificRecord(supabaseAdmin, userId, email, fullName, firstName, lastName, body);
 
       // 4. Send welcome email
-      await sendWelcomeEmail(env, email, fullName, body.password, body.role, '');
+      const baseUrl = new URL(request.url).origin;
+      let emailSent = true;
+      try {
+        await sendWelcomeEmail(env, baseUrl, email, fullName, body.role, '');
+      } catch (emailError) {
+        emailSent = false;
+        apiLogger.error('Welcome email failed', emailError as Error);
+      }
 
       return jsonResponse({
         success: true,
@@ -165,7 +173,11 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
           email,
           name: fullName,
           role: body.role,
+          emailSent: emailSent
         },
+        ...(emailSent ? {} : { 
+          warning: 'Account created but welcome email could not be sent. Please check your email or contact support.' 
+        })
       });
     } catch (error) {
       // ROLLBACK: Delete auth user if any subsequent step fails
