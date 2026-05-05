@@ -41,7 +41,7 @@ import {
   buildOpportunityTextFromDatabase,
 } from '../services/textBuilder';
 import { updateEmbedding } from '../services/databaseUpdater';
-import { EmbeddingError, OpportunityData, CourseData } from '../types';
+import { EmbeddingError } from '../types';
 import { ALLOWED_TABLES, EMBEDDING_CONFIG } from '../config/constants';
 
 interface GenerateEmbeddingRequest {
@@ -152,28 +152,15 @@ const ENTITY_CONFIGS: Record<string, EntityConfig> = {
   },
 };
 
-/**
- * Validate entity configuration at runtime
- * Returns validation result instead of throwing to prevent application crashes
- */
-function validateEntityConfig(tableName: string, config: EntityConfig): { valid: boolean; error?: string } {
+// Startup-time config validation: Ensure ownershipField is included in selectFields
+for (const [tableName, config] of Object.entries(ENTITY_CONFIGS)) {
   if (config.ownershipField && config.selectFields !== '*') {
     const fields = config.selectFields.split(',').map(f => f.trim());
     if (!fields.includes(config.ownershipField)) {
-      return {
-        valid: false,
-        error: `Configuration error for table "${tableName}": ownershipField "${config.ownershipField}" must be included in selectFields "${config.selectFields}"`
-      };
+      throw new Error(
+        `Configuration error for table "${tableName}": ownershipField "${config.ownershipField}" must be included in selectFields "${config.selectFields}"`
+      );
     }
-  }
-  return { valid: true };
-}
-
-// Log configuration validation errors at startup without crashing
-for (const [tableName, config] of Object.entries(ENTITY_CONFIGS)) {
-  const validation = validateEntityConfig(tableName, config);
-  if (!validation.valid) {
-    console.error(`[Config Validation] ${validation.error}`);
   }
 }
 
@@ -209,7 +196,7 @@ async function verifyEntityOwnership(
       return { authorized: false, error: 'Student not found or access denied' };
     }
     
-    return { authorized: true, data: data as Record<string, unknown> as DatabaseRecord };
+    return { authorized: true, data: data as unknown as DatabaseRecord };
   }
 
   // For entities with ownership field, verify ownership atomically with data fetch
@@ -266,9 +253,7 @@ async function verifyEntityOwnership(
  */
 async function verifyAdminPrivileges(
   studentId: string,
-  userSupabase: SupabaseClientType,
-  table?: string,
-  entityId?: string
+  userSupabase: SupabaseClientType
 ): Promise<{ authorized: boolean; error?: string }> {
   const [
     { data: adminCheck, error: adminError }, 
@@ -290,10 +275,7 @@ async function verifyAdminPrivileges(
   
   // Check for query errors
   if (adminError || collegeError) {
-    const contextInfo = table && entityId 
-      ? ` for user ${studentId}, table: ${table}, entity: ${entityId}`
-      : ` for user ${studentId}`;
-    console.error(`[Admin Check] Query error${contextInfo}:`, adminError || collegeError);
+    console.error('[Admin Check] Query error:', adminError || collegeError);
     return { 
       authorized: false, 
       error: 'Failed to verify admin privileges' 
@@ -322,11 +304,11 @@ async function fetchAndBuildText(
 ): Promise<string> {
   // Use shared text builders for complex entities
   if (table === 'students') {
-    return await buildStudentTextFromDatabase(supabase, id, preValidatedData ?? undefined);
+    return await buildStudentTextFromDatabase(supabase, id);
   } else if (table === 'opportunities') {
-    return await buildOpportunityTextFromDatabase(supabase, id, preValidatedData as OpportunityData | undefined);
+    return await buildOpportunityTextFromDatabase(supabase, id);
   } else if (table === 'courses') {
-    return await buildCourseTextFromDatabase(supabase, id, preValidatedData as CourseData | undefined);
+    return await buildCourseTextFromDatabase(supabase, id);
   }
 
   // Use configuration-driven approach for simple entities
@@ -359,7 +341,7 @@ async function fetchAndBuildText(
       );
     }
     
-    data = result.data as Record<string, unknown> as DatabaseRecord;
+    data = result.data as unknown as DatabaseRecord;
   }
   
   return config.buildText(data);
@@ -477,40 +459,17 @@ export async function handleGenerateEmbedding(
       }, 400);
     }
 
-    // Runtime validation: Check configuration validity
-    const configValidation = validateEntityConfig(table, config);
-    if (!configValidation.valid) {
-      console.error(`[Config Error] ${configValidation.error}`);
-      return jsonResponse({
-        success: false,
-        error: 'Internal configuration error. Please contact support.'
-      }, 500);
-    }
-
     // Store pre-validated data to prevent race conditions
     let preValidatedData: DatabaseRecord | null = null;
 
     // Check admin privileges for admin-only entities
     if (config.requiresAdmin) {
-      const adminAuth = await verifyAdminPrivileges(studentId, userSupabase, table, id);
+      const adminAuth = await verifyAdminPrivileges(studentId, userSupabase);
       if (!adminAuth.authorized) {
         return jsonResponse({
           success: false,
           error: adminAuth.error
         }, 403);
-      }
-      
-      // Fetch the entity data for admin-authorized entities to prevent re-fetching later
-      if (fromDatabase) {
-        const { data, error } = await supabase.from(table).select('*').eq('id', id).single();
-        if (error || !data) {
-          return jsonResponse({
-            success: false,
-            error: `${config.entityName || 'Entity'} not found: ${id}`
-          }, 404);
-        }
-        // Type assertion: Supabase data is compatible with DatabaseRecord
-        preValidatedData = data as Record<string, unknown> as DatabaseRecord;
       }
     } else {
       // Check entity ownership for user-owned entities ATOMICALLY with data fetch
