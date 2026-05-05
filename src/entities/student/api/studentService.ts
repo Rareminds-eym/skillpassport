@@ -1492,6 +1492,84 @@ export async function updateSoftSkillsByEmail(email: string, skillsData: SkillUp
         logger.error('Error upserting soft skills', upsertError);
         return { success: false, data: null, error: upsertError.message };
       }
+
+      // 🔥 Generate embeddings for individual skills (required for skill-based matching)
+      // Skills need their own embeddings for semantic skill search and matching
+      // We do this efficiently: only for NEW skills without embeddings
+      if (formatted.length > 0) {
+        try {
+          const { generateEmbedding } = await import('@/shared/api/embedding/client');
+          
+          // Only generate embeddings for skills that don't have one yet
+          const skillsNeedingEmbeddings = formatted.filter(skill => {
+            const existing = (existingSkills || []).find(e => e.id === skill.id);
+            return !existing || !existing.embedding; // New skill or existing without embedding
+          });
+          
+          if (skillsNeedingEmbeddings.length > 0) {
+            console.log(`🔄 Generating embeddings for ${skillsNeedingEmbeddings.length} new/updated skills`);
+            
+            // Generate embeddings in parallel (max 3 at a time to avoid rate limits)
+            const batchSize = 3;
+            for (let i = 0; i < skillsNeedingEmbeddings.length; i += batchSize) {
+              const batch = skillsNeedingEmbeddings.slice(i, i + batchSize);
+              
+              await Promise.all(batch.map(async (skill) => {
+                try {
+                  // Generate embedding from skill name with context
+                  const skillText = `Skill: ${skill.name}. ${skill.description || ''}`;
+                  const embedding = await generateEmbedding(skillText, {
+                    table: 'skills',
+                    id: skill.id,
+                    returnEmbedding: true,
+                    skipDatabaseUpdate: true
+                  });
+                  
+                  // Update the skill with the embedding
+                  await supabase
+                    .from('skills')
+                    .update({ embedding })
+                    .eq('id', skill.id);
+                    
+                  console.log(`✅ Generated embedding for skill: ${skill.name}`);
+                } catch (skillEmbedError) {
+                  console.warn(`⚠️ Failed to generate embedding for skill ${skill.name}:`, skillEmbedError);
+                }
+              }));
+            }
+            
+            console.log(`✅ Generated embeddings for ${skillsNeedingEmbeddings.length} skills`);
+          } else {
+            console.log(`ℹ️ All ${formatted.length} skills already have embeddings`);
+          }
+        } catch (error) {
+          console.error('⚠️ Failed to generate skill embeddings:', error);
+        }
+      }
+    }
+
+    // 🔥 OPTIMIZED: Queue debounced embedding regeneration instead of immediate
+    // This prevents multiple rapid regenerations when user makes several changes
+    // ONLY regenerate if skills were added or updated (not just deleted)
+    if (formatted.length > 0) {
+      try {
+        const { queueEmbeddingRegeneration } = await import('@/shared/api/embedding/autoRegenerate');
+        
+        // Queue with debouncing - waits 2 seconds after last change before regenerating
+        // This is non-blocking and won't slow down the UI
+        await queueEmbeddingRegeneration(studentId, { soft_skills: true }, {
+          force: true, // Always regenerate for skill changes
+          immediate: false // Use debouncing for better UX
+        });
+        
+        console.log(`✅ Queued debounced embedding update for student ${studentId} after soft skills update`);
+      } catch (embeddingError) {
+        // Don't fail the whole operation if embedding queueing fails
+        console.error('⚠️ Failed to queue embedding update:', embeddingError);
+      }
+    } else if (toDelete.length > 0) {
+      // If only deletions occurred (no skills remaining), log but don't regenerate
+      console.log(`ℹ️ Skipped embedding regeneration for student ${studentId} - only skill deletions occurred`);
     }
 
     return await getStudentByEmail(email);
@@ -1780,6 +1858,77 @@ export async function updateCertificatesByEmail(email: string, certificatesData:
         logger.error('Error upserting certificates', upsertError);
         return { success: false, data: null, error: upsertError.message };
       }
+
+      // 🔥 Generate embeddings for individual certificates (required for certificate-based matching)
+      // Certificates need their own embeddings for semantic certificate search and matching
+      // We do this efficiently: only for NEW certificates without embeddings
+      try {
+        const { generateEmbedding } = await import('@/shared/api/embedding/client');
+        
+        // Only generate embeddings for certificates that don't have one yet
+        const certificatesNeedingEmbeddings = formatted.filter(cert => {
+          const existing = (existingCertificates || []).find(e => e.id === cert.id);
+          return !existing || !existing.embedding; // New certificate or existing without embedding
+        });
+        
+        if (certificatesNeedingEmbeddings.length > 0) {
+          console.log(`🔄 Generating embeddings for ${certificatesNeedingEmbeddings.length} new/updated certificates`);
+          
+          // Generate embeddings in parallel (max 3 at a time to avoid rate limits)
+          const batchSize = 3;
+          for (let i = 0; i < certificatesNeedingEmbeddings.length; i += batchSize) {
+            const batch = certificatesNeedingEmbeddings.slice(i, i + batchSize);
+            
+            await Promise.all(batch.map(async (cert) => {
+              try {
+                // Build rich certificate text for embedding
+                let certText = `Certificate: ${cert.title}`;
+                if (cert.issuer) certText += ` from ${cert.issuer}`;
+                if (cert.platform) certText += ` on ${cert.platform}`;
+                if (cert.level) certText += ` (${cert.level})`;
+                if (cert.category) certText += `. Category: ${cert.category}`;
+                if (cert.instructor) certText += `. Instructor: ${cert.instructor}`;
+                if (cert.description) certText += `. ${cert.description}`;
+                
+                const embedding = await generateEmbedding(certText, {
+                  table: 'certificates',
+                  id: cert.id,
+                  returnEmbedding: true,
+                  skipDatabaseUpdate: true
+                });
+                
+                // Update the certificate with the embedding
+                await supabase
+                  .from('certificates')
+                  .update({ embedding })
+                  .eq('id', cert.id);
+                  
+                console.log(`✅ Generated embedding for certificate: ${cert.title}`);
+              } catch (certEmbedError) {
+                console.warn(`⚠️ Failed to generate embedding for certificate ${cert.title}:`, certEmbedError);
+              }
+            }));
+          }
+          
+          console.log(`✅ Generated embeddings for ${certificatesNeedingEmbeddings.length} certificates`);
+        } else {
+          console.log(`ℹ️ All ${formatted.length} certificates already have embeddings`);
+        }
+      } catch (error) {
+        console.error('⚠️ Failed to generate certificate embeddings:', error);
+      }
+    }
+
+    // 🔥 OPTIMIZED: Queue debounced embedding regeneration
+    try {
+      const { queueEmbeddingRegeneration } = await import('@/shared/api/embedding/autoRegenerate');
+      await queueEmbeddingRegeneration(studentId, { certificates: true }, {
+        force: true,
+        immediate: false // Debounce for better UX
+      });
+      console.log(`✅ Queued debounced embedding update for student ${studentId} after certificates update`);
+    } catch (embeddingError) {
+      console.error('⚠️ Failed to queue embedding update:', embeddingError);
     }
 
     return await getStudentByEmail(email);
@@ -1913,6 +2062,77 @@ export async function updateProjectsByEmail(email: string, projectsData: Project
         logger.error('Error upserting projects', upsertError);
         return { success: false, data: null, error: upsertError.message };
       }
+
+      // 🔥 Generate embeddings for individual projects (required for project-based matching)
+      // Projects need their own embeddings for semantic project search and matching
+      // We do this efficiently: only for NEW projects without embeddings
+      try {
+        const { generateEmbedding } = await import('@/shared/api/embedding/client');
+        
+        // Only generate embeddings for projects that don't have one yet
+        const projectsNeedingEmbeddings = formatted.filter(project => {
+          const existing = (existingProjects || []).find(e => e.id === project.id);
+          return !existing || !existing.embedding; // New project or existing without embedding
+        });
+        
+        if (projectsNeedingEmbeddings.length > 0) {
+          console.log(`🔄 Generating embeddings for ${projectsNeedingEmbeddings.length} new/updated projects`);
+          
+          // Generate embeddings in parallel (max 3 at a time to avoid rate limits)
+          const batchSize = 3;
+          for (let i = 0; i < projectsNeedingEmbeddings.length; i += batchSize) {
+            const batch = projectsNeedingEmbeddings.slice(i, i + batchSize);
+            
+            await Promise.all(batch.map(async (project) => {
+              try {
+                // Build rich project text for embedding
+                let projectText = `Project: ${project.title}`;
+                if (project.role) projectText += ` (Role: ${project.role})`;
+                if (project.organization) projectText += ` at ${project.organization}`;
+                if (project.tech_stack && Array.isArray(project.tech_stack) && project.tech_stack.length > 0) {
+                  projectText += `. Technologies: ${project.tech_stack.join(', ')}`;
+                }
+                if (project.description) projectText += `. ${project.description}`;
+                
+                const embedding = await generateEmbedding(projectText, {
+                  table: 'projects',
+                  id: project.id,
+                  returnEmbedding: true,
+                  skipDatabaseUpdate: true
+                });
+                
+                // Update the project with the embedding
+                await supabase
+                  .from('projects')
+                  .update({ embedding })
+                  .eq('id', project.id);
+                  
+                console.log(`✅ Generated embedding for project: ${project.title}`);
+              } catch (projectEmbedError) {
+                console.warn(`⚠️ Failed to generate embedding for project ${project.title}:`, projectEmbedError);
+              }
+            }));
+          }
+          
+          console.log(`✅ Generated embeddings for ${projectsNeedingEmbeddings.length} projects`);
+        } else {
+          console.log(`ℹ️ All ${formatted.length} projects already have embeddings`);
+        }
+      } catch (error) {
+        console.error('⚠️ Failed to generate project embeddings:', error);
+      }
+    }
+
+    // 🔥 OPTIMIZED: Queue debounced embedding regeneration
+    try {
+      const { queueEmbeddingRegeneration } = await import('@/shared/api/embedding/autoRegenerate');
+      await queueEmbeddingRegeneration(studentId, { projects: true }, {
+        force: true,
+        immediate: false // Debounce for better UX
+      });
+      console.log(`✅ Queued debounced embedding update for student ${studentId} after projects update`);
+    } catch (embeddingError) {
+      console.error('⚠️ Failed to queue embedding update:', embeddingError);
     }
 
     return await getStudentByEmail(email);
