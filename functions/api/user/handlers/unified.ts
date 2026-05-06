@@ -63,7 +63,7 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
     const fullName = `${firstName} ${lastName}`.trim();
     const userId = body.userId;
 
-    // Check if profile already exists (idempotency)
+    // Check if profile already exists by SSO user ID (idempotency)
     const { data: existingUser } = await supabaseAdmin
       .from('users')
       .select('id')
@@ -76,6 +76,43 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
           success: true,
           data: { userId },
           message: 'Profile already exists',
+        },
+        200
+      );
+    }
+
+    // Check if profile exists with same email but different ID (legacy Supabase Auth user)
+    // Link the existing profile to the new SSO user ID
+    const { data: existingByEmail } = await supabaseAdmin
+      .from('users')
+      .select('id, role')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (existingByEmail && existingByEmail.id !== userId) {
+      const oldId = existingByEmail.id;
+
+      // Update the users table to use the new SSO user ID
+      const { error: linkError } = await supabaseAdmin
+        .from('users')
+        .update({ id: userId, updatedAt: new Date().toISOString() })
+        .eq('id', oldId);
+
+      if (linkError) {
+        throw new Error(`Failed to link existing profile to SSO user: ${linkError.message}`);
+      }
+
+      // Update role-specific records that reference the old user ID
+      await supabaseAdmin.from('students').update({ user_id: userId }).eq('user_id', oldId);
+      await supabaseAdmin.from('recruiters').update({ user_id: userId }).eq('user_id', oldId);
+      await supabaseAdmin.from('school_educators').update({ user_id: userId }).eq('user_id', oldId);
+      await supabaseAdmin.from('college_educators').update({ user_id: userId }).eq('user_id', oldId);
+
+      return jsonResponse(
+        {
+          success: true,
+          data: { userId, linked: true, previousId: oldId },
+          message: 'Existing profile linked to SSO account',
         },
         200
       );
