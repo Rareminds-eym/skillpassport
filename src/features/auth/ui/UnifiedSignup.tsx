@@ -504,14 +504,16 @@ const UnifiedSignup = () => {
       }
 
       // Rollback: If SSO user was created but app profile failed,
-      // log out to revoke the session. The SSO user remains but is
-      // harmless without an app profile — next signup attempt will
-      // detect the existing SSO user (409) and the user can login instead.
+      // delete the SSO account entirely so the user can retry cleanly.
       if (ssoClient.isAuthenticated()) {
         try {
-          await ssoClient.logout();
+          // Delete the SSO user (cascades to sessions, memberships, etc.)
+          await ssoClient.fetch(`${import.meta.env.VITE_SSO_URL}/auth/delete-account`, {
+            method: 'POST',
+          });
         } catch {
-          // Best-effort cleanup
+          // If delete fails, at least logout to revoke the session
+          try { await ssoClient.logout(); } catch { /* best-effort */ }
         }
         useAuthStore.setState({
           user: null,
