@@ -149,7 +149,13 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
       }
 
       // 2. Create role-specific record
-      await createRoleSpecificRecord(supabaseAdmin, userId, email, fullName, firstName, lastName, body);
+      try {
+        await createRoleSpecificRecord(supabaseAdmin, userId, email, fullName, firstName, lastName, body);
+      } catch (roleError) {
+        // Rollback: delete the users row if role-specific record fails
+        await supabaseAdmin.from('users').delete().eq('id', userId);
+        throw roleError;
+      }
 
       // 4. Send welcome email
       const baseUrl = new URL(request.url).origin;

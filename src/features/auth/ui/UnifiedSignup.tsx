@@ -502,6 +502,24 @@ const UnifiedSignup = () => {
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
+
+      // Rollback: If SSO user was created but app profile failed,
+      // log out to revoke the session. The SSO user remains but is
+      // harmless without an app profile — next signup attempt will
+      // detect the existing SSO user (409) and the user can login instead.
+      if (ssoClient.isAuthenticated()) {
+        try {
+          await ssoClient.logout();
+        } catch {
+          // Best-effort cleanup
+        }
+        useAuthStore.setState({
+          user: null,
+          isAuthenticated: false,
+          role: null,
+        });
+      }
+
       setState(prev => ({ ...prev, loading: false, error: errorMessage }));
     }
   };

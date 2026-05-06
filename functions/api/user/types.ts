@@ -231,7 +231,7 @@ export interface UnifiedSignupRequest {
   role: 'school_admin' | 'school_educator' | 'school_student' | 
         'college_admin' | 'college_educator' | 'college_student' |
         'university_admin' | 'university_educator' | 'university_student' |
-        'recruiter_admin' | 'recruiter';
+        'recruiter_admin' | 'recruiter' | 'learner';
   phone?: string;
   dateOfBirth?: string;
   country?: string;
