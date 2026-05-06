@@ -92,21 +92,31 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
     if (existingByEmail && existingByEmail.id !== userId) {
       const oldId = existingByEmail.id;
 
-      // Update the users table to use the new SSO user ID
-      const { error: linkError } = await supabaseAdmin
-        .from('users')
-        .update({ id: userId, updatedAt: new Date().toISOString() })
-        .eq('id', oldId);
-
-      if (linkError) {
-        throw new Error(`Failed to link existing profile to SSO user: ${linkError.message}`);
-      }
-
-      // Update role-specific records that reference the old user ID
+      // Update role-specific records FIRST (child tables) before updating the parent
       await supabaseAdmin.from('students').update({ user_id: userId }).eq('user_id', oldId);
       await supabaseAdmin.from('recruiters').update({ user_id: userId }).eq('user_id', oldId);
       await supabaseAdmin.from('school_educators').update({ user_id: userId }).eq('user_id', oldId);
       await supabaseAdmin.from('college_educators').update({ user_id: userId }).eq('user_id', oldId);
+
+      // Now delete the old users row and create a new one with the SSO user ID
+      // (UPDATE on PK with FK references is problematic, so delete + insert is safer)
+      const { data: oldUser } = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('id', oldId)
+        .single();
+
+      if (oldUser) {
+        await supabaseAdmin.from('users').delete().eq('id', oldId);
+        const { error: insertError } = await supabaseAdmin.from('users').insert({
+          ...oldUser,
+          id: userId,
+          updatedAt: new Date().toISOString(),
+        });
+        if (insertError) {
+          throw new Error(`Failed to link existing profile to SSO user: ${insertError.message}`);
+        }
+      }
 
       return jsonResponse(
         {
