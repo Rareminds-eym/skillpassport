@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Member Invitation Service
  * 
@@ -86,7 +87,7 @@ export class MemberInvitationService {
       }
 
       // 2. Get current user and their role
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = getCurrentUser();
       if (!user) {
         throw new Error('User not authenticated');
       }
@@ -225,7 +226,7 @@ export class MemberInvitationService {
   async cancelInvitation(invitationId: string): Promise<void> {
     try {
       // Get current user for cancelled_by field
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = getCurrentUser();
       if (!user) {
         throw new Error('User not authenticated');
       }

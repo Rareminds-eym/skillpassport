@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Adaptive Aptitude API Service
  * 
@@ -79,7 +80,7 @@ export interface ResumeTestResult {
  * Gets the authentication token from Supabase session
  */
 async function getAuthToken(): Promise<string | null> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = getCurrentSession();
   return session?.access_token || null;
 }
 

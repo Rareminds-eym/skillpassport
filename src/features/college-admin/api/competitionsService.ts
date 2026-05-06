@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -68,7 +69,7 @@ async function getCurrentUserSchoolId(): Promise<string | null> {
         const userEmail = localStorage.getItem('userEmail');
 
         // Get current Supabase user
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = getCurrentUser();
 
         // Try school_educators first
         if (user) {

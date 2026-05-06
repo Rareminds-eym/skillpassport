@@ -7,7 +7,7 @@
  */
 
 import { getApiUrl } from '@/shared/api/apiUtils';
-import { supabase } from '@/shared/api/supabaseClient';
+import { getCurrentSession } from "./authUtils";
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('storage-service');
@@ -53,7 +53,7 @@ class StorageService {
    */
   private async getAuthToken(): Promise<string | null> {
     try {
-      const { data: { session }, error } = await supabase.auth.getSession();
+      const { data: { session } } = getCurrentSession(); const error = null;
       if (error || !session) {
         return null;
       }

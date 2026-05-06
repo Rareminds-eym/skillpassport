@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * DEPENDENCY INJECTION PATTERN APPLIED
  * 
@@ -72,7 +73,7 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
       // Get current user (school admin)
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = getCurrentUser();
       if (!user) {
         throw new Error('Not authenticated');
       }

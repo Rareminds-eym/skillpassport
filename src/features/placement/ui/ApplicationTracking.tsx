@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import React, { useState, useEffect } from "react";
 import {
   Users,
@@ -114,7 +115,7 @@ const ApplicationTracking: React.FC = () => {
       setApplicationError(null);
 
       // Get current user's college ID
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = getCurrentUser();
       if (!user) {
         throw new Error('Not authenticated');
       }

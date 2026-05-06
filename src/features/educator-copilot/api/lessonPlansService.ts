@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -83,7 +84,7 @@ export interface LessonPlan {
  */
 export async function getCurrentEducatorId(): Promise<string | null> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = getCurrentUser();
     if (!user) return null;
 
     // First check if user is an educator
@@ -143,7 +144,7 @@ export async function getLessonPlans(): Promise<{ data: LessonPlan[] | null; err
     const educatorId = await getCurrentEducatorId();
     
     // Check if user is a school admin (can view all lesson plans for their school)
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = getCurrentUser();
     if (!user) {
       return { data: null, error: new Error("Not authenticated") };
     }

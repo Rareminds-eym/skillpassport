@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * License Management Service
  * 
@@ -109,7 +110,7 @@ export class LicenseManagementService {
   async createLicensePool(request: CreatePoolRequest): Promise<LicensePool> {
     try {
       // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = getCurrentUser();
       if (!user) {
         throw new Error('User not authenticated');
       }

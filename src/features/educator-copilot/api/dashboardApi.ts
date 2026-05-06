@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -5,7 +6,7 @@ const logger = getLogger('dashboard-api');
 
 // Shared function to get authenticated educator data with class assignments
 async function getAuthenticatedEducator() {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = getCurrentSession();
   if (!session?.user) {
     logger.error('Authentication failed: no authenticated user found');
     throw new Error('No authenticated user');

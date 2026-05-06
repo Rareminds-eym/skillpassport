@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -95,7 +96,7 @@ export const createUniversity = async (universityData, userId = null) => {
         let uid = userId;
 
         if (!uid) {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = getCurrentUser();
             if (user) {
                 uid = user.id;
             }
@@ -175,7 +176,7 @@ export const createUniversityCollege = async (collegeData, userId = null) => {
         let uid = userId;
 
         if (!uid) {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = getCurrentUser();
             if (user) {
                 uid = user.id;
             }

@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * DEPENDENCY INJECTION PATTERN APPLIED
  * 
@@ -69,7 +70,7 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
   const sendNoteAsCommunication = async () => {
     try {
       // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = getCurrentUser();
       if (!user) {
         throw new Error('Not authenticated');
       }

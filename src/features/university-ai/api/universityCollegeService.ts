@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -84,7 +85,7 @@ export const addCollegeToUniversity = async (universityId, organizationId, addit
         }
 
         // Get current user for created_by field
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = getCurrentUser();
         const userId = user?.id;
 
         // Prepare college data for university_colleges table

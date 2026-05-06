@@ -4,7 +4,7 @@
  */
 
 import { getApiUrl } from '@/shared/api/apiUtils';
-import { supabase } from '@/shared/api/supabaseClient';
+import { getCurrentSession } from "./authUtils";
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('storage-api');
@@ -16,7 +16,7 @@ const API_URL = getApiUrl('storage');
  */
 async function getAuthToken(): Promise<string | null> {
   try {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const { data: { session } } = getCurrentSession(); const error = null;
 
     if (error) {
       logger.error('Failed to get session', error instanceof Error ? error : new Error(String(error)));

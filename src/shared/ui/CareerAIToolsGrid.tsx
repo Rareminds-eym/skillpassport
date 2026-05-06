@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -79,7 +80,7 @@ const CareerAIToolsGrid: React.FC<CareerAIToolsGridProps> = ({
 
   const fetchGradeAppropriateActions = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = getCurrentSession();
       if (!session) {
         setLoading(false);
         return;

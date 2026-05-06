@@ -404,7 +404,7 @@ const buildStudentContext = async (
         `)
         .eq('user_id', userId)
         .maybeSingle(),
-      supabase.auth.getUser()
+      getCurrentUser()
     ]);
 
     const { data: student, error: studentError } = studentResult;

@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { useState } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
 import { Student } from '@/features/student-profile/model';
@@ -196,7 +197,7 @@ export const useStudentActions = (student: Student | null) => {
         : `${new Date().getFullYear()}-${(new Date().getFullYear() + 1).toString().slice(-2)}`; // Fallback
 
       // Get current user ID and find the appropriate admin record
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = getCurrentUser();
       let promotedByAdminId = null;
 
       if (user?.id) {

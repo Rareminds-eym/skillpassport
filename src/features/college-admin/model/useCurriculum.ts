@@ -297,7 +297,7 @@ export const useCurriculum = (
       }
 
       // Check if user is school_admin - they can auto-approve
-      const { data: { user } } = await curriculumService.supabase.auth.getUser();
+      const { data: { user } } = await curriculumService.getCurrentUser();
       if (user) {
         const { data: userData } = await curriculumService.supabase
           .from('users')

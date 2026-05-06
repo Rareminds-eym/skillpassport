@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Stream Recommendation Service
  * Generates AI-based Science/Commerce/Arts stream recommendations for students
@@ -509,7 +510,7 @@ Respond ONLY with valid JSON. No markdown, no explanations outside JSON.`;
  */
 const callAIForStreamRecommendation = async (studentData) => {
   // Get auth token
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = getCurrentSession();
   const token = session?.access_token;
 
   if (!token) {

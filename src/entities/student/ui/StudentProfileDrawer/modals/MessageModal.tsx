@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * DEPENDENCY INJECTION PATTERN APPLIED
  * 
@@ -89,7 +90,7 @@ const MessageModal: React.FC<MessageModalProps> = ({
     try {
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = getCurrentUser();
       if (!user) {
         throw new Error('Not authenticated');
       }

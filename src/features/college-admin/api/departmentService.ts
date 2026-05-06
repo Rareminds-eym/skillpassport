@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -194,7 +195,7 @@ export const departmentService = {
 
   // Create new department
   async createDepartment(department: Omit<DepartmentInsert, 'id' | 'created_at' | 'updated_at'>): Promise<Department> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = getCurrentUser();
     
     // Ensure only one of school_id or college_id is set
     // Explicitly check for null/undefined to avoid setting both
@@ -246,7 +247,7 @@ export const departmentService = {
 
   // Update department
   async updateDepartment(id: string, updates: DepartmentUpdate): Promise<Department> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = getCurrentUser();
     
     const { data, error } = await supabase
       .from('departments')
@@ -437,7 +438,7 @@ export const departmentService = {
       if (error) throw error;
     } else {
       // Create new faculty assignment with HOD role
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = getCurrentUser();
       
       const { error } = await supabase
         .from('department_faculty_assignments')
@@ -548,7 +549,7 @@ export const departmentService = {
 
   // Bulk update department status
   async updateDepartmentStatus(ids: string[], status: string): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = getCurrentUser();
     
     const { error } = await supabase
       .from('departments')
@@ -632,7 +633,7 @@ export const departmentService = {
       program?: string;
     }>
   ): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = getCurrentUser();
     
     // First, get the department to find the college_id
     const { data: department, error: deptError } = await supabase

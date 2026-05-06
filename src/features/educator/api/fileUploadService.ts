@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * File Upload Service for Cloudflare R2 Storage
  * Handles document uploads for faculty onboarding
@@ -12,7 +13,7 @@ const STORAGE_API_URL = 'https://storage-api.dark-mode-d021.workers.dev';
  */
 async function getAuthToken(): Promise<string | null> {
   try {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const { data: { session }, error } = getCurrentSession();
     
     if (error) {
       return null;

@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api';
 import userApiService from './userApiService';
 import type { QualificationData, ImportError, UserRoleHistoryRecord } from '@/types/StudentManagement';
@@ -280,7 +281,7 @@ class UserManagementService {
     newRole: string,
     reason?: string
   ): Promise<void> {
-    const { data: currentUser } = await supabase.auth.getUser();
+    const { data: currentUser } = getCurrentUser();
     if (!currentUser.user) throw new Error('Not authenticated');
 
     const { error } = await supabase.rpc('change_user_role', {
@@ -389,7 +390,7 @@ class UserManagementService {
     status: 'verified' | 'rejected',
     reason?: string
   ): Promise<void> {
-    const { data: currentUser } = await supabase.auth.getUser();
+    const { data: currentUser } = getCurrentUser();
     if (!currentUser.user) throw new Error('Not authenticated');
 
     const updateData: {
@@ -456,7 +457,7 @@ class UserManagementService {
    * Bulk import users from CSV
    */
   async bulkImportUsers(file: File): Promise<BulkImportResult> {
-    const { data: currentUser } = await supabase.auth.getUser();
+    const { data: currentUser } = getCurrentUser();
     if (!currentUser.user) throw new Error('Not authenticated');
 
     // Upload CSV file
@@ -535,14 +536,17 @@ class UserManagementService {
    * Reset user password (admin function)
    */
   async resetUserPassword(userId: string, newPassword: string): Promise<void> {
-    const { error } = await supabase.auth.admin.updateUserById(userId, {
-      password: newPassword,
+    const { ssoClient } = await import('@/shared/api/ssoClient');
+    const ssoUrl = import.meta.env.VITE_SSO_URL;
+    const res = await ssoClient.fetch(`${ssoUrl}/auth/admin-reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, new_password: newPassword }),
     });
-
-    if (error) throw error;
-
-    // Log activity
-    await this.logActivity(userId, 'password_reset', 'Password reset by admin');
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error((body as any).error || 'Failed to reset password');
+    }
   }
 
   /**

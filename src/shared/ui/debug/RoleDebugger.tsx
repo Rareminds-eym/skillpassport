@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/shared/api/supabaseClient";
 
@@ -27,7 +28,7 @@ const RoleDebugger: React.FC = () => {
 
   const fetchDebugInfo = useCallback(async () => {
     try {
-      const { data: { user }, error } = await supabase.auth.getUser();
+      const { data: { user }, error } = getCurrentUser();
 
       if (error) {
         setUserInfo({ error: error.message });

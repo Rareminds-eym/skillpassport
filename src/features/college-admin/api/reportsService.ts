@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -86,7 +87,7 @@ const getCollegeIdForCurrentUser = async (): Promise<string | null> => {
     // Fallback to Supabase auth (same as useStudents)
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = getCurrentUser();
 
     if (user) {
       // Get user role from users table (same as useStudents)

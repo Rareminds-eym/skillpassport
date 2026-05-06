@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Authenticated Media Service
  *
@@ -32,7 +33,7 @@ export async function getAuthenticatedMediaUrl(
   lessonId?: string
 ): Promise<string | null> {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = getCurrentSession();
 
     if (!session?.access_token) {
       return null;

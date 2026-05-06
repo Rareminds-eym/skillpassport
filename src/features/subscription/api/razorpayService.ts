@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Razorpay Service
  * 
@@ -44,7 +45,7 @@ export const loadRazorpayScript = () => {
 export const createRazorpayOrder = async (orderData) => {
   try {
     // Get auth token
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = getCurrentSession();
     const token = session?.access_token;
 
     if (!token) {
@@ -86,7 +87,7 @@ export const createRazorpayOrder = async (orderData) => {
 export const verifyPayment = async (paymentData) => {
   try {
     // Get auth token
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = getCurrentSession();
     const token = session?.access_token;
 
     // Call Worker via paymentsApiService

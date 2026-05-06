@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -20,7 +21,7 @@ export const createSchool = async (schoolData, userId = null) => {
 
         // If userId not provided, try to get from current session
         if (!uid) {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = getCurrentUser();
             if (user) {
                 uid = user.id;
             }

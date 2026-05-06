@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Usage Statistics Service
  * 
@@ -16,7 +17,7 @@ const logger = getLogger('usage-statistics');
  */
 export const getUserUsageStatistics = async () => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = getCurrentUser();
     
     if (!user) {
       return {

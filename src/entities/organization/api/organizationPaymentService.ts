@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Organization Payment Service
  * 
@@ -56,7 +57,7 @@ export interface OrganizationOrderResult {
 // ============================================================================
 
 const getAuthHeaders = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = getCurrentSession();
   const token = session?.access_token;
   
   if (!token) {

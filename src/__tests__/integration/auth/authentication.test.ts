@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Integration Tests for Authentication
  * 
@@ -94,7 +95,7 @@ describe('Authentication Integration Tests', () => {
         error: null
       } as any);
 
-      const result = await supabase.auth.getSession();
+      const result = getCurrentSession();
 
       expect(result.error).toBeNull();
       expect(result.data.session).toBeDefined();
@@ -109,7 +110,7 @@ describe('Authentication Integration Tests', () => {
         error: null
       } as any);
 
-      const result = await supabase.auth.getSession();
+      const result = getCurrentSession();
 
       expect(result.error).toBeNull();
       expect(result.data.session).toBeNull();
@@ -123,7 +124,7 @@ describe('Authentication Integration Tests', () => {
         error: null
       } as any);
 
-      const result = await supabase.auth.getUser();
+      const result = getCurrentUser();
 
       expect(result.error).toBeNull();
       expect(result.data.user).toBeDefined();
@@ -176,7 +177,7 @@ describe('Authentication Integration Tests', () => {
         error: { message: 'Token expired', name: 'AuthError', status: 401 }
       } as any);
 
-      const result = await supabase.auth.getSession();
+      const result = getCurrentSession();
 
       expect(result.error).toBeDefined();
       expect(result.error?.message).toContain('expired');

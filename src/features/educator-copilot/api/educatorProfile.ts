@@ -1,3 +1,5 @@
+import { ssoClient } from '@/shared/api/ssoClient';
+import { useAuthStore } from '@/shared/model/authStore';
 import { supabase } from '@/shared/api/supabaseClient';
 import {
   AUTH_ERROR_CODES,
@@ -131,7 +133,7 @@ export async function loginEducator(email, password) {
     let authData;
     try {
       const authOperation = async () => {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const loginResult = await ssoClient.login({
           email: validation.email,
           password,
         });
@@ -475,7 +477,7 @@ export async function createEducatorProfile(educatorData) {
  */
 const safeSignOut = async () => {
   try {
-    await supabase.auth.signOut();
+    await useAuthStore.getState().logout();
   } catch {
     // Ignore sign out errors
   }

@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Streak API Service
  * Connects to Cloudflare Pages Function
@@ -10,7 +11,7 @@ const API_URL = getApiUrl('streak');
 async function getAuthToken(): Promise<string> {
   try {
     const { supabase } = await import('./supabaseClient');
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = getCurrentSession();
     return session?.access_token || '';
   } catch {
     return '';

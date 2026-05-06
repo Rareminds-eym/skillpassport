@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl, getAuthHeaders } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
@@ -66,7 +67,7 @@ export interface StreamChunk {
  * Returns an async generator that yields content and reasoning chunks
  */
 export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamChunk, void, unknown> {
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  const { data: { session }, error: sessionError } = getCurrentSession();
 
   if (sessionError) {
     logger.error('Session error in sendMessage', sessionError instanceof Error ? sessionError : new Error(String(sessionError)));
@@ -240,7 +241,7 @@ export async function getConversation(conversationId: string): Promise<Conversat
  */
 export async function getSuggestedQuestions(lessonId: string): Promise<string[]> {
   try {
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    const { data: { session }, error: sessionError } = getCurrentSession();
 
     if (sessionError) {
       logger.error('Session error in getSuggestedQuestions', sessionError instanceof Error ? sessionError : new Error(String(sessionError)), { lessonId });
@@ -293,7 +294,7 @@ function getDefaultSuggestions(): string[] {
  * Get student progress for a course
  */
 export async function getCourseProgress(courseId: string): Promise<CourseProgress> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = getCurrentSession();
   if (!session?.access_token) {
     throw new Error('Not authenticated');
   }
@@ -322,7 +323,7 @@ export async function updateLessonProgress(
   lessonId: string,
   status: 'not_started' | 'in_progress' | 'completed'
 ): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = getCurrentSession();
   if (!session?.access_token) {
     throw new Error('Not authenticated');
   }
@@ -348,7 +349,7 @@ export async function updateLessonProgress(
  * Delete a conversation and all related data permanently
  */
 export async function deleteConversation(conversationId: string): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = getCurrentSession();
   if (!session?.access_token) {
     throw new Error('Not authenticated');
   }
@@ -385,7 +386,7 @@ export async function submitFeedback(
   rating: 1 | -1,
   feedbackText?: string
 ): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = getCurrentSession();
   if (!session?.access_token) {
     throw new Error('Not authenticated');
   }

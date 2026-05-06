@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import {
     ChatBubbleLeftRightIcon,
     DevicePhoneMobileIcon,
@@ -77,7 +78,7 @@ const MessageModal: React.FC<MessageModalProps> = ({
     try {
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = getCurrentUser();
       if (!user) {
         throw new Error('Not authenticated');
       }

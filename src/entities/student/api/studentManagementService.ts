@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 // TODO: Type Import from Feature
 // These types are imported from @/features/school-admin
 // They should be moved to @/shared/types or @/entities/student/model/types
@@ -913,7 +914,7 @@ export const studentReportService = {
 
   // Create report record
   async createReport(reportData: Partial<StudentReport>) {
-    const { data: user } = await supabase.auth.getUser();
+    const { data: user } = getCurrentUser();
     
     return await supabase
       .from('student_reports')

@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Organization Subscription Service
  * 
@@ -151,7 +152,7 @@ export class OrganizationSubscriptionService {
       }
 
       // 4. Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = getCurrentUser();
       if (!user) {
         throw new Error('User not authenticated');
       }

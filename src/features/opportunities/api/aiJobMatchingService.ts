@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * AI Job Matching Service
  * Uses vector embeddings and cosine similarity to match student profiles with job opportunities
@@ -34,7 +35,7 @@ export async function matchJobsWithAI(studentProfile, topN = 3, forceRefresh = f
   const API_URL = getApiUrl('career');
 
   // Get auth token from existing supabase client
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = getCurrentSession();
   const token = session?.access_token;
 
   const studentId = studentProfile?.id || studentProfile?.student_id;

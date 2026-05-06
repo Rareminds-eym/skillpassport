@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Resume Parser Service
  * Handles parsing resumes using Claude AI
@@ -50,7 +51,7 @@ const parseWithClaude = async (resumeText) => {
 
     // Get current session for auth token
     const { supabase } = await import('@/shared/api/supabaseClient');
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = getCurrentSession();
     const token = session?.access_token;
 
     if (!token) {

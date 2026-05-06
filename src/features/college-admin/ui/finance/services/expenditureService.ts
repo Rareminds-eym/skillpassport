@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { 
   getExpenditureSummary, 
@@ -76,7 +77,7 @@ export interface ExpenditureFilters {
 class ExpenditureService {
   // Get current user's college ID
   private async getCurrentCollegeId(): Promise<string> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = getCurrentUser();
     if (!user) throw new Error('User not authenticated');
     
     // Try to get college_id from user metadata

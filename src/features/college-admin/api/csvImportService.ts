@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * CSV Import Service for Student Data
  * Handles validation, auto-mapping, capacity checks, and preview generation
@@ -550,7 +551,7 @@ export async function importStudents(
   let failed = 0
   const errors: string[] = []
 
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { session } } = getCurrentSession()
   const token = session?.access_token
 
   if (!token) {

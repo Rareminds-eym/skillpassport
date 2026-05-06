@@ -5,7 +5,7 @@
  * Ensures media can only be accessed by enrolled users on their registered device.
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { getCurrentSession } from "./authUtils";
 import { getBrowserFingerprint, getDeviceContext } from "@/shared/lib/fingerprint";
 import { getLogger } from '@/shared/config/logging';
 
@@ -33,7 +33,7 @@ export async function getAuthenticatedMediaUrl(
 ): Promise<string | null> {
   try {
     // Get current session token
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = getCurrentSession();
     
     if (!session?.access_token) {
       logger.error('No active session');

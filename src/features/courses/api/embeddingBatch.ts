@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Embedding Batch Processing
  * Handles parallel generation of multiple embeddings
@@ -30,7 +31,7 @@ export const generateEmbeddingsBatch = async (texts, maxConcurrent = 5) => {
   }
 
   // Get auth token once for all requests
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = getCurrentSession();
   const token = session?.access_token;
   
   if (!token) {

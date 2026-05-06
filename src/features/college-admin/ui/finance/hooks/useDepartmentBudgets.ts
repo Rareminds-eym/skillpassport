@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from '@/shared/api/supabaseClient';
 
@@ -42,7 +43,7 @@ export const useDepartmentBudgets = () => {
       }
 
       // If not found in localStorage, try Supabase Auth
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = getCurrentUser();
       if (user) {
         // Get user role from users table
         const { data: userRecord } = await supabase

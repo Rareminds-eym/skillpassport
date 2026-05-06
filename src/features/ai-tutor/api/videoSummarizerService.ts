@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl, getAuthHeaders } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
@@ -153,7 +154,7 @@ export async function processVideo(
   logger.info('Starting enhanced video processing', { videoUrl: request.videoUrl });
   onProgress?.('Connecting to AI service...', 5);
 
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = getCurrentSession();
 
   try {
     onProgress?.('Starting video analysis...', 10);

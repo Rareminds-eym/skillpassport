@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { ArrowDownTrayIcon, CheckCircleIcon, DocumentArrowUpIcon, ExclamationTriangleIcon, UserPlusIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import Papa from 'papaparse'
 import React, { useEffect, useState } from 'react'
@@ -356,7 +357,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       }
 
       // Get authenticated user once for reuse
-      const { data: { user: authUser } } = await supabase.auth.getUser()
+      const { data: { user: authUser } } = getCurrentUser()
 
       // Get schoolId or collegeId from localStorage
       let schoolId = null
@@ -412,11 +413,11 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       }
 
       // Refresh session to ensure we have a valid token
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+      const { data: refreshData, error: refreshError } = Promise.resolve({ data: null, error: null })
       
       if (refreshError) {
         // Try to get existing session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        const { data: { session }, error: sessionError } = getCurrentSession()
         
         if (sessionError || !session) {
           logger.error('No valid session available', new Error('No valid session available'))
@@ -424,7 +425,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         }
       } 
 
-      const finalSession = refreshData?.session || (await supabase.auth.getSession()).data.session
+      const finalSession = refreshData?.session || (getCurrentSession()).data.session
       
       if (!finalSession) {
         throw new Error('No active session. Please login again.')
@@ -705,7 +706,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const updateStudentDocuments = async (studentId: string, documents: Array<{name: string, url: string, size: number, type: string}>) => {
     try {
       // Get fresh token
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session } } = getCurrentSession()
       const token = session?.access_token
 
       if (!token) {
@@ -957,9 +958,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
     try {
       // Refresh session
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session } } = getCurrentSession()
       if (session) {
-        await supabase.auth.refreshSession()
+        Promise.resolve({ data: null, error: null })
       }
 
       // Parse CSV using PapaParse
@@ -1164,7 +1165,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
               const batchPromises = batch.map(async ({ row, data }) => {
                 try {
-                  const { data: { session } } = await supabase.auth.getSession()
+                  const { data: { session } } = getCurrentSession()
                   const token = session?.access_token
 
                   if (!token) {

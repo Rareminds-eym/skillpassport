@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api';
 import type {
   AdmissionApplication,
@@ -940,7 +941,7 @@ export const studentReportService = {
 
   // Create report record
   async createReport(reportData: Partial<StudentReport>) {
-    const { data: user } = await supabase.auth.getUser();
+    const { data: user } = getCurrentUser();
     
     return await supabase
       .from('student_reports')

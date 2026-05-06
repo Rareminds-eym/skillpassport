@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Organization Helper Utilities
  * 
@@ -26,7 +27,7 @@ export async function getCurrentUserOrganizationId(
   organizationType: OrganizationType
 ): Promise<OrganizationResult> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = getCurrentUser();
     if (!user) {
       return { id: null, name: null, error: 'User not authenticated' };
     }

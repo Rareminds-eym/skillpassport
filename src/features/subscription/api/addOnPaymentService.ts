@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 
 const PAYMENTS_API_URL = import.meta.env.VITE_PAYMENTS_API_URL || 'https://payments-api.dark-mode-d021.workers.dev';
@@ -51,7 +52,7 @@ export const addOnPaymentService = {
    */
   async createAddOnOrder({ featureKey, userId, billingPeriod, userEmail, userName }) {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = getCurrentSession();
 
       if (!session) {
         return { success: false, error: 'User not authenticated' };
@@ -105,7 +106,7 @@ export const addOnPaymentService = {
    */
   async createBundleOrder({ bundleId, userId, billingPeriod, userEmail, userName }) {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = getCurrentSession();
 
       if (!session) {
         return { success: false, error: 'User not authenticated' };
@@ -187,7 +188,7 @@ export const addOnPaymentService = {
   async verifyAddonPayment(razorpayOrderId, razorpayPaymentId, razorpaySignature, retries = 3) {
     const attemptVerification = async (attempt) => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = getCurrentSession();
 
         if (!session) {
           throw new Error('User not authenticated');
@@ -259,7 +260,7 @@ export const addOnPaymentService = {
   async verifyBundlePayment(razorpayOrderId, razorpayPaymentId, razorpaySignature, bundleId, billingPeriod, retries = 3) {
     const attemptVerification = async (attempt) => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = getCurrentSession();
 
         if (!session) {
           throw new Error('User not authenticated');

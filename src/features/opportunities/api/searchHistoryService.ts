@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 // import { supabase } from '@/shared/api/supabaseClient';
 
 // /**
@@ -19,7 +20,7 @@
 //       const trimmedTerm = searchTerm.trim();
 
 //       // Get user session
-//       const { data: { session } } = await supabase.auth.getSession();
+//       const { data: { session } } = getCurrentSession();
 //       if (!session) {
 //         return { success: false, message: 'User not authenticated' };
 //       }
@@ -114,7 +115,7 @@
 //   static async getSearchHistory(studentId) {
 //     try {
 //       // Get user session
-//       const { data: { session } } = await supabase.auth.getSession();
+//       const { data: { session } } = getCurrentSession();
 //       if (!session) {
 //         return [];
 //       }
@@ -144,7 +145,7 @@
 //   static async deleteSearchTerm(studentId, searchHistoryId) {
 //     try {
 //       // Get user session
-//       const { data: { session } } = await supabase.auth.getSession();
+//       const { data: { session } } = getCurrentSession();
 //       if (!session) {
 //         return { success: false, message: 'User not authenticated' };
 //       }
@@ -179,7 +180,7 @@
 //   static async clearSearchHistory(studentId) {
 //     try {
 //       // Get user session
-//       const { data: { session } } = await supabase.auth.getSession();
+//       const { data: { session } } = getCurrentSession();
 //       if (!session) {
 //         return { success: false, message: 'User not authenticated' };
 //       }
@@ -214,7 +215,7 @@
 //   static async getMostSearchedTerms(studentId, limit = 5) {
 //     try {
 //       // Get user session
-//       const { data: { session } } = await supabase.auth.getSession();
+//       const { data: { session } } = getCurrentSession();
 //       if (!session) {
 //         return [];
 //       }

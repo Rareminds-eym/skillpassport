@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Organization Billing Service
  * 
@@ -498,7 +499,7 @@ export class OrganizationBillingService {
    */
   async downloadInvoice(invoiceId: string): Promise<Blob> {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = getCurrentSession();
       if (!session?.access_token) {
         throw new Error('Not authenticated');
       }

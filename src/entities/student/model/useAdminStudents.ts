@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/shared/api/supabaseClient'
 
@@ -387,7 +388,7 @@ export function useAdminStudents(options: UseStudentsOptions = {}) {
         
         // If not found in localStorage, try Supabase Auth
         if (!schoolId && !collegeId) {
-          const { data: { user } } = await supabase.auth.getUser();
+          const { data: { user } } = getCurrentUser();
           
           if (user) {
             userId = user.id;
