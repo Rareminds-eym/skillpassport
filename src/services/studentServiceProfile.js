@@ -2480,8 +2480,8 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
       return { success: false, error: 'Student not found' };
     }
 
-    // Use user_id as student_id (as per foreign key constraint)
-    const studentId = studentRecord.user_id;
+    // Use studentRecord.id (NOT user_id) because experience.student_id FK references students.id
+    const studentId = studentRecord.id;
 
     // Determine approval authority based on student type
     let approvalAuthority = 'rareminds_admin'; // default
@@ -2894,8 +2894,8 @@ export async function updateTechnicalSkillsByEmail(email, skillsData = []) {
       return { success: false, error: 'Student not found' };
     }
 
-    // Use user_id as student_id (as per foreign key constraint)
-    const studentId = studentRecord.user_id;
+    // Use students.id (NOT user_id) because skills.student_id FK references students.id
+    const studentId = studentRecord.id;
 
     // Get existing technical skills (fetch full records for versioning)
     const { data: existingSkills, error: existingError } = await supabase
@@ -3120,8 +3120,8 @@ export async function updateSoftSkillsByEmail(email, skillsData = []) {
       return { success: false, error: 'Student not found' };
     }
 
-    // Use user_id as student_id (as per foreign key constraint)
-    const studentId = studentRecord.user_id;
+    // Use students.id (NOT user_id) because skills.student_id FK references students.id
+    const studentId = studentRecord.id;
 
     // Get existing soft skills (fetch full records for versioning)
     const { data: existingSkills, error: existingError } = await supabase
@@ -3316,8 +3316,8 @@ export async function updateSkillsByEmail(email, skillsData = []) {
       return { success: false, error: 'Student not found' };
     }
 
-    // Use user_id as student_id (as per foreign key constraint)
-    const studentId = studentRecord.user_id;
+    // Use students.id (NOT user_id) because skills.student_id FK references students.id
+    const studentId = studentRecord.id;
 
     // Get existing skills (both technical and soft) - fetch full records for versioning check
     const { data: existingSkills, error: existingError } = await supabase
