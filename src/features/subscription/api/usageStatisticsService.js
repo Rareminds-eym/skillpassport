@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
+import { getCurrentUser } from '@/shared/api/authUtils';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('usage-statistics');
@@ -16,7 +17,7 @@ const logger = getLogger('usage-statistics');
  */
 export const getUserUsageStatistics = async () => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = getCurrentUser();
     
     if (!user) {
       return {

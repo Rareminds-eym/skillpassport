@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '@/shared/lib/supabase';
+import { getCurrentUser } from '@/shared/api/authUtils';
 
 /**
  * Fetch learner data by email from Supabase
@@ -204,8 +205,8 @@ export function transformlearnerData(learnerRecord) {
  */
 export async function getCurrentlearnerData() {
   try {
-    // Get current Supabase user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Get current user (via SSO, not Supabase auth)
+    const { data: { user }, error: userError } = getCurrentUser();
 
     if (userError || !user) {
       return {

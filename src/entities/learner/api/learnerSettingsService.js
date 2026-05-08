@@ -598,9 +598,9 @@ export const updatelearnerSettings = async (email, updates) => {
 };
 
 /**
- * Update password using Supabase Auth
- * Same pattern as learnerAuthService - simple and direct
- * @param {string} email - Learner email
+ * Update password using SSO Worker (not Supabase Auth which is disabled)
+ * Delegates to updatePassword from user mutations which calls /auth/change-password
+ * @param {string} email - Learner email (used for logging only)
  * @param {string} currentPassword - Current password
  * @param {string} newPassword - New password
  * @returns {Promise<Object>} Result
@@ -609,75 +609,33 @@ export const updatelearnerPassword = async (email, currentPassword, newPassword)
   try {
     console.log('🔐 Password update requested for:', email);
 
-    // Verify current password by signing in (same as login flow)
-    console.log('🔐 Verifying current password...');
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password: currentPassword,
-    });
-
-    if (authError) {
-      console.error('❌ Current password verification failed:', authError.message);
-      return { 
-        success: false, 
-        error: 'Current password is incorrect. Please try again.' 
-      };
-    }
-
-    if (!authData?.user) {
-      console.error('❌ No user returned from authentication');
-      return { 
-        success: false, 
-        error: 'Authentication failed. Please try again.' 
-      };
-    }
-
-    console.log('✅ Current password verified');
-
-    // Update to new password (user is now authenticated with fresh session)
-    console.log('🔐 Updating to new password...');
-    const { data, error: updateError } = await supabase.auth.updateUser({
-      password: newPassword,
-    });
-
-    if (updateError) {
-      console.error('❌ Password update failed:', updateError.message);
-      
-      // Handle specific error cases
-      if (updateError.message?.includes('same password')) {
-        return { 
-          success: false, 
-          error: 'New password must be different from your current password.' 
-        };
-      }
-      
-      if (updateError.message?.includes('password') && (updateError.message?.includes('6') || updateError.message?.includes('characters'))) {
-        return { 
-          success: false, 
-          error: 'Password must be at least 6 characters long.' 
-        };
-      }
-      
-      return { 
-        success: false, 
-        error: updateError.message || 'Failed to update password. Please try again.' 
-      };
-    }
+    const { updatePassword } = await import('@/entities/user/api/mutations');
+    await updatePassword(newPassword, currentPassword);
 
     console.log('✅ Password updated successfully for:', email);
-    console.log('   User ID:', data?.user?.id);
-    console.log('   Updated at:', data?.user?.updated_at);
     
     return { 
       success: true, 
-      message: 'Password updated successfully!',
-      data 
+      message: 'Password updated successfully!'
     };
   } catch (err) {
     console.error('❌ updatelearnerPassword exception:', err);
+
+    // Map common SSO error messages to user-friendly messages
+    const msg = err.message || '';
+    if (msg.includes('Current password') || msg.includes('Invalid credentials') || msg.includes('incorrect')) {
+      return { success: false, error: 'Current password is incorrect. Please try again.' };
+    }
+    if (msg.includes('same password')) {
+      return { success: false, error: 'New password must be different from your current password.' };
+    }
+    if (msg.includes('too weak') || msg.includes('8 characters')) {
+      return { success: false, error: 'Password must be at least 8 characters long.' };
+    }
+    
     return { 
       success: false, 
-      error: err.message || 'An unexpected error occurred. Please try again.' 
+      error: msg || 'An unexpected error occurred. Please try again.' 
     };
   }
 };

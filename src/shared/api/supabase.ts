@@ -15,13 +15,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing required Supabase environment variables: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
 }
 
-// Note: For most use cases, prefer importing supabase from '@/shared/api/supabaseClient'
-// which has full auth configuration. This client is for specific utility functions.
+// Note: Auth is DISABLED on this client. All authentication is handled by the SSO Worker
+// via @rareminds-eym/auth-client (ssoClient). For data operations, prefer importing
+// supabase from '@/shared/api/supabaseClient' which also has auth disabled.
+// This client is kept for specific utility functions only.
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
   },
   global: {
     headers: {

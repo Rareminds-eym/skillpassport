@@ -7,6 +7,7 @@
 
 import { prepareAssessmentData, validateResults } from './assessmentDataPrep.js';
 import { addCourseRecommendations } from './courseIntegration.js';
+import { getCurrentSession } from '@/shared/api/authUtils';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('gemini-api-service');
@@ -52,9 +53,9 @@ export const callOpenRouterAssessment = async (assessmentData) => {
   const { getApiUrl } = await import('@/shared/api/apiUtils');
   const API_URL = getApiUrl('analyze-assessment');
 
-  // Get auth token
+  // Get auth token (via SSO, not Supabase auth which is disabled)
   updateProgress('sending', 'Authenticating...');
-  const { data: { session } } = await import('@/shared/api/supabaseClient').then(m => m.supabase.auth.getSession());
+  const { data: { session } } = getCurrentSession();
   const token = session?.access_token;
 
   if (!token) {

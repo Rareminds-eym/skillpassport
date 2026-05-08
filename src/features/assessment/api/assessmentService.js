@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
+import { getCurrentSession } from '@/shared/api/authUtils';
 import { calculateStreamRecommendations } from '../lib/streamMatchingEngine';
 
 /**
@@ -361,7 +362,7 @@ export const updateAttemptAdaptiveSession = async (attemptId, adaptiveSessionId)
     });
 
     // Get auth token
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = getCurrentSession();
     const token = session?.access_token;
 
     if (!token) {
