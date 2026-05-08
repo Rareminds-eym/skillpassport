@@ -223,18 +223,14 @@ async function createRoleSpecificRecord(
   const { role, phone, dateOfBirth } = body;
 
   switch (role) {
-    case 'learner':
-    case 'learner':
     case 'learner': {
-      const learnerType = role === 'learner' ? 'school' : role === 'learner' ? 'college' : 'learner';
       const { error } = await supabaseAdmin.from('learners').insert({
         user_id: userId,
         name: fullName,
         email,
         contact_number: phone,
         date_of_birth: dateOfBirth || null,
-        learner_type: learnerType,
-        approval_status: role === 'learner' ? 'approved' : 'pending', // Auto-approve learners
+        approval_status: 'approved', // Auto-approve learners
       });
       if (error) {
         throw new Error(`Failed to create learner record: ${error.message}`);

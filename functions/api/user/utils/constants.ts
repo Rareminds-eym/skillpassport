@@ -16,7 +16,6 @@ export const roleMapping: Record<string, string> = {
 export const roleDisplayNames: Record<string, string> = {
   'school_admin': 'School Administrator',
   'school_educator': 'School Educator',
-  'learner': 'School Learner',
   'educator': 'Educator',
   'college_admin': 'College Administrator',
   'college_educator': 'College Educator',

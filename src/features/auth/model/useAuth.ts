@@ -55,9 +55,7 @@ export const useAuth = (): UseAuthReturn => {
 
   const isLearner = useCallback(
     () =>
-      rolesList.some(
-        (r) => r === 'learner' || r === 'learner' || r === 'learner',
-      ),
+      rolesList.some((r) => r === 'learner'),
     [rolesList],
   );
 

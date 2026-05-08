@@ -40,7 +40,7 @@ export const isValidRole = (role: string): role is UserRole => {
 // ============================================================================
 
 export const islearnerRole = (role: string | null | undefined): boolean =>
-  role === 'learner' || role === 'learner' || role === 'learner';
+  role === 'learner';
 
 export const isEducatorRole = (role: string | null | undefined): boolean =>
   role === 'educator' || role === 'school_educator' || role === 'college_educator';

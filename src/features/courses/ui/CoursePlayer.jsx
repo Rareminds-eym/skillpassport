@@ -72,11 +72,7 @@ const CoursePlayer = () => {
   const lastSavedVideoPositionRef = useRef(0);
 
   // Check if user is a learner (for progress tracking)
-  // Learners can have roles: 'learner', 'learner', 'learner'
-  console.log('user?.role', user?.role);
-  const isLearner = user?.role === 'learner' || 
-                    user?.role === 'learner' || 
-                    user?.role === 'learner';
+  const isLearner = user?.role === 'learner';
 
   // Session restore hook - only for learners
   const {
