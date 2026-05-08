@@ -1,5 +1,6 @@
 import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
+import { extractErrorMessage } from './paymentsApiService';
 
 // Use Pages Functions for payments (not direct worker access)
 const getBaseUrl = () => {
@@ -78,7 +79,7 @@ export const addOnPaymentService = {
       const data = await response.json();
 
       if (!response.ok) {
-        return { success: false, error: data.error || 'Failed to create addon order' };
+        return { success: false, error: extractErrorMessage(data) || 'Failed to create addon order' };
       }
 
       return {
@@ -132,7 +133,7 @@ export const addOnPaymentService = {
       const data = await response.json();
 
       if (!response.ok) {
-        return { success: false, error: data.error || 'Failed to create bundle order' };
+        return { success: false, error: extractErrorMessage(data) || 'Failed to create bundle order' };
       }
 
       return {
@@ -220,7 +221,7 @@ export const addOnPaymentService = {
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.error || 'Payment verification failed');
+          throw new Error(extractErrorMessage(data) || 'Payment verification failed');
         }
 
         return {
@@ -294,7 +295,7 @@ export const addOnPaymentService = {
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.error || 'Bundle payment verification failed');
+          throw new Error(extractErrorMessage(data) || 'Bundle payment verification failed');
         }
 
         return {

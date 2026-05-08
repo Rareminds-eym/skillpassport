@@ -1,4 +1,5 @@
 import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+import { extractErrorMessage } from '@/features/subscription/api/paymentsApiService';
 /**
  * Organization Payment Service
  * 
@@ -126,7 +127,7 @@ export async function createOrganizationOrder(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.error || 'Failed to create organization order');
+      throw new Error(extractErrorMessage(error) || 'Failed to create organization order');
     }
 
     const result = await response.json();
@@ -162,7 +163,7 @@ export async function verifyOrganizationPayment(paymentData: {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.error || 'Payment verification failed');
+      throw new Error(extractErrorMessage(error) || 'Payment verification failed');
     }
 
     return await response.json();
@@ -197,7 +198,7 @@ export async function purchaseOrganizationSubscription(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.error || 'Failed to purchase subscription');
+      throw new Error(extractErrorMessage(error) || 'Failed to purchase subscription');
     }
 
     return await response.json();

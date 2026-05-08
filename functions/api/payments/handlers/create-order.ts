@@ -57,9 +57,17 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
       env
     );
 
-    // Return the response from the worker
+    // Return the response from the worker, enhanced with the Razorpay key ID
+    // The worker returns { success, order: { id, amount, currency, ... } }
+    // but the frontend expects flat access: orderData.key, orderData.amount, orderData.id
+    // Flatten the response for frontend compatibility
     const data = await response.json();
-    return new Response(JSON.stringify(data), {
+    const order = data.order || data; // Handle both { success, order } and flat formats
+    const flattenedData = {
+      ...order,
+      key: env.RAZORPAY_KEY_ID || '',
+    };
+    return new Response(JSON.stringify(flattenedData), {
       status: response.status,
       headers: { 'Content-Type': 'application/json' },
     });

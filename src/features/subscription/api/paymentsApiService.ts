@@ -36,6 +36,27 @@ const getAuthHeaders = (token) => {
   return headers;
 };
 
+/**
+ * Extract a human-readable error message from the worker/proxy response.
+ * Handles both formats:
+ *   - Worker v2: { success: false, error: { code, message } }
+ *   - Pages Functions: { error: { code, message } }
+ *   - Legacy: { error: "string" }
+ */
+export function extractErrorMessage(errorObj) {
+  if (!errorObj) return 'Unknown error';
+  // Worker v2 format: { error: { code, message } }
+  if (errorObj.error && typeof errorObj.error === 'object' && errorObj.error.message) {
+    return errorObj.error.message;
+  }
+  // Flat string format: { error: "something" }
+  if (typeof errorObj.error === 'string') {
+    return errorObj.error;
+  }
+  // Fallback
+  return errorObj.message || errorObj.details || 'Unknown error';
+}
+
 // ==================== PAYMENT ENDPOINTS ====================
 
 /**
@@ -60,9 +81,10 @@ export async function createOrder({ amount, currency = 'INR', planId, planName, 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
     // Include razorpay error details if available
+    const baseMessage = extractErrorMessage(error);
     const errorMessage = error.razorpay_error
-      ? `${error.error}: ${error.razorpay_error}`
-      : (error.error || 'Failed to create order');
+      ? `${baseMessage}: ${error.razorpay_error}`
+      : baseMessage;
     throw new Error(errorMessage);
   }
 
@@ -94,7 +116,7 @@ export async function createEventOrder({ amount, currency = 'INR', registrationI
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to create event order');
+    throw new Error(extractErrorMessage(error) || 'Failed to create event order');
   }
 
   return response.json();
@@ -147,7 +169,7 @@ export async function verifyPayment({ razorpay_order_id, razorpay_payment_id, ra
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Payment verification failed');
+    throw new Error(extractErrorMessage(error) || 'Payment verification failed');
   }
 
   return response.json();
@@ -168,7 +190,7 @@ export async function getSubscription(token) {
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to get subscription');
+    throw new Error(extractErrorMessage(error) || 'Failed to get subscription');
   }
 
   return response.json();
@@ -206,7 +228,7 @@ export async function checkSubscriptionAccess(token) {
     }
 
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to check subscription access');
+    throw new Error(extractErrorMessage(error) || 'Failed to check subscription access');
   }
 
   return response.json();
@@ -229,7 +251,7 @@ export async function cancelSubscription(subscriptionId, cancelAtCycleEnd = fals
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to cancel subscription');
+    throw new Error(extractErrorMessage(error) || 'Failed to cancel subscription');
   }
 
   return response.json();
@@ -252,7 +274,7 @@ export async function deactivateSubscription(subscriptionId, cancellationReason 
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to deactivate subscription');
+    throw new Error(extractErrorMessage(error) || 'Failed to deactivate subscription');
   }
 
   return response.json();
@@ -275,7 +297,7 @@ export async function pauseSubscription(subscriptionId, pauseMonths = 1, token) 
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to pause subscription');
+    throw new Error(extractErrorMessage(error) || 'Failed to pause subscription');
   }
 
   return response.json();
@@ -296,7 +318,7 @@ export async function resumeSubscription(subscriptionId, token) {
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to resume subscription');
+    throw new Error(extractErrorMessage(error) || 'Failed to resume subscription');
   }
 
   return response.json();

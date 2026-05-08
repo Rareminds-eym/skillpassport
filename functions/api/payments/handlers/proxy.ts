@@ -33,10 +33,9 @@ export const handleProxy = async (context: AuthenticatedContext, workerPath: str
   let resolvedPath = workerPath;
 
   try {
-    // Build the request options
+    // Build the request options — no Content-Type for GET requests
     const fetchOptions: RequestInit = {
       method,
-      headers: { 'Content-Type': 'application/json' },
     };
 
     // For POST/PUT/PATCH requests, forward the body with user context
@@ -54,6 +53,7 @@ export const handleProxy = async (context: AuthenticatedContext, workerPath: str
       body.org_id = user.org_id;
 
       fetchOptions.body = JSON.stringify(body);
+      fetchOptions.headers = { 'Content-Type': 'application/json' };
     }
 
     // For GET requests, append user_id/org_id as query params so worker knows whose data to fetch
