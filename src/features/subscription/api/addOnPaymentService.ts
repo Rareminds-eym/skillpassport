@@ -1,7 +1,11 @@
 import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 
-const PAYMENTS_API_URL = import.meta.env.VITE_PAYMENTS_API_URL || 'https://payments-api.dark-mode-d021.workers.dev';
+// Use Pages Functions for payments (not direct worker access)
+const getBaseUrl = () => {
+  const origin = window.location.origin;
+  return `${origin}/api/payments`;
+};
 
 /**
  * Helper function to make fetch requests with retry logic
@@ -52,13 +56,13 @@ export const addOnPaymentService = {
    */
   async createAddOnOrder({ featureKey, userId, billingPeriod, userEmail, userName }) {
     try {
-      const { data: { session } } = getCurrentSession();
+      const { data: { session } } = await getCurrentSession();
 
       if (!session) {
         return { success: false, error: 'User not authenticated' };
       }
 
-      const response = await fetchWithRetry(`${PAYMENTS_API_URL}/create-addon-order`, {
+      const response = await fetchWithRetry(`${getBaseUrl()}/create-addon-order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -106,13 +110,13 @@ export const addOnPaymentService = {
    */
   async createBundleOrder({ bundleId, userId, billingPeriod, userEmail, userName }) {
     try {
-      const { data: { session } } = getCurrentSession();
+      const { data: { session } } = await getCurrentSession();
 
       if (!session) {
         return { success: false, error: 'User not authenticated' };
       }
 
-      const response = await fetch(`${PAYMENTS_API_URL}/create-bundle-order`, {
+      const response = await fetch(`${getBaseUrl()}/create-bundle-order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -188,7 +192,7 @@ export const addOnPaymentService = {
   async verifyAddonPayment(razorpayOrderId, razorpayPaymentId, razorpaySignature, retries = 3) {
     const attemptVerification = async (attempt) => {
       try {
-        const { data: { session } } = getCurrentSession();
+        const { data: { session } } = await getCurrentSession();
 
         if (!session) {
           throw new Error('User not authenticated');
@@ -197,7 +201,7 @@ export const addOnPaymentService = {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-        const response = await fetch(`${PAYMENTS_API_URL}/verify-addon-payment`, {
+        const response = await fetch(`${getBaseUrl()}/verify-addon-payment`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -260,7 +264,7 @@ export const addOnPaymentService = {
   async verifyBundlePayment(razorpayOrderId, razorpayPaymentId, razorpaySignature, bundleId, billingPeriod, retries = 3) {
     const attemptVerification = async (attempt) => {
       try {
-        const { data: { session } } = getCurrentSession();
+        const { data: { session } } = await getCurrentSession();
 
         if (!session) {
           throw new Error('User not authenticated');
@@ -269,7 +273,7 @@ export const addOnPaymentService = {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-        const response = await fetch(`${PAYMENTS_API_URL}/verify-bundle-payment`, {
+        const response = await fetch(`${getBaseUrl()}/verify-bundle-payment`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

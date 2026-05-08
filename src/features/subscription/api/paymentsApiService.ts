@@ -1,9 +1,12 @@
 /**
  * Payments API Service
- * Frontend API client for Cloudflare Worker (payments-api)
+ * Frontend API client for Pages Functions (which proxy to payment-worker)
  * 
- * ALL subscription write operations go through this service → Worker → Supabase
+ * ALL subscription write operations go through this service → Pages Functions → Worker → Supabase
  * This ensures security, consistency, and proper audit trails.
+ * 
+ * The Pages Functions validate the user's SSO token and create a Service JWT
+ * for secure communication with the payment-worker.
  * 
  * AVAILABLE METHODS:
  * - createOrder()              - Create Razorpay order for subscription
@@ -17,17 +20,18 @@
  * - resumeSubscription()       - Resume paused subscription
  */
 
-const WORKER_URL = import.meta.env.VITE_PAYMENTS_API_URL || 'https://payments-api.dark-mode-d021.workers.dev';
-
+// Use Pages Functions for payments (not direct worker access)
+// The Pages Functions handle SSO validation and Service JWT creation
 const getBaseUrl = () => {
-  if (!WORKER_URL) {
-    throw new Error('VITE_PAYMENTS_API_URL environment variable is required');
-  }
-  return WORKER_URL;
+  // In development, use the local dev server URL
+  // In production, the Pages Functions are served from the same origin
+  const origin = window.location.origin;
+  return `${origin}/api/payments`;
 };
 
 const getAuthHeaders = (token) => {
   const headers = { 'Content-Type': 'application/json' };
+  // The SSO token is passed to the Pages Functions for validation
   if (token) headers['Authorization'] = `Bearer ${token}`;
   return headers;
 };
@@ -43,7 +47,7 @@ const getAuthHeaders = (token) => {
  * @param {string} params.planName - Plan display name
  * @param {string} params.userEmail - User's email
  * @param {string} params.userName - User's name
- * @param {string} token - Auth token
+ * @param {string} token - Auth token (SSO token)
  * @returns {Promise<Object>} Order details from Razorpay
  */
 export async function createOrder({ amount, currency = 'INR', planId, planName, userEmail, userName, isUpgrade }, token) {
@@ -108,10 +112,10 @@ export async function createEventOrder({ amount, currency = 'INR', registrationI
  * @param {string} params.planName - Plan name (to determine table)
  * @returns {Promise<Object>} Update result
  */
-export async function updateEventPaymentStatus({ registrationId, orderId, paymentId, status, error, planName }) {
+export async function updateEventPaymentStatus({ registrationId, orderId, paymentId, status, error, planName }, token?) {
   const response = await fetch(`${getBaseUrl()}/update-event-payment-status`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getAuthHeaders(token),
     body: JSON.stringify({ registrationId, orderId, paymentId, status, error, planName }),
   });
 
@@ -131,7 +135,7 @@ export async function updateEventPaymentStatus({ registrationId, orderId, paymen
  * @param {string} params.razorpay_payment_id - Razorpay payment ID
  * @param {string} params.razorpay_signature - Razorpay signature
  * @param {Object} params.plan - Plan details for subscription creation
- * @param {string} token - Auth token
+ * @param {string} token - Auth token (SSO token)
  * @returns {Promise<Object>} Verification result with subscription data
  */
 export async function verifyPayment({ razorpay_order_id, razorpay_payment_id, razorpay_signature, plan }, token) {
@@ -153,7 +157,7 @@ export async function verifyPayment({ razorpay_order_id, razorpay_payment_id, ra
 
 /**
  * Get user's active subscription
- * @param {string} token - Auth token
+ * @param {string} token - Auth token (SSO token)
  * @returns {Promise<Object>} Subscription data
  */
 export async function getSubscription(token) {
@@ -173,7 +177,7 @@ export async function getSubscription(token) {
 /**
  * Check subscription access for route protection
  * Returns detailed access information including grace period handling
- * @param {string} token - Auth token
+ * @param {string} token - Auth token (SSO token)
  * @returns {Promise<Object>} Access check result
  * @returns {boolean} result.hasAccess - Whether user has access
  * @returns {string} result.accessReason - Reason for access decision
@@ -213,11 +217,11 @@ export async function checkSubscriptionAccess(token) {
  * Use this for subscriptions with razorpay_subscription_id
  * @param {string} subscriptionId - Razorpay subscription ID
  * @param {boolean} cancelAtCycleEnd - Whether to cancel at end of billing cycle
- * @param {string} token - Auth token
+ * @param {string} token - Auth token (SSO token)
  * @returns {Promise<Object>} Cancellation result
  */
 export async function cancelSubscription(subscriptionId, cancelAtCycleEnd = false, token) {
-  const response = await fetch(`${getBaseUrl()}/cancel-subscription`, {
+  const response = await fetch(`${getBaseUrl()}/subscription/${subscriptionId}/cancel`, {
     method: 'POST',
     headers: getAuthHeaders(token),
     body: JSON.stringify({ subscription_id: subscriptionId, cancel_at_cycle_end: cancelAtCycleEnd }),
@@ -236,7 +240,7 @@ export async function cancelSubscription(subscriptionId, cancelAtCycleEnd = fals
  * Use this for one-time payment subscriptions (no Razorpay subscription)
  * @param {string} subscriptionId - Database subscription ID (UUID)
  * @param {string} cancellationReason - Reason for cancellation
- * @param {string} token - Auth token
+ * @param {string} token - Auth token (SSO token)
  * @returns {Promise<Object>} Deactivation result
  */
 export async function deactivateSubscription(subscriptionId, cancellationReason = 'other', token) {
@@ -259,7 +263,7 @@ export async function deactivateSubscription(subscriptionId, cancellationReason 
  * Subscription end date is extended by pause duration
  * @param {string} subscriptionId - Database subscription ID (UUID)
  * @param {number} pauseMonths - Number of months to pause (1-3)
- * @param {string} token - Auth token
+ * @param {string} token - Auth token (SSO token)
  * @returns {Promise<Object>} Pause result with updated subscription
  */
 export async function pauseSubscription(subscriptionId, pauseMonths = 1, token) {
@@ -280,7 +284,7 @@ export async function pauseSubscription(subscriptionId, pauseMonths = 1, token) 
 /**
  * Resume a paused subscription
  * @param {string} subscriptionId - Database subscription ID (UUID)
- * @param {string} token - Auth token
+ * @param {string} token - Auth token (SSO token)
  * @returns {Promise<Object>} Resume result with updated subscription
  */
 export async function resumeSubscription(subscriptionId, token) {

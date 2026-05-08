@@ -55,7 +55,7 @@ export const verifyPaymentSignature = async (paymentData) => {
     }
 
     // Get auth token (optional - Worker can verify via order)
-    const { data: { session } } = getCurrentSession();
+    const { data: { session } } = await getCurrentSession();
     const token = session?.access_token;
 
     // Call Worker - handles verification + subscription creation
@@ -136,7 +136,7 @@ export const logFailedTransaction = async (transactionData) => {
     const { razorpay_payment_id, razorpay_order_id, amount, currency, error, error_description } = transactionData;
     
     // Get current user if available
-    const { data: { session } } = getCurrentSession();
+    const { data: { session } } = await getCurrentSession();
     const userId = session?.user?.id;
 
     // Optionally log to database if needed

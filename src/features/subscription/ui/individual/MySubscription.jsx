@@ -183,7 +183,7 @@ function MySubscription() {
 
     try {
       // Get auth token (via SSO, not Supabase auth which is disabled)
-      const { data: { session } } = getCurrentSession();
+      const { data: { session } } = await getCurrentSession();
       const token = session?.access_token;
 
       // Call Worker via paymentsApiService
@@ -222,7 +222,7 @@ function MySubscription() {
 
     try {
       // Get auth token (via SSO, not Supabase auth which is disabled)
-      const { data: { session } } = getCurrentSession();
+      const { data: { session } } = await getCurrentSession();
       const token = session?.access_token;
 
       const result = await pauseSubscription(
@@ -257,7 +257,7 @@ function MySubscription() {
 
     try {
       // Get auth token (via SSO, not Supabase auth which is disabled)
-      const { data: { session } } = getCurrentSession();
+      const { data: { session } } = await getCurrentSession();
       const token = session?.access_token;
 
       const result = await resumeSubscription(subscriptionData.id, token);

@@ -499,13 +499,14 @@ export class OrganizationBillingService {
    */
   async downloadInvoice(invoiceId: string): Promise<Blob> {
     try {
-      const { data: { session } } = getCurrentSession();
+      const { data: { session } } = await getCurrentSession();
       if (!session?.access_token) {
         throw new Error('Not authenticated');
       }
 
+      const origin = window.location.origin;
       const response = await fetch(
-        `${import.meta.env.VITE_PAYMENTS_API_URL || 'https://payments-api.dark-mode-d021.workers.dev'}/org-billing/invoice/${invoiceId}/download`,
+        `${origin}/api/payments/org-billing/invoice/${invoiceId}/download`,
         {
           method: 'GET',
           headers: {

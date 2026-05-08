@@ -1,4 +1,4 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+import { getCurrentSession } from '@/shared/api/authUtils';
 /**
  * Razorpay Service
  * 
@@ -14,7 +14,6 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
  * - verifyPayment()           - Verify payment via Worker
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
 import paymentsApiService from './paymentsApiService';
 
 /**
@@ -45,7 +44,7 @@ export const loadRazorpayScript = () => {
 export const createRazorpayOrder = async (orderData) => {
   try {
     // Get auth token
-    const { data: { session } } = getCurrentSession();
+    const { data: { session } } = await getCurrentSession();
     const token = session?.access_token;
 
     if (!token) {
@@ -87,8 +86,12 @@ export const createRazorpayOrder = async (orderData) => {
 export const verifyPayment = async (paymentData) => {
   try {
     // Get auth token
-    const { data: { session } } = getCurrentSession();
+    const { data: { session } } = await getCurrentSession();
     const token = session?.access_token;
+
+    if (!token) {
+      throw new Error('No authentication token available');
+    }
 
     // Call Worker via paymentsApiService
     return await paymentsApiService.verifyPayment({

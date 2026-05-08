@@ -14,14 +14,19 @@ import { useAuthStore } from '@/shared/model/authStore';
 import { ssoClient } from '@/shared/api/ssoClient';
 
 /**
- * Get the current user synchronously from the auth store.
+ * Get the current user from the auth store.
  * Returns the same shape as the legacy `supabase.auth.getUser()` for drop-in replacement.
+ * 
+ * Note: This function is now async to ensure SSO session is initialized.
  *
  * @example
- * const { data: { user }, error } = getCurrentUser();
+ * const { data: { user }, error } = await getCurrentUser();
  */
-export const getCurrentUser = () => {
+export const getCurrentUser = async () => {
   try {
+    // Ensure session is initialized (idempotent if already initialized)
+    await ssoClient.initSession();
+    
     const state = useAuthStore.getState();
     const user = state.user;
 
@@ -47,17 +52,22 @@ export const getCurrentUser = () => {
 };
 
 /**
- * Get the current session synchronously from the SSO client + auth store.
+ * Get the current session from the SSO client + auth store.
  * Returns the same shape as the legacy `supabase.auth.getSession()` for drop-in replacement.
  *
  * Note: In SSO mode, the access token is held in memory by auth-client.
  * The refresh token is an HttpOnly cookie and is never exposed to JS.
+ * 
+ * Note: This function is now async to ensure SSO session is initialized.
  *
  * @example
- * const { data: { session }, error } = getCurrentSession();
+ * const { data: { session }, error } = await getCurrentSession();
  */
-export const getCurrentSession = () => {
+export const getCurrentSession = async () => {
   try {
+    // Ensure session is initialized (idempotent if already initialized)
+    await ssoClient.initSession();
+    
     const state = useAuthStore.getState();
     const user = state.user;
     const accessToken = ssoClient.getAccessToken();

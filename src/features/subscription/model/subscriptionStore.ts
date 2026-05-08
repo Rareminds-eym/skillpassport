@@ -620,7 +620,7 @@ export const useSubscriptionPurchase = () => {
 
   // Convenience wrapper: create add-on order via the payments API
   const purchaseAddOn = async (featureKey: string, billingPeriod: string = 'monthly') => {
-    const { data: { session } } = getCurrentSession();
+    const { data: { session } } = await getCurrentSession();
     if (!session?.user) throw new Error('Not authenticated');
     setPurchaseState({ isPurchasing: true, purchaseError: null });
     try {
@@ -641,7 +641,7 @@ export const useSubscriptionPurchase = () => {
 
   // Convenience wrapper: create bundle order via the payments API
   const purchaseBundle = async (bundleId: string, billingPeriod: string = 'monthly') => {
-    const { data: { session } } = getCurrentSession();
+    const { data: { session } } = await getCurrentSession();
     if (!session?.user) throw new Error('Not authenticated');
     setPurchaseState({ isPurchasing: true, purchaseError: null });
     try {

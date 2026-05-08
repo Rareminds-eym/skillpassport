@@ -86,8 +86,8 @@ export const useSubscription = () => {
   }, [fetchSubscription]);
 
   // Get auth token (via SSO, not Supabase auth which is disabled)
-  const getToken = () => {
-    const { data: { session } } = getCurrentSession();
+  const getToken = async () => {
+    const { data: { session } } = await getCurrentSession();
     return session?.access_token;
   };
 

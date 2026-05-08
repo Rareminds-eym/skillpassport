@@ -12,9 +12,11 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-const PAYMENTS_API_URL =
-  import.meta.env.VITE_PAYMENTS_API_URL ||
-  'https://payments-api.dark-mode-d021.workers.dev';
+// Use Pages Functions for payments (not direct worker access)
+const getBaseUrl = () => {
+  const origin = window.location.origin;
+  return `${origin}/api/payments`;
+};
 
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1500;
@@ -76,7 +78,7 @@ export function useSubscriptionPlansData(options = {}) {
         // Fetch ALL features — no artificial limit
       });
 
-      const url = `${PAYMENTS_API_URL}/subscription-plans?${params}`;
+      const url = `${getBaseUrl()}/subscription-plans?${params}`;
 
       try {
         const response = await fetch(url);
@@ -161,7 +163,7 @@ export function useSubscriptionPlan(planCode) {
 
       try {
         const response = await fetch(
-          `${PAYMENTS_API_URL}/subscription-plan?planCode=${encodeURIComponent(planCode)}`
+          `${getBaseUrl()}/subscription-plan?planCode=${encodeURIComponent(planCode)}`
         );
 
         if (!response.ok) {
@@ -215,7 +217,7 @@ export function useSubscriptionFeaturesComparison() {
 
       try {
         const response = await fetch(
-          `${PAYMENTS_API_URL}/subscription-features`
+          `${getBaseUrl()}/subscription-features`
         );
 
         if (!response.ok) {
