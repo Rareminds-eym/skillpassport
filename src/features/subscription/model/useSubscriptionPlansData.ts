@@ -11,12 +11,21 @@
  *   error = ...    → fetch failed
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { getCurrentSession } from '@/shared/api/authUtils';
 
 // Use Pages Functions for payments (not direct worker access)
 const getBaseUrl = () => {
   const origin = window.location.origin;
   return `${origin}/api/payments`;
 };
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const { data: { session } } = await getCurrentSession();
+  const token = session?.access_token;
+  return token
+    ? { Authorization: `Bearer ${token}` }
+    : {};
+}
 
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1500;
@@ -81,7 +90,8 @@ export function useSubscriptionPlansData(options = {}) {
       const url = `${getBaseUrl()}/subscription-plans?${params}`;
 
       try {
-        const response = await fetch(url);
+        const headers = await getAuthHeaders();
+        const response = await fetch(url, { headers });
 
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
@@ -162,8 +172,10 @@ export function useSubscriptionPlan(planCode) {
       setError(null);
 
       try {
+        const headers = await getAuthHeaders();
         const response = await fetch(
-          `${getBaseUrl()}/subscription-plan?planCode=${encodeURIComponent(planCode)}`
+          `${getBaseUrl()}/subscription-plan?planCode=${encodeURIComponent(planCode)}`,
+          { headers }
         );
 
         if (!response.ok) {
@@ -216,8 +228,10 @@ export function useSubscriptionFeaturesComparison() {
       setError(null);
 
       try {
+        const headers = await getAuthHeaders();
         const response = await fetch(
-          `${getBaseUrl()}/subscription-features`
+          `${getBaseUrl()}/subscription-features`,
+          { headers }
         );
 
         if (!response.ok) {
