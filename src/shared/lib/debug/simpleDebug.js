@@ -4,11 +4,12 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
+import { getCurrentUser } from '@/shared/api/authUtils';
 
 export const simpleDebug = async () => {
   
   // 1. Check auth
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = getCurrentUser();
   
   // 2. Check table access
   try {
