@@ -26,7 +26,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import Loader from '@/shared/ui/Loader';
 import SubscriptionBanner from './SubscriptionBanner';
 
-import { useSubscriptionContext, useSubscriptionStore } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionContext, useSubscriptionStore, ACCESS_REASONS } from '@/features/subscription/model/subscriptionStore';
 import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/shared/model/authStore';
 // ============================================================================
 // CONSTANTS
