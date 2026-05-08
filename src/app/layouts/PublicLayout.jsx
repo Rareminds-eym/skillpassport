@@ -4,8 +4,7 @@ import PromotionalBanner from '@/shared/ui/marketing/PromotionalBanner';
 import AssessmentPromotionalBanner from '@/shared/ui/marketing/AssessmentPromotionalBanner';
 
 
-import { useAuth } from '@/features/auth';
-import { useSubscriptionQuery, isActiveOrPaused } from '@/features/subscription';
+import { isActiveOrPaused } from '@/features/subscription';
 
 // Import role-specific headers
 import { Header as LearnerHeader } from '@/widgets/learner-dashboard';

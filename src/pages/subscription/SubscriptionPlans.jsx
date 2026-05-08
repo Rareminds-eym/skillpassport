@@ -3,7 +3,7 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AddOnMarketplace, OrganizationPurchasePanel } from '@/features/subscription/ui';
-import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
+import { useSubscriptionPlansData } from '@/features/subscription/model';
 
 
 

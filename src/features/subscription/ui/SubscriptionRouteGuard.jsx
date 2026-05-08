@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/features/auth';
-import { useSubscriptionQuery } from '@/features/subscription/model';
+import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/shared/model/authStore';
+import { useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
 import { isActiveOrPaused, isManageable } from '../lib/subscriptionHelpers';
 
 /**

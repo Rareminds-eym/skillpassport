@@ -16,6 +16,7 @@ import {
   ExclamationCircleIcon,
 } from '@heroicons/react/24/outline';
 
+import { WARNING_TYPES } from '@/features/subscription/model/subscriptionStore';
 
 /**
  * Get the base path for subscription routes based on current location

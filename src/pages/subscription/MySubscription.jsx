@@ -24,9 +24,9 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { SubscriptionDashboard } from '@/features/subscription';
-import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
+import { useSubscriptionPlansData } from '@/features/subscription/model';
+import { useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
 
-import { supabase } from '@/shared/api/supabaseClient';
 import { getUserSubscriptions } from '@/features/subscription/api';
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '@/features/subscription';
 import { calculateDaysRemaining, calculateProgressPercentage, formatDate, getSubscriptionStatusChecks } from '@/features/subscription';

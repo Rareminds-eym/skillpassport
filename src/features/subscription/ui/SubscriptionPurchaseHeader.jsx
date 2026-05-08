@@ -1,7 +1,8 @@
 import { LogOut } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '@/shared/api/supabaseClient';
 import toast from 'react-hot-toast';
+
+import { useAuthActions } from '@/shared/model/authStore';
 
 /**
  * Simplified header for subscription purchase flow
@@ -10,11 +11,11 @@ import toast from 'react-hot-toast';
 const SubscriptionPurchaseHeader = ({ userEmail, hasBanner = false }) => {
   const navigate = useNavigate();
 
+  const { logout } = useAuthActions();
+
   const handleLogout = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
+      await logout();
       toast.success('Logged out successfully');
       navigate('/login');
     } catch (error) {

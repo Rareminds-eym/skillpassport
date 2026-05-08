@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { getCurrentSession } from '@/shared/api/authUtils';
 import { getActiveSubscription } from '../api/subscriptionService';
 import { paymentsApiService } from '@/features/subscription';
 
@@ -85,9 +85,9 @@ export const useSubscription = () => {
     fetchSubscription();
   }, [fetchSubscription]);
 
-  // Get auth token helper
-  const getToken = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+  // Get auth token (via SSO, not Supabase auth which is disabled)
+  const getToken = () => {
+    const { data: { session } } = getCurrentSession();
     return session?.access_token;
   };
 

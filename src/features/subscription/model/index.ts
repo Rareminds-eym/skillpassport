@@ -1,5 +1,6 @@
 // Export all subscription hooks
-export { default as useSubscription } from './useSubscription';
+// NOTE: useSubscription is exported from subscriptionStore.ts (Zustand).
+// The legacy useSubscription.js is kept for reference but not re-exported.
 export { default as useOrganizationSubscription } from './useOrganizationSubscription';
 export { default as usePaymentVerification, usePaymentVerificationFromURL } from '../lib/usePaymentVerification';
 export { default as useSubscriptionPlansData } from './useSubscriptionPlansData';
