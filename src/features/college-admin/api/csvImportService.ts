@@ -1,6 +1,6 @@
 import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
- * CSV Import Service for Student Data
+ * CSV Import Service for Learner Data
  * Handles validation, auto-mapping, capacity checks, and preview generation
  */
 
@@ -8,7 +8,7 @@ import { supabase } from '@/shared/api/supabaseClient'
 
 // Mandatory field categories
 export const MANDATORY_FIELDS = {
-  CATEGORY_1: ['student_name', 'email', 'contact_number', 'date_of_birth', 'gender', 'enrollment_number', 'roll_number'],
+  CATEGORY_1: ['learner_name', 'email', 'contact_number', 'date_of_birth', 'gender', 'enrollment_number', 'roll_number'],
   CATEGORY_2: ['address', 'city', 'state', 'country', 'pincode', 'blood_group'],
   CATEGORY_3: ['guardian_name', 'guardian_phone', 'guardian_email', 'guardian_relation'],
   CATEGORY_4: ['grade', 'section', 'academic_year'] // school_code or school_id
@@ -16,8 +16,8 @@ export const MANDATORY_FIELDS = {
 
 // Field mapping dictionary for auto-detection
 const FIELD_MAPPINGS: Record<string, string[]> = {
-  student_name: ['name', 'student_name', 'studentname', 'fullname', 'full_name'],
-  email: ['email', 'emailaddress', 'email_address', 'studentemail', 'student_email'],
+  learner_name: ['name', 'learner_name', 'learnername', 'fullname', 'full_name'],
+  email: ['email', 'emailaddress', 'email_address', 'learneremail', 'learner_email'],
   contact_number: ['contact', 'contactnumber', 'contact_number', 'phone', 'phonenumber', 'phone_number', 'mobile'],
   alternate_number: ['alternate', 'alternatenumber', 'alternate_number', 'alternatephone', 'alternate_phone', 'secondaryphone', 'secondary_phone'],
   date_of_birth: ['dob', 'dateofbirth', 'date_of_birth', 'birthdate', 'birth_date'],
@@ -266,7 +266,7 @@ async function findExistingClass(
   // Try to find existing class
   const { data: existingClass, error: findError } = await supabase
     .from('school_classes')
-    .select('id, max_students, current_students')
+    .select('id, max_learners, current_learners')
     .eq('school_id', schoolId)
     .eq('grade', grade)
     .eq('section', section)
@@ -289,11 +289,11 @@ async function findExistingClass(
  */
 async function checkClassCapacity(
   classId: string,
-  newStudentsCount: number
+  newlearnersCount: number
 ): Promise<{ hasCapacity: boolean; available: number; max: number }> {
   const { data, error } = await supabase
     .from('school_classes')
-    .select('max_students, current_students')
+    .select('max_learners, current_learners')
     .eq('id', classId)
     .single()
 
@@ -301,10 +301,10 @@ async function checkClassCapacity(
     return { hasCapacity: false, available: 0, max: 0 }
   }
 
-  const available = data.max_students - data.current_students
-  const hasCapacity = available >= newStudentsCount
+  const available = data.max_learners - data.current_learners
+  const hasCapacity = available >= newlearnersCount
 
-  return { hasCapacity, available, max: data.max_students }
+  return { hasCapacity, available, max: data.max_learners }
 }
 
 /**
@@ -320,7 +320,7 @@ async function checkDuplicates(
   // Check emails
   if (emails.length > 0) {
     const { data: existingEmails } = await supabase
-      .from('students')
+      .from('learners')
       .select('email')
       .in('email', emails)
 
@@ -332,7 +332,7 @@ async function checkDuplicates(
   // Check enrollment numbers
   if (enrollmentNumbers.length > 0) {
     const { data: existingEnrollments } = await supabase
-      .from('students')
+      .from('learners')
       .select('enrollment_number')
       .in('enrollment_number', enrollmentNumbers.filter(Boolean))
 
@@ -500,7 +500,7 @@ export async function processCSVData(
       })
     } else if (capacity && !capacity.hasCapacity) {
       // Check capacity exceeded
-      capacityIssue = `Class capacity exceeded (${capacity.available}/${capacity.max} available, ${classCounts[classKey]} students in CSV)`
+      capacityIssue = `Class capacity exceeded (${capacity.available}/${capacity.max} available, ${classCounts[classKey]} learners in CSV)`
       errors.push({
         row: rowNumber,
         field: 'class_capacity',
@@ -536,14 +536,14 @@ export async function processCSVData(
 }
 
 /**
- * Import validated students
+ * Import validated learners
  */
 import userApiService from '@/entities/user/api/userApiService'
 
 /**
- * Import validated students
+ * Import validated learners
  */
-export async function importStudents(
+export async function importlearners(
   validRows: ValidatedRow[],
   userEmail: string
 ): Promise<{ success: number; failed: number; errors: string[] }> {
@@ -561,11 +561,11 @@ export async function importStudents(
   for (const row of validRows) {
     try {
       // Call Cloudflare Worker via userApiService
-      const result = await userApiService.createStudent({
+      const result = await userApiService.createLearner({
         userEmail,
         schoolId: row.data.school_id,
-        student: {
-          name: row.data.student_name,
+        learner: {
+          name: row.data.learner_name,
           email: row.data.email,
           contactNumber: row.data.contact_number,
           alternateNumber: row.data.alternate_number || null,
@@ -587,7 +587,7 @@ export async function importStudents(
           section: row.data.section,
           schoolClassId: row.data.school_class_id,
           approval_status: 'approved',
-          student_type: 'csv_import'
+          learner_type: 'csv_import'
         }
       }, token)
 

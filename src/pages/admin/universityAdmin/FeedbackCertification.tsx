@@ -30,7 +30,7 @@ interface FeedbackRecord {
   subject: string;
   semester: string;
   academicYear: string;
-  feedbackType: 'student' | 'peer' | 'admin';
+  feedbackType: 'learner' | 'peer' | 'admin';
   rating: number;
   comments: string;
   submittedBy: string;
@@ -59,7 +59,7 @@ interface FeedbackFormData {
   subject: string;
   semester: string;
   academicYear: string;
-  feedbackType: 'student' | 'peer' | 'admin';
+  feedbackType: 'learner' | 'peer' | 'admin';
   rating: number;
   comments: string;
   submittedBy: string;
@@ -102,7 +102,7 @@ const FeedbackCertification: React.FC = () => {
     subject: '',
     semester: '',
     academicYear: '2024-25',
-    feedbackType: 'student',
+    feedbackType: 'learner',
     rating: 5,
     comments: '',
     submittedBy: ''
@@ -130,10 +130,10 @@ const FeedbackCertification: React.FC = () => {
       subject: 'Data Structures',
       semester: 'III',
       academicYear: '2024-25',
-      feedbackType: 'student',
+      feedbackType: 'learner',
       rating: 4.5,
       comments: 'Excellent teaching methodology and clear explanations.',
-      submittedBy: 'Student Batch CS-III',
+      submittedBy: 'Learner Batch CS-III',
       submissionDate: '2024-12-15',
       status: 'approved',
       certificationEligible: true,
@@ -166,7 +166,7 @@ const FeedbackCertification: React.FC = () => {
       academicYear: '2024-25',
       feedbackType: 'admin',
       rating: 3.8,
-      comments: 'Needs improvement in student engagement techniques.',
+      comments: 'Needs improvement in learner engagement techniques.',
       submittedBy: 'HOD Mechanical',
       submissionDate: '2024-12-08',
       status: 'pending',
@@ -236,7 +236,7 @@ const FeedbackCertification: React.FC = () => {
       facultyName: 'Dr. Karthik Raman',
       facultyId: 'FAC007',
       collegeName: 'Government College of Engineering',
-      certificationType: 'Student Mentorship Award',
+      certificationType: 'Learner Mentorship Award',
       issueDate: '2024-08-15',
       validUntil: '2024-12-31',
       status: 'active',
@@ -284,7 +284,7 @@ const FeedbackCertification: React.FC = () => {
     'Information Technology',
   ];
 
-  const feedbackTypes = ['student', 'peer', 'admin'];
+  const feedbackTypes = ['learner', 'peer', 'admin'];
   const statuses = ['pending', 'reviewed', 'approved', 'rejected'];
   const certificationTypes = [
     'Excellence in Teaching Award',
@@ -292,7 +292,7 @@ const FeedbackCertification: React.FC = () => {
     'Research Excellence Award',
     'Professional Development Certificate',
     'Industry Collaboration Award',
-    'Student Mentorship Award',
+    'Learner Mentorship Award',
   ];
   const certificationStatuses = ['active', 'expired', 'revoked'];
   const dateRanges = [
@@ -1070,7 +1070,7 @@ const FeedbackCertification: React.FC = () => {
         subject: '',
         semester: '',
         academicYear: '2024-25',
-        feedbackType: 'student',
+        feedbackType: 'learner',
         rating: 5,
         comments: '',
         submittedBy: ''
@@ -1453,10 +1453,10 @@ const FeedbackCertification: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Feedback Type</label>
               <select
                 value={feedbackFormData.feedbackType}
-                onChange={(e) => setFeedbackFormData(prev => ({ ...prev, feedbackType: e.target.value as 'student' | 'peer' | 'admin' }))}
+                onChange={(e) => setFeedbackFormData(prev => ({ ...prev, feedbackType: e.target.value as 'learner' | 'peer' | 'admin' }))}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               >
-                <option value="student">Student Feedback</option>
+                <option value="learner">Learner Feedback</option>
                 <option value="peer">Peer Review</option>
                 <option value="admin">Administrative Review</option>
               </select>
@@ -2104,14 +2104,14 @@ const FeedbackCertification: React.FC = () => {
             Approved
           </button>
           <button
-            onClick={() => setSelectedFeedbackType('student')}
+            onClick={() => setSelectedFeedbackType('learner')}
             className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              selectedFeedbackType === 'student'
+              selectedFeedbackType === 'learner'
                 ? 'bg-blue-100 text-blue-800 border border-blue-300'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
             }`}
           >
-            Student Feedback
+            Learner Feedback
           </button>
           <button
             onClick={() => {

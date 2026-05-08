@@ -8,7 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { useStudents } from '@/entities/student/model/useAdminStudents';
+import { useLearners } from '@/entities/learner/model/useAdminLearners';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 import { authSessionService } from '@/features/auth';
@@ -35,8 +35,8 @@ interface Book {
 interface BookIssue {
   id: string;
   book_id: string;
-  student_id: string;
-  student_name: string;
+  learner_id: string;
+  learner_name: string;
   roll_number: string;
   class: string;
   issue_date: string;
@@ -87,17 +87,17 @@ export default function LibraryModule() {
     location_shelf: ''
   });
 
-  // Student Search State
-  const [studentSearch, setStudentSearch] = useState("");
-  const [debouncedStudentSearch, setDebouncedStudentSearch] = useState("");
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  const [showStudentDropdown, setShowStudentDropdown] = useState(false);
+  // Learner Search State
+  const [learnerSearch, setlearnerSearch] = useState("");
+  const [debouncedlearnerSearch, setDebouncedlearnerSearch] = useState("");
+  const [selectedLearner, setSelectedLearner] = useState<any>(null);
+  const [showlearnerDropdown, setShowlearnerDropdown] = useState(false);
   const [selectedBookForIssue, setSelectedBookForIssue] = useState<Book | null>(null);
-  const studentSearchRef = useRef<HTMLDivElement>(null);
+  const learnerSearchRef = useRef<HTMLDivElement>(null);
 
   // Return Book State
   const [bookIdSearch, setBookIdSearch] = useState("");
-  const [studentIdSearch, setStudentIdSearch] = useState("");
+  const [learnerIdSearch, setLearnerIdSearch] = useState("");
   const [searchAllBooks, setSearchAllBooks] = useState("");
 
   // Details Tab State
@@ -120,9 +120,9 @@ export default function LibraryModule() {
   const [overdueSearchQuery, setOverdueSearchQuery] = useState("");
   const [overdueLoading, setOverdueLoading] = useState(false);
 
-  // Use the same hook as admissions page for fetching students
-  const { students: studentSearchResults, loading: searchLoading } = useStudents({
-    searchTerm: debouncedStudentSearch,
+  // Use the same hook as admissions page for fetching learners
+  const { learners: learnerSearchResults, loading: searchLoading } = useLearners({
+    searchTerm: debouncedlearnerSearch,
     page: 1,
     pageSize: 10
   });
@@ -331,7 +331,7 @@ export default function LibraryModule() {
     } catch (error: any) {
       logger.error('Error deleting book', error);
       if (error.code === '23503') {
-        toast.error('Cannot delete book: It has been issued to students');
+        toast.error('Cannot delete book: It has been issued to learners');
       } else {
         toast.error('Failed to delete book');
       }
@@ -420,7 +420,7 @@ export default function LibraryModule() {
   // Filter history data
   const filteredHistoryData = historyData.filter(issue => {
     const matchesSearch = !historySearchQuery ||
-      issue.student_name.toLowerCase().includes(historySearchQuery.toLowerCase()) ||
+      issue.learner_name.toLowerCase().includes(historySearchQuery.toLowerCase()) ||
       issue.roll_number.toLowerCase().includes(historySearchQuery.toLowerCase()) ||
       issue.book?.title.toLowerCase().includes(historySearchQuery.toLowerCase()) ||
       issue.book?.author.toLowerCase().includes(historySearchQuery.toLowerCase());
@@ -453,7 +453,7 @@ export default function LibraryModule() {
   // Filter overdue data
   const filteredOverdueBooks = overdueBooks.filter(issue => {
     const matchesSearch = !overdueSearchQuery ||
-      issue.student_name.toLowerCase().includes(overdueSearchQuery.toLowerCase()) ||
+      issue.learner_name.toLowerCase().includes(overdueSearchQuery.toLowerCase()) ||
       issue.roll_number.toLowerCase().includes(overdueSearchQuery.toLowerCase()) ||
       issue.book?.title.toLowerCase().includes(overdueSearchQuery.toLowerCase()) ||
       issue.book?.author.toLowerCase().includes(overdueSearchQuery.toLowerCase());
@@ -497,7 +497,7 @@ export default function LibraryModule() {
     if (!issue) return;
 
     // This would integrate with email/SMS service
-    toast.success(`Reminder sent to ${issue.student_name}`);
+    toast.success(`Reminder sent to ${issue.learner_name}`);
   };
 
   // Add new book
@@ -555,10 +555,10 @@ export default function LibraryModule() {
     }
   };
 
-  // Issue book to student
+  // Issue book to learner
   const handleIssueBook = async () => {
-    if (!schoolId || !selectedStudent || !selectedBookForIssue) {
-      toast.error('Please select both a student and a book');
+    if (!schoolId || !selectedLearner || !selectedBookForIssue) {
+      toast.error('Please select both a learner and a book');
       return;
     }
 
@@ -580,10 +580,10 @@ export default function LibraryModule() {
         .insert([{
           school_id: schoolId,
           book_id: selectedBookForIssue.id,
-          student_id: selectedStudent.id,
-          student_name: selectedStudent.name,
-          roll_number: selectedStudent.roll_number || '',
-          class: selectedStudent.grade || selectedStudent.class || '',
+          learner_id: selectedLearner.id,
+          learner_name: selectedLearner.name,
+          roll_number: selectedLearner.roll_number || '',
+          class: selectedLearner.grade || selectedLearner.class || '',
           academic_year: new Date().getFullYear().toString(),
           issue_date: issueDate.toISOString().split('T')[0],
           due_date: dueDate.toISOString().split('T')[0],
@@ -595,13 +595,13 @@ export default function LibraryModule() {
 
       if (error) throw error;
 
-      toast.success(`Book "${selectedBookForIssue.title}" issued to ${selectedStudent.name}`);
+      toast.success(`Book "${selectedBookForIssue.title}" issued to ${selectedLearner.name}`);
 
       // Clear selections
-      setSelectedStudent(null);
+      setSelectedLearner(null);
       setSelectedBookForIssue(null);
-      setStudentSearch('');
-      setDebouncedStudentSearch('');
+      setlearnerSearch('');
+      setDebouncedlearnerSearch('');
 
       fetchLibraryData(); // Refresh data
     } catch (error: any) {
@@ -641,43 +641,43 @@ export default function LibraryModule() {
     }
   };
 
-  // Debounce student search
+  // Debounce learner search
   useEffect(() => {
     const delayedSearch = setTimeout(() => {
-      setDebouncedStudentSearch(studentSearch);
+      setDebouncedlearnerSearch(learnerSearch);
     }, 300);
 
     return () => clearTimeout(delayedSearch);
-  }, [studentSearch]);
+  }, [learnerSearch]);
 
   // Show/hide dropdown based on search and results
   useEffect(() => {
-    if (studentSearch.length >= 2 && studentSearchResults.length > 0) {
-      setShowStudentDropdown(true);
+    if (learnerSearch.length >= 2 && learnerSearchResults.length > 0) {
+      setShowlearnerDropdown(true);
     } else {
-      setShowStudentDropdown(false);
+      setShowlearnerDropdown(false);
     }
-  }, [studentSearch, studentSearchResults]);
+  }, [learnerSearch, learnerSearchResults]);
 
-  // Select student and auto-fill
-  const selectStudent = (student: any) => {
-    setSelectedStudent(student);
-    setStudentSearch(student.name);
-    setShowStudentDropdown(false);
+  // Select learner and auto-fill
+  const selectLearner = (learner: any) => {
+    setSelectedLearner(learner);
+    setlearnerSearch(learner.name);
+    setShowlearnerDropdown(false);
   };
 
-  // Clear student selection
-  const clearStudentSelection = () => {
-    setSelectedStudent(null);
-    setStudentSearch('');
-    setDebouncedStudentSearch('');
+  // Clear learner selection
+  const clearlearnerSelection = () => {
+    setSelectedLearner(null);
+    setlearnerSearch('');
+    setDebouncedlearnerSearch('');
   };
 
   // Click outside handler
   useEffect(() => {
     const handleClickOutside = (event: any) => {
-      if (studentSearchRef.current && !studentSearchRef.current.contains(event.target)) {
-        setShowStudentDropdown(false);
+      if (learnerSearchRef.current && !learnerSearchRef.current.contains(event.target)) {
+        setShowlearnerDropdown(false);
       }
     };
 
@@ -1323,7 +1323,7 @@ export default function LibraryModule() {
                   <div className="relative">
                     <input
                       type="text"
-                      placeholder="Search by student name, roll number, or book..."
+                      placeholder="Search by learner name, roll number, or book..."
                       className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       value={historySearchQuery}
                       onChange={(e) => setHistorySearchQuery(e.target.value)}
@@ -1396,7 +1396,7 @@ export default function LibraryModule() {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Book</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Learner</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Issue Date</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Return Date</th>
@@ -1416,7 +1416,7 @@ export default function LibraryModule() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div>
-                              <div className="text-sm font-medium text-gray-900">{issue.student_name}</div>
+                              <div className="text-sm font-medium text-gray-900">{issue.learner_name}</div>
                               <div className="text-sm text-gray-500">Roll: {issue.roll_number}</div>
                             </div>
                           </td>
@@ -1490,7 +1490,7 @@ export default function LibraryModule() {
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="Search by student name, roll number, or book..."
+                    placeholder="Search by learner name, roll number, or book..."
                     className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     value={overdueSearchQuery}
                     onChange={(e) => setOverdueSearchQuery(e.target.value)}
@@ -1537,11 +1537,11 @@ export default function LibraryModule() {
                       </span>
                     </div>
 
-                    {/* Student Details */}
+                    {/* Learner Details */}
                     <div className="space-y-2 mb-4">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Student:</span>
-                        <span className="font-medium text-gray-900">{issue.student_name}</span>
+                        <span className="text-gray-600">Learner:</span>
+                        <span className="font-medium text-gray-900">{issue.learner_name}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Roll Number:</span>
@@ -1617,7 +1617,7 @@ export default function LibraryModule() {
               <h3 className="text-lg font-semibold text-blue-900 mb-4">Library Rules</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
                 <div>
-                  <span className="font-medium text-blue-900">Max Books per Student:</span>
+                  <span className="font-medium text-blue-900">Max Books per Learner:</span>
                   <span className="ml-2 text-blue-700">3</span>
                 </div>
                 <div>
@@ -1632,22 +1632,22 @@ export default function LibraryModule() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Select Student Section */}
+              {/* Select Learner Section */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center mb-4">
                   <UsersIcon className="h-6 w-6 text-blue-600 mr-3" />
-                  <h3 className="text-lg font-semibold text-gray-900">Select Student</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Select Learner</h3>
                 </div>
 
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Search Student</label>
-                  <div className="relative" ref={studentSearchRef}>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Search Learner</label>
+                  <div className="relative" ref={learnerSearchRef}>
                     <input
                       type="text"
-                      placeholder="Type student name, roll number, or email..."
+                      placeholder="Type learner name, roll number, or email..."
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      value={studentSearch}
-                      onChange={(e) => setStudentSearch(e.target.value)}
+                      value={learnerSearch}
+                      onChange={(e) => setlearnerSearch(e.target.value)}
                     />
                     <div className="absolute right-3 top-3">
                       {searchLoading ? (
@@ -1657,27 +1657,27 @@ export default function LibraryModule() {
                       )}
                     </div>
 
-                    {/* Student Search Dropdown */}
-                    {showStudentDropdown && studentSearchResults.length > 0 && (
+                    {/* Learner Search Dropdown */}
+                    {showlearnerDropdown && learnerSearchResults.length > 0 && (
                       <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl max-h-60 overflow-y-auto">
-                        {studentSearchResults.map((student) => (
+                        {learnerSearchResults.map((learner) => (
                           <div
-                            key={student.id}
+                            key={learner.id}
                             className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
-                            onClick={() => selectStudent(student)}
+                            onClick={() => selectLearner(learner)}
                           >
-                            <div className="font-semibold text-gray-800">{student.name}</div>
+                            <div className="font-semibold text-gray-800">{learner.name}</div>
                             <div className="text-sm text-gray-600 mt-1">
-                              {student.roll_number && `Roll: ${student.roll_number}`}
-                              {student.admission_number && ` | Admission: ${student.admission_number}`}
+                              {learner.roll_number && `Roll: ${learner.roll_number}`}
+                              {learner.admission_number && ` | Admission: ${learner.admission_number}`}
                             </div>
                             <div className="text-sm text-gray-600">
-                              {student.grade && `Grade: ${student.grade}`}
-                              {student.section && ` | Section: ${student.section}`}
-                              {student.course_name && ` | Course: ${student.course_name}`}
+                              {learner.grade && `Grade: ${learner.grade}`}
+                              {learner.section && ` | Section: ${learner.section}`}
+                              {learner.course_name && ` | Course: ${learner.course_name}`}
                             </div>
-                            {student.email && (
-                              <div className="text-xs text-gray-500 mt-1">{student.email}</div>
+                            {learner.email && (
+                              <div className="text-xs text-gray-500 mt-1">{learner.email}</div>
                             )}
                           </div>
                         ))}
@@ -1685,40 +1685,40 @@ export default function LibraryModule() {
                     )}
 
                     {/* No Results Message */}
-                    {!searchLoading && studentSearch.length >= 2 && studentSearchResults.length === 0 && (
+                    {!searchLoading && learnerSearch.length >= 2 && learnerSearchResults.length === 0 && (
                       <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3">
                         <div className="text-sm text-gray-500 text-center">
-                          No students found matching "{studentSearch}"
+                          No learners found matching "{learnerSearch}"
                         </div>
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Selected Student Display */}
-                {selectedStudent && (
+                {/* Selected Learner Display */}
+                {selectedLearner && (
                   <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="font-semibold text-green-800 text-lg flex items-center gap-2">
                           <CheckCircleIcon className="h-5 w-5" />
-                          Selected: {selectedStudent.name}
+                          Selected: {selectedLearner.name}
                         </div>
                         <div className="text-sm text-green-700 mt-1">
-                          {selectedStudent.roll_number && `Roll: ${selectedStudent.roll_number}`}
-                          {selectedStudent.admission_number && ` | Admission: ${selectedStudent.admission_number}`}
+                          {selectedLearner.roll_number && `Roll: ${selectedLearner.roll_number}`}
+                          {selectedLearner.admission_number && ` | Admission: ${selectedLearner.admission_number}`}
                         </div>
                         <div className="text-sm text-green-700">
-                          {selectedStudent.grade && `Grade: ${selectedStudent.grade}`}
-                          {selectedStudent.section && ` | Section: ${selectedStudent.section}`}
-                          {selectedStudent.course_name && ` | Course: ${selectedStudent.course_name}`}
+                          {selectedLearner.grade && `Grade: ${selectedLearner.grade}`}
+                          {selectedLearner.section && ` | Section: ${selectedLearner.section}`}
+                          {selectedLearner.course_name && ` | Course: ${selectedLearner.course_name}`}
                         </div>
-                        {selectedStudent.email && (
-                          <div className="text-xs text-green-600 mt-1">{selectedStudent.email}</div>
+                        {selectedLearner.email && (
+                          <div className="text-xs text-green-600 mt-1">{selectedLearner.email}</div>
                         )}
                       </div>
                       <button
-                        onClick={clearStudentSelection}
+                        onClick={clearlearnerSelection}
                         className="ml-3 text-red-600 hover:text-red-800 hover:bg-red-100 rounded-full p-1 transition-colors"
                         title="Clear selection"
                       >
@@ -1785,14 +1785,14 @@ export default function LibraryModule() {
             </div>
 
             {/* Issue Button */}
-            {selectedStudent && selectedBookForIssue && (
+            {selectedLearner && selectedBookForIssue && (
               <div className="mt-8 flex justify-center">
                 <button
                   onClick={handleIssueBook}
                   disabled={loading}
                   className="px-8 py-3 bg-green-600 text-white text-lg font-medium rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
-                  {loading ? 'Issuing...' : `Issue "${selectedBookForIssue.title}" to ${selectedStudent.name}`}
+                  {loading ? 'Issuing...' : `Issue "${selectedBookForIssue.title}" to ${selectedLearner.name}`}
                 </button>
               </div>
             )}
@@ -1817,20 +1817,20 @@ export default function LibraryModule() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Search by Student ID</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Search by Learner ID</label>
                 <input
                   type="text"
-                  placeholder="Enter student ID..."
+                  placeholder="Enter learner ID..."
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={studentIdSearch}
-                  onChange={(e) => setStudentIdSearch(e.target.value)}
+                  value={learnerIdSearch}
+                  onChange={(e) => setLearnerIdSearch(e.target.value)}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Or Search All</label>
                 <input
                   type="text"
-                  placeholder="Search by book title or student..."
+                  placeholder="Search by book title or learner..."
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   value={searchAllBooks}
                   onChange={(e) => setSearchAllBooks(e.target.value)}
@@ -1860,8 +1860,8 @@ export default function LibraryModule() {
                       <p className="text-sm text-gray-600 mb-2">ISBN: {issue.book?.isbn}</p>
                       <div className="space-y-1 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Student:</span>
-                          <span className="font-medium">{issue.student_name}</span>
+                          <span className="text-gray-600">Learner:</span>
+                          <span className="font-medium">{issue.learner_name}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Roll No:</span>

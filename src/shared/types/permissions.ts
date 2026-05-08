@@ -20,99 +20,99 @@ export interface RolePermissions {
   };
 }
 
-// Student Management Permissions Matrix
-export const STUDENT_MANAGEMENT_PERMISSIONS: Record<UserRole, Record<string, Permission[]>> = {
+// Learner Management Permissions Matrix
+export const LEARNER_MANAGEMENT_PERMISSIONS: Record<UserRole, Record<string, Permission[]>> = {
   principal: {
-    add_student: ['create', 'update', 'delete'],
-    edit_student_profile: ['update'],
+    add_learner: ['create', 'update', 'delete'],
+    edit_learner_profile: ['update'],
     attendance_entry: ['approve'],
     attendance_edit: ['approve'],
-    student_transfer: ['approve'],
-    generate_student_report: ['view'],
-    view_student_details: ['view'],
+    learner_transfer: ['approve'],
+    generate_learner_report: ['view'],
+    view_learner_details: ['view'],
     manage_class_section: ['create', 'update', 'delete'],
   },
   
   vice_principal: {
-    add_student: ['create'],
-    edit_student_profile: ['update'],
+    add_learner: ['create'],
+    edit_learner_profile: ['update'],
     attendance_entry: [],
     attendance_edit: [],
-    student_transfer: ['update'],
-    generate_student_report: ['view'],
-    view_student_details: ['view'],
+    learner_transfer: ['update'],
+    generate_learner_report: ['view'],
+    view_learner_details: ['view'],
   },
   
   it_admin: {
-    add_student: ['create'],
-    edit_student_profile: ['update'],
+    add_learner: ['create'],
+    edit_learner_profile: ['update'],
     attendance_entry: [],
     attendance_edit: [],
-    student_transfer: ['update'],
-    generate_student_report: ['view'],
-    view_student_details: ['view'],
+    learner_transfer: ['update'],
+    generate_learner_report: ['view'],
+    view_learner_details: ['view'],
     manage_system_settings: ['create', 'update', 'delete'],
   },
   
   class_teacher: {
-    add_student: [],
-    edit_student_profile: ['view'],
+    add_learner: [],
+    edit_learner_profile: ['view'],
     attendance_entry: ['create', 'update'],
     attendance_edit: ['update'], // within 24 hours
-    student_transfer: [],
-    generate_student_report: ['view'],
-    view_student_details: ['view'],
+    learner_transfer: [],
+    generate_learner_report: ['view'],
+    view_learner_details: ['view'],
   },
   
   subject_teacher: {
-    add_student: [],
-    edit_student_profile: ['view'],
+    add_learner: [],
+    edit_learner_profile: ['view'],
     attendance_entry: [],
     attendance_edit: [],
-    student_transfer: [],
-    generate_student_report: ['view'],
-    view_student_details: ['view'],
+    learner_transfer: [],
+    generate_learner_report: ['view'],
+    view_learner_details: ['view'],
   },
   
   accountant: {
-    add_student: [],
-    edit_student_profile: [],
+    add_learner: [],
+    edit_learner_profile: [],
     attendance_entry: [],
     attendance_edit: [],
-    student_transfer: [],
-    generate_student_report: [],
-    view_student_details: ['view'], // limited to fee info
+    learner_transfer: [],
+    generate_learner_report: [],
+    view_learner_details: ['view'], // limited to fee info
     manage_fees: ['create', 'update', 'view'],
   },
   
   librarian: {
-    add_student: [],
-    edit_student_profile: [],
+    add_learner: [],
+    edit_learner_profile: [],
     attendance_entry: [],
     attendance_edit: [],
-    student_transfer: [],
-    generate_student_report: [],
-    view_student_details: ['view'], // limited
+    learner_transfer: [],
+    generate_learner_report: [],
+    view_learner_details: ['view'], // limited
   },
   
   parent: {
-    add_student: [],
-    edit_student_profile: ['view'], // limited to own child
+    add_learner: [],
+    edit_learner_profile: ['view'], // limited to own child
     attendance_entry: ['view'], // own child only
     attendance_edit: [],
-    student_transfer: [],
-    generate_student_report: ['view'], // own child only
-    view_student_details: ['view'], // own child only
+    learner_transfer: [],
+    generate_learner_report: ['view'], // own child only
+    view_learner_details: ['view'], // own child only
   },
   
   career_counselor: {
-    add_student: [],
-    edit_student_profile: ['view'],
+    add_learner: [],
+    edit_learner_profile: ['view'],
     attendance_entry: [],
     attendance_edit: [],
-    student_transfer: [],
-    generate_student_report: ['view'],
-    view_student_details: ['view'],
+    learner_transfer: [],
+    generate_learner_report: ['view'],
+    view_learner_details: ['view'],
     manage_career_module: ['create', 'update', 'view'],
   },
 };
@@ -123,7 +123,7 @@ export function hasPermission(
   feature: string,
   permission: Permission
 ): boolean {
-  const rolePermissions = STUDENT_MANAGEMENT_PERMISSIONS[userRole];
+  const rolePermissions = LEARNER_MANAGEMENT_PERMISSIONS[userRole];
   
   if (!rolePermissions || !rolePermissions[feature]) {
     return false;
@@ -134,7 +134,7 @@ export function hasPermission(
 
 // Helper function to get all permissions for a role
 export function getRolePermissions(userRole: UserRole): Record<string, Permission[]> {
-  return STUDENT_MANAGEMENT_PERMISSIONS[userRole] || {};
+  return LEARNER_MANAGEMENT_PERMISSIONS[userRole] || {};
 }
 
 // Check multiple permissions at once

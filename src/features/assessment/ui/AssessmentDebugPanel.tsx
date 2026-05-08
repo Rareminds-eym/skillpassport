@@ -10,9 +10,9 @@ import { ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
 interface AssessmentDebugPanelProps {
   assessmentData?: any;
   aiResponse?: any;
-  studentContext?: any;
+  learnerContext?: any;
   gradeLevel?: string;
-  studentStream?: string;
+  learnerStream?: string;
   adaptiveResults?: any;
   timings?: any;
   attemptData?: any; // Full attempt record
@@ -22,9 +22,9 @@ interface AssessmentDebugPanelProps {
 export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
   assessmentData,
   aiResponse,
-  studentContext,
+  learnerContext,
   gradeLevel,
-  studentStream,
+  learnerStream,
   adaptiveResults,
   timings,
   attemptData,
@@ -41,7 +41,7 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
   console.log('🔍 AssessmentDebugPanel:', {
     forceDebug,
     hasData: !!assessmentData,
-    hasContext: !!studentContext,
+    hasContext: !!learnerContext,
     gradeLevel,
     assessmentDataKeys: assessmentData ? Object.keys(assessmentData) : [],
     riasecCount: assessmentData?.riasecAnswers ? Object.keys(assessmentData.riasecAnswers).length : 0,
@@ -117,7 +117,7 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
     { id: 'flow', label: '🔄 Assessment Flow', count: 0 },
     { id: 'database', label: 'Database Fields', count: (attemptData ? 1 : 0) + (resultData ? 1 : 0) },
     { id: 'input', label: 'Input Data', count: assessmentData ? Object.keys(assessmentData).length : 0 },
-    { id: 'context', label: 'Student Context', count: studentContext ? Object.keys(studentContext).length : 0 },
+    { id: 'context', label: 'Learner Context', count: learnerContext ? Object.keys(learnerContext).length : 0 },
     { id: 'adaptive', label: 'Adaptive Results', count: adaptiveResults ? 1 : 0 },
     { id: 'output', label: 'AI Output', count: aiResponse ? Object.keys(aiResponse).length : 0 },
   ];
@@ -142,7 +142,7 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
             <div>
               <h3 className="font-bold text-lg">Assessment Evaluation Data</h3>
               <p className="text-xs text-purple-200">
-                Grade: {gradeLevel || 'N/A'} | Stream: {studentStream || 'N/A'}
+                Grade: {gradeLevel || 'N/A'} | Stream: {learnerStream || 'N/A'}
               </p>
             </div>
             <button
@@ -188,7 +188,7 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
                     <span className="bg-rose-500 text-white px-2 py-0.5 rounded text-xs font-bold">STAGE 1</span>
                     <h5 className="font-semibold text-rose-900">Interest Explorer (RIASEC)</h5>
                   </div>
-                  <p className="text-xs text-gray-700 mb-2">Student rates activities/interests on 1-5 scale</p>
+                  <p className="text-xs text-gray-700 mb-2">Learner rates activities/interests on 1-5 scale</p>
                   <div className="bg-white rounded p-2 text-xs space-y-1">
                     <p><span className="font-semibold">Questions:</span> {riasecCount}</p>
                     <p><span className="font-semibold">Stored in:</span> <code>all_responses.riasecAnswers</code></p>
@@ -232,7 +232,7 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
                     <span className="bg-purple-500 text-white px-2 py-0.5 rounded text-xs font-bold">STAGE 4</span>
                     <h5 className="font-semibold text-purple-900">Aptitude Sampling (Self-Assessment)</h5>
                   </div>
-                  <p className="text-xs text-gray-700 mb-2">Student rates ease/enjoyment of task types</p>
+                  <p className="text-xs text-gray-700 mb-2">Learner rates ease/enjoyment of task types</p>
                   <div className="bg-white rounded p-2 text-xs space-y-1">
                     <p><span className="font-semibold">Questions:</span> {aptitudeCount}</p>
                     <p><span className="font-semibold">Stored in:</span> <code>all_responses.aptitudeAnswers</code></p>
@@ -277,7 +277,7 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
                   </div>
                   <p className="text-xs text-gray-700 mb-2">OpenRouter AI analyzes all data and generates report</p>
                   <div className="bg-white rounded p-2 text-xs space-y-1">
-                    <p><span className="font-semibold">Input:</span> All answers + student context + adaptive results</p>
+                    <p><span className="font-semibold">Input:</span> All answers + learner context + adaptive results</p>
                     <p><span className="font-semibold">Prompt Used:</span> {
                       gradeLevel === 'middle' ? 'Middle School (6-8)' :
                       gradeLevel === 'highschool' ? 'High School (9-10)' :
@@ -285,7 +285,7 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
                       gradeLevel === 'after12' || gradeLevel === 'college' ? 'College/After 12th' :
                       gradeLevel || 'Unknown'
                     }</p>
-                    <p><span className="font-semibold">Grade Context:</span> {studentContext?.rawGrade || studentContext?.grade || 'Not provided'}</p>
+                    <p><span className="font-semibold">Grade Context:</span> {learnerContext?.rawGrade || learnerContext?.grade || 'Not provided'}</p>
                     <p><span className="font-semibold">Stored in:</span> <code>gemini_results</code> (JSONB)</p>
                     <p className="text-gray-600">→ Generates career recommendations, roadmap, skill gaps</p>
                   </div>
@@ -358,8 +358,8 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
                     <p className={(adaptiveResults || resultData?.adaptive_aptitude_results || resultData?._rawDatabaseFields?.adaptive_aptitude_session_id || attemptData?.adaptive_aptitude_session_id) ? 'text-green-700' : 'text-red-700'}>
                       {(adaptiveResults || resultData?.adaptive_aptitude_results || resultData?._rawDatabaseFields?.adaptive_aptitude_session_id || attemptData?.adaptive_aptitude_session_id) ? '✅' : '❌'} Adaptive test completed
                     </p>
-                    <p className={studentContext?.rawGrade || studentContext?.grade ? 'text-green-700' : 'text-red-700'}>
-                      {studentContext?.rawGrade || studentContext?.grade ? '✅' : '❌'} Student grade context provided ({studentContext?.rawGrade || studentContext?.grade || 'missing'})
+                    <p className={learnerContext?.rawGrade || learnerContext?.grade ? 'text-green-700' : 'text-red-700'}>
+                      {learnerContext?.rawGrade || learnerContext?.grade ? '✅' : '❌'} Learner grade context provided ({learnerContext?.rawGrade || learnerContext?.grade || 'missing'})
                     </p>
                     <p className={aiResponse ? 'text-green-700' : 'text-red-700'}>
                       {aiResponse ? '✅' : '❌'} AI analysis completed
@@ -387,7 +387,7 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
                           <span className="font-semibold">id:</span> {attemptData.id}
                         </div>
                         <div className="bg-blue-50 p-2 rounded">
-                          <span className="font-semibold">student_id:</span> {attemptData.student_id}
+                          <span className="font-semibold">learner_id:</span> {attemptData.learner_id}
                         </div>
                         <div className="bg-green-50 p-2 rounded">
                           <span className="font-semibold">grade_level:</span> <span className="text-green-700 font-bold">{attemptData.grade_level}</span>
@@ -402,13 +402,13 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
                           <span className="font-semibold">status:</span> {attemptData.status}
                         </div>
                         <div className="bg-yellow-50 p-2 rounded col-span-2">
-                          <span className="font-semibold">student_context:</span> {attemptData.student_context ? '✅ Present' : '❌ Missing'}
+                          <span className="font-semibold">learner_context:</span> {attemptData.learner_context ? '✅ Present' : '❌ Missing'}
                         </div>
                       </div>
-                      {attemptData.student_context && (
+                      {attemptData.learner_context && (
                         <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-xs">
-                          <p className="font-semibold mb-1">student_context (stored in DB):</p>
-                          <pre className="overflow-x-auto">{JSON.stringify(attemptData.student_context, null, 2)}</pre>
+                          <p className="font-semibold mb-1">learner_context (stored in DB):</p>
+                          <pre className="overflow-x-auto">{JSON.stringify(attemptData.learner_context, null, 2)}</pre>
                         </div>
                       )}
                       <details className="bg-gray-50 rounded p-2">
@@ -553,11 +553,11 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
                   <div className="space-y-2 text-xs">
                     <div className="flex items-center gap-2">
                       <span className="bg-blue-500 text-white px-2 py-1 rounded">1</span>
-                      <span>Student answers → <code className="bg-white px-1">all_responses</code> (attempts table)</span>
+                      <span>Learner answers → <code className="bg-white px-1">all_responses</code> (attempts table)</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="bg-blue-500 text-white px-2 py-1 rounded">2</span>
-                      <span>Grade context → <code className="bg-white px-1">student_context</code> (attempts table)</span>
+                      <span>Grade context → <code className="bg-white px-1">learner_context</code> (attempts table)</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="bg-purple-500 text-white px-2 py-1 rounded">3</span>
@@ -616,41 +616,41 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
             {activeTab === 'context' && (
               <div className="space-y-4">
                 <div>
-                  <h4 className="font-semibold text-gray-900 mb-2">Student Context Sent to AI</h4>
-                  {studentContext ? (
+                  <h4 className="font-semibold text-gray-900 mb-2">Learner Context Sent to AI</h4>
+                  {learnerContext ? (
                     <div className="space-y-2">
                       <div className="bg-blue-50 border border-blue-200 rounded p-3">
                         <p className="text-sm">
                           <span className="font-semibold">Raw Grade:</span>{' '}
-                          <span className="text-blue-700">{studentContext.rawGrade || 'N/A'}</span>
+                          <span className="text-blue-700">{learnerContext.rawGrade || 'N/A'}</span>
                         </p>
                         <p className="text-sm">
                           <span className="font-semibold">Grade:</span>{' '}
-                          <span className="text-blue-700">{studentContext.grade || 'N/A'}</span>
+                          <span className="text-blue-700">{learnerContext.grade || 'N/A'}</span>
                         </p>
                         <p className="text-sm">
                           <span className="font-semibold">Program:</span>{' '}
-                          <span className="text-blue-700">{studentContext.programName || 'N/A'}</span>
+                          <span className="text-blue-700">{learnerContext.programName || 'N/A'}</span>
                         </p>
                         <p className="text-sm">
                           <span className="font-semibold">Degree Level:</span>{' '}
-                          <span className="text-blue-700">{studentContext.degreeLevel || 'N/A'}</span>
+                          <span className="text-blue-700">{learnerContext.degreeLevel || 'N/A'}</span>
                         </p>
                         <p className="text-sm">
                           <span className="font-semibold">Selected Stream:</span>{' '}
-                          <span className="text-blue-700">{studentContext.selectedStream || 'N/A'}</span>
+                          <span className="text-blue-700">{learnerContext.selectedStream || 'N/A'}</span>
                         </p>
                         <p className="text-sm">
                           <span className="font-semibold">Selected Category:</span>{' '}
-                          <span className="text-blue-700">{studentContext.selectedCategory || 'N/A'}</span>
+                          <span className="text-blue-700">{learnerContext.selectedCategory || 'N/A'}</span>
                         </p>
                       </div>
                       <div className="bg-gray-50 rounded p-3 text-xs font-mono overflow-x-auto">
-                        <pre>{JSON.stringify(studentContext, null, 2)}</pre>
+                        <pre>{JSON.stringify(learnerContext, null, 2)}</pre>
                       </div>
                     </div>
                   ) : (
-                    <p className="text-gray-500 text-sm">No student context available</p>
+                    <p className="text-gray-500 text-sm">No learner context available</p>
                   )}
                 </div>
                 <div>
@@ -753,7 +753,7 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
               💡 This panel shows all data used during assessment evaluation. Use it to verify:
             </p>
             <ul className="mt-1 ml-4 list-disc space-y-0.5">
-              <li>Student's actual grade is being passed to AI</li>
+              <li>Learner's actual grade is being passed to AI</li>
               <li>Correct prompt is being used (middle/high school/college)</li>
               <li>Adaptive results are included</li>
               <li>AI output matches expected format</li>

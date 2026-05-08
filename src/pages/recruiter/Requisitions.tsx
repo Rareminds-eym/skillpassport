@@ -1771,7 +1771,7 @@ const ViewRequisitionModal = ({ requisition, onClose }: any) => {
 const ApplicationsModal = ({ requisition, onClose }: any) => {
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [selectedLearner, setSelectedLearner] = useState<any>(null);
 
   useEffect(() => {
     loadApplications();
@@ -1789,7 +1789,7 @@ const ApplicationsModal = ({ requisition, onClose }: any) => {
           viewed_at,
           interview_scheduled_at,
           updated_at,
-          students (
+          learners (
             id,
             email,
             profile
@@ -1903,7 +1903,7 @@ const ApplicationsModal = ({ requisition, onClose }: any) => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {applications.map((app) => {
-                    const profile = app.students?.profile || {};
+                    const profile = app.learners?.profile || {};
                     const relativeTime = formatRelativeTime(app.applied_at);
                     
                     return (
@@ -1923,7 +1923,7 @@ const ApplicationsModal = ({ requisition, onClose }: any) => {
                                 {profile.name || 'Unknown Candidate'}
                               </div>
                               <div className="text-sm text-gray-500">
-                                {profile.email || app.students?.email || 'N/A'}
+                                {profile.email || app.learners?.email || 'N/A'}
                               </div>
                             </div>
                           </div>
@@ -1976,7 +1976,7 @@ const ApplicationsModal = ({ requisition, onClose }: any) => {
                         <td className="px-4 py-4 whitespace-nowrap text-sm">
                           <div className="flex items-center space-x-2">
                             <button
-                              onClick={() => setSelectedStudent({ ...app, profile })}
+                              onClick={() => setSelectedLearner({ ...app, profile })}
                               className="p-2 text-blue-600 hover:bg-blue-50 rounded-md border border-blue-600 transition-colors"
                               title="View Details"
                             >
@@ -1998,76 +1998,76 @@ const ApplicationsModal = ({ requisition, onClose }: any) => {
             </div>
           )}
 
-          {/* Student Detail Modal */}
-          {selectedStudent && (
-            <div className="fixed inset-0 z-60 overflow-y-auto" onClick={() => setSelectedStudent(null)}>
+          {/* Learner Detail Modal */}
+          {selectedLearner && (
+            <div className="fixed inset-0 z-60 overflow-y-auto" onClick={() => setSelectedLearner(null)}>
               <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20">
                 <div className="fixed inset-0 bg-gray-900 bg-opacity-75"></div>
                 <div className="relative bg-white rounded-lg max-w-3xl w-full p-6" onClick={(e) => e.stopPropagation()}>
                   <button
-                    onClick={() => setSelectedStudent(null)}
+                    onClick={() => setSelectedLearner(null)}
                     className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
                   >
                     <XCircleIcon className="h-6 w-6" />
                   </button>
-                  <h3 className="text-2xl font-bold mb-6">{selectedStudent.profile.name || 'Candidate Details'}</h3>
+                  <h3 className="text-2xl font-bold mb-6">{selectedLearner.profile.name || 'Candidate Details'}</h3>
                   
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-500">Passport ID</label>
-                        <p className="mt-1 text-gray-900">{selectedStudent.profile.nm_id || 'N/A'}</p>
+                        <p className="mt-1 text-gray-900">{selectedLearner.profile.nm_id || 'N/A'}</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-500">Registration Number</label>
-                        <p className="mt-1 text-gray-900">{selectedStudent.profile.registration_number || 'N/A'}</p>
+                        <p className="mt-1 text-gray-900">{selectedLearner.profile.registration_number || 'N/A'}</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-500">Date of Birth</label>
-                        <p className="mt-1 text-gray-900">{selectedStudent.profile.date_of_birth || 'N/A'}</p>
+                        <p className="mt-1 text-gray-900">{selectedLearner.profile.date_of_birth || 'N/A'}</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-500">Age</label>
-                        <p className="mt-1 text-gray-900">{selectedStudent.profile.age || 'N/A'}</p>
+                        <p className="mt-1 text-gray-900">{selectedLearner.profile.age || 'N/A'}</p>
                       </div>
                     </div>
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Course</label>
-                      <p className="mt-1 text-gray-900">{selectedStudent.profile.course || 'N/A'}</p>
+                      <p className="mt-1 text-gray-900">{selectedLearner.profile.course || 'N/A'}</p>
                     </div>
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Branch/Field</label>
-                      <p className="mt-1 text-gray-900">{selectedStudent.profile.branch_field || 'N/A'}</p>
+                      <p className="mt-1 text-gray-900">{selectedLearner.profile.branch_field || 'N/A'}</p>
                     </div>
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Skills</label>
-                      <p className="mt-1 text-gray-900">{selectedStudent.profile.skill || 'N/A'}</p>
+                      <p className="mt-1 text-gray-900">{selectedLearner.profile.skill || 'N/A'}</p>
                     </div>
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Alternate Contact</label>
-                      <p className="mt-1 text-gray-900">{selectedStudent.profile.alternate_number || 'N/A'}</p>
+                      <p className="mt-1 text-gray-900">{selectedLearner.profile.alternate_number || 'N/A'}</p>
                     </div>
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Application Status</label>
-                      <span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedStudent.application_status)}`}>
-                        {selectedStudent.application_status.replace('_', ' ').toUpperCase()}
+                      <span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedLearner.application_status)}`}>
+                        {selectedLearner.application_status.replace('_', ' ').toUpperCase()}
                       </span>
                     </div>
                     
                     <div className="pt-4 border-t flex space-x-3">
                       <button
-                        onClick={() => window.open(`mailto:${selectedStudent.profile.email}`, '_blank')}
+                        onClick={() => window.open(`mailto:${selectedLearner.profile.email}`, '_blank')}
                         className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
                       >
                         Send Email
                       </button>
                       <button
-                        onClick={() => setSelectedStudent(null)}
+                        onClick={() => setSelectedLearner(null)}
                         className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
                       >
                         Close

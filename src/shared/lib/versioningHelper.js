@@ -57,7 +57,7 @@ export const getDisplayData = (record) => {
     return {
       ...record.verified_data,
       id: record.id,
-      student_id: record.student_id,
+      learner_id: record.learner_id,
       has_pending_edit: true,
       pending_edit_data: record.pending_edit_data,
       approval_status: 'verified', // Show as verified since this is the verified version
@@ -79,7 +79,7 @@ export const getPendingEditData = (record) => {
     return {
       ...record.pending_edit_data,
       id: record.id,
-      student_id: record.student_id,
+      learner_id: record.learner_id,
       approval_status: 'pending',
       is_pending_edit: true,
     };

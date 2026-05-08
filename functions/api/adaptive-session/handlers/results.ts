@@ -1,7 +1,7 @@
 /**
  * Results Handlers
  * 
- * Handles GET /results/:sessionId and GET /results/student/:studentId endpoints
+ * Handles GET /results/:sessionId and GET /results/learner/:learnerId endpoints
  * Retrieves test results from database
  */
 
@@ -60,24 +60,24 @@ export const getResultsHandler: PagesFunction = async (context) => {
       return jsonResponse({ results: null }, 200);
     }
 
-    // Verify session ownership by checking if the student's user_id matches the authenticated user
-    const { data: studentData, error: studentError } = await supabase
-      .from('students')
+    // Verify session ownership by checking if the learner's user_id matches the authenticated user
+    const { data: learnerData, error: learnerError } = await supabase
+      .from('learners')
       .select('user_id')
-      .eq('id', data.student_id)
+      .eq('id', data.learner_id)
       .single();
 
-    if (studentError || !studentData) {
-      console.error('❌ [GetResultsHandler] Failed to fetch student:', studentError);
+    if (learnerError || !learnerData) {
+      console.error('❌ [GetResultsHandler] Failed to fetch learner:', learnerError);
       return jsonResponse(
-        { error: 'Student not found' },
+        { error: 'Learner not found' },
         404
       );
     }
 
-    if (studentData.user_id !== auth.user.id) {
+    if (learnerData.user_id !== auth.user.id) {
       console.error('❌ [GetResultsHandler] Session ownership verification failed', {
-        studentUserId: studentData.user_id,
+        learnerUserId: learnerData.user_id,
         authUserId: auth.user.id
       });
       return jsonResponse(
@@ -91,7 +91,7 @@ export const getResultsHandler: PagesFunction = async (context) => {
     const results: TestResults = {
       id: data.id,
       sessionId: data.session_id,
-      studentId: data.student_id,
+      learnerId: data.learner_id,
       aptitudeLevel: data.aptitude_level as DifficultyLevel,
       confidenceTag: data.confidence_tag as ConfidenceTag,
       tier: data.tier as Tier,
@@ -129,69 +129,69 @@ export const getResultsHandler: PagesFunction = async (context) => {
 };
 
 /**
- * Gets all test results for a student
+ * Gets all test results for a learner
  * 
- * Requirements: Student results history
- * - Fetches all results for student from adaptive_aptitude_results table
+ * Requirements: Learner results history
+ * - Fetches all results for learner from adaptive_aptitude_results table
  * - Orders by completion date (most recent first)
  * - Returns array of TestResults objects
- * - Requires authentication and student ID verification
+ * - Requires authentication and learner ID verification
  */
-export const getStudentResultsHandler: PagesFunction = async (context) => {
+export const getlearnerResultsHandler: PagesFunction = async (context) => {
   const { request, env } = context;
   const url = new URL(request.url);
   const pathParts = url.pathname.split('/');
-  const studentId = pathParts[pathParts.length - 1];
+  const learnerId = pathParts[pathParts.length - 1];
 
-  if (!studentId) {
-    return jsonResponse({ error: 'Student ID is required' }, 400);
+  if (!learnerId) {
+    return jsonResponse({ error: 'Learner ID is required' }, 400);
   }
 
   try {
     // Authenticate user
     const auth = await authenticateUser(request, env as unknown as Record<string, string>);
     if (!auth) {
-      console.error('❌ [GetStudentResultsHandler] Authentication required');
+      console.error('❌ [GetLearnerResultsHandler] Authentication required');
       return jsonResponse({ error: 'Authentication required' }, 401);
     }
 
-    console.log('✅ [GetStudentResultsHandler] User authenticated:', auth.user.id);
+    console.log('✅ [GetLearnerResultsHandler] User authenticated:', auth.user.id);
 
-    // Verify student ID matches authenticated user
-    if (studentId !== auth.user.id) {
-      console.error('❌ [GetStudentResultsHandler] Student ID verification failed');
+    // Verify learner ID matches authenticated user
+    if (learnerId !== auth.user.id) {
+      console.error('❌ [GetLearnerResultsHandler] Learner ID verification failed');
       return jsonResponse(
         { error: 'Unauthorized: You can only access your own results' },
         403
       );
     }
 
-    console.log('📊 [GetStudentResultsHandler] getStudentTestResults called:', { studentId });
+    console.log('📊 [GetLearnerResultsHandler] getlearnerTestResults called:', { learnerId });
 
     const supabase = createSupabaseAdminClient(env);
 
     const { data, error } = await supabase
       .from('adaptive_aptitude_results')
       .select('*')
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .order('completed_at', { ascending: false });
 
     if (error) {
-      console.error('❌ [GetStudentResultsHandler] Failed to fetch results:', error);
+      console.error('❌ [GetLearnerResultsHandler] Failed to fetch results:', error);
       throw new Error(`Failed to fetch results: ${error.message}`);
     }
 
     if (!data || data.length === 0) {
-      console.log('📭 [GetStudentResultsHandler] No results found for student');
+      console.log('📭 [GetLearnerResultsHandler] No results found for learner');
       return jsonResponse({ results: [] }, 200);
     }
 
-    console.log('✅ [GetStudentResultsHandler] Found results:', data.length);
+    console.log('✅ [GetLearnerResultsHandler] Found results:', data.length);
 
     const results: TestResults[] = data.map(record => ({
       id: record.id,
       sessionId: record.session_id,
-      studentId: record.student_id,
+      learnerId: record.learner_id,
       aptitudeLevel: record.aptitude_level as DifficultyLevel,
       confidenceTag: record.confidence_tag as ConfidenceTag,
       tier: record.tier as Tier,
@@ -210,10 +210,10 @@ export const getStudentResultsHandler: PagesFunction = async (context) => {
     return jsonResponse({ results });
 
   } catch (error) {
-    console.error('❌ [GetStudentResultsHandler] Error:', error);
+    console.error('❌ [GetLearnerResultsHandler] Error:', error);
     return jsonResponse(
       {
-        error: 'Failed to get student results',
+        error: 'Failed to get learner results',
         message: error instanceof Error ? error.message : 'Unknown error'
       },
       500

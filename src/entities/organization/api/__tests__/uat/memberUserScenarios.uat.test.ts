@@ -1,7 +1,7 @@
 /**
  * User Acceptance Tests: Member User Scenarios
  * 
- * Tests real-world member (student/educator) workflows for viewing
+ * Tests real-world member (learner/educator) workflows for viewing
  * organization-provided features and managing personal add-ons.
  * Requirements: UAT, User Experience
  */
@@ -20,10 +20,10 @@ describe('UAT: Member User Scenarios', () => {
   beforeEach(() => {
     state = {
       users: new Map([
-        ['student-1', { 
-          id: 'student-1', 
-          name: 'Alice Student', 
-          role: 'student', 
+        ['learner-1', { 
+          id: 'learner-1', 
+          name: 'Alice Learner', 
+          role: 'learner', 
           organization_id: 'org-1',
           organization_name: 'Springfield High School',
           email: 'alice@school.edu' 
@@ -40,7 +40,7 @@ describe('UAT: Member User Scenarios', () => {
       assignments: new Map([
         ['assign-1', {
           id: 'assign-1',
-          user_id: 'student-1',
+          user_id: 'learner-1',
           organization_subscription_id: 'sub-1',
           status: 'active',
           assigned_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -48,9 +48,9 @@ describe('UAT: Member User Scenarios', () => {
         }]
       ]),
       entitlements: new Map([
-        ['ent-1', { id: 'ent-1', user_id: 'student-1', feature_key: 'ai_tutor', granted_by_organization: true, is_active: true }],
-        ['ent-2', { id: 'ent-2', user_id: 'student-1', feature_key: 'practice_tests', granted_by_organization: true, is_active: true }],
-        ['ent-3', { id: 'ent-3', user_id: 'student-1', feature_key: 'video_lessons', granted_by_organization: true, is_active: true }]
+        ['ent-1', { id: 'ent-1', user_id: 'learner-1', feature_key: 'ai_tutor', granted_by_organization: true, is_active: true }],
+        ['ent-2', { id: 'ent-2', user_id: 'learner-1', feature_key: 'practice_tests', granted_by_organization: true, is_active: true }],
+        ['ent-3', { id: 'ent-3', user_id: 'learner-1', feature_key: 'video_lessons', granted_by_organization: true, is_active: true }]
       ]),
       subscriptions: new Map([
         ['sub-1', {
@@ -104,7 +104,7 @@ describe('UAT: Member User Scenarios', () => {
         return key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
       };
 
-      const features = await getOrganizationFeatures('student-1');
+      const features = await getOrganizationFeatures('learner-1');
 
       expect(features.organizationName).toBe('Springfield High School');
       expect(features.planName).toBe('Professional');
@@ -135,7 +135,7 @@ describe('UAT: Member User Scenarios', () => {
         };
       };
 
-      const result = await getFeatureSource('student-1', 'ai_tutor');
+      const result = await getFeatureSource('learner-1', 'ai_tutor');
 
       expect(result.hasAccess).toBe(true);
       expect(result.source).toBe('organization');
@@ -173,11 +173,11 @@ describe('UAT: Member User Scenarios', () => {
       };
 
       // Has access to org-provided feature
-      const result1 = await hasFeatureAccess('student-1', 'ai_tutor');
+      const result1 = await hasFeatureAccess('learner-1', 'ai_tutor');
       expect(result1.hasAccess).toBe(true);
 
       // No access to feature not in plan
-      const result2 = await hasFeatureAccess('student-1', 'premium_analytics');
+      const result2 = await hasFeatureAccess('learner-1', 'premium_analytics');
       expect(result2.hasAccess).toBe(false);
 
       console.log('✅ Scenario 2 Complete: Feature access check working');
@@ -204,7 +204,7 @@ describe('UAT: Member User Scenarios', () => {
         );
       };
 
-      const addons = await getAvailableAddons('student-1');
+      const addons = await getAvailableAddons('learner-1');
 
       expect(addons.length).toBe(3);
       expect(addons[0].name).toBe('Premium Analytics');
@@ -242,14 +242,14 @@ describe('UAT: Member User Scenarios', () => {
         return { purchase, entitlement };
       };
 
-      const result = await purchaseAddon('student-1', 'premium_analytics', 199);
+      const result = await purchaseAddon('learner-1', 'premium_analytics', 199);
 
       expect(result.purchase.status).toBe('completed');
       expect(result.entitlement.granted_by_organization).toBe(false);
 
       // Verify user now has access
       const hasAccess = Array.from(state.entitlements.values())
-        .some(e => e.user_id === 'student-1' && e.feature_key === 'premium_analytics' && e.is_active);
+        .some(e => e.user_id === 'learner-1' && e.feature_key === 'premium_analytics' && e.is_active);
       expect(hasAccess).toBe(true);
 
       console.log('✅ Scenario 4 Complete: Personal add-on purchase successful');
@@ -261,7 +261,7 @@ describe('UAT: Member User Scenarios', () => {
       // Add a personal purchase
       state.entitlements.set('ent-personal-1', {
         id: 'ent-personal-1',
-        user_id: 'student-1',
+        user_id: 'learner-1',
         feature_key: 'premium_analytics',
         granted_by_organization: false,
         is_active: true
@@ -288,7 +288,7 @@ describe('UAT: Member User Scenarios', () => {
         };
       };
 
-      const entitlements = await getAllEntitlements('student-1');
+      const entitlements = await getAllEntitlements('learner-1');
 
       expect(entitlements.organizationProvided.length).toBe(3);
       expect(entitlements.personalPurchases.length).toBe(1);
@@ -334,7 +334,7 @@ describe('UAT: Member User Scenarios', () => {
         return { hasWarning: false };
       };
 
-      const warning = await getExpirationWarning('student-1');
+      const warning = await getExpirationWarning('learner-1');
 
       expect(warning.hasWarning).toBe(true);
       expect(warning.severity).toBe('critical');
@@ -370,7 +370,7 @@ describe('UAT: Member User Scenarios', () => {
         };
       };
 
-      const contact = await getAdminContact('student-1');
+      const contact = await getAdminContact('learner-1');
 
       expect(contact.adminName).toBe('John Admin');
       expect(contact.adminEmail).toBe('admin@school.edu');
@@ -383,10 +383,10 @@ describe('UAT: Member User Scenarios', () => {
   describe('Scenario 8: Member Without Organization Subscription', () => {
     it('should handle member with no organization subscription gracefully', async () => {
       // Add user without assignment
-      state.users.set('student-2', {
-        id: 'student-2',
-        name: 'Charlie Student',
-        role: 'student',
+      state.users.set('learner-2', {
+        id: 'learner-2',
+        name: 'Charlie Learner',
+        role: 'learner',
         organization_id: 'org-1',
         organization_name: 'Springfield High School'
       });
@@ -409,7 +409,7 @@ describe('UAT: Member User Scenarios', () => {
         };
       };
 
-      const status = await getMemberSubscriptionStatus('student-2');
+      const status = await getMemberSubscriptionStatus('learner-2');
 
       expect(status.hasOrganizationSubscription).toBe(false);
       expect(status.message).toContain('not assigned');

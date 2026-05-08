@@ -17,7 +17,7 @@ const generateCredentialId = () => {
   return `CERT-${timestamp}-${random}`;
 };
 
-const generateCertificateImage = (studentName, courseName, completionDate, credentialId) => {
+const generateCertificateImage = (learnerName, courseName, completionDate, credentialId) => {
   const canvas = document.createElement('canvas');
   canvas.width = 1200;
   canvas.height = 850;
@@ -69,10 +69,10 @@ const generateCertificateImage = (studentName, courseName, completionDate, crede
 
   ctx.fillStyle = '#1e293b';
   ctx.font = 'bold 42px Georgia, serif';
-  ctx.fillText(studentName, 600, 340);
+  ctx.fillText(learnerName, 600, 340);
 
   // Name underline
-  const nameWidth = ctx.measureText(studentName).width;
+  const nameWidth = ctx.measureText(learnerName).width;
   ctx.strokeStyle = '#3b82f6';
   ctx.beginPath();
   ctx.moveTo(600 - nameWidth / 2 - 20, 355);
@@ -128,8 +128,8 @@ const dataURLtoBlob = (dataURL) => {
   return new Blob([array], { type: mime });
 };
 
-const uploadToR2 = async (blob, studentId, courseId, credentialId) => {
-  const filename = `certificates/${studentId}/${courseId}/${credentialId}.png`;
+const uploadToR2 = async (blob, learnerId, courseId, credentialId) => {
+  const filename = `certificates/${learnerId}/${courseId}/${credentialId}.png`;
   const formData = new FormData();
   formData.append('file', blob, `${credentialId}.png`);
   formData.append('filename', filename);
@@ -150,7 +150,7 @@ const uploadToR2 = async (blob, studentId, courseId, credentialId) => {
   return `${STORAGE_API_URL}/course-certificate?key=${encodeURIComponent(filename)}`;
 };
 
-export const generateCourseCertificate = async (studentId, studentName, courseId, courseName, educatorName) => {
+export const generateCourseCertificate = async (learnerId, learnerName, courseId, courseName, educatorName) => {
   try {
     const credentialId = generateCredentialId();
     const completionDate = new Date().toLocaleDateString('en-US', {
@@ -159,20 +159,20 @@ export const generateCourseCertificate = async (studentId, studentName, courseId
       day: 'numeric'
     });
 
-    const certificateDataUrl = generateCertificateImage(studentName, courseName, completionDate, credentialId);
+    const certificateDataUrl = generateCertificateImage(learnerName, courseName, completionDate, credentialId);
     let certificateUrl = certificateDataUrl;
 
     // Upload to R2
     try {
       const blob = dataURLtoBlob(certificateDataUrl);
-      certificateUrl = await uploadToR2(blob, studentId, courseId, credentialId);
+      certificateUrl = await uploadToR2(blob, learnerId, courseId, credentialId);
     } catch (err) {
       logger.error('Failed to upload certificate to R2 storage', err instanceof Error ? err : new Error('Unknown error'));
     }
 
     // Save to database
     await supabase.from('certificates').insert({
-      student_id: studentId,
+      learner_id: learnerId,
       title: `${courseName} - Course Completion`,
       issuer: educatorName || 'Skill Ecosystem Platform',
       level: 'Course Completion',
@@ -190,7 +190,7 @@ export const generateCourseCertificate = async (studentId, studentName, courseId
     await supabase
       .from('course_enrollments')
       .update({ certificate_url: certificateUrl })
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .eq('course_id', courseId);
 
     // Embedding regeneration handled by database trigger on certificates table

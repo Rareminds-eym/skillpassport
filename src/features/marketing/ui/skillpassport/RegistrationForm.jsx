@@ -24,7 +24,7 @@ import { OTPInput } from '@/shared/ui';
 import { paymentsApiService } from '@/features/subscription';
 import { ShinyButton } from '@/shared/ui';
 
-const REGISTRATION_FEE_STUDENT = 499;
+const REGISTRATION_FEE_LEARNER = 499;
 const REGISTRATION_FEE_CORPORATE = 7500;
 const EMAIL_API_URL = import.meta.env.VITE_EMAIL_API_URL || 
   (import.meta.env.DEV ? '/api/email' : import.meta.env.VITE_PRODUCTION_EMAIL_API_URL || 'https://skillpassport.rareminds.in/api/email');
@@ -245,7 +245,7 @@ const TermsModal = ({ isOpen, onClose, onAccept }) => {
 export default function RegistrationForm({ campaign = 'skill-passport' }) {
   const location = useLocation();
   const isCorporate = location.pathname.includes('/register/corporate');
-  const REGISTRATION_FEE = isCorporate ? REGISTRATION_FEE_CORPORATE : REGISTRATION_FEE_STUDENT;
+  const REGISTRATION_FEE = isCorporate ? REGISTRATION_FEE_CORPORATE : REGISTRATION_FEE_LEARNER;
 
   const [form, setForm] = useState({ name: '', email: '', phone: '' });
   const [errors, setErrors] = useState({});
@@ -514,7 +514,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                   />
                 </div>
               </div>
-              <span className="text-gray-900 text-sm sm:text-base font-bold">For Students Only</span>
+              <span className="text-gray-900 text-sm sm:text-base font-bold">For Learners Only</span>
             </motion.div>
           )}
 

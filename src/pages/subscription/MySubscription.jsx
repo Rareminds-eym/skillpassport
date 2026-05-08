@@ -38,42 +38,42 @@ import { useUser } from '@/shared/model/authStore';
  * Get the settings path based on current URL path (more reliable than role)
  */
 function getSettingsPathFromUrl(pathname) {
-  if (pathname.startsWith('/student')) return '/student/settings';
+  if (pathname.startsWith('/learner')) return '/learner/settings';
   if (pathname.startsWith('/recruitment')) return '/recruitment/settings';
   if (pathname.startsWith('/educator')) return '/educator/settings';
   if (pathname.startsWith('/college-admin')) return '/college-admin/settings';
   if (pathname.startsWith('/school-admin')) return '/school-admin/settings';
   if (pathname.startsWith('/university-admin')) return '/university-admin/settings';
   if (pathname.startsWith('/admin')) return '/admin/settings';
-  return '/student/settings'; // fallback
+  return '/learner/settings'; // fallback
 }
 
 /**
  * Get the dashboard path based on current URL path
  */
 function getDashboardPathFromUrl(pathname) {
-  if (pathname.startsWith('/student')) return '/student/dashboard';
+  if (pathname.startsWith('/learner')) return '/learner/dashboard';
   if (pathname.startsWith('/recruitment')) return '/recruitment/overview';
   if (pathname.startsWith('/educator')) return '/educator/dashboard';
   if (pathname.startsWith('/college-admin')) return '/college-admin/dashboard';
   if (pathname.startsWith('/school-admin')) return '/school-admin/dashboard';
   if (pathname.startsWith('/university-admin')) return '/university-admin/dashboard';
   if (pathname.startsWith('/admin')) return '/admin/dashboard';
-  return '/student/dashboard'; // fallback
+  return '/learner/dashboard'; // fallback
 }
 
 /**
  * Get the user type for subscription plans based on current URL path (more reliable than role)
  */
 function getUserTypeFromUrl(pathname) {
-  if (pathname.startsWith('/student')) return 'student';
+  if (pathname.startsWith('/learner')) return 'learner';
   if (pathname.startsWith('/recruitment')) return 'recruiter';
   if (pathname.startsWith('/educator')) return 'educator';
   if (pathname.startsWith('/college-admin')) return 'college_admin';
   if (pathname.startsWith('/school-admin')) return 'school_admin';
   if (pathname.startsWith('/university-admin')) return 'university_admin';
   if (pathname.startsWith('/admin')) return 'admin';
-  return 'student'; // fallback
+  return 'learner'; // fallback
 }
 
 // Removed FALLBACK_PLANS as per requirement to use DB data only

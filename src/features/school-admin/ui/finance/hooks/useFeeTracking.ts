@@ -2,13 +2,13 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from '@/shared/api/supabaseClient';
 import toast from "react-hot-toast";
-import { StudentLedger, FeePayment, StudentFeeSummary, PaymentStatus } from '@/features/student-profile/model';
+import { LearnerLedger, FeePayment, LearnerFeeSummary, PaymentStatus } from '@/features/learner-profile/model';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('school-admin-fee-tracking');
 
 export const useFeeTracking = (schoolId: string | null) => {
-  const [ledgers, setLedgers] = useState<StudentLedger[]>([]);
+  const [ledgers, setLedgers] = useState<LearnerLedger[]>([]);
   const [payments, setPayments] = useState<FeePayment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -17,19 +17,19 @@ export const useFeeTracking = (schoolId: string | null) => {
     
     try {
       setLoading(true);
-      logger.info('Loading student ledgers for school', { schoolId });
+      logger.info('Loading learner ledgers for school', { schoolId });
 
       // Try to load from database first
       const { data, error } = await supabase
-        .from("school_student_ledgers")
+        .from("learner_ledgers")
         .select("*")
         .eq("school_id", schoolId)
-        .order("student_name", { ascending: true });
+        .order("learner_name", { ascending: true });
       
       if (error) {
-        logger.error('Student ledgers query failed', error, { schoolId });
-        // Load students and create mock ledgers
-        await loadStudentsAsFallback();
+        logger.error('Learner ledgers query failed', error, { schoolId });
+        // Load learners and create mock ledgers
+        await loadlearnersAsFallback();
         return;
       }
 
@@ -37,41 +37,41 @@ export const useFeeTracking = (schoolId: string | null) => {
         logger.info('Found existing ledger entries', { count: data.length });
         setLedgers(data);
       } else {
-        // No ledgers found, create from students
-        await loadStudentsAsFallback();
+        // No ledgers found, create from learners
+        await loadlearnersAsFallback();
       }
     } catch (err) {
       logger.error("Failed to load ledgers", err as Error, { schoolId });
-      toast.error("Failed to load student ledgers");
+      toast.error("Failed to load learner ledgers");
       setLedgers([]);
     } finally {
       setLoading(false);
     }
   }, [schoolId]);
 
-  const loadStudentsAsFallback = useCallback(async () => {
+  const loadlearnersAsFallback = useCallback(async () => {
     if (!schoolId) return;
     
     try {
-      logger.info('Loading students for school', { schoolId });
+      logger.info('Loading learners for school', { schoolId });
       
-      // Get all students for this school
-      const { data: students, error } = await supabase
-        .from("students")
+      // Get all learners for this school
+      const { data: learners, error } = await supabase
+        .from("learners")
         .select("id, user_id, name, roll_number, email, school_id, grade, section")
         .eq("school_id", schoolId)
         .order("name", { ascending: true });
       
       if (error) {
-        logger.error('Students query failed', error, { schoolId });
+        logger.error('Learners query failed', error, { schoolId });
         // Create completely mock data
-        const mockLedgers: StudentLedger[] = [
+        const mockLedgers: LearnerLedger[] = [
           {
             id: 'mock-ledger-1',
-            student_id: 'mock-student-1',
-            student_name: 'Rahul Sharma',
+            learner_id: 'mock-learner-1',
+            learner_name: 'Rahul Sharma',
             roll_number: 'STU001',
-            student_email: 'rahul@example.com',
+            learner_email: 'rahul@example.com',
             school_id: schoolId,
             fee_structure_id: 'mock-fee-1',
             fee_head_id: 'tuition',
@@ -87,10 +87,10 @@ export const useFeeTracking = (schoolId: string | null) => {
           },
           {
             id: 'mock-ledger-2',
-            student_id: 'mock-student-2',
-            student_name: 'Priya Patel',
+            learner_id: 'mock-learner-2',
+            learner_name: 'Priya Patel',
             roll_number: 'STU002',
-            student_email: 'priya@example.com',
+            learner_email: 'priya@example.com',
             school_id: schoolId,
             fee_structure_id: 'mock-fee-1',
             fee_head_id: 'tuition',
@@ -106,10 +106,10 @@ export const useFeeTracking = (schoolId: string | null) => {
           },
           {
             id: 'mock-ledger-3',
-            student_id: 'mock-student-3',
-            student_name: 'Amit Kumar',
+            learner_id: 'mock-learner-3',
+            learner_name: 'Amit Kumar',
             roll_number: 'STU003',
-            student_email: 'amit@example.com',
+            learner_email: 'amit@example.com',
             school_id: schoolId,
             fee_structure_id: 'mock-fee-1',
             fee_head_id: 'tuition',
@@ -129,21 +129,21 @@ export const useFeeTracking = (schoolId: string | null) => {
         return;
       }
 
-      logger.info('Found students in school', { count: students?.length || 0 });
+      logger.info('Found learners in school', { count: learners?.length || 0 });
 
-      // Create ledger entries for all students (real + mock)
-      const allLedgers = students?.map((student: any) => {
-        const studentId = student.user_id || student.id;
+      // Create ledger entries for all learners (real + mock)
+      const allLedgers = learners?.map((learner: any) => {
+        const learnerId = learner.user_id || learner.id;
         const mockAmount = 5000 + Math.floor(Math.random() * 3000); // 5K-8K
         const paidAmount = Math.random() > 0.3 ? Math.floor(Math.random() * mockAmount * 0.8) : 0;
         
         return {
-          id: `mock-${student.id}`,
-          student_id: studentId,
-          student_name: student.name || 'Unknown',
-          roll_number: student.roll_number || 'N/A',
-          student_email: student.email || '',
-          school_id: student.school_id,
+          id: `mock-${learner.id}`,
+          learner_id: learnerId,
+          learner_name: learner.name || 'Unknown',
+          roll_number: learner.roll_number || 'N/A',
+          learner_email: learner.email || '',
+          school_id: learner.school_id,
           fee_structure_id: 'mock-fee-structure',
           fee_head_id: 'mock-fee-head',
           fee_head_name: 'Tuition Fee',
@@ -155,35 +155,35 @@ export const useFeeTracking = (schoolId: string | null) => {
           is_overdue: Math.random() > 0.8, // 20% chance of being overdue
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        } as StudentLedger;
+        } as LearnerLedger;
       }) || [];
 
       logger.info('Created ledger entries', { count: allLedgers.length });
       setLedgers(allLedgers);
     } catch (err) {
-      logger.error("Failed to load students", err as Error, { schoolId });
+      logger.error("Failed to load learners", err as Error, { schoolId });
       setLedgers([]);
     }
   }, [schoolId]);
 
-  const loadPayments = useCallback(async (studentId?: string) => {
+  const loadPayments = useCallback(async (learnerId?: string) => {
     try {
       let query = supabase
         .from("school_fee_payments")
         .select("*")
         .order("payment_date", { ascending: false });
 
-      if (studentId) query = query.eq("student_id", studentId);
+      if (learnerId) query = query.eq("learner_id", learnerId);
 
       const { data, error } = await query;
       if (error) {
-        logger.error('Payments query failed', error, { studentId });
+        logger.error('Payments query failed', error, { learnerId });
         setPayments([]);
         return;
       }
       setPayments(data || []);
     } catch (err) {
-      logger.error("Failed to load payments", err as Error, { studentId });
+      logger.error("Failed to load payments", err as Error, { learnerId });
       setPayments([]);
     }
   }, []);
@@ -200,7 +200,7 @@ export const useFeeTracking = (schoolId: string | null) => {
 
   const recordPayment = async (
     ledgerId: string,
-    studentId: string,
+    learnerId: string,
     paymentData: Partial<FeePayment>
   ): Promise<boolean> => {
     try {
@@ -213,7 +213,7 @@ export const useFeeTracking = (schoolId: string | null) => {
       const receiptNumber = generateReceiptNumber();
       const payload = {
         ledger_id: ledgerId,
-        student_id: studentId,
+        learner_id: learnerId,
         amount: paymentData.amount,
         mode: paymentData.mode,
         reference_number: paymentData.reference_number || null,
@@ -237,7 +237,7 @@ export const useFeeTracking = (schoolId: string | null) => {
         .insert(payload);
 
       if (paymentError) {
-        logger.error('Payment insert failed', paymentError, { ledgerId, studentId });
+        logger.error('Payment insert failed', paymentError, { ledgerId, learnerId });
         // For demo, just update local state
       }
 
@@ -249,7 +249,7 @@ export const useFeeTracking = (schoolId: string | null) => {
         const newStatus: PaymentStatus = newBalance <= 0 ? "paid" : newBalance < ledger.due_amount ? "partial" : "pending";
 
         const { error: updateError } = await supabase
-          .from("school_student_ledgers")
+          .from("learner_ledgers")
           .update({
             paid_amount: newPaidAmount,
             balance: newBalance,
@@ -273,7 +273,7 @@ export const useFeeTracking = (schoolId: string | null) => {
       loadLedgers();
       return true;
     } catch (err) {
-      logger.error("Failed to record payment", err as Error, { ledgerId, studentId });
+      logger.error("Failed to record payment", err as Error, { ledgerId, learnerId });
       toast.error("Failed to record payment");
       return false;
     }
@@ -285,21 +285,21 @@ export const useFeeTracking = (schoolId: string | null) => {
     }
   }, [schoolId, loadLedgers]);
 
-  // Aggregate ledgers by student for summary view
-  const studentSummaries = useMemo((): StudentFeeSummary[] => {
-    const summaryMap = new Map<string, StudentFeeSummary>();
+  // Aggregate ledgers by learner for summary view
+  const learnerSummaries = useMemo((): LearnerFeeSummary[] => {
+    const summaryMap = new Map<string, LearnerFeeSummary>();
 
     ledgers.forEach((ledger) => {
-      const existing = summaryMap.get(ledger.student_id);
+      const existing = summaryMap.get(ledger.learner_id);
       if (existing) {
         existing.total_due += ledger.due_amount || 0;
         existing.total_paid += ledger.paid_amount || 0;
         existing.balance += ledger.balance || 0;
         existing.ledger_entries.push(ledger);
       } else {
-        summaryMap.set(ledger.student_id, {
-          student_id: ledger.student_id,
-          student_name: ledger.student_name,
+        summaryMap.set(ledger.learner_id, {
+          learner_id: ledger.learner_id,
+          learner_name: ledger.learner_name,
           roll_number: ledger.roll_number,
           total_due: ledger.due_amount || 0,
           total_paid: ledger.paid_amount || 0,
@@ -324,20 +324,20 @@ export const useFeeTracking = (schoolId: string | null) => {
   // Stats
   const stats = useMemo(() => {
     if (ledgers.length > 0) {
-      const totalDue = studentSummaries.reduce((sum, s) => sum + s.total_due, 0);
-      const totalCollected = studentSummaries.reduce((sum, s) => sum + s.total_paid, 0);
-      const totalPending = studentSummaries.reduce((sum, s) => sum + s.balance, 0);
-      const totalStudents = studentSummaries.length;
-      const paidCount = studentSummaries.filter((s) => s.status === "paid").length;
-      const partialCount = studentSummaries.filter((s) => s.status === "partial").length;
-      const pendingCount = studentSummaries.filter((s) => s.status === "pending").length;
-      const overdueCount = studentSummaries.filter((s) => s.status === "overdue").length;
+      const totalDue = learnerSummaries.reduce((sum, s) => sum + s.total_due, 0);
+      const totalCollected = learnerSummaries.reduce((sum, s) => sum + s.total_paid, 0);
+      const totalPending = learnerSummaries.reduce((sum, s) => sum + s.balance, 0);
+      const totallearners = learnerSummaries.length;
+      const paidCount = learnerSummaries.filter((s) => s.status === "paid").length;
+      const partialCount = learnerSummaries.filter((s) => s.status === "partial").length;
+      const pendingCount = learnerSummaries.filter((s) => s.status === "pending").length;
+      const overdueCount = learnerSummaries.filter((s) => s.status === "overdue").length;
 
       return {
         totalDue,
         totalCollected,
         totalPending,
-        totalStudents,
+        totallearners,
         paidCount,
         partialCount,
         pendingCount,
@@ -349,18 +349,18 @@ export const useFeeTracking = (schoolId: string | null) => {
       totalDue: 0,
       totalCollected: 0,
       totalPending: 0,
-      totalStudents: 0,
+      totallearners: 0,
       paidCount: 0,
       partialCount: 0,
       pendingCount: 0,
       overdueCount: 0,
     };
-  }, [studentSummaries, ledgers.length]);
+  }, [learnerSummaries, ledgers.length]);
 
   return {
     ledgers,
     payments,
-    studentSummaries,
+    learnerSummaries,
     loading,
     stats,
     loadLedgers,

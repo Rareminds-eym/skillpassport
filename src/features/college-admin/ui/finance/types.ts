@@ -94,10 +94,10 @@ export const DEFAULT_FEE_HEADS = [
 
 
 // Fee Tracking Types
-export interface StudentLedger {
+export interface LearnerLedger {
   id: string;
-  student_id: string;
-  student_name: string;
+  learner_id: string;
+  learner_name: string;
   roll_number: string;
   fee_structure_id: string;
   fee_head_id: string;
@@ -116,7 +116,7 @@ export interface StudentLedger {
   waived_by?: string;
   waived_at?: string;
   college_id?: string;
-  student_record_id?: string;
+  learner_record_id?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -126,7 +126,7 @@ export type PaymentStatus = "pending" | "partial" | "paid" | "overdue" | "waived
 export interface FeePayment {
   id: string;
   ledger_id: string;
-  student_id: string;
+  learner_id: string;
   amount: number;
   mode: PaymentMode;
   reference_number?: string;
@@ -156,10 +156,10 @@ export type PaymentMode = "Cash" | "Cheque" | "DD" | "Online" | "UPI" | "Bank Tr
 
 export const PAYMENT_MODES: PaymentMode[] = ["Cash", "Cheque", "DD", "Online", "UPI", "Bank Transfer", "Card"];
 
-// Aggregated student fee summary for list view
-export interface StudentFeeSummary {
-  student_id: string;
-  student_name: string;
+// Aggregated learner fee summary for list view
+export interface LearnerFeeSummary {
+  learner_id: string;
+  learner_name: string;
   roll_number: string;
   stream?: string;
   year?: number;
@@ -168,5 +168,5 @@ export interface StudentFeeSummary {
   balance: number;
   status: PaymentStatus;
   last_payment_date?: string;
-  ledger_entries: StudentLedger[];
+  ledger_entries: LearnerLedger[];
 }

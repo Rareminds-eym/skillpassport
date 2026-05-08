@@ -4,8 +4,8 @@ import { useState, useCallback, useRef } from 'react';
 import type {
   CounsellingMessage,
   CounsellingTopicType,
-  StudentContext
-} from '@/features/student-profile/model';
+  LearnerContext
+} from '@/features/learner-profile/model';
 import { counsellingService } from '../api';
 import { getLogger } from '@/shared/config/logging';
 
@@ -14,7 +14,7 @@ const logger = getLogger('counselling-chat-hook');
 export interface UseCounsellingChatOptions {
   sessionId?: string;
   topic: CounsellingTopicType;
-  studentContext?: StudentContext;
+  learnerContext?: LearnerContext;
   initialMessages?: CounsellingMessage[];
 }
 
@@ -70,7 +70,7 @@ export function useCounsellingChat(options: UseCounsellingChatOptions) {
         {
           session_id: currentSessionId,
           message: content,
-          student_context: options.studentContext,
+          learner_context: options.learnerContext,
           topic: options.topic,
         },
         conversationHistory
@@ -101,7 +101,7 @@ export function useCounsellingChat(options: UseCounsellingChatOptions) {
       setIsStreaming(false);
       abortControllerRef.current = null;
     }
-  }, [currentSessionId, isStreaming, messages, options.studentContext, options.topic]);
+  }, [currentSessionId, isStreaming, messages, options.learnerContext, options.topic]);
 
   // Stop streaming
   const stopStreaming = useCallback(() => {

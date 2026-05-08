@@ -26,7 +26,7 @@ import {
 import { EMBEDDING_CONFIG } from '../config/constants';
 
 // Database record types (matching actual Supabase schema)
-interface StudentRecord {
+interface LearnerRecord {
   id: string;
   name: string | null;
   age: number | null;
@@ -110,24 +110,24 @@ interface TrainingRecord {
 }
 
 /**
- * Build ENRICHED text from student record
+ * Build ENRICHED text from learner record
  * 
- * This is the ONLY correct way to build student text.
+ * This is the ONLY correct way to build learner text.
  * Includes: profile, skills, certificates, projects, trainings, and courses
  * 
  * @param supabase - Supabase client
- * @param studentId - Student UUID
+ * @param learnerId - Learner UUID
  * @returns Enriched text string (typically 2000-4000 chars)
  * @throws EmbeddingError if insufficient data
  */
-export async function buildStudentTextFromDatabase(
+export async function buildlearnerTextFromDatabase(
   supabase: SupabaseClient,
-  studentId: string
+  learnerId: string
 ): Promise<string> {
   try {
-    // Fetch student with ALL relevant data for comprehensive embedding
-    const { data: student, error: studentError } = await supabase
-      .from('students')
+    // Fetch learner with ALL relevant data for comprehensive embedding
+    const { data: learner, error: learnerError } = await supabase
+      .from('learners')
       .select(`
         id, name, age, date_of_birth, dateOfBirth, gender, bio,
         branch_field, course_name, university, college_school_name, 
@@ -139,19 +139,19 @@ export async function buildStudentTextFromDatabase(
         resumeUrl, profilePicture,
         contact_number, contactNumber, email
       `)
-      .eq('id', studentId)
+      .eq('id', learnerId)
       .single();
 
-    if (studentError || !student) {
+    if (learnerError || !learner) {
       throw new EmbeddingError(
-        `Failed to fetch student: ${studentError?.message || 'Not found'}`,
+        `Failed to fetch learner: ${learnerError?.message || 'Not found'}`,
         'INSUFFICIENT_DATA',
-        { studentId, error: studentError }
+        { learnerId, error: learnerError }
       );
     }
 
-    // Type-safe student record
-    const studentRecord = student as StudentRecord;
+    // Type-safe learner record
+    const learnerRecord = learner as LearnerRecord;
 
     // Fetch ALL related data in parallel for maximum performance
     // This reduces total query time from ~500ms (sequential) to ~100ms (parallel)
@@ -166,7 +166,7 @@ export async function buildStudentTextFromDatabase(
       supabase
         .from('skills')
         .select('name, level, proficiency_level, type, description')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('enabled', true)
         .eq('approval_status', 'approved')
         .order('level', { ascending: false })
@@ -179,7 +179,7 @@ export async function buildStudentTextFromDatabase(
           title, issuer, level, category, description, platform, instructor,
           trainings!training_id(title)
         `)
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('enabled', true)
         .or('expiry_date.is.null,expiry_date.gte.now()')
         .eq('approval_status', 'approved')
@@ -192,7 +192,7 @@ export async function buildStudentTextFromDatabase(
           title, description, tech_stack, role, organization,
           start_date, end_date, status
         `)
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('enabled', true)
         .eq('approval_status', 'approved')
         .limit(EMBEDDING_CONFIG.MAX_PROJECTS),
@@ -201,14 +201,14 @@ export async function buildStudentTextFromDatabase(
       supabase
         .from('course_enrollments')
         .select('course_title, status, skills_acquired')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .in('status', ['completed', 'in_progress', 'active']),
       
       // Fetch trainings
       supabase
         .from('trainings')
         .select('title, organization, description, source, status, start_date, end_date')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('approval_status', 'approved')
         .limit(EMBEDDING_CONFIG.MAX_TRAININGS)
     ]);
@@ -217,46 +217,46 @@ export async function buildStudentTextFromDatabase(
     const parts: string[] = [];
 
     // Section 1: Core Profile
-    parts.push('=== STUDENT PROFILE ===');
-    if (studentRecord.name) parts.push(`Name: ${studentRecord.name}`);
-    if (studentRecord.age) parts.push(`Age: ${studentRecord.age}`);
-    if (studentRecord.gender) parts.push(`Gender: ${studentRecord.gender}`);
-    if (studentRecord.branch_field) parts.push(`Field of Study: ${studentRecord.branch_field}`);
-    if (studentRecord.course_name) parts.push(`Course: ${studentRecord.course_name}`);
-    if (studentRecord.university) parts.push(`University: ${studentRecord.university}`);
-    if (studentRecord.college_school_name) parts.push(`Institution: ${studentRecord.college_school_name}`);
-    if (studentRecord.city) parts.push(`City: ${studentRecord.city}`);
-    if (studentRecord.state) parts.push(`State: ${studentRecord.state}`);
-    if (studentRecord.country) parts.push(`Country: ${studentRecord.country}`);
-    if (studentRecord.grade) parts.push(`Grade/Class: ${studentRecord.grade}`);
-    if (studentRecord.semester) parts.push(`Semester: ${studentRecord.semester}`);
-    if (studentRecord.currentCgpa) parts.push(`CGPA: ${studentRecord.currentCgpa}`);
-    if (studentRecord.bio) parts.push(`Bio: ${studentRecord.bio}`);
+    parts.push('=== LEARNER PROFILE ===');
+    if (learnerRecord.name) parts.push(`Name: ${learnerRecord.name}`);
+    if (learnerRecord.age) parts.push(`Age: ${learnerRecord.age}`);
+    if (learnerRecord.gender) parts.push(`Gender: ${learnerRecord.gender}`);
+    if (learnerRecord.branch_field) parts.push(`Field of Study: ${learnerRecord.branch_field}`);
+    if (learnerRecord.course_name) parts.push(`Course: ${learnerRecord.course_name}`);
+    if (learnerRecord.university) parts.push(`University: ${learnerRecord.university}`);
+    if (learnerRecord.college_school_name) parts.push(`Institution: ${learnerRecord.college_school_name}`);
+    if (learnerRecord.city) parts.push(`City: ${learnerRecord.city}`);
+    if (learnerRecord.state) parts.push(`State: ${learnerRecord.state}`);
+    if (learnerRecord.country) parts.push(`Country: ${learnerRecord.country}`);
+    if (learnerRecord.grade) parts.push(`Grade/Class: ${learnerRecord.grade}`);
+    if (learnerRecord.semester) parts.push(`Semester: ${learnerRecord.semester}`);
+    if (learnerRecord.currentCgpa) parts.push(`CGPA: ${learnerRecord.currentCgpa}`);
+    if (learnerRecord.bio) parts.push(`Bio: ${learnerRecord.bio}`);
 
     // Add interests, hobbies, and languages
-    if (studentRecord.interests && Array.isArray(studentRecord.interests) && studentRecord.interests.length > 0) {
-      parts.push(`Interests: ${studentRecord.interests.join(', ')}`);
+    if (learnerRecord.interests && Array.isArray(learnerRecord.interests) && learnerRecord.interests.length > 0) {
+      parts.push(`Interests: ${learnerRecord.interests.join(', ')}`);
     }
-    if (studentRecord.hobbies && Array.isArray(studentRecord.hobbies) && studentRecord.hobbies.length > 0) {
-      parts.push(`Hobbies: ${studentRecord.hobbies.join(', ')}`);
+    if (learnerRecord.hobbies && Array.isArray(learnerRecord.hobbies) && learnerRecord.hobbies.length > 0) {
+      parts.push(`Hobbies: ${learnerRecord.hobbies.join(', ')}`);
     }
-    if (studentRecord.languages && Array.isArray(studentRecord.languages) && studentRecord.languages.length > 0) {
-      parts.push(`Languages: ${studentRecord.languages.join(', ')}`);
+    if (learnerRecord.languages && Array.isArray(learnerRecord.languages) && learnerRecord.languages.length > 0) {
+      parts.push(`Languages: ${learnerRecord.languages.join(', ')}`);
     }
 
     // Add work experience and career gaps
-    if (studentRecord.work_experience) {
-      parts.push(`Work Experience: ${studentRecord.work_experience}`);
+    if (learnerRecord.work_experience) {
+      parts.push(`Work Experience: ${learnerRecord.work_experience}`);
     }
-    if (studentRecord.gap_in_studies && studentRecord.gap_reason) {
-      parts.push(`Career Gap: ${studentRecord.gap_years || 0} years - ${studentRecord.gap_reason}`);
+    if (learnerRecord.gap_in_studies && learnerRecord.gap_reason) {
+      parts.push(`Career Gap: ${learnerRecord.gap_years || 0} years - ${learnerRecord.gap_reason}`);
     }
 
     // Add social/portfolio links
     const links: string[] = [];
-    if (studentRecord.github_link) links.push(`GitHub: ${studentRecord.github_link}`);
-    if (studentRecord.linkedin_link) links.push(`LinkedIn: ${studentRecord.linkedin_link}`);
-    if (studentRecord.portfolio_link) links.push(`Portfolio: ${studentRecord.portfolio_link}`);
+    if (learnerRecord.github_link) links.push(`GitHub: ${learnerRecord.github_link}`);
+    if (learnerRecord.linkedin_link) links.push(`LinkedIn: ${learnerRecord.linkedin_link}`);
+    if (learnerRecord.portfolio_link) links.push(`Portfolio: ${learnerRecord.portfolio_link}`);
     if (links.length > 0) {
       parts.push(`Professional Links: ${links.join(', ')}`);
     }
@@ -432,13 +432,13 @@ export async function buildStudentTextFromDatabase(
     
     if (text.length < 50) {
       throw new EmbeddingError(
-        `Insufficient data for student ${studentId} (only ${text.length} chars)`,
+        `Insufficient data for learner ${learnerId} (only ${text.length} chars)`,
         'INSUFFICIENT_DATA',
-        { studentId, textLength: text.length }
+        { learnerId, textLength: text.length }
       );
     }
 
-    console.log(`[TextBuilder] Built enriched student text (${text.length} chars) for ${studentId}`);
+    console.log(`[TextBuilder] Built enriched learner text (${text.length} chars) for ${learnerId}`);
     return text;
 
   } catch (error) {
@@ -446,9 +446,9 @@ export async function buildStudentTextFromDatabase(
       throw error;
     }
     throw new EmbeddingError(
-      `Error building student text: ${error instanceof Error ? error.message : String(error)}`,
+      `Error building learner text: ${error instanceof Error ? error.message : String(error)}`,
       'API_ERROR',
-      { studentId, originalError: error }
+      { learnerId, originalError: error }
     );
   }
 }

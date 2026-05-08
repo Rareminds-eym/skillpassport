@@ -21,14 +21,14 @@ async function resolveUserId(identifier: string): Promise<string | null> {
 
   if (educatorData?.user_id) return educatorData.user_id;
 
-  // Try students
-  const { data: studentData } = await supabase
-    .from("students")
+  // Try learners
+  const { data: learnerData } = await supabase
+    .from("learners")
     .select("user_id")
     .ilike("email", identifier)
     .maybeSingle();
 
-  if (studentData?.user_id) return studentData.user_id;
+  if (learnerData?.user_id) return learnerData.user_id;
 
   // Try recruiters
  // Try recruiters
@@ -155,13 +155,13 @@ export async function createEducatorNotification(
   return createNotification(educatorIdentifier, type, title, message);
 }
 
-export async function createStudentNotification(
-  studentIdentifier: string,
+export async function createlearnerNotification(
+  learnerIdentifier: string,
   type: NotificationType,
   title: string,
   message: string
 ) {
-  return createNotification(studentIdentifier, type, title, message);
+  return createNotification(learnerIdentifier, type, title, message);
 }
 
 export async function createAdminNotification(

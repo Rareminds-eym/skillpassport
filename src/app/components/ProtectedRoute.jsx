@@ -6,8 +6,9 @@ import { useIsAuthenticated, useUserRole, useAuthLoading } from '@/shared/model/
 // Map specific roles to their general category for route protection
 const getRoleCategory = (role) => {
   const roleMap = {
-    school_student: 'student',
-    college_student: 'student',
+    learner: 'learner',
+    'school-learner': 'learner',
+    'college-learner': 'learner',
     school_educator: 'educator',
     college_educator: 'educator',
     school_admin: 'school_admin',

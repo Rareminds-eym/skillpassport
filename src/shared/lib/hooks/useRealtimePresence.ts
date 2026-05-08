@@ -20,7 +20,7 @@ interface UseRealtimePresenceProps {
  *   userPresence: {
  *     userId: 'user-123',
  *     userName: 'John Doe',
- *     userType: 'student',
+ *     userType: 'learner',
  *     status: 'online',
  *     lastSeen: new Date().toISOString()
  *   }

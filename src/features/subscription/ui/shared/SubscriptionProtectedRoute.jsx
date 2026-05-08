@@ -14,10 +14,10 @@
  * 
  * Usage:
  * <SubscriptionProtectedRoute 
- *   allowedRoles={['school_student', 'college_student']}
+ *   allowedRoles={['learner', 'learner']}
  *   requireSubscription={true}
  * >
- *   <StudentLayout />
+ *   <LearnerLayout />
  * </SubscriptionProtectedRoute>
  */
 
@@ -56,7 +56,7 @@ const CONFIG = {
 
 /** User type mapping from URL path */
 const PATH_TO_USER_TYPE = {
-  '/student': 'student',
+  '/learner': 'learner',
   '/recruitment': 'recruiter',
   '/educator': 'educator',
   '/college-admin': 'college_admin',
@@ -88,7 +88,7 @@ function getUserTypeFromPath(pathname) {
       return userType;
     }
   }
-  return 'student'; // fallback
+  return 'learner'; // fallback
 }
 
 /**
@@ -483,7 +483,7 @@ const SubscriptionProtectedRoute = ({
   if (guardState === GUARD_STATES.ACCESS_DENIED) {
     // Not authenticated
     if (!isAuthenticated) {
-      const redirectPath = location.pathname.includes('student')
+      const redirectPath = location.pathname.includes('learner')
         ? loginFallbackPath
         : '/';
       log.info('Not authenticated, redirecting to:', redirectPath);
@@ -500,7 +500,7 @@ const SubscriptionProtectedRoute = ({
 
     if (!roleMatches && !adminRoleException) {
       // Role doesn't match and no admin exception applies
-      const expectedRole = allowedRoles[0] || 'student';
+      const expectedRole = allowedRoles[0] || 'learner';
       log.info('Role mismatch, redirecting to plans. Expected:', allowedRoles, 'Got:', role);
       return <Navigate to={`/subscription/plans?type=${expectedRole}`} replace />;
     }

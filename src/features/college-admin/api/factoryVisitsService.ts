@@ -97,28 +97,28 @@ class FactoryVisitsService {
     }
   }
 
-  async registerForVisit(studentId: number, visitId: string): Promise<{ success: boolean; message: string }> {
+  async registerForVisit(learnerId: number, visitId: string): Promise<{ success: boolean; message: string }> {
     try {
-      // Check if student profile is complete (has name and contactNumber)
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
+      // Check if learner profile is complete (has name and contactNumber)
+      const { data: learnerData, error: learnerError } = await supabase
+        .from('learners')
         .select('name, contactNumber')
-        .eq('id', studentId)
+        .eq('id', learnerId)
         .single();
 
-      if (studentError) {
-        logger.error('Error fetching student data during visit registration', studentError as Error, { studentId, visitId });
-        return { success: false, message: `Failed to verify student profile: ${studentError.message}` };
+      if (learnerError) {
+        logger.error('Error fetching learner data during visit registration', learnerError as Error, { learnerId, visitId });
+        return { success: false, message: `Failed to verify learner profile: ${learnerError.message}` };
       }
 
-      if (!studentData) {
-        return { success: false, message: 'Student profile not found' };
+      if (!learnerData) {
+        return { success: false, message: 'Learner profile not found' };
       }
 
-      if (!studentData.name || !studentData.contactNumber) {
+      if (!learnerData.name || !learnerData.contactNumber) {
         const missingFields = [];
-        if (!studentData.name) missingFields.push('Full Name');
-        if (!studentData.contactNumber) missingFields.push('Phone Number');
+        if (!learnerData.name) missingFields.push('Full Name');
+        if (!learnerData.contactNumber) missingFields.push('Phone Number');
 
         return {
           success: false,
@@ -130,7 +130,7 @@ class FactoryVisitsService {
       const { data: existingRegistration } = await supabase
         .from('applied_jobs')
         .select('id')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('opportunity_id', visitId)
         .single();
 
@@ -142,31 +142,31 @@ class FactoryVisitsService {
       const { error: insertError } = await supabase
         .from('applied_jobs')
         .insert({
-          student_id: studentId,
+          learner_id: learnerId,
           opportunity_id: visitId,
           application_status: 'applied',
           applied_at: new Date().toISOString()
         });
 
       if (insertError) {
-        logger.error('Error registering student for visit', insertError as Error, { studentId, visitId });
+        logger.error('Error registering learner for visit', insertError as Error, { learnerId, visitId });
         return { success: false, message: `Failed to register for visit: ${insertError.message}` };
       }
 
       return { success: true, message: 'Successfully registered for the visit!' };
     } catch (error) {
-      logger.error('Error in registerForVisit', error as Error, { studentId, visitId });
+      logger.error('Error in registerForVisit', error as Error, { learnerId, visitId });
       return { success: false, message: 'An error occurred while registering' };
     }
   }
 
-  async getStudentRegistrations(studentId: number): Promise<any[]> {
+  async getlearnerRegistrations(learnerId: number): Promise<any[]> {
     try {
       const { data, error } = await supabase
         .from('applied_jobs')
         .select(`
           id,
-          student_id,
+          learner_id,
           opportunity_id,
           application_status,
           applied_at,
@@ -181,18 +181,18 @@ class FactoryVisitsService {
             employment_type
           )
         `)
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('opportunities.employment_type', 'factory_visit')
         .order('applied_at', { ascending: false });
 
       if (error) {
-        logger.error('Error fetching student registrations', error as Error, { studentId });
+        logger.error('Error fetching learner registrations', error as Error, { learnerId });
         throw error;
       }
 
       return data || [];
     } catch (error) {
-      logger.error('Error in getStudentRegistrations', error as Error, { studentId });
+      logger.error('Error in getlearnerRegistrations', error as Error, { learnerId });
       return [];
     }
   }

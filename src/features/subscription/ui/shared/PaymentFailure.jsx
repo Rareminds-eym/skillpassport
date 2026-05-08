@@ -104,13 +104,13 @@ function PaymentFailure() {
       navigate('/subscription/payment', {
         state: {
           plan: planDetails,
-          studentType: planDetails.studentType || 'student',
+          learnerType: planDetails.learnerType || 'learner',
           retryAttempt: retryAttempts + 1
         }
       });
     } else {
       // Include user role type for proper plan display
-      const userType = role || planDetails?.studentType || 'student';
+      const userType = role || planDetails?.learnerType || 'learner';
       navigate(`/subscription/plans?type=${userType}`);
     }
   };
@@ -176,7 +176,7 @@ function PaymentFailure() {
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => {
-                  const userType = role || planDetails?.studentType || 'student';
+                  const userType = role || planDetails?.learnerType || 'learner';
                   navigate(`/subscription/plans?type=${userType}`);
                 }}
                 className="py-3 px-4 border-2 border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center justify-center gap-2"

@@ -73,10 +73,10 @@ const CollegeClassHeader: React.FC<CollegeClassHeaderProps> = ({ classInfo }) =>
             <div className="w-8 h-8 bg-orange-100 rounded-lg mx-auto mb-2 flex items-center justify-center">
               <Users className="w-4 h-4 text-orange-600" />
             </div>
-            <p className="text-xs text-gray-500 mb-1">Students</p>
+            <p className="text-xs text-gray-500 mb-1">Learners</p>
             <p className="text-sm font-semibold text-gray-900">
-              {classInfo.current_students}
-              {classInfo.max_students && classInfo.max_students > 0 && `/${classInfo.max_students}`}
+              {classInfo.current_learners}
+              {classInfo.max_learners && classInfo.max_learners > 0 && `/${classInfo.max_learners}`}
             </p>
           </div>
         </div>

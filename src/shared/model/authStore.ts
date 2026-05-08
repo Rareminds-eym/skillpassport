@@ -72,11 +72,10 @@ interface AuthState {
   isAuthenticated: boolean;
 
   role: string | null;
-  isStudent: boolean;
+  isLearner: boolean;
   isEducator: boolean;
   isAdmin: boolean;
   isRecruiter: boolean;
-  isLearner: boolean;
 
   errorNotification: ErrorNotification | null;
 
@@ -101,8 +100,8 @@ interface AuthState {
 
 // ─── Role helpers ──────────────────────────────────────────────
 
-const isStudentRole = (roles: string[]): boolean =>
-  roles.some((r) => r === 'student' || r === 'school_student' || r === 'college_student');
+const isLearnerRole = (roles: string[]): boolean =>
+  roles.some((r) => r === 'learner');
 
 const isEducatorRole = (roles: string[]): boolean =>
   roles.some((r) => r === 'educator' || r === 'school_educator' || r === 'college_educator');
@@ -120,12 +119,9 @@ const isAdminRole = (roles: string[]): boolean =>
 const isRecruiterRole = (roles: string[]): boolean =>
   roles.some((r) => r === 'recruiter' || r === 'hr');
 
-const isLearnerRole = (roles: string[]): boolean =>
-  roles.some((r) => r === 'learner');
-
 /**
  * Pick the most specific role for the legacy `role` field.
- * Prefers specific admin/student/educator roles over generic ones.
+ * Prefers specific admin/learner/educator roles over generic ones.
  */
 function pickPrimaryRole(roles: string[]): string | null {
   if (roles.length === 0) return null;
@@ -138,12 +134,9 @@ function pickPrimaryRole(roles: string[]): string | null {
     'college_educator',
     'school_educator',
     'educator',
-    'college_student',
-    'school_student',
-    'student',
+    'learner',
     'recruiter',
     'hr',
-    'learner',
     'member',
   ];
   for (const p of priority) {
@@ -168,11 +161,10 @@ function mapMeToUser(me: MeResponse): User {
 
 function computeRoleFlags(roles: string[]) {
   return {
-    isStudent: isStudentRole(roles),
+    isLearner: isLearnerRole(roles),
     isEducator: isEducatorRole(roles),
     isAdmin: isAdminRole(roles),
     isRecruiter: isRecruiterRole(roles),
-    isLearner: isLearnerRole(roles),
   };
 }
 
@@ -192,11 +184,10 @@ export const useAuthStore = create<AuthState>()(
     loading: true,
     isAuthenticated: false,
     role: null,
-    isStudent: false,
+    isLearner: false,
     isEducator: false,
     isAdmin: false,
     isRecruiter: false,
-    isLearner: false,
     errorNotification: null,
 
     /**
@@ -247,11 +238,10 @@ export const useAuthStore = create<AuthState>()(
         state.session = null;
         state.isAuthenticated = false;
         state.role = null;
-        state.isStudent = false;
+        state.isLearner = false;
         state.isEducator = false;
         state.isAdmin = false;
         state.isRecruiter = false;
-        state.isLearner = false;
       });
     },
 
@@ -337,11 +327,10 @@ export const useAuthStore = create<AuthState>()(
             state.user = null;
             state.isAuthenticated = false;
             state.role = null;
-            state.isStudent = false;
+            state.isLearner = false;
             state.isEducator = false;
             state.isAdmin = false;
             state.isRecruiter = false;
-            state.isLearner = false;
             state.loading = false;
           });
         }
@@ -351,11 +340,10 @@ export const useAuthStore = create<AuthState>()(
           state.user = null;
           state.isAuthenticated = false;
           state.role = null;
-          state.isStudent = false;
+          state.isLearner = false;
           state.isEducator = false;
           state.isAdmin = false;
           state.isRecruiter = false;
-          state.isLearner = false;
           state.loading = false;
         });
       }
@@ -408,11 +396,10 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
         role: state.role,
-        isStudent: state.isStudent,
+        isLearner: state.isLearner,
         isEducator: state.isEducator,
         isAdmin: state.isAdmin,
         isRecruiter: state.isRecruiter,
-        isLearner: state.isLearner,
       }),
       /**
        * When rehydrating from storage, reset transient fields
@@ -464,12 +451,11 @@ export const useErrorNotification = () => useAuthStore((state) => state.errorNot
 
 export const useUserRole = () => {
   const role = useAuthStore((state) => state.role);
-  const isStudent = useAuthStore((state) => state.isStudent);
+  const isLearner = useAuthStore((state) => state.isLearner);
   const isEducator = useAuthStore((state) => state.isEducator);
   const isAdmin = useAuthStore((state) => state.isAdmin);
   const isRecruiter = useAuthStore((state) => state.isRecruiter);
-  const isLearner = useAuthStore((state) => state.isLearner);
-  return { role, isStudent, isEducator, isAdmin, isRecruiter, isLearner };
+  return { role, isLearner, isEducator, isAdmin, isRecruiter };
 };
 
 export const useAuthActions = () => {

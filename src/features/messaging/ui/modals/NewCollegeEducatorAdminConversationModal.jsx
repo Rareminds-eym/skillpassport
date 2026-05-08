@@ -30,7 +30,7 @@ const NewCollegeEducatorAdminConversationModal = ({
   const predefinedSubjects = [
     'General Discussion',
     'Course Planning',
-    'Student Issues',
+    'Learner Issues',
     'Department Matters',
     'Resource Requests',
     'Policy Questions',

@@ -1,4 +1,4 @@
-import { RecruiterContext, RecruiterIntent } from '@/features/student-profile/model';
+import { RecruiterContext, RecruiterIntent } from '@/features/learner-profile/model';
 
 /**
  * Build system prompt for recruiter AI (Senior Prompt Engineering)

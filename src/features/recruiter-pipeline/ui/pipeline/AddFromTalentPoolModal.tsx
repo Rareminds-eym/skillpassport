@@ -5,7 +5,7 @@ import {
   StarIcon,
   CheckIcon
 } from '@heroicons/react/24/outline';
-import { useStudents } from '@/entities/student/model/useStudents';
+import { useLearners } from '@/entities/learner/model/useLearners';
 import toast from 'react-hot-toast';
 import { addCandidateToPipeline } from '@/features/recruiter-pipeline';
 import { createNotification } from '@/features/notifications';
@@ -28,20 +28,20 @@ export const AddFromTalentPoolModal: React.FC<AddFromTalentPoolModalProps> = ({
   targetStage,
   onSuccess
 }) => {
-  const { students, loading: studentsLoading } = useStudents();
+  const { learners, loading: learnersLoading } = useLearners();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStudents, setSelectedStudents] = useState<any[]>([]);
+  const [selectedlearners, setSelectedlearners] = useState<any[]>([]);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const filteredStudents = students.filter(student =>
-    student.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    student.dept?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    student.college?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredlearners = learners.filter(learner =>
+    learner.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    learner.dept?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    learner.college?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleAddCandidates = async () => {
-    if (selectedStudents.length === 0) {
+    if (selectedlearners.length === 0) {
       setError('Please select at least one candidate');
       return;
     }
@@ -51,13 +51,13 @@ export const AddFromTalentPoolModal: React.FC<AddFromTalentPoolModalProps> = ({
 
     try {
       const results = await Promise.all(
-        selectedStudents.map(student =>
+        selectedlearners.map(learner =>
           addCandidateToPipeline({
             opportunity_id: requisitionId!,
-            student_id: student.id,
-            candidate_name: student.name,
-            candidate_email: student.email,
-            candidate_phone: student.phone,
+            learner_id: learner.id,
+            candidate_name: learner.name,
+            candidate_email: learner.email,
+            candidate_phone: learner.phone,
             stage: targetStage || 'sourced',
             source: 'talent_pool'
           })
@@ -72,7 +72,7 @@ export const AddFromTalentPoolModal: React.FC<AddFromTalentPoolModalProps> = ({
           setTimeout(() => {
             onSuccess?.();
             onClose();
-            setSelectedStudents([]);
+            setSelectedlearners([]);
           }, 2000);
           return;
         } else {
@@ -105,11 +105,11 @@ export const AddFromTalentPoolModal: React.FC<AddFromTalentPoolModalProps> = ({
 
         onSuccess?.();
         onClose();
-        setSelectedStudents([]);
+        setSelectedlearners([]);
       }
     } catch (err: any) {
       logger.error('Failed to add candidates to pipeline', err, { 
-        selectedCount: selectedStudents.length,
+        selectedCount: selectedlearners.length,
         requisitionId,
         targetStage 
       });
@@ -119,13 +119,13 @@ export const AddFromTalentPoolModal: React.FC<AddFromTalentPoolModalProps> = ({
     }
   };
 
-  const toggleStudent = (student: any) => {
-    setSelectedStudents(prev => {
-      const exists = prev.find(s => s.id === student.id);
+  const toggleLearner = (learner: any) => {
+    setSelectedlearners(prev => {
+      const exists = prev.find(s => s.id === learner.id);
       if (exists) {
-        return prev.filter(s => s.id !== student.id);
+        return prev.filter(s => s.id !== learner.id);
       }
-      return [...prev, student];
+      return [...prev, learner];
     });
   };
 
@@ -168,26 +168,26 @@ export const AddFromTalentPoolModal: React.FC<AddFromTalentPoolModalProps> = ({
           </div>
 
           {/* Selected Count */}
-          {selectedStudents.length > 0 && (
+          {selectedlearners.length > 0 && (
             <div className="mb-3 text-sm text-gray-600">
-              {selectedStudents.length} candidate(s) selected
+              {selectedlearners.length} candidate(s) selected
             </div>
           )}
 
-          {/* Student List */}
+          {/* Learner List */}
           <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-md">
-            {studentsLoading ? (
+            {learnersLoading ? (
               <div className="p-8 text-center text-gray-500">Loading candidates...</div>
-            ) : filteredStudents.length === 0 ? (
+            ) : filteredlearners.length === 0 ? (
               <div className="p-8 text-center text-gray-500">No candidates found</div>
             ) : (
               <div className="divide-y divide-gray-200">
-                {filteredStudents.map(student => {
-                  const isSelected = selectedStudents.find(s => s.id === student.id);
+                {filteredlearners.map(learner => {
+                  const isSelected = selectedlearners.find(s => s.id === learner.id);
                   return (
                     <div
-                      key={student.id}
-                      onClick={() => toggleStudent(student)}
+                      key={learner.id}
+                      onClick={() => toggleLearner(learner)}
                       className={`p-3 cursor-pointer hover:bg-gray-50 ${
                         isSelected ? 'bg-primary-50 border-l-4 border-l-primary-500' : ''
                       }`}
@@ -202,23 +202,23 @@ export const AddFromTalentPoolModal: React.FC<AddFromTalentPoolModalProps> = ({
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
                             <div>
-                              <h4 className="text-sm font-medium text-gray-900">{student.name}</h4>
-                              <p className="text-xs text-gray-500">{student.dept} • {student.college}</p>
+                              <h4 className="text-sm font-medium text-gray-900">{learner.name}</h4>
+                              <p className="text-xs text-gray-500">{learner.dept} • {learner.college}</p>
                             </div>
                             <div className="flex items-center">
                               <StarIcon className="h-4 w-4 text-yellow-400 fill-current mr-1" />
-                              <span className="text-sm font-medium">{student.ai_score_overall}</span>
+                              <span className="text-sm font-medium">{learner.ai_score_overall}</span>
                             </div>
                           </div>
-                          {student.skills && student.skills.length > 0 && (
+                          {learner.skills && learner.skills.length > 0 && (
                             <div className="mt-1 flex flex-wrap gap-1">
-                              {student.skills.slice(0, 3).map((skill: any, idx: number) => (
+                              {learner.skills.slice(0, 3).map((skill: any, idx: number) => (
                                 <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
                                   {typeof skill === 'string' ? skill : skill?.name || skill}
                                 </span>
                               ))}
-                              {student.skills.length > 3 && (
-                                <span className="text-xs text-gray-500">+{student.skills.length - 3} more</span>
+                              {learner.skills.length > 3 && (
+                                <span className="text-xs text-gray-500">+{learner.skills.length - 3} more</span>
                               )}
                             </div>
                           )}
@@ -241,7 +241,7 @@ export const AddFromTalentPoolModal: React.FC<AddFromTalentPoolModalProps> = ({
             </button>
             <button
               onClick={handleAddCandidates}
-              disabled={adding || selectedStudents.length === 0}
+              disabled={adding || selectedlearners.length === 0}
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed inline-flex items-center"
             >
               {adding ? (
@@ -255,7 +255,7 @@ export const AddFromTalentPoolModal: React.FC<AddFromTalentPoolModalProps> = ({
               ) : (
                 <>
                   <CheckIcon className="h-4 w-4 mr-1" />
-                  Add {selectedStudents.length} Candidate{selectedStudents.length !== 1 ? 's' : ''}
+                  Add {selectedlearners.length} Candidate{selectedlearners.length !== 1 ? 's' : ''}
                 </>
               )}
             </button>

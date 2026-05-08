@@ -43,7 +43,7 @@ export interface DepartmentUpdate {
 
 export interface DepartmentWithStats extends Department {
   faculty_count?: number;
-  student_count?: number;
+  learner_count?: number;
   program_count?: number;
   course_count?: number;
   programs_offered?: Program[];
@@ -99,7 +99,7 @@ export const departmentService = {
           degree_level,
           description,
           status,
-          students!students_program_id_fkey (
+          learners!learners_program_id_fkey (
             id,
             is_deleted,
             approval_status
@@ -139,20 +139,20 @@ export const departmentService = {
           status: program.status
         }));
 
-      // Calculate student count via programs only
-      const studentCount = (dept.programs || [])
+      // Calculate learner count via programs only
+      const learnerCount = (dept.programs || [])
         .filter((program: any) => program.status === 'active')
         .reduce((total: number, program: any) => {
-          const activeStudents = (program.students || []).filter((student: any) => 
-            !student.is_deleted && student.approval_status !== 'rejected'
+          const activelearners = (program.learners || []).filter((learner: any) => 
+            !learner.is_deleted && learner.approval_status !== 'rejected'
           );
-          return total + activeStudents.length;
+          return total + activelearners.length;
         }, 0);
 
       return {
         ...dept,
         faculty_count: activeAssignments.length || 0,
-        student_count: studentCount,
+        learner_count: learnerCount,
         program_count: programs.length,
         course_count: 0, // TODO: Implement course count
         programs_offered: programs,
@@ -174,7 +174,7 @@ export const departmentService = {
       .select(`
         *,
         faculty:faculty(count),
-        students:students(count),
+        learners:learners(count),
         programs:programs(count),
         curriculum_courses:curriculum_courses(count)
       `)
@@ -187,7 +187,7 @@ export const departmentService = {
     return {
       ...data,
       faculty_count: data.faculty?.[0]?.count || 0,
-      student_count: data.students?.[0]?.count || 0,
+      learner_count: data.learners?.[0]?.count || 0,
       program_count: data.programs?.[0]?.count || 0,
       course_count: data.curriculum_courses?.[0]?.count || 0,
     };
@@ -493,10 +493,10 @@ export const departmentService = {
     }
   },
 
-  // Get department students
-  async getDepartmentStudents(departmentId: string) {
+  // Get department learners
+  async getDepartmentlearners(departmentId: string) {
     const { data, error } = await supabase
-      .from('students')
+      .from('learners')
       .select(`
         id,
         roll_number,
@@ -506,7 +506,7 @@ export const departmentService = {
         semester,
         approval_status,
         is_deleted,
-        program:programs!students_program_id_fkey(
+        program:programs!learners_program_id_fkey(
           id,
           name, 
           code,
@@ -570,7 +570,7 @@ export const departmentService = {
       .select(`
         *,
         faculty:faculty(count),
-        students:students(count),
+        learners:learners(count),
         programs:programs(count),
         curriculum_courses:curriculum_courses(count)
       `)
@@ -583,7 +583,7 @@ export const departmentService = {
     return (data || []).map(dept => ({
       ...dept,
       faculty_count: dept.faculty?.[0]?.count || 0,
-      student_count: dept.students?.[0]?.count || 0,
+      learner_count: dept.learners?.[0]?.count || 0,
       program_count: dept.programs?.[0]?.count || 0,
       course_count: dept.curriculum_courses?.[0]?.count || 0,
     }));
@@ -620,10 +620,10 @@ export const departmentService = {
     return { isValid: true };
   },
 
-  // Add students to department
-  async addStudentsToDepartment(
+  // Add learners to department
+  async addlearnersToDepartment(
     departmentId: string,
-    students: Array<{
+    learners: Array<{
       rollNumber: string;
       firstName: string;
       lastName: string;
@@ -644,15 +644,15 @@ export const departmentService = {
 
     if (deptError) throw deptError;
 
-    // Prepare student data for insertion
-    const studentsData = students.map(student => ({
-      roll_number: student.rollNumber,
-      first_name: student.firstName,
-      last_name: student.lastName,
-      email: student.email,
-      phone: student.phone || null,
-      semester: student.semester || 1,
-      program: student.program || null,
+    // Prepare learner data for insertion
+    const learnersData = learners.map(learner => ({
+      roll_number: learner.rollNumber,
+      first_name: learner.firstName,
+      last_name: learner.lastName,
+      email: learner.email,
+      phone: learner.phone || null,
+      semester: learner.semester || 1,
+      program: learner.program || null,
       department_id: departmentId,
       college_id: department.college_id,
       status: 'active',
@@ -661,8 +661,8 @@ export const departmentService = {
     }));
 
     const { error } = await supabase
-      .from('students')
-      .insert(studentsData);
+      .from('learners')
+      .insert(learnersData);
 
     if (error) throw error;
   },

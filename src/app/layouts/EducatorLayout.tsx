@@ -2,15 +2,15 @@ import React, { useState, useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { Header } from "@/features/educator";
 import { Sidebar } from '@/features/educator';
-import { StudentProfileDrawer } from "@/features/student-profile";
+import { LearnerProfileDrawer } from "@/features/learner-profile";
 import { FloatingEducatorAIButton } from '@/features/educator';
 import { useEducatorSchool } from '@/features/educator';
 
 const EducatorLayout: React.FC = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  const [showStudentDrawer, setShowStudentDrawer] = useState(false);
+  const [selectedLearner, setSelectedLearner] = useState<any>(null);
+  const [showLearnerDrawer, setShowLearnerDrawer] = useState(false);
   const location = useLocation();
 
   // Get educator information to determine type
@@ -24,14 +24,14 @@ const EducatorLayout: React.FC = () => {
     setShowMobileMenu(false);
   };
 
-  const handleViewProfile = (student: any) => {
-    setSelectedStudent(student);
-    setShowStudentDrawer(true);
+  const handleViewProfile = (learner: any) => {
+    setSelectedLearner(learner);
+    setShowLearnerDrawer(true);
   };
 
-  const handleCloseStudentDrawer = () => {
-    setShowStudentDrawer(false);
-    setSelectedStudent(null);
+  const handleCloseLearnerDrawer = () => {
+    setShowLearnerDrawer(false);
+    setSelectedLearner(null);
   };
 
   return (
@@ -91,11 +91,11 @@ const EducatorLayout: React.FC = () => {
         </main>
       </div>
 
-      {/* Student Drawer */}
-      <StudentProfileDrawer
-        student={selectedStudent}
-        isOpen={showStudentDrawer}
-        onClose={handleCloseStudentDrawer}
+      {/* Learner Drawer */}
+      <LearnerProfileDrawer
+        learner={selectedLearner}
+        isOpen={showLearnerDrawer}
+        onClose={handleCloseLearnerDrawer}
         userRole={educatorType === 'school' ? 'school_educator' : 'college_educator'}
         schoolId={educatorSchool?.id}
         collegeId={educatorCollege?.id}

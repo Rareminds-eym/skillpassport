@@ -133,50 +133,50 @@ export const getPipelineCandidatesByStage = async (opportunityId: string, stage:
       return { data: [], error: null };
     }
 
-    // Get unique student IDs
-    const studentIds = [...new Set(pipelineCandidates.map(pc => pc.student_id))];
+    // Get unique learner IDs
+    const learnerIds = [...new Set(pipelineCandidates.map(pc => pc.learner_id))];
 
-    // Fetch student data with relational tables
-    // Note: pipeline_candidates.student_id references students.id (not user_id)
-    const { data: students, error: studentsError } = await supabase
-      .from('students')
+    // Fetch learner data with relational tables
+    // Note: pipeline_candidates.learner_id references learners.id (not user_id)
+    const { data: learners, error: learnersError } = await supabase
+      .from('learners')
       .select(`
         user_id, id, name, email, contact_number, 
         college_school_name, university, branch_field, course_name, district_name,
-        skills!skills_student_id_fkey(id, name, enabled, approval_status)
+        skills!skills_learner_id_fkey(id, name, enabled, approval_status)
       `)
-      .in('id', studentIds);
+      .in('id', learnerIds);
 
-    if (studentsError) {
-      logger.error('Failed to fetch student data', studentsError);       
-      // Continue without student data rather than failing completely
+    if (learnersError) {
+      logger.error('Failed to fetch learner data', learnersError);       
+      // Continue without learner data rather than failing completely
     }
 
-    // Create a map of students by id for quick lookup
-    const studentsMap = new Map();
-    students?.forEach(student => {
+    // Create a map of learners by id for quick lookup
+    const learnersMap = new Map();
+    learners?.forEach(learner => {
       // Filter skills to only enabled ones (include all approval statuses)
-      const enabledSkills = Array.isArray(student.skills) 
-        ? student.skills
+      const enabledSkills = Array.isArray(learner.skills) 
+        ? learner.skills
             .filter((s: any) => s.enabled)
             .map((s: any) => s.name)
         : [];
       
-      studentsMap.set(student.id, {
-        ...student,
+      learnersMap.set(learner.id, {
+        ...learner,
         // Map actual DB columns to UI-friendly names
-        dept: student.branch_field || student.course_name,
-        college: student.college_school_name || student.university,
-        location: student.district_name,
-        ai_score_overall: 0, // AI score not stored in students table directly
+        dept: learner.branch_field || learner.course_name,
+        college: learner.college_school_name || learner.university,
+        location: learner.district_name,
+        ai_score_overall: 0, // AI score not stored in learners table directly
         skills: enabledSkills
       });
     });
 
-    // Combine pipeline candidates with student data
+    // Combine pipeline candidates with learner data
     const data = pipelineCandidates.map(candidate => ({
       ...candidate,
-      students: studentsMap.get(candidate.student_id) || null
+      learners: learnersMap.get(candidate.learner_id) || null
     }));
 
     return { data, error: null };
@@ -300,62 +300,62 @@ export const getPipelineCandidatesWithFilters = async (
       return { data: [], error: null };
     }
 
-    // Get unique student IDs
-    const studentIds = [...new Set(pipelineCandidates.map((pc: any) => pc.student_id))];
+    // Get unique learner IDs
+    const learnerIds = [...new Set(pipelineCandidates.map((pc: any) => pc.learner_id))];
 
-    // Fetch student data with relational tables
-    // Note: pipeline_candidates.student_id references students.id (not user_id)
-    const { data: students, error: studentsError } = await supabase
-      .from('students')
+    // Fetch learner data with relational tables
+    // Note: pipeline_candidates.learner_id references learners.id (not user_id)
+    const { data: learners, error: learnersError } = await supabase
+      .from('learners')
       .select(`
         user_id, id, name, email, contact_number, 
         college_school_name, university, branch_field, course_name, district_name,
-        skills!skills_student_id_fkey(id, name, enabled, approval_status)
+        skills!skills_learner_id_fkey(id, name, enabled, approval_status)
       `)
-      .in('id', studentIds);
+      .in('id', learnerIds);
 
-    if (studentsError) {
-      logger.error('Failed to fetch student data', studentsError);
+    if (learnersError) {
+      logger.error('Failed to fetch learner data', learnersError);
     }
 
-    // Create a map of students by id for quick lookup
-    const studentsMap = new Map();
-    students?.forEach(student => {
+    // Create a map of learners by id for quick lookup
+    const learnersMap = new Map();
+    learners?.forEach(learner => {
       // Filter skills to only enabled ones (include all approval statuses)
-      const enabledSkills = Array.isArray(student.skills) 
-        ? student.skills
+      const enabledSkills = Array.isArray(learner.skills) 
+        ? learner.skills
             .filter((s: any) => s.enabled)
             .map((s: any) => s.name)
         : [];
       
-      studentsMap.set(student.id, {
-        ...student,
+      learnersMap.set(learner.id, {
+        ...learner,
         // Map actual DB columns to UI-friendly names
-        dept: student.branch_field || student.course_name,
-        college: student.college_school_name || student.university,
-        location: student.district_name,
-        ai_score_overall: 0, // AI score not stored in students table directly
+        dept: learner.branch_field || learner.course_name,
+        college: learner.college_school_name || learner.university,
+        location: learner.district_name,
+        ai_score_overall: 0, // AI score not stored in learners table directly
         skills: enabledSkills
       });
     });
 
-    // Combine pipeline candidates with student data
+    // Combine pipeline candidates with learner data
     let filteredData = pipelineCandidates.map((candidate: any) => {
-      const student = studentsMap.get(candidate.student_id);
+      const learner = learnersMap.get(candidate.learner_id);
       
       return {
         ...candidate,
-        students: student || null
+        learners: learner || null
       };
     }) || [];
 
-    // Apply client-side filters for student data (skills, department, location, AI score)
-    // Filter by skills (check if student has any of the selected skills)
+    // Apply client-side filters for learner data (skills, department, location, AI score)
+    // Filter by skills (check if learner has any of the selected skills)
     if (filters.skills && filters.skills.length > 0) {
       filteredData = filteredData.filter(candidate => {
-        const studentSkills = candidate.students?.skills || [];
+        const learnerSkills = candidate.learners?.skills || [];
         return filters.skills!.some(skill => 
-          studentSkills.some((s: string) => s.toLowerCase().includes(skill.toLowerCase()))
+          learnerSkills.some((s: string) => s.toLowerCase().includes(skill.toLowerCase()))
         );
       });
     }
@@ -363,7 +363,7 @@ export const getPipelineCandidatesWithFilters = async (
     // Filter by department
     if (filters.departments && filters.departments.length > 0) {
       filteredData = filteredData.filter(candidate => {
-        const dept = candidate.students?.dept || '';
+        const dept = candidate.learners?.dept || '';
         return filters.departments!.includes(dept);
       });
     }
@@ -371,7 +371,7 @@ export const getPipelineCandidatesWithFilters = async (
     // Filter by location
     if (filters.locations && filters.locations.length > 0) {
       filteredData = filteredData.filter(candidate => {
-        const location = candidate.students?.location || '';
+        const location = candidate.learners?.location || '';
         return filters.locations!.includes(location);
       });
     }
@@ -379,14 +379,14 @@ export const getPipelineCandidatesWithFilters = async (
     // Filter by AI score range
     if (filters.aiScoreRange && (filters.aiScoreRange.min !== undefined || filters.aiScoreRange.max !== undefined)) {
       filteredData = filteredData.filter(candidate => {
-        const score = candidate.students?.ai_score_overall || 0;
+        const score = candidate.learners?.ai_score_overall || 0;
         const meetsMin = filters.aiScoreRange!.min !== undefined ? score >= filters.aiScoreRange!.min : true;
         const meetsMax = filters.aiScoreRange!.max !== undefined ? score <= filters.aiScoreRange!.max : true;
         return meetsMin && meetsMax;
       });
     }
 
-    // Apply client-side sorting for student-related fields
+    // Apply client-side sorting for learner-related fields
     if (sortOptions && ['ai_score', 'department', 'location'].includes(sortOptions.field)) {
       const { field, direction } = sortOptions;
       const multiplier = direction === 'asc' ? 1 : -1;
@@ -397,18 +397,18 @@ export const getPipelineCandidatesWithFilters = async (
 
         switch (field) {
           case 'ai_score':
-            aValue = a.students?.ai_score_overall || 0;
-            bValue = b.students?.ai_score_overall || 0;
+            aValue = a.learners?.ai_score_overall || 0;
+            bValue = b.learners?.ai_score_overall || 0;
             return (aValue - bValue) * multiplier;
           
           case 'department':
-            aValue = (a.students?.dept || '').toLowerCase();
-            bValue = (b.students?.dept || '').toLowerCase();
+            aValue = (a.learners?.dept || '').toLowerCase();
+            bValue = (b.learners?.dept || '').toLowerCase();
             return aValue.localeCompare(bValue) * multiplier;
           
           case 'location':
-            aValue = (a.students?.location || '').toLowerCase();
-            bValue = (b.students?.location || '').toLowerCase();
+            aValue = (a.learners?.location || '').toLowerCase();
+            bValue = (b.learners?.location || '').toLowerCase();
             return aValue.localeCompare(bValue) * multiplier;
           
           default:
@@ -461,7 +461,7 @@ export const getAllPipelineCandidatesByStage = async (opportunityId: string) => 
  */
 export const addCandidateToPipeline = async (pipelineData: {
   opportunity_id: string | number;
-  student_id: string;
+  learner_id: string;
   candidate_name: string;
   candidate_email?: string;
   candidate_phone?: string;
@@ -480,7 +480,7 @@ export const addCandidateToPipeline = async (pipelineData: {
       .from('pipeline_candidates')
       .select('id, stage, status')
       .eq('opportunity_id', opportunityIdStr)
-      .eq('student_id', pipelineData.student_id)
+      .eq('learner_id', pipelineData.learner_id)
       .maybeSingle();
 
     if (checkError) {
@@ -521,20 +521,20 @@ export const addCandidateToPipeline = async (pipelineData: {
       }
     }
     
-    // Fetch student's AI score and employability data from relational tables
+    // Fetch learner's AI score and employability data from relational tables
     let aiScore = null;
     let employabilityScore = null;
     
     try {
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
+      const { data: learnerData, error: learnerError } = await supabase
+        .from('learners')
         .select('ai_score_overall, employability_score')
-        .eq('id', pipelineData.student_id)
+        .eq('id', pipelineData.learner_id)
         .single();
       
-      if (!studentError && studentData) {
-        aiScore = studentData.ai_score_overall || null;
-        employabilityScore = studentData.employability_score || null;
+      if (!learnerError && learnerData) {
+        aiScore = learnerData.ai_score_overall || null;
+        employabilityScore = learnerData.employability_score || null;
       }
     } catch (e) {
     }
@@ -554,7 +554,7 @@ export const addCandidateToPipeline = async (pipelineData: {
       .from('pipeline_candidates')
       .insert([{
         opportunity_id: opportunityIdStr,
-        student_id: pipelineData.student_id,
+        learner_id: pipelineData.learner_id,
         candidate_name: pipelineData.candidate_name,
         candidate_email: pipelineData.candidate_email,
         candidate_phone: pipelineData.candidate_phone,
@@ -595,13 +595,13 @@ export const addCandidateToPipeline = async (pipelineData: {
     };
 
     const applicationStatus = stageToStatusMap[stage];
-    if (applicationStatus && pipelineData.student_id && opportunityIdStr) {
+    if (applicationStatus && pipelineData.learner_id && opportunityIdStr) {
       try {
         // Check if applied_jobs record exists
         const { data: existingApplication } = await supabase
           .from('applied_jobs')
           .select('id')
-          .eq('student_id', pipelineData.student_id)
+          .eq('learner_id', pipelineData.learner_id)
           .eq('opportunity_id', opportunityIdStr)
           .maybeSingle();
 
@@ -630,7 +630,7 @@ export const addCandidateToPipeline = async (pipelineData: {
         from_stage: null,
         to_stage: data.stage,
         performed_by: pipelineData.added_by,
-        student_id: pipelineData.student_id,
+        learner_id: pipelineData.learner_id,
         activity_details: {
           ai_score: aiScore,
           employability_score: employabilityScore
@@ -659,10 +659,10 @@ export const moveCandidateToStage = async (
   
   
   try {
-    // Get current candidate data with student info
+    // Get current candidate data with learner info
     const { data: currentData, error: fetchError } = await supabase
       .from('pipeline_candidates')
-      .select('stage, student_id, candidate_name, candidate_email, opportunity_id')
+      .select('stage, learner_id, candidate_name, candidate_email, opportunity_id')
       .eq('id', candidateIdStr)
       .single();
 
@@ -720,7 +720,7 @@ export const moveCandidateToStage = async (
     };
 
     const applicationStatus = stageToStatusMap[newStage];
-    if (applicationStatus && currentData.student_id && currentData.opportunity_id) {
+    if (applicationStatus && currentData.learner_id && currentData.opportunity_id) {
       try {
         const updateData: any = {
           application_status: applicationStatus,
@@ -735,7 +735,7 @@ export const moveCandidateToStage = async (
         await supabase
           .from('applied_jobs')
           .update(updateData)
-          .eq('student_id', currentData.student_id)
+          .eq('learner_id', currentData.learner_id)
           .eq('opportunity_id', currentData.opportunity_id);
       } catch (syncError) {
         logger.error('Failed to sync candidate stage change with applied_jobs table', syncError);
@@ -752,7 +752,7 @@ export const moveCandidateToStage = async (
       to_stage: newStage,
       activity_details: notes ? { notes } : null,
       performed_by: performedBy,
-      student_id: currentData.student_id
+      learner_id: currentData.learner_id
     });
 
     return { data, error: null };
@@ -826,7 +826,7 @@ export const rejectCandidate = async (
       to_stage: 'rejected',
       activity_details: { reason: rejectionReason },
       performed_by: performedBy,
-      student_id: data.student_id
+      learner_id: data.learner_id
     });
 
     return { data, error: null };
@@ -891,7 +891,7 @@ export const assignCandidate = async (
       activity_type: 'note_added',
       activity_details: { assigned_to: assignedTo },
       performed_by: performedBy,
-      student_id: data.student_id
+      learner_id: data.learner_id
     });
 
     return { data, error: null };
@@ -933,7 +933,7 @@ export const logPipelineActivity = async (activityData: {
   to_stage?: string;
   activity_details?: any;
   performed_by?: string;
-  student_id?: string;
+  learner_id?: string;
 }) => {
   try {
     const { data, error } = await supabase

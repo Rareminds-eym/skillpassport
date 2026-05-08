@@ -1,7 +1,7 @@
 // Hooks
 export { useMessages } from './useMessages';
 export type { UseMessagesOptions, UseMessagesReturn } from './useMessages';
-export { useStudentMessages } from './useStudentMessages';
+export { useLearnerMessages } from './useLearnerMessages';
 export { useEducatorMessages } from './useEducatorMessages';
 export { useRecruiterMessages } from './useRecruiterMessages';
 export { useAdminMessages } from './useAdminMessages';

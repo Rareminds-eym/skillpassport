@@ -1,11 +1,11 @@
 /**
- * Portfolio Service - Fetches student data from relational tables
+ * Portfolio Service - Fetches learner data from relational tables
  * 
  * Uses proper database schema:
- * - students (main table with individual columns)
+ * - learners (main table with individual columns)
  * - skills (technical and soft skills)
  * - trainings (training programs)
- * - projects (student projects)
+ * - projects (learner projects)
  * - certificates (certifications)
  * - education (educational background)
  * - experience (work experience)
@@ -20,18 +20,18 @@ import { getLogger } from '@/shared/config/logging';
 const logger = getLogger('PortfolioService');
 
 /**
- * Fetch complete student portfolio data by email
- * @param {string} email - Student email
- * @returns {Promise<Object>} Complete student portfolio data
+ * Fetch complete learner portfolio data by email
+ * @param {string} email - Learner email
+ * @returns {Promise<Object>} Complete learner portfolio data
  */
-export const getStudentPortfolioByEmail = async (email) => {
+export const getlearnerPortfolioByEmail = async (email) => {
   try {
-    // First, get the student record to get their user_id
-    const { data: student, error: studentError } = await supabase
-      .from('students')
+    // First, get the learner record to get their user_id
+    const { data: learner, error: learnerError } = await supabase
+      .from('learners')
       .select(`
         *,
-        school:organizations!students_school_id_fkey (
+        school:organizations!learners_school_id_fkey (
           id,
           name,
           code,
@@ -39,7 +39,7 @@ export const getStudentPortfolioByEmail = async (email) => {
           state,
           organization_type
         ),
-        college:organizations!students_college_id_fkey (
+        college:organizations!learners_college_id_fkey (
           id,
           name,
           code,
@@ -47,7 +47,7 @@ export const getStudentPortfolioByEmail = async (email) => {
           state,
           organization_type
         ),
-        universityInfo:organizations!students_universityid_fkey (
+        universityInfo:organizations!learners_universityid_fkey (
           id,
           name,
           code,
@@ -72,41 +72,41 @@ export const getStudentPortfolioByEmail = async (email) => {
       .eq('email', email)
       .maybeSingle();
 
-    if (studentError) {
-      return { success: false, error: studentError.message };
+    if (learnerError) {
+      return { success: false, error: learnerError.message };
     }
 
-    if (!student) {
-      return { success: false, error: 'Student not found' };
+    if (!learner) {
+      return { success: false, error: 'Learner not found' };
     }
 
     // If school relationship didn't load but school_id exists, fetch it separately
-    if (student.school_id && !student.school) {
+    if (learner.school_id && !learner.school) {
       const { data: schoolData, error: schoolError } = await supabase
         .from('organizations')
         .select('id, name, code, city, state, organization_type')
-        .eq('id', student.school_id)
+        .eq('id', learner.school_id)
         .single();
       
       if (!schoolError && schoolData) {
-        student.school = schoolData;
+        learner.school = schoolData;
       }
     }
 
     // If college relationship didn't load but college_id exists, fetch it separately
-    if (student.college_id && !student.college) {
+    if (learner.college_id && !learner.college) {
       const { data: collegeData, error: collegeError } = await supabase
         .from('organizations')
         .select('id, name, code, city, state, organization_type')
-        .eq('id', student.college_id)
+        .eq('id', learner.college_id)
         .single();
       
       if (!collegeError && collegeData) {
-        student.college = collegeData;
+        learner.college = collegeData;
       }
     }
 
-    const userId = student.id;
+    const userId = learner.id;
 
     // Fetch all related data in parallel for performance
     const [
@@ -121,7 +121,7 @@ export const getStudentPortfolioByEmail = async (email) => {
       supabase
         .from('skills')
         .select('*')
-        .eq('student_id', userId)
+        .eq('learner_id', userId)
         .in('approval_status', ['verified', 'approved'])
         .eq('enabled', true)
         .order('created_at', { ascending: false }),
@@ -131,7 +131,7 @@ export const getStudentPortfolioByEmail = async (email) => {
       supabase
         .from('trainings')
         .select('*')
-        .eq('student_id', userId)
+        .eq('learner_id', userId)
         .eq('enabled', true)
         .in('approval_status', ['verified', 'approved'])
         .order('start_date', { ascending: false }),
@@ -140,7 +140,7 @@ export const getStudentPortfolioByEmail = async (email) => {
       supabase
         .from('projects')
         .select('*')
-        .eq('student_id', userId)
+        .eq('learner_id', userId)
         .eq('enabled', true)
         .in('approval_status', ['verified', 'approved'])
         .order('start_date', { ascending: false }),
@@ -149,7 +149,7 @@ export const getStudentPortfolioByEmail = async (email) => {
       supabase
         .from('certificates')
         .select('*')
-        .eq('student_id', userId)
+        .eq('learner_id', userId)
         .eq('enabled', true)
         .in('approval_status', ['verified', 'approved'])
         .order('issued_on', { ascending: false }),
@@ -158,7 +158,7 @@ export const getStudentPortfolioByEmail = async (email) => {
       supabase
         .from('education')
         .select('*')
-        .eq('student_id', userId)
+        .eq('learner_id', userId)
         .eq('enabled', true)
         .in('approval_status', ['verified', 'approved'])
         .order('year_of_passing', { ascending: false }),
@@ -167,15 +167,15 @@ export const getStudentPortfolioByEmail = async (email) => {
       supabase
         .from('experience')
         .select('*')
-        .eq('student_id', userId)
+        .eq('learner_id', userId)
         .eq('enabled', true)
         .in('approval_status', ['verified', 'approved'])
         .order('start_date', { ascending: false })
     ]);
 
-    // Transform the data to match the Student type interface
+    // Transform the data to match the Learner type interface
     const portfolioData = transformToPortfolioFormat(
-      student,
+      learner,
       skillsResult.data || [],
       trainingsResult.data || [],
       projectsResult.data || [],
@@ -187,16 +187,16 @@ export const getStudentPortfolioByEmail = async (email) => {
     return { success: true, data: portfolioData };
 
   } catch (error) {
-    logger.error('Exception in getStudentPortfolioByEmail', error as Error);
+    logger.error('Exception in getlearnerPortfolioByEmail', error as Error);
     return { success: false, error: error.message };
   }
 };
 
 /**
- * Transform database records to Student interface format
+ * Transform database records to Learner interface format
  */
 function transformToPortfolioFormat(
-  student,
+  learner,
   skills,
   trainings,
   projects,
@@ -282,7 +282,7 @@ function transformToPortfolioFormat(
     id: edu.id,
     institution: edu.university || 'N/A',
     degree: edu.degree || 'N/A',
-    field: edu.department || student.branch_field || 'N/A',
+    field: edu.department || learner.branch_field || 'N/A',
     startDate: '', // Not in current schema
     endDate: edu.year_of_passing,
     grade: edu.cgpa,
@@ -308,11 +308,11 @@ function transformToPortfolioFormat(
 
   // Build the profile object
   const profile = {
-    email: student.email,
-    name: student.name,
-    passportId: student.registration_number ? `SP-${student.registration_number}` : `SP-${student.student_id || '0000'}`,
-    profileImage: student.profilePicture || generateAvatar(student.name),
-    bio: student.bio || '',
+    email: learner.email,
+    name: learner.name,
+    passportId: learner.registration_number ? `SP-${learner.registration_number}` : `SP-${learner.learner_id || '0000'}`,
+    profileImage: learner.profilePicture || generateAvatar(learner.name),
+    bio: learner.bio || '',
     skills: softSkills, // For backward compatibility
     technicalSkills: technicalSkills,
     projects: formattedProjects,
@@ -320,89 +320,89 @@ function transformToPortfolioFormat(
     experience: formattedExperience,
     certifications: formattedCertificates,
     training: formattedTrainings,
-    languages: student.languages || [],
-    hobbies: student.hobbies || [],
-    interests: student.interests || [],
+    languages: learner.languages || [],
+    hobbies: learner.hobbies || [],
+    interests: learner.interests || [],
     achievements: [],
     
     // Additional profile info
-    phone: student.contactNumber || student.contact_number,
-    age: student.age || calculateAge(student.dateOfBirth || student.date_of_birth),
-    dateOfBirth: student.dateOfBirth || student.date_of_birth,
-    gender: student.gender,
-    bloodGroup: student.bloodGroup,
+    phone: learner.contactNumber || learner.contact_number,
+    age: learner.age || calculateAge(learner.dateOfBirth || learner.date_of_birth),
+    dateOfBirth: learner.dateOfBirth || learner.date_of_birth,
+    gender: learner.gender,
+    bloodGroup: learner.bloodGroup,
     
     // Address
-    address: student.address,
-    city: student.city,
-    state: student.state,
-    district: student.district_name,
-    country: student.country,
-    pincode: student.pincode,
+    address: learner.address,
+    city: learner.city,
+    state: learner.state,
+    district: learner.district_name,
+    country: learner.country,
+    pincode: learner.pincode,
     
     // Academic
-    university: student.university || student.university_main,
-    college: student.college_school_name,
-    department: student.branch_field,
-    registrationNumber: student.registration_number,
-    enrollmentNumber: student.enrollmentNumber,
-    currentCgpa: student.currentCgpa,
-    expectedGraduationDate: student.expectedGraduationDate,
+    university: learner.university || learner.university_main,
+    college: learner.college_school_name,
+    department: learner.branch_field,
+    registrationNumber: learner.registration_number,
+    enrollmentNumber: learner.enrollmentNumber,
+    currentCgpa: learner.currentCgpa,
+    expectedGraduationDate: learner.expectedGraduationDate,
     
     // Guardian
-    guardianName: student.guardianName,
-    guardianPhone: student.guardianPhone,
-    guardianEmail: student.guardianEmail,
-    guardianRelation: student.guardianRelation,
+    guardianName: learner.guardianName,
+    guardianPhone: learner.guardianPhone,
+    guardianEmail: learner.guardianEmail,
+    guardianRelation: learner.guardianRelation,
     
     // Social links
-    github_link: student.github_link,
-    linkedin_link: student.linkedin_link,
-    twitter_link: student.twitter_link,
-    facebook_link: student.facebook_link,
-    instagram_link: student.instagram_link,
-    portfolio_link: student.portfolio_link,
-    other_social_links: student.other_social_links || [],
+    github_link: learner.github_link,
+    linkedin_link: learner.linkedin_link,
+    twitter_link: learner.twitter_link,
+    facebook_link: learner.facebook_link,
+    instagram_link: learner.instagram_link,
+    portfolio_link: learner.portfolio_link,
+    other_social_links: learner.other_social_links || [],
     
     // Resume
-    resumeUrl: student.resumeUrl,
+    resumeUrl: learner.resumeUrl,
     
     // School/College info
-    school: student.schools,
-    universityCollege: student.university_colleges,
-    universityInfo: student.universities
+    school: learner.schools,
+    universityCollege: learner.university_colleges,
+    universityInfo: learner.universities
   };
 
-  // Return the complete student object
+  // Return the complete learner object
   return {
-    id: student.id,
-    student_id: student.student_id,
-    universityId: student.universityId,
-    email: student.email,
-    name: student.name,
+    id: learner.id,
+    learner_id: learner.learner_id,
+    universityId: learner.universityId,
+    email: learner.email,
+    name: learner.name,
     age: profile.age,
-    date_of_birth: student.date_of_birth,
-    dateOfBirth: student.dateOfBirth,
-    contact_number: student.contact_number,
-    contactNumber: student.contactNumber,
-    alternate_number: student.alternate_number,
-    district_name: student.district_name,
-    university: student.university,
-    branch_field: student.branch_field,
-    college_school_name: student.college_school_name,
-    registration_number: student.registration_number,
-    github_link: student.github_link,
-    linkedin_link: student.linkedin_link,
-    twitter_link: student.twitter_link,
-    facebook_link: student.facebook_link,
-    instagram_link: student.instagram_link,
-    portfolio_link: student.portfolio_link,
-    other_social_links: student.other_social_links || [],
-    approval_status: student.approval_status,
-    created_at: student.created_at,
-    updated_at: student.updated_at,
-    createdAt: student.created_at,
-    updatedAt: student.updated_at,
+    date_of_birth: learner.date_of_birth,
+    dateOfBirth: learner.dateOfBirth,
+    contact_number: learner.contact_number,
+    contactNumber: learner.contactNumber,
+    alternate_number: learner.alternate_number,
+    district_name: learner.district_name,
+    university: learner.university,
+    branch_field: learner.branch_field,
+    college_school_name: learner.college_school_name,
+    registration_number: learner.registration_number,
+    github_link: learner.github_link,
+    linkedin_link: learner.linkedin_link,
+    twitter_link: learner.twitter_link,
+    facebook_link: learner.facebook_link,
+    instagram_link: learner.instagram_link,
+    portfolio_link: learner.portfolio_link,
+    other_social_links: learner.other_social_links || [],
+    approval_status: learner.approval_status,
+    created_at: learner.created_at,
+    updated_at: learner.updated_at,
+    createdAt: learner.created_at,
+    updatedAt: learner.updated_at,
     
     // Nested profile object (for backward compatibility with existing components)
     profile: profile,
@@ -417,30 +417,30 @@ function transformToPortfolioFormat(
     certifications: formattedCertificates,
     education: formattedEducation,
     experience: formattedExperience,
-    languages: student.languages || [],
-    hobbies: student.hobbies || [],
-    interests: student.interests || [],
+    languages: learner.languages || [],
+    hobbies: learner.hobbies || [],
+    interests: learner.interests || [],
     
     // School/College relationships
-    school_id: student.school_id,
-    university_college_id: student.university_college_id,
-    school: student.schools,
-    universityCollege: student.university_colleges,
-    universityInfo: student.universities,
+    school_id: learner.school_id,
+    university_college_id: learner.university_college_id,
+    school: learner.schools,
+    universityCollege: learner.university_colleges,
+    universityInfo: learner.universities,
 
-    // School student fields
-    student_type: student.student_type,
-    grade: student.grade,
-    section: student.section,
+    // School learner fields
+    learner_type: learner.learner_type,
+    grade: learner.grade,
+    section: learner.section,
 
     // Location fields
-    city: student.city,
-    state: student.state,
-    country: student.country,
+    city: learner.city,
+    state: learner.state,
+    country: learner.country,
 
     // Metadata
-    user_id: student.user_id,
-    metadata: student.metadata
+    user_id: learner.user_id,
+    metadata: learner.metadata
   };
 }
 
@@ -480,7 +480,7 @@ function calculateAge(dateOfBirth) {
  * Helper: Generate avatar URL from name
  */
 function generateAvatar(name) {
-  if (!name) return `https://ui-avatars.com/api/?name=Student&background=random`;
+  if (!name) return `https://ui-avatars.com/api/?name=Learner&background=random`;
   const initials = name.split(' ').map(n => n[0]).join('');
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff`;
 }

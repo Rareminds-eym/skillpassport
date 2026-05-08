@@ -16,7 +16,7 @@ export const getSubscriptionRouteDecision = (user, subscriptionData) => {
   if (!user) {
     return {
       shouldRedirect: false,
-      targetRoute: '/subscription/plans?type=student&mode=purchase',
+      targetRoute: '/subscription/plans?type=learner&mode=purchase',
       reason: 'not_authenticated',
       canAccessManage: false,
       canAccessPayment: true,
@@ -28,7 +28,7 @@ export const getSubscriptionRouteDecision = (user, subscriptionData) => {
   if (!subscriptionData) {
     return {
       shouldRedirect: false,
-      targetRoute: '/subscription/plans?type=student&mode=purchase',
+      targetRoute: '/subscription/plans?type=learner&mode=purchase',
       reason: 'no_subscription',
       canAccessManage: false,
       canAccessPayment: true,
@@ -51,7 +51,7 @@ export const getSubscriptionRouteDecision = (user, subscriptionData) => {
   // User has expired/cancelled subscription
   return {
     shouldRedirect: false,
-    targetRoute: '/subscription/plans?type=student&mode=renew',
+    targetRoute: '/subscription/plans?type=learner&mode=renew',
     reason: 'expired_subscription',
     canAccessManage: true, // Can view past subscription
     canAccessPayment: true,

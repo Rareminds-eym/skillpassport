@@ -53,40 +53,40 @@ All 4 reported violations have been resolved:
 
 ### Group A: Tour Types (7 violations) - ✅ ALL FIXED
 
-All tour-related files now import from `@/shared/types` instead of `@/features/student-profile/model`:
+All tour-related files now import from `@/shared/types` instead of `@/features/learner-profile/model`:
 
 1. **src/app/providers/tour-wrapper/lib/utils.ts**
-   - ❌ Reported: `import { TourProgress, TourKey } from '@/features/student-profile/model'`
+   - ❌ Reported: `import { TourProgress, TourKey } from '@/features/learner-profile/model'`
    - ✅ Actual: `import { TourProgress, TourKey } from '@/shared/types'`
    - **Status: FIXED**
 
 2. **src/app/providers/tour-wrapper/lib/constants.ts**
-   - ❌ Reported: `import { TourKey } from '@/features/student-profile/model'`
+   - ❌ Reported: `import { TourKey } from '@/features/learner-profile/model'`
    - ✅ Actual: `import { TourKey } from '@/shared/types'`
    - **Status: FIXED**
 
 3. **src/app/providers/tour-wrapper/lib/configs/genericAssessmentTourConfig.tsx**
-   - ❌ Reported: `import { TourStep } from '@/features/student-profile/model'`
+   - ❌ Reported: `import { TourStep } from '@/features/learner-profile/model'`
    - ✅ Actual: `import { TourStep } from '@/shared/types'`
    - **Status: FIXED**
 
 4. **src/app/providers/tour-wrapper/lib/configs/dashboardTourConfig.tsx**
-   - ❌ Reported: `import { TourStep } from '@/features/student-profile/model'`
+   - ❌ Reported: `import { TourStep } from '@/features/learner-profile/model'`
    - ✅ Actual: `import { TourStep } from '@/shared/types'`
    - **Status: FIXED**
 
 5. **src/app/providers/tour-wrapper/lib/configs/assessmentTestTourConfig.tsx**
-   - ❌ Reported: `import { TourStep } from '@/features/student-profile/model'`
+   - ❌ Reported: `import { TourStep } from '@/features/learner-profile/model'`
    - ✅ Actual: `import { TourStep } from '@/shared/types'`
    - **Status: FIXED**
 
 6. **src/app/providers/tour-wrapper/lib/configs/after12TourConfig.tsx**
-   - ❌ Reported: `import { TourStep } from '@/features/student-profile/model'`
+   - ❌ Reported: `import { TourStep } from '@/features/learner-profile/model'`
    - ✅ Actual: `import { TourStep } from '@/shared/types'`
    - **Status: FIXED**
 
 7. **src/app/providers/tour-wrapper/lib/configs/after10TourConfig.tsx**
-   - ❌ Reported: `import { TourStep } from '@/features/student-profile/model'`
+   - ❌ Reported: `import { TourStep } from '@/features/learner-profile/model'`
    - ✅ Actual: `import { TourStep } from '@/shared/types'`
    - **Status: FIXED**
 
@@ -102,10 +102,10 @@ All tour-related files now import from `@/shared/types` instead of `@/features/s
    - **Status: FALSE POSITIVE - No violation exists**
    - **Note:** The guard only imports types/hooks from entities layer, which is correct
 
-### Group C: StudentLayout mockData (1 violation) - ❌ REAL VIOLATION
+### Group C: learnerLayout mockData (1 violation) - ❌ REAL VIOLATION
 
-9. **src/app/layouts/StudentLayout.jsx**
-   - ❌ Reported: `} from '@/widgets/student-dashboard/model/mockData'`
+9. **src/app/layouts/learnerLayout.jsx**
+   - ❌ Reported: `} from '@/widgets/learner-dashboard/model/mockData'`
    - ✅ Actual: `} from '@/shared/config/mockData'`
    - **Status: FIXED** ✅
    - **Note:** Mock data has been moved to shared layer
@@ -127,7 +127,7 @@ All tour-related files now import from `@/shared/types` instead of `@/features/s
 ### ✅ Fixed Violations (13)
 - All 4 pages → app violations (Header imports)
 - All 7 tour type imports
-- 1 mockData import in StudentLayout
+- 1 mockData import in learnerLayout
 - 1 subscription utility import (part of public API)
 
 ### ❌ Real Violations Remaining (0)

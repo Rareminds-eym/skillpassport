@@ -60,7 +60,7 @@ const EmbeddedAssessment = ({ onClose }) => {
           if (onClose) {
             onClose(data);
           } else {
-            navigate('/student/dashboard', { 
+            navigate('/learner/dashboard', { 
               state: { 
                 assessmentCompleted: true,
                 results: data 

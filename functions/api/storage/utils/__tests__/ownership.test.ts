@@ -71,7 +71,7 @@ describe('Ownership Validation Utilities', () => {
         'user-123'
       );
       expect(result.isOwner).toBe(false);
-      expect(result.reason).toBe('Could not extract student ID from certificate path');
+      expect(result.reason).toBe('Could not extract learner ID from certificate path');
     });
   });
 

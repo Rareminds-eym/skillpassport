@@ -22,7 +22,7 @@ interface UseAuthReturn {
 
   // Role checks
   hasRole: (requiredRole: string) => boolean;
-  isStudent: () => boolean;
+  isLearner: () => boolean;
   isEducator: () => boolean;
   isRecruiter: () => boolean;
   isAdmin: () => boolean;
@@ -53,10 +53,10 @@ export const useAuth = (): UseAuthReturn => {
     [rolesList, role],
   );
 
-  const isStudent = useCallback(
+  const isLearner = useCallback(
     () =>
       rolesList.some(
-        (r) => r === 'student' || r === 'school_student' || r === 'college_student',
+        (r) => r === 'learner' || r === 'learner' || r === 'learner',
       ),
     [rolesList],
   );
@@ -107,7 +107,7 @@ export const useAuth = (): UseAuthReturn => {
     error,
     errorCode,
     hasRole,
-    isStudent,
+    isLearner,
     isEducator,
     isRecruiter,
     isAdmin,

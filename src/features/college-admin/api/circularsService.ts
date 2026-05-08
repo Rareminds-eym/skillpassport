@@ -9,7 +9,7 @@ export interface Circular {
   college_id?: string;
   title: string;
   content: string;
-  audience: 'all' | 'students' | 'faculty' | 'staff';
+  audience: 'all' | 'learners' | 'faculty' | 'staff';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   publish_date: string;
   expire_date?: string;
@@ -26,7 +26,7 @@ export interface Circular {
 export interface CreateCircularData {
   title: string;
   content: string;
-  audience: 'all' | 'students' | 'faculty' | 'staff';
+  audience: 'all' | 'learners' | 'faculty' | 'staff';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   publish_date: string;
   expire_date?: string;

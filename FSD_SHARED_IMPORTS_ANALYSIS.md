@@ -63,12 +63,12 @@ import { permissionService, UserPermissions, PermissionCheck } from '@/entities/
 
 ---
 
-### 5. shared/lib/hooks/useStudentRealtimeActivities.ts → @/entities/student (FIXED ✅)
+### 5. shared/lib/hooks/useStudentRealtimeActivities.ts → @/entities/learner (FIXED ✅)
 **File:** `src/shared/lib/hooks/useStudentRealtimeActivities.ts`
 **Line:** 9
 **Violation:**
 ```typescript
-import { getStudentRecentActivity } from '@/entities/student/api';
+import { getStudentRecentActivity } from '@/entities/learner/api';
 ```
 
 **Issue:** Shared layer hook is importing from entities layer.
@@ -77,7 +77,7 @@ import { getStudentRecentActivity } from '@/entities/student/api';
 
 ## CIRCULAR DEPENDENCY ISSUE
 
-### shared/lib/hooks ↔ entities/student
+### shared/lib/hooks ↔ entities/learner
 **Build Warning:**
 ```
 Export "useStudentRealtimeActivities" was reexported through module "src/shared/lib/hooks/index.ts" 
@@ -106,7 +106,7 @@ The `stores/` directory exists as a **top-level directory** outside the FSD stru
 
 2. **Circular Dependencies:**
    - `shared/lib/hooks` imports from `stores`
-   - `entities/student` imports from `stores`
+   - `entities/learner` imports from `stores`
    - `stores` exports hooks that should be in entities or features
    - Build warnings about circular chunks
 
@@ -189,9 +189,9 @@ Already documented in previous sections - migrate stores/ to appropriate FSD lay
 
 ### 3. useStudentRealtimeActivities - FIXED
 **Action Taken:**
-- Moved file from `src/shared/lib/hooks/useStudentRealtimeActivities.ts` to `src/entities/student/model/useStudentRealtimeActivities.ts`
-- Updated `src/shared/lib/hooks/index.ts` to re-export from `@/entities/student/model/useStudentRealtimeActivities` (for backward compatibility)
-- Added export to `src/entities/student/index.ts`
+- Moved file from `src/shared/lib/hooks/useStudentRealtimeActivities.ts` to `src/entities/learner/model/useStudentRealtimeActivities.ts`
+- Updated `src/shared/lib/hooks/index.ts` to re-export from `@/entities/learner/model/useStudentRealtimeActivities` (for backward compatibility)
+- Added export to `src/entities/learner/index.ts`
 
 **Status:** ✅ Complete - Now properly in entities layer with convenience re-export
 

@@ -59,7 +59,7 @@ interface EducatorProfile {
   // School data
   school_name?: string;
   // Calculated stats
-  total_students?: number;
+  total_learners?: number;
   verified_activities?: number;
   pending_activities?: number;
 }
@@ -343,7 +343,7 @@ const Profile = () => {
       school_name: schoolName,
       
       // Stats (placeholder for now)
-      total_students: 0,
+      total_learners: 0,
       verified_activities: 0,
       pending_activities: 0,
     };
@@ -372,7 +372,7 @@ const Profile = () => {
       date_of_joining: new Date().toISOString(),
       account_status: 'active',
       metadata: {},
-      total_students: 0,
+      total_learners: 0,
       verified_activities: 0,
       pending_activities: 0,
     });
@@ -610,7 +610,7 @@ const Profile = () => {
                 </div>
               </div>
               <div className="ml-4 flex-1">
-                <p className="text-sm font-medium text-gray-500">Total Students</p>
+                <p className="text-sm font-medium text-gray-500">Total Learners</p>
                 <div className="h-6 bg-gray-200 rounded w-12 mt-2"></div>
               </div>
             </div>
@@ -977,8 +977,8 @@ const Profile = () => {
               </div>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Total Students</p>
-              <p className="text-2xl font-semibold text-gray-900">{profile.total_students || 0}</p>
+              <p className="text-sm font-medium text-gray-500">Total Learners</p>
+              <p className="text-2xl font-semibold text-gray-900">{profile.total_learners || 0}</p>
             </div>
           </div>
         </div>

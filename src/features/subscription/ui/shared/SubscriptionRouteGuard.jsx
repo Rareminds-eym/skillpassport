@@ -23,9 +23,7 @@ function getManagePath(userRole) {
     school_educator: '/educator/subscription/manage',
     college_educator: '/educator/subscription/manage',
     recruiter: '/recruitment/subscription/manage',
-    student: '/student/subscription/manage',
-    school_student: '/student/subscription/manage',
-    college_student: '/student/subscription/manage',
+    learner: '/learner/subscription/manage',
   };
   return manageRoutes[userRole] || null; // Return null for unknown roles
 }
@@ -35,14 +33,14 @@ function getManagePath(userRole) {
  * This is more reliable than using the role from auth context
  */
 function getUserTypeFromPath(pathname) {
-  if (pathname.startsWith('/student')) return 'student';
+  if (pathname.startsWith('/learner')) return 'learner';
   if (pathname.startsWith('/recruitment')) return 'recruiter';
   if (pathname.startsWith('/educator')) return 'educator';
   if (pathname.startsWith('/college-admin')) return 'college_admin';
   if (pathname.startsWith('/school-admin')) return 'school_admin';
   if (pathname.startsWith('/university-admin')) return 'university_admin';
   if (pathname.startsWith('/admin')) return 'admin';
-  return 'student'; // fallback
+  return 'learner'; // fallback
 }
 
 /**

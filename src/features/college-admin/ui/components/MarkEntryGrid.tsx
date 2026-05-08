@@ -3,7 +3,7 @@ import { XMarkIcon, ArrowUpTrayIcon, LockClosedIcon, CheckCircleIcon } from '@he
 import { Save, Upload } from 'lucide-react';
 import type { MarkEntry } from '@/shared/types/college';
 
-interface Student {
+interface Learner {
   id: string;
   name: string;
   roll_number: string;
@@ -15,7 +15,7 @@ interface MarkEntryGridProps {
   assessmentId: string;
   assessmentName: string;
   totalMarks: number;
-  students: Student[];
+  learners: Learner[];
   existingMarks?: MarkEntry[];
   onSave: (marks: Partial<MarkEntry>[]) => Promise<{ success: boolean; error?: string }>;
   onSubmit: () => Promise<{ success: boolean; error?: string }>;
@@ -28,7 +28,7 @@ const MarkEntryGrid: React.FC<MarkEntryGridProps> = ({
   assessmentId,
   assessmentName,
   totalMarks,
-  students,
+  learners,
   existingMarks = [],
   onSave,
   onSubmit,
@@ -43,11 +43,11 @@ const MarkEntryGrid: React.FC<MarkEntryGridProps> = ({
     // Initialize marks from existing data or create empty entries
     const marksMap = new Map<string, Partial<MarkEntry>>();
     
-    students.forEach(student => {
-      const existing = existingMarks.find(m => m.student_id === student.id);
-      marksMap.set(student.id, existing || {
+    learners.forEach(learner => {
+      const existing = existingMarks.find(m => m.learner_id === learner.id);
+      marksMap.set(learner.id, existing || {
         assessment_id: assessmentId,
-        student_id: student.id,
+        learner_id: learner.id,
         marks_obtained: 0,
         is_absent: false,
         is_exempt: false,
@@ -56,12 +56,12 @@ const MarkEntryGrid: React.FC<MarkEntryGridProps> = ({
     });
 
     setMarks(marksMap);
-  }, [students, existingMarks, assessmentId]);
+  }, [learners, existingMarks, assessmentId]);
 
-  const updateMark = (studentId: string, field: keyof MarkEntry, value: any) => {
+  const updateMark = (learnerId: string, field: keyof MarkEntry, value: any) => {
     const updated = new Map(marks);
-    const current = updated.get(studentId) || {};
-    updated.set(studentId, { ...current, [field]: value });
+    const current = updated.get(learnerId) || {};
+    updated.set(learnerId, { ...current, [field]: value });
     setMarks(updated);
   };
 
@@ -71,11 +71,11 @@ const MarkEntryGrid: React.FC<MarkEntryGridProps> = ({
     setSuccess(null);
 
     // Validate marks
-    for (const [studentId, mark] of marks.entries()) {
+    for (const [learnerId, mark] of marks.entries()) {
       if (!mark.is_absent && !mark.is_exempt) {
         if (mark.marks_obtained === undefined || mark.marks_obtained < 0 || mark.marks_obtained > totalMarks) {
-          const student = students.find(s => s.id === studentId);
-          setError(`Invalid marks for ${student?.name}. Must be between 0 and ${totalMarks}`);
+          const learner = learners.find(s => s.id === learnerId);
+          setError(`Invalid marks for ${learner?.name}. Must be between 0 and ${totalMarks}`);
           setLoading(false);
           return;
         }
@@ -116,7 +116,7 @@ const MarkEntryGrid: React.FC<MarkEntryGridProps> = ({
 
   const handleBulkUpload = () => {
     // Placeholder for bulk upload functionality
-    alert('Bulk upload feature coming soon! You can upload Excel file with student marks.');
+    alert('Bulk upload feature coming soon! You can upload Excel file with learner marks.');
   };
 
   if (!isOpen) return null;
@@ -164,7 +164,7 @@ const MarkEntryGrid: React.FC<MarkEntryGridProps> = ({
 
           <div className="flex justify-between items-center">
             <p className="text-sm text-gray-600">
-              {students.length} students • {Array.from(marks.values()).filter(m => m.marks_obtained !== undefined && m.marks_obtained > 0).length} marks entered
+              {learners.length} learners • {Array.from(marks.values()).filter(m => m.marks_obtained !== undefined && m.marks_obtained > 0).length} marks entered
             </p>
             <button
               onClick={handleBulkUpload}
@@ -187,7 +187,7 @@ const MarkEntryGrid: React.FC<MarkEntryGridProps> = ({
                     Roll Number
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                    Student Name
+                    Learner Name
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 w-32">
                     Marks (/{totalMarks})
@@ -204,21 +204,21 @@ const MarkEntryGrid: React.FC<MarkEntryGridProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {students.map((student, index) => {
-                  const mark = marks.get(student.id) || {};
+                {learners.map((learner, index) => {
+                  const mark = marks.get(learner.id) || {};
                   const isAbsent = mark.is_absent || false;
                   const isExempt = mark.is_exempt || false;
 
                   return (
-                    <tr key={student.id} className="hover:bg-gray-50">
+                    <tr key={learner.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {index + 1}
                       </td>
                       <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                        {student.roll_number}
+                        {learner.roll_number}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900">
-                        {student.name}
+                        {learner.name}
                       </td>
                       <td className="px-4 py-3">
                         <input
@@ -226,7 +226,7 @@ const MarkEntryGrid: React.FC<MarkEntryGridProps> = ({
                           min="0"
                           max={totalMarks}
                           value={mark.marks_obtained || ''}
-                          onChange={(e) => updateMark(student.id, 'marks_obtained', parseFloat(e.target.value) || 0)}
+                          onChange={(e) => updateMark(learner.id, 'marks_obtained', parseFloat(e.target.value) || 0)}
                           disabled={isLocked || isAbsent || isExempt}
                           className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                           placeholder="0"
@@ -237,10 +237,10 @@ const MarkEntryGrid: React.FC<MarkEntryGridProps> = ({
                           type="checkbox"
                           checked={isAbsent}
                           onChange={(e) => {
-                            updateMark(student.id, 'is_absent', e.target.checked);
+                            updateMark(learner.id, 'is_absent', e.target.checked);
                             if (e.target.checked) {
-                              updateMark(student.id, 'is_exempt', false);
-                              updateMark(student.id, 'marks_obtained', 0);
+                              updateMark(learner.id, 'is_exempt', false);
+                              updateMark(learner.id, 'marks_obtained', 0);
                             }
                           }}
                           disabled={isLocked}
@@ -252,10 +252,10 @@ const MarkEntryGrid: React.FC<MarkEntryGridProps> = ({
                           type="checkbox"
                           checked={isExempt}
                           onChange={(e) => {
-                            updateMark(student.id, 'is_exempt', e.target.checked);
+                            updateMark(learner.id, 'is_exempt', e.target.checked);
                             if (e.target.checked) {
-                              updateMark(student.id, 'is_absent', false);
-                              updateMark(student.id, 'marks_obtained', 0);
+                              updateMark(learner.id, 'is_absent', false);
+                              updateMark(learner.id, 'marks_obtained', 0);
                             }
                           }}
                           disabled={isLocked}
@@ -266,7 +266,7 @@ const MarkEntryGrid: React.FC<MarkEntryGridProps> = ({
                         <input
                           type="text"
                           value={mark.remarks || ''}
-                          onChange={(e) => updateMark(student.id, 'remarks', e.target.value)}
+                          onChange={(e) => updateMark(learner.id, 'remarks', e.target.value)}
                           disabled={isLocked}
                           className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                           placeholder="Optional"

@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import { buildEducatorSystemPrompt, buildIntentClassificationPrompt } from '../lib/prompts/intelligentPrompt';
 import { buildEducatorContext } from '@/features/educator-copilot';
-import { EducatorAIResponse, EducatorIntent } from '@/features/student-profile/model';
+import { EducatorAIResponse, EducatorIntent } from '@/features/learner-profile/model';
 import { educatorInsights } from './educatorInsights';
 import { dataFetcherService } from './dataFetcherService';
 import { educatorAnalyticsService } from './educatorAnalyticsService';
@@ -9,7 +9,7 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('educator-intelligence-engine');
 
-// Initialize OpenRouter client (same as student AI)
+// Initialize OpenRouter client (same as learner AI)
 let openai: OpenAI | null = null;
 
 const getOpenAIClient = (): OpenAI => {
@@ -151,7 +151,7 @@ class EducatorIntelligenceEngine {
 
       // Validate intent
       const validIntents: EducatorIntent[] = [
-        'student-insights',
+        'learner-insights',
         'class-analytics',
         'intervention-needed',
         'guidance-request',
@@ -180,12 +180,12 @@ class EducatorIntelligenceEngine {
     try {
       // Data-first handling for core intents using real DB
       if (intent === 'intervention-needed') {
-        const atRisk = await educatorInsights.getAtRiskStudents();
+        const atRisk = await educatorInsights.getAtRisklearners();
         const top = atRisk.slice(0, 8);
         const message = top.length === 0
-          ? 'No at-risk students detected based on skills, projects, training, assignments, and activity.'
+          ? 'No at-risk learners detected based on skills, projects, training, assignments, and activity.'
           : [
-            'Top at-risk students (ranked):',
+            'Top at-risk learners (ranked):',
             ...top.map((s: any, i: number) => `${i + 1}. ${s.name} — Flags: ${s.flags.map((f: any) => f.reason).join('; ')}`)
           ].join('\n');
 
@@ -195,10 +195,10 @@ class EducatorIntelligenceEngine {
           data: { atRisk: top },
           interactive: {
             cards: top.map((s: any) => ({
-              type: 'student-insight',
+              type: 'learner-insight',
               data: {
-                studentId: s.studentId,
-                studentName: s.name,
+                learnerId: s.learnerId,
+                learnerName: s.name,
                 insightType: 'concern',
                 title: 'At-risk indicators',
                 description: s.flags.map((f: any) => `• ${f.reason} (${f.severity})`).join('\n'),
@@ -227,8 +227,8 @@ class EducatorIntelligenceEngine {
         const message = top.length === 0
           ? 'No strong matches found. Consider focusing on foundational skills first.'
           : [
-            'Top student–opportunity matches:',
-            ...top.slice(0, 8).map((m: any) => `• ${m.studentName} → ${m.opportunityTitle} (${m.readinessScore}%). Missing: ${m.missingSkills.join(', ') || '—'}`)
+            'Top learner–opportunity matches:',
+            ...top.slice(0, 8).map((m: any) => `• ${m.learnerName} → ${m.opportunityTitle} (${m.readinessScore}%). Missing: ${m.missingSkills.join(', ') || '—'}`)
           ].join('\n');
 
         return {
@@ -237,10 +237,10 @@ class EducatorIntelligenceEngine {
           data: { matches: top },
           interactive: {
             cards: top.map((m: any) => ({
-              type: 'student-insight',
+              type: 'learner-insight',
               data: {
-                studentId: m.studentId,
-                studentName: m.studentName,
+                learnerId: m.learnerId,
+                learnerName: m.learnerName,
                 insightType: 'opportunity',
                 title: m.opportunityTitle,
                 description: `Matched: ${m.matchedSkills.join(', ') || '—'}`,
@@ -260,7 +260,7 @@ class EducatorIntelligenceEngine {
 
       if (intent === 'class-analytics') {
         const analytics = await educatorInsights.getClassAnalytics();
-        const message = `Students: ${analytics.totalStudents}\nAvg skills/student: ${analytics.avgSkillsPerStudent}\nTraining completion rate: ${analytics.trainingCompletionRate}%\nTop skills: ${analytics.topSkills.map((s: any) => `${s.name} (${s.count})`).slice(0, 5).join(', ')}`;
+        const message = `Learners: ${analytics.totallearners}\nAvg skills/learner: ${analytics.avgSkillsPerLearner}\nTraining completion rate: ${analytics.trainingCompletionRate}%\nTop skills: ${analytics.topSkills.map((s: any) => `${s.name} (${s.count})`).slice(0, 5).join(', ')}`;
         return {
           success: true,
           message,
@@ -276,9 +276,9 @@ class EducatorIntelligenceEngine {
         };
       }
 
-      if (intent === 'student-insights') {
-        const students = await dataFetcherService.getStudentsWithAssignments();
-        const insights = educatorAnalyticsService.buildStudentInsights(students);
+      if (intent === 'learner-insights') {
+        const learners = await dataFetcherService.getlearnersWithAssignments();
+        const insights = educatorAnalyticsService.buildlearnerInsights(learners);
 
         // Sort by performance: top performers first (most skills, fewest flags)
         const sorted = [...insights].sort((a, b) => {
@@ -290,9 +290,9 @@ class EducatorIntelligenceEngine {
         const top = sorted.slice(0, 10);
 
         const message = top.length === 0
-          ? 'No students available.'
+          ? 'No learners available.'
           : [
-            `📊 Top ${top.length} Students Overview:\n`,
+            `📊 Top ${top.length} Learners Overview:\n`,
             ...top.map((s: any, i: number) => {
               const grade = s.assignmentStats?.avgGrade || 0;
               const gradeStr = grade > 0 ? ` | Avg Grade: ${grade}%` : '';
@@ -307,10 +307,10 @@ class EducatorIntelligenceEngine {
           data: top,
           interactive: {
             cards: top.map((s: any) => ({
-              type: 'student-insight',
+              type: 'learner-insight',
               data: {
-                studentId: s.studentId,
-                studentName: s.name,
+                learnerId: s.learnerId,
+                learnerName: s.name,
                 insightType: s.flags.length ? 'concern' : 'strength',
                 title: s.flags.length ? 'Needs attention' : 'On track',
                 description: s.flags.length ? s.flags.map((f: any) => `• ${f.reason}`).join('\n') : `Top skills: ${s.topSkills.map((x: any) => x.name).join(', ')}`,
@@ -369,7 +369,7 @@ class EducatorIntelligenceEngine {
    */
   private getIntentLabel(intent: EducatorIntent): string {
     const labels: Record<EducatorIntent, string> = {
-      'student-insights': 'Student Insights',
+      'learner-insights': 'Learner Insights',
       'class-analytics': 'Class Analytics',
       'intervention-needed': 'Intervention Guidance',
       'guidance-request': 'Educator Guidance',
@@ -386,9 +386,9 @@ class EducatorIntelligenceEngine {
    */
   private generateNextSteps(intent: EducatorIntent): string[] {
     const steps: Record<EducatorIntent, string[]> = {
-      'student-insights': [
-        'Review individual student profiles',
-        'Schedule 1-on-1 meetings with identified students',
+      'learner-insights': [
+        'Review individual learner profiles',
+        'Schedule 1-on-1 meetings with identified learners',
         'Track progress over the next 2 weeks'
       ],
       'class-analytics': [
@@ -397,32 +397,32 @@ class EducatorIntelligenceEngine {
         'Monitor class engagement metrics'
       ],
       'intervention-needed': [
-        'Reach out to at-risk students immediately',
+        'Reach out to at-risk learners immediately',
         'Document interventions and outcomes',
         'Follow up within 1 week'
       ],
       'guidance-request': [
         'Implement suggested strategies',
-        'Gather student feedback',
+        'Gather learner feedback',
         'Adjust approach based on results'
       ],
       'skill-trends': [
         'Update course materials with trending skills',
-        'Share resources with students',
+        'Share resources with learners',
         'Plan workshops or guest lectures'
       ],
       'career-readiness': [
         'Conduct career readiness assessments',
         'Organize industry connect sessions',
-        'Help students build portfolios'
+        'Help learners build portfolios'
       ],
       'resource-recommendation': [
-        'Share resources with students',
+        'Share resources with learners',
         'Create curated learning paths',
         'Track resource engagement'
       ],
       'general': [
-        'Explore specific student or class needs',
+        'Explore specific learner or class needs',
         'Ask follow-up questions for deeper insights'
       ]
     };
@@ -434,14 +434,14 @@ class EducatorIntelligenceEngine {
    */
   private getEncouragement(intent: EducatorIntent): string {
     const encouragements: Record<EducatorIntent, string> = {
-      'student-insights': "You're taking proactive steps to understand your students better. This personalized attention makes a real difference.",
-      'class-analytics': "Your data-driven approach to teaching is excellent. These insights will help you reach more students effectively.",
-      'intervention-needed': "Identifying students who need support early is crucial. Your attention can change their trajectory.",
-      'guidance-request': "Seeking better ways to guide students shows your commitment to their success. Keep up the great work!",
-      'skill-trends': "Staying current with industry trends ensures your students remain competitive. Your students are lucky to have you.",
-      'career-readiness': "Preparing students for real-world careers is one of the most valuable things you can do. Well done!",
-      'resource-recommendation': "Curating quality resources saves students time and improves outcomes. Your effort is appreciated!",
-      'general': "I'm here to support you in any way I can. Feel free to ask anything about student guidance!"
+      'learner-insights': "You're taking proactive steps to understand your learners better. This personalized attention makes a real difference.",
+      'class-analytics': "Your data-driven approach to teaching is excellent. These insights will help you reach more learners effectively.",
+      'intervention-needed': "Identifying learners who need support early is crucial. Your attention can change their trajectory.",
+      'guidance-request': "Seeking better ways to guide learners shows your commitment to their success. Keep up the great work!",
+      'skill-trends': "Staying current with industry trends ensures your learners remain competitive. Your learners are lucky to have you.",
+      'career-readiness': "Preparing learners for real-world careers is one of the most valuable things you can do. Well done!",
+      'resource-recommendation': "Curating quality resources saves learners time and improves outcomes. Your effort is appreciated!",
+      'general': "I'm here to support you in any way I can. Feel free to ask anything about learner guidance!"
     };
     return encouragements[intent] || "Great question! Let's work through this together.";
   }
@@ -451,21 +451,21 @@ class EducatorIntelligenceEngine {
    */
   private generateSuggestions(intent: EducatorIntent): any[] {
     const suggestions: Record<EducatorIntent, any[]> = {
-      'student-insights': [
-        { id: '1', label: 'Show me struggling students', query: 'Which students are struggling and need intervention?' },
-        { id: '2', label: 'Identify top performers', query: 'Which students are excelling and ready for advanced opportunities?' }
+      'learner-insights': [
+        { id: '1', label: 'Show me struggling learners', query: 'Which learners are struggling and need intervention?' },
+        { id: '2', label: 'Identify top performers', query: 'Which learners are excelling and ready for advanced opportunities?' }
       ],
       'class-analytics': [
         { id: '1', label: 'Skill gap analysis', query: 'What are the common skill gaps in my class?' },
-        { id: '2', label: 'Career interest trends', query: 'What careers are my students most interested in?' }
+        { id: '2', label: 'Career interest trends', query: 'What careers are my learners most interested in?' }
       ],
       'intervention-needed': [
         { id: '1', label: 'Create action plan', query: 'Help me create an intervention action plan' },
-        { id: '2', label: 'Student engagement tips', query: 'How can I improve student engagement?' }
+        { id: '2', label: 'Learner engagement tips', query: 'How can I improve learner engagement?' }
       ],
       'general': [
         { id: '1', label: 'Class overview', query: 'Give me an overview of my class performance' },
-        { id: '2', label: 'Student insights', query: 'Which students need my attention?' }
+        { id: '2', label: 'Learner insights', query: 'Which learners need my attention?' }
       ]
     };
     return suggestions[intent] || suggestions['general'];

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { CollegeEvent } from '@/features/student-profile/model';
+import { CollegeEvent } from '@/features/learner-profile/model';
 
 export interface EventAnalytics {
   // Event counts by type

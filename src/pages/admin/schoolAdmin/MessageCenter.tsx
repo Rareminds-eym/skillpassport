@@ -38,8 +38,8 @@ interface Conversation {
   id: string;
   parentName: string;
   parentAvatar?: string;
-  studentName: string;
-  studentClass: string;
+  learnerName: string;
+  learnerClass: string;
   lastMessage: string;
   lastMessageTime: string;
   unreadCount: number;
@@ -100,7 +100,7 @@ const ConversationItem = ({
           </div>
 
           <p className="text-xs text-gray-600 mb-1.5">
-            {conversation.studentName} • {conversation.studentClass}
+            {conversation.learnerName} • {conversation.learnerClass}
           </p>
 
           <p
@@ -191,8 +191,8 @@ const MessageCenter: React.FC = () => {
     {
       id: "1",
       parentName: "Rajesh Kumar",
-      studentName: "Ananya Kumar",
-      studentClass: "10-A",
+      learnerName: "Ananya Kumar",
+      learnerClass: "10-A",
       lastMessage: "Thank you for the update on Ananya's performance.",
       lastMessageTime: "2m ago",
       unreadCount: 0,
@@ -224,8 +224,8 @@ const MessageCenter: React.FC = () => {
     {
       id: "2",
       parentName: "Priya Sharma",
-      studentName: "Rohan Sharma",
-      studentClass: "9-B",
+      learnerName: "Rohan Sharma",
+      learnerClass: "9-B",
       lastMessage: "Is there a parent-teacher meeting scheduled?",
       lastMessageTime: "1h ago",
       unreadCount: 2,
@@ -250,8 +250,8 @@ const MessageCenter: React.FC = () => {
     {
       id: "3",
       parentName: "Amit Patel",
-      studentName: "Diya Patel",
-      studentClass: "11-C",
+      learnerName: "Diya Patel",
+      learnerClass: "11-C",
       lastMessage: "Acknowledged. Will ensure she completes the assignment.",
       lastMessageTime: "2h ago",
       unreadCount: 0,
@@ -293,7 +293,7 @@ const MessageCenter: React.FC = () => {
   const filteredConversations = conversations.filter((conv) => {
     const matchesSearch =
       conv.parentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      conv.studentName.toLowerCase().includes(searchQuery.toLowerCase());
+      conv.learnerName.toLowerCase().includes(searchQuery.toLowerCase());
 
     return matchesSearch;
   });
@@ -414,7 +414,7 @@ const MessageCenter: React.FC = () => {
                       {selectedConversation.parentName}
                     </h2>
                     <p className="text-xs text-gray-600">
-                      {selectedConversation.studentName} • {selectedConversation.studentClass}
+                      {selectedConversation.learnerName} • {selectedConversation.learnerClass}
                     </p>
                   </div>
                 </div>

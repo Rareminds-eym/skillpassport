@@ -1,8 +1,8 @@
 import { getOpenAIClient, DEFAULT_MODEL } from '@/features/career-assistant';
-import { fetchStudentProfile, fetchOpportunities } from '@/features/career-assistant';
-import { buildStudentContext, buildOpportunitiesContext } from '@/features/career-assistant';
+import { fetchlearnerProfile, fetchOpportunities } from '@/features/career-assistant';
+import { buildlearnerContext, buildOpportunitiesContext } from '@/features/career-assistant';
 import { createJobMatchingPrompt, JOB_MATCHING_SYSTEM_PROMPT } from '../prompts/jobMatchingPrompt';
-import { AIResponse, JobMatch, StudentProfile, StudentContext } from '@/features/student-profile/model';
+import { AIResponse, JobMatch, LearnerProfile, LearnerContext } from '@/features/learner-profile/model';
 import { buildJobMatchResponse } from "@/shared/lib/responseBuilder";
 import { EnhancedAIResponse } from '@/shared/types/interactive';
 import { getLogger } from '@/shared/config/logging';
@@ -11,17 +11,17 @@ const logger = getLogger('find-jobs-handler');
 
 /**
  * Find Jobs Handler
- * Intelligently matches student with relevant job opportunities
+ * Intelligently matches learner with relevant job opportunities
  */
 
 export async function handleFindJobs(
   message: string,
-  studentId: string
+  learnerId: string
 ): Promise<EnhancedAIResponse> {
   try {
-    // 1. Fetch student profile from database
-    const studentProfile = await fetchStudentProfile(studentId);
-    if (!studentProfile) {
+    // 1. Fetch learner profile from database
+    const learnerProfile = await fetchlearnerProfile(learnerId);
+    if (!learnerProfile) {
       return {
         success: false,
         error: 'Unable to fetch your profile. Please try again.'
@@ -39,10 +39,10 @@ export async function handleFindJobs(
     }
 
     // 3. Use AI to intelligently match jobs
-    const matches = await matchJobsWithAI(studentProfile, opportunities, message);
+    const matches = await matchJobsWithAI(learnerProfile, opportunities, message);
 
     // 4. Generate interactive response with cards
-    const response = await generateJobMatchResponse(matches, studentProfile, message);
+    const response = await generateJobMatchResponse(matches, learnerProfile, message);
     const interactiveResponse = buildJobMatchResponse(
       {
         matches,
@@ -53,8 +53,8 @@ export async function handleFindJobs(
 
     return interactiveResponse;
   } catch (error: any) {
-    logger.error('Failed to find jobs for student', error instanceof Error ? error : new Error(String(error)), {
-      studentId,
+    logger.error('Failed to find jobs for learner', error instanceof Error ? error : new Error(String(error)), {
+      learnerId,
       messageLength: message?.length
     });
     return {
@@ -68,20 +68,20 @@ export async function handleFindJobs(
  * Match jobs using AI with intelligent analysis
  */
 async function matchJobsWithAI(
-  studentProfile: StudentProfile,
+  learnerProfile: LearnerProfile,
   opportunities: any[],
   userQuery?: string,
   topN: number = 10
 ): Promise<JobMatch[]> {
   try {
-    // Build student context
-    const studentContext = buildStudentContext(studentProfile);
+    // Build learner context
+    const learnerContext = buildlearnerContext(learnerProfile);
 
     // Build opportunities context
     const opportunitiesContext = buildOpportunitiesContext(opportunities);
 
     // Create the matching prompt with user query context
-    const prompt = createJobMatchingPrompt(studentContext, opportunitiesContext, topN, userQuery);
+    const prompt = createJobMatchingPrompt(learnerContext, opportunitiesContext, topN, userQuery);
 
     // Call OpenAI API
     const client = getOpenAIClient();
@@ -119,13 +119,13 @@ async function matchJobsWithAI(
 
   } catch (error) {
     logger.error('Failed to match jobs with AI', error instanceof Error ? error : new Error(String(error)), {
-      studentId: studentProfile.id,
+      learnerId: learnerProfile.id,
       opportunitiesCount: opportunities.length,
       topN
     });
 
     // Return fallback matches
-    return createFallbackMatches(studentProfile, opportunities, topN);
+    return createFallbackMatches(learnerProfile, opportunities, topN);
   }
 }
 
@@ -135,14 +135,14 @@ async function matchJobsWithAI(
  */
 async function generateJobMatchResponse(
   matches: JobMatch[],
-  studentProfile: StudentProfile,
+  learnerProfile: LearnerProfile,
   userMessage: string
 ): Promise<string> {
   try {
-    const studentName = studentProfile.name?.split(' ')[0] || 'there';
+    const learnerName = learnerProfile.name?.split(' ')[0] || 'there';
 
     // Create intro
-    let response = `Great news, ${studentName}! 🎉\n\n`;
+    let response = `Great news, ${learnerName}! 🎉\n\n`;
     response += `I found ${matches.length} job opportunities that match your profile:\n\n`;
 
     // Show each job as a separate card
@@ -198,10 +198,10 @@ async function generateJobMatchResponse(
     return response;
   } catch (error) {
     logger.error('Failed to generate job match response', error instanceof Error ? error : new Error(String(error)), {
-      studentId: studentProfile.id,
+      learnerId: learnerProfile.id,
       matchesCount: matches.length
     });
-    return createFallbackResponse(matches, studentProfile);
+    return createFallbackResponse(matches, learnerProfile);
   }
 }
 
@@ -209,7 +209,7 @@ async function generateJobMatchResponse(
  * Create fallback matches when AI fails
  */
 function createFallbackMatches(
-  studentProfile: StudentProfile,
+  learnerProfile: LearnerProfile,
   opportunities: any[],
   topN: number
 ): JobMatch[] {
@@ -219,7 +219,7 @@ function createFallbackMatches(
     company_name: opp.company_name,
     match_score: Math.max(50 - (idx * 5), 30),
     match_reason: `This ${opp.employment_type} opportunity at ${opp.company_name} could be a good fit for building experience in ${opp.location}.`,
-    key_matching_skills: studentProfile.profile?.technicalSkills?.slice(0, 3).map((s: any) => s.name) || [],
+    key_matching_skills: learnerProfile.profile?.technicalSkills?.slice(0, 3).map((s: any) => s.name) || [],
     skills_gap: [],
     recommendation: 'Review the job requirements and consider applying if it aligns with your career goals.',
     opportunity: opp
@@ -229,9 +229,9 @@ function createFallbackMatches(
 /**
  * Create fallback text response
  */
-function createFallbackResponse(matches: JobMatch[], studentProfile: StudentProfile): string {
+function createFallbackResponse(matches: JobMatch[], learnerProfile: LearnerProfile): string {
   const topMatch = matches[0];
-  return `Great news, ${studentProfile.name}! 🎉
+  return `Great news, ${learnerProfile.name}! 🎉
 
 I found ${matches.length} job opportunities that match your profile:
 

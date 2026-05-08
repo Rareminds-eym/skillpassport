@@ -145,8 +145,8 @@ export default function AcceptInvitationPage() {
   };
 
   const getDashboardPath = (memberType: string): string => {
-    if (memberType.includes('student')) {
-      return '/student/dashboard';
+    if (memberType.includes('learner')) {
+      return '/learner/dashboard';
     }
     if (memberType.includes('educator')) {
       return '/educator/dashboard';
@@ -155,7 +155,7 @@ export default function AcceptInvitationPage() {
   };
 
   const getMemberTypeDisplay = (memberType: string): string => {
-    if (memberType.includes('student')) return 'Student';
+    if (memberType.includes('learner')) return 'Learner';
     if (memberType.includes('educator')) return 'Educator';
     return memberType;
   };

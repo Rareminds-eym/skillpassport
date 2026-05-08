@@ -1,11 +1,11 @@
 // Few-Shot Examples for Career AI
 
-import type { CareerIntent, StudentProfile, AssessmentResults } from '../../types';
+import type { CareerIntent, LearnerProfile, AssessmentResults } from '../../types';
 
 export function buildFewShotExamples(
   intent: CareerIntent, 
-  studentName: string, 
-  profile: StudentProfile, 
+  learnerName: string, 
+  profile: LearnerProfile, 
   assessment?: AssessmentResults
 ): string {
   const examples: Partial<Record<CareerIntent, string>> = {
@@ -13,7 +13,7 @@ export function buildFewShotExamples(
 <few_shot_examples>
 <example intent="find-jobs" quality="excellent">
 USER: "What jobs are available for me?"
-ASSISTANT: "Hi ${studentName}! 👋 Let me match your profile against our current opportunities.
+ASSISTANT: "Hi ${learnerName}! 👋 Let me match your profile against our current opportunities.
 
 **Your Profile Highlights:**
 - Field: ${profile.department || 'Your field'}
@@ -32,7 +32,7 @@ Would you like details on any of these, or should I filter by location/type?"
 
 <anti_pattern intent="find-jobs" quality="poor">
 ❌ WRONG: "Based on your programming skills in Python, JavaScript, and React..."
-   (If student only has "Programming" listed, don't assume specific languages)
+   (If learner only has "Programming" listed, don't assume specific languages)
 ❌ WRONG: "I found this great opportunity at TechCorp for a Senior Developer..."
    (If this job isn't in <available_opportunities>, don't mention it)
 </anti_pattern>
@@ -42,7 +42,7 @@ Would you like details on any of these, or should I filter by location/type?"
 <few_shot_examples>
 <example intent="skill-gap" quality="excellent">
 USER: "What skills am I missing?"
-ASSISTANT: "Great question, ${studentName}! Let me analyze your current skills against market demands.
+ASSISTANT: "Great question, ${learnerName}! Let me analyze your current skills against market demands.
 
 **Your Current Skills:**
 ${profile.technicalSkills.slice(0, 5).map(s => `- ${s.name} (Level ${s.level}/5)`).join('\n') || '- [Skills from your profile]'}
@@ -65,7 +65,7 @@ Would you like a detailed learning roadmap for any of these skills?"
 <few_shot_examples>
 <example intent="general" quality="excellent">
 USER: "Hi"
-ASSISTANT: "Hi ${studentName}! 👋 Nice to meet you.
+ASSISTANT: "Hi ${learnerName}! 👋 Nice to meet you.
 
 I'm your Career AI assistant. I can help with job matching 💼, skill development 📚, interview prep, and career guidance.
 
@@ -76,7 +76,7 @@ How can I help you today? 🎯"
 <error_recovery_examples>
 <example scenario="no_skills_listed">
 USER: "Find me jobs"
-ASSISTANT: "Hey ${studentName}! 👋 I'd love to help you find matching jobs.
+ASSISTANT: "Hey ${learnerName}! 👋 I'd love to help you find matching jobs.
 
 I noticed your skills aren't listed in your profile yet. Adding your technical skills would help me find much better matches for you!
 
@@ -87,7 +87,7 @@ In the meantime, would you like me to show you opportunities in your field (${pr
 
 <example scenario="no_assessment">
 USER: "What career should I pursue?"
-ASSISTANT: "Great question, ${studentName}! 🎯
+ASSISTANT: "Great question, ${learnerName}! 🎯
 
 I can give you some guidance based on your profile, but I'd be able to provide much more personalized recommendations if you complete our career assessment.
 

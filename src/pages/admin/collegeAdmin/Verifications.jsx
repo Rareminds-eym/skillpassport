@@ -311,7 +311,7 @@ const CollegeVerifications = () => {
   const getFilteredTrainings = () => {
     return pendingTrainings.filter(training => {
       const matchesSearch = (training.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           (training.student?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           (training.learner?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                            (training.organization || '').toLowerCase().includes(searchQuery.toLowerCase());
       
       const matchesStatus = statusFilter === 'all' || training.approval_status === statusFilter;
@@ -323,7 +323,7 @@ const CollegeVerifications = () => {
   const getFilteredExperiences = () => {
     return pendingExperiences.filter(experience => {
       const matchesSearch = (experience.role || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           (experience.student?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           (experience.learner?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                            (experience.organization || '').toLowerCase().includes(searchQuery.toLowerCase());
       
       const matchesStatus = statusFilter === 'all' || experience.approval_status === statusFilter;
@@ -335,7 +335,7 @@ const CollegeVerifications = () => {
   const getFilteredProjects = () => {
     return pendingProjects.filter(project => {
       const matchesSearch = (project.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           (project.student_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           (project.learner_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                            (project.organization || '').toLowerCase().includes(searchQuery.toLowerCase());
       
       const matchesStatus = statusFilter === 'all' || project.approval_status === statusFilter;
@@ -427,7 +427,7 @@ const CollegeVerifications = () => {
           <div className="flex items-center gap-2">
             <User className="w-4 h-4 text-gray-600" />
             <h3 className="font-bold text-lg text-gray-900">
-              {training.student?.name || 'Unknown Student'}
+              {training.learner?.name || 'Unknown Learner'}
             </h3>
           </div>
           <div className="text-xs text-gray-500 ml-4">
@@ -438,7 +438,7 @@ const CollegeVerifications = () => {
         <div className="space-y-2 mb-3">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Mail className="w-4 h-4" />
-            <span>{training.student?.email}</span>
+            <span>{training.learner?.email}</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Award className="w-4 h-4" />
@@ -474,7 +474,7 @@ const CollegeVerifications = () => {
           
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <GraduationCap className="w-4 h-4" />
-            <span>College: {training.student?.college_school_name || 'Unknown'}</span>
+            <span>College: {training.learner?.college_school_name || 'Unknown'}</span>
           </div>
         </div>
         
@@ -532,7 +532,7 @@ const CollegeVerifications = () => {
           <div className="flex items-center gap-2">
             <User className="w-4 h-4 text-gray-600" />
             <h3 className="font-bold text-lg text-gray-900">
-              {experience.student?.name || 'Unknown Student'}
+              {experience.learner?.name || 'Unknown Learner'}
             </h3>
           </div>
           <div className="text-xs text-gray-500 ml-4">
@@ -543,7 +543,7 @@ const CollegeVerifications = () => {
         <div className="space-y-2 mb-4">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Mail className="w-4 h-4" />
-            <span>{experience.student?.email}</span>
+            <span>{experience.learner?.email}</span>
           </div>
           {/* <div className="flex-1">
             <h4 className="font-semibold text-lg text-gray-900 mb-2">
@@ -570,7 +570,7 @@ const CollegeVerifications = () => {
           
           {/* <div className="flex items-center gap-2 text-sm text-gray-600">
             <GraduationCap className="w-4 h-4" />
-            <span>College: {experience.student?.college_school_name || 'Unknown'}</span>
+            <span>College: {experience.learner?.college_school_name || 'Unknown'}</span>
           </div> */}
         </div>
         
@@ -616,7 +616,7 @@ const CollegeVerifications = () => {
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <User className="w-4 h-4" />
             <span className="font-bold text-base text-gray-900">
-              {project.student_name || 'Unknown Student'}
+              {project.learner_name || 'Unknown Learner'}
             </span>
           </div>
           
@@ -712,7 +712,7 @@ const CollegeVerifications = () => {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">College Verifications</h1>
               <p className="text-gray-600 mt-2">
-                Review and approve student training and experience submissions
+                Review and approve learner training and experience submissions
               </p>
             </div>
           </div>
@@ -807,7 +807,7 @@ const CollegeVerifications = () => {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <input
                       type="text"
-                      placeholder="Search trainings, students, or organizations..."
+                      placeholder="Search trainings, learners, or organizations..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -896,7 +896,7 @@ const CollegeVerifications = () => {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <input
                       type="text"
-                      placeholder="Search experiences, students, or organizations..."
+                      placeholder="Search experiences, learners, or organizations..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -986,7 +986,7 @@ const CollegeVerifications = () => {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <input
                       type="text"
-                      placeholder="Search projects, students, or organizations..."
+                      placeholder="Search projects, learners, or organizations..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

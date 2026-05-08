@@ -1,7 +1,7 @@
 import React from 'react';
 import { Award, Calendar, CheckCircle2, AlertCircle } from 'lucide-react';
 
-export interface SchoolStudentResult {
+export interface SchoolLearnerResult {
   id: string;
   assessment_id: string;
   assessment_code: string;
@@ -29,7 +29,7 @@ export interface SchoolResultStats {
 }
 
 interface SchoolResultsTabProps {
-  results: SchoolStudentResult[];
+  results: SchoolLearnerResult[];
   resultStats: SchoolResultStats;
   loading?: boolean;
 }
@@ -188,7 +188,7 @@ const ResultsTab: React.FC<SchoolResultsTabProps> = ({
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-100">
-                      {assessment.subjects.map((result: SchoolStudentResult) => {
+                      {assessment.subjects.map((result: SchoolLearnerResult) => {
                         const isPassed = !result.is_absent && !result.is_exempt && result.is_pass === true;
                         const isFailed = !result.is_absent && !result.is_exempt && result.is_pass === false;
                         
@@ -294,14 +294,14 @@ const ResultsTab: React.FC<SchoolResultsTabProps> = ({
                         <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                         <span className="text-gray-600">Passed: </span>
                         <span className="font-semibold text-green-600">
-                          {assessment.subjects.filter((s: SchoolStudentResult) => !s.is_absent && !s.is_exempt && s.is_pass === true).length}
+                          {assessment.subjects.filter((s: SchoolLearnerResult) => !s.is_absent && !s.is_exempt && s.is_pass === true).length}
                         </span>
                       </div>
                       <div className="text-sm flex items-center gap-2">
                         <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                         <span className="text-gray-600">Failed: </span>
                         <span className="font-semibold text-red-600">
-                          {assessment.subjects.filter((s: SchoolStudentResult) => !s.is_absent && !s.is_exempt && s.is_pass === false).length}
+                          {assessment.subjects.filter((s: SchoolLearnerResult) => !s.is_absent && !s.is_exempt && s.is_pass === false).length}
                         </span>
                       </div>
                     </div>
@@ -309,9 +309,9 @@ const ResultsTab: React.FC<SchoolResultsTabProps> = ({
                       <span className="text-gray-600">Overall Average: </span>
                       <span className="font-bold text-blue-600">
                         {(() => {
-                          const validResults = assessment.subjects.filter((s: SchoolStudentResult) => !s.is_absent && !s.is_exempt && s.percentage !== undefined);
+                          const validResults = assessment.subjects.filter((s: SchoolLearnerResult) => !s.is_absent && !s.is_exempt && s.percentage !== undefined);
                           const average = validResults.length > 0
-                            ? validResults.reduce((sum: number, s: SchoolStudentResult) => sum + (s.percentage || 0), 0) / validResults.length
+                            ? validResults.reduce((sum: number, s: SchoolLearnerResult) => sum + (s.percentage || 0), 0) / validResults.length
                             : 0;
                           return average.toFixed(1);
                         })()}%
@@ -321,7 +321,7 @@ const ResultsTab: React.FC<SchoolResultsTabProps> = ({
                 </div>
 
                 {/* Moderation Notes */}
-                {assessment.subjects.some((s: SchoolStudentResult) => s.is_moderated) && (
+                {assessment.subjects.some((s: SchoolLearnerResult) => s.is_moderated) && (
                   <div className="border-t border-gray-200 bg-blue-50 px-6 py-4">
                     <div className="flex items-start gap-2">
                       <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5" />

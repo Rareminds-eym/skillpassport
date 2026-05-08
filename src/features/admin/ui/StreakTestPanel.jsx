@@ -116,8 +116,8 @@ const StreakTestPanel = () => {
               2. Trigger Manual Streak Check
             </h3>
             <p className="text-sm text-purple-700 mb-3">
-              Manually run the streak checker to see which students need reminders.
-              This will send actual emails to students who haven't completed their streak today.
+              Manually run the streak checker to see which learners need reminders.
+              This will send actual emails to learners who haven't completed their streak today.
             </p>
             <button
               onClick={() => handleAction('/api/streaks/admin/check-all')}
@@ -140,7 +140,7 @@ const StreakTestPanel = () => {
               3. Trigger Daily Reset
             </h3>
             <p className="text-sm text-orange-700 mb-3">
-              Reset all students' "streak_completed_today" flags. Normally runs at midnight.
+              Reset all learners' "streak_completed_today" flags. Normally runs at midnight.
             </p>
             <button
               onClick={() => handleAction('/api/streaks/admin/reset-daily')}
@@ -217,7 +217,7 @@ const StreakTestPanel = () => {
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
             <p className="text-sm text-yellow-800">
               <strong>💡 Tip:</strong> Watch your backend server terminal for detailed logs when you click these buttons.
-              You'll see which students would receive emails and what's happening.
+              You'll see which learners would receive emails and what's happening.
             </p>
           </div>
         </div>

@@ -86,7 +86,7 @@ const TimetableStep: React.FC<TimetableStepProps> = ({
           }
           
           // Class conflict (same exam, same time)
-          conflictList.push(`⚠️ Class conflict: Students already have ${existing.subjectName} exam at ${existingStart}-${existingEnd}`);
+          conflictList.push(`⚠️ Class conflict: Learners already have ${existing.subjectName} exam at ${existingStart}-${existingEnd}`);
         }
       }
     });

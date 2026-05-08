@@ -17,7 +17,7 @@ import type {
 
 export function getUserTypeDisplayName(type: UserType): string {
   const displayNames: Record<UserType, string> = {
-    student: 'Student',
+    learner: 'Learner',
     recruiter: 'Recruiter',
     educator: 'Educator',
     college_educator: 'College Educator',
@@ -34,12 +34,12 @@ export function getUserTypeDisplayName(type: UserType): string {
 
 export function getConversationTypeDisplayName(type: ConversationType): string {
   const displayNames: Record<ConversationType, string> = {
-    student_recruiter: 'Student - Recruiter',
-    student_educator: 'Student - Educator',
+    learner_recruiter: 'Learner - Recruiter',
+    learner_educator: 'Learner - Educator',
     educator_recruiter: 'Educator - Recruiter',
-    student_admin: 'Student - Admin',
-    student_college_admin: 'Student - College Admin',
-    student_college_educator: 'Student - College Educator',
+    learner_admin: 'Learner - Admin',
+    learner_college_admin: 'Learner - College Admin',
+    learner_college_educator: 'Learner - College Educator',
     educator_admin: 'Educator - Admin',
     college_educator_admin: 'College Educator - Admin'
   };
@@ -97,8 +97,8 @@ export function getAttachmentCount(message: Message): number {
 
 export function getUnreadCount(conversation: Conversation, userType: UserType): number {
   switch (userType) {
-    case 'student':
-      return conversation.student_unread_count;
+    case 'learner':
+      return conversation.learner_unread_count;
     case 'recruiter':
       return conversation.recruiter_unread_count;
     case 'educator':
@@ -119,8 +119,8 @@ export function hasUnreadMessages(conversation: Conversation, userType: UserType
 
 export function isConversationDeleted(conversation: Conversation, userType: UserType): boolean {
   switch (userType) {
-    case 'student':
-      return !!conversation.deleted_by_student;
+    case 'learner':
+      return !!conversation.deleted_by_learner;
     case 'recruiter':
       return !!conversation.deleted_by_recruiter;
     case 'educator':
@@ -138,7 +138,7 @@ export function isConversationDeleted(conversation: Conversation, userType: User
 export function getConversationParticipants(conversation: Conversation): string[] {
   const participants: string[] = [];
   
-  if (conversation.student_id) participants.push(conversation.student_id);
+  if (conversation.learner_id) participants.push(conversation.learner_id);
   if (conversation.recruiter_id) participants.push(conversation.recruiter_id);
   if (conversation.educator_id) participants.push(conversation.educator_id);
   

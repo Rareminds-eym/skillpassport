@@ -488,7 +488,7 @@ interface Competition {
     team_size?: string;
 }
 
-interface Student {
+interface Learner {
     id: string;
     user_id?: string;
     email: string;
@@ -506,7 +506,7 @@ interface Notice {
 }
 
 export default function ClubsActivitiesPage() {
-    const currentStudent = useMemo(() => ({ id: "s_new", name: "You" }), []);
+    const currentLearner = useMemo(() => ({ id: "s_new", name: "You" }), []);
 
     const [clubs, setClubs] = useState<Club[]>([]);
     const [competitions, setCompetitions] = useState<Competition[]>([]);
@@ -646,10 +646,10 @@ export default function ClubsActivitiesPage() {
         meeting_time: "",
         location: ""
     });
-    const [studentDrawer, setStudentDrawer] = useState<{ open: boolean; club: Club | null }>({ open: false, club: null });
-    const [allStudents, setAllStudents] = useState<Student[]>([]);
-    const [loadingStudents, setLoadingStudents] = useState(true);
-    const [studentSearchQuery, setStudentSearchQuery] = useState("");
+    const [learnerDrawer, setlearnerDrawer] = useState<{ open: boolean; club: Club | null }>({ open: false, club: null });
+    const [alllearners, setAlllearners] = useState<Learner[]>([]);
+    const [loadinglearners, setLoadinglearners] = useState(true);
+    const [learnerSearchQuery, setlearnerSearchQuery] = useState("");
     const [attendanceModal, setAttendanceModal] = useState<{ open: boolean; club: Club | null }>({ open: false, club: null });
     const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
     const [attendanceTopic, setAttendanceTopic] = useState("");
@@ -658,29 +658,29 @@ export default function ClubsActivitiesPage() {
     // Ref for filter dropdown
     const filterDropdownRef = useRef<HTMLDivElement>(null);
 
-    // Fetch real students from Supabase (filtered by educator's assigned classes)
+    // Fetch real learners from Supabase (filtered by educator's assigned classes)
     useEffect(() => {
-        const fetchStudents = async () => {
+        const fetchlearners = async () => {
             try {
-                setLoadingStudents(true);
+                setLoadinglearners(true);
                 
                 // Wait for educator school data to be loaded
                 if (schoolLoading || (!educatorSchool && !educatorCollege)) {
-                    setAllStudents([]);
-                    setLoadingStudents(false);
+                    setAlllearners([]);
+                    setLoadinglearners(false);
                     return;
                 }
 
-                logger.info('Fetching students for educator type', { educatorType });
+                logger.info('Fetching learners for educator type', { educatorType });
                 
-                let students: Student[] = [];
+                let learners: Learner[] = [];
                 
                 if (educatorType === 'school' && educatorSchool) {
                     // For school educators, filter by assigned classes
                     if (assignedClassIds && assignedClassIds.length > 0) {
-                        logger.info('Fetching students for assigned classes', { assignedClassIds });
+                        logger.info('Fetching learners for assigned classes', { assignedClassIds });
                         const { data, error } = await supabase
-                            .from('students')
+                            .from('learners')
                             .select('id, user_id, email, name, grade, section, roll_number, school_id, school_class_id')
                             .eq('school_id', educatorSchool.id)
                             .in('school_class_id', assignedClassIds)
@@ -688,76 +688,76 @@ export default function ClubsActivitiesPage() {
                             .order('name');
 
                         if (error) {
-                            logger.error('Error fetching students', error);
+                            logger.error('Error fetching learners', error);
                         } else {
-                            students = (data || []) as any[];
+                            learners = (data || []) as any[];
                         }
                     } else {
                         // Fallback for admins or educators without class assignments
-                        logger.info('Fetching all school students (admin/no assignments)');
+                        logger.info('Fetching all school learners (admin/no assignments)');
                         const { data, error } = await supabase
-                            .from('students')
+                            .from('learners')
                             .select('id, user_id, email, name, grade, section, roll_number, school_id, school_class_id')
                             .eq('school_id', educatorSchool.id)
                             .eq('is_deleted', false)
                             .order('name');
 
                         if (error) {
-                            logger.error('Error fetching students', error);
+                            logger.error('Error fetching learners', error);
                         } else {
-                            students = (data || []) as any[];
+                            learners = (data || []) as any[];
                         }
                     }
                 } else if (educatorType === 'college' && educatorCollege) {
                     // For college educators, filter by college
-                    logger.info('Fetching college students', { collegeId: educatorCollege.id });
+                    logger.info('Fetching college learners', { collegeId: educatorCollege.id });
                     const { data, error } = await supabase
-                        .from('students')
+                        .from('learners')
                         .select('id, user_id, email, name, grade, section, roll_number, college_id')
                         .eq('college_id', educatorCollege.id)
                         .eq('is_deleted', false)
                         .order('name');
 
                     if (error) {
-                        logger.error('Error fetching college students', error);
+                        logger.error('Error fetching college learners', error);
                     } else {
-                        students = (data || []) as any[];
+                        learners = (data || []) as any[];
                     }
                 }
 
-                if (students.length === 0) {
-                    logger.info('No students found for educator');
-                    setAllStudents([]);
-                    setLoadingStudents(false);
+                if (learners.length === 0) {
+                    logger.info('No learners found for educator');
+                    setAlllearners([]);
+                    setLoadinglearners(false);
                     return;
                 }
 
-                // Map students to the format we need (using user_id as primary ID, consistent with other educator pages)
-                const mappedStudents: Student[] = students.map((student: any) => ({
-                    id: student.user_id || student.id, // Use user_id as primary identifier
-                    user_id: student.user_id,
-                    email: student.email,
-                    name: student.name || student.email,
-                    grade: student.grade || 'N/A',
-                    section: student.section || '',
-                    rollNumber: student.roll_number || '',
-                    school_id: student.school_id || student.college_id || '',
-                    school_class_id: student.school_class_id
+                // Map learners to the format we need (using user_id as primary ID, consistent with other educator pages)
+                const mappedlearners: Learner[] = learners.map((learner: any) => ({
+                    id: learner.user_id || learner.id, // Use user_id as primary identifier
+                    user_id: learner.user_id,
+                    email: learner.email,
+                    name: learner.name || learner.email,
+                    grade: learner.grade || 'N/A',
+                    section: learner.section || '',
+                    rollNumber: learner.roll_number || '',
+                    school_id: learner.school_id || learner.college_id || '',
+                    school_class_id: learner.school_class_id
                 }));
                 
-                logger.info('Loaded students', { count: mappedStudents.length, educatorType });
-                logger.info('Sample student', { student: mappedStudents[0] });
-                setAllStudents(mappedStudents);
+                logger.info('Loaded learners', { count: mappedlearners.length, educatorType });
+                logger.info('Sample learner', { learner: mappedlearners[0] });
+                setAlllearners(mappedlearners);
                 
             } catch (err) {
-                logger.error('Error loading students', err);
-                setAllStudents([]);
+                logger.error('Error loading learners', err);
+                setAlllearners([]);
             } finally {
-                setLoadingStudents(false);
+                setLoadinglearners(false);
             }
         };
 
-        fetchStudents();
+        fetchlearners();
     }, [educatorSchool, educatorCollege, educatorType, assignedClassIds, schoolLoading]);
     const [newCompForm, setNewCompForm] = useState({
         name: "",
@@ -782,7 +782,7 @@ export default function ClubsActivitiesPage() {
     const [clubFormErrors, setClubFormErrors] = useState<Record<string, string>>({});
     
     const [registrationForm, setRegistrationForm] = useState({
-        studentEmail: "",
+        learnerEmail: "",
         teamMembers: "",
         notes: "",
         status: "upcoming"
@@ -808,9 +808,9 @@ export default function ClubsActivitiesPage() {
 
     const joinedClubIds = useMemo(() => {
         // Since club members are stored by email, we need to check using email, not ID
-        // For educator view, we don't actually need this since educators manage students, not join clubs themselves
+        // For educator view, we don't actually need this since educators manage learners, not join clubs themselves
         return new Set(); // Return empty set since educators don't join clubs
-    }, [clubs, currentStudent]);
+    }, [clubs, currentLearner]);
 
     const filteredClubs = useMemo(() => {
         return clubs.filter((c) => {
@@ -853,14 +853,14 @@ export default function ClubsActivitiesPage() {
         setCurrentCompetitionPage(1);
     }, [competitionSearchQuery, competitionStatusFilter, competitionCategoryFilter, competitionLevelFilter]);
 
-    const enrollStudent = (club: Club) => {
-        setStudentDrawer({ open: true, club: club });
+    const enrollLearner = (club: Club) => {
+        setlearnerDrawer({ open: true, club: club });
     };
 
     const leaveClub = async (_selectedClub: Club) => {
-        // This function is not used in educator interface since educators manage students, not join clubs
-        // But keeping it for consistency - would need currentStudent.email if used
-        setNotice({ type: "info", text: "Educators manage student memberships through the 'Manage' button." });
+        // This function is not used in educator interface since educators manage learners, not join clubs
+        // But keeping it for consistency - would need currentLearner.email if used
+        setNotice({ type: "info", text: "Educators manage learner memberships through the 'Manage' button." });
     };
 
     const openDetails = (club: Club) => {
@@ -881,10 +881,10 @@ export default function ClubsActivitiesPage() {
         setAttendanceRecords(records);
     };
 
-    const handleAttendanceStatusChange = (studentId: string, status: string) => {
+    const handleAttendanceStatusChange = (learnerId: string, status: string) => {
         setAttendanceRecords(prev => ({
             ...prev,
-            [studentId]: status
+            [learnerId]: status
         }));
     };
 
@@ -895,8 +895,8 @@ export default function ClubsActivitiesPage() {
         }
 
         try {
-            const attendanceRecordsArray = Object.entries(attendanceRecords).map(([studentEmail, status]) => ({
-                student_email: studentEmail,
+            const attendanceRecordsArray = Object.entries(attendanceRecords).map(([learnerEmail, status]) => ({
+                learner_email: learnerEmail,
                 status: status as "present" | "absent" | "late" | "excused"
             }));
 
@@ -932,11 +932,11 @@ export default function ClubsActivitiesPage() {
             setNotice({ type: "error", text: errorMessage });
         }
     };
-   const handleStudentEnroll = async (studentId: string, club: Club) => {
-        // Find the student to get their email first
-        const student = allStudents.find(s => s.id === studentId);
-        if (!student) {
-            setNotice({ type: "error", text: "Student not found." });
+   const handlelearnerEnroll = async (learnerId: string, club: Club) => {
+        // Find the learner to get their email first
+        const learner = alllearners.find(s => s.id === learnerId);
+        if (!learner) {
+            setNotice({ type: "error", text: "Learner not found." });
             return;
         }
 
@@ -947,18 +947,18 @@ export default function ClubsActivitiesPage() {
 
         try {
             // Double-check enrollment status by fetching fresh data from server
-            logger.info('Checking enrollment status', { email: student.email, clubId: club.club_id });
+            logger.info('Checking enrollment status', { email: learner.email, clubId: club.club_id });
             const { data: existingMembership } = await supabase
                 .from('club_memberships')
                 .select('*')
                 .eq('club_id', club.club_id)
-                .eq('student_email', student.email)
+                .eq('learner_email', learner.email)
                 .eq('status', 'active')
                 .single();
 
             if (existingMembership) {
-                logger.info('Student already enrolled (found in database)', { existingMembership });
-                setNotice({ type: "warning", text: `${student.name} is already enrolled in this club.` });
+                logger.info('Learner already enrolled (found in database)', { existingMembership });
+                setNotice({ type: "warning", text: `${learner.name} is already enrolled in this club.` });
                 
                 // Refresh club data to sync local state
                 const refreshedClubs = await clubsService.fetchClubs();
@@ -966,55 +966,55 @@ export default function ClubsActivitiesPage() {
                 return;
             }
 
-            // Check if student is already enrolled (using email, not ID) - local check
-            if (club.members?.includes(student.email)) {
-                logger.info('Student already enrolled (found in local state)');
-                setNotice({ type: "warning", text: `${student.name} is already enrolled in this club.` });
+            // Check if learner is already enrolled (using email, not ID) - local check
+            if (club.members?.includes(learner.email)) {
+                logger.info('Learner already enrolled (found in local state)');
+                setNotice({ type: "warning", text: `${learner.name} is already enrolled in this club.` });
                 return;
             }
 
-            // Check how many clubs this student is already enrolled in
-            const studentClubCount = clubs.filter(c => (c.members || []).includes(student.email)).length;
+            // Check how many clubs this learner is already enrolled in
+            const learnerClubCount = clubs.filter(c => (c.members || []).includes(learner.email)).length;
             
-            if (studentClubCount >= 5) {
+            if (learnerClubCount >= 5) {
                 setNotice({ 
                     type: "error", 
-                    text: `${student.name} is already enrolled in 5 clubs and cannot join more. Please remove them from another club first.` 
+                    text: `${learner.name} is already enrolled in 5 clubs and cannot join more. Please remove them from another club first.` 
                 });
                 return;
             }
 
-            logger.info('Proceeding with enrollment', { email: student.email });
+            logger.info('Proceeding with enrollment', { email: learner.email });
             
-            // Enroll student in database first
-            await clubsService.enrollStudent(club.club_id, student.email);
+            // Enroll learner in database first
+            await clubsService.enrollLearner(club.club_id, learner.email);
             
             logger.info('Database enrollment successful, updating local state');
             
             // Only update local state after successful database operation
             const updated = clubs.map((c) => 
                 c.club_id === club.club_id 
-                    ? { ...c, members: [...(c.members || []), student.email] } 
+                    ? { ...c, members: [...(c.members || []), learner.email] } 
                     : c
             );
             setClubs(updated);
             
-            // Refresh the student drawer with updated club data
+            // Refresh the learner drawer with updated club data
             const updatedClub = updated.find(c => c.club_id === club.club_id) || null;
-            setStudentDrawer({ open: true, club: updatedClub });
+            setlearnerDrawer({ open: true, club: updatedClub });
             
-            setNotice({ type: "success", text: `${student.name} enrolled in ${club?.name || 'club'}` });
+            setNotice({ type: "success", text: `${learner.name} enrolled in ${club?.name || 'club'}` });
             
         } catch (error: any) {
-            logger.error('Error enrolling student', error);
+            logger.error('Error enrolling learner', error);
             
             // Check for specific error messages from the backend
-            let errorMessage = "Failed to enroll student. Please try again.";
+            let errorMessage = "Failed to enroll learner. Please try again.";
             
             if (error?.message?.includes('5 clubs') || error?.message?.includes('club limit')) {
-                errorMessage = `${student.name} is already enrolled in 5 clubs and cannot join more.`;
+                errorMessage = `${learner.name} is already enrolled in 5 clubs and cannot join more.`;
             } else if (error?.code === '23505') {
-                errorMessage = `${student.name} is already enrolled in this club.`;
+                errorMessage = `${learner.name} is already enrolled in this club.`;
                 
                 // Refresh club data from server to ensure we have the latest state
                 try {
@@ -1026,7 +1026,7 @@ export default function ClubsActivitiesPage() {
                 }
                 
             } else if (error?.message?.includes('duplicate key')) {
-                errorMessage = `${student.name} is already enrolled in this club.`;
+                errorMessage = `${learner.name} is already enrolled in this club.`;
                 
                 // Refresh club data from server to ensure we have the latest state
                 try {
@@ -1045,34 +1045,34 @@ export default function ClubsActivitiesPage() {
         }
     };
 
-const handleStudentLeave = async (studentId: string, club: Club) => {
+const handlelearnerLeave = async (learnerId: string, club: Club) => {
     try {
-        // Find the student to get their email
-        const student = allStudents.find(s => s.id === studentId);
-        if (!student) {
-            setNotice({ type: "error", text: "Student not found." });
+        // Find the learner to get their email
+        const learner = alllearners.find(s => s.id === learnerId);
+        if (!learner) {
+            setNotice({ type: "error", text: "Learner not found." });
             return;
         }
 
-        // Check if student is actually a member (by email, not ID)
-        if (!(club.members || []).includes(student.email)) {
-            setNotice({ type: "warning", text: `${student.name} is not a member of this club.` });
+        // Check if learner is actually a member (by email, not ID)
+        if (!(club.members || []).includes(learner.email)) {
+            setNotice({ type: "warning", text: `${learner.name} is not a member of this club.` });
             return;
         }
 
-        await clubsService.removeStudent(club.club_id, student.email);
+        await clubsService.removeLearner(club.club_id, learner.email);
         
         const updated = clubs.map((c) => 
             c.club_id === club.club_id 
-                ? { ...c, members: (c.members || []).filter((m) => m !== student.email) } 
+                ? { ...c, members: (c.members || []).filter((m) => m !== learner.email) } 
                 : c
         );
         setClubs(updated);
-        setStudentDrawer({ open: true, club: updated.find(c => c.club_id === club.club_id) || null });
-        setNotice({ type: "info", text: `${student.name} removed from ${club?.name || 'club'}` });
+        setlearnerDrawer({ open: true, club: updated.find(c => c.club_id === club.club_id) || null });
+        setNotice({ type: "info", text: `${learner.name} removed from ${club?.name || 'club'}` });
     } catch (error: any) {
-        logger.error('Error removing student', error);
-        setNotice({ type: "error", text: "Failed to remove student. Please try again." });
+        logger.error('Error removing learner', error);
+        setNotice({ type: "error", text: "Failed to remove learner. Please try again." });
     }
 };
 
@@ -1090,9 +1090,9 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 return reportData.map(row => ({
                     "Club Name": row.club_name || 'N/A',
                     "Category": row.category || 'N/A',
-                    "Student Count": row.student_count || 0,
+                    "Learner Count": row.learner_count || 0,
                     "Capacity": row.capacity || 0,
-                    "Utilization %": row.capacity ? Math.round((row.student_count / row.capacity) * 100) + '%' : '0%',
+                    "Utilization %": row.capacity ? Math.round((row.learner_count / row.capacity) * 100) + '%' : '0%',
                     "Average Attendance": row.avg_attendance ? row.avg_attendance + '%' : 'N/A',
                     "Total Sessions": row.total_sessions || 0,
                     "Active Status": row.is_active ? 'Active' : 'Inactive',
@@ -1115,7 +1115,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 return {
                     "Club Name": club.name || 'N/A',
                     "Category": club.category || 'N/A',
-                    "Student Count": memberCount,
+                    "Learner Count": memberCount,
                     "Capacity": club.capacity || 0,
                     "Utilization %": utilizationPercent + '%',
                     "Average Attendance": club.avgAttendance ? club.avgAttendance + '%' : 'N/A',
@@ -1133,7 +1133,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             return clubs?.map((club) => ({
                 "Club Name": club.name || 'N/A',
                 "Category": club.category || 'N/A',
-                "Student Count": club.members?.length || 0,
+                "Learner Count": club.members?.length || 0,
                 "Capacity": club.capacity || 0,
                 "Status": 'Active'
             })) || [];
@@ -1158,8 +1158,8 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                     "Date": row.competition_date ? new Date(row.competition_date).toLocaleDateString() : 'N/A',
                     "Status": row.status || 'N/A',
                     "Total Participants": row.total_participants || 0,
-                    "Registered Students": row.registered_students || 0,
-                    "Results Summary": row.student_results || 'N/A',
+                    "Registered Learners": row.registered_learners || 0,
+                    "Results Summary": row.learner_results || 'N/A',
                     "Awards Won": row.awards_won || 'N/A',
                     "Average Score": row.avg_score || 'N/A'
                 }));
@@ -1672,15 +1672,15 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
     };
 
     const handleRegisterCompetition = async () => {
-        if (!registrationForm.studentEmail) {
-            setNotice({ type: "error", text: "Please select a student" });
+        if (!registrationForm.learnerEmail) {
+            setNotice({ type: "error", text: "Please select a learner" });
             return;
         }
 
-        // Get student details from allStudents
-        const student = allStudents.find(s => s.email === registrationForm.studentEmail);
-        if (!student) {
-            setNotice({ type: "error", text: "Student not found" });
+        // Get learner details from alllearners
+        const learner = alllearners.find(s => s.email === registrationForm.learnerEmail);
+        if (!learner) {
+            setNotice({ type: "error", text: "Learner not found" });
             return;
         }
 
@@ -1707,18 +1707,18 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 // Create new registration
                 await competitionsService.registerForCompetition(
                     registerCompModal?.comp_id,
-                    registrationForm.studentEmail,
+                    registrationForm.learnerEmail,
                     {
-                        studentName: student.name,
-                        studentId: student.email,
-                        grade: student.grade,
+                        learnerName: learner.name,
+                        learnerId: learner.email,
+                        grade: learner.grade,
                         teamMembers: registrationForm.teamMembers,
                         notes: registrationForm.notes
                     }
                 );
                 setNotice({
                     type: "success",
-                    text: `${student?.name || 'Student'} registered for ${registerCompModal?.name || 'competition'}!`
+                    text: `${learner?.name || 'Learner'} registered for ${registerCompModal?.name || 'competition'}!`
                 });
             }
 
@@ -1741,7 +1741,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             await loadCompetitionRegistrations(registerCompModal.comp_id);
             
             // Reset form
-            setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
+            setRegistrationForm({ learnerEmail: "", teamMembers: "", notes: "", status: "upcoming" });
             setEditingRegistration(null);
         } catch (error: any) {
             logger.error('Error registering for competition', error);
@@ -1752,7 +1752,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
     const handleEditRegistration = (registration: any) => {
         setEditingRegistration(registration);
         setRegistrationForm({
-            studentEmail: registration.student_email,
+            learnerEmail: registration.learner_email,
             teamMembers: registration.team_members?.members?.join(', ') || '',
             notes: registration.notes || '',
             status: registration.status || 'upcoming'
@@ -1776,7 +1776,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
 
     const handleCancelEdit = () => {
         setEditingRegistration(null);
-        setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
+        setRegistrationForm({ learnerEmail: "", teamMembers: "", notes: "", status: "upcoming" });
     };
 
     // Bulk upload functionality
@@ -1817,30 +1817,30 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 
                 try {
                     // Validate required fields
-                    if (!row.student_email) {
-                        errors.push(`Row ${i + 2}: Student email is required`);
+                    if (!row.learner_email) {
+                        errors.push(`Row ${i + 2}: Learner email is required`);
                         errorCount++;
                         continue;
                     }
 
-                    // Find student in our system
-                    const student = allStudents.find(s => 
-                        s.email.toLowerCase() === row.student_email.toLowerCase()
+                    // Find learner in our system
+                    const learner = alllearners.find(s => 
+                        s.email.toLowerCase() === row.learner_email.toLowerCase()
                     );
 
-                    if (!student) {
-                        errors.push(`Row ${i + 2}: Student ${row.student_email} not found in system`);
+                    if (!learner) {
+                        errors.push(`Row ${i + 2}: Learner ${row.learner_email} not found in system`);
                         errorCount++;
                         continue;
                     }
 
                     // Check if already registered
                     const existingRegistration = competitionRegistrations.find(reg => 
-                        reg.student_email.toLowerCase() === row.student_email.toLowerCase()
+                        reg.learner_email.toLowerCase() === row.learner_email.toLowerCase()
                     );
 
                     if (existingRegistration) {
-                        errors.push(`Row ${i + 2}: Student ${row.student_email} is already registered`);
+                        errors.push(`Row ${i + 2}: Learner ${row.learner_email} is already registered`);
                         errorCount++;
                         continue;
                     }
@@ -1851,14 +1851,14 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                         teamMembers = row.team_members.split(',').map((name: string) => name.trim()).filter((name: string) => name);
                     }
 
-                    // Register the student
+                    // Register the learner
                     await competitionsService.registerForCompetition(
                         registerCompModal.comp_id,
-                        row.student_email,
+                        row.learner_email,
                         {
-                            studentName: student.name,
-                            studentId: student.email,
-                            grade: student.grade,
+                            learnerName: learner.name,
+                            learnerId: learner.email,
+                            grade: learner.grade,
                             teamMembers: teamMembers.join(', '),
                             notes: row.notes || ''
                         }
@@ -1878,7 +1878,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             if (successCount > 0) {
                 setNotice({ 
                     type: "success", 
-                    text: `Bulk upload completed! ${successCount} students registered successfully${errorCount > 0 ? `, ${errorCount} errors` : ''}` 
+                    text: `Bulk upload completed! ${successCount} learners registered successfully${errorCount > 0 ? `, ${errorCount} errors` : ''}` 
                 });
                 
                 // Reload registrations
@@ -1912,12 +1912,12 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
     const downloadBulkTemplate = () => {
         const templateData = [
             {
-                student_email: "student1@example.com",
+                learner_email: "learner1@example.com",
                 team_members: "John Doe, Jane Smith",
                 notes: "Special requirements or notes"
             },
             {
-                student_email: "student2@example.com", 
+                learner_email: "learner2@example.com", 
                 team_members: "",
                 notes: "Individual participation"
             }
@@ -1929,7 +1929,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
         
         // Auto-size columns
         worksheet['!cols'] = [
-            { wch: 30 }, // student_email
+            { wch: 30 }, // learner_email
             { wch: 40 }, // team_members  
             { wch: 50 }  // notes
         ];
@@ -2804,7 +2804,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                                     key={club.club_id}
                                                     club={club}
                                                     isJoined={joinedClubIds.has(club.club_id)}
-                                                    onJoin={enrollStudent}
+                                                    onJoin={enrollLearner}
                                                     onLeave={leaveClub}
                                                     onOpenDetails={openDetails}
                                                     onEdit={handleEditClub}
@@ -2886,9 +2886,9 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                                                             <Eye size={16} />
                                                                         </button>
                                                                         <button
-                                                                            onClick={() => enrollStudent(club)}
+                                                                            onClick={() => enrollLearner(club)}
                                                                             className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-lg transition-colors"
-                                                                            title="Manage Students"
+                                                                            title="Manage Learners"
                                                                         >
                                                                             <UserPlus size={16} />
                                                                         </button>
@@ -3068,7 +3068,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                                                                     className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2"
                                                                                 >
                                                                                     <UserPlus size={14} />
-                                                                                    Register Students
+                                                                                    Register Learners
                                                                                 </button>
                                                                                 
                                                                                 <div className="border-t border-gray-100 my-1"></div>
@@ -3258,7 +3258,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                                                         <button
                                                                             onClick={() => setRegisterCompModal(comp)}
                                                                             className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-lg transition-colors"
-                                                                            title="Register Students"
+                                                                            title="Register Learners"
                                                                         >
                                                                             <UserPlus size={16} />
                                                                         </button>
@@ -3332,7 +3332,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                             <div className="flex items-center gap-3 flex-wrap">
                                 <button 
                                     onClick={() => { 
-                                        enrollStudent(selectedClub); 
+                                        enrollLearner(selectedClub); 
                                         setDetailsOpen(false); 
                                     }} 
                                     className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
@@ -3680,7 +3680,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                     onClose={() => {
                         setRegisterCompModal(null);
                         setEditingRegistration(null);
-                        setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
+                        setRegistrationForm({ learnerEmail: "", teamMembers: "", notes: "", status: "upcoming" });
                         setRegistrationTab("individual");
                         setBulkUploadFile(null);
                         setBulkUploadProgress(null);
@@ -3744,15 +3744,15 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                 {/* Existing Registrations */}
                                 {!editingRegistration && competitionRegistrations.length > 0 && (
                                     <div className="border rounded-lg p-3 bg-gray-50">
-                                        <h4 className="text-sm font-semibold mb-2">Registered Students ({competitionRegistrations.length})</h4>
+                                        <h4 className="text-sm font-semibold mb-2">Registered Learners ({competitionRegistrations.length})</h4>
                                         <div className="space-y-2 max-h-48 overflow-y-auto">
                                             {competitionRegistrations.map((reg) => {
-                                                const student = allStudents.find(s => s.email === reg.student_email);
+                                                const learner = alllearners.find(s => s.email === reg.learner_email);
                                                 return (
                                                     <div key={reg.registration_id} className="flex items-center justify-between p-2 bg-white rounded border">
                                                         <div className="flex-1">
-                                                            <div className="font-medium text-sm">{student?.name || reg.student_email}</div>
-                                                            <div className="text-xs text-slate-500">{student?.grade || 'N/A'} • {reg.student_email}</div>
+                                                            <div className="font-medium text-sm">{learner?.name || reg.learner_email}</div>
+                                                            <div className="text-xs text-slate-500">{learner?.grade || 'N/A'} • {reg.learner_email}</div>
                                                             {reg.team_members?.members && (
                                                                 <div className="text-xs text-blue-600 mt-1">Team: {reg.team_members.members.join(', ')}</div>
                                                             )}
@@ -3784,31 +3784,31 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                     
                                     <div className="space-y-3">
                                         <div>
-                                            <label className="block text-sm font-medium mb-1">Student Email *</label>
+                                            <label className="block text-sm font-medium mb-1">Learner Email *</label>
                                             <select
-                                                value={registrationForm.studentEmail}
-                                                onChange={(e) => setRegistrationForm({ ...registrationForm, studentEmail: e.target.value })}
+                                                value={registrationForm.learnerEmail}
+                                                onChange={(e) => setRegistrationForm({ ...registrationForm, learnerEmail: e.target.value })}
                                                 disabled={!!editingRegistration}
                                                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                                             >
-                                                <option value="">Select a student</option>
-                                                {allStudents.map((student) => (
-                                                    <option key={student.email} value={student.email}>
-                                                        {student.name} - {student.grade} ({student.email})
+                                                <option value="">Select a learner</option>
+                                                {alllearners.map((learner) => (
+                                                    <option key={learner.email} value={learner.email}>
+                                                        {learner.name} - {learner.grade} ({learner.email})
                                                     </option>
                                                 ))}
                                             </select>
                                         </div>
 
-                                        {registrationForm.studentEmail && (() => {
-                                            const selectedStudent = allStudents.find(s => s.email === registrationForm.studentEmail);
-                                            return selectedStudent ? (
+                                        {registrationForm.learnerEmail && (() => {
+                                            const selectedLearner = alllearners.find(s => s.email === registrationForm.learnerEmail);
+                                            return selectedLearner ? (
                                                 <div className="bg-green-50 p-3 rounded-lg text-sm">
-                                                    <div className="font-medium text-green-900">Selected Student:</div>
+                                                    <div className="font-medium text-green-900">Selected Learner:</div>
                                                     <div className="text-green-700 mt-1">
-                                                        <div>Name: {selectedStudent.name}</div>
-                                                        <div>Grade/Class: {selectedStudent.grade}</div>
-                                                        <div>Email: {selectedStudent.email}</div>
+                                                        <div>Name: {selectedLearner.name}</div>
+                                                        <div>Grade/Class: {selectedLearner.grade}</div>
+                                                        <div>Email: {selectedLearner.email}</div>
                                                     </div>
                                                 </div>
                                             ) : null;
@@ -3873,7 +3873,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                         onClick={() => {
                                             setRegisterCompModal(null);
                                             setEditingRegistration(null);
-                                            setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
+                                            setRegistrationForm({ learnerEmail: "", teamMembers: "", notes: "", status: "upcoming" });
                                         }}
                                         className="px-4 py-2 border rounded-md hover:bg-gray-50"
                                     >
@@ -3891,7 +3891,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                     <div className="bg-blue-50 p-3 rounded-lg">
                                         <div className="flex items-center justify-between">
                                             <div className="text-sm font-medium text-blue-900">
-                                                Current Registrations: {competitionRegistrations.length} students
+                                                Current Registrations: {competitionRegistrations.length} learners
                                             </div>
                                             <button
                                                 onClick={() => setRegistrationTab("individual")}
@@ -3910,11 +3910,11 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                         <div>
                                             <h4 className="text-sm font-semibold text-amber-900 mb-2">Bulk Upload Instructions</h4>
                                             <ul className="text-xs text-amber-800 space-y-1">
-                                                <li>• Download the template file and fill in student details</li>
-                                                <li>• Student emails must match exactly with students in your system</li>
+                                                <li>• Download the template file and fill in learner details</li>
+                                                <li>• Learner emails must match exactly with learners in your system</li>
                                                 <li>• Team members should be comma-separated (optional)</li>
                                                 <li>• Save as Excel (.xlsx) or CSV format</li>
-                                                <li>• Maximum 100 students per upload</li>
+                                                <li>• Maximum 100 learners per upload</li>
                                             </ul>
                                         </div>
                                     </div>
@@ -3981,7 +3981,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                         disabled={!bulkUploadFile || !!bulkUploadProgress}
                                         className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                                     >
-                                        {bulkUploadProgress ? 'Processing...' : 'Upload & Register Students'}
+                                        {bulkUploadProgress ? 'Processing...' : 'Upload & Register Learners'}
                                     </button>
                                     <button
                                         onClick={() => {
@@ -4417,7 +4417,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                 </div>
                             </div>
 
-                            {/* Student List */}
+                            {/* Learner List */}
                             <div>
                                 <div className="flex items-center justify-between mb-2">
                                     <h4 className="text-sm font-semibold text-gray-900">Mark Attendance</h4>
@@ -4448,9 +4448,9 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                 <div className="max-h-80 overflow-y-auto space-y-2 border rounded-lg p-3 bg-gray-50">
                                     {(attendanceModal.club?.members?.length || 0) > 0 ? (
                                         attendanceModal.club?.members?.map((memberEmail, index) => {
-                                            const student = allStudents.find(s => s.email === memberEmail);
-                                            const studentName = student?.name || memberEmail;
-                                            const studentGrade = student?.grade || 'N/A';
+                                            const learner = alllearners.find(s => s.email === memberEmail);
+                                            const learnerName = learner?.name || memberEmail;
+                                            const learnerGrade = learner?.grade || 'N/A';
                                             
                                             return (
                                                 <div
@@ -4458,8 +4458,8 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                                     className="flex items-center justify-between p-3 bg-white rounded-lg border hover:shadow-sm"
                                                 >
                                                     <div className="flex-1">
-                                                        <div className="font-medium text-sm">{studentName}</div>
-                                                        <div className="text-xs text-slate-500">{studentGrade}</div>
+                                                        <div className="font-medium text-sm">{learnerName}</div>
+                                                        <div className="text-xs text-slate-500">{learnerGrade}</div>
                                                     </div>
 
                                                     <div className="flex gap-1">
@@ -4538,17 +4538,17 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 </Modal>
 
                 <Modal
-    open={studentDrawer.open}
+    open={learnerDrawer.open}
     onClose={() => {
-        setStudentDrawer({ open: false, club: null });
-        setStudentSearchQuery("");
+        setlearnerDrawer({ open: false, club: null });
+        setlearnerSearchQuery("");
     }}
-    title={`Manage Students - ${studentDrawer.club?.name ?? ""}`}
+    title={`Manage Learners - ${learnerDrawer.club?.name ?? ""}`}
 >
-    {studentDrawer.club && (
+    {learnerDrawer.club && (
         <div className="space-y-3">
             <div className="text-sm text-slate-600 mb-4">
-                Current Members: {studentDrawer.club?.members?.length || 0} / {studentDrawer.club?.capacity || 0}
+                Current Members: {learnerDrawer.club?.members?.length || 0} / {learnerDrawer.club?.capacity || 0}
             </div>
 
             {/* Search Bar */}
@@ -4556,14 +4556,14 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
                 <input
                     type="text"
-                    value={studentSearchQuery}
-                    onChange={(e) => setStudentSearchQuery(e.target.value)}
+                    value={learnerSearchQuery}
+                    onChange={(e) => setlearnerSearchQuery(e.target.value)}
                     placeholder="Search by name, email, or grade..."
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-                {studentSearchQuery && (
+                {learnerSearchQuery && (
                     <button
-                        onClick={() => setStudentSearchQuery("")}
+                        onClick={() => setlearnerSearchQuery("")}
                         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     >
                         <X size={18} />
@@ -4571,40 +4571,40 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 )}
             </div>
 
-            {loadingStudents ? (
+            {loadinglearners ? (
                 <div className="text-center py-8 text-slate-500">
-                    Loading students...
+                    Loading learners...
                 </div>
-            ) : allStudents.length === 0 ? (
+            ) : alllearners.length === 0 ? (
                 <div className="text-center py-8 text-slate-500">
-                    No students found. Students will appear here once they register.
+                    No learners found. Learners will appear here once they register.
                 </div>
             ) : (() => {
-                const filteredStudents = allStudents.filter((student) => {
-                    if (!studentSearchQuery) return true;
-                    const query = studentSearchQuery.toLowerCase();
+                const filteredlearners = alllearners.filter((learner) => {
+                    if (!learnerSearchQuery) return true;
+                    const query = learnerSearchQuery.toLowerCase();
                     return (
-                        student.name.toLowerCase().includes(query) ||
-                        student.email.toLowerCase().includes(query) ||
-                        student.grade.toLowerCase().includes(query)
+                        learner.name.toLowerCase().includes(query) ||
+                        learner.email.toLowerCase().includes(query) ||
+                        learner.grade.toLowerCase().includes(query)
                     );
                 });
 
-                if (filteredStudents.length === 0) {
+                if (filteredlearners.length === 0) {
                     return (
                         <div className="text-center py-8 text-slate-500">
-                            {studentSearchQuery ? (
+                            {learnerSearchQuery ? (
                                 <>
-                                    No students found matching "{studentSearchQuery}"
+                                    No learners found matching "{learnerSearchQuery}"
                                     <button
-                                        onClick={() => setStudentSearchQuery("")}
+                                        onClick={() => setlearnerSearchQuery("")}
                                         className="block mx-auto mt-2 text-blue-600 hover:underline text-sm"
                                     >
                                         Clear search
                                     </button>
                                 </>
                             ) : (
-                                "No students available"
+                                "No learners available"
                             )}
                         </div>
                     );
@@ -4612,23 +4612,23 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
 
                 return (
                     <div className="max-h-96 overflow-y-auto space-y-2">
-                        {filteredStudents.map((student) => {
-                            const isEnrolled = studentDrawer.club?.members?.includes(student.email) || false;
-                            const isFull = (studentDrawer.club?.members?.length || 0) >= (studentDrawer.club?.capacity || 0);
+                        {filteredlearners.map((learner) => {
+                            const isEnrolled = learnerDrawer.club?.members?.includes(learner.email) || false;
+                            const isFull = (learnerDrawer.club?.members?.length || 0) >= (learnerDrawer.club?.capacity || 0);
 
                             return (
                                 <div
-                                    key={student.id}
+                                    key={learner.id}
                                     className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100"
                                 >
                                     <div>
-                                        <div className="font-medium text-sm">{student.name}</div>
-                                        <div className="text-xs text-slate-500">{student.grade} • {student.email}</div>
+                                        <div className="font-medium text-sm">{learner.name}</div>
+                                        <div className="text-xs text-slate-500">{learner.grade} • {learner.email}</div>
                                     </div>
 
                                     {isEnrolled ? (
                                         <button
-                                            onClick={() => studentDrawer.club && handleStudentLeave(student.id, studentDrawer.club)}
+                                            onClick={() => learnerDrawer.club && handlelearnerLeave(learner.id, learnerDrawer.club)}
                                             className="flex items-center gap-1 px-3 py-1 text-sm bg-red-50 text-red-600 rounded-md border border-red-100 hover:bg-red-100"
                                         >
                                             <X size={14} />
@@ -4637,7 +4637,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                     ) : (
                                         <button
                                             disabled={isFull}
-                                            onClick={() => studentDrawer.club && handleStudentEnroll(student.id, studentDrawer.club)}
+                                            onClick={() => learnerDrawer.club && handlelearnerEnroll(learner.id, learnerDrawer.club)}
                                             className={`flex items-center gap-1 px-3 py-1 text-sm rounded-md ${
                                                 isFull
                                                     ? "bg-gray-200 text-gray-500 cursor-not-allowed"
@@ -4658,8 +4658,8 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             <div className="pt-4 border-t">
                 <button
                     onClick={() => {
-                        setStudentDrawer({ open: false, club: null });
-                        setStudentSearchQuery("");
+                        setlearnerDrawer({ open: false, club: null });
+                        setlearnerSearchQuery("");
                     }}
                     className="w-full px-4 py-2 border rounded-md hover:bg-gray-50"
                 >

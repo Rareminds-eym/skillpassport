@@ -98,7 +98,7 @@ export interface Conversation {
     id: string;
 
     // Participant IDs (role-specific)
-    student_id?: string;
+    learner_id?: string;
     recruiter_id?: string;
     educator_id?: string;
     school_id?: string;
@@ -128,21 +128,21 @@ export interface Conversation {
     last_message_sender?: string;
 
     // Unread counts per role
-    student_unread_count: number;
+    learner_unread_count: number;
     recruiter_unread_count: number;
     educator_unread_count: number;
     admin_unread_count?: number;
     college_admin_unread_count?: number;
 
     // Soft delete flags per role
-    deleted_by_student?: boolean;
+    deleted_by_learner?: boolean;
     deleted_by_recruiter?: boolean;
     deleted_by_educator?: boolean;
     deleted_by_admin?: boolean;
     deleted_by_college_admin?: boolean;
 
     // Archive flags per role
-    archived_by_student?: boolean;
+    archived_by_learner?: boolean;
     archived_by_recruiter?: boolean;
     archived_by_educator?: boolean;
     archived_by_admin?: boolean;
@@ -155,7 +155,7 @@ export interface Conversation {
     updated_at: string;
 
     // Joined data (populated by queries)
-    student?: any;
+    learner?: any;
     recruiter?: any;
     educator?: any;
     application?: any;

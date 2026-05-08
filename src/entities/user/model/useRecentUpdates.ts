@@ -34,15 +34,15 @@ export const useRecentUpdates = () => {
   const [recentUpdates, setRecentUpdates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [studentId, setStudentId] = useState(null);
+  const [learnerId, setLearnerId] = useState(null);
   const [userEmail, setUserEmail] = useState(null);
 
-  // 1️⃣ Resolve student ID by email
-  const fetchStudentIdByEmail = async (email) => {
+  // 1️⃣ Resolve learner ID by email
+  const fetchLearnerIdByEmail = async (email) => {
     try {
 
       const { data, error } = await supabase
-        .from("students")
+        .from("learners")
         .select("id, profile")
         .eq("profile->>email", email)
         .maybeSingle();
@@ -50,21 +50,21 @@ export const useRecentUpdates = () => {
       if (error) throw error;
 
       if (!data) {
-        setStudentId(null);
+        setLearnerId(null);
         return null;
       }
 
-      setStudentId(data.id);
+      setLearnerId(data.id);
       return data.id;
     } catch (err) {
-      logger.error('Failed to find student by email', err instanceof Error ? err : new Error(String(err)), { email });
+      logger.error('Failed to find learner by email', err instanceof Error ? err : new Error(String(err)), { email });
       setError(err.message);
-      setStudentId(null);
+      setLearnerId(null);
       return null;
     }
   };
 
-  // 2️⃣ Fetch recent updates by student_id
+  // 2️⃣ Fetch recent updates by learner_id
   const fetchRecentUpdates = async (resolvedId) => {
     if (!resolvedId) {
       return;
@@ -76,7 +76,7 @@ export const useRecentUpdates = () => {
       const { data, error: updatesError } = await supabase
         .from("recent_updates")
         .select("*")
-        .eq("student_id", resolvedId)
+        .eq("learner_id", resolvedId)
         .maybeSingle();
 
       if (updatesError) throw updatesError;
@@ -123,7 +123,7 @@ export const useRecentUpdates = () => {
     }
   };
 
-  // 3️⃣ Get user email and fetch studentId
+  // 3️⃣ Get user email and fetch learnerId
   useEffect(() => {
     const email =
       localStorage.getItem("userEmail") ||
@@ -136,13 +136,13 @@ export const useRecentUpdates = () => {
     }
 
     setUserEmail(email);
-    fetchStudentIdByEmail(email);
+    fetchLearnerIdByEmail(email);
   }, []);
 
-  // 4️⃣ Once studentId is available, fetch updates
+  // 4️⃣ Once learnerId is available, fetch updates
   useEffect(() => {
-    if (studentId) fetchRecentUpdates(studentId);
-  }, [studentId]);
+    if (learnerId) fetchRecentUpdates(learnerId);
+  }, [learnerId]);
 
   // 5️⃣ Auto-refresh timestamps every 60s
   useEffect(() => {
@@ -159,7 +159,7 @@ export const useRecentUpdates = () => {
   }, [recentUpdates.length]);
 
   const refreshRecentUpdates = async () => {
-    if (studentId) await fetchRecentUpdates(studentId);
+    if (learnerId) await fetchRecentUpdates(learnerId);
   };
 
   return {
@@ -167,7 +167,7 @@ export const useRecentUpdates = () => {
     loading,
     error,
     refreshRecentUpdates,
-    studentId,
+    learnerId,
     userEmail,
   };
 };

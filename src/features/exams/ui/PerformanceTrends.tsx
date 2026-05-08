@@ -35,21 +35,21 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ exams }) => {
   const calculatePerformanceData = () => {
     const subjectPerformance: Record<string, { total: number; passed: number; marks: number[] }> = {};
     const gradeDistribution = { 'A+': 0, 'A': 0, 'B+': 0, 'B': 0, 'C': 0, 'D': 0, 'F': 0 };
-    let totalStudentExamInstances = 0;
+    let totallearnerExamInstances = 0;
     let totalPassedInstances = 0;
 
-    // Track all unique students across all exams for grade distribution
-    const allStudentExamResults: Array<{studentId: string, examId: string, overallPassed: boolean, percentage: number}> = [];
+    // Track all unique learners across all exams for grade distribution
+    const alllearnerExamResults: Array<{learnerId: string, examId: string, overallPassed: boolean, percentage: number}> = [];
 
     // Aggregate data across ALL published exams for overall trends
     publishedExams.forEach(exam => {
       // Calculate grade distribution for each exam (strict absence policy)
-      const allStudents = exam.marks.flatMap(m => m.studentMarks);
-      const uniqueStudents = Array.from(new Set(allStudents.map(s => s.studentId)));
+      const alllearners = exam.marks.flatMap(m => m.learnerMarks);
+      const uniquelearners = Array.from(new Set(alllearners.map(s => s.learnerId)));
 
-      uniqueStudents.forEach(studentId => {
-        const studentSubjectMarks = exam.marks.map(subjectMark => {
-          const mark = subjectMark.studentMarks.find(sm => sm.studentId === studentId);
+      uniquelearners.forEach(learnerId => {
+        const learnerSubjectMarks = exam.marks.map(subjectMark => {
+          const mark = subjectMark.learnerMarks.find(sm => sm.learnerId === learnerId);
           const subject = exam.subjects.find(s => s.id === subjectMark.subjectId);
           return {
             subjectName: subjectMark.subjectName,
@@ -60,34 +60,34 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ exams }) => {
           };
         });
 
-        const appearedSubjects = studentSubjectMarks.filter(sm => !sm.isAbsent);
-        const passedSubjects = studentSubjectMarks.filter(sm => sm.passed);
+        const appearedSubjects = learnerSubjectMarks.filter(sm => !sm.isAbsent);
+        const passedSubjects = learnerSubjectMarks.filter(sm => sm.passed);
         
-        // Student passes overall ONLY if appeared for ALL subjects AND passed all
+        // Learner passes overall ONLY if appeared for ALL subjects AND passed all
         const overallPassed = appearedSubjects.length === exam.subjects.length && passedSubjects.length === exam.subjects.length;
         
         let percentage = 0;
         if (appearedSubjects.length === exam.subjects.length) {
-          // Student appeared for all subjects - calculate percentage
+          // Learner appeared for all subjects - calculate percentage
           const totalMarks = appearedSubjects.reduce((sum, sm) => sum + (sm.marks || 0), 0);
           const maxMarks = appearedSubjects.reduce((sum, sm) => sum + sm.totalMarks, 0);
           percentage = maxMarks > 0 ? Math.round((totalMarks / maxMarks) * 100) : 0;
         }
 
-        allStudentExamResults.push({
-          studentId,
+        alllearnerExamResults.push({
+          learnerId,
           examId: exam.id,
           overallPassed,
           percentage
         });
 
-        // Update subject-wise performance for each subject this student encountered
-        studentSubjectMarks.forEach(sm => {
+        // Update subject-wise performance for each subject this learner encountered
+        learnerSubjectMarks.forEach(sm => {
           if (!subjectPerformance[sm.subjectName]) {
             subjectPerformance[sm.subjectName] = { total: 0, passed: 0, marks: [] };
           }
           subjectPerformance[sm.subjectName].total++;
-          totalStudentExamInstances++;
+          totallearnerExamInstances++;
 
           if (!sm.isAbsent && sm.marks !== null) {
             subjectPerformance[sm.subjectName].marks.push(sm.marks);
@@ -96,13 +96,13 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ exams }) => {
               totalPassedInstances++;
             }
           }
-          // Absent students are counted in total but not in passed (they fail)
+          // Absent learners are counted in total but not in passed (they fail)
         });
       });
     });
 
-    // Calculate grade distribution from all student-exam results
-    allStudentExamResults.forEach(result => {
+    // Calculate grade distribution from all learner-exam results
+    alllearnerExamResults.forEach(result => {
       if (result.overallPassed && result.percentage > 0) {
         const grade = result.percentage >= 90 ? 'A+' : 
                      result.percentage >= 80 ? 'A' : 
@@ -116,7 +116,7 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ exams }) => {
     });
 
     // Calculate overall pass rate across all subject instances
-    const overallPassRate = totalStudentExamInstances > 0 ? (totalPassedInstances / totalStudentExamInstances) * 100 : 0;
+    const overallPassRate = totallearnerExamInstances > 0 ? (totalPassedInstances / totallearnerExamInstances) * 100 : 0;
     
     // Find best and worst performing subjects
     const subjectAverages = Object.entries(subjectPerformance).map(([name, data]) => ({
@@ -142,7 +142,7 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ exams }) => {
       overallAverage: overallPassRate,
       topPerformer,
       needsAttention,
-      totalStudents: Object.values(gradeDistribution).reduce((sum, count) => sum + count, 0)
+      totallearners: Object.values(gradeDistribution).reduce((sum, count) => sum + count, 0)
     };
   };
 
@@ -188,7 +188,7 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ exams }) => {
             <h4 className="text-sm font-semibold text-green-900 mb-3">Grade Distribution</h4>
             <div className="space-y-2">
               {Object.entries(performanceData.gradeDistribution).map(([grade, count]) => {
-                const percentage = performanceData.totalStudents > 0 ? (count / performanceData.totalStudents) * 100 : 0;
+                const percentage = performanceData.totallearners > 0 ? (count / performanceData.totallearners) * 100 : 0;
                 const colors = {
                   'A+': 'bg-green-600',
                   'A': 'bg-blue-500',
@@ -299,7 +299,7 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ exams }) => {
                 </li>
                 <li className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-amber-500 rounded-full"></div>
-                  Consider additional support for struggling students
+                  Consider additional support for struggling learners
                 </li>
                 <li className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-amber-500 rounded-full"></div>

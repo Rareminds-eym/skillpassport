@@ -153,7 +153,7 @@ export const userManagementService = {
           password: Math.random().toString(36).slice(-8) + 'Temp@123',
           firstName,
           lastName,
-          role: 'college_student',
+          role: 'learner',
         });
 
         if (!result.success) {
@@ -425,7 +425,7 @@ export const userManagementService = {
   /**
    * Get users with filters
    * Property 6: User filtering correctness
-   * Fetches from both college_lecturers and students tables
+   * Fetches from both college_lecturers and learners tables
    */
   async getUsers(filters: {
     role?: string;
@@ -600,8 +600,8 @@ export const userManagementService = {
         }
       }
 
-      // NOTE: Students are NOT included in User Management
-      // Students should be managed through the Student Admission module
+      // NOTE: Learners are NOT included in User Management
+      // Learners should be managed through the Learner Admission module
 
       // Apply role filter
       let filteredUsers = users;

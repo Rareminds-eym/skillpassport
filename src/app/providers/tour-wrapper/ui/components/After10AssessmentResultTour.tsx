@@ -49,14 +49,14 @@ const After10AssessmentResultTour: React.FC = () => {
           return;
         }
 
-        // Get student record first (studentId in TourProvider is actually user_id)
-        const { data: studentData, error: studentError } = await supabase
-          .from('students')
+        // Get learner record first (learnerId in TourProvider is actually user_id)
+        const { data: learnerData, error: learnerError } = await supabase
+          .from('learners')
           .select('id')
           .eq('user_id', user.id)
           .maybeSingle();
 
-        if (studentError || !studentData) {
+        if (learnerError || !learnerData) {
           return;
         }
 
@@ -64,7 +64,7 @@ const After10AssessmentResultTour: React.FC = () => {
         const { data: resultData, error } = await supabase
           .from('personal_assessment_results')
           .select('grade_level, stream_id')
-          .eq('student_id', studentData.id)
+          .eq('learner_id', learnerData.id)
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();

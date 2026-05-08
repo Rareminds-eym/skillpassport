@@ -10,7 +10,7 @@ const logger = getLogger('UseUnreadMessagesCount');
  * @deprecated This hook is deprecated and will be removed in a future version.
  * Please use the `unreadCount` from the unified messaging hooks instead.
  * 
- * @see {@link useStudentMessages}, {@link useEducatorMessages}, {@link useRecruiterMessages}
+ * @see {@link useLearnerMessages}, {@link useEducatorMessages}, {@link useRecruiterMessages}
  */
 export const useUnreadMessagesCount = (recruiterId: string | undefined) => {
   const queryClient = useQueryClient();

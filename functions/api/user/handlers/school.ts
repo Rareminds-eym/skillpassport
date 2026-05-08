@@ -2,7 +2,7 @@
  * School signup handlers for User API
  * - School Admin signup
  * - School Educator signup  
- * - School Student signup
+ * - School Learner signup
  * 
  * Uses unified 'organizations' table with organization_type='school'
  */
@@ -10,7 +10,7 @@
 import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import type { PagesEnv } from '../../../../src/functions-lib/types';
-import type { SchoolAdminSignupRequest, EducatorSignupRequest, StudentSignupRequest } from '../types';
+import type { SchoolAdminSignupRequest, EducatorSignupRequest, LearnerSignupRequest } from '../types';
 import { sendWelcomeEmail } from '../utils/email';
 import {
   calculateAge,
@@ -345,14 +345,14 @@ export async function handleEducatorSignup(request: Request, env: PagesEnv): Pro
 
 
 /**
- * Handle school student signup
+ * Handle school learner signup
  * Verifies school exists in organizations table
  */
-export async function handleStudentSignup(request: Request, env: PagesEnv): Promise<Response> {
+export async function handleLearnerSignup(request: Request, env: PagesEnv): Promise<Response> {
   const supabaseAdmin = createSupabaseAdminClient(env);
 
   try {
-    const body = (await request.json()) as StudentSignupRequest;
+    const body = (await request.json()) as LearnerSignupRequest;
 
     if (!body.email || !body.password || !body.name || !body.schoolId) {
       return jsonResponse({ error: 'Missing required fields: email, password, name, schoolId' }, 400);
@@ -382,14 +382,14 @@ export async function handleStudentSignup(request: Request, env: PagesEnv): Prom
       return jsonResponse({ error: 'Invalid school selected' }, 400);
     }
 
-    const { data: existingStudent } = await supabaseAdmin
-      .from('students')
+    const { data: existingLearner } = await supabaseAdmin
+      .from('learners')
       .select('id')
       .eq('email', body.email.toLowerCase())
       .maybeSingle();
 
-    if (existingStudent) {
-      return jsonResponse({ error: 'A student with this email already exists' }, 400);
+    if (existingLearner) {
+      return jsonResponse({ error: 'A learner with this email already exists' }, 400);
     }
 
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -398,7 +398,7 @@ export async function handleStudentSignup(request: Request, env: PagesEnv): Prom
       email_confirm: true,
       user_metadata: {
         name: body.name,
-        role: 'school_student',
+        role: 'learner',
         phone: body.phone,
         school_id: body.schoolId,
       },
@@ -421,12 +421,12 @@ export async function handleStudentSignup(request: Request, env: PagesEnv): Prom
         email: body.email.toLowerCase(),
         firstName,
         lastName,
-        role: 'school_student',
+        role: 'learner',
         organizationId: body.schoolId,
         isActive: true,
         phone: body.phone,
         metadata: {
-          source: 'student_signup',
+          source: 'learner_signup',
           schoolId: body.schoolId,
           dateOfBirth: body.dateOfBirth,
         },
@@ -439,8 +439,8 @@ export async function handleStudentSignup(request: Request, env: PagesEnv): Prom
       const age = calculateAge(body.dateOfBirth || '');
       const fullName = `${firstName} ${lastName}`.trim();
 
-      const { data: student, error: studentError } = await supabaseAdmin
-        .from('students')
+      const { data: learner, error: learnerError } = await supabaseAdmin
+        .from('learners')
         .insert({
           id: userId,
           user_id: userId,
@@ -463,15 +463,15 @@ export async function handleStudentSignup(request: Request, env: PagesEnv): Prom
           state: body.state,
           pincode: body.pincode,
           school_id: body.schoolId,
-          student_type: 'school_student',
+          learner_type: 'learner',
           approval_status: 'approved',
           metadata: { source: 'self_signup' },
         })
         .select()
         .single();
 
-      if (studentError || !student) {
-        throw new Error(`Failed to create student profile: ${studentError?.message}`);
+      if (learnerError || !learner) {
+        throw new Error(`Failed to create learner profile: ${learnerError?.message}`);
       }
 
       await sendWelcomeEmail(
@@ -479,21 +479,21 @@ export async function handleStudentSignup(request: Request, env: PagesEnv): Prom
         body.email,
         body.name,
         body.password,
-        'school_student',
+        'learner',
         `<strong>School:</strong> ${school.name}${body.grade ? `<br><strong>Grade:</strong> ${body.grade}` : ''}`
       );
 
       return jsonResponse({
         success: true,
-        message: 'Student account created successfully!',
+        message: 'Learner account created successfully!',
         data: {
           userId,
-          studentId: student.id,
+          learnerId: learner.id,
           email: body.email,
           name: body.name,
           schoolId: body.schoolId,
           schoolName: school.name,
-          role: 'school_student',
+          role: 'learner',
         },
       });
     } catch (error) {
@@ -502,9 +502,9 @@ export async function handleStudentSignup(request: Request, env: PagesEnv): Prom
       throw error;
     }
   } catch (error) {
-    console.error('Student signup error:', error);
+    console.error('Learner signup error:', error);
     return jsonResponse(
-      { error: error instanceof Error ? error.message : 'Failed to create student account' },
+      { error: error instanceof Error ? error.message : 'Failed to create learner account' },
       500
     );
   }

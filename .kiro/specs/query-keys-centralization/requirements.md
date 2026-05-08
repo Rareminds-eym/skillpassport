@@ -2,13 +2,13 @@
 
 ## Introduction
 
-This feature centralizes React Query keys across the codebase by creating a single source of truth for query key generation. Currently, query keys are hardcoded magic strings scattered across approximately 46 files, making them difficult to maintain, prone to typos, and impossible to refactor safely. The solution introduces a centralized query key factory that generates type-safe, consistent query keys organized by domain, then migrates existing files incrementally through seven phases: Phase 0 creates the factory, then six migration phases cover student messaging, educator messaging, college/recruiter messaging, admin pages, analytics/courses, and shared hooks.
+This feature centralizes React Query keys across the codebase by creating a single source of truth for query key generation. Currently, query keys are hardcoded magic strings scattered across approximately 46 files, making them difficult to maintain, prone to typos, and impossible to refactor safely. The solution introduces a centralized query key factory that generates type-safe, consistent query keys organized by domain, then migrates existing files incrementally through seven phases: Phase 0 creates the factory, then six migration phases cover learner messaging, educator messaging, college/recruiter messaging, admin pages, analytics/courses, and shared hooks.
 
 ## Glossary
 
 - **Query_Key_Factory**: A centralized TypeScript module that generates React Query cache keys using factory functions organized by domain
 - **Magic_String**: A hardcoded string literal used directly in code without centralized definition or type safety
-- **Domain**: A logical grouping of related features (e.g., student messaging, educator messaging, analytics)
+- **Domain**: A logical grouping of related features (e.g., learner messaging, educator messaging, analytics)
 - **Migration_Phase**: A discrete set of files to be migrated together, organized by domain or feature area
 - **React_Query**: A data synchronization library for React that uses string-based cache keys to identify queries
 - **Type_Safety**: Compile-time verification that prevents invalid query key usage through TypeScript types
@@ -23,20 +23,20 @@ This feature centralizes React Query keys across the codebase by creating a sing
 #### Acceptance Criteria
 
 1. THE Query_Key_Factory SHALL be created in a new file at src/shared/lib/queryKeys/index.ts
-2. THE Query_Key_Factory SHALL export factory functions organized by domain (student, educator, college, recruiter, analytics, courses, subscription)
+2. THE Query_Key_Factory SHALL export factory functions organized by domain (learner, educator, college, recruiter, analytics, courses, subscription)
 3. THE Query_Key_Factory SHALL generate query keys as readonly arrays to prevent accidental mutation
 4. THE Query_Key_Factory SHALL support parameterized query keys that accept typed arguments (e.g., userId, conversationId)
 5. THE Query_Key_Factory SHALL provide base keys for each domain that can be used for cache invalidation
 6. WHEN a factory function is called with parameters, THE Query_Key_Factory SHALL return a query key array that includes the domain, resource type, and parameters in a consistent order
 7. THE Query_Key_Factory SHALL use TypeScript to enforce type safety for all parameters
 
-### Requirement 2: Migrate Student Messaging Files
+### Requirement 2: Migrate learner Messaging Files
 
-**User Story:** As a developer, I want student messaging files to use centralized query keys, so that student message queries are consistent and maintainable.
+**User Story:** As a developer, I want learner messaging files to use centralized query keys, so that learner message queries are consistent and maintainable.
 
 #### Acceptance Criteria
 
-1. WHEN Phase 1 migration is complete, THE System SHALL have replaced all hardcoded query keys in 9 student messaging files with Query_Key_Factory calls
+1. WHEN Phase 1 migration is complete, THE System SHALL have replaced all hardcoded query keys in 9 learner messaging files with Query_Key_Factory calls
 2. THE System SHALL migrate useStudentMessages.ts in both entities and features directories
 3. THE System SHALL migrate useStudentEducatorMessages.ts, useStudentAdminMessages.ts, useStudentCollegeAdminMessages.ts, and useStudentCollegeLecturerMessages.ts
 4. THE System SHALL migrate Messages.jsx, EducatorMessages.jsx, and Applications.jsx page components
@@ -45,7 +45,7 @@ This feature centralizes React Query keys across the codebase by creating a sing
 
 ### Requirement 3: Migrate Educator Messaging Files
 
-**User Story:** As a developer, I want educator messaging files to use centralized query keys, so that educator communication queries follow the same patterns as student messaging.
+**User Story:** As a developer, I want educator messaging files to use centralized query keys, so that educator communication queries follow the same patterns as learner messaging.
 
 #### Acceptance Criteria
 
@@ -76,7 +76,7 @@ This feature centralizes React Query keys across the codebase by creating a sing
 #### Acceptance Criteria
 
 1. WHEN Phase 4 migration is complete, THE System SHALL have replaced all hardcoded query keys in 6 admin page files with Query_Key_Factory calls
-2. THE System SHALL migrate EducatorCommunication.tsx, StudentCommunication.tsx, and StudentCollegeAdminCommunication.tsx
+2. THE System SHALL migrate EducatorCommunication.tsx, learnerCommunication.tsx, and learnerCollegeAdminCommunication.tsx
 3. THE System SHALL migrate CourseManagement.tsx, Departmentmanagement.tsx, and ExaminationManagement.tsx
 4. WHEN migration is complete, THE System SHALL maintain identical query key values to preserve existing cache behavior
 5. THE System SHALL verify that all migrated files compile without TypeScript errors
@@ -134,7 +134,7 @@ This feature centralizes React Query keys across the codebase by creating a sing
 
 #### Acceptance Criteria
 
-1. THE Query_Key_Factory SHALL export base key constants for each domain (e.g., studentMessaging, educatorMessaging, analytics)
+1. THE Query_Key_Factory SHALL export base key constants for each domain (e.g., learnerMessaging, educatorMessaging, analytics)
 2. WHEN a developer invalidates a base key, THE React_Query SHALL invalidate all queries that start with that base key prefix
 3. THE Query_Key_Factory SHALL organize keys hierarchically so that invalidating a parent key invalidates all child keys
 4. THE System SHALL document the key hierarchy and invalidation patterns for each domain

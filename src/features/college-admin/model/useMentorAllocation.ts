@@ -16,7 +16,7 @@ interface AuthUser {
 }
 import {
   getMentors,
-  getStudents,
+  getLearners,
   getMentorPeriods,
   getMentorAllocations,
   getMentorNotes,
@@ -33,7 +33,7 @@ import {
   resolveNote,
   escalateNote,
   type Mentor,
-  type Student,
+  type Learner,
   type MentorPeriod,
   type MentorAllocation,
   type MentorNote,
@@ -42,14 +42,14 @@ import {
 export interface ProcessedMentor extends Mentor {
   allocations: ProcessedAllocation[];
   current_load: number;
-  at_risk_students: number;
+  at_risk_learners: number;
   total_interventions: number;
 }
 
 export interface ProcessedAllocation {
   id: string;
   period: MentorPeriod;
-  students: Student[];
+  learners: Learner[];
   mentor_id: string;
   status: string;
   assigned_date: string;
@@ -57,7 +57,7 @@ export interface ProcessedAllocation {
   capacity?: number; // Add capacity field for compatibility
 }
 
-export interface ProcessedStudent extends Student {
+export interface ProcessedLearner extends Learner {
   allocation_id?: string;
   mentor_id?: string;
   mentor_name?: string;
@@ -70,7 +70,7 @@ export const useMentorAllocation = (collegeId: string) => {
 
   // Data states
   const [mentors, setMentors] = useState<ProcessedMentor[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
+  const [learners, setlearners] = useState<Learner[]>([]);
   const [periods, setPeriods] = useState<MentorPeriod[]>([]);
   const [allocations, setAllocations] = useState<MentorAllocation[]>([]);
   const [notes, setNotes] = useState<MentorNote[]>([]);
@@ -95,7 +95,7 @@ export const useMentorAllocation = (collegeId: string) => {
 
       const [
         mentorsData,
-        studentsData,
+        learnersData,
         periodsData,
         allocationsData,
         notesData,
@@ -103,7 +103,7 @@ export const useMentorAllocation = (collegeId: string) => {
         programsData,
       ] = await Promise.all([
         getMentors(collegeId),
-        getStudents(collegeId),
+        getLearners(collegeId),
         getMentorPeriods(collegeId),
         getMentorAllocations(collegeId),
         getMentorNotes(collegeId),
@@ -113,7 +113,7 @@ export const useMentorAllocation = (collegeId: string) => {
 
 
       setMentors(mentorsData as ProcessedMentor[]);
-      setStudents(studentsData);
+      setlearners(learnersData);
       setPeriods(periodsData);
       setAllocations(allocationsData);
       setNotes(notesData);
@@ -152,36 +152,36 @@ export const useMentorAllocation = (collegeId: string) => {
             (allocation.status === 'active' || allocation.status === 'pending')
         );
 
-        // Create the allocation object (even if no students)
+        // Create the allocation object (even if no learners)
         acc[key] = {
           id: key,
           period,
-          students: [],
+          learners: [],
           mentor_id: mentor.id,
-          status: periodAllocations.length > 0 ? 'active' : 'available', // 'available' for periods with no students
+          status: periodAllocations.length > 0 ? 'active' : 'available', // 'available' for periods with no learners
           assigned_date: periodAllocations[0]?.assigned_date || new Date().toISOString().split('T')[0],
           created_at: periodAllocations[0]?.created_at || new Date().toISOString(),
           capacity: period.default_mentor_capacity || 15, // Add capacity from period
         };
 
-        // Add students if there are any allocations
+        // Add learners if there are any allocations
         periodAllocations.forEach(allocation => {
-          const student = students.find(s => s.id === allocation.student_id);
-          if (student) {
-            // Check if student is already in the list (prevent duplicates)
-            const alreadyAdded = acc[key].students.some(s => s.id === student.id);
+          const learner = learners.find(s => s.id === allocation.learner_id);
+          if (learner) {
+            // Check if learner is already in the list (prevent duplicates)
+            const alreadyAdded = acc[key].learners.some(s => s.id === learner.id);
             if (!alreadyAdded) {
               // Add intervention count and last interaction from notes
-              const studentNotes = notes.filter(n => n.student_id === student.id && n.mentor_id === mentor.id);
-              const lastNote = studentNotes.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+              const learnerNotes = notes.filter(n => n.learner_id === learner.id && n.mentor_id === mentor.id);
+              const lastNote = learnerNotes.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
 
-              const processedStudent = {
-                ...student,
-                intervention_count: studentNotes.length,
+              const processedLearner = {
+                ...learner,
+                intervention_count: learnerNotes.length,
                 last_interaction: lastNote?.note_date || undefined,
               };
 
-              acc[key].students.push(processedStudent);
+              acc[key].learners.push(processedLearner);
             }
           }
         });
@@ -191,10 +191,10 @@ export const useMentorAllocation = (collegeId: string) => {
 
       const processedAllocations = Object.values(allocationsByPeriod);
 
-      // Calculate statistics (only count periods with actual students)
-      const currentLoad = processedAllocations.reduce((total, allocation) => total + allocation.students.length, 0);
-      const atRiskStudents = processedAllocations.reduce(
-        (total, allocation) => total + allocation.students.filter(s => s.at_risk).length,
+      // Calculate statistics (only count periods with actual learners)
+      const currentLoad = processedAllocations.reduce((total, allocation) => total + allocation.learners.length, 0);
+      const atRisklearners = processedAllocations.reduce(
+        (total, allocation) => total + allocation.learners.filter(s => s.at_risk).length,
         0
       );
       const totalInterventions = notes.filter(n => n.mentor_id === mentor.id).length;
@@ -203,25 +203,25 @@ export const useMentorAllocation = (collegeId: string) => {
         ...mentor,
         allocations: processedAllocations,
         current_load: currentLoad,
-        at_risk_students: atRiskStudents,
+        at_risk_learners: atRisklearners,
         total_interventions: totalInterventions,
       };
     });
-  }, [mentors, allocations, periods, students, notes]);
+  }, [mentors, allocations, periods, learners, notes]);
 
-  // Get unallocated students
-  const unallocatedStudents = useMemo(() => {
-    const allocatedStudentIds = allocations
+  // Get unallocated learners
+  const unallocatedlearners = useMemo(() => {
+    const allocatedLearnerIds = allocations
       .filter(allocation => allocation.status === 'active' || allocation.status === 'pending')
-      .map(allocation => allocation.student_id);
+      .map(allocation => allocation.learner_id);
 
-    return students.filter(student => !allocatedStudentIds.includes(student.id));
-  }, [students, allocations]);
+    return learners.filter(learner => !allocatedLearnerIds.includes(learner.id));
+  }, [learners, allocations]);
 
-  // Get at-risk students
-  const atRiskStudents = useMemo(() => {
-    return students.filter(student => student.at_risk);
-  }, [students]);
+  // Get at-risk learners
+  const atRisklearners = useMemo(() => {
+    return learners.filter(learner => learner.at_risk);
+  }, [learners]);
 
   // Get active periods
   const activePeriods = useMemo(() => {
@@ -234,29 +234,29 @@ export const useMentorAllocation = (collegeId: string) => {
     return Array.from(depts);
   }, [mentors]);
 
-  // Get unique batches from students
+  // Get unique batches from learners
   const uniqueBatches = useMemo(() => {
-    const batches = new Set(students.map(s => s.batch).filter(Boolean));
+    const batches = new Set(learners.map(s => s.batch).filter(Boolean));
     return Array.from(batches);
-  }, [students]);
+  }, [learners]);
 
   // Statistics
   const statistics = useMemo(() => {
     const totalMentors = mentors.length;
-    const totalStudents = students.length;
-    const allocatedStudents = allocations.filter(a => a.status === 'active').length;
-    const totalAtRisk = atRiskStudents.length;
+    const totallearners = learners.length;
+    const allocatedlearners = allocations.filter(a => a.status === 'active').length;
+    const totalAtRisk = atRisklearners.length;
     const totalInterventions = notes.length;
 
     return {
       totalMentors,
-      totalStudents,
-      allocatedStudents,
-      unallocatedStudents: totalStudents - allocatedStudents,
+      totallearners,
+      allocatedlearners,
+      unallocatedlearners: totallearners - allocatedlearners,
       totalAtRisk,
       totalInterventions,
     };
-  }, [mentors, students, allocations, atRiskStudents, notes]);
+  }, [mentors, learners, allocations, atRisklearners, notes]);
 
   // Helper functions
   const getMentorCurrentLoad = (mentorId: string) => {
@@ -269,17 +269,17 @@ export const useMentorAllocation = (collegeId: string) => {
     return mentor?.allocations || [];
   };
 
-  const getMentorAtRiskStudents = (mentorId: string) => {
+  const getMentorAtRisklearners = (mentorId: string) => {
     const mentor = processedMentors.find(m => m.id === mentorId);
     return mentor?.allocations.flatMap(allocation =>
-      allocation.students.filter(student => student.at_risk)
+      allocation.learners.filter(learner => learner.at_risk)
     ) || [];
   };
 
   // Actions
-  const allocateStudents = async (
+  const allocatelearners = async (
     mentorId: string,
-    studentIds: string[],
+    learnerIds: string[],
     periodId: string,
     assignedBy: string
   ) => {
@@ -301,9 +301,9 @@ export const useMentorAllocation = (collegeId: string) => {
         allocationStatus = today < startDate ? 'pending' : 'active';
       }
 
-      const allocationsToCreate = studentIds.map(studentId => ({
+      const allocationsToCreate = learnerIds.map(learnerId => ({
         mentor_id: mentorId,
-        student_id: studentId,
+        learner_id: learnerId,
         period_id: periodId,
         assigned_date: new Date().toISOString().split('T')[0],
         assigned_by: assignedBy,
@@ -315,7 +315,7 @@ export const useMentorAllocation = (collegeId: string) => {
 
       return newAllocations;
     } catch (err) {
-      logger.error('Error allocating students', err as Error, { mentorId, studentCount: studentIds.length, periodId });
+      logger.error('Error allocating learners', err as Error, { mentorId, learnerCount: learnerIds.length, periodId });
       throw err;
     }
   };
@@ -323,7 +323,7 @@ export const useMentorAllocation = (collegeId: string) => {
   const addMentorNote = async (
     allocationId: string,
     mentorId: string,
-    studentId: string,
+    learnerId: string,
     noteData: {
       title?: string;
       note_text: string;
@@ -346,16 +346,16 @@ export const useMentorAllocation = (collegeId: string) => {
       // If no allocation ID provided, try to find it
       let actualAllocationId = allocationId;
       if (!allocationId || allocationId === 'placeholder-allocation-id') {
-        actualAllocationId = await findAllocationId(mentorId, studentId, 'active') || '';
+        actualAllocationId = await findAllocationId(mentorId, learnerId, 'active') || '';
         if (!actualAllocationId) {
-          throw new Error('No active allocation found for this mentor-student pair');
+          throw new Error('No active allocation found for this mentor-learner pair');
         }
       }
 
       const newNote = await createMentorNote({
         allocation_id: actualAllocationId,
         mentor_id: mentorId,
-        student_id: studentId,
+        learner_id: learnerId,
         note_date: new Date().toISOString().split('T')[0],
         ...noteData,
       });
@@ -368,7 +368,7 @@ export const useMentorAllocation = (collegeId: string) => {
     }
   };
 
-  const reassignStudent = async (
+  const reassignLearner = async (
     allocationId: string,
     newMentorId: string,
     newPeriodId: string,
@@ -431,7 +431,7 @@ export const useMentorAllocation = (collegeId: string) => {
       // Step 2: Create new allocation with the new mentor and period
       const newAllocationData = {
         mentor_id: newMentorId,
-        student_id: currentAllocation.student_id,
+        learner_id: currentAllocation.learner_id,
         period_id: newPeriodId,
         assigned_date: new Date().toISOString().split('T')[0],
         assigned_by: newMentorId, // Use new mentor as assigned_by since they're a valid lecturer
@@ -461,7 +461,7 @@ export const useMentorAllocation = (collegeId: string) => {
 
       return newAllocation;
     } catch (err) {
-      logger.error('Error reassigning student', err as Error);
+      logger.error('Error reassigning learner', err as Error);
       throw err;
     }
   };
@@ -570,14 +570,14 @@ export const useMentorAllocation = (collegeId: string) => {
   return {
     // Data
     mentors: processedMentors,
-    students,
+    learners,
     periods,
     allocations,
     notes,
     departments,
     programs,
-    unallocatedStudents,
-    atRiskStudents,
+    unallocatedlearners,
+    atRisklearners,
     activePeriods,
     uniqueDepartments,
     uniqueBatches,
@@ -590,12 +590,12 @@ export const useMentorAllocation = (collegeId: string) => {
     // Helper functions
     getMentorCurrentLoad,
     getMentorActiveAllocations,
-    getMentorAtRiskStudents,
+    getMentorAtRisklearners,
 
     // Actions
-    allocateStudents,
+    allocatelearners,
     addMentorNote,
-    reassignStudent,
+    reassignLearner,
     createPeriod,
     updatePeriod,
     updateNoteResponse,

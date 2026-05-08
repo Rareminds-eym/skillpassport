@@ -115,7 +115,7 @@ export const initiateRazorpayPayment = async ({ plan, userDetails, isUpgrade }) 
     // Store plan details in localStorage for success page
     localStorage.setItem('payment_plan_details', JSON.stringify({
       ...plan,
-      studentType: userDetails.studentType
+      learnerType: userDetails.learnerType
     }));
 
     // Load Razorpay script
@@ -203,7 +203,7 @@ export const initiateRazorpayPayment = async ({ plan, userDetails, isUpgrade }) 
       // Get the base path from current location for role-based routing
       const pathname = window.location.pathname;
       let basePath = '';
-      if (pathname.startsWith('/student')) basePath = '/student';
+      if (pathname.startsWith('/learner')) basePath = '/learner';
       else if (pathname.startsWith('/recruitment')) basePath = '/recruitment';
       else if (pathname.startsWith('/educator')) basePath = '/educator';
       else if (pathname.startsWith('/college-admin')) basePath = '/college-admin';

@@ -54,7 +54,7 @@ export const useProgramSections = () => {
   const createNewProgramSection = async (
     departmentId: string,
     programData: { name: string; code: string; degree_level: string },
-    sectionData: { semester: number; section: string; academic_year: string; max_students: number; status: string }
+    sectionData: { semester: number; section: string; academic_year: string; max_learners: number; status: string }
   ) => {
     if (!user?.id) return false
 

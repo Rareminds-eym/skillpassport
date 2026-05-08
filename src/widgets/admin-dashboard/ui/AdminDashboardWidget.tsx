@@ -43,7 +43,7 @@ export const AdminDashboardWidget: React.FC = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Active Students</p>
+                <p className="text-sm text-gray-600">Active Learners</p>
                 <p className="text-2xl font-bold text-gray-900">0</p>
               </div>
               <GraduationCap className="w-8 h-8 text-purple-600" />

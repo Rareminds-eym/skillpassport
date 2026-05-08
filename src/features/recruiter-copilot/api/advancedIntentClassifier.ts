@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { RecruiterIntent } from '@/features/student-profile/model';
+import { RecruiterIntent } from '@/features/learner-profile/model';
 
 /**
  * Advanced Intent Classification System
@@ -105,8 +105,8 @@ class AdvancedIntentClassifier {
     // PRIORITY CHECKS: Handle skill-based searches with HIGH confidence
     // Pattern: "Find/Search/Show [SKILL] developers/engineers/candidates"
     const skillSearchPatterns = [
-      /(?:find|search|show|get|looking for|need|list|give me).*(?:react|angular|vue|node|python|java|javascript|typescript|ruby|go|rust|swift|kotlin|php|c\+\+|c#|\.net|sql|mongodb|postgres|aws|azure|gcp|docker|kubernetes|machine learning|data science|ai|ml|devops|frontend|backend|fullstack|full-stack).*(?:developer|engineer|programmer|candidate|student|people|talent)/i,
-      /(?:developer|engineer|programmer|candidate|student|people|talent).*(?:with|having|who knows?).*(?:react|angular|vue|node|python|java|javascript|typescript|ruby|go|rust|swift|kotlin|php|c\+\+|c#|\.net|sql|mongodb|postgres|aws|azure|gcp|docker|kubernetes|machine learning|data science|ai|ml|devops|frontend|backend|fullstack|full-stack)/i
+      /(?:find|search|show|get|looking for|need|list|give me).*(?:react|angular|vue|node|python|java|javascript|typescript|ruby|go|rust|swift|kotlin|php|c\+\+|c#|\.net|sql|mongodb|postgres|aws|azure|gcp|docker|kubernetes|machine learning|data science|ai|ml|devops|frontend|backend|fullstack|full-stack).*(?:developer|engineer|programmer|candidate|learner|people|talent)/i,
+      /(?:developer|engineer|programmer|candidate|learner|people|talent).*(?:with|having|who knows?).*(?:react|angular|vue|node|python|java|javascript|typescript|ruby|go|rust|swift|kotlin|php|c\+\+|c#|\.net|sql|mongodb|postgres|aws|azure|gcp|docker|kubernetes|machine learning|data science|ai|ml|devops|frontend|backend|fullstack|full-stack)/i
     ];
     
     for (const pattern of skillSearchPatterns) {
@@ -161,7 +161,7 @@ class AdvancedIntentClassifier {
       ],
       'candidate-search': [
         /find|search|show|looking for|need|get me|list/,
-        /candidates?|students?|developers?|engineers?|programmers?/
+        /candidates?|learners?|developers?|engineers?|programmers?/
       ],
       'talent-pool-analytics': [
         /how many|total|count|statistics|stats|overview|dashboard/,
@@ -169,7 +169,7 @@ class AdvancedIntentClassifier {
       ],
       'hiring-recommendations': [
         /ready to hire|hire now|ready for hire|which.*hire|who.*hire/,
-        /candidates?|students?/
+        /candidates?|learners?/
       ],
       'skill-insights': [
         /what skills|which skills|skill distribution|common skills/,
@@ -405,7 +405,7 @@ Respond with ONLY a JSON object in this exact format:
     }
 
     // Detect count/limit
-    const countMatch = queryLower.match(/(\d+)\s*(candidates?|students?|people)/);
+    const countMatch = queryLower.match(/(\d+)\s*(candidates?|learners?|people)/);
     if (countMatch) {
       entities.count = parseInt(countMatch[1]);
     }

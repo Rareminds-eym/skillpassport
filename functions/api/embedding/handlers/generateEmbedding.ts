@@ -14,7 +14,7 @@
  * MODE 2: From Database (automatic data fetching)
  * POST /api/career/generate-embedding
  * {
- *   "table": "students",
+ *   "table": "learners",
  *   "id": "uuid",
  *   "fromDatabase": true  // ← This triggers DB fetch
  * }
@@ -36,7 +36,7 @@ import { checkRateLimit } from '../../career/utils/rate-limit';
 import { createClient, SupabaseClient as SupabaseClientType } from '@supabase/supabase-js';
 import { callEmbeddingWorker } from '../services/embeddingWorkerClient';
 import {
-  buildStudentTextFromDatabase,
+  buildlearnerTextFromDatabase,
   buildCourseTextFromDatabase,
   buildOpportunityTextFromDatabase,
 } from '../services/textBuilder';
@@ -72,17 +72,17 @@ interface DatabaseRecord {
 interface EntityConfig {
   selectFields: string;
   buildText: (data: DatabaseRecord) => string;
-  ownershipField?: string; // Field to check ownership (e.g., 'student_id')
+  ownershipField?: string; // Field to check ownership (e.g., 'learner_id')
   requiresAdmin?: boolean; // Whether admin privileges are required
   entityName?: string; // Human-readable entity name for error messages
 }
 
 const ENTITY_CONFIGS: Record<string, EntityConfig> = {
-  students: {
-    selectFields: '*', // Will use buildStudentTextFromDatabase
+  learners: {
+    selectFields: '*', // Will use buildlearnerTextFromDatabase
     buildText: () => '', // Not used, handled separately
-    ownershipField: 'id', // Special case: check id === studentId
-    entityName: 'Student',
+    ownershipField: 'id', // Special case: check id === learnerId
+    entityName: 'Learner',
   },
   profiles: {
     selectFields: 'user_id',
@@ -91,13 +91,13 @@ const ENTITY_CONFIGS: Record<string, EntityConfig> = {
     entityName: 'Profile',
   },
   skills: {
-    selectFields: 'name, description, student_id',
+    selectFields: 'name, description, learner_id',
     buildText: (skill) => `Skill: ${skill.name}. ${skill.description || ''}`.trim(),
-    ownershipField: 'student_id',
+    ownershipField: 'learner_id',
     entityName: 'Skill',
   },
   projects: {
-    selectFields: 'title, role, organization, tech_stack, description, student_id',
+    selectFields: 'title, role, organization, tech_stack, description, learner_id',
     buildText: (project) => {
       let text = `Project: ${project.title}`;
       if (project.role) text += ` (Role: ${project.role})`;
@@ -108,11 +108,11 @@ const ENTITY_CONFIGS: Record<string, EntityConfig> = {
       if (project.description) text += `. ${project.description}`;
       return text.trim();
     },
-    ownershipField: 'student_id',
+    ownershipField: 'learner_id',
     entityName: 'Project',
   },
   certificates: {
-    selectFields: 'title, issuer, platform, level, category, instructor, description, student_id',
+    selectFields: 'title, issuer, platform, level, category, instructor, description, learner_id',
     buildText: (cert) => {
       let text = `Certificate: ${cert.title}`;
       if (cert.issuer) text += ` from ${cert.issuer}`;
@@ -123,11 +123,11 @@ const ENTITY_CONFIGS: Record<string, EntityConfig> = {
       if (cert.description) text += `. ${cert.description}`;
       return text.trim();
     },
-    ownershipField: 'student_id',
+    ownershipField: 'learner_id',
     entityName: 'Certificate',
   },
   trainings: {
-    selectFields: 'title, organization, source, description, student_id',
+    selectFields: 'title, organization, source, description, learner_id',
     buildText: (training) => {
       let text = `Training: ${training.title}`;
       if (training.organization) text += ` by ${training.organization}`;
@@ -135,7 +135,7 @@ const ENTITY_CONFIGS: Record<string, EntityConfig> = {
       if (training.description) text += `. ${training.description}`;
       return text.trim();
     },
-    ownershipField: 'student_id',
+    ownershipField: 'learner_id',
     entityName: 'Training',
   },
   opportunities: {
@@ -172,7 +172,7 @@ for (const [tableName, config] of Object.entries(ENTITY_CONFIGS)) {
 async function verifyEntityOwnership(
   table: string,
   id: string,
-  studentId: string,
+  learnerId: string,
   userSupabase: SupabaseClientType
 ): Promise<{ authorized: boolean; error?: string; data?: DatabaseRecord | null }> {
   const config = ENTITY_CONFIGS[table];
@@ -180,9 +180,9 @@ async function verifyEntityOwnership(
     return { authorized: false, error: `Unsupported table: ${table}` };
   }
 
-  // Special case: students table checks id directly
-  if (table === 'students') {
-    if (id !== studentId) {
+  // Special case: learners table checks id directly
+  if (table === 'learners') {
+    if (id !== learnerId) {
       return { authorized: false, error: 'Unauthorized: Cannot generate embedding for other users' };
     }
     // Fetch data atomically with authorization check
@@ -193,7 +193,7 @@ async function verifyEntityOwnership(
       .single();
     
     if (error || !data) {
-      return { authorized: false, error: 'Student not found or access denied' };
+      return { authorized: false, error: 'Learner not found or access denied' };
     }
     
     return { authorized: true, data: data as unknown as DatabaseRecord };
@@ -235,7 +235,7 @@ async function verifyEntityOwnership(
     }
     
     // Check 3: Verify ownership matches
-    if (record[ownershipField] !== studentId) {
+    if (record[ownershipField] !== learnerId) {
       return { 
         authorized: false, 
         error: `Unauthorized: Cannot generate embedding for other users' ${table}` 
@@ -252,7 +252,7 @@ async function verifyEntityOwnership(
  * Verify admin privileges for admin-only entities
  */
 async function verifyAdminPrivileges(
-  studentId: string,
+  learnerId: string,
   userSupabase: SupabaseClientType
 ): Promise<{ authorized: boolean; error?: string }> {
   const [
@@ -262,13 +262,13 @@ async function verifyAdminPrivileges(
     userSupabase
       .from('school_admins')
       .select('id')
-      .eq('user_id', studentId)
+      .eq('user_id', learnerId)
       .limit(1)
       .maybeSingle(),
     userSupabase
       .from('college_admins')
       .select('id')
-      .eq('user_id', studentId)
+      .eq('user_id', learnerId)
       .limit(1)
       .maybeSingle()
   ]);
@@ -303,8 +303,8 @@ async function fetchAndBuildText(
   preValidatedData?: DatabaseRecord | null
 ): Promise<string> {
   // Use shared text builders for complex entities
-  if (table === 'students') {
-    return await buildStudentTextFromDatabase(supabase, id);
+  if (table === 'learners') {
+    return await buildlearnerTextFromDatabase(supabase, id);
   } else if (table === 'opportunities') {
     return await buildOpportunityTextFromDatabase(supabase, id);
   } else if (table === 'courses') {
@@ -364,9 +364,9 @@ export async function handleGenerateEmbedding(
   }
 
   const { user } = auth;
-  const studentId = user.id;
+  const learnerId = user.id;
 
-  if (!await checkRateLimit(studentId, env)) {
+  if (!await checkRateLimit(learnerId, env)) {
     return jsonResponse({ error: 'Rate limit exceeded' }, 429);
   }
 
@@ -464,7 +464,7 @@ export async function handleGenerateEmbedding(
 
     // Check admin privileges for admin-only entities
     if (config.requiresAdmin) {
-      const adminAuth = await verifyAdminPrivileges(studentId, userSupabase);
+      const adminAuth = await verifyAdminPrivileges(learnerId, userSupabase);
       if (!adminAuth.authorized) {
         return jsonResponse({
           success: false,
@@ -473,7 +473,7 @@ export async function handleGenerateEmbedding(
       }
     } else {
       // Check entity ownership for user-owned entities ATOMICALLY with data fetch
-      const ownershipAuth = await verifyEntityOwnership(table, id, studentId, userSupabase);
+      const ownershipAuth = await verifyEntityOwnership(table, id, learnerId, userSupabase);
       if (!ownershipAuth.authorized) {
         return jsonResponse({
           success: false,

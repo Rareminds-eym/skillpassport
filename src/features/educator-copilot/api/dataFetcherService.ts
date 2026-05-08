@@ -1,5 +1,5 @@
 import { supabase } from '@/shared/api/supabaseClient';
-import { StudentProfile, Opportunity, Assignment } from './educatorDataService';
+import { LearnerProfile, Opportunity, Assignment } from './educatorDataService';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('data-fetcher-service');
@@ -9,10 +9,10 @@ const logger = getLogger('data-fetcher-service');
  * Fetches all necessary data for educator AI insights with optimized queries
  */
 
-export interface StudentAssignment {
-  student_assignment_id: string;
+export interface LearnerAssignment {
+  learner_assignment_id: string;
   assignment_id: string;
-  student_id: string;
+  learner_id: string;
   status: 'todo' | 'in-progress' | 'submitted' | 'graded';
   priority: 'low' | 'medium' | 'high';
   grade_received: number | null;
@@ -24,8 +24,8 @@ export interface StudentAssignment {
   completed_date: string | null;
 }
 
-export interface StudentWithAssignments extends StudentProfile {
-  assignments?: StudentAssignment[];
+export interface LearnerWithAssignments extends LearnerProfile {
+  assignments?: LearnerAssignment[];
   assignmentStats?: {
     total: number;
     submitted: number;
@@ -38,48 +38,48 @@ export interface StudentWithAssignments extends StudentProfile {
 
 class DataFetcherService {
   /**
-   * Fetch students with their assignment data
+   * Fetch learners with their assignment data
    */
-  async getStudentsWithAssignments(universityId?: string): Promise<StudentWithAssignments[]> {
+  async getlearnersWithAssignments(universityId?: string): Promise<LearnerWithAssignments[]> {
     try {
-      // Fetch students (include user_id for assignment references)
-      let studentsQuery = supabase
-        .from('students')
+      // Fetch learners (include user_id for assignment references)
+      let learnersQuery = supabase
+        .from('learners')
         .select('id, user_id, universityId, profile')
         .order('profile->updatedAt', { ascending: false });
 
       if (universityId) {
-        studentsQuery = studentsQuery.eq('universityId', universityId);
+        learnersQuery = learnersQuery.eq('universityId', universityId);
       }
 
-      const { data: students, error: studentsError } = await studentsQuery;
+      const { data: learners, error: learnersError } = await learnersQuery;
 
-      if (studentsError) {
-        logger.error('Students fetch failed', new Error(studentsError.message), { universityId });
+      if (learnersError) {
+        logger.error('Learners fetch failed', new Error(learnersError.message), { universityId });
         return [];
       }
 
-      if (!students || students.length === 0) {
+      if (!learners || learners.length === 0) {
         return [];
       }
 
-      // Fetch assignments using user_id (FK references students.user_id, not students.id)
-      const userIds = students.map(s => (s as any).user_id).filter(Boolean);
+      // Fetch assignments using user_id (FK references learners.user_id, not learners.id)
+      const userIds = learners.map(s => (s as any).user_id).filter(Boolean);
       let assignments: any[] = [];
       
       if (userIds.length > 0) {
         try {
           // Try simple query first to test access
           const { data: testData, error: testError } = await supabase
-            .from('student_assignments')
-            .select('student_assignment_id, student_id, status')
+            .from('learner_assignments')
+            .select('learner_assignment_id, learner_id, status')
             .limit(5);
 
           if (testError) {
-            logger.warn('Student assignments table access check failed - RLS or permissions issue', {
+            logger.warn('Learner assignments table access check failed - RLS or permissions issue', {
               error: testError.message
             });
-            return students.map(s => ({
+            return learners.map(s => ({
               ...s,
               assignments: [],
               assignmentStats: {
@@ -90,7 +90,7 @@ class DataFetcherService {
                 avgGrade: 0,
                 lateSubmissions: 0,
               },
-            } as StudentWithAssignments));
+            } as LearnerWithAssignments));
           }
           
           // Batch queries in chunks of 100 to avoid query size limits
@@ -100,12 +100,12 @@ class DataFetcherService {
           for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
             const batchIds = userIds.slice(i, i + BATCH_SIZE);
             const { data: batchData, error: batchError } = await supabase
-              .from('student_assignments')
+              .from('learner_assignments')
               .select('*')
-              .in('student_id', batchIds);
+              .in('learner_id', batchIds);
 
             if (batchError) {
-              logger.warn('Batch student assignments fetch failed', {
+              logger.warn('Batch learner assignments fetch failed', {
                 batchNumber: Math.floor(i / BATCH_SIZE) + 1,
                 error: batchError.message
               });
@@ -118,100 +118,100 @@ class DataFetcherService {
           assignments = allAssignments;
         
         } catch (tableError: any) {
-          logger.error('Student assignments query exception', tableError instanceof Error ? tableError : new Error(String(tableError)));
+          logger.error('Learner assignments query exception', tableError instanceof Error ? tableError : new Error(String(tableError)));
         }
       }
 
-      // Group assignments by student user_id (since FK references user_id)
-      const assignmentsByStudent = new Map<string, StudentAssignment[]>();
+      // Group assignments by learner user_id (since FK references user_id)
+      const assignmentsByLearner = new Map<string, LearnerAssignment[]>();
       assignments.forEach(assignment => {
-        const studentAssignments = assignmentsByStudent.get(assignment.student_id) || [];
-        studentAssignments.push(assignment as StudentAssignment);
-        assignmentsByStudent.set(assignment.student_id, studentAssignments);
+        const learnerAssignments = assignmentsByLearner.get(assignment.learner_id) || [];
+        learnerAssignments.push(assignment as LearnerAssignment);
+        assignmentsByLearner.set(assignment.learner_id, learnerAssignments);
       });
 
-      // Enhance students with assignment data (match by user_id)
-      return students.map(student => {
-        const studentUserId = (student as any).user_id;
-        const studentAssignments = assignmentsByStudent.get(studentUserId) || [];
-        const submitted = studentAssignments.filter(a => a.status === 'submitted' || a.status === 'graded');
-        const graded = studentAssignments.filter(a => a.status === 'graded');
-        const pending = studentAssignments.filter(a => a.status === 'todo' || a.status === 'in-progress');
-        const lateSubmissions = studentAssignments.filter(a => a.is_late);
+      // Enhance learners with assignment data (match by user_id)
+      return learners.map(learner => {
+        const learnerUserId = (learner as any).user_id;
+        const learnerAssignments = assignmentsByLearner.get(learnerUserId) || [];
+        const submitted = learnerAssignments.filter(a => a.status === 'submitted' || a.status === 'graded');
+        const graded = learnerAssignments.filter(a => a.status === 'graded');
+        const pending = learnerAssignments.filter(a => a.status === 'todo' || a.status === 'in-progress');
+        const lateSubmissions = learnerAssignments.filter(a => a.is_late);
         const avgGrade = graded.length > 0
           ? graded.reduce((sum, a) => sum + (a.grade_percentage || 0), 0) / graded.length
           : 0;
 
         return {
-          ...student,
-          assignments: studentAssignments,
+          ...learner,
+          assignments: learnerAssignments,
           assignmentStats: {
-            total: studentAssignments.length,
+            total: learnerAssignments.length,
             submitted: submitted.length,
             graded: graded.length,
             pending: pending.length,
             avgGrade: Math.round(avgGrade * 10) / 10,
             lateSubmissions: lateSubmissions.length,
           },
-        } as StudentWithAssignments;
+        } as LearnerWithAssignments;
       });
     } catch (error) {
-      logger.error('Fetch students with assignments exception', error instanceof Error ? error : new Error(String(error)));
+      logger.error('Fetch learners with assignments exception', error instanceof Error ? error : new Error(String(error)));
       return [];
     }
   }
 
   /**
-   * Fetch specific student with full assignment details
+   * Fetch specific learner with full assignment details
    */
-  async getStudentWithAssignments(studentId: string): Promise<StudentWithAssignments | null> {
+  async getlearnerWithAssignments(learnerId: string): Promise<LearnerWithAssignments | null> {
     try {
-      const { data: student, error: studentError } = await supabase
-        .from('students')
+      const { data: learner, error: learnerError } = await supabase
+        .from('learners')
         .select('id, user_id, universityId, profile')
-        .eq('id', studentId)
+        .eq('id', learnerId)
         .single();
 
-      if (studentError || !student) {
-        logger.error('Student fetch failed', studentError instanceof Error ? studentError : new Error(String(studentError)), { studentId });
+      if (learnerError || !learner) {
+        logger.error('Learner fetch failed', learnerError instanceof Error ? learnerError : new Error(String(learnerError)), { learnerId });
         return null;
       }
 
-      // Query using user_id since FK references students.user_id
-      const studentUserId = (student as any).user_id;
+      // Query using user_id since FK references learners.user_id
+      const learnerUserId = (learner as any).user_id;
       
       const { data: assignments, error: assignmentsError } = await supabase
-        .from('student_assignments')
+        .from('learner_assignments')
         .select('*')
-        .eq('student_id', studentUserId);
+        .eq('learner_id', learnerUserId);
 
       if (assignmentsError) {
-        logger.error('Assignments fetch failed', new Error(assignmentsError.message), { studentId });
+        logger.error('Assignments fetch failed', new Error(assignmentsError.message), { learnerId });
       }
 
-      const studentAssignments = (assignments || []) as StudentAssignment[];
-      const submitted = studentAssignments.filter(a => a.status === 'submitted' || a.status === 'graded');
-      const graded = studentAssignments.filter(a => a.status === 'graded');
-      const pending = studentAssignments.filter(a => a.status === 'todo' || a.status === 'in-progress');
-      const lateSubmissions = studentAssignments.filter(a => a.is_late);
+      const learnerAssignments = (assignments || []) as LearnerAssignment[];
+      const submitted = learnerAssignments.filter(a => a.status === 'submitted' || a.status === 'graded');
+      const graded = learnerAssignments.filter(a => a.status === 'graded');
+      const pending = learnerAssignments.filter(a => a.status === 'todo' || a.status === 'in-progress');
+      const lateSubmissions = learnerAssignments.filter(a => a.is_late);
       const avgGrade = graded.length > 0
         ? graded.reduce((sum, a) => sum + (a.grade_percentage || 0), 0) / graded.length
         : 0;
 
       return {
-        ...student,
-        assignments: studentAssignments,
+        ...learner,
+        assignments: learnerAssignments,
         assignmentStats: {
-          total: studentAssignments.length,
+          total: learnerAssignments.length,
           submitted: submitted.length,
           graded: graded.length,
           pending: pending.length,
           avgGrade: Math.round(avgGrade * 10) / 10,
           lateSubmissions: lateSubmissions.length,
         },
-      } as StudentWithAssignments;
+      } as LearnerWithAssignments;
     } catch (error) {
-      logger.error('Fetch student with assignments exception', error instanceof Error ? error : new Error(String(error)), { studentId });
+      logger.error('Fetch learner with assignments exception', error instanceof Error ? error : new Error(String(error)), { learnerId });
       return null;
     }
   }
@@ -242,13 +242,13 @@ class DataFetcherService {
         return [];
       }
 
-      // Fetch all student assignments for these assignments (only if assignment IDs exist)
+      // Fetch all learner assignments for these assignments (only if assignment IDs exist)
       const assignmentIds = assignments.map(a => a.assignment_id).filter(Boolean);
-      let studentAssignments: any[] = [];
+      let learnerAssignments: any[] = [];
       
       if (assignmentIds.length > 0) {
         const { data: submissionsData, error: submissionsError } = await supabase
-          .from('student_assignments')
+          .from('learner_assignments')
           .select('*')
           .in('assignment_id', assignmentIds);
 
@@ -256,15 +256,15 @@ class DataFetcherService {
           logger.error('Submissions fetch failed', new Error(submissionsError.message));
           // Don't fail - proceed with no submissions
         } else {
-          studentAssignments = submissionsData || [];
+          learnerAssignments = submissionsData || [];
         }
       }
 
       // Group by assignment and calculate stats
-      const submissionsByAssignment = new Map<string, StudentAssignment[]>();
-      studentAssignments.forEach(sa => {
+      const submissionsByAssignment = new Map<string, LearnerAssignment[]>();
+      learnerAssignments.forEach(sa => {
         const subs = submissionsByAssignment.get(sa.assignment_id) || [];
-        subs.push(sa as StudentAssignment);
+        subs.push(sa as LearnerAssignment);
         submissionsByAssignment.set(sa.assignment_id, subs);
       });
 
@@ -280,7 +280,7 @@ class DataFetcherService {
         return {
           ...assignment,
           stats: {
-            totalStudents: submissions.length,
+            totallearners: submissions.length,
             submitted,
             graded,
             pending,

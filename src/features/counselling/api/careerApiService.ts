@@ -115,16 +115,16 @@ export async function sendCareerChatMessage(
 }
 
 /**
- * Get job recommendations for a student
+ * Get job recommendations for a learner
  */
 export async function getRecommendations(
-  studentId: string,
+  learnerId: string,
   { forceRefresh = false, limit = 20 }: RecommendationsParams = {}
 ): Promise<unknown> {
   const response = await getInterceptor().fetch(`${API_URL}/recommend-opportunities`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ studentId, forceRefresh, limit }),
+    body: JSON.stringify({ learnerId, forceRefresh, limit }),
   });
 
   if (!response.ok) {

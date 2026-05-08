@@ -6,7 +6,7 @@
  */
 
 // Types (kept for backward compatibility with consumers)
-export type UserRole = 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin' | 'university_admin';
+export type UserRole = 'learner' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin' | 'university_admin';
 
 export interface AuthResult {
   success: boolean;
@@ -52,7 +52,7 @@ export const getUserRole = async (_userId: string, _email: string) => {
 
 // Legacy exports kept as no-ops
 export const loginAdmin = async () => ({ success: false, error: 'Use SSO login' });
-export const loginStudent = async () => ({ success: false, error: 'Use SSO login' });
+export const loginLearner = async () => ({ success: false, error: 'Use SSO login' });
 export const loginRecruiter = async () => ({ success: false, error: 'Use SSO login' });
 export const resetPassword = async () => ({ success: false, error: 'Use ssoClient.forgotPassword()' });
 export const updatePassword = async () => ({ success: false, error: 'Use ssoClient.resetPassword()' });

@@ -16,7 +16,7 @@ export {
   ResetPassword,
   TokenPasswordReset,
   LoginAdmin,
-  LoginStudent,
+  LoginLearner,
   LoginEducator,
   LoginRecruiter,
 } from './ui';
@@ -51,7 +51,7 @@ export {
   sendOtp,
   verifyOtp,
   getUserRole,
-  loginStudent,
+  loginLearner,
   loginRecruiter,
   authSessionService,
   checkAuthentication,

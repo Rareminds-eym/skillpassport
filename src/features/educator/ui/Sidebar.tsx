@@ -72,7 +72,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       title: "Classroom Management",
       key: "management",
       items: [
-        { name: "Students", path: "/educator/students", icon: UserGroupIcon },
+        { name: "Learners", path: "/educator/learners", icon: UserGroupIcon },
         // Show different navigation based on educator type
         ...(educatorType === 'college' 
           ? [{ name: "Program Sections", path: "/educator/programs", icon: AcademicCapIcon, disabled: true }]

@@ -40,7 +40,7 @@ describe('getInProgressAttempt - Validation', () => {
     it('should return attempt when all required fields are present', async () => {
       const validAttempt = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        student_id: '123e4567-e89b-12d3-a456-426614174001',
+        learner_id: '123e4567-e89b-12d3-a456-426614174001',
         stream_id: '123e4567-e89b-12d3-a456-426614174002',
         grade_level: 'higher_secondary',
         status: 'in_progress',
@@ -60,7 +60,7 @@ describe('getInProgressAttempt - Validation', () => {
       chain.single.mockResolvedValue({ data: validAttempt, error: null });
       supabase.from.mockReturnValue(chain);
 
-      const result = await getInProgressAttempt('student-id');
+      const result = await getInProgressAttempt('learner-id');
 
       expect(result).toBeTruthy();
       expect(result.id).toBe(validAttempt.id);
@@ -69,7 +69,7 @@ describe('getInProgressAttempt - Validation', () => {
     it('should return null when attempt is missing required field: id', async () => {
       const invalidAttempt = {
         // id is missing
-        student_id: '123e4567-e89b-12d3-a456-426614174001',
+        learner_id: '123e4567-e89b-12d3-a456-426614174001',
         stream_id: '123e4567-e89b-12d3-a456-426614174002',
         grade_level: 'higher_secondary',
         status: 'in_progress',
@@ -84,15 +84,15 @@ describe('getInProgressAttempt - Validation', () => {
       chain.single.mockResolvedValue({ data: invalidAttempt, error: null });
       supabase.from.mockReturnValue(chain);
 
-      const result = await getInProgressAttempt('student-id');
+      const result = await getInProgressAttempt('learner-id');
 
       expect(result).toBeNull();
     });
 
-    it('should return null when attempt is missing required field: student_id', async () => {
+    it('should return null when attempt is missing required field: learner_id', async () => {
       const invalidAttempt = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        // student_id is missing
+        // learner_id is missing
         stream_id: '123e4567-e89b-12d3-a456-426614174002',
         grade_level: 'higher_secondary',
         status: 'in_progress',
@@ -107,7 +107,7 @@ describe('getInProgressAttempt - Validation', () => {
       chain.single.mockResolvedValue({ data: invalidAttempt, error: null });
       supabase.from.mockReturnValue(chain);
 
-      const result = await getInProgressAttempt('student-id');
+      const result = await getInProgressAttempt('learner-id');
 
       expect(result).toBeNull();
     });
@@ -115,7 +115,7 @@ describe('getInProgressAttempt - Validation', () => {
     it('should return null when attempt is missing required field: stream_id', async () => {
       const invalidAttempt = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        student_id: '123e4567-e89b-12d3-a456-426614174001',
+        learner_id: '123e4567-e89b-12d3-a456-426614174001',
         // stream_id is missing
         grade_level: 'higher_secondary',
         status: 'in_progress',
@@ -130,7 +130,7 @@ describe('getInProgressAttempt - Validation', () => {
       chain.single.mockResolvedValue({ data: invalidAttempt, error: null });
       supabase.from.mockReturnValue(chain);
 
-      const result = await getInProgressAttempt('student-id');
+      const result = await getInProgressAttempt('learner-id');
 
       expect(result).toBeNull();
     });
@@ -138,7 +138,7 @@ describe('getInProgressAttempt - Validation', () => {
     it('should return null when attempt is missing required field: grade_level', async () => {
       const invalidAttempt = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        student_id: '123e4567-e89b-12d3-a456-426614174001',
+        learner_id: '123e4567-e89b-12d3-a456-426614174001',
         stream_id: '123e4567-e89b-12d3-a456-426614174002',
         // grade_level is missing
         status: 'in_progress',
@@ -153,7 +153,7 @@ describe('getInProgressAttempt - Validation', () => {
       chain.single.mockResolvedValue({ data: invalidAttempt, error: null });
       supabase.from.mockReturnValue(chain);
 
-      const result = await getInProgressAttempt('student-id');
+      const result = await getInProgressAttempt('learner-id');
 
       expect(result).toBeNull();
     });
@@ -163,7 +163,7 @@ describe('getInProgressAttempt - Validation', () => {
     it('should return null when id is not a string', async () => {
       const invalidAttempt = {
         id: 12345, // Should be string
-        student_id: '123e4567-e89b-12d3-a456-426614174001',
+        learner_id: '123e4567-e89b-12d3-a456-426614174001',
         stream_id: '123e4567-e89b-12d3-a456-426614174002',
         grade_level: 'higher_secondary',
         status: 'in_progress',
@@ -178,7 +178,7 @@ describe('getInProgressAttempt - Validation', () => {
       chain.single.mockResolvedValue({ data: invalidAttempt, error: null });
       supabase.from.mockReturnValue(chain);
 
-      const result = await getInProgressAttempt('student-id');
+      const result = await getInProgressAttempt('learner-id');
 
       expect(result).toBeNull();
     });
@@ -186,7 +186,7 @@ describe('getInProgressAttempt - Validation', () => {
     it('should return null when status is not "in_progress"', async () => {
       const invalidAttempt = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        student_id: '123e4567-e89b-12d3-a456-426614174001',
+        learner_id: '123e4567-e89b-12d3-a456-426614174001',
         stream_id: '123e4567-e89b-12d3-a456-426614174002',
         grade_level: 'higher_secondary',
         status: 'completed', // Should be 'in_progress'
@@ -201,7 +201,7 @@ describe('getInProgressAttempt - Validation', () => {
       chain.single.mockResolvedValue({ data: invalidAttempt, error: null });
       supabase.from.mockReturnValue(chain);
 
-      const result = await getInProgressAttempt('student-id');
+      const result = await getInProgressAttempt('learner-id');
 
       expect(result).toBeNull();
     });
@@ -209,7 +209,7 @@ describe('getInProgressAttempt - Validation', () => {
     it('should return null when current_section_index is not a number', async () => {
       const invalidAttempt = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        student_id: '123e4567-e89b-12d3-a456-426614174001',
+        learner_id: '123e4567-e89b-12d3-a456-426614174001',
         stream_id: '123e4567-e89b-12d3-a456-426614174002',
         grade_level: 'higher_secondary',
         status: 'in_progress',
@@ -224,7 +224,7 @@ describe('getInProgressAttempt - Validation', () => {
       chain.single.mockResolvedValue({ data: invalidAttempt, error: null });
       supabase.from.mockReturnValue(chain);
 
-      const result = await getInProgressAttempt('student-id');
+      const result = await getInProgressAttempt('learner-id');
 
       expect(result).toBeNull();
     });
@@ -234,7 +234,7 @@ describe('getInProgressAttempt - Validation', () => {
     it('should return null when stream data is missing', async () => {
       const invalidAttempt = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        student_id: '123e4567-e89b-12d3-a456-426614174001',
+        learner_id: '123e4567-e89b-12d3-a456-426614174001',
         stream_id: '123e4567-e89b-12d3-a456-426614174002',
         grade_level: 'higher_secondary',
         status: 'in_progress',
@@ -249,7 +249,7 @@ describe('getInProgressAttempt - Validation', () => {
       chain.single.mockResolvedValue({ data: invalidAttempt, error: null });
       supabase.from.mockReturnValue(chain);
 
-      const result = await getInProgressAttempt('student-id');
+      const result = await getInProgressAttempt('learner-id');
 
       expect(result).toBeNull();
     });
@@ -257,7 +257,7 @@ describe('getInProgressAttempt - Validation', () => {
     it('should return null when stream is not an object', async () => {
       const invalidAttempt = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        student_id: '123e4567-e89b-12d3-a456-426614174001',
+        learner_id: '123e4567-e89b-12d3-a456-426614174001',
         stream_id: '123e4567-e89b-12d3-a456-426614174002',
         grade_level: 'higher_secondary',
         status: 'in_progress',
@@ -272,7 +272,7 @@ describe('getInProgressAttempt - Validation', () => {
       chain.single.mockResolvedValue({ data: invalidAttempt, error: null });
       supabase.from.mockReturnValue(chain);
 
-      const result = await getInProgressAttempt('student-id');
+      const result = await getInProgressAttempt('learner-id');
 
       expect(result).toBeNull();
     });
@@ -280,7 +280,7 @@ describe('getInProgressAttempt - Validation', () => {
     it('should return null when responses is not an array', async () => {
       const invalidAttempt = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        student_id: '123e4567-e89b-12d3-a456-426614174001',
+        learner_id: '123e4567-e89b-12d3-a456-426614174001',
         stream_id: '123e4567-e89b-12d3-a456-426614174002',
         grade_level: 'higher_secondary',
         status: 'in_progress',
@@ -295,7 +295,7 @@ describe('getInProgressAttempt - Validation', () => {
       chain.single.mockResolvedValue({ data: invalidAttempt, error: null });
       supabase.from.mockReturnValue(chain);
 
-      const result = await getInProgressAttempt('student-id');
+      const result = await getInProgressAttempt('learner-id');
 
       expect(result).toBeNull();
     });
@@ -303,7 +303,7 @@ describe('getInProgressAttempt - Validation', () => {
     it('should accept empty responses array', async () => {
       const validAttempt = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        student_id: '123e4567-e89b-12d3-a456-426614174001',
+        learner_id: '123e4567-e89b-12d3-a456-426614174001',
         stream_id: '123e4567-e89b-12d3-a456-426614174002',
         grade_level: 'higher_secondary',
         status: 'in_progress',
@@ -319,7 +319,7 @@ describe('getInProgressAttempt - Validation', () => {
       chain.single.mockResolvedValue({ data: validAttempt, error: null });
       supabase.from.mockReturnValue(chain);
 
-      const result = await getInProgressAttempt('student-id');
+      const result = await getInProgressAttempt('learner-id');
 
       expect(result).toBeTruthy();
       expect(result.id).toBe(validAttempt.id);
@@ -327,7 +327,7 @@ describe('getInProgressAttempt - Validation', () => {
   });
 
   describe('Edge cases', () => {
-    it('should return null when no student ID provided', async () => {
+    it('should return null when no learner ID provided', async () => {
       const result = await getInProgressAttempt(null);
       expect(result).toBeNull();
     });
@@ -337,7 +337,7 @@ describe('getInProgressAttempt - Validation', () => {
       chain.single.mockResolvedValue({ data: null, error: { code: 'PGRST116' } });
       supabase.from.mockReturnValue(chain);
 
-      const result = await getInProgressAttempt('student-id');
+      const result = await getInProgressAttempt('learner-id');
 
       expect(result).toBeNull();
     });

@@ -18,7 +18,7 @@ import { useUser } from '@/shared/model/authStore';
  * Get the base path for subscription routes based on current location
  */
 function getSubscriptionBasePath(pathname) {
-  if (pathname.startsWith('/student')) return '/student';
+  if (pathname.startsWith('/learner')) return '/learner';
   if (pathname.startsWith('/recruitment')) return '/recruitment';
   if (pathname.startsWith('/educator')) return '/educator';
   if (pathname.startsWith('/college-admin')) return '/college-admin';
@@ -32,28 +32,28 @@ function getSubscriptionBasePath(pathname) {
  * Get the user type for subscription plans based on current URL path
  */
 function getUserTypeFromUrl(pathname) {
-  if (pathname.startsWith('/student')) return 'student';
+  if (pathname.startsWith('/learner')) return 'learner';
   if (pathname.startsWith('/recruitment')) return 'recruiter';
   if (pathname.startsWith('/educator')) return 'educator';
   if (pathname.startsWith('/college-admin')) return 'college_admin';
   if (pathname.startsWith('/school-admin')) return 'school_admin';
   if (pathname.startsWith('/university-admin')) return 'university_admin';
   if (pathname.startsWith('/admin')) return 'admin';
-  return 'student'; // fallback
+  return 'learner'; // fallback
 }
 
 /**
  * Get the settings path based on current URL path (more reliable than role)
  */
 function getSettingsPathFromUrl(pathname) {
-  if (pathname.startsWith('/student')) return '/student/settings';
+  if (pathname.startsWith('/learner')) return '/learner/settings';
   if (pathname.startsWith('/recruitment')) return '/recruitment/settings';
   if (pathname.startsWith('/educator')) return '/educator/settings';
   if (pathname.startsWith('/college-admin')) return '/college-admin/settings';
   if (pathname.startsWith('/school-admin')) return '/school-admin/settings';
   if (pathname.startsWith('/university-admin')) return '/university-admin/settings';
   if (pathname.startsWith('/admin')) return '/admin/settings';
-  return '/student/settings'; // fallback
+  return '/learner/settings'; // fallback
 }
 
 function AddOns() {
@@ -74,7 +74,7 @@ function AddOns() {
   const checkoutMode = searchParams.get('checkout') === 'true';
 
   // Get role for filtering add-ons
-  const userRole = user?.user_metadata?.role || user?.raw_user_meta_data?.role || role || 'student';
+  const userRole = user?.user_metadata?.role || user?.raw_user_meta_data?.role || role || 'learner';
   
   // Get settings path from URL (more reliable than role)
   const settingsPath = useMemo(() => getSettingsPathFromUrl(location.pathname), [location.pathname]);
@@ -82,9 +82,9 @@ function AddOns() {
   // Map user roles to add-on categories
   const getAddOnRole = useCallback(() => {
     const roleMapping = {
-      'student': 'student',
-      'school_student': 'student',
-      'college_student': 'student',
+      'learner': 'learner',
+      'school-learner': 'learner',
+      'college-learner': 'learner',
       'educator': 'educator',
       'school_educator': 'educator',
       'college_educator': 'educator',
@@ -95,7 +95,7 @@ function AddOns() {
       'recruiter': 'recruiter',
       'company_admin': 'recruiter',
     };
-    return roleMapping[userRole] || 'student';
+    return roleMapping[userRole] || 'learner';
   }, [userRole]);
 
   // Handle back navigation

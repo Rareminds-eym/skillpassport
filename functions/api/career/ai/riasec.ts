@@ -41,7 +41,7 @@ export function interpretRIASEC(code: string, scores: Record<string, number>): s
   const allZeros = allScores.length > 0 && allScores.every(s => s === 0);
   
   if (allZeros) {
-    return 'Assessment scores appear incomplete (all zeros). The student may need to retake the assessment for accurate results.';
+    return 'Assessment scores appear incomplete (all zeros). The learner may need to retake the assessment for accurate results.';
   }
   
   const topTypes = code.slice(0, 3).split('');

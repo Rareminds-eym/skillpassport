@@ -1,6 +1,6 @@
 import React from "react";
 import { CalendarDaysIcon } from "@heroicons/react/24/outline";
-import { CollegeEvent } from '@/features/student-profile/model';
+import { CollegeEvent } from '@/features/learner-profile/model';
 import { formatTime, getEventTypeColor, getEventTypeIcon } from "../helpers";
 
 interface Props {

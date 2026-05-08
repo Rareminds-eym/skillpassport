@@ -8,7 +8,7 @@ const logger = getLogger('use-session-restore');
  * Custom hook for session restoration logic
  * Handles checking for restore points and managing the restore modal
  */
-export const useSessionRestore = (studentId, courseId, options = {}) => {
+export const useSessionRestore = (learnerId, courseId, options = {}) => {
   const {
     enabled = true,
     minProgressForRestore = 1, // Minimum progress % to show restore modal
@@ -22,7 +22,7 @@ export const useSessionRestore = (studentId, courseId, options = {}) => {
 
   // Check for restore point on mount
   useEffect(() => {
-    if (!enabled || !studentId || !courseId) {
+    if (!enabled || !learnerId || !courseId) {
       setIsLoading(false);
       return;
     }
@@ -31,7 +31,7 @@ export const useSessionRestore = (studentId, courseId, options = {}) => {
       setIsLoading(true);
 
       try {
-        const point = await courseProgressService.getRestorePoint(studentId, courseId);
+        const point = await courseProgressService.getRestorePoint(learnerId, courseId);
 
         if (point && point.progress >= minProgressForRestore && point.progress < 100) {
           setRestorePoint(point);
@@ -51,7 +51,7 @@ export const useSessionRestore = (studentId, courseId, options = {}) => {
     };
 
     checkRestorePoint();
-  }, [studentId, courseId, enabled, minProgressForRestore, autoRestoreThreshold]);
+  }, [learnerId, courseId, enabled, minProgressForRestore, autoRestoreThreshold]);
 
   // Handle user choosing to restore
   const handleRestore = useCallback(() => {
@@ -61,13 +61,13 @@ export const useSessionRestore = (studentId, courseId, options = {}) => {
 
   // Handle user choosing to start fresh
   const handleStartFresh = useCallback(async () => {
-    if (studentId && courseId) {
-      await courseProgressService.clearRestorePoint(studentId, courseId);
+    if (learnerId && courseId) {
+      await courseProgressService.clearRestorePoint(learnerId, courseId);
     }
     setShowRestoreModal(false);
     setRestorePoint(null);
     setShouldAutoRestore(false);
-  }, [studentId, courseId]);
+  }, [learnerId, courseId]);
 
   // Dismiss modal without action
   const dismissModal = useCallback(() => {
@@ -76,17 +76,17 @@ export const useSessionRestore = (studentId, courseId, options = {}) => {
 
   // Save current position as restore point
   const saveRestorePoint = useCallback(async (moduleIndex, lessonIndex, lessonId, videoPosition = 0) => {
-    if (!enabled || !studentId || !courseId) return;
+    if (!enabled || !learnerId || !courseId) return;
 
     await courseProgressService.saveRestorePoint(
-      studentId,
+      learnerId,
       courseId,
       moduleIndex,
       lessonIndex,
       lessonId,
       videoPosition
     );
-  }, [enabled, studentId, courseId]);
+  }, [enabled, learnerId, courseId]);
 
   // Format last accessed time for display
   const getLastAccessedText = useCallback(() => {

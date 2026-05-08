@@ -30,7 +30,7 @@ export type {
 
 export {
   isValidRole,
-  isStudentRole,
+  islearnerRole,
   isEducatorRole,
   isAdminRole,
   isRecruiterRole,

@@ -14,7 +14,7 @@ import { queryKeys } from '@/shared/lib/queryKeys';
 import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('ApplicantsList');
 
-interface Student {
+interface Learner {
   id: string;
   name: string;
   email: string;
@@ -41,7 +41,7 @@ interface Opportunity {
 
 interface Applicant {
   id: string;  // Changed to string for UUID
-  student_id: string;
+  learner_id: string;
   opportunity_id: string;  // Changed to string for UUID
   application_status: string;
   applied_at: string;
@@ -49,7 +49,7 @@ interface Applicant {
   responded_at?: string;
   interview_scheduled_at?: string;
   notes?: string;
-  student: Student;
+  learner: Learner;
   opportunity: Opportunity;
   pipeline_stage?: string;
   pipeline_candidate_id?: string;
@@ -92,7 +92,7 @@ const ApplicantsList: React.FC = () => {
   const [aiRecommendations, setAiRecommendations] = useState<{
     topRecommendations: Array<{
       applicantId: number;
-      studentName: string;
+      learnerName: string;
       positionTitle: string;
       matchScore: number;
       confidence: 'high' | 'medium' | 'low';
@@ -161,13 +161,13 @@ const ApplicantsList: React.FC = () => {
                 // Get pipeline data for this opportunity
                 const { data: pipelineData } = await getAllPipelineCandidatesByStage(applicant.opportunity_id);
 
-                // Find this student in the pipeline data
+                // Find this learner in the pipeline data
                 let pipelineStage = null;
                 let pipelineCandidateId = null;
 
                 if (pipelineData) {
                   for (const [stage, candidates] of Object.entries(pipelineData)) {
-                    const found = (candidates as any[]).find(c => c.student_id === applicant.student_id);
+                    const found = (candidates as any[]).find(c => c.learner_id === applicant.learner_id);
                     if (found) {
                       pipelineStage = stage;
                       pipelineCandidateId = found.id;
@@ -230,19 +230,19 @@ const ApplicantsList: React.FC = () => {
     try {
       // Prepare applicants data for analysis
       const applicantsForAnalysis = applicantsList
-        .filter(app => app.student && app.opportunity) // Filter out applicants with null student or opportunity
+        .filter(app => app.learner && app.opportunity) // Filter out applicants with null learner or opportunity
         .map(app => ({
           id: app.id,
-          student_id: app.student_id,
+          learner_id: app.learner_id,
           opportunity_id: app.opportunity_id,
           pipeline_stage: app.pipeline_stage,
-          student: {
-            id: app.student_id,
-            name: app.student?.name || 'Unknown',
-            email: app.student?.email || '',
-            university: app.student?.university,
-            cgpa: app.student?.cgpa,
-            branch_field: app.student?.department
+          learner: {
+            id: app.learner_id,
+            name: app.learner?.name || 'Unknown',
+            email: app.learner?.email || '',
+            university: app.learner?.university,
+            cgpa: app.learner?.cgpa,
+            branch_field: app.learner?.department
           },
           opportunity: {
             id: app.opportunity_id,
@@ -304,7 +304,7 @@ const ApplicantsList: React.FC = () => {
     logger.info('[ApplicantsList] handleMoveToPipelineStage called', {
       applicant: {
         id: applicant.id,
-        student_id: applicant.student_id,
+        learner_id: applicant.learner_id,
         opportunity_id: applicant.opportunity_id,
         pipeline_candidate_id: applicant.pipeline_candidate_id,
         pipeline_stage: applicant.pipeline_stage,
@@ -317,14 +317,14 @@ const ApplicantsList: React.FC = () => {
     if (!applicant.pipeline_candidate_id && (applicant.application_status === 'applied' || applicant.application_status === 'viewed')) {
       try {
         // Add candidate to pipeline first using the service
-        const { data: student } = await supabase
-          .from('students')
+        const { data: learner } = await supabase
+          .from('learners')
           .select('name, email, contact_number')
-          .eq('id', applicant.student_id)
+          .eq('id', applicant.learner_id)
           .single();
 
-        if (!student) {
-          alert('Student information not found');
+        if (!learner) {
+          alert('Learner information not found');
           return;
         }
 
@@ -333,10 +333,10 @@ const ApplicantsList: React.FC = () => {
 
         const result = await addCandidateToPipeline({
           opportunity_id: applicant.opportunity_id,
-          student_id: applicant.student_id,
-          candidate_name: student.name || 'Unknown Student',
-          candidate_email: student.email || '',
-          candidate_phone: student.contact_number || '',
+          learner_id: applicant.learner_id,
+          candidate_name: learner.name || 'Unknown Learner',
+          candidate_email: learner.email || '',
+          candidate_phone: learner.contact_number || '',
           stage: newStage,
           source: 'direct_application',
           added_by: user?.id || undefined
@@ -400,7 +400,7 @@ const ApplicantsList: React.FC = () => {
 
     // Refresh the applicants list to show updated stages
     await fetchApplicants();
-    alert(`Successfully moved ${applicant.student.name} to ${newStage} stage`);
+    alert(`Successfully moved ${applicant.learner.name} to ${newStage} stage`);
   };
 
   const getNextStageOptions = (applicant: Applicant) => {
@@ -506,7 +506,7 @@ const ApplicantsList: React.FC = () => {
   };
 
   const getExperienceYears = (applicant: Applicant) => {
-    const yearOfPassing = applicant.student?.year_of_passing;
+    const yearOfPassing = applicant.learner?.year_of_passing;
     if (!yearOfPassing) return 'N/A';
 
     const currentYear = new Date().getFullYear();
@@ -534,8 +534,8 @@ const ApplicantsList: React.FC = () => {
   const filteredApplicants = applicants.filter((applicant) => {
     // Filter by search term
     const matchesSearch =
-      applicant.student?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      applicant.student?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      applicant.learner?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      applicant.learner?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       applicant.opportunity?.job_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       applicant.opportunity?.title?.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -559,11 +559,11 @@ const ApplicantsList: React.FC = () => {
 
     switch (sortBy) {
       case 'name':
-        return (a.student?.name || '').localeCompare(b.student?.name || '') * multiplier;
+        return (a.learner?.name || '').localeCompare(b.learner?.name || '') * multiplier;
       case 'date':
         return (new Date(a.applied_at).getTime() - new Date(b.applied_at).getTime()) * multiplier;
       case 'rating':
-        return ((a.student?.employability_score || 0) - (b.student?.employability_score || 0)) * multiplier;
+        return ((a.learner?.employability_score || 0) - (b.learner?.employability_score || 0)) * multiplier;
       default:
         return 0;
     }
@@ -579,8 +579,8 @@ const ApplicantsList: React.FC = () => {
   const exportToCSV = () => {
     const headers = ['Candidate', 'Email', 'Position', 'Status', 'Applied'];
     const rows = sortedApplicants.map(applicant => [
-      applicant.student?.name || '',
-      applicant.student?.email || '',
+      applicant.learner?.name || '',
+      applicant.learner?.email || '',
       applicant.opportunity?.job_title || applicant.opportunity?.title || '',
       applicant.application_status,
       getTimeAgo(applicant.applied_at)
@@ -878,19 +878,19 @@ const ApplicantsList: React.FC = () => {
 
                           {/* Profile Section */}
                           <div className="flex items-center gap-4">
-                            {applicant?.student?.photo ? (
+                            {applicant?.learner?.photo ? (
                               <img
-                                src={applicant.student.photo}
-                                alt={rec.studentName}
+                                src={applicant.learner.photo}
+                                alt={rec.learnerName}
                                 className="h-16 w-16 rounded-full object-cover flex-shrink-0 border-2 border-gray-100"
                               />
                             ) : (
                               <div className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-2xl flex-shrink-0">
-                                {rec.studentName.charAt(0).toUpperCase()}
+                                {rec.learnerName.charAt(0).toUpperCase()}
                               </div>
                             )}
                             <div className="flex-1 min-w-0">
-                              <h3 className="text-2xl font-bold text-gray-900 truncate mb-1">{rec.studentName}</h3>
+                              <h3 className="text-2xl font-bold text-gray-900 truncate mb-1">{rec.learnerName}</h3>
                               <p className="text-base text-gray-600">{rec.positionTitle}</p>
                             </div>
                           </div>
@@ -1052,24 +1052,24 @@ const ApplicantsList: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="h-10 w-10 flex-shrink-0">
-                              {applicant.student?.photo ? (
+                              {applicant.learner?.photo ? (
                                 <img
-                                  src={applicant.student.photo}
-                                  alt={applicant.student.name}
+                                  src={applicant.learner.photo}
+                                  alt={applicant.learner.name}
                                   className="h-10 w-10 rounded-full object-cover"
                                 />
                               ) : (
                                 <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-semibold">
-                                  {applicant.student?.name?.charAt(0).toUpperCase() || '?'}
+                                  {applicant.learner?.name?.charAt(0).toUpperCase() || '?'}
                                 </div>
                               )}
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-900">
-                                {applicant.student?.name || 'Unknown'}
+                                {applicant.learner?.name || 'Unknown'}
                               </div>
                               <div className="text-sm text-gray-500">
-                                {applicant.student?.email || 'N/A'}
+                                {applicant.learner?.email || 'N/A'}
                               </div>
                             </div>
                           </div>
@@ -1293,9 +1293,9 @@ const ApplicantsList: React.FC = () => {
             setMessageModalOpen(false);
             setSelectedApplicant(null);
           }}
-          studentId={selectedApplicant.student_id}
+          learnerId={selectedApplicant.learner_id}
           recruiterId={recruiterId}
-          studentName={selectedApplicant.student?.name || 'Candidate'}
+          learnerName={selectedApplicant.learner?.name || 'Candidate'}
           applicationId={selectedApplicant.id}
           opportunityId={selectedApplicant.opportunity_id}
           jobTitle={selectedApplicant.opportunity?.job_title || selectedApplicant.opportunity?.title}

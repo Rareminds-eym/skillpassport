@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { immer } from 'zustand/middleware/immer';
-import { getStudentPortfolioByEmail } from '@/features/digital-portfolio/api/portfolioService';
+import { getlearnerPortfolioByEmail } from '@/features/digital-portfolio/api/portfolioService';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('PortfolioStore');
@@ -33,7 +33,7 @@ export interface PortfolioSettings {
   displayPreferences: DisplayPreferences;
 }
 
-interface Student {
+interface Learner {
   id: string;
   email: string;
   name?: string;
@@ -42,7 +42,7 @@ interface Student {
 
 interface PortfolioState {
   // Data
-  student: Student | null;
+  learner: Learner | null;
   settings: PortfolioSettings;
   viewerRole: string | null;
 
@@ -52,19 +52,19 @@ interface PortfolioState {
   loadedUserEmail: string | null;
 
   // Actions
-  setStudent: (studentData: Student) => Promise<void>;
-  setStudentSync: (studentData: Student) => void;
+  setLearner: (learnerData: Learner) => Promise<void>;
+  setlearnerSync: (learnerData: Learner) => void;
   updateSettings: (newSettings: Partial<PortfolioSettings>) => void;
   resetToAuthUser: () => void;
   resetToRoleDefaults: () => void;
   setViewerRole: (role: string | null) => void;
   setIsLoading: (isLoading: boolean) => void;
   setIsManuallySet: (isManuallySet: boolean) => void;
-  loadStudentByEmail: (email: string) => Promise<void>;
-  clearStudent: () => void;
+  loadlearnerByEmail: (email: string) => Promise<void>;
+  clearLearner: () => void;
 
   // Getters
-  hasStudent: () => boolean;
+  hasLearner: () => boolean;
   getSettingsKey: () => string;
   getRoleBasedDefaults: () => PortfolioSettings;
 }
@@ -82,7 +82,7 @@ const defaultDisplayPreferences: DisplayPreferences = {
 // Get role-based default layout
 const getRoleBasedDefaultLayout = (role: string | null): string => {
   switch (role) {
-    case 'student':
+    case 'learner':
       return 'infographic';
     case 'university_admin':
     case 'college_admin':
@@ -110,24 +110,24 @@ const getDefaultSettings = (viewerRole: string | null): PortfolioSettings => ({
 export const usePortfolioStore = create<PortfolioState>()(
   immer((set, get) => ({
     // Initial state
-    student: null,
+    learner: null,
     settings: getDefaultSettings(null),
     viewerRole: null,
     isLoading: false,
     isManuallySet: false,
     loadedUserEmail: null,
 
-    // Set student with async data fetching
-    setStudent: async (studentData) => {
-      const { isLoading, student } = get();
+    // Set learner with async data fetching
+    setLearner: async (learnerData) => {
+      const { isLoading, learner } = get();
 
-      // Prevent infinite loops - already loading same student
-      if (isLoading && student?.email === studentData.email) {
+      // Prevent infinite loops - already loading same learner
+      if (isLoading && learner?.email === learnerData.email) {
         return;
       }
 
-      // Already have this student's data
-      if (student?.email === studentData.email && !isLoading) {
+      // Already have this learner's data
+      if (learner?.email === learnerData.email && !isLoading) {
         set((state) => {
           state.isManuallySet = true;
         });
@@ -140,30 +140,30 @@ export const usePortfolioStore = create<PortfolioState>()(
       });
 
       try {
-        if (studentData.email) {
-          const result = await getStudentPortfolioByEmail(studentData.email) as ServiceResponse<Student>;
-          const studentResult = result.data;
+        if (learnerData.email) {
+          const result = await getlearnerPortfolioByEmail(learnerData.email) as ServiceResponse<Learner>;
+          const learnerResult = result.data;
 
-          if (result.success && studentResult) {
+          if (result.success && learnerResult) {
             set((state) => {
-              state.student = studentResult;
-              state.loadedUserEmail = studentData.email;
+              state.learner = learnerResult;
+              state.loadedUserEmail = learnerData.email;
             });
           } else {
             set((state) => {
-              state.student = studentData;
-              state.loadedUserEmail = studentData.email;
+              state.learner = learnerData;
+              state.loadedUserEmail = learnerData.email;
             });
           }
         } else {
           set((state) => {
-            state.student = studentData;
-            state.loadedUserEmail = studentData.email || null;
+            state.learner = learnerData;
+            state.loadedUserEmail = learnerData.email || null;
           });
         }
       } catch (error) {
         set((state) => {
-          state.student = studentData;
+          state.learner = learnerData;
         });
       } finally {
         set((state) => {
@@ -172,11 +172,11 @@ export const usePortfolioStore = create<PortfolioState>()(
       }
     },
 
-    // Set student synchronously (no API call)
-    setStudentSync: (studentData) => {
+    // Set learner synchronously (no API call)
+    setlearnerSync: (learnerData) => {
       set((state) => {
-        state.student = studentData;
-        state.loadedUserEmail = studentData.email || null;
+        state.learner = learnerData;
+        state.loadedUserEmail = learnerData.email || null;
         state.isManuallySet = true;
       });
     },
@@ -196,7 +196,7 @@ export const usePortfolioStore = create<PortfolioState>()(
     resetToAuthUser: () => {
       set((state) => {
         state.isManuallySet = false;
-        state.student = null;
+        state.learner = null;
         state.loadedUserEmail = null;
       });
     },
@@ -250,8 +250,8 @@ export const usePortfolioStore = create<PortfolioState>()(
       });
     },
 
-    // Load student by email
-    loadStudentByEmail: async (email) => {
+    // Load learner by email
+    loadlearnerByEmail: async (email) => {
       const { loadedUserEmail, isManuallySet } = get();
 
       if (isManuallySet) return;
@@ -267,17 +267,17 @@ export const usePortfolioStore = create<PortfolioState>()(
       });
 
       try {
-        const result = await getStudentPortfolioByEmail(email) as ServiceResponse<Student>;
-        const studentResult = result.data;
+        const result = await getlearnerPortfolioByEmail(email) as ServiceResponse<Learner>;
+        const learnerResult = result.data;
 
-        if (result.success && studentResult) {
+        if (result.success && learnerResult) {
           set((state) => {
-            state.student = studentResult;
+            state.learner = learnerResult;
             state.loadedUserEmail = email;
           });
         }
       } catch (error) {
-        logger.error('Error loading student by email', error instanceof Error ? error : new Error('Unknown error'));
+        logger.error('Error loading learner by email', error instanceof Error ? error : new Error('Unknown error'));
       } finally {
         set((state) => {
           state.isLoading = false;
@@ -285,18 +285,18 @@ export const usePortfolioStore = create<PortfolioState>()(
       }
     },
 
-    // Clear student data
-    clearStudent: () => {
+    // Clear learner data
+    clearLearner: () => {
       set((state) => {
-        state.student = null;
+        state.learner = null;
         state.loadedUserEmail = null;
         state.isManuallySet = false;
       });
     },
 
     // Getters
-    hasStudent: () => {
-      return get().student !== null;
+    hasLearner: () => {
+      return get().learner !== null;
     },
 
     getSettingsKey: () => {
@@ -310,8 +310,8 @@ export const usePortfolioStore = create<PortfolioState>()(
 );
 
 // Convenience hooks
-export const usePortfolioStudent = () =>
-  usePortfolioStore((state) => state.student);
+export const usePortfolioLearner = () =>
+  usePortfolioStore((state) => state.learner);
 
 export const usePortfolioSettings = () =>
   usePortfolioStore((state) => state.settings);
@@ -324,30 +324,30 @@ export const usePortfolioViewerRole = () =>
 
 export const usePortfolioActions = () =>
   usePortfolioStore(useShallow((state) => ({
-    setStudent: state.setStudent,
-    setStudentSync: state.setStudentSync,
+    setLearner: state.setLearner,
+    setlearnerSync: state.setlearnerSync,
     updateSettings: state.updateSettings,
     resetToAuthUser: state.resetToAuthUser,
     resetToRoleDefaults: state.resetToRoleDefaults,
-    clearStudent: state.clearStudent,
-    loadStudentByEmail: state.loadStudentByEmail,
+    clearLearner: state.clearLearner,
+    loadlearnerByEmail: state.loadlearnerByEmail,
   })));
 
-// Hook for checking if viewing another student's portfolio
-export const useIsViewingOtherStudent = () =>
-  usePortfolioStore((state) => state.isManuallySet && state.student !== null);
+// Hook for checking if viewing another learner's portfolio
+export const useIsViewingOtherLearner = () =>
+  usePortfolioStore((state) => state.isManuallySet && state.learner !== null);
 
 // Combined convenience hook
 export const usePortfolio = () => {
-  const student = usePortfolioStudent();
+  const learner = usePortfolioLearner();
   const settings = usePortfolioSettings();
   const isLoading = usePortfolioLoading();
   const viewerRole = usePortfolioViewerRole();
   const actions = usePortfolioActions();
-  const isManuallySet = useIsViewingOtherStudent();
+  const isManuallySet = useIsViewingOtherLearner();
 
   return {
-    student,
+    learner,
     settings,
     isLoading,
     viewerRole,

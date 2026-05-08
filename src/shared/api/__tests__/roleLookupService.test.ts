@@ -21,21 +21,21 @@ describe('roleLookupService', () => {
   });
 
   describe('getUserRole', () => {
-    it('should return student role when user is found in students table', async () => {
-      const mockStudent = {
-        id: 'student-123',
+    it('should return learner role when user is found in learners table', async () => {
+      const mockLearner = {
+        id: 'learner-123',
         user_id: 'user-123',
-        email: 'student@example.com',
+        email: 'learner@example.com',
         name: 'John Doe',
         school_id: 'school-1'
       };
 
-      vi.mocked(supabase.from).mockReturnValue(createMockQuery(mockStudent) as any);
+      vi.mocked(supabase.from).mockReturnValue(createMockQuery(mockLearner) as any);
 
-      const result = await getUserRole('user-123', 'student@example.com');
+      const result = await getUserRole('user-123', 'learner@example.com');
 
-      expect(result.role).toBe('student');
-      expect(result.userData?.email).toBe('student@example.com');
+      expect(result.role).toBe('learner');
+      expect(result.userData?.email).toBe('learner@example.com');
       expect(result.error).toBeUndefined();
     });
 
@@ -47,7 +47,7 @@ describe('roleLookupService', () => {
         name: 'Jane Smith'
       };
 
-      // First call (students) returns null, second call (recruiters) returns data
+      // First call (learners) returns null, second call (recruiters) returns data
       vi.mocked(supabase.from)
         .mockReturnValueOnce(createMockQuery(null) as any)
         .mockReturnValueOnce(createMockQuery(mockRecruiter) as any);
@@ -68,7 +68,7 @@ describe('roleLookupService', () => {
         school_id: 'school-1'
       };
 
-      // Students and recruiters return null, school_educators returns data
+      // Learners and recruiters return null, school_educators returns data
       vi.mocked(supabase.from)
         .mockReturnValueOnce(createMockQuery(null) as any)
         .mockReturnValueOnce(createMockQuery(null) as any)
@@ -129,26 +129,26 @@ describe('roleLookupService', () => {
     });
 
     it('should return single role when user has only one role', async () => {
-      const mockStudent = {
-        id: 'student-123',
+      const mockLearner = {
+        id: 'learner-123',
         user_id: 'user-123',
-        email: 'student@example.com',
+        email: 'learner@example.com',
         name: 'John Doe'
       };
 
-      vi.mocked(supabase.from).mockReturnValue(createMockQuery(mockStudent) as any);
+      vi.mocked(supabase.from).mockReturnValue(createMockQuery(mockLearner) as any);
 
-      const result = await getUserRole('user-123', 'student@example.com');
+      const result = await getUserRole('user-123', 'learner@example.com');
 
       // Verify only one role is returned
-      expect(result.role).toBe('student');
+      expect(result.role).toBe('learner');
       expect(result.roles).toBeUndefined();
       expect(result.userData).toBeDefined();
     });
 
     it('should return multiple roles when user has more than one role', async () => {
-      const mockStudent = {
-        id: 'student-123',
+      const mockLearner = {
+        id: 'learner-123',
         user_id: 'user-123',
         email: 'multi@example.com',
         name: 'Multi Role User'
@@ -161,9 +161,9 @@ describe('roleLookupService', () => {
         name: 'Multi Role User'
       };
 
-      // First call (students) returns data, second call (recruiters) returns data
+      // First call (learners) returns data, second call (recruiters) returns data
       vi.mocked(supabase.from)
-        .mockReturnValueOnce(createMockQuery(mockStudent) as any)
+        .mockReturnValueOnce(createMockQuery(mockLearner) as any)
         .mockReturnValueOnce(createMockQuery(mockRecruiter) as any)
         .mockReturnValue(createMockQuery(null) as any);
 
@@ -173,7 +173,7 @@ describe('roleLookupService', () => {
       expect(result.role).toBeNull();
       expect(result.roles).toBeDefined();
       expect(result.roles?.length).toBe(2);
-      expect(result.roles).toContain('student');
+      expect(result.roles).toContain('learner');
       expect(result.roles).toContain('recruiter');
       expect(result.allUserData).toBeDefined();
       expect(result.allUserData?.length).toBe(2);

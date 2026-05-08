@@ -67,7 +67,7 @@ describe('Storage API Integration Tests', () => {
       const response = await fetch(`${STORAGE_API_URL}/course-certificate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentId: 'test-student' })
+        body: JSON.stringify({ learnerId: 'test-learner' })
       });
       
       // Should not return 401 (may return other errors if data doesn't exist)

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from '@/shared/api/supabaseClient';
-import { Program, Department } from '@/features/student-profile/model';
+import { Program, Department } from '@/features/learner-profile/model';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('programs');

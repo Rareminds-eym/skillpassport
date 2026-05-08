@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 
-import { useStudentDataByEmail } from '@/entities/student';
+import { useLearnerDataByEmail } from '@/entities/learner';
 import { getApiUrl } from '@/shared/api/apiUtils';
-import { useStudentProfile } from '@/features/student-profile';
+import { useLearnerProfile } from '@/features/learner-profile';
 import { supabase } from '@/shared/api/supabaseClient';
 import { useClassInfo } from '../model/useClassInfo';
 import { useOverviewData } from '../model/useOverviewData';
@@ -44,23 +44,23 @@ import {
   ResultsSkeletonLoader
 } from './modals/SkeletonLoaders';
 import {
-  getStudentClassInfo,
+  getlearnerClassInfo,
   getClassmates,
   getClassTimetable,
   getTodaySchedule
-} from '@/features/student-profile/api';
+} from '@/features/learner-profile/api';
 import {
-  getAssignmentsByStudentId,
+  getAssignmentsByLearnerId,
   getAssignmentStats,
   updateAssignmentStatus,
   submitAssignmentWithStagedFiles,
   getAssignmentWithFiles
 } from '@/features/educator';
 import {
-  getGroupedStudentExams,
-  getStudentResults,
-  getStudentResultStats
-} from '@/features/student-profile/api';
+  getGroupedlearnerExams,
+  getlearnerResults,
+  getlearnerResultStats
+} from '@/features/learner-profile/api';
 
 type TabType = 'overview' | 'assignments' | 'timetable' | 'classmates' | 'curriculars' | 'exams' | 'results';
 type TimetableViewType = 'week' | 'day';
@@ -77,8 +77,8 @@ type TimetableViewType = 'week' | 'day';
 const SchoolMyClass: React.FC = () => {
   const user = useUser();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
-  const { studentData, loading: authLoading } = useStudentDataByEmail(userEmail) as { studentData: any; loading: boolean };
-  const studentId = studentData?.id;
+  const { learnerData, loading: authLoading } = useLearnerDataByEmail(userEmail) as { learnerData: any; loading: boolean };
+  const learnerId = learnerData?.id;
 
   // UI State
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -98,18 +98,18 @@ const SchoolMyClass: React.FC = () => {
   const [loadedTabs, setLoadedTabs] = useState<Set<TabType>>(new Set(['overview']));
 
   // Always load: Class info (needed for header)
-  const { classInfo, loading: classInfoLoading } = useClassInfo(studentId, authLoading);
+  const { classInfo, loading: classInfoLoading } = useClassInfo(learnerId, authLoading);
   const classId = classInfo?.id;
 
   // Overview data (loads on mount)
-  const overviewHook = useOverviewData(classId, studentId);
+  const overviewHook = useOverviewData(classId, learnerId);
 
   // Lazy-loaded data hooks (only fetch when tabs are clicked)
-  const assignmentsHook = useAssignmentsData(studentId);
+  const assignmentsHook = useAssignmentsData(learnerId);
   const timetableHook = useTimetableData(classId);
-  const classmatesHook = useClassmatesData(classId, studentId);
+  const classmatesHook = useClassmatesData(classId, learnerId);
   const coCurricularsHook = useOptimizedCoCurricularsData(userEmail || null);
-  const examsHook = useOptimizedExamsData(studentId);
+  const examsHook = useOptimizedExamsData(learnerId);
 
   const { showNotification, notification, showNotificationModal, hideNotification } = useNotification();
 
@@ -121,7 +121,7 @@ const SchoolMyClass: React.FC = () => {
     handleUploadSubmit,
     loadAssignmentDetails
   } = useAssignmentActions({
-    studentId,
+    learnerId,
     onAssignmentsUpdate: () => {},
     onStatsRefresh: assignmentsHook.refetchAssignments,
     onNotification: showNotificationModal
@@ -129,10 +129,10 @@ const SchoolMyClass: React.FC = () => {
 
   // Load overview data on mount
   useEffect(() => {
-    if (classId && studentId) {
+    if (classId && learnerId) {
       overviewHook.fetchData();
     }
-  }, [classId, studentId]);
+  }, [classId, learnerId]);
 
   // Lazy load data when tab becomes active
   useEffect(() => {
@@ -152,7 +152,7 @@ const SchoolMyClass: React.FC = () => {
       examsHook.fetchData();
       setLoadedTabs(prev => new Set(prev).add('exams'));
     }
-  }, [activeTab, loadedTabs, classId, studentId]);
+  }, [activeTab, loadedTabs, classId, learnerId]);
 
   // Reset pagination when switching tabs
   useEffect(() => {
@@ -294,7 +294,7 @@ const SchoolMyClass: React.FC = () => {
                     { label: "Class", value: classInfo?.name || 'N/A' },
                     { label: "Grade", value: classInfo?.grade || 'N/A' },
                     { label: "School", value: classInfo?.school_name || 'N/A' },
-                    { label: "Classmates", value: `${classmatesHook.classmates.length} students` }
+                    { label: "Classmates", value: `${classmatesHook.classmates.length} learners` }
                   ]
                 }}
                 loading={overviewHook.loading}
@@ -311,10 +311,10 @@ const SchoolMyClass: React.FC = () => {
                 totalPages={totalPages}
                 itemsPerPage={itemsPerPage}
                 loading={assignmentsHook.loading}
-                onStatusChange={(assignmentId, studentAssignmentId, newStatus) => {
+                onStatusChange={(assignmentId, learnerAssignmentId, newStatus) => {
                   const assignment = assignmentsHook.assignments.find(a => a.assignment_id === assignmentId);
                   if (assignment) {
-                    handleStatusChange(assignmentId, studentAssignmentId, newStatus, assignment);
+                    handleStatusChange(assignmentId, learnerAssignmentId, newStatus, assignment);
                   }
                 }}
                 onUploadClick={handleUploadClick}

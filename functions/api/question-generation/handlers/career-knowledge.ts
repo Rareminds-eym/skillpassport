@@ -58,10 +58,10 @@ export async function generateKnowledgeQuestions(
     streamName: string,
     topics: string[] | string | null,
     questionCount: number = 50,
-    studentId?: string,
+    learnerId?: string,
     attemptId?: string,
     gradeLevel?: string,
-    isCollegeStudent?: boolean
+    isCollegeLearner?: boolean
 ) {
     console.log('🎓 ============================================');
     console.log('🎓 KNOWLEDGE QUESTION GENERATION STARTED');
@@ -71,12 +71,12 @@ export async function generateKnowledgeQuestions(
     console.log(`📋 Topics: ${topics ? (Array.isArray(topics) ? topics.join(', ') : topics) : 'AI will determine dynamically'}`);
     console.log(`📋 Question Count: ${questionCount}`);
     console.log(`📋 Grade Level: ${gradeLevel || 'not specified'}`);
-    console.log(`📋 Is College Student: ${isCollegeStudent || false}`);
-    console.log(`📋 Student ID: ${studentId || 'not specified'}`);
+    console.log(`📋 Is College Learner: ${isCollegeLearner || false}`);
+    console.log(`📋 Learner ID: ${learnerId || 'not specified'}`);
     console.log(`📋 Attempt ID: ${attemptId || 'not specified'}`);
     
     // Treat higher_secondary (11th/12th) same as college for dynamic topic generation
-    const usesDynamicTopics = isCollegeStudent || gradeLevel === 'higher_secondary';
+    const usesDynamicTopics = isCollegeLearner || gradeLevel === 'higher_secondary';
     
     const supabase = createSupabaseAdminClient(env);
 
@@ -88,7 +88,7 @@ export async function generateKnowledgeQuestions(
 
     const allQuestions: any[] = [];
 
-    // For college students and higher secondary (11th/12th) with 20 questions, use single batch for better consistency
+    // For college learners and higher secondary (11th/12th) with 20 questions, use single batch for better consistency
     // For larger counts, split into batches
     const useSingleBatch = usesDynamicTopics && questionCount <= 20;
     const batchCount = useSingleBatch ? 1 : 2;
@@ -102,20 +102,20 @@ export async function generateKnowledgeQuestions(
         let prompt: string;
         
         if (usesDynamicTopics && !topics) {
-            // For college students and 11th/12th students without predefined topics, let AI determine topics dynamically
-            const studentLevel = gradeLevel === 'higher_secondary' ? '11th-12th grade' : 'college/university';
+            // For college learners and 11th/12th learners without predefined topics, let AI determine topics dynamically
+            const learnerLevel = gradeLevel === 'higher_secondary' ? '11th-12th grade' : 'college/university';
             prompt = `🎯 CRITICAL REQUIREMENT: You MUST generate EXACTLY ${totalQuestions} questions. Count them before responding.
 
-Generate EXACTLY ${totalQuestions} multiple-choice knowledge questions for a ${studentLevel} student studying ${streamName}.
+Generate EXACTLY ${totalQuestions} multiple-choice knowledge questions for a ${learnerLevel} learner studying ${streamName}.
 
 ⚠️ CRITICAL: ALL questions MUST be about ${streamName} - DO NOT generate questions about other subjects!
-- If the stream is "Science (PCM)", generate questions about Physics, Chemistry, and Mathematics at ${studentLevel} level
-- If the stream is "Science (PCB)", generate questions about Physics, Chemistry, and Biology at ${studentLevel} level
-- If the stream is "Commerce", generate questions about Accounting, Business, Economics at ${studentLevel} level
-- If the stream is "Arts with Economics", generate questions about Economics, Political Science, History, Sociology at ${studentLevel} level
+- If the stream is "Science (PCM)", generate questions about Physics, Chemistry, and Mathematics at ${learnerLevel} level
+- If the stream is "Science (PCB)", generate questions about Physics, Chemistry, and Biology at ${learnerLevel} level
+- If the stream is "Commerce", generate questions about Accounting, Business, Economics at ${learnerLevel} level
+- If the stream is "Arts with Economics", generate questions about Economics, Political Science, History, Sociology at ${learnerLevel} level
 - NEVER generate questions about subjects not related to ${streamName}
 
-IMPORTANT: Analyze the stream/course name "${streamName}" and generate questions covering the core subjects and topics typically taught in this program at ${studentLevel}.
+IMPORTANT: Analyze the stream/course name "${streamName}" and generate questions covering the core subjects and topics typically taught in this program at ${learnerLevel}.
 
 Requirements:
 1. All questions must be MCQ with exactly 4 options
@@ -125,7 +125,7 @@ Requirements:
 5. Difficulty distribution: 30% easy, 50% medium, 20% hard
 6. Test practical understanding and application, not just memorization
 7. Cover fundamental concepts, theories, and real-world applications relevant to ${streamName}
-8. Questions should be appropriate for ${studentLevel} students
+8. Questions should be appropriate for ${learnerLevel} learners
 9. VERIFY: For each question, ensure the correct answer actually appears in the options
 
 ⚠️ VERIFICATION STEP: Before responding, count your questions. You must have EXACTLY ${totalQuestions} questions in your response.
@@ -135,7 +135,7 @@ Output Format - Respond with ONLY valid JSON (no markdown, no explanation):
 
 REMINDER: Generate EXACTLY ${totalQuestions} questions about ${streamName}. No more, no less.`;
         } else {
-            // For non-college students or when topics are provided, use the existing approach
+            // For non-college learners or when topics are provided, use the existing approach
             prompt = `🎯 CRITICAL REQUIREMENT: You MUST generate EXACTLY ${totalQuestions} questions. Count them before responding.
 
 Generate EXACTLY ${totalQuestions} multiple-choice questions about ${streamName}.
@@ -156,7 +156,7 @@ REMINDER: Generate EXACTLY ${totalQuestions} questions. No more, no less.`;
         }
 
         const systemPrompt = usesDynamicTopics 
-            ? `You are an expert educational assessment creator for ${gradeLevel === 'higher_secondary' ? '11th-12th grade' : 'college/university'} students. 
+            ? `You are an expert educational assessment creator for ${gradeLevel === 'higher_secondary' ? '11th-12th grade' : 'college/university'} learners. 
 
 🎯 CRITICAL: You MUST generate EXACTLY ${totalQuestions} knowledge-based questions. This is a strict requirement.
 
@@ -358,9 +358,9 @@ Before responding, verify you have EXACTLY ${totalQuestions} questions. Generate
         const needed = questionCount - uniqueQuestions.length;
         console.warn(`⚠️ Only ${uniqueQuestions.length}/${questionCount} valid questions. Generating ${needed} more...`);
         
-        const studentLevel = gradeLevel === 'higher_secondary' ? '11th-12th grade' : 'college/university';
+        const learnerLevel = gradeLevel === 'higher_secondary' ? '11th-12th grade' : 'college/university';
         const additionalPrompt = usesDynamicTopics && !topics
-            ? `Generate EXACTLY ${needed} additional multiple-choice knowledge questions for a ${studentLevel} student studying ${streamName}.
+            ? `Generate EXACTLY ${needed} additional multiple-choice knowledge questions for a ${learnerLevel} learner studying ${streamName}.
 
 ⚠️ CRITICAL: ALL questions MUST be about ${streamName} - DO NOT generate questions about other subjects!
 
@@ -371,7 +371,7 @@ Requirements:
 4. The correct answer MUST be one of the 4 options provided
 5. Difficulty distribution: 30% easy, 50% medium, 20% hard
 6. Test practical understanding and application
-7. Questions should be appropriate for ${studentLevel} students
+7. Questions should be appropriate for ${learnerLevel} learners
 
 Output Format - Respond with ONLY valid JSON (no markdown):
 {"questions":[{"id":1,"type":"mcq","difficulty":"easy","question":"Question text","options":["A","B","C","D"],"correct_answer":"A","skill_tag":"topic"}]}`
@@ -444,18 +444,18 @@ Output Format - Respond with ONLY valid JSON (no markdown):
         created_at: new Date().toISOString()
     }));
 
-    if (studentId && attemptId) {
+    if (learnerId && attemptId) {
         // Use upsert to handle potential race conditions or re-generation
         const { error } = await supabase
             .from('career_assessment_ai_questions')
             .upsert({
-                student_id: studentId, // Use studentId (UUID) not attemptId
+                learner_id: learnerId, // Use learnerId (UUID) not attemptId
                 question_type: 'knowledge',
                 questions: processedQuestions, // Store the entire array as JSONB
                 stream_id: streamId,
                 created_at: new Date().toISOString()
             }, {
-                onConflict: 'student_id, stream_id, question_type',
+                onConflict: 'learner_id, stream_id, question_type',
                 ignoreDuplicates: false // Update if exists
             });
 

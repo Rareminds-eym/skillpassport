@@ -40,7 +40,7 @@ class TechnicalExplainerService {
    */
   async explainTechnology(
     topic: string,
-    studentLevel?: 'beginner' | 'intermediate' | 'advanced',
+    learnerLevel?: 'beginner' | 'intermediate' | 'advanced',
     includeCode?: boolean
   ): Promise<TechnicalExplanation> {
     
@@ -49,7 +49,7 @@ class TechnicalExplainerService {
 
 **TOPIC TO EXPLAIN:** ${topic}
 
-**STUDENT LEVEL:** ${studentLevel || 'intermediate'}
+**LEARNER LEVEL:** ${learnerLevel || 'intermediate'}
 
 **YOUR EXPLANATION SHOULD INCLUDE:**
 
@@ -85,10 +85,10 @@ class TechnicalExplainerService {
    - What to learn next
 
 7️⃣ **Next Steps** (optional)
-   - What should student explore after understanding this?
+   - What should learner explore after understanding this?
 
 **GUIDELINES:**
-- For ${studentLevel || 'intermediate'} level: ${this.getLevelGuidance(studentLevel || 'intermediate')}
+- For ${learnerLevel || 'intermediate'} level: ${this.getLevelGuidance(learnerLevel || 'intermediate')}
 - Be CLEAR and PRACTICAL
 - Use analogies when helpful
 - Avoid jargon (or explain it)
@@ -130,7 +130,7 @@ class TechnicalExplainerService {
         messages: [
           {
             role: 'system',
-            content: 'You are a technical educator who explains complex concepts clearly. You adapt explanations to student level and always include practical examples.'
+            content: 'You are a technical educator who explains complex concepts clearly. You adapt explanations to learner level and always include practical examples.'
           },
           { role: 'user', content: prompt }
         ],
@@ -146,7 +146,7 @@ class TechnicalExplainerService {
     } catch (error) {
       logger.error('Failed to generate technical explanation', error instanceof Error ? error : new Error(String(error)), {
         topic,
-        studentLevel
+        learnerLevel
       });
       throw new Error('Failed to generate explanation');
     }

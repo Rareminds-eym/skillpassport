@@ -28,11 +28,11 @@ import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('college-admin-dashboard');
 
 interface DashboardStats {
-  totalStudents: number;
+  totallearners: number;
   totalFaculty: number;
   totalDepartments: number;
   placementRate: number;
-  studentsChange: number;
+  learnersChange: number;
   facultyChange: number;
   departmentsChange: number;
   placementRateChange: number;
@@ -44,11 +44,11 @@ const Dashboard: React.FC = () => {
   const [filterOpen, setFilterOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
-    totalStudents: 0,
+    totallearners: 0,
     totalFaculty: 0,
     totalDepartments: 0,
     placementRate: 0,
-    studentsChange: 0,
+    learnersChange: 0,
     facultyChange: 0,
     departmentsChange: 0,
     placementRateChange: 0,
@@ -95,22 +95,22 @@ const Dashboard: React.FC = () => {
         const now = new Date();
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-        // Fetch current students count
-        const { count: studentsCount } = await supabase
-          .from('students')
+        // Fetch current learners count
+        const { count: learnersCount } = await supabase
+          .from('learners')
           .select('*', { count: 'exact', head: true })
           .eq('college_id', collegeId);
 
-        // Fetch students count from 30 days ago
-        const { count: studentsCountPrevious } = await supabase
-          .from('students')
+        // Fetch learners count from 30 days ago
+        const { count: learnersCountPrevious } = await supabase
+          .from('learners')
           .select('*', { count: 'exact', head: true })
           .eq('college_id', collegeId)
           .lte('created_at', thirtyDaysAgo.toISOString());
 
-        // Calculate students change percentage
-        const studentsChange = studentsCountPrevious && studentsCountPrevious > 0
-          ? Math.round(((studentsCount || 0) - studentsCountPrevious) / studentsCountPrevious * 100)
+        // Calculate learners change percentage
+        const learnersChange = learnersCountPrevious && learnersCountPrevious > 0
+          ? Math.round(((learnersCount || 0) - learnersCountPrevious) / learnersCountPrevious * 100)
           : 0;
 
         // Fetch current faculty count from college_lecturers
@@ -150,46 +150,46 @@ const Dashboard: React.FC = () => {
           : 0;
 
         // Calculate placement rate using the same logic as placement management
-        // Filter by students from this college
-        const { data: collegeStudents } = await supabase
-          .from('students')
+        // Filter by learners from this college
+        const { data: collegelearners } = await supabase
+          .from('learners')
           .select('id')
           .eq('college_id', collegeId);
 
-        const studentIds = collegeStudents?.map(s => s.id) || [];
+        const learnerIds = collegelearners?.map(s => s.id) || [];
         
         let totalPlaced = 0;
         let totalPlacedPrevious = 0;
         
-        if (studentIds.length > 0) {
-          // Count unique students placed (not total offers) - current
-          const { data: placedStudents } = await supabase
+        if (learnerIds.length > 0) {
+          // Count unique learners placed (not total offers) - current
+          const { data: placedlearners } = await supabase
             .from('applied_jobs')
-            .select('student_id')
+            .select('learner_id')
             .eq('application_status', 'accepted')
-            .in('student_id', studentIds);
+            .in('learner_id', learnerIds);
           
-          const uniqueStudentIds = new Set(placedStudents?.map(p => p.student_id) || []);
-          totalPlaced = uniqueStudentIds.size;
+          const uniqueLearnerIds = new Set(placedlearners?.map(p => p.learner_id) || []);
+          totalPlaced = uniqueLearnerIds.size;
 
-          // Count unique students placed 30 days ago
-          const { data: placedStudentsPrevious } = await supabase
+          // Count unique learners placed 30 days ago
+          const { data: placedlearnersPrevious } = await supabase
             .from('applied_jobs')
-            .select('student_id')
+            .select('learner_id')
             .eq('application_status', 'accepted')
-            .in('student_id', studentIds)
+            .in('learner_id', learnerIds)
             .lte('updated_at', thirtyDaysAgo.toISOString());
           
-          const uniqueStudentIdsPrevious = new Set(placedStudentsPrevious?.map(p => p.student_id) || []);
-          totalPlacedPrevious = uniqueStudentIdsPrevious.size;
+          const uniqueLearnerIdsPrevious = new Set(placedlearnersPrevious?.map(p => p.learner_id) || []);
+          totalPlacedPrevious = uniqueLearnerIdsPrevious.size;
         }
 
-        const placementRate = studentsCount && studentsCount > 0 
-          ? Math.round(((totalPlaced || 0) / studentsCount) * 100 * 10) / 10 // Round to 1 decimal place
+        const placementRate = learnersCount && learnersCount > 0 
+          ? Math.round(((totalPlaced || 0) / learnersCount) * 100 * 10) / 10 // Round to 1 decimal place
           : 0;
 
-        const placementRatePrevious = studentsCountPrevious && studentsCountPrevious > 0
-          ? Math.round(((totalPlacedPrevious || 0) / studentsCountPrevious) * 100 * 10) / 10
+        const placementRatePrevious = learnersCountPrevious && learnersCountPrevious > 0
+          ? Math.round(((totalPlacedPrevious || 0) / learnersCountPrevious) * 100 * 10) / 10
           : 0;
 
         // Calculate placement rate change (absolute difference, not percentage)
@@ -198,11 +198,11 @@ const Dashboard: React.FC = () => {
           : 0;
 
         setStats({
-          totalStudents: studentsCount || 0,
+          totallearners: learnersCount || 0,
           totalFaculty: facultyCount || 0,
           totalDepartments: departmentsCount || 0,
           placementRate: placementRate,
-          studentsChange: studentsChange,
+          learnersChange: learnersChange,
           facultyChange: facultyChange,
           departmentsChange: departmentsChange,
           placementRateChange: placementRateChange,
@@ -220,9 +220,9 @@ const Dashboard: React.FC = () => {
   // ===== KPI Cards with real data =====
   const kpiData = [
     {
-      title: "Total Students",
-      value: loading ? "..." : stats.totalStudents.toLocaleString(),
-      change: stats.studentsChange,
+      title: "Total Learners",
+      value: loading ? "..." : stats.totallearners.toLocaleString(),
+      change: stats.learnersChange,
       changeLabel: "enrolled",
       icon: <Users className="h-6 w-6" />,
       color: "blue" as const,
@@ -263,18 +263,18 @@ const Dashboard: React.FC = () => {
       route: "/college-admin/departments/management",
     },
     {
-      title: "Student Admissions",
+      title: "Learner Admissions",
       description: "Process new admissions",
       icon: Users,
       color: "bg-blue-50 text-blue-600",
-      route: "/college-admin/students/data-management",
+      route: "/college-admin/learners/data-management",
     },
     {
       title: "Attendance Tracking",
       description: "View attendance reports",
       icon: CheckCircle,
       color: "bg-blue-50 text-blue-600",
-      route: "/college-admin/students/attendance",
+      route: "/college-admin/learners/attendance",
     },
     {
       title: "Course Mapping",

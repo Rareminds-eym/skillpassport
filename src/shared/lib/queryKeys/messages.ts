@@ -30,12 +30,12 @@ export const messagesKeys = {
      * @returns Query key tuple for React Query
      * 
      * @example
-     * queryKeys.messages.conversations('user-123', 'student', 'student_recruiter')
-     * // Returns: ['messages', 'conversations', 'user-123', 'student', 'student_recruiter']
+     * queryKeys.messages.conversations('user-123', 'learner', 'learner_recruiter')
+     * // Returns: ['messages', 'conversations', 'user-123', 'learner', 'learner_recruiter']
      * 
      * @example
-     * queryKeys.messages.conversations('user-123', 'student', 'all')
-     * // Returns: ['messages', 'conversations', 'user-123', 'student', 'all']
+     * queryKeys.messages.conversations('user-123', 'learner', 'all')
+     * // Returns: ['messages', 'conversations', 'user-123', 'learner', 'all']
      */
     conversations: (
         userId: string,
@@ -51,8 +51,8 @@ export const messagesKeys = {
      * @returns Query key tuple for React Query
      * 
      * @example
-     * queryKeys.messages.unreadCount('user-123', 'student')
-     * // Returns: ['messages', 'unreadCount', 'user-123', 'student']
+     * queryKeys.messages.unreadCount('user-123', 'learner')
+     * // Returns: ['messages', 'unreadCount', 'user-123', 'learner']
      */
     unreadCount: (userId: string, userRole: UserRole) =>
         ['messages', 'unreadCount', userId, userRole] as const,

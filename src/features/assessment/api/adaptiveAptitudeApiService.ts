@@ -26,9 +26,9 @@ import {
  * Options for initializing a new test
  */
 export interface InitializeTestOptions {
-  studentId: string;
+  learnerId: string;
   gradeLevel: GradeLevel;
-  studentCourse?: string | null;
+  learnerCourse?: string | null;
 }
 
 /**
@@ -149,20 +149,20 @@ async function apiRequest<T>(
 /**
  * Initializes a new adaptive aptitude test session
  * 
- * @param studentId - The student ID
+ * @param learnerId - The learner ID
  * @param gradeLevel - The grade level
  * @returns InitializeTestResult with session and first question
  */
 export async function initializeTest(
-  studentId: string,
+  learnerId: string,
   gradeLevel: GradeLevel,
-  studentCourse?: string | null
+  learnerCourse?: string | null
 ): Promise<InitializeTestResult> {
-  console.log('🚀 [AdaptiveAptitudeApiService] initializeTest:', { studentId, gradeLevel, studentCourse });
+  console.log('🚀 [AdaptiveAptitudeApiService] initializeTest:', { learnerId, gradeLevel, learnerCourse });
   
   const result = await apiRequest<InitializeTestResult>('/initialize', {
     method: 'POST',
-    body: JSON.stringify({ studentId, gradeLevel, studentCourse }),
+    body: JSON.stringify({ learnerId, gradeLevel, learnerCourse }),
   });
   
   console.log('✅ [AdaptiveAptitudeApiService] Test initialized:', {
@@ -268,19 +268,19 @@ export async function getTestResults(sessionId: string): Promise<TestResults | n
 }
 
 /**
- * Gets all test results for a student
+ * Gets all test results for a learner
  * 
- * @param studentId - The student ID
+ * @param learnerId - The learner ID
  * @returns Array of TestResults
  */
-export async function getStudentTestResults(studentId: string): Promise<TestResults[]> {
-  console.log('📊 [AdaptiveAptitudeApiService] getStudentTestResults:', { studentId });
+export async function getlearnerTestResults(learnerId: string): Promise<TestResults[]> {
+  console.log('📊 [AdaptiveAptitudeApiService] getlearnerTestResults:', { learnerId });
   
-  const result = await apiRequest<TestResults[]>(`/results/student/${studentId}`, {
+  const result = await apiRequest<TestResults[]>(`/results/learner/${learnerId}`, {
     method: 'GET',
   });
   
-  console.log('✅ [AdaptiveAptitudeApiService] Student results retrieved:', {
+  console.log('✅ [AdaptiveAptitudeApiService] Learner results retrieved:', {
     count: result.length,
   });
   
@@ -309,22 +309,22 @@ export async function resumeTest(sessionId: string): Promise<ResumeTestResult> {
 }
 
 /**
- * Finds an in-progress session for a student
+ * Finds an in-progress session for a learner
  * 
- * @param studentId - The student ID
+ * @param learnerId - The learner ID
  * @param gradeLevel - Optional grade level filter
  * @returns The in-progress session or null
  */
 export async function findInProgressSession(
-  studentId: string,
+  learnerId: string,
   gradeLevel?: GradeLevel
 ): Promise<TestSession | null> {
-  console.log('🔍 [AdaptiveAptitudeApiService] findInProgressSession:', { studentId, gradeLevel });
+  console.log('🔍 [AdaptiveAptitudeApiService] findInProgressSession:', { learnerId, gradeLevel });
   
   const queryParams = gradeLevel ? `?gradeLevel=${gradeLevel}` : '';
   
   try {
-    const result = await apiRequest<TestSession>(`/find-in-progress/${studentId}${queryParams}`, {
+    const result = await apiRequest<TestSession>(`/find-in-progress/${learnerId}${queryParams}`, {
       method: 'GET',
     });
     
@@ -367,7 +367,7 @@ export async function abandonSession(sessionId: string): Promise<void> {
  */
 export class AdaptiveAptitudeApiService {
   static async initializeTest(options: InitializeTestOptions): Promise<InitializeTestResult> {
-    return initializeTest(options.studentId, options.gradeLevel, options.studentCourse);
+    return initializeTest(options.learnerId, options.gradeLevel, options.learnerCourse);
   }
 
   static async getNextQuestion(sessionId: string): Promise<NextQuestionResult> {
@@ -387,10 +387,10 @@ export class AdaptiveAptitudeApiService {
   }
 
   static async findInProgressSession(
-    studentId: string,
+    learnerId: string,
     gradeLevel?: GradeLevel
   ): Promise<TestSession | null> {
-    return findInProgressSession(studentId, gradeLevel);
+    return findInProgressSession(learnerId, gradeLevel);
   }
 
   static async abandonSession(sessionId: string): Promise<void> {
@@ -401,8 +401,8 @@ export class AdaptiveAptitudeApiService {
     return getTestResults(sessionId);
   }
 
-  static async getStudentTestResults(studentId: string): Promise<TestResults[]> {
-    return getStudentTestResults(studentId);
+  static async getlearnerTestResults(learnerId: string): Promise<TestResults[]> {
+    return getlearnerTestResults(learnerId);
   }
 }
 

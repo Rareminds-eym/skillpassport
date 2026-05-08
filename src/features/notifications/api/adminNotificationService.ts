@@ -52,7 +52,7 @@ export class AdminNotificationService {
    */
   static async notifyTrainingSubmission(
     schoolId: string,
-    studentName: string,
+    learnerName: string,
     trainingTitle: string,
     trainingId: string
   ) {
@@ -73,10 +73,10 @@ export class AdminNotificationService {
         schoolAdmin.user_id,
         'training_submitted',
         'New Training Submitted',
-        `${studentName} submitted "${trainingTitle}" for approval`
+        `${learnerName} submitted "${trainingTitle}" for approval`
       );
     } catch (error) {
-      logger.error('Failed to notify training submission', error as Error, { schoolId, studentName });
+      logger.error('Failed to notify training submission', error as Error, { schoolId, learnerName });
     }
   }
 
@@ -85,7 +85,7 @@ export class AdminNotificationService {
    */
   static async notifyExperienceSubmission(
     schoolId: string,
-    studentName: string,
+    learnerName: string,
     experienceTitle: string,
     experienceId: string
   ) {
@@ -106,10 +106,10 @@ export class AdminNotificationService {
         schoolAdmin.user_id,
         'experience_submitted',
         'New Experience Submitted',
-        `${studentName} submitted "${experienceTitle}" for approval`
+        `${learnerName} submitted "${experienceTitle}" for approval`
       );
     } catch (error) {
-      logger.error('Failed to notify experience submission', error as Error, { schoolId, studentName });
+      logger.error('Failed to notify experience submission', error as Error, { schoolId, learnerName });
     }
   }
 
@@ -118,7 +118,7 @@ export class AdminNotificationService {
    */
   static async notifyProjectSubmission(
     schoolId: string,
-    studentName: string,
+    learnerName: string,
     projectTitle: string,
     projectId: string
   ) {
@@ -139,10 +139,10 @@ export class AdminNotificationService {
         schoolAdmin.user_id,
         'project_submitted',
         'New Project Submitted',
-        `${studentName} submitted "${projectTitle}" for approval`
+        `${learnerName} submitted "${projectTitle}" for approval`
       );
     } catch (error) {
-      logger.error('Failed to notify project submission', error as Error, { schoolId, studentName });
+      logger.error('Failed to notify project submission', error as Error, { schoolId, learnerName });
     }
   }
 
@@ -181,24 +181,24 @@ export class AdminNotificationService {
   }
 
   /**
-   * Create approval status notifications for students
+   * Create approval status notifications for learners
    */
   static async notifyApprovalStatus(
-    studentId: string,
+    learnerId: string,
     type: 'training_approved' | 'training_rejected' | 'experience_approved' | 'experience_rejected' | 'project_approved' | 'project_rejected',
     itemTitle: string,
     itemId: string,
     notes?: string
   ) {
     try {
-      // Get student user ID
-      const { data: student } = await supabase
-        .from('students')
+      // Get learner user ID
+      const { data: learner } = await supabase
+        .from('learners')
         .select('user_id, name')
-        .eq('id', studentId)
+        .eq('id', learnerId)
         .maybeSingle();
 
-      if (!student?.user_id) {
+      if (!learner?.user_id) {
         return;
       }
 
@@ -215,13 +215,13 @@ export class AdminNotificationService {
         : `Your ${itemType} "${itemTitle}" was rejected${notes ? `: ${notes}` : ''}`;
 
       await this.createNotification(
-        student.user_id,
+        learner.user_id,
         type,
         title,
         message
       );
     } catch (error) {
-      logger.error('Failed to notify approval status', error as Error, { studentId, type });
+      logger.error('Failed to notify approval status', error as Error, { learnerId, type });
     }
   }
 

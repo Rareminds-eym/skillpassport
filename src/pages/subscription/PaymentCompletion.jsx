@@ -40,9 +40,9 @@ function getManagePath(userRole) {
     school_educator: '/educator/subscription/manage',
     college_educator: '/educator/subscription/manage',
     recruiter: '/recruitment/subscription/manage',
-    student: '/student/subscription/manage',
-    school_student: '/student/subscription/manage',
-    college_student: '/student/subscription/manage',
+    learner: '/learner/subscription/manage',
+    'school-learner': '/learner/subscription/manage',
+    'college-learner': '/learner/subscription/manage',
   };
   return manageRoutes[userRole] || null; // Return null for unknown roles
 }
@@ -215,7 +215,7 @@ function PaymentCompletion() {
   const { role } = useUserRole();
   const managePath = useMemo(() => getManagePath(role), [role]);
 
-  const { plan, studentType, isUpgrade, isRenewal } = useMemo(() => location.state || {}, [location.state]);
+  const { plan, learnerType, isUpgrade, isRenewal } = useMemo(() => location.state || {}, [location.state]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -225,8 +225,8 @@ function PaymentCompletion() {
   const { subscriptionData, loading: subscriptionLoading } = useSubscription();
 
   const plansUrl = useMemo(() => {
-    return studentType ? `/subscription/plans/${studentType}` : '/subscription/plans/student';
-  }, [studentType]);
+    return learnerType ? `/subscription/plans/${learnerType}` : '/subscription/plans/learner';
+  }, [learnerType]);
 
   // Validate user exists in database and redirect if not authenticated
   useEffect(() => {
@@ -237,11 +237,11 @@ function PaymentCompletion() {
       if (!isAuthenticated || !user) {
         console.log('❌ User not authenticated, redirecting to signup');
         if (plan) {
-          localStorage.setItem('payment_plan_details', JSON.stringify({ ...plan, studentType }));
+          localStorage.setItem('payment_plan_details', JSON.stringify({ ...plan, learnerType }));
         }
         navigate('/signup', {
           replace: true,
-          state: { plan, studentType, returnTo: '/subscription/payment' },
+          state: { plan, learnerType, returnTo: '/subscription/payment' },
         });
         return;
       }
@@ -259,11 +259,11 @@ function PaymentCompletion() {
           localStorage.removeItem('pendingUser');
 
           if (plan) {
-            localStorage.setItem('payment_plan_details', JSON.stringify({ ...plan, studentType }));
+            localStorage.setItem('payment_plan_details', JSON.stringify({ ...plan, learnerType }));
           }
           navigate('/signup', {
             replace: true,
-            state: { plan, studentType, returnTo: '/subscription/payment' },
+            state: { plan, learnerType, returnTo: '/subscription/payment' },
           });
           return;
         }
@@ -320,7 +320,7 @@ function PaymentCompletion() {
     };
 
     validateAndFetchUser();
-  }, [authLoading, isAuthenticated, user, navigate, plan, studentType]);
+  }, [authLoading, isAuthenticated, user, navigate, plan, learnerType]);
 
   // Redirect if active subscription (including cancelled but not expired)
   // CRITICAL: Skip redirect entirely when user is upgrading or renewing
@@ -407,11 +407,11 @@ function PaymentCompletion() {
       try {
         await initiateRazorpayPayment({
           plan,
-          userDetails: { ...userDetails, studentType },
+          userDetails: { ...userDetails, learnerType },
           isUpgrade,
           onSuccess: (verificationResult) => {
             const routes = { school: '/signin/school', university: '/signin/university', default: '/signup' };
-            navigate(routes[studentType] || routes.default, {
+            navigate(routes[learnerType] || routes.default, {
               state: { paymentDetails: verificationResult },
               replace: true,
             });
@@ -426,7 +426,7 @@ function PaymentCompletion() {
         setLoading(false);
       }
     },
-    [loading, userDetails, plan, studentType, navigate, validateField, isUpgrade]
+    [loading, userDetails, plan, learnerType, navigate, validateField, isUpgrade]
   );
 
   const handleBack = useCallback(() => navigate(plansUrl), [navigate, plansUrl]);

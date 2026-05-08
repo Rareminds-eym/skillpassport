@@ -8,7 +8,7 @@ type PerformanceBand = "High" | "Medium" | "Low"
 
 type ClassStatus = "Active" | "Completed" | "Upcoming"
 
-export interface ClassStudent {
+export interface ClassLearner {
   id: string
   name: string
   email: string
@@ -43,18 +43,18 @@ export interface EducatorClass {
   department: string
   year: string
   status: ClassStatus
-  total_students: number
-  max_students: number
+  total_learners: number
+  max_learners: number
   avg_progress: number
   performance_band: PerformanceBand
   skillAreas: string[]
   lastUpdated: string
-  students: ClassStudent[]
+  learners: ClassLearner[]
   tasks: ClassTask[]
   notes: ClassNote[]
 }
 
-export interface StudentDirectoryEntry {
+export interface LearnerDirectoryEntry {
   id: string
   name: string
   email: string
@@ -69,8 +69,8 @@ type MutateResponse<T> = { data: T; error: null } | { data: null; error: string 
 const createId = () => `${Math.random().toString(36).slice(2, 10)}`
 
 const computeAggregates = (classItem: EducatorClass) => {
-  const total = classItem.students.length
-  const avg = total === 0 ? 0 : Math.round(classItem.students.reduce((acc, curr) => acc + curr.progress, 0) / total)
+  const total = classItem.learners.length
+  const avg = total === 0 ? 0 : Math.round(classItem.learners.reduce((acc, curr) => acc + curr.progress, 0) / total)
   let band: PerformanceBand = "Low"
   if (avg >= 70) band = "High"
   else if (avg >= 40) band = "Medium"
@@ -79,7 +79,7 @@ const computeAggregates = (classItem: EducatorClass) => {
 
 const syncClassAggregates = (classItem: EducatorClass) => {
   const { total, avg, band } = computeAggregates(classItem)
-  classItem.total_students = total
+  classItem.total_learners = total
   classItem.avg_progress = avg
   classItem.performance_band = band
   return classItem
@@ -155,21 +155,21 @@ const transformDBClassToClass = (dbClass: any, educatorType: 'school' | 'college
     department: dbClass.section || "General",
     year: dbClass.academic_year || String(new Date().getFullYear()),
     status: (metadata.status || "Active") as ClassStatus,
-    total_students: dbClass.current_students || 0,
-    max_students: dbClass.max_students || 40,
+    total_learners: dbClass.current_learners || 0,
+    max_learners: dbClass.max_learners || 40,
     avg_progress: 0,
     performance_band: "Low" as PerformanceBand,
     skillAreas: metadata.skillAreas || [],
     lastUpdated: dbClass.updated_at || new Date().toISOString(),
-    students: [],
+    learners: [],
     tasks: [],
     notes: []
   }
 }
 
-const calculateStudentProgress = async (studentId: string, classId: string): Promise<number> => {
+const calculatelearnerProgress = async (learnerId: string, classId: string): Promise<number> => {
   try {
-    // Get all assignments for students in this class
+    // Get all assignments for learners in this class
     const { data: assignments, error: assignmentsError } = await supabase
       .from("assignments")
       .select("assignment_id, assign_classes")
@@ -182,25 +182,25 @@ const calculateStudentProgress = async (studentId: string, classId: string): Pro
 
     const assignmentIds = assignments.map(a => a.assignment_id)
 
-    // Get student's assignment submissions
-    const { data: studentAssignments, error: studentError } = await supabase
-      .from("student_assignments")
+    // Get learner's assignment submissions
+    const { data: learnerAssignments, error: learnerError } = await supabase
+      .from("learner_assignments")
       .select("assignment_id, status, grade_percentage")
-      .eq("student_id", studentId)
+      .eq("learner_id", learnerId)
       .in("assignment_id", assignmentIds)
       .eq("is_deleted", false)
 
-    if (studentError || !studentAssignments || studentAssignments.length === 0) {
+    if (learnerError || !learnerAssignments || learnerAssignments.length === 0) {
       return 0
     }
 
     // Calculate average progress
     const totalAssignments = assignments.length
-    const completedCount = studentAssignments.filter(sa => sa.status === "graded" || sa.status === "submitted").length
-    const gradeSum = studentAssignments
+    const completedCount = learnerAssignments.filter(sa => sa.status === "graded" || sa.status === "submitted").length
+    const gradeSum = learnerAssignments
       .filter(sa => sa.grade_percentage !== null)
       .reduce((sum, sa) => sum + (sa.grade_percentage || 0), 0)
-    const gradedCount = studentAssignments.filter(sa => sa.grade_percentage !== null).length
+    const gradedCount = learnerAssignments.filter(sa => sa.grade_percentage !== null).length
 
     // Progress = (completion rate * 0.5) + (average grade * 0.5)
     const completionRate = (completedCount / totalAssignments) * 100
@@ -209,7 +209,7 @@ const calculateStudentProgress = async (studentId: string, classId: string): Pro
 
     return Math.round(progress)
   } catch (err) {
-    logger.error('Exception calculating student progress', err instanceof Error ? err : new Error(String(err)));
+    logger.error('Exception calculating learner progress', err instanceof Error ? err : new Error(String(err)));
     return 0
   }
 }
@@ -300,7 +300,7 @@ const fetchSchoolEducatorClasses = async (schoolId?: string, educatorId?: string
     }
 
     // Process each class with additional data
-    const classesWithStudents = await Promise.all(
+    const classesWithlearners = await Promise.all(
       (data || []).map(async (dbClass) => {
         // Extract class teacher info
         const classTeacher = dbClass.class_teacher?.[0]?.educator
@@ -312,15 +312,15 @@ const fetchSchoolEducatorClasses = async (schoolId?: string, educatorId?: string
         }
         
         const classItem = transformDBClassToClass(enrichedClass, 'school')
-        const students = await fetchClassStudents(dbClass.id, 'school')
-        classItem.students = students
+        const learners = await fetchClasslearners(dbClass.id, 'school')
+        classItem.learners = learners
         const tasks = await fetchClassTasks(dbClass.id)
         classItem.tasks = tasks
         return syncClassAggregates(classItem)
       })
     )
 
-    return { data: classesWithStudents, error: null }
+    return { data: classesWithlearners, error: null }
   } catch (err: any) {
     logger.error('Exception in fetchSchoolEducatorClasses', err instanceof Error ? err : new Error(String(err)));
     return { data: null, error: err?.message || "Unable to fetch school classes" }
@@ -389,7 +389,7 @@ const fetchCollegeEducatorClasses = async (collegeId?: string, educatorId?: stri
     }
 
     // Process each class with additional data
-    const classesWithStudents = await Promise.all(
+    const classesWithlearners = await Promise.all(
       (data || []).map(async (dbClass) => {
         // Extract faculty info
         const faculty = dbClass.faculty?.[0]?.lecturer
@@ -401,15 +401,15 @@ const fetchCollegeEducatorClasses = async (collegeId?: string, educatorId?: stri
         }
         
         const classItem = transformDBClassToClass(enrichedClass, 'college')
-        const students = await fetchClassStudents(dbClass.id, 'college')
-        classItem.students = students
+        const learners = await fetchClasslearners(dbClass.id, 'college')
+        classItem.learners = learners
         const tasks = await fetchClassTasks(dbClass.id)
         classItem.tasks = tasks
         return syncClassAggregates(classItem)
       })
     )
 
-    return { data: classesWithStudents, error: null }
+    return { data: classesWithlearners, error: null }
   } catch (err: any) {
     logger.error('Exception in fetchCollegeEducatorClasses', err instanceof Error ? err : new Error(String(err)));
     return { data: null, error: err?.message || "Unable to fetch college classes" }
@@ -449,7 +449,7 @@ export const fetchAllSchoolClasses = async (schoolId?: string): Promise<ServiceR
       return { data: null, error: error.message }
     }
 
-    const classesWithStudents = await Promise.all(
+    const classesWithlearners = await Promise.all(
       (data || []).map(async (dbClass) => {
         // Extract class teacher info
         const classTeacher = dbClass.class_teacher?.[0]?.educator
@@ -461,15 +461,15 @@ export const fetchAllSchoolClasses = async (schoolId?: string): Promise<ServiceR
         }
         
         const classItem = transformDBClassToClass(enrichedClass)
-        const students = await fetchClassStudents(dbClass.id)
-        classItem.students = students
+        const learners = await fetchClasslearners(dbClass.id)
+        classItem.learners = learners
         const tasks = await fetchClassTasks(dbClass.id)
         classItem.tasks = tasks
         return syncClassAggregates(classItem)
       })
     )
 
-    return { data: classesWithStudents, error: null }
+    return { data: classesWithlearners, error: null }
   } catch (err: any) {
     return { data: null, error: err?.message || "Unable to fetch classes" }
   }
@@ -507,36 +507,36 @@ export const fetchClassTasks = async (classId: string): Promise<ClassTask[]> => 
   }
 }
 
-export const fetchClassStudents = async (classId: string, educatorType: 'school' | 'college' = 'school'): Promise<ClassStudent[]> => {
+export const fetchClasslearners = async (classId: string, educatorType: 'school' | 'college' = 'school'): Promise<ClassLearner[]> => {
   try {
     const classIdField = educatorType === 'school' ? 'school_class_id' : 'college_class_id'
     
     const { data, error } = await supabase
-      .from("students")
+      .from("learners")
       .select("id, name, email, updated_at, user_id")
       .eq(classIdField, classId)
 
     if (error) {
-      logger.error('Failed to fetch class students', error instanceof Error ? error : new Error(String(error)));
+      logger.error('Failed to fetch class learners', error instanceof Error ? error : new Error(String(error)));
       return []
     }
 
-    const studentsWithProgress = await Promise.all(
-      (data || []).map(async (student: any) => {
-        const progress = await calculateStudentProgress(student.user_id || student.id, classId)
+    const learnersWithProgress = await Promise.all(
+      (data || []).map(async (learner: any) => {
+        const progress = await calculatelearnerProgress(learner.user_id || learner.id, classId)
         return {
-          id: student.id,
-          name: student.name || "Unknown",
-          email: student.email || "",
+          id: learner.id,
+          name: learner.name || "Unknown",
+          email: learner.email || "",
           progress: progress,
-          lastActive: student.updated_at || new Date().toISOString()
+          lastActive: learner.updated_at || new Date().toISOString()
         }
       })
     )
 
-    return studentsWithProgress
+    return learnersWithProgress
   } catch (err: any) {
-    logger.error('Exception fetching class students', err instanceof Error ? err : new Error(String(err)));
+    logger.error('Exception fetching class learners', err instanceof Error ? err : new Error(String(err)));
     return []
   }
 }
@@ -588,8 +588,8 @@ const getSchoolClassById = async (classId: string): Promise<ServiceResponse<Educ
   }
 
   const classItem = transformDBClassToClass(enrichedClass, 'school')
-  const students = await fetchClassStudents(classId, 'school')
-  classItem.students = students
+  const learners = await fetchClasslearners(classId, 'school')
+  classItem.learners = learners
   
   // Fetch tasks from assignments table
   const tasks = await fetchClassTasks(classId)
@@ -633,8 +633,8 @@ const getCollegeClassById = async (classId: string): Promise<ServiceResponse<Edu
   }
 
   const classItem = transformDBClassToClass(enrichedClass, 'college')
-  const students = await fetchClassStudents(classId, 'college')
-  classItem.students = students
+  const learners = await fetchClasslearners(classId, 'college')
+  classItem.learners = learners
   
   // Fetch tasks from assignments table
   const tasks = await fetchClassTasks(classId)
@@ -643,21 +643,21 @@ const getCollegeClassById = async (classId: string): Promise<ServiceResponse<Edu
   return { data: syncClassAggregates(classItem), error: null }
 }
 
-export const fetchStudentDirectory = async (schoolId?: string, collegeId?: string): Promise<ServiceResponse<StudentDirectoryEntry[]>> => {
+export const fetchlearnerDirectory = async (schoolId?: string, collegeId?: string): Promise<ServiceResponse<LearnerDirectoryEntry[]>> => {
   try {
     let query = supabase
-      .from("students")
+      .from("learners")
       .select("id, name, email, school_id, college_id")
       .eq("is_deleted", false)
       .limit(100)
 
     if (schoolId) {
-      // For school: get students without a class assignment
+      // For school: get learners without a class assignment
       query = query
         .eq("school_id", schoolId)
         .is("school_class_id", null)
     } else if (collegeId) {
-      // For college: get students without a class assignment
+      // For college: get learners without a class assignment
       query = query
         .eq("college_id", collegeId)
         .is("college_class_id", null)
@@ -672,58 +672,58 @@ export const fetchStudentDirectory = async (schoolId?: string, collegeId?: strin
       return { data: null, error: error.message }
     }
 
-    const directory = (data || []).map((student: any) => ({
-      id: student.id,
-      name: student.name || "Unknown",
-      email: student.email || "",
+    const directory = (data || []).map((learner: any) => ({
+      id: learner.id,
+      name: learner.name || "Unknown",
+      email: learner.email || "",
       defaultProgress: 0
     }))
 
     return { data: directory, error: null }
   } catch (err: any) {
-    return { data: null, error: err?.message || "Unable to load students" }
+    return { data: null, error: err?.message || "Unable to load learners" }
   }
 }
 
-type AddStudentPayload = {
+type AddlearnerPayload = {
   classId: string
-  student: { id?: string; name: string; email: string; progress?: number }
+  learner: { id?: string; name: string; email: string; progress?: number }
 }
 
-export const addStudentToClass = async ({ classId, student, educatorType = 'school' }: AddStudentPayload & { educatorType?: 'school' | 'college' }): Promise<MutateResponse<EducatorClass>> => {
+export const addlearnerToClass = async ({ classId, learner, educatorType = 'school' }: AddlearnerPayload & { educatorType?: 'school' | 'college' }): Promise<MutateResponse<EducatorClass>> => {
   try {
     const { data: classData, error: classError } = await getClassById(classId, educatorType)
     if (classError || !classData) {
       return { data: null, error: "Class not found" }
     }
 
-    if (!student.id) {
-      return { data: null, error: "Student ID is required" }
+    if (!learner.id) {
+      return { data: null, error: "Learner ID is required" }
     }
 
     const classIdField = educatorType === 'school' ? 'school_class_id' : 'college_class_id'
 
     const { error: updateError } = await supabase
-      .from("students")
+      .from("learners")
       .update({ [classIdField]: classId })
-      .eq("id", student.id)
+      .eq("id", learner.id)
 
     if (updateError) {
-      logger.error('Failed to update student class assignment', updateError instanceof Error ? updateError : new Error(String(updateError)));
-      return { data: null, error: updateError.message || "Unable to add student to class" }
+      logger.error('Failed to update learner class assignment', updateError instanceof Error ? updateError : new Error(String(updateError)));
+      return { data: null, error: updateError.message || "Unable to add learner to class" }
     }
 
     const classTable = educatorType === 'school' ? 'school_classes' : 'college_classes'
     const { error: incrementError } = await supabase
       .from(classTable)
       .update({ 
-        current_students: classData.total_students + 1,
+        current_learners: classData.total_learners + 1,
         updated_at: new Date().toISOString()
       })
       .eq("id", classId)
 
     if (incrementError) {
-      logger.error('Failed to increment student count', incrementError instanceof Error ? incrementError : new Error(String(incrementError)));
+      logger.error('Failed to increment learner count', incrementError instanceof Error ? incrementError : new Error(String(incrementError)));
     }
 
     const { data: updatedClass, error: fetchError } = await getClassById(classId, educatorType)
@@ -733,11 +733,11 @@ export const addStudentToClass = async ({ classId, student, educatorType = 'scho
 
     return { data: updatedClass, error: null }
   } catch (err: any) {
-    return { data: null, error: err?.message || "Unable to add student" }
+    return { data: null, error: err?.message || "Unable to add learner" }
   }
 }
 
-export const removeStudentFromClass = async (classId: string, studentId: string, educatorType: 'school' | 'college' = 'school'): Promise<MutateResponse<EducatorClass>> => {
+export const removelearnerFromClass = async (classId: string, learnerId: string, educatorType: 'school' | 'college' = 'school'): Promise<MutateResponse<EducatorClass>> => {
   try {
     const { data: classData, error: classError } = await getClassById(classId, educatorType)
     if (classError || !classData) {
@@ -746,26 +746,26 @@ export const removeStudentFromClass = async (classId: string, studentId: string,
 
     const classIdField = educatorType === 'school' ? 'school_class_id' : 'college_class_id'
     const { error: updateError } = await supabase
-      .from("students")
+      .from("learners")
       .update({ [classIdField]: null })
-      .eq("id", studentId)
+      .eq("id", learnerId)
 
     if (updateError) {
-      return { data: null, error: updateError.message || "Unable to remove student from class" }
+      return { data: null, error: updateError.message || "Unable to remove learner from class" }
     }
 
-    const newCount = Math.max(0, classData.total_students - 1)
+    const newCount = Math.max(0, classData.total_learners - 1)
     const classTable = educatorType === 'school' ? 'school_classes' : 'college_classes'
     const { error: decrementError } = await supabase
       .from(classTable)
       .update({ 
-        current_students: newCount,
+        current_learners: newCount,
         updated_at: new Date().toISOString()
       })
       .eq("id", classId)
 
     if (decrementError) {
-      logger.error('Failed to decrement student count', decrementError instanceof Error ? decrementError : new Error(String(decrementError)));
+      logger.error('Failed to decrement learner count', decrementError instanceof Error ? decrementError : new Error(String(decrementError)));
     }
 
     const { data: updatedClass, error: fetchError } = await getClassById(classId, educatorType)
@@ -775,7 +775,7 @@ export const removeStudentFromClass = async (classId: string, studentId: string,
 
     return { data: updatedClass, error: null }
   } catch (err: any) {
-    return { data: null, error: err?.message || "Unable to remove student" }
+    return { data: null, error: err?.message || "Unable to remove learner" }
   }
 }
 
@@ -789,7 +789,7 @@ type CreateClassPayload = {
   grade: string
   section: string
   academicYear: string
-  maxStudents: number
+  maxlearners: number
   status: ClassStatus
   skillAreas: string[]
   schoolId?: string
@@ -824,8 +824,8 @@ const createSchoolClass = async (payload: CreateClassPayload, skills: string[]):
         grade: payload.grade,
         section: payload.section,
         academic_year: payload.academicYear,
-        max_students: payload.maxStudents,
-        current_students: 0,
+        max_learners: payload.maxlearners,
+        current_learners: 0,
         account_status: "active",
         metadata: {
           skillAreas: skills,
@@ -869,8 +869,8 @@ const createCollegeClass = async (payload: CreateClassPayload, skills: string[])
         grade: payload.grade,
         section: payload.section,
         academic_year: payload.academicYear,
-        max_students: payload.maxStudents,
-        current_students: 0,
+        max_learners: payload.maxlearners,
+        current_learners: 0,
         status: "active",
         metadata: {
           skillAreas: skills,
@@ -947,7 +947,7 @@ const updateSchoolClass = async (classId: string, payload: CreateClassPayload, s
       grade: payload.grade,
       section: payload.section,
       academic_year: payload.academicYear,
-      max_students: payload.maxStudents,
+      max_learners: payload.maxlearners,
       updated_at: new Date().toISOString(),
       metadata: {
         skillAreas: skills,
@@ -975,8 +975,8 @@ const updateSchoolClass = async (classId: string, payload: CreateClassPayload, s
   classItem.educator = payload.educatorName
   classItem.educatorEmail = payload.educatorEmail
 
-  const students = await fetchClassStudents(classId, 'school')
-  classItem.students = students
+  const learners = await fetchClasslearners(classId, 'school')
+  classItem.learners = learners
 
   return {
     data: syncClassAggregates(classItem),
@@ -992,7 +992,7 @@ const updateCollegeClass = async (classId: string, payload: CreateClassPayload, 
       grade: payload.grade,
       section: payload.section,
       academic_year: payload.academicYear,
-      max_students: payload.maxStudents,
+      max_learners: payload.maxlearners,
       updated_at: new Date().toISOString(),
       metadata: {
         skillAreas: skills,
@@ -1020,8 +1020,8 @@ const updateCollegeClass = async (classId: string, payload: CreateClassPayload, 
   classItem.educator = payload.educatorName
   classItem.educatorEmail = payload.educatorEmail
 
-  const students = await fetchClassStudents(classId, 'college')
-  classItem.students = students
+  const learners = await fetchClasslearners(classId, 'college')
+  classItem.learners = learners
 
   return {
     data: syncClassAggregates(classItem),

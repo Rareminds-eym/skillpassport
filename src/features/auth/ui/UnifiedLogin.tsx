@@ -17,7 +17,7 @@ interface LoginState {
 }
 
 const ALL_ROLES: UserRole[] = [
-  'student',
+  'learner',
   'recruiter',
   'educator',
   'school_admin',
@@ -26,7 +26,7 @@ const ALL_ROLES: UserRole[] = [
 ];
 
 const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
-  student: 'Learners',
+  learner: 'Learners',
   recruiter: 'Recruiter',
   educator: 'Educator',
   school_admin: 'School Administrator',

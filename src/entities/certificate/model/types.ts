@@ -19,7 +19,7 @@ export type CertificateType =
 
 export interface Certificate {
   id: string;
-  student_id: string;
+  learner_id: string;
   title: string;
   issuer: string;
   issuer_organization?: string;
@@ -50,10 +50,10 @@ export interface CertificateMetadata {
 }
 
 // ============================================================================
-// Student Certificate Types
+// Learner Certificate Types
 // ============================================================================
 
-export interface StudentCertificate {
+export interface LearnerCertificate {
   id: string;
   title: string;
   issuer: string;
@@ -88,7 +88,7 @@ export interface CertificateTemplate {
 // ============================================================================
 
 export interface CertificateIssuanceRequest {
-  student_id: string;
+  learner_id: string;
   template_id: string;
   title: string;
   issuer: string;
@@ -99,8 +99,8 @@ export interface CertificateIssuanceRequest {
 
 export interface BulkCertificateIssuance {
   template_id: string;
-  students: Array<{
-    student_id: string;
+  learners: Array<{
+    learner_id: string;
     metadata?: CertificateMetadata;
   }>;
   issue_date: string;
@@ -148,7 +148,7 @@ export interface CertificateStats {
 // ============================================================================
 
 export interface CertificateFilters {
-  student_id?: string;
+  learner_id?: string;
   type?: CertificateType[];
   status?: CertificateStatus[];
   issuer?: string;

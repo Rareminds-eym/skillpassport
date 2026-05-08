@@ -1,6 +1,6 @@
 // Recruiter Feature - Model Layer
 // Types
-export * from '@/features/student-profile/model';
+export * from '@/features/learner-profile/model';
 
 // Constants
 export * from './constants';

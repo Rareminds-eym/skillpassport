@@ -225,7 +225,7 @@ function OrganizationSubscriptionPage() {
     id: string;
     name: string;
     email: string;
-    memberType: 'educator' | 'student';
+    memberType: 'educator' | 'learner';
   }>>([]);
   const [isAssigningToPool, setIsAssigningToPool] = useState(false);
   
@@ -304,7 +304,7 @@ function OrganizationSubscriptionPage() {
       startDate: sub.startDate || new Date().toISOString(),
       endDate: sub.endDate || new Date().toISOString(),
       autoRenew: sub.autoRenew ?? true,
-      targetMemberType: (sub.targetMemberType || 'both') as 'educator' | 'student' | 'both',
+      targetMemberType: (sub.targetMemberType || 'both') as 'educator' | 'learner' | 'both',
     }));
   }, [subscriptions]);
   
@@ -312,7 +312,7 @@ function OrganizationSubscriptionPage() {
     return licensePools.map(pool => ({
       id: pool.id,
       poolName: pool.poolName || 'Default Pool',
-      memberType: pool.memberType as 'educator' | 'student',
+      memberType: pool.memberType as 'educator' | 'learner',
       allocatedSeats: pool.allocatedSeats || 0,
       assignedSeats: pool.assignedSeats || 0,
       availableSeats: pool.availableSeats || 0,
@@ -328,7 +328,7 @@ function OrganizationSubscriptionPage() {
       id: member.id,
       name: member.name,
       email: member.email,
-      memberType: member.memberType as 'educator' | 'student',
+      memberType: member.memberType as 'educator' | 'learner',
       department: member.department || member.designation,
       hasLicense: member.hasLicense,
       assignedAt: member.assignedAt,
@@ -624,7 +624,7 @@ function OrganizationSubscriptionPage() {
         id: m.id,
         name: m.name,
         email: m.email,
-        memberType: m.memberType as 'educator' | 'student',
+        memberType: m.memberType as 'educator' | 'learner',
       }));
     
     if (members.length === 0) {
@@ -793,7 +793,7 @@ function OrganizationSubscriptionPage() {
     }
   }, [organizationMembers]);
 
-  const handleRemoveMember = useCallback(async (memberId: string, memberType: 'educator' | 'student') => {
+  const handleRemoveMember = useCallback(async (memberId: string, memberType: 'educator' | 'learner') => {
     if (!organizationId) {
       toast.error('Organization ID not found');
       return;

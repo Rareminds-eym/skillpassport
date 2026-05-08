@@ -2,7 +2,7 @@
  * University signup handlers for User API
  * - University Admin signup
  * - University Educator signup
- * - University Student signup
+ * - University Learner signup
  * 
  * Uses unified 'organizations' table with organization_type='university'
  */
@@ -10,7 +10,7 @@
 import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import type { PagesEnv } from '../../../../src/functions-lib/types';
-import type { UniversityAdminSignupRequest, UniversityEducatorSignupRequest, UniversityStudentSignupRequest } from '../types';
+import type { UniversityAdminSignupRequest, UniversityEducatorSignupRequest, UniversitylearnerSignupRequest } from '../types';
 import { sendWelcomeEmail } from '../utils/email';
 import {
   calculateAge,
@@ -321,14 +321,14 @@ export async function handleUniversityEducatorSignup(request: Request, env: Page
 }
 
 /**
- * Handle university student signup
+ * Handle university learner signup
  * Verifies university exists in organizations table
  */
-export async function handleUniversityStudentSignup(request: Request, env: PagesEnv): Promise<Response> {
+export async function handleUniversityLearnerSignup(request: Request, env: PagesEnv): Promise<Response> {
   const supabaseAdmin = createSupabaseAdminClient(env);
 
   try {
-    const body = (await request.json()) as UniversityStudentSignupRequest;
+    const body = (await request.json()) as UniversitylearnerSignupRequest;
 
     if (!body.email || !body.password || !body.name || !body.universityId) {
       return jsonResponse({ error: 'Missing required fields: email, password, name, universityId' }, 400);
@@ -358,14 +358,14 @@ export async function handleUniversityStudentSignup(request: Request, env: Pages
       return jsonResponse({ error: 'Invalid university selected' }, 400);
     }
 
-    const { data: existingStudent } = await supabaseAdmin
-      .from('students')
+    const { data: existingLearner } = await supabaseAdmin
+      .from('learners')
       .select('id')
       .eq('email', body.email.toLowerCase())
       .maybeSingle();
 
-    if (existingStudent) {
-      return jsonResponse({ error: 'A student with this email already exists' }, 400);
+    if (existingLearner) {
+      return jsonResponse({ error: 'A learner with this email already exists' }, 400);
     }
 
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -374,7 +374,7 @@ export async function handleUniversityStudentSignup(request: Request, env: Pages
       email_confirm: true,
       user_metadata: {
         name: body.name,
-        role: 'university_student',
+        role: 'university_learner',
         phone: body.phone,
         university_id: body.universityId,
       },
@@ -398,12 +398,12 @@ export async function handleUniversityStudentSignup(request: Request, env: Pages
         email: body.email.toLowerCase(),
         firstName,
         lastName,
-        role: 'university_student',
+        role: 'university_learner',
         organizationId: body.universityId,
         isActive: true,
         phone: body.phone,
         metadata: {
-          source: 'university_student_signup',
+          source: 'university_learner_signup',
           universityId: body.universityId,
           dateOfBirth: body.dateOfBirth,
         },
@@ -416,9 +416,9 @@ export async function handleUniversityStudentSignup(request: Request, env: Pages
       const age = calculateAge(body.dateOfBirth || '');
       const fullName = `${firstName} ${lastName}`.trim();
 
-      // Create students record (first_name/last_name stored in users table only)
-      const { data: student, error: studentError } = await supabaseAdmin
-        .from('students')
+      // Create learners record (first_name/last_name stored in users table only)
+      const { data: learner, error: learnerError } = await supabaseAdmin
+        .from('learners')
         .insert({
           id: userId,
           user_id: userId,
@@ -442,15 +442,15 @@ export async function handleUniversityStudentSignup(request: Request, env: Pages
           state: body.state,
           pincode: body.pincode,
           university_id: body.universityId,
-          student_type: 'university_student',
+          learner_type: 'university_learner',
           approval_status: 'approved',
           metadata: { source: 'self_signup' },
         })
         .select()
         .single();
 
-      if (studentError || !student) {
-        throw new Error(`Failed to create student profile: ${studentError?.message}`);
+      if (learnerError || !learner) {
+        throw new Error(`Failed to create learner profile: ${learnerError?.message}`);
       }
 
       await sendWelcomeEmail(
@@ -458,21 +458,21 @@ export async function handleUniversityStudentSignup(request: Request, env: Pages
         body.email,
         body.name,
         body.password,
-        'university_student',
+        'university_learner',
         `<strong>University:</strong> ${university.name}${body.course ? `<br><strong>Course:</strong> ${body.course}` : ''}`
       );
 
       return jsonResponse({
         success: true,
-        message: 'University student account created successfully!',
+        message: 'University learner account created successfully!',
         data: {
           userId,
-          studentId: student.id,
+          learnerId: learner.id,
           email: body.email,
           name: body.name,
           universityId: body.universityId,
           universityName: university.name,
-          role: 'university_student',
+          role: 'university_learner',
         },
       });
     } catch (error) {
@@ -481,9 +481,9 @@ export async function handleUniversityStudentSignup(request: Request, env: Pages
       throw error;
     }
   } catch (error) {
-    console.error('University student signup error:', error);
+    console.error('University learner signup error:', error);
     return jsonResponse(
-      { error: error instanceof Error ? error.message : 'Failed to create university student account' },
+      { error: error instanceof Error ? error.message : 'Failed to create university learner account' },
       500
     );
   }

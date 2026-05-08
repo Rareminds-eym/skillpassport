@@ -15,8 +15,8 @@ export function OverdueTab({ overdueBooks }: OverdueTabProps) {
   const filteredOverdue = overdueBooks.filter(item => {
     const matchesSearch = 
       item.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.student_id.toLowerCase().includes(searchTerm.toLowerCase());
+      item.learner_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.learner_id.toLowerCase().includes(searchTerm.toLowerCase());
     
     return matchesSearch;
   });
@@ -40,7 +40,7 @@ export function OverdueTab({ overdueBooks }: OverdueTabProps) {
           <div className="relative">
             <input
               type="text"
-              placeholder="Search by book title, student name, or ID..."
+              placeholder="Search by book title, learner name, or ID..."
               className="w-full p-2 pl-10 border rounded-lg"
               value={searchTerm}
               onChange={(e) => {
@@ -75,8 +75,8 @@ export function OverdueTab({ overdueBooks }: OverdueTabProps) {
               <thead>
                 <tr className="bg-red-50 border-b border-red-200">
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Book Title</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Student Name</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Student ID</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Learner Name</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Learner ID</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Issue Date</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Due Date</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Days Overdue</th>
@@ -87,8 +87,8 @@ export function OverdueTab({ overdueBooks }: OverdueTabProps) {
                 {paginatedOverdue.map((item) => (
                   <tr key={item.id} className="hover:bg-red-50">
                     <td className="px-4 py-3 font-semibold text-gray-900">{item.title}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{item.student_name}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600 font-mono">{item.student_id.slice(0, 12)}...</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{item.learner_name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600 font-mono">{item.learner_id.slice(0, 12)}...</td>
                     <td className="px-4 py-3 text-sm text-gray-600">{item.issue_date}</td>
                     <td className="px-4 py-3 text-sm text-gray-600">{item.due_date}</td>
                     <td className="px-4 py-3 text-sm text-red-600 font-bold">{item.days_overdue} days</td>

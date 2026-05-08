@@ -115,7 +115,7 @@ export const PrintFooter = () => (
       <p style={{ margin: '0' }}>
         <strong style={{ color: '#1e293b' }}>RAREMINDS SkillPassport • AI-Powered Career Assessment</strong>
         <br />
-        Report Generated: {new Date().toLocaleDateString()} • Confidential • For Student Use Only
+        Report Generated: {new Date().toLocaleDateString()} • Confidential • For Learner Use Only
         <br />
         This is a digitally generated report, does not need signature
       </p>
@@ -331,7 +331,7 @@ export const RepeatingFooter = () => (
               Report Generated: {new Date().toLocaleDateString()}
             </div>
             <div style={{ color: '#6b7280', fontSize: '7px' }}>
-              Confidential • For Student Use Only
+              Confidential • For Learner Use Only
             </div>
           </div>
         </div>

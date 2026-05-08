@@ -4,7 +4,7 @@ import { XMarkIcon, UserIcon, MapPinIcon, ClockIcon } from '@heroicons/react/24/
 interface MentorAllocation {
   id: number;
   mentorId: number;
-  students: any[];
+  learners: any[];
   allocationPeriod: {
     startDate: string;
     endDate: string;
@@ -56,8 +56,8 @@ const MentorCapacityModal: React.FC<MentorCapacityModalProps> = ({
     if (capacity < 1) {
       newErrors.capacity = 'Capacity must be at least 1';
     }
-    if (capacity < allocation.students.length) {
-      newErrors.capacity = `Capacity cannot be less than current students in this allocation (${allocation.students.length})`;
+    if (capacity < allocation.learners.length) {
+      newErrors.capacity = `Capacity cannot be less than current learners in this allocation (${allocation.learners.length})`;
     }
     if (!officeLocation.trim()) {
       newErrors.officeLocation = 'Office location is required';
@@ -124,18 +124,18 @@ const MentorCapacityModal: React.FC<MentorCapacityModalProps> = ({
                 <p className="font-medium text-gray-900">{allocation.academicYear} • {allocation.semester}</p>
               </div>
               <div>
-                <span className="text-gray-600">Current Students:</span>
-                <p className="font-medium text-gray-900">{allocation.students.length} students</p>
+                <span className="text-gray-600">Current Learners:</span>
+                <p className="font-medium text-gray-900">{allocation.learners.length} learners</p>
               </div>
             </div>
           </div>
 
           {/* Capacity Configuration */}
           <div className="space-y-4">
-            {/* Student Capacity */}
+            {/* Learner Capacity */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Maximum Student Capacity *
+                Maximum Learner Capacity *
               </label>
               <input
                 type="number"
@@ -146,13 +146,13 @@ const MentorCapacityModal: React.FC<MentorCapacityModalProps> = ({
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
                   errors.capacity ? 'border-red-300' : 'border-gray-300'
                 }`}
-                placeholder="Enter maximum number of students"
+                placeholder="Enter maximum number of learners"
               />
               {errors.capacity && (
                 <p className="mt-1 text-sm text-red-600">{errors.capacity}</p>
               )}
               <p className="mt-1 text-xs text-gray-500">
-                Current students in this allocation: {allocation.students.length}
+                Current learners in this allocation: {allocation.learners.length}
               </p>
             </div>
 
@@ -195,7 +195,7 @@ const MentorCapacityModal: React.FC<MentorCapacityModalProps> = ({
                 <p className="mt-1 text-sm text-red-600">{errors.availableHours}</p>
               )}
               <p className="mt-1 text-xs text-gray-500">
-                When the mentor is available for student consultations
+                When the mentor is available for learner consultations
               </p>
             </div>
           </div>

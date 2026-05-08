@@ -72,10 +72,10 @@ const getStatus = (value: number, threshold = 90): string => {
   return 'Needs Attention';
 };
 
-// Helper to get college ID from current user - matches useStudents hook logic
+// Helper to get college ID from current user - matches useLearners hook logic
 const getCollegeIdForCurrentUser = async (): Promise<string | null> => {
   try {
-    // Check localStorage first (same as useStudents)
+    // Check localStorage first (same as useLearners)
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       const userData = JSON.parse(storedUser);
@@ -84,13 +84,13 @@ const getCollegeIdForCurrentUser = async (): Promise<string | null> => {
       }
     }
 
-    // Fallback to Supabase auth (same as useStudents)
+    // Fallback to Supabase auth (same as useLearners)
     const {
       data: { user },
     } = getCurrentUser();
 
     if (user) {
-      // Get user role from users table (same as useStudents)
+      // Get user role from users table (same as useLearners)
       const { data: userRecord } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle();
 
       const userRole = userRecord?.role || null;
@@ -147,22 +147,22 @@ export const reportsService = {
         collegeId = (await getCollegeIdForCurrentUser()) || '';
       }
 
-      // Query students
-      let studentsQuery = supabase
-        .from('students')
+      // Query learners
+      let learnersQuery = supabase
+        .from('learners')
         .select('id, college_id');
 
       if (collegeId) {
-        studentsQuery = studentsQuery.eq('college_id', collegeId);
+        learnersQuery = learnersQuery.eq('college_id', collegeId);
       }
 
-      const { data: students, error: studentsError } = await studentsQuery;
+      const { data: learners, error: learnersError } = await learnersQuery;
 
-      if (studentsError) {
-        logger.error('Error fetching students for attendance report', studentsError as Error, { collegeId });
+      if (learnersError) {
+        logger.error('Error fetching learners for attendance report', learnersError as Error, { collegeId });
       }
 
-      const totalStudents = students?.length || 0;
+      const totallearners = learners?.length || 0;
 
       // ✅ NOW CONNECTED: Fetch real attendance data from college_attendance_records (Attendance Tracking)
       let recordsQuery = supabase
@@ -171,7 +171,7 @@ export const reportsService = {
           id,
           status,
           date,
-          student_id,
+          learner_id,
           department_name,
           session_id
         `)
@@ -273,25 +273,25 @@ export const reportsService = {
         }
       });
 
-      // Calculate students below 75% threshold
+      // Calculate learners below 75% threshold
       const belowThreshold = hasRealData 
         ? new Set(
             attendanceRecords
               .filter(r => {
-                const studentRecords = attendanceRecords.filter(ar => ar.student_id === r.student_id);
-                const studentPresent = studentRecords.filter(
+                const learnerRecords = attendanceRecords.filter(ar => ar.learner_id === r.learner_id);
+                const learnerPresent = learnerRecords.filter(
                   sr => sr.status === 'present' || sr.status === 'late' || sr.status === 'excused'
                 ).length;
-                return studentRecords.length > 0 && (studentPresent / studentRecords.length) < 0.75;
+                return learnerRecords.length > 0 && (learnerPresent / learnerRecords.length) < 0.75;
               })
-              .map(r => r.student_id)
+              .map(r => r.learner_id)
           ).size
-        : Math.floor(totalStudents * 0.03);
+        : Math.floor(totallearners * 0.03);
 
       return {
         kpis: [
           { title: 'Overall Attendance', value: `${attendanceRate}%`, change: '+2.1%', trend: 'up', color: 'blue' },
-          { title: 'Total Students', value: totalStudents.toLocaleString(), change: `+${Math.floor(totalStudents * 0.02)}`, trend: 'up', color: 'green' },
+          { title: 'Total Learners', value: totallearners.toLocaleString(), change: `+${Math.floor(totallearners * 0.02)}`, trend: 'up', color: 'green' },
           { title: 'Below Threshold', value: belowThreshold.toString(), change: '-5', trend: 'down', color: 'red' },
           { title: 'Departments', value: (departments?.length || 0).toString(), change: '0', trend: 'neutral', color: 'gray' }
         ],
@@ -312,25 +312,25 @@ export const reportsService = {
         collegeId = await getCollegeIdForCurrentUser() || '';
       }
 
-      // First, get students from this college to filter mark entries
-      let studentsQuery = supabase.from('students').select('id');
+      // First, get learners from this college to filter mark entries
+      let learnersQuery = supabase.from('learners').select('id');
       if (collegeId) {
-        studentsQuery = studentsQuery.eq('college_id', collegeId);
+        learnersQuery = learnersQuery.eq('college_id', collegeId);
       }
-      const { data: collegeStudents } = await studentsQuery;
-      const studentIds = collegeStudents?.map(s => s.id) || [];
+      const { data: collegelearners } = await learnersQuery;
+      const learnerIds = collegelearners?.map(s => s.id) || [];
 
-      // Fetch mark entries only for this college's students
+      // Fetch mark entries only for this college's learners
       let markEntriesQuery = supabase
         .from('mark_entries')
-        .select('marks_obtained, grade, student_id, assessment_id');
+        .select('marks_obtained, grade, learner_id, assessment_id');
 
-      // Filter by student IDs from this college
-      if (studentIds.length > 0) {
-        markEntriesQuery = markEntriesQuery.in('student_id', studentIds);
+      // Filter by learner IDs from this college
+      if (learnerIds.length > 0) {
+        markEntriesQuery = markEntriesQuery.in('learner_id', learnerIds);
       } else {
-        // No students in this college, so no mark entries
-        markEntriesQuery = markEntriesQuery.eq('student_id', '00000000-0000-0000-0000-000000000000'); // Non-existent ID
+        // No learners in this college, so no mark entries
+        markEntriesQuery = markEntriesQuery.eq('learner_id', '00000000-0000-0000-0000-000000000000'); // Non-existent ID
       }
 
       const { data: markEntries } = await markEntriesQuery;
@@ -411,27 +411,27 @@ export const reportsService = {
         collegeId = await getCollegeIdForCurrentUser() || '';
       }
 
-      // First, get students from this college to filter candidates
-      let studentsQuery = supabase.from('students').select('id');
+      // First, get learners from this college to filter candidates
+      let learnersQuery = supabase.from('learners').select('id');
       if (collegeId) {
-        studentsQuery = studentsQuery.eq('college_id', collegeId);
+        learnersQuery = learnersQuery.eq('college_id', collegeId);
       }
-      const { data: collegeStudents } = await studentsQuery;
-      const studentIds = collegeStudents?.map(s => s.id) || [];
+      const { data: collegelearners } = await learnersQuery;
+      const learnerIds = collegelearners?.map(s => s.id) || [];
 
-      // Fetch candidates only for this college's students
+      // Fetch candidates only for this college's learners
       let candidatesQuery = supabase
         .from('pipeline_candidates')
-        .select('id, stage, status, added_at, student_id')
+        .select('id, stage, status, added_at, learner_id')
         .gte('added_at', startDate)
         .lte('added_at', endDate);
 
-      // Filter by student IDs from this college
-      if (studentIds.length > 0) {
-        candidatesQuery = candidatesQuery.in('student_id', studentIds);
+      // Filter by learner IDs from this college
+      if (learnerIds.length > 0) {
+        candidatesQuery = candidatesQuery.in('learner_id', learnerIds);
       } else {
-        // No students in this college, so no candidates
-        candidatesQuery = candidatesQuery.eq('student_id', '00000000-0000-0000-0000-000000000000'); // Non-existent ID
+        // No learners in this college, so no candidates
+        candidatesQuery = candidatesQuery.eq('learner_id', '00000000-0000-0000-0000-000000000000'); // Non-existent ID
       }
 
       const { data: candidates } = await candidatesQuery;
@@ -554,25 +554,25 @@ export const reportsService = {
         collegeId = await getCollegeIdForCurrentUser() || '';
       }
 
-      // First, get students from this college to filter enrollments
-      let studentsQuery = supabase.from('students').select('id');
+      // First, get learners from this college to filter enrollments
+      let learnersQuery = supabase.from('learners').select('id');
       if (collegeId) {
-        studentsQuery = studentsQuery.eq('college_id', collegeId);
+        learnersQuery = learnersQuery.eq('college_id', collegeId);
       }
-      const { data: collegeStudents } = await studentsQuery;
-      const studentIds = collegeStudents?.map(s => s.id) || [];
+      const { data: collegelearners } = await learnersQuery;
+      const learnerIds = collegelearners?.map(s => s.id) || [];
 
-      // Fetch enrollments only for this college's students
+      // Fetch enrollments only for this college's learners
       let enrollmentsQuery = supabase
         .from('course_enrollments')
-        .select('id, status, progress, course_id, student_id, created_at');
+        .select('id, status, progress, course_id, learner_id, created_at');
 
-      // Filter by student IDs from this college
-      if (studentIds.length > 0) {
-        enrollmentsQuery = enrollmentsQuery.in('student_id', studentIds);
+      // Filter by learner IDs from this college
+      if (learnerIds.length > 0) {
+        enrollmentsQuery = enrollmentsQuery.in('learner_id', learnerIds);
       } else {
-        // No students in this college, so no enrollments
-        enrollmentsQuery = enrollmentsQuery.eq('student_id', '00000000-0000-0000-0000-000000000000'); // Non-existent ID
+        // No learners in this college, so no enrollments
+        enrollmentsQuery = enrollmentsQuery.eq('learner_id', '00000000-0000-0000-0000-000000000000'); // Non-existent ID
       }
 
       const { data: enrollments, error: enrollmentsError } = await enrollmentsQuery;

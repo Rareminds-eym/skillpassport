@@ -55,7 +55,7 @@ const CircularsManagement: React.FC = () => {
 
   const [formData, setFormData] = useState<{
     title: string;
-    audience: 'all' | 'students' | 'faculty' | 'staff';
+    audience: 'all' | 'learners' | 'faculty' | 'staff';
     priority: "low" | "medium" | "high" | "urgent";
     content: string;
     publish_date: string;
@@ -838,7 +838,7 @@ const CircularsManagement: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="all">All</option>
-                  <option value="students">Students</option>
+                  <option value="learners">Learners</option>
                   <option value="faculty">Faculty</option>
                   <option value="staff">Staff</option>
                 </select>

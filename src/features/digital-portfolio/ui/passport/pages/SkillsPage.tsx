@@ -1,17 +1,17 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Code, Star, Zap } from 'lucide-react';
-import { Student } from '@/shared/types/student';
+import { Learner } from '@/shared/types/learner';
 import PassportPage from '../PassportPage';
 
 interface SkillsPageProps {
-  student: Student;
+  learner: Learner;
   isActive: boolean;
 }
 
-const SkillsPage: React.FC<SkillsPageProps> = ({ student, isActive }) => {
-  const technicalSkills = student.profile.technicalSkills || [];
-  const skills = student.profile.skills || [];
+const SkillsPage: React.FC<SkillsPageProps> = ({ learner, isActive }) => {
+  const technicalSkills = learner.profile.technicalSkills || [];
+  const skills = learner.profile.skills || [];
 
   const getSkillLevel = (level: number) => {
     if (level >= 8) return 'Expert';

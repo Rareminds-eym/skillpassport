@@ -38,7 +38,7 @@ import { useSubscription } from '@/features/subscription/model/subscriptionStore
  * Get the base path for subscription routes based on current location
  */
 function getSubscriptionBasePath(pathname) {
-  if (pathname.startsWith('/student')) return '/student';
+  if (pathname.startsWith('/learner')) return '/learner';
   if (pathname.startsWith('/recruitment')) return '/recruitment';
   if (pathname.startsWith('/educator')) return '/educator';
   if (pathname.startsWith('/college-admin')) return '/college-admin';
@@ -166,14 +166,14 @@ export function SubscriptionDashboard({ className = '', subscriptionData: propSu
               onClick={() => {
                 // Get user type from basePath for proper plan display
                 const typeMap = {
-                  '/student': 'student',
+                  '/learner': 'learner',
                   '/recruitment': 'recruiter',
                   '/educator': 'educator',
                   '/college-admin': 'college_admin',
                   '/school-admin': 'school_admin',
                   '/university-admin': 'university_admin'
                 };
-                const userType = typeMap[basePath] || 'student';
+                const userType = typeMap[basePath] || 'learner';
                 navigate(`/subscription/plans?type=${userType}&mode=upgrade`);
               }}
               className="text-sm text-white hover:text-amber-300 flex items-center gap-1 font-semibold transition-colors"

@@ -734,9 +734,9 @@ const CollegeCard = ({ college, onViewProfile, onAddNote }) => {
       </div>
 
       <div className="mb-4 space-y-1">
-        {college.students && (
+        {college.learners && (
           <p className="text-xs text-gray-600">
-            👥 Students: {college.students}
+            👥 Learners: {college.learners}
           </p>
         )}
         {college.faculty && (
@@ -859,7 +859,7 @@ const CollegeRegistration = () => {
             college.college?.state || college.metadata?.state
           ].filter(Boolean).join(', ') || 'N/A',
           programs: [], // Can be extended to fetch programs if needed
-          students: 0, // Can be extended to fetch student count
+          learners: 0, // Can be extended to fetch learner count
           faculty: 0, // Can be extended to fetch faculty count
           rating: null, // Can be extended to fetch ratings
           status: college.account_status === 'active' ? 'registered' : college.account_status,

@@ -10,9 +10,9 @@
  * - POST /submit-answer - Submit answer and update session
  * - POST /complete/:sessionId - Complete test and calculate results
  * - GET /results/:sessionId - Get test results
- * - GET /results/student/:studentId - Get all results for student
+ * - GET /results/learner/:learnerId - Get all results for learner
  * - GET /resume/:sessionId - Resume in-progress test
- * - GET /find-in-progress/:studentId - Find in-progress session
+ * - GET /find-in-progress/:learnerId - Find in-progress session
  * - POST /abandon/:sessionId - Abandon session
  * - POST /link-to-attempt - Link adaptive session to assessment attempt
  */
@@ -23,7 +23,7 @@ import { initializeHandler } from './handlers/initialize';
 import { nextQuestionHandler } from './handlers/next-question';
 import { submitAnswerHandler } from './handlers/submit-answer';
 import { completeHandler } from './handlers/complete';
-import { getResultsHandler, getStudentResultsHandler } from './handlers/results';
+import { getResultsHandler, getlearnerResultsHandler } from './handlers/results';
 import { resumeHandler, findInProgressHandler } from './handlers/resume';
 import { abandonHandler } from './handlers/abandon';
 import { onRequestPost as linkToAttemptHandler } from './link-to-attempt';
@@ -56,13 +56,13 @@ export const onRequest: PagesFunction = async (context) => {
     }
 
     // GET /results/:sessionId - Get test results
-    if (method === 'GET' && path.startsWith('/results/') && !path.startsWith('/results/student/')) {
+    if (method === 'GET' && path.startsWith('/results/') && !path.startsWith('/results/learner/')) {
       return getResultsHandler(context);
     }
 
-    // GET /results/student/:studentId - Get all results for student
-    if (method === 'GET' && path.startsWith('/results/student/')) {
-      return getStudentResultsHandler(context);
+    // GET /results/learner/:learnerId - Get all results for learner
+    if (method === 'GET' && path.startsWith('/results/learner/')) {
+      return getlearnerResultsHandler(context);
     }
 
     // GET /resume/:sessionId - Resume in-progress test
@@ -70,7 +70,7 @@ export const onRequest: PagesFunction = async (context) => {
       return resumeHandler(context);
     }
 
-    // GET /find-in-progress/:studentId - Find in-progress session
+    // GET /find-in-progress/:learnerId - Find in-progress session
     if (method === 'GET' && path.startsWith('/find-in-progress/')) {
       return findInProgressHandler(context);
     }

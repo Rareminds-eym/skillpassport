@@ -9,7 +9,7 @@ import {
   SparklesIcon
 } from '@heroicons/react/24/outline';
 import { ActivityIndicators } from '../ActivityIndicators';
-import { PipelineCandidate } from '@/features/student-profile/model';
+import { PipelineCandidate } from '@/features/learner-profile/model';
 import { STAGE_LABELS } from './types';
 
 interface CandidateCardProps {

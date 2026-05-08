@@ -13,7 +13,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
  * These are defined in Supabase migrations and run automatically - no frontend code needed.
  * 
  * 1. AUTO-ASSIGN TRIGGERS:
- *    - trigger_auto_assign_license_students (on INSERT to `students` table)
+ *    - trigger_auto_assign_license_learners (on INSERT to `learners` table)
  *    - trigger_auto_assign_license_school_educators (on INSERT to `school_educators` table)
  *    - trigger_auto_assign_license_college_lecturers (on INSERT to `college_lecturers` table)
  *    
@@ -52,7 +52,7 @@ export interface LicensePool {
   organizationId: string;
   organizationType: string;
   poolName: string;
-  memberType: 'educator' | 'student';
+  memberType: 'educator' | 'learner';
   allocatedSeats: number;
   assignedSeats: number;
   availableSeats: number;
@@ -69,7 +69,7 @@ export interface LicenseAssignment {
   licensePoolId: string;
   organizationSubscriptionId: string;
   userId: string;
-  memberType: 'educator' | 'student';
+  memberType: 'educator' | 'learner';
   status: 'active' | 'suspended' | 'revoked' | 'expired';
   assignedAt: string;
   assignedBy: string;
@@ -88,7 +88,7 @@ export interface CreatePoolRequest {
   organizationId: string;
   organizationType: 'school' | 'college' | 'university';
   poolName: string;
-  memberType: 'educator' | 'student';
+  memberType: 'educator' | 'learner';
   allocatedSeats: number;
   autoAssignNewMembers?: boolean;
   assignmentCriteria?: Record<string, any>;
@@ -447,7 +447,7 @@ export class LicenseManagementService {
    */
   async getAvailableSeats(
     organizationId: string,
-    memberType: 'educator' | 'student'
+    memberType: 'educator' | 'learner'
   ): Promise<number> {
     try {
       const { data, error } = await supabase

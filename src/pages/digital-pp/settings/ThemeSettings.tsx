@@ -3,8 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ThemeToggle } from '@/features/digital-portfolio';
 
-import type { AnimationType } from '@/shared/types/student';
-import { showProfileUpdateToast } from '@/features/student-profile';
+import type { AnimationType } from '@/shared/types/learner';
+import { showProfileUpdateToast } from '@/features/learner-profile';
 
 import { usePortfolio } from '@/features/digital-portfolio/model/portfolioStore';
 import { useTheme } from '@/shared/model/themeStore';

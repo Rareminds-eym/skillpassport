@@ -74,13 +74,13 @@ const Hero = () => {
               {/* Explore Dashboard */}
               {/* <div className="flex items-center gap-2 group">
                 <button
-                  onClick={() => navigate('/login/student')}
+                  onClick={() => navigate('/login/learner')}
                   className="h-9 sm:h-14 px-4 sm:px-8 rounded-full bg-white text-black text-xs sm:text-base font-bold uppercase tracking-wide border-2 border-black hover:bg-gray-50 transition-all whitespace-nowrap"
                 >
                   EXPLORE DASHBOARD
                 </button>
                 <button
-                  onClick={() => navigate('/login/student')}
+                  onClick={() => navigate('/login/learner')}
                   aria-label="Open dashboard"
                   className="w-9 h-9 sm:w-14 sm:h-14 rounded-full bg-white text-black border-2 border-black flex items-center justify-center transition-all group-hover:-translate-x-1 group-hover:bg-black group-hover:text-white"
                 >

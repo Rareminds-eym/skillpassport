@@ -7,20 +7,20 @@ import { supabase } from '@/shared/api/supabaseClient';
 import { handleDatabaseError } from './assessmentErrors.js';
 
 /**
- * Get saved questions for a student (for resume functionality)
- * @param {string} studentId - Student ID
+ * Get saved questions for a learner (for resume functionality)
+ * @param {string} learnerId - Learner ID
  * @param {string} streamId - Stream ID
  * @param {string} questionType - Question type ('aptitude' or 'knowledge')
  * @returns {Promise<Array|null>} - Array of questions or null if not found
  */
-export async function getSavedQuestionsForStudent(studentId, streamId, questionType) {
-  if (!studentId) {
-    console.log('⚠️ getSavedQuestionsForStudent: No studentId provided');
+export async function getSavedQuestionsForLearner(learnerId, streamId, questionType) {
+  if (!learnerId) {
+    console.log('⚠️ getSavedQuestionsForLearner: No learnerId provided');
     return null;
   }
   
   console.log(`🔍 Checking for cached ${questionType} questions:`, {
-    student_id: studentId,
+    learner_id: learnerId,
     stream_id: streamId,
     question_type: questionType
   });
@@ -29,7 +29,7 @@ export async function getSavedQuestionsForStudent(studentId, streamId, questionT
     const { data, error } = await supabase
       .from('career_assessment_ai_questions')
       .select('questions, generated_at')
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .eq('stream_id', streamId)
       .eq('question_type', questionType)
       .eq('is_active', true)
@@ -46,7 +46,7 @@ export async function getSavedQuestionsForStudent(studentId, streamId, questionT
     
     // Handle missing data
     if (!data) {
-      console.log(`ℹ️ No cached ${questionType} questions found for student ${studentId}`);
+      console.log(`ℹ️ No cached ${questionType} questions found for learner ${learnerId}`);
       return null;
     }
     
@@ -70,7 +70,7 @@ export async function getSavedQuestionsForStudent(studentId, streamId, questionT
     
     // Success - log cache hit with metadata
     console.log(`✅ Cache HIT: Found ${data.questions.length} saved ${questionType} questions`, {
-      student_id: studentId,
+      learner_id: learnerId,
       stream_id: streamId,
       question_count: data.questions.length,
       generated_at: data.generated_at,
@@ -85,7 +85,7 @@ export async function getSavedQuestionsForStudent(studentId, streamId, questionT
     console.error(`❌ Exception while fetching saved ${questionType} questions:`, {
       error: err.message,
       stack: err.stack,
-      student_id: studentId,
+      learner_id: learnerId,
       stream_id: streamId
     });
     return null;
@@ -94,23 +94,23 @@ export async function getSavedQuestionsForStudent(studentId, streamId, questionT
 
 /**
  * Save aptitude questions to database (fallback if API doesn't save)
- * @param {string} studentId - Student ID
+ * @param {string} learnerId - Learner ID
  * @param {string} streamId - Stream ID
  * @param {string} attemptId - Assessment attempt ID
  * @param {Array} questions - Array of question objects
  * @param {string} gradeLevel - Grade level (e.g., 'higher_secondary', 'after10', 'college')
  */
-export async function saveAptitudeQuestions(studentId, streamId, attemptId, questions, gradeLevel = null) {
-  if (!studentId) {
-    console.log('⚠️ No studentId provided, skipping save');
+export async function saveAptitudeQuestions(learnerId, streamId, attemptId, questions, gradeLevel = null) {
+  if (!learnerId) {
+    console.log('⚠️ No learnerId provided, skipping save');
     return;
   }
   
-  console.log(`💾 [Frontend] Saving ${questions.length} aptitude questions for student:`, studentId, 'stream:', streamId, 'grade:', gradeLevel);
+  console.log(`💾 [Frontend] Saving ${questions.length} aptitude questions for learner:`, learnerId, 'stream:', streamId, 'grade:', gradeLevel);
   
   try {
     const saveData = {
-      student_id: studentId,
+      learner_id: learnerId,
       stream_id: streamId,
       question_type: 'aptitude',
       attempt_id: attemptId || null,
@@ -121,7 +121,7 @@ export async function saveAptitudeQuestions(studentId, streamId, attemptId, ques
     };
     
     console.log('💾 Attempting database save with metadata:', {
-      student_id: studentId,
+      learner_id: learnerId,
       stream_id: streamId,
       question_type: 'aptitude',
       attempt_id: attemptId,
@@ -131,7 +131,7 @@ export async function saveAptitudeQuestions(studentId, streamId, attemptId, ques
     
     const { data, error } = await supabase.from('career_assessment_ai_questions').upsert(
       saveData,
-      { onConflict: 'student_id,stream_id,question_type' }
+      { onConflict: 'learner_id,stream_id,question_type' }
     ).select('id');
     
     if (error) {
@@ -170,23 +170,23 @@ export async function saveAptitudeQuestions(studentId, streamId, attemptId, ques
 
 /**
  * Save knowledge questions to database (fallback if API doesn't save)
- * @param {string} studentId - Student ID
+ * @param {string} learnerId - Learner ID
  * @param {string} streamId - Stream ID
  * @param {string} attemptId - Assessment attempt ID
  * @param {Array} questions - Array of question objects
  * @param {string} gradeLevel - Grade level (e.g., 'higher_secondary', 'after10', 'college')
  */
-export async function saveKnowledgeQuestions(studentId, streamId, attemptId, questions, gradeLevel = null) {
-  if (!studentId) {
-    console.log('⚠️ No studentId provided, skipping knowledge save');
+export async function saveKnowledgeQuestions(learnerId, streamId, attemptId, questions, gradeLevel = null) {
+  if (!learnerId) {
+    console.log('⚠️ No learnerId provided, skipping knowledge save');
     return;
   }
   
-  console.log(`💾 [Frontend] Saving ${questions.length} knowledge questions for student:`, studentId, 'stream:', streamId, 'grade:', gradeLevel);
+  console.log(`💾 [Frontend] Saving ${questions.length} knowledge questions for learner:`, learnerId, 'stream:', streamId, 'grade:', gradeLevel);
   
   try {
     const { data, error } = await supabase.from('career_assessment_ai_questions').upsert({
-      student_id: studentId,
+      learner_id: learnerId,
       stream_id: streamId,
       question_type: 'knowledge',
       attempt_id: attemptId || null,
@@ -194,7 +194,7 @@ export async function saveKnowledgeQuestions(studentId, streamId, attemptId, que
       generated_at: new Date().toISOString(),
       grade_level: gradeLevel,
       is_active: true
-    }, { onConflict: 'student_id,stream_id,question_type' })
+    }, { onConflict: 'learner_id,stream_id,question_type' })
     .select('id');
     
     if (error) {
@@ -219,16 +219,16 @@ export async function saveKnowledgeQuestions(studentId, streamId, attemptId, que
 }
 
 /**
- * Clear saved questions for a student (when starting fresh assessment)
+ * Clear saved questions for a learner (when starting fresh assessment)
  */
-export async function clearSavedQuestionsForStudent(studentId, streamId) {
+export async function clearSavedQuestionsForLearner(learnerId, streamId) {
   try {
     await supabase
       .from('career_assessment_ai_questions')
       .update({ is_active: false })
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .eq('stream_id', streamId);
-    console.log('✅ Cleared saved questions for student:', studentId);
+    console.log('✅ Cleared saved questions for learner:', learnerId);
   } catch (err) {
     console.warn('Error clearing saved questions:', err);
   }

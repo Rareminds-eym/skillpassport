@@ -5,7 +5,7 @@ import {
   UsersIcon,
   DocumentTextIcon,
 } from "@heroicons/react/24/outline";
-import { EventType, EventStatus } from '@/features/student-profile/model';
+import { EventType, EventStatus } from '@/features/learner-profile/model';
 
 // Date formatting
 export const formatDate = (date: string) =>

@@ -186,7 +186,7 @@ class ProgressSyncManager {
     switch (item.type) {
       case 'videoPosition':
         return courseProgressService.saveVideoPosition(
-          item.data.studentId,
+          item.data.learnerId,
           item.data.courseId,
           item.data.lessonId,
           item.data.position,
@@ -195,7 +195,7 @@ class ProgressSyncManager {
       
       case 'lessonStatus':
         return courseProgressService.updateLessonStatus(
-          item.data.studentId,
+          item.data.learnerId,
           item.data.courseId,
           item.data.lessonId,
           item.data.status
@@ -203,7 +203,7 @@ class ProgressSyncManager {
       
       case 'timeSpent':
         return courseProgressService.saveTimeSpent(
-          item.data.studentId,
+          item.data.learnerId,
           item.data.courseId,
           item.data.lessonId,
           item.data.seconds
@@ -211,7 +211,7 @@ class ProgressSyncManager {
       
       case 'restorePoint':
         return courseProgressService.saveRestorePoint(
-          item.data.studentId,
+          item.data.learnerId,
           item.data.courseId,
           item.data.moduleIndex,
           item.data.lessonIndex,
@@ -221,7 +221,7 @@ class ProgressSyncManager {
       
       case 'quizAnswer':
         return courseProgressService.saveQuizAnswer(
-          item.data.studentId,
+          item.data.learnerId,
           item.data.quizId,
           item.data.attemptNumber,
           item.data.questionId,

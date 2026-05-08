@@ -47,7 +47,7 @@ const DIMENSION_TO_SUBTAG: Record<string, Subtag> = {
 };
 
 /**
- * Extract numeric grade from student grade string
+ * Extract numeric grade from learner grade string
  */
 export function extractGradeNumber(gradeString: string): number | null {
   if (!gradeString) return null;
@@ -56,9 +56,9 @@ export function extractGradeNumber(gradeString: string): number | null {
 }
 
 /**
- * Convert student grade string to GradeLevel enum
+ * Convert learner grade string to GradeLevel enum
  */
-export function studentGradeToGradeLevel(gradeString: string): GradeLevel {
+export function learnerGradeToGradeLevel(gradeString: string): GradeLevel {
   if (!gradeString) return 'high_school';
   
   const gradeLower = gradeString.toLowerCase();

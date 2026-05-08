@@ -1,7 +1,7 @@
 /**
  * Organization Member Service
  * 
- * Fetches and manages organization members (students and educators).
+ * Fetches and manages organization members (learners and educators).
  * Integrates with license assignments to show member subscription status.
  */
 
@@ -19,7 +19,7 @@ export interface OrganizationMember {
   userId: string;
   name: string;
   email: string;
-  memberType: 'educator' | 'student';
+  memberType: 'educator' | 'learner';
   department?: string;
   designation?: string;
   grade?: string;
@@ -36,7 +36,7 @@ export interface OrganizationMember {
 export interface FetchMembersOptions {
   organizationId: string;
   organizationType: 'school' | 'college' | 'university';
-  memberType?: 'educator' | 'student' | 'all';
+  memberType?: 'educator' | 'learner' | 'all';
   includeAssignmentStatus?: boolean;
   searchQuery?: string;
   limit?: number;
@@ -55,7 +55,7 @@ export interface FetchMembersResult {
 
 export class OrganizationMemberService {
   /**
-   * Fetch all members (students and educators) for an organization
+   * Fetch all members (learners and educators) for an organization
    */
   async fetchOrganizationMembers(
     options: FetchMembersOptions
@@ -80,17 +80,17 @@ export class OrganizationMemberService {
       const members: OrganizationMember[] = [];
       let totalCount = 0;
 
-      // Fetch students if needed
-      if (memberType === 'all' || memberType === 'student') {
-        const studentResult = await this.fetchStudents(
+      // Fetch learners if needed
+      if (memberType === 'all' || memberType === 'learner') {
+        const learnerResult = await this.fetchlearners(
           organizationId,
           organizationType,
           searchQuery,
           limit,
           offset
         );
-        members.push(...studentResult.members);
-        totalCount += studentResult.total;
+        members.push(...learnerResult.members);
+        totalCount += learnerResult.total;
       }
 
       // Fetch educators if needed
@@ -123,9 +123,9 @@ export class OrganizationMemberService {
   }
 
   /**
-   * Fetch students for an organization
+   * Fetch learners for an organization
    */
-  private async fetchStudents(
+  private async fetchlearners(
     organizationId: string,
     organizationType: 'school' | 'college' | 'university',
     searchQuery?: string,
@@ -135,7 +135,7 @@ export class OrganizationMemberService {
     try {
       // Build query based on organization type
       let query = supabase
-        .from('students')
+        .from('learners')
         .select('*', { count: 'exact' });
 
       // Filter by organization
@@ -152,7 +152,7 @@ export class OrganizationMemberService {
         query = query.or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
       }
 
-      // Filter out deleted students
+      // Filter out deleted learners
       query = query.or('is_deleted.is.null,is_deleted.eq.false');
 
       // Apply pagination
@@ -162,24 +162,24 @@ export class OrganizationMemberService {
 
       if (error) throw error;
 
-      const members: OrganizationMember[] = (data || []).map((student) => ({
-        id: student.id,
-        userId: student.user_id || student.id,
-        name: student.name || 'Unknown Student',
-        email: student.email || '',
-        memberType: 'student' as const,
-        department: student.branch_field || student.course_name,
-        grade: student.grade,
-        section: student.section,
+      const members: OrganizationMember[] = (data || []).map((learner) => ({
+        id: learner.id,
+        userId: learner.user_id || learner.id,
+        name: learner.name || 'Unknown Learner',
+        email: learner.email || '',
+        memberType: 'learner' as const,
+        department: learner.branch_field || learner.course_name,
+        grade: learner.grade,
+        section: learner.section,
         hasLicense: false, // Will be enriched later
-        profilePicture: student.profilePicture,
-        phone: student.contactNumber || student.contact_number,
-        status: student.approval_status,
+        profilePicture: learner.profilePicture,
+        phone: learner.contactNumber || learner.contact_number,
+        status: learner.approval_status,
       }));
 
       return { members, total: count || 0 };
     } catch (error) {
-      logger.error('Error fetching students', error as Error);
+      logger.error('Error fetching learners', error as Error);
       return { members: [], total: 0 };
     }
   }
@@ -354,13 +354,13 @@ export class OrganizationMemberService {
    */
   async getMemberById(
     memberId: string,
-    memberType: 'educator' | 'student',
+    memberType: 'educator' | 'learner',
     organizationType: 'school' | 'college' | 'university'
   ): Promise<OrganizationMember | null> {
     try {
-      if (memberType === 'student') {
+      if (memberType === 'learner') {
         const { data, error } = await supabase
-          .from('students')
+          .from('learners')
           .select('*')
           .eq('id', memberId)
           .single();
@@ -370,9 +370,9 @@ export class OrganizationMemberService {
         return {
           id: data.id,
           userId: data.user_id || data.id,
-          name: data.name || 'Unknown Student',
+          name: data.name || 'Unknown Learner',
           email: data.email || '',
-          memberType: 'student',
+          memberType: 'learner',
           department: data.branch_field || data.course_name,
           grade: data.grade,
           section: data.section,
@@ -418,28 +418,28 @@ export class OrganizationMemberService {
   async getMemberCounts(
     organizationId: string,
     organizationType: 'school' | 'college' | 'university'
-  ): Promise<{ students: number; educators: number; total: number }> {
+  ): Promise<{ learners: number; educators: number; total: number }> {
     try {
-      let studentCount = 0;
+      let learnerCount = 0;
       let educatorCount = 0;
 
-      // Count students
-      let studentQuery = supabase
-        .from('students')
+      // Count learners
+      let learnerQuery = supabase
+        .from('learners')
         .select('id', { count: 'exact', head: true });
 
       if (organizationType === 'school') {
-        studentQuery = studentQuery.eq('school_id', organizationId);
+        learnerQuery = learnerQuery.eq('school_id', organizationId);
       } else if (organizationType === 'college') {
-        studentQuery = studentQuery.eq('college_id', organizationId);
+        learnerQuery = learnerQuery.eq('college_id', organizationId);
       } else {
-        studentQuery = studentQuery.eq('universityId', organizationId);
+        learnerQuery = learnerQuery.eq('universityId', organizationId);
       }
 
-      studentQuery = studentQuery.or('is_deleted.is.null,is_deleted.eq.false');
+      learnerQuery = learnerQuery.or('is_deleted.is.null,is_deleted.eq.false');
 
-      const { count: sCount } = await studentQuery;
-      studentCount = sCount || 0;
+      const { count: sCount } = await learnerQuery;
+      learnerCount = sCount || 0;
 
       // Count educators
       if (organizationType === 'school') {
@@ -457,13 +457,13 @@ export class OrganizationMemberService {
       }
 
       return {
-        students: studentCount,
+        learners: learnerCount,
         educators: educatorCount,
-        total: studentCount + educatorCount,
+        total: learnerCount + educatorCount,
       };
     } catch (error) {
       logger.error('Error fetching member counts', error as Error);
-      return { students: 0, educators: 0, total: 0 };
+      return { learners: 0, educators: 0, total: 0 };
     }
   }
 
@@ -471,8 +471,8 @@ export class OrganizationMemberService {
    * Remove a member from the organization
    * This removes the organization association but does NOT delete the user account
    * 
-   * @param memberId - The member's ID (student or educator record ID)
-   * @param memberType - Type of member ('student' or 'educator')
+   * @param memberId - The member's ID (learner or educator record ID)
+   * @param memberType - Type of member ('learner' or 'educator')
    * @param organizationType - Type of organization ('school', 'college', 'university')
    * @param organizationId - The organization's ID (for verification)
    * @param revokedBy - Optional user ID of who is performing the removal
@@ -480,14 +480,14 @@ export class OrganizationMemberService {
    */
   async removeMember(
     memberId: string,
-    memberType: 'educator' | 'student',
+    memberType: 'educator' | 'learner',
     organizationType: 'school' | 'college' | 'university',
     organizationId: string,
     revokedBy?: string
   ): Promise<{ success: boolean; message: string }> {
     try {
-      if (memberType === 'student') {
-        // For students, clear the school_id or college_id
+      if (memberType === 'learner') {
+        // For learners, clear the school_id or college_id
         const updateData: Record<string, any> = {};
         
         if (organizationType === 'school') {
@@ -496,44 +496,44 @@ export class OrganizationMemberService {
           updateData.college_id = null;
         }
 
-        // Verify the student belongs to this organization before removing
-        const { data: student, error: fetchError } = await supabase
-          .from('students')
+        // Verify the learner belongs to this organization before removing
+        const { data: learner, error: fetchError } = await supabase
+          .from('learners')
           .select('id, school_id, college_id, email, name, user_id')
           .eq('id', memberId)
           .single();
 
-        if (fetchError || !student) {
-          return { success: false, message: 'Student not found' };
+        if (fetchError || !learner) {
+          return { success: false, message: 'Learner not found' };
         }
 
         // Verify organization ownership
         const belongsToOrg = 
-          (organizationType === 'school' && student.school_id === organizationId) ||
-          ((organizationType === 'college' || organizationType === 'university') && student.college_id === organizationId);
+          (organizationType === 'school' && learner.school_id === organizationId) ||
+          ((organizationType === 'college' || organizationType === 'university') && learner.college_id === organizationId);
 
         if (!belongsToOrg) {
-          return { success: false, message: 'Student does not belong to this organization' };
+          return { success: false, message: 'Learner does not belong to this organization' };
         }
 
         // Remove organization association
         const { error: updateError } = await supabase
-          .from('students')
+          .from('learners')
           .update(updateData)
           .eq('id', memberId);
 
         if (updateError) {
-          logger.error('Error removing student from organization', updateError as Error);
+          logger.error('Error removing learner from organization', updateError as Error);
           return { success: false, message: updateError.message };
         }
 
         // Also revoke any license assignments for this user
-        // Use user_id if available, otherwise fall back to student.id
-        const userIdForLicense = student.user_id || student.id;
+        // Use user_id if available, otherwise fall back to learner.id
+        const userIdForLicense = learner.user_id || learner.id;
         await this.revokeMemberLicenses(userIdForLicense, organizationId, revokedBy, 'Member removed from organization');
 
-        logger.info('Student removed from organization', { email: student.email });
-        return { success: true, message: `${student.name || 'Student'} has been removed from the organization` };
+        logger.info('Learner removed from organization', { email: learner.email });
+        return { success: true, message: `${learner.name || 'Learner'} has been removed from the organization` };
 
       } else {
         // For educators

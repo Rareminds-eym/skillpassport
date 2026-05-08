@@ -3,7 +3,7 @@ import {
   MagnifyingGlassIcon, PlusCircleIcon, PencilSquareIcon,
   TrashIcon, CheckCircleIcon, ExclamationTriangleIcon, CalendarIcon, MapPinIcon, UsersIcon,
 } from "@heroicons/react/24/outline";
-import { CollegeEvent } from '@/features/student-profile/model';
+import { CollegeEvent } from '@/features/learner-profile/model';
 import { formatDate, getEventTypeColor, getEventTypeIcon, getStatusBadge } from "../helpers";
 
 interface Props {

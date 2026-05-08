@@ -6,7 +6,7 @@ const supabase = createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwb29sZWR1aW55eXp4Z3Jjd2tvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTk5NDY5OCwiZXhwIjoyMDc1NTcwNjk4fQ.WIrwkA_-2oCjwmD6WpCf9N38hYXEwrIIXXHB4x5km10'
 );
 
-const studentId = '95364f0d-23fb-4616-b0f4-48caafee5439';
+const learnerId = '95364f0d-23fb-4616-b0f4-48caafee5439';
 
 async function removeAddons() {
   console.log('🔍 Finding all addon-related records for Gokul\n');
@@ -15,7 +15,7 @@ async function removeAddons() {
   const { data: entitlements, error: entErr } = await supabase
     .from('user_entitlements')
     .select('*')
-    .eq('user_id', studentId);
+    .eq('user_id', learnerId);
 
   if (!entErr) {
     console.log('Found user_entitlements:', entitlements?.length || 0);
@@ -28,7 +28,7 @@ async function removeAddons() {
   const { data: pendingOrders, error: pendingErr } = await supabase
     .from('addon_pending_orders')
     .select('*')
-    .eq('user_id', studentId);
+    .eq('user_id', learnerId);
 
   if (!pendingErr) {
     console.log('\nFound addon_pending_orders:', pendingOrders?.length || 0);
@@ -41,7 +41,7 @@ async function removeAddons() {
 
   // Delete user_entitlements
   if (entitlements?.length) {
-    const { error } = await supabase.from('user_entitlements').delete().eq('user_id', studentId);
+    const { error } = await supabase.from('user_entitlements').delete().eq('user_id', learnerId);
     console.log('Deleted user_entitlements:', error ? error.message : '✅ Success');
   } else {
     console.log('No user_entitlements to delete');
@@ -49,7 +49,7 @@ async function removeAddons() {
 
   // Delete addon_pending_orders
   if (pendingOrders?.length) {
-    const { error } = await supabase.from('addon_pending_orders').delete().eq('user_id', studentId);
+    const { error } = await supabase.from('addon_pending_orders').delete().eq('user_id', learnerId);
     console.log('Deleted addon_pending_orders:', error ? error.message : '✅ Success');
   } else {
     console.log('No addon_pending_orders to delete');
@@ -57,7 +57,7 @@ async function removeAddons() {
 
   // Verify
   console.log('\n=== VERIFICATION ===');
-  const { data: remainingEnt } = await supabase.from('user_entitlements').select('id').eq('user_id', studentId);
+  const { data: remainingEnt } = await supabase.from('user_entitlements').select('id').eq('user_id', learnerId);
   console.log('Remaining user_entitlements:', remainingEnt?.length || 0);
 
   console.log('\n✅ Done!');

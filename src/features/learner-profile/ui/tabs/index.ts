@@ -1,0 +1,12 @@
+export { default as OverviewTab } from '../../../../entities/learner/ui/tabs/OverviewTab';
+export { default as AcademicTab } from './AcademicTab';
+export { default as CoursesTab } from './CoursesTab';
+export { default as ProjectsTab } from './ProjectsTab';
+export { default as CertificatesTab } from './CertificatesTab';
+export { default as AssessmentsTab } from './AssessmentsTab';
+export { default as CurriculumTab } from './CurriculumTab';
+export { default as ClubsCompetitionsTab } from './ClubsCompetitionsTab';
+export { default as ExamResultsTab } from './ExamResultsTab';
+export { default as NotesTab } from './NotesTab';
+export { default as EventsTab } from '../../../../features/learner-profile/ui/tabs/EventsTab';
+export { default as DocumentsTab } from './DocumentsTab';

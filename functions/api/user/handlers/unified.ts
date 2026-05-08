@@ -24,7 +24,7 @@ import {
  * 
  * Expects the SSO user to already exist. Creates:
  * 1. public.users record (app profile)
- * 2. Role-specific record (students, school_educators, recruiters, etc.)
+ * 2. Role-specific record (learners, school_educators, recruiters, etc.)
  * 
  * The `userId` field in the request body is the SSO user ID (from ssoClient.signup/signupMember).
  */
@@ -93,7 +93,7 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
       const oldId = existingByEmail.id;
 
       // Update role-specific records FIRST (child tables) before updating the parent
-      await supabaseAdmin.from('students').update({ user_id: userId }).eq('user_id', oldId);
+      await supabaseAdmin.from('learners').update({ user_id: userId }).eq('user_id', oldId);
       await supabaseAdmin.from('recruiters').update({ user_id: userId }).eq('user_id', oldId);
       await supabaseAdmin.from('school_educators').update({ user_id: userId }).eq('user_id', oldId);
       await supabaseAdmin.from('college_educators').update({ user_id: userId }).eq('user_id', oldId);
@@ -223,21 +223,21 @@ async function createRoleSpecificRecord(
   const { role, phone, dateOfBirth } = body;
 
   switch (role) {
-    case 'school_student':
-    case 'college_student':
+    case 'learner':
+    case 'learner':
     case 'learner': {
-      const studentType = role === 'school_student' ? 'school' : role === 'college_student' ? 'college' : 'learner';
-      const { error } = await supabaseAdmin.from('students').insert({
+      const learnerType = role === 'learner' ? 'school' : role === 'learner' ? 'college' : 'learner';
+      const { error } = await supabaseAdmin.from('learners').insert({
         user_id: userId,
         name: fullName,
         email,
         contact_number: phone,
         date_of_birth: dateOfBirth || null,
-        student_type: studentType,
+        learner_type: learnerType,
         approval_status: role === 'learner' ? 'approved' : 'pending', // Auto-approve learners
       });
       if (error) {
-        throw new Error(`Failed to create student record: ${error.message}`);
+        throw new Error(`Failed to create learner record: ${error.message}`);
       }
       break;
     }

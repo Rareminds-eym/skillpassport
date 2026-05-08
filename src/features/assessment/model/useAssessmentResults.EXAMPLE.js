@@ -23,7 +23,7 @@ export const useAssessmentResults = () => {
   const [error, setError] = useState(null);
   const [retrying, setRetrying] = useState(false);
   const [validationWarnings, setValidationWarnings] = useState([]);
-  const [studentInfo, setStudentInfo] = useState(null);
+  const [learnerInfo, setlearnerInfo] = useState(null);
   const [gradeLevel, setGradeLevel] = useState(null);
   
   const navigate = useNavigate();
@@ -49,7 +49,7 @@ export const useAssessmentResults = () => {
         .select(`
           *,
           personal_assessment_attempts!inner(
-            student_id,
+            learner_id,
             stream_id,
             grade_level,
             started_at,
@@ -57,7 +57,7 @@ export const useAssessmentResults = () => {
           )
         `)
         .eq('id', resultId)
-        .eq('student_id', user.id)
+        .eq('learner_id', user.id)
         .single();
 
       if (resultError) {
@@ -100,15 +100,15 @@ export const useAssessmentResults = () => {
         setResults(transformedResult);
       }
 
-      // Fetch student info
-      const { data: student, error: studentError } = await supabase
-        .from('students')
+      // Fetch learner info
+      const { data: learner, error: learnerError } = await supabase
+        .from('learners')
         .select('*')
         .eq('id', user.id)
         .single();
 
-      if (!studentError && student) {
-        setStudentInfo(student);
+      if (!learnerError && learner) {
+        setlearnerInfo(learner);
       }
 
       // Set grade level
@@ -170,7 +170,7 @@ export const useAssessmentResults = () => {
     error,
     retrying,
     validationWarnings,
-    studentInfo,
+    learnerInfo,
     gradeLevel,
     handleRetry,
     regenerateAnalysis,
@@ -196,7 +196,7 @@ export const generateAndStoreResult = async (attemptId) => {
     // 3. Structure data for database (keep original format)
     const dbResultData = {
       attempt_id: attemptId,
-      student_id: scores.studentId,
+      learner_id: scores.learnerId,
       grade_level: scores.gradeLevel,
       
       // Store in database format
@@ -307,7 +307,7 @@ const calculateScoresFromResponses = async (attemptId) => {
     : null;
 
   return {
-    studentId: attempt.student_id,
+    learnerId: attempt.learner_id,
     gradeLevel: attempt.grade_level,
     riasec: riasecScores,
     strengths: strengthsScores,

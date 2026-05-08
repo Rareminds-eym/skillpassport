@@ -1,5 +1,5 @@
 import { supabase } from '@/shared/api/supabaseClient';
-import { TalentPoolAnalytics } from '@/features/student-profile/model';
+import { TalentPoolAnalytics } from '@/features/learner-profile/model';
 
 /**
  * Talent Analytics Service
@@ -14,7 +14,7 @@ class TalentAnalyticsService {
     try {
       // Get total candidates count
       const { count: totalCandidates } = await supabase
-        .from('students')
+        .from('learners')
         .select('user_id', { count: 'exact', head: true })
         .not('name', 'is', null);
 
@@ -38,13 +38,13 @@ class TalentAnalyticsService {
         .slice(0, 20);
 
       // Get location distribution
-      const { data: studentsWithLocation } = await supabase
-        .from('students')
+      const { data: learnersWithLocation } = await supabase
+        .from('learners')
         .select('city, state')
         .not('city', 'is', null);
 
       const locationCounts = new Map<string, number>();
-      studentsWithLocation?.forEach(({ city, state }) => {
+      learnersWithLocation?.forEach(({ city, state }) => {
         const location = [city, state].filter(Boolean).join(', ');
         if (location) {
           const count = locationCounts.get(location) || 0;
@@ -59,7 +59,7 @@ class TalentAnalyticsService {
 
       // Get institution distribution
       const { data: institutions } = await supabase
-        .from('students')
+        .from('learners')
         .select('university')
         .not('university', 'is', null);
 
@@ -82,7 +82,7 @@ class TalentAnalyticsService {
       // Experience level distribution based on graduation year
       const currentYear = new Date().getFullYear();
       const { data: gradYears } = await supabase
-        .from('students')
+        .from('learners')
         .select('expectedGraduationDate');
 
       const experienceLevels = {

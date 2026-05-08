@@ -1,7 +1,7 @@
-// Mock data for Skill Passport Student Dashboard
+// Mock data for Skill Passport Learner Dashboard
 // This is shared mock data that can be used across the application
 
-export const studentData = {
+export const learnerData = {
     id: "SP2024001",
     name: "Priya Sharma",
     university: "Indian Institute of Technology, Chennai",

@@ -8,7 +8,7 @@ const logger = getLogger('educator-data-service');
  * Fetches and manages data from the database for educator insights
  */
 
-export interface StudentProfile {
+export interface LearnerProfile {
   id: string;
   universityId: string | null;
   profile: {
@@ -113,7 +113,7 @@ export interface Assignment {
 
 export interface Certificate {
   id: string;
-  student_id: string;
+  learner_id: string;
   title: string;
   issuer: string;
   level: string;
@@ -124,12 +124,12 @@ export interface Certificate {
 
 class EducatorDataService {
   /**
-   * Fetch all students with their complete profiles
+   * Fetch all learners with their complete profiles
    */
-  async getStudents(universityId?: string): Promise<StudentProfile[]> {
+  async getLearners(universityId?: string): Promise<LearnerProfile[]> {
     try {
       let query = supabase
-        .from('students')
+        .from('learners')
         .select('id, universityId, profile')
         .order('profile->updatedAt', { ascending: false });
 
@@ -140,36 +140,36 @@ class EducatorDataService {
       const { data, error } = await query;
 
       if (error) {
-        logger.error('Fetch students failed', new Error(error.message), { universityId });
+        logger.error('Fetch learners failed', new Error(error.message), { universityId });
         return [];
       }
 
-      return (data || []) as StudentProfile[];
+      return (data || []) as LearnerProfile[];
     } catch (error) {
-      logger.error('Fetch students exception', error instanceof Error ? error : new Error(String(error)), { universityId });
+      logger.error('Fetch learners exception', error instanceof Error ? error : new Error(String(error)), { universityId });
       return [];
     }
   }
 
   /**
-   * Fetch a specific student by ID
+   * Fetch a specific learner by ID
    */
-  async getStudentById(studentId: string): Promise<StudentProfile | null> {
+  async getlearnerById(learnerId: string): Promise<LearnerProfile | null> {
     try {
       const { data, error } = await supabase
-        .from('students')
+        .from('learners')
         .select('id, universityId, profile')
-        .eq('id', studentId)
+        .eq('id', learnerId)
         .single();
 
       if (error) {
-        logger.error('Fetch student failed', new Error(error.message), { studentId });
+        logger.error('Fetch learner failed', new Error(error.message), { learnerId });
         return null;
       }
 
-      return data as StudentProfile;
+      return data as LearnerProfile;
     } catch (error) {
-      logger.error('Fetch student exception', error instanceof Error ? error : new Error(String(error)), { studentId });
+      logger.error('Fetch learner exception', error instanceof Error ? error : new Error(String(error)), { learnerId });
       return null;
     }
   }
@@ -253,25 +253,25 @@ class EducatorDataService {
   }
 
   /**
-   * Fetch student certificates
+   * Fetch learner certificates
    */
-  async getStudentCertificates(studentId: string): Promise<Certificate[]> {
+  async getlearnerCertificates(learnerId: string): Promise<Certificate[]> {
     try {
       const { data, error } = await supabase
         .from('certificates')
         .select('*')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('enabled', true)
         .order('created_at', { ascending: false });
 
       if (error) {
-        logger.error('Fetch student certificates failed', new Error(error.message), { studentId });
+        logger.error('Fetch learner certificates failed', new Error(error.message), { learnerId });
         return [];
       }
 
       return (data || []) as Certificate[];
     } catch (error) {
-      logger.error('Fetch student certificates exception', error instanceof Error ? error : new Error(String(error)), { studentId });
+      logger.error('Fetch learner certificates exception', error instanceof Error ? error : new Error(String(error)), { learnerId });
       return [];
     }
   }

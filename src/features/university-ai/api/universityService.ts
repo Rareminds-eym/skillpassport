@@ -241,7 +241,7 @@ export const getUniversityCollegeByOwner = async (userId) => {
 };
 
 /**
- * Get all active universities for student registration dropdown from organizations table
+ * Get all active universities for learner registration dropdown from organizations table
  * @returns {Promise<{ success: boolean, data: Array | null, error: string | null }>}
  */
 export const getActiveUniversities = async () => {

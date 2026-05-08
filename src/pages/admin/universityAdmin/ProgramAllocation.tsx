@@ -33,7 +33,7 @@ const mockColleges = [
     accreditation: 'NAAC A+',
     totalPrograms: 12,
     activePrograms: 10,
-    totalStudents: 2500,
+    totallearners: 2500,
     status: 'active'
   },
   {
@@ -46,7 +46,7 @@ const mockColleges = [
     accreditation: 'NAAC A',
     totalPrograms: 8,
     activePrograms: 7,
-    totalStudents: 1800,
+    totallearners: 1800,
     status: 'active'
   },
   {
@@ -59,7 +59,7 @@ const mockColleges = [
     accreditation: 'NAAC A',
     totalPrograms: 15,
     activePrograms: 12,
-    totalStudents: 3200,
+    totallearners: 3200,
     status: 'active'
   },
   {
@@ -72,7 +72,7 @@ const mockColleges = [
     accreditation: 'NAAC A+',
     totalPrograms: 10,
     activePrograms: 9,
-    totalStudents: 2100,
+    totallearners: 2100,
     status: 'pending_review'
   }
 ];
@@ -682,8 +682,8 @@ const ProgramAllocation: React.FC = () => {
                 <h4 className="text-md font-medium text-gray-900 mb-4">Quick Stats</h4>
                 <div className="space-y-3">
                   <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="text-lg font-semibold text-gray-900">{college.totalStudents.toLocaleString()}</div>
-                    <div className="text-sm text-gray-500">Total Students</div>
+                    <div className="text-lg font-semibold text-gray-900">{college.totallearners.toLocaleString()}</div>
+                    <div className="text-sm text-gray-500">Total Learners</div>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-3">
                     <div className="text-lg font-semibold text-gray-900">85%</div>
@@ -825,9 +825,9 @@ const ProgramAllocation: React.FC = () => {
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Total Students</dt>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Total Learners</dt>
                   <dd className="text-lg font-medium text-gray-900">
-                    {mockColleges.reduce((sum, college) => sum + college.totalStudents, 0).toLocaleString()}
+                    {mockColleges.reduce((sum, college) => sum + college.totallearners, 0).toLocaleString()}
                   </dd>
                 </dl>
               </div>
@@ -1016,7 +1016,7 @@ const ProgramAllocation: React.FC = () => {
                     Programs
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Students
+                    Learners
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
@@ -1065,7 +1065,7 @@ const ProgramAllocation: React.FC = () => {
                       <div className="text-sm text-gray-500">Active/Total</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {college.totalStudents.toLocaleString()}
+                      {college.totallearners.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(college.status)}
@@ -1129,8 +1129,8 @@ const ProgramAllocation: React.FC = () => {
                       <span className="text-gray-900">{college.activePrograms}/{college.totalPrograms}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Students:</span>
-                      <span className="text-gray-900">{college.totalStudents.toLocaleString()}</span>
+                      <span className="text-gray-500">Learners:</span>
+                      <span className="text-gray-900">{college.totallearners.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Accreditation:</span>

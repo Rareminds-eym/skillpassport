@@ -25,8 +25,8 @@ describe('UAT: Admin User Scenarios', () => {
       invitations: new Map(),
       users: new Map([
         ['admin-1', { id: 'admin-1', name: 'John Admin', role: 'school_admin', organization_id: 'org-1', email: 'admin@school.edu' }],
-        ['student-1', { id: 'student-1', name: 'Alice Student', role: 'student', organization_id: 'org-1', email: 'alice@school.edu' }],
-        ['student-2', { id: 'student-2', name: 'Bob Student', role: 'student', organization_id: 'org-1', email: 'bob@school.edu' }],
+        ['learner-1', { id: 'learner-1', name: 'Alice Learner', role: 'learner', organization_id: 'org-1', email: 'alice@school.edu' }],
+        ['learner-2', { id: 'learner-2', name: 'Bob Learner', role: 'learner', organization_id: 'org-1', email: 'bob@school.edu' }],
         ['educator-1', { id: 'educator-1', name: 'Carol Teacher', role: 'educator', organization_id: 'org-1', email: 'carol@school.edu' }]
       ]),
       payments: new Map()
@@ -50,7 +50,7 @@ describe('UAT: Admin User Scenarios', () => {
       // Step 2: Admin selects plan and configures seats
       const selectedPlan = plans[1]; // Pro plan
       const seatCount = 50;
-      const memberType = 'student';
+      const memberType = 'learner';
 
       // Step 3: Admin reviews pricing
       const calculatePricing = (plan: any, seats: number) => {
@@ -139,7 +139,7 @@ describe('UAT: Admin User Scenarios', () => {
       state.licensePools.set('pool-1', {
         id: 'pool-1',
         organization_subscription_id: 'sub-1',
-        member_type: 'student',
+        member_type: 'learner',
         allocated_seats: 50,
         assigned_seats: 0
       });
@@ -167,12 +167,12 @@ describe('UAT: Admin User Scenarios', () => {
         return assignment;
       };
 
-      // Admin assigns license to student-1
-      const assignment1 = await assignLicense('pool-1', 'student-1', 'admin-1');
+      // Admin assigns license to learner-1
+      const assignment1 = await assignLicense('pool-1', 'learner-1', 'admin-1');
       expect(assignment1.status).toBe('active');
 
-      // Admin assigns license to student-2
-      const assignment2 = await assignLicense('pool-1', 'student-2', 'admin-1');
+      // Admin assigns license to learner-2
+      const assignment2 = await assignLicense('pool-1', 'learner-2', 'admin-1');
       expect(assignment2.status).toBe('active');
 
       // Verify pool seats updated
@@ -206,7 +206,7 @@ describe('UAT: Admin User Scenarios', () => {
         return { assigned: results.length, total: userIds.length };
       };
 
-      const result = await bulkAssign('pool-1', ['student-1', 'student-2'], 'admin-1');
+      const result = await bulkAssign('pool-1', ['learner-1', 'learner-2'], 'admin-1');
       expect(result.assigned).toBe(2);
 
       console.log('✅ Scenario 2b Complete: Bulk license assignment successful');
@@ -219,7 +219,7 @@ describe('UAT: Admin User Scenarios', () => {
       state.licensePools.set('pool-1', {
         id: 'pool-1',
         organization_subscription_id: 'sub-1',
-        member_type: 'student',
+        member_type: 'learner',
         allocated_seats: 50,
         assigned_seats: 0,
         auto_assign_new_members: true
@@ -242,7 +242,7 @@ describe('UAT: Admin User Scenarios', () => {
         return invitation;
       };
 
-      const invitation = await sendInvitation('newstudent@example.com', 'student', true);
+      const invitation = await sendInvitation('newlearner@example.com', 'learner', true);
       expect(invitation.status).toBe('pending');
       expect(invitation.auto_assign_subscription).toBe(true);
 
@@ -281,7 +281,7 @@ describe('UAT: Admin User Scenarios', () => {
         return { invitation: targetInvitation, assignment: null };
       };
 
-      const result = await acceptInvitation(invitation.invitation_token, 'new-student-1');
+      const result = await acceptInvitation(invitation.invitation_token, 'new-learner-1');
       expect(result.invitation.status).toBe('accepted');
       expect(result.assignment).not.toBeNull();
 
@@ -422,7 +422,7 @@ describe('UAT: Admin User Scenarios', () => {
       state.assignments.set('assign-1', {
         id: 'assign-1',
         license_pool_id: 'pool-1',
-        user_id: 'student-1',
+        user_id: 'learner-1',
         status: 'active'
       });
     });
@@ -458,7 +458,7 @@ describe('UAT: Admin User Scenarios', () => {
         return { from: currentAssignment, to: newAssignment };
       };
 
-      const result = await transferLicense('student-1', 'educator-1', 'admin-1');
+      const result = await transferLicense('learner-1', 'educator-1', 'admin-1');
       
       expect(result.from.status).toBe('transferred');
       expect(result.to.user_id).toBe('educator-1');

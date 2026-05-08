@@ -39,8 +39,8 @@ const CoursePlayer = () => {
     switch (role) {
       case 'educator':
         return '/educator/browse-courses';
-      case 'student':
-        return '/student/courses';
+      case 'learner':
+        return '/learner/courses';
       case 'school_admin':
         return '/school-admin/academics/browse-courses';
       case 'college_admin':
@@ -48,7 +48,7 @@ const CoursePlayer = () => {
       case 'university_admin':
         return '/university-admin/browse-courses';
       default:
-        return '/student/courses'; // fallback
+        return '/learner/courses'; // fallback
     }
   };
 
@@ -71,14 +71,14 @@ const CoursePlayer = () => {
   const videoSaveTimeoutRef = useRef(null);
   const lastSavedVideoPositionRef = useRef(0);
 
-  // Check if user is a student (for progress tracking)
-  // Students can have roles: 'student', 'school_student', 'college_student'
+  // Check if user is a learner (for progress tracking)
+  // Learners can have roles: 'learner', 'learner', 'learner'
   console.log('user?.role', user?.role);
-  const isStudent = user?.role === 'student' || 
-                    user?.role === 'school_student' || 
-                    user?.role === 'college_student';
+  const isLearner = user?.role === 'learner' || 
+                    user?.role === 'learner' || 
+                    user?.role === 'learner';
 
-  // Session restore hook - only for students
+  // Session restore hook - only for learners
   const {
     restorePoint,
     showRestoreModal,
@@ -89,36 +89,36 @@ const CoursePlayer = () => {
     dismissModal,
     saveRestorePoint,
     getLastAccessedText
-  } = useSessionRestore(user?.id, courseId, { enabled: isStudent });
+  } = useSessionRestore(user?.id, courseId, { enabled: isLearner });
 
   // Track if enrollment has been initialized
   const enrollmentInitializedRef = useRef(false);
 
-  // Enroll student and load existing progress (only for students)
+  // Enroll learner and load existing progress (only for learners)
   useEffect(() => {
-    if (isStudent && user?.email && courseId && !enrollmentInitializedRef.current) {
+    if (isLearner && user?.email && courseId && !enrollmentInitializedRef.current) {
       enrollmentInitializedRef.current = true;
       console.log('user role', user?.role);
       enrollAndLoadProgress();
-    } else if (!isStudent && !positionInitialized) {
-      // For non-students, immediately mark position as initialized
-      console.log('📍 Non-student user, using default position');
+    } else if (!isLearner && !positionInitialized) {
+      // For non-learners, immediately mark position as initialized
+      console.log('📍 Non-learner user, using default position');
       setPositionInitialized(true);
     }
-  }, [user, courseId, isStudent, positionInitialized]);
+  }, [user, courseId, isLearner, positionInitialized]);
 
   const enrollAndLoadProgress = async () => {
-    if (!user?.email || !isStudent) {
-      // For non-students, position is initialized at default (0, 0)
+    if (!user?.email || !isLearner) {
+      // For non-learners, position is initialized at default (0, 0)
       setPositionInitialized(true);
       return;
     }
 
     try {
-      console.log('📚 Enrolling student:', user.email, 'in course:', courseId);
+      console.log('📚 Enrolling learner:', user.email, 'in course:', courseId);
 
-      // Enroll student (or get existing enrollment)
-      const enrollResult = await enrollmentService.enrollStudent(user.email, courseId);
+      // Enroll learner (or get existing enrollment)
+      const enrollResult = await enrollmentService.enrollLearner(user.email, courseId);
 
       console.log('📚 Enrollment result:', enrollResult);
 
@@ -163,20 +163,20 @@ const CoursePlayer = () => {
         setPositionInitialized(true);
       }
     } catch (error) {
-      console.error('Error enrolling student:', error);
+      console.error('Error enrolling learner:', error);
       setPositionInitialized(true);
     }
   };
 
-  // Save progress whenever completed lessons change (only for students)
+  // Save progress whenever completed lessons change (only for learners)
   useEffect(() => {
-    if (isStudent && user?.email && courseId && completedLessons.size > 0 && course) {
+    if (isLearner && user?.email && courseId && completedLessons.size > 0 && course) {
       saveProgress();
     }
-  }, [completedLessons, isStudent, course]);
+  }, [completedLessons, isLearner, course]);
 
   const saveProgress = async () => {
-    if (!user?.email || !isStudent || !course) return;
+    if (!user?.email || !isLearner || !course) return;
 
     try {
       const lessonsArray = Array.from(completedLessons);
@@ -206,8 +206,8 @@ const CoursePlayer = () => {
 
   // Save video position to database
   const saveVideoPosition = useCallback(async (position, duration) => {
-    console.log('📹 saveVideoPosition called:', { position, duration, isStudent, userId: user?.id, courseId });
-    if (!isStudent || !user?.id || !courseId) {
+    console.log('📹 saveVideoPosition called:', { position, duration, isLearner, userId: user?.id, courseId });
+    if (!isLearner || !user?.id || !courseId) {
       console.log('📹 saveVideoPosition skipped - missing params');
       return;
     }
@@ -227,11 +227,11 @@ const CoursePlayer = () => {
     );
     console.log('📹 Save video position result:', result);
     lastSavedVideoPositionRef.current = position;
-  }, [isStudent, user?.id, courseId, currentModuleIndex, currentLessonIndex]);
+  }, [isLearner, user?.id, courseId, currentModuleIndex, currentLessonIndex]);
 
   // Load saved video position when lesson changes
   useEffect(() => {
-    if (!isStudent || !user?.id || !courseId || !course) return;
+    if (!isLearner || !user?.id || !courseId || !course) return;
     const currentLesson = getCurrentLesson();
     if (!currentLesson) return;
 
@@ -249,7 +249,7 @@ const CoursePlayer = () => {
     };
 
     loadVideoPosition();
-  }, [isStudent, user?.id, courseId, currentModuleIndex, currentLessonIndex, course]);
+  }, [isLearner, user?.id, courseId, currentModuleIndex, currentLessonIndex, course]);
 
   // Video event handlers
   const handleVideoLoadedMetadata = useCallback(() => {
@@ -262,7 +262,7 @@ const CoursePlayer = () => {
   }, []);
 
   const handleVideoTimeUpdate = useCallback(() => {
-    if (!videoRef.current || !isStudent) return;
+    if (!videoRef.current || !isLearner) return;
     
     const video = videoRef.current;
     const position = video.currentTime;
@@ -286,29 +286,29 @@ const CoursePlayer = () => {
         progressService.markVideoCompleted(user.id, courseId, currentLesson.id);
       }
     }
-  }, [isStudent, user?.id, courseId, saveVideoPosition]);
+  }, [isLearner, user?.id, courseId, saveVideoPosition]);
 
   const handleVideoPause = useCallback(() => {
-    if (!videoRef.current || !isStudent) return;
+    if (!videoRef.current || !isLearner) return;
     saveVideoPosition(videoRef.current.currentTime, videoRef.current.duration);
-  }, [isStudent, saveVideoPosition]);
+  }, [isLearner, saveVideoPosition]);
 
   const handleVideoSeeked = useCallback(() => {
-    if (!videoRef.current || !isStudent) return;
+    if (!videoRef.current || !isLearner) return;
     saveVideoPosition(videoRef.current.currentTime, videoRef.current.duration);
-  }, [isStudent, saveVideoPosition]);
+  }, [isLearner, saveVideoPosition]);
 
   const handleVideoEnded = useCallback(() => {
-    if (!isStudent || !user?.id || !courseId) return;
+    if (!isLearner || !user?.id || !courseId) return;
     const currentLesson = getCurrentLesson();
     if (currentLesson) {
       progressService.markVideoCompleted(user.id, courseId, currentLesson.id);
     }
-  }, [isStudent, user?.id, courseId]);
+  }, [isLearner, user?.id, courseId]);
 
   // Save video position on page unload
   useEffect(() => {
-    if (!isStudent) return;
+    if (!isLearner) return;
 
     const handleBeforeUnload = () => {
       if (videoRef.current && videoRef.current.currentTime > 0) {
@@ -332,7 +332,7 @@ const CoursePlayer = () => {
         clearTimeout(videoSaveTimeoutRef.current);
       }
     };
-  }, [isStudent, saveVideoPosition]);
+  }, [isLearner, saveVideoPosition]);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // SESSION RESTORE HANDLING
@@ -382,7 +382,7 @@ const CoursePlayer = () => {
 
   // Save restore point when lesson changes
   useEffect(() => {
-    if (!isStudent || !user?.id || !courseId || !course) return;
+    if (!isLearner || !user?.id || !courseId || !course) return;
     const currentLesson = getCurrentLesson();
     if (!currentLesson) return;
 
@@ -392,11 +392,11 @@ const CoursePlayer = () => {
       currentLesson.id,
       videoRef.current?.currentTime || 0
     );
-  }, [isStudent, user?.id, courseId, currentModuleIndex, currentLessonIndex, course, saveRestorePoint]);
+  }, [isLearner, user?.id, courseId, currentModuleIndex, currentLessonIndex, course, saveRestorePoint]);
 
-  // Save time spent on lesson (only for students)
+  // Save time spent on lesson (only for learners)
   const saveTimeSpent = async (additionalSeconds) => {
-    if (!user?.id || !courseId || !isStudent) return;
+    if (!user?.id || !courseId || !isLearner) return;
 
     const currentLesson = getCurrentLesson();
     if (!currentLesson) return;
@@ -408,15 +408,15 @@ const CoursePlayer = () => {
       console.log('Saving time:', { additionalSeconds, accumulatedTime, totalTime });
 
       const { error } = await supabase
-        .from('student_course_progress')
+        .from('learner_course_progress')
         .upsert({
-          student_id: user.id,
+          learner_id: user.id,
           course_id: courseId,
           lesson_id: currentLesson.id,
           time_spent_seconds: totalTime,
           last_accessed: new Date().toISOString()
         }, {
-          onConflict: 'student_id,course_id,lesson_id'
+          onConflict: 'learner_id,course_id,lesson_id'
         });
 
       if (error) {
@@ -430,22 +430,22 @@ const CoursePlayer = () => {
     }
   };
 
-  // Mark lesson as completed (only for students)
+  // Mark lesson as completed (only for learners)
   const markLessonCompleted = async (lessonId) => {
-    if (!user?.id || !courseId || !isStudent) return;
+    if (!user?.id || !courseId || !isLearner) return;
 
     try {
       const { error } = await supabase
-        .from('student_course_progress')
+        .from('learner_course_progress')
         .upsert({
-          student_id: user.id,
+          learner_id: user.id,
           course_id: courseId,
           lesson_id: lessonId,
           status: 'completed',
           completed_at: new Date().toISOString(),
           last_accessed: new Date().toISOString()
         }, {
-          onConflict: 'student_id,course_id,lesson_id'
+          onConflict: 'learner_id,course_id,lesson_id'
         });
 
       if (error) {
@@ -456,7 +456,7 @@ const CoursePlayer = () => {
       // Check if all lessons in the course are now completed
       await checkAndUpdateCourseCompletion();
 
-      // Update student streak after completing lesson
+      // Update learner streak after completing lesson
       try {
         const { getApiUrl } = await import('@/shared/api/apiUtils');
         const STREAK_API_URL = getApiUrl('streak');
@@ -491,9 +491,9 @@ const CoursePlayer = () => {
 
       // Get completed lessons count from database
       const { count: completedCount, error: countError } = await supabase
-        .from('student_course_progress')
+        .from('learner_course_progress')
         .select('*', { count: 'exact', head: true })
-        .eq('student_id', user.id)
+        .eq('learner_id', user.id)
         .eq('course_id', courseId)
         .eq('status', 'completed');
 
@@ -507,7 +507,7 @@ const CoursePlayer = () => {
         const { error: updateError } = await supabase
           .from('course_enrollments')
           .update({ completed_at: new Date().toISOString() })
-          .eq('student_id', user.id)
+          .eq('learner_id', user.id)
           .eq('course_id', courseId)
           .is('completed_at', null); // Only update if not already completed
 
@@ -524,7 +524,7 @@ const CoursePlayer = () => {
 
   // Initialize lesson progress tracking
   const initializeLessonProgress = async (targetLesson) => {
-    if (!user?.id || !courseId || !isStudent) return;
+    if (!user?.id || !courseId || !isLearner) return;
 
     // Use passed lesson or fall back to getCurrentLesson()
     const currentLesson = targetLesson || getCurrentLesson();
@@ -535,9 +535,9 @@ const CoursePlayer = () => {
     try {
       // Check if progress record exists
       const { data: existing, error: fetchError } = await supabase
-        .from('student_course_progress')
+        .from('learner_course_progress')
         .select('*')
-        .eq('student_id', user.id)
+        .eq('learner_id', user.id)
         .eq('course_id', courseId)
         .eq('lesson_id', currentLesson.id)
         .maybeSingle();
@@ -554,7 +554,7 @@ const CoursePlayer = () => {
 
         // Update last_accessed
         await supabase
-          .from('student_course_progress')
+          .from('learner_course_progress')
           .update({
             last_accessed: new Date().toISOString(),
             status: existing.status === 'completed' ? 'completed' : 'in_progress'
@@ -566,9 +566,9 @@ const CoursePlayer = () => {
         setAccumulatedTime(0);
         
         const { error: insertError } = await supabase
-          .from('student_course_progress')
+          .from('learner_course_progress')
           .insert({
-            student_id: user.id,
+            learner_id: user.id,
             course_id: courseId,
             lesson_id: currentLesson.id,
             status: 'in_progress',
@@ -854,7 +854,7 @@ const CoursePlayer = () => {
       // Check if course has no lessons - redirect to coming soon page
       const totalLessons = transformedModules.reduce((acc, m) => acc + m.lessons.length, 0);
       if (totalLessons === 0) {
-        navigate('/student/coming-soon');
+        navigate('/learner/coming-soon');
         return;
       }
 
@@ -1074,7 +1074,7 @@ const CoursePlayer = () => {
           completed_at: new Date().toISOString(),
           progress: 100
         })
-        .eq('student_id', user.id)
+        .eq('learner_id', user.id)
         .eq('course_id', courseId);
 
       if (error) {
@@ -1083,14 +1083,14 @@ const CoursePlayer = () => {
         console.log('🎉 Course completed successfully!');
         
         // Generate certificate for the completed course
-        const studentName = user?.name || user?.email?.split('@')[0] || 'Student';
+        const learnerName = user?.name || user?.email?.split('@')[0] || 'Learner';
         const courseName = course?.title || 'Course';
         const educatorName = course?.educator_name || enrollment?.educator_name || 'Skill Ecosystem Platform';
         
         console.log('📜 Generating certificate...');
         const certResult = await generateCourseCertificate(
           user.id,
-          studentName,
+          learnerName,
           courseId,
           courseName,
           educatorName
@@ -1099,7 +1099,7 @@ const CoursePlayer = () => {
         if (certResult.success) {
           console.log('✅ Certificate generated:', certResult.credentialId);
           // Navigate to my learning page with success message
-          navigate('/student/my-learning', { 
+          navigate('/learner/my-learning', { 
             state: { 
               courseCompleted: true, 
               courseName,
@@ -1109,7 +1109,7 @@ const CoursePlayer = () => {
         } else {
           console.error('Certificate generation failed:', certResult.error);
           // Still navigate even if certificate fails
-          navigate('/student/my-learning');
+          navigate('/learner/my-learning');
         }
       }
     } catch (error) {
@@ -1159,7 +1159,7 @@ const CoursePlayer = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       {/* Session Restore Modal */}
-      {isStudent && (
+      {isLearner && (
         <RestoreProgressModal
           isOpen={showRestoreModal}
           restorePoint={restorePoint}

@@ -6,8 +6,8 @@
 import { calculateEmployabilityScore, getDefaultEmployabilityScore } from './employabilityCalculator.js';
 
 // Test data structure similar to what might come from Supabase
-const testStudentData = {
-  name: "Test Student",
+const testlearnerData = {
+  name: "Test Learner",
   email: "test@example.com",
   
   // Skills with ratings (1-5 scale)
@@ -48,9 +48,9 @@ const testStudentData = {
 
 // Test the calculation
 
-const result = calculateEmployabilityScore(testStudentData);
+const result = calculateEmployabilityScore(testlearnerData);
 
 const defaultResult = getDefaultEmployabilityScore();
 
 // Export for testing
-export { testStudentData };
+export { testlearnerData };

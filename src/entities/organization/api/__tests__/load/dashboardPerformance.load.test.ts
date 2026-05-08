@@ -48,7 +48,7 @@ describe('Load Tests: Dashboard Performance', () => {
           id: poolId,
           organization_subscription_id: subId,
           pool_name: `Pool ${j + 1}`,
-          member_type: j === 0 ? 'student' : 'educator',
+          member_type: j === 0 ? 'learner' : 'educator',
           allocated_seats: 25 + (i % 25),
           assigned_seats: 15 + (i % 15)
         });

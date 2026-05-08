@@ -37,7 +37,7 @@ export type {
   CollegeAssessment,
   AssessmentType,
   AssessmentMapping,
-  StudentInfo,
+  LearnerInfo,
   SubjectMark,
   AssessmentResult
 } from './model';

@@ -96,11 +96,11 @@ const Analytics = () => {
 
   const kpiCards = useMemo(() => [
     {
-      title: 'Active Students',
-      value: kpiData.activeStudents,
+      title: 'Active Learners',
+      value: kpiData.activelearners,
       icon: UserGroupIcon,
       color: 'bg-blue-500',
-      subtitle: 'Students with activities',
+      subtitle: 'Learners with activities',
     },
     {
       title: 'Verified Activities',
@@ -117,11 +117,11 @@ const Analytics = () => {
       subtitle: 'Awaiting review',
     },
     {
-      title: 'Avg Skills/Student',
-      value: kpiData.avgSkillsPerStudent.toFixed(1),
+      title: 'Avg Skills/Learner',
+      value: kpiData.avgSkillsPerLearner.toFixed(1),
       icon: BookOpenIcon,
       color: 'bg-purple-500',
-      subtitle: 'Average per student',
+      subtitle: 'Average per learner',
     },
     {
       title: 'Attendance Rate',
@@ -246,7 +246,7 @@ const Analytics = () => {
     },
     yaxis: {
       title: {
-        text: 'Students',
+        text: 'Learners',
         style: {
           fontSize: '14px',
           fontWeight: 500,
@@ -663,7 +663,7 @@ const Analytics = () => {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
-        <p className="text-gray-600 mt-2">Track student performance, engagement, and skill development</p>
+        <p className="text-gray-600 mt-2">Track learner performance, engagement, and skill development</p>
       </div>
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
@@ -719,7 +719,7 @@ const Analytics = () => {
           <div className="text-sm text-gray-400">
             {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
               ? 'You have not been assigned to any classes yet. Please contact your school administrator to assign you to classes.'
-              : 'No student skill activities found for your assigned classes.'}
+              : 'No learner skill activities found for your assigned classes.'}
           </div>
         </div>
       )}
@@ -971,7 +971,7 @@ const Analytics = () => {
                 <div className="text-sm text-gray-400">
                   {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
                     ? 'You have not been assigned to any classes yet.'
-                    : 'No student performance data found for your assigned classes.'}
+                    : 'No learner performance data found for your assigned classes.'}
                 </div>
               </div>
             )}
@@ -984,37 +984,37 @@ const Analytics = () => {
                   </h2>
                 </div>
                 <div className="space-y-2 sm:space-y-3 max-h-[380px] overflow-y-auto">
-                  {leaderboard.slice(0, 5).map((student) => (
+                  {leaderboard.slice(0, 5).map((learner) => (
                     <div
-                      key={student.rank}
+                      key={learner.rank}
                       className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3 bg-gradient-to-r from-gray-50 to-transparent rounded-lg hover:from-blue-50 transition-all"
                     >
                       <div
-                        className={`flex items-center justify-center h-8 w-8 sm:h-10 sm:w-10 rounded-full font-bold text-white text-sm sm:text-base flex-shrink-0 ${student.rank === 1
+                        className={`flex items-center justify-center h-8 w-8 sm:h-10 sm:w-10 rounded-full font-bold text-white text-sm sm:text-base flex-shrink-0 ${learner.rank === 1
                             ? 'bg-yellow-500'
-                            : student.rank === 2
+                            : learner.rank === 2
                               ? 'bg-gray-400'
-                              : student.rank === 3
+                              : learner.rank === 3
                                 ? 'bg-amber-600'
                                 : 'bg-blue-500'
                           }`}
                       >
-                        {student.rank}
+                        {learner.rank}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900 text-xs sm:text-sm truncate">{student.studentName}</p>
-                        <p className="text-xs text-gray-500">{student.verifiedActivities} verified</p>
+                        <p className="font-semibold text-gray-900 text-xs sm:text-sm truncate">{learner.learnerName}</p>
+                        <p className="text-xs text-gray-500">{learner.verifiedActivities} verified</p>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-xs sm:text-sm font-medium text-gray-700">{student.awards} 🏆</p>
+                        <p className="text-xs sm:text-sm font-medium text-gray-700">{learner.awards} 🏆</p>
                         <div className="flex items-center gap-1 mt-1">
                           <div className="w-12 sm:w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                             <div
                               className="h-full bg-green-500 rounded-full"
-                              style={{ width: `${student.progress}%` }}
+                              style={{ width: `${learner.progress}%` }}
                             />
                           </div>
-                          <span className="text-xs text-gray-600 min-w-[25px]">{student.progress}%</span>
+                          <span className="text-xs text-gray-600 min-w-[25px]">{learner.progress}%</span>
                         </div>
                       </div>
                     </div>
@@ -1029,11 +1029,11 @@ const Analytics = () => {
       {/* Full Leaderboard */}
       {leaderboard.length === 0 && (
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8 text-center mt-6">
-          <div className="text-gray-500 mb-2">No student performance data available</div>
+          <div className="text-gray-500 mb-2">No learner performance data available</div>
           <div className="text-sm text-gray-400">
             {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
               ? 'You have not been assigned to any classes yet. Please contact your school administrator to assign you to classes.'
-              : 'No student activities or performance data found for your assigned classes.'}
+              : 'No learner activities or performance data found for your assigned classes.'}
           </div>
         </div>
       )}
@@ -1065,7 +1065,7 @@ const Analytics = () => {
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left py-3 px-2 sm:px-4 font-semibold text-gray-700">Rank</th>
-                  <th className="text-left py-3 px-2 sm:px-4 font-semibold text-gray-700">Student</th>
+                  <th className="text-left py-3 px-2 sm:px-4 font-semibold text-gray-700">Learner</th>
                   <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700 hidden sm:table-cell">Total</th>
                   <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700">Verified</th>
                   <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700 hidden md:table-cell">Awards</th>
@@ -1073,44 +1073,44 @@ const Analytics = () => {
                 </tr>
               </thead>
               <tbody>
-                {currentLeaderboardItems.map((student) => (
-                  <tr key={student.rank} className="border-b border-gray-100 hover:bg-gray-50">
+                {currentLeaderboardItems.map((learner) => (
+                  <tr key={learner.rank} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-3 px-2 sm:px-4">
                       <span
-                        className={`inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-full font-bold text-white text-xs sm:text-sm ${student.rank === 1
+                        className={`inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-full font-bold text-white text-xs sm:text-sm ${learner.rank === 1
                             ? 'bg-yellow-500'
-                            : student.rank === 2
+                            : learner.rank === 2
                               ? 'bg-gray-400'
-                              : student.rank === 3
+                              : learner.rank === 3
                                 ? 'bg-amber-600'
                                 : 'bg-blue-500'
                           }`}
                       >
-                        {student.rank}
+                        {learner.rank}
                       </span>
                     </td>
                     <td className="py-3 px-2 sm:px-4">
                       <div>
-                        <p className="font-semibold text-gray-900 text-xs sm:text-sm truncate">{student.studentName}</p>
-                        <p className="text-xs text-gray-500 truncate">{student.studentId}</p>
+                        <p className="font-semibold text-gray-900 text-xs sm:text-sm truncate">{learner.learnerName}</p>
+                        <p className="text-xs text-gray-500 truncate">{learner.learnerId}</p>
                       </div>
                     </td>
-                    <td className="py-3 px-2 sm:px-4 text-center text-gray-700 font-medium hidden sm:table-cell">{student.totalActivities}</td>
+                    <td className="py-3 px-2 sm:px-4 text-center text-gray-700 font-medium hidden sm:table-cell">{learner.totalActivities}</td>
                     <td className="py-3 px-2 sm:px-4 text-center">
                       <span className="inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        {student.verifiedActivities}
+                        {learner.verifiedActivities}
                       </span>
                     </td>
-                    <td className="py-3 px-2 sm:px-4 text-center text-gray-700 font-medium hidden md:table-cell">{student.awards} 🏆</td>
+                    <td className="py-3 px-2 sm:px-4 text-center text-gray-700 font-medium hidden md:table-cell">{learner.awards} 🏆</td>
                     <td className="py-3 px-2 sm:px-4">
                       <div className="flex items-center justify-center gap-1 sm:gap-2">
                         <div className="w-12 sm:w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                           <div
                             className="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full"
-                            style={{ width: `${student.progress}%` }}
+                            style={{ width: `${learner.progress}%` }}
                           />
                         </div>
-                        <span className="text-xs sm:text-sm font-medium text-gray-700 min-w-[28px]">{student.progress}%</span>
+                        <span className="text-xs sm:text-sm font-medium text-gray-700 min-w-[28px]">{learner.progress}%</span>
                       </div>
                     </td>
                   </tr>
@@ -1126,7 +1126,7 @@ const Analytics = () => {
               <div className="text-xs sm:text-sm text-gray-600">
                 Showing <span className="font-medium">{indexOfFirstItem + 1}</span> to{' '}
                 <span className="font-medium">{Math.min(indexOfLastItem, leaderboard.length)}</span> of{' '}
-                <span className="font-medium">{leaderboard.length}</span> students
+                <span className="font-medium">{leaderboard.length}</span> learners
               </div>
 
               {/* Pagination buttons */}

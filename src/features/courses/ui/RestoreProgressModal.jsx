@@ -3,7 +3,7 @@ import { BookOpen, Clock, Play, RotateCcw, X } from 'lucide-react';
 import { useEffect } from 'react';
 
 /**
- * Modal displayed when student returns to a course with existing progress
+ * Modal displayed when learner returns to a course with existing progress
  * Offers options to continue from last position or start fresh
  */
 const RestoreProgressModal = ({

@@ -13,7 +13,7 @@ const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
   const subjects = [
     'General Discussion',
     'Course Planning',
-    'Student Issues',
+    'Learner Issues',
     'Department Matters',
     'Resource Allocation',
     'Policy Updates',

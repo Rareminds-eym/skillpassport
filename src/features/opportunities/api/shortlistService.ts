@@ -132,7 +132,7 @@ export const deleteShortlist = async (shortlistId: string) => {
 // ==================== SHORTLIST CANDIDATES OPERATIONS ====================
 
 /**
- * Get all candidates in a shortlist with full student details
+ * Get all candidates in a shortlist with full learner details
  */
 export const getShortlistCandidates = async (shortlistId: string) => {
   try {
@@ -155,7 +155,7 @@ export const getShortlistCandidates = async (shortlistId: string) => {
         id,
         added_at,
         notes,
-        student_id,
+        learner_id,
         shortlist_id
       `)
       .eq('shortlist_id', shortlistId);
@@ -166,34 +166,34 @@ export const getShortlistCandidates = async (shortlistId: string) => {
     }
 
 
-    // If there are candidates, fetch their student details
+    // If there are candidates, fetch their learner details
     if (data && data.length > 0) {
-      const studentIds = data.map(item => item.student_id);
+      const learnerIds = data.map(item => item.learner_id);
       
-      // Query students table with profile JSONB column
-      const { data: students, error: studentsError } = await supabase
-        .from('students')
+      // Query learners table with profile JSONB column
+      const { data: learners, error: learnersError } = await supabase
+        .from('learners')
         .select('id, profile')
-        .in('id', studentIds);
+        .in('id', learnerIds);
       
-      if (studentsError) {
-        logger.error('Error fetching students', studentsError as Error, { shortlistId });
-        throw studentsError;
+      if (learnersError) {
+        logger.error('Error fetching learners', learnersError as Error, { shortlistId });
+        throw learnersError;
       }
       
       
-      // Merge student data with junction table metadata
+      // Merge learner data with junction table metadata
       // Extract data from profile JSONB column
       const formattedCandidates = data.map(item => {
-        const student = students?.find(s => s.id === item.student_id);
-        if (!student) {
+        const learner = learners?.find(s => s.id === item.learner_id);
+        if (!learner) {
           return null;
         }
         
         
         // Extract data from profile JSONB
         // Handle case where profile might be a string that needs parsing
-        let profile = student.profile;
+        let profile = learner.profile;
         if (typeof profile === 'string') {
           try {
             profile = JSON.parse(profile);
@@ -222,7 +222,7 @@ export const getShortlistCandidates = async (shortlistId: string) => {
         }
         
         const formattedCandidate = {
-          id: student.id,
+          id: learner.id,
           name: profile.name || profile.nm_id || 'Unknown',
           email: profile.email || (profile.contact_number ? String(profile.contact_number) : 'N/A'),
           phone: profile.contact_number ? String(profile.contact_number) : (profile.alternate_number ? String(profile.alternate_number) : 'N/A'),
@@ -256,7 +256,7 @@ export const getShortlistCandidates = async (shortlistId: string) => {
  */
 export const addCandidateToShortlist = async (
   shortlistId: string,
-  studentId: string,
+  learnerId: string,
   addedBy?: string,
   notes?: string
 ) => {
@@ -266,7 +266,7 @@ export const addCandidateToShortlist = async (
       .insert([
         {
           shortlist_id: shortlistId,
-          student_id: studentId,
+          learner_id: learnerId,
           added_by: addedBy,
           notes: notes
         }
@@ -290,7 +290,7 @@ export const addCandidateToShortlist = async (
 
     return { data, error: null };
   } catch (error) {
-    logger.error('Error adding candidate to shortlist', error as Error, { shortlistId, studentId });
+    logger.error('Error adding candidate to shortlist', error as Error, { shortlistId, learnerId });
     return { data: null, error };
   }
 };
@@ -300,19 +300,19 @@ export const addCandidateToShortlist = async (
  */
 export const removeCandidateFromShortlist = async (
   shortlistId: string,
-  studentId: string
+  learnerId: string
 ) => {
   try {
     const { error } = await supabase
       .from('shortlist_candidates')
       .delete()
       .eq('shortlist_id', shortlistId)
-      .eq('student_id', studentId);
+      .eq('learner_id', learnerId);
 
     if (error) throw error;
     return { error: null };
   } catch (error) {
-    logger.error('Error removing candidate from shortlist', error as Error, { shortlistId, studentId });
+    logger.error('Error removing candidate from shortlist', error as Error, { shortlistId, learnerId });
     return { error };
   }
 };
@@ -320,30 +320,30 @@ export const removeCandidateFromShortlist = async (
 /**
  * Check if a candidate is in a specific shortlist
  */
-export const isStudentInShortlist = async (
+export const islearnerInShortlist = async (
   shortlistId: string,
-  studentId: string
+  learnerId: string
 ) => {
   try {
     const { data, error } = await supabase
       .from('shortlist_candidates')
       .select('id')
       .eq('shortlist_id', shortlistId)
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .maybeSingle();
 
     if (error) throw error;
     return { data: !!data, error: null };
   } catch (error) {
-    logger.error('Error checking candidate in shortlist', error as Error, { shortlistId, studentId });
+    logger.error('Error checking candidate in shortlist', error as Error, { shortlistId, learnerId });
     return { data: false, error };
   }
 };
 
 /**
- * Get all shortlists that contain a specific student
+ * Get all shortlists that contain a specific learner
  */
-export const getShortlistsForStudent = async (studentId: string) => {
+export const getShortlistsForLearner = async (learnerId: string) => {
   try {
     const { data, error } = await supabase
       .from('shortlist_candidates')
@@ -357,14 +357,14 @@ export const getShortlistsForStudent = async (studentId: string) => {
           status
         )
       `)
-      .eq('student_id', studentId);
+      .eq('learner_id', learnerId);
 
     if (error) throw error;
 
     const formattedData = data?.map(item => item.shortlists) || [];
     return { data: formattedData, error: null };
   } catch (error) {
-    logger.error('Error fetching shortlists for student', error as Error, { studentId });
+    logger.error('Error fetching shortlists for learner', error as Error, { learnerId });
     return { data: null, error };
   }
 };
@@ -374,7 +374,7 @@ export const getShortlistsForStudent = async (studentId: string) => {
  */
 export const updateCandidateNotes = async (
   shortlistId: string,
-  studentId: string,
+  learnerId: string,
   notes: string
 ) => {
   try {
@@ -382,14 +382,14 @@ export const updateCandidateNotes = async (
       .from('shortlist_candidates')
       .update({ notes })
       .eq('shortlist_id', shortlistId)
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .select()
       .single();
 
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    logger.error('Error updating candidate notes', error as Error, { shortlistId, studentId });
+    logger.error('Error updating candidate notes', error as Error, { shortlistId, learnerId });
     return { data: null, error };
   }
 };

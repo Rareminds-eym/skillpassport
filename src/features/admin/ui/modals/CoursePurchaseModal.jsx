@@ -102,7 +102,7 @@ const CoursePurchaseModal = ({ course, isOpen, onClose, onPurchase, userRole = '
               <div className="flex items-center gap-2 text-gray-600">
                 <Users className="w-5 h-5 text-indigo-600" />
                 <div>
-                  <p className="text-xs text-gray-500">Students</p>
+                  <p className="text-xs text-gray-500">Learners</p>
                   <p className="text-sm font-medium">{course.enrollment_count || 0}</p>
                 </div>
               </div>

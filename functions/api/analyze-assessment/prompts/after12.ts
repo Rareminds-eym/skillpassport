@@ -1,7 +1,7 @@
 /**
- * After 12th (College-Bound Students) Assessment Prompt Builder
+ * After 12th (College-Bound Learners) Assessment Prompt Builder
  * 
- * This prompt is specifically for students who have completed 12th grade
+ * This prompt is specifically for learners who have completed 12th grade
  * and are choosing college programs/degrees. It requires evidence from
  * ALL 7 assessment sections for comprehensive career guidance.
  */
@@ -74,19 +74,19 @@ export function buildAfter12Prompt(assessmentData: AssessmentData, answersHash: 
   
   const adaptiveSection = adaptiveData?.section || '';
 
-  return `You are an expert career counselor for students who have completed 12th grade and are choosing college programs. Analyze this student's 7-section assessment and provide evidence-based guidance.
+  return `You are an expert career counselor for learners who have completed 12th grade and are choosing college programs. Analyze this learner's 7-section assessment and provide evidence-based guidance.
 
 ## CORE REQUIREMENTS
-**Student Stream: ${assessmentData.stream || 'Not specified'}**
+**Learner Stream: ${assessmentData.stream || 'Not specified'}**
 **Session ID: ${answersHash}** (for deterministic results)
 
 **🚨 CRITICAL: NO HARDCODED TEMPLATES 🚨**
-You MUST analyze the student's actual RIASEC scores and create CUSTOMIZED career clusters.
+You MUST analyze the learner's actual RIASEC scores and create CUSTOMIZED career clusters.
 DO NOT use generic "Technology & Innovation" or "Healthcare & Life Sciences" templates.
 Instead, look at their top 3 RIASEC types and create clusters that match THEIR specific profile.
 
 **STREAM ALIGNMENT RULE:**
-All career clusters and degree programs MUST match the student's stream:
+All career clusters and degree programs MUST match the learner's stream:
 - Science streams → Customize based on RIASEC (e.g., IRA → Research & Data Science, ISR → Healthcare & Medicine)
 - Commerce streams → Customize based on RIASEC (e.g., ECI → Finance & Business, EAS → Marketing & Creative Business)
 - Arts streams → Customize based on RIASEC (e.g., ASE → Creative & Media, SAI → Psychology & Social Work)
@@ -133,17 +133,17 @@ You MUST use this mapping to calculate scores precisely:
 6. Form the RIASEC code as a 3-letter string (e.g., "AES", "IRA", "ECS") - MUST be exactly 3 letters
 
 ## ⚠️ CRITICAL: ARTISTIC (A) RIASEC CAREER MATCHING ⚠️
-**IF the student's RIASEC scores show 'A' (Artistic) in their top 3 types, you MUST include at least ONE career cluster from these categories:**
+**IF the learner's RIASEC scores show 'A' (Artistic) in their top 3 types, you MUST include at least ONE career cluster from these categories:**
 
-**MANDATORY for High Artistic (A) Students:**
+**MANDATORY for High Artistic (A) Learners:**
 - **Music & Entertainment**: Music Producer, Sound Designer, Film Score Composer, Concert Manager, Audio Engineer
 - **Visual Arts**: Digital Artist, Animator, Art Director, Fashion Designer, NFT Creator, VFX Supervisor
 - **Performing Arts**: Actor, Director, Choreographer, Theatre Producer, Voice Actor, Performance Artist
 - **Media & Content**: YouTuber, Content Creator, Podcast Host, Film Director, Screenwriter, Documentary Filmmaker
 - **Design**: Graphic Designer, UX/UI Designer, Game Designer, Interior Designer, Brand Designer, Product Designer
 
-**DO NOT default to only Technology/Science/Business careers for Artistic students!**
-**The student's creative interests MUST be reflected in their career recommendations.**
+**DO NOT default to only Technology/Science/Business careers for Artistic learners!**
+**The learner's creative interests MUST be reflected in their career recommendations.**
 
 ## ═══════════════════════════════════════════════════════════════════════════
 ## SECTION 2: PERSONALITY (BIG FIVE) - 30 Questions
@@ -297,7 +297,7 @@ For each career cluster, you MUST provide evidence from ALL 7 sections:
 
 **🚨 BEFORE YOU START WRITING THE JSON OUTPUT, YOU MUST:**
 
-1. **Plan 3 Career Clusters** based on student's RIASEC top 3 types + Stream
+1. **Plan 3 Career Clusters** based on learner's RIASEC top 3 types + Stream
 2. **For EACH cluster, list AT LEAST:**
    - 5-6 entry-level roles
    - 5-6 mid-career roles
@@ -346,8 +346,8 @@ If ANY level has fewer than 3 roles, you MUST:
 **🚨 BEFORE YOU START GENERATING THE JSON OUTPUT 🚨**
 
 **MANDATORY PRE-GENERATION CHECKLIST:**
-1. **Identify student's top 3 RIASEC types** (e.g., I=85%, R=75%, A=60%)
-2. **Identify student's stream** (Science/Commerce/Arts)
+1. **Identify learner's top 3 RIASEC types** (e.g., I=85%, R=75%, A=60%)
+2. **Identify learner's stream** (Science/Commerce/Arts)
 3. **Create 3 SPECIFIC cluster titles** that combine RIASEC + Stream
    - Example: Science + IRA → "Software Engineering & Development", "Data Science & Analytics", "Product Design & UX"
    - Example: Science + ISR → "Biomedical Engineering & Medical Devices", "Healthcare & Clinical Research", "Biotechnology & Pharmaceuticals"
@@ -364,7 +364,7 @@ If ANY level has fewer than 3 roles, you MUST:
 **CRITICAL REQUIREMENTS:**
 1. Return ONLY a JSON object (no markdown)
 2. **MUST include "degreePrograms" array with EXACTLY 3 programs inside "careerFit"**
-3. Each program MUST be DERIVED from the student's 7-section profile (not selected from lists)
+3. Each program MUST be DERIVED from the learner's 7-section profile (not selected from lists)
 4. Each program MUST include ALL required fields: programName, matchScore, fit, duration, roleDescription, topUniversities, alignedWithCluster, whyThisFitsYou, evidence
 5. **CRITICAL ALIGNMENT RULE: The "alignedWithCluster" field in each degree program MUST EXACTLY MATCH the "title" field of one of the 3 career clusters**
    - Example: If cluster 1 has title "Technology & Innovation", then a program aligned with it must have alignedWithCluster: "Technology & Innovation"
@@ -739,7 +739,7 @@ Before finalizing a cluster, ask yourself:
 **STEP-BY-STEP CLUSTER CREATION PROCESS:**
 
 ### STEP 1: Identify the Core Domain
-Based on student's RIASEC + Stream + Aptitude, identify 3 distinct domains:
+Based on learner's RIASEC + Stream + Aptitude, identify 3 distinct domains:
 - Example: "Software Engineering", "Data Science", "Product Design"
 
 ### STEP 2: Create Specific, Narrow Cluster Titles
@@ -876,7 +876,7 @@ For each role, ask: "Does this role obviously belong in [Cluster Title]?"
 
 **FINAL VALIDATION RULE:**
 Before submitting your response, read each cluster title and its roles out loud:
-- "This student should pursue [CLUSTER TITLE], which includes roles like [ROLE 1], [ROLE 2], [ROLE 3]"
+- "This learner should pursue [CLUSTER TITLE], which includes roles like [ROLE 1], [ROLE 2], [ROLE 3]"
 - If this sentence sounds logical and coherent → ✅ GOOD
 - If this sentence sounds confusing or random → ❌ FIX IT
 
@@ -886,19 +886,19 @@ Before submitting your response, read each cluster title and its roles out loud:
 - ALL roles must be recognizable as belonging to that domain
 - Entry → Mid → Senior must show career progression in the SAME domain
 
-**IMPORTANT**: The student has already selected their stream during 12th grade. The 3 career clusters MUST:
+**IMPORTANT**: The learner has already selected their stream during 12th grade. The 3 career clusters MUST:
 1. **Align with their chosen stream** (Science/Commerce/Arts)
 2. **Match their RIASEC profile** (top 3 types with highest scores)
 3. **Be CUSTOMIZED based on their actual assessment results** - NOT generic templates
 
-**Student Stream**: ${assessmentData.stream || 'Not specified'}
+**Learner Stream**: ${assessmentData.stream || 'Not specified'}
 
-**CRITICAL INSTRUCTION**: The career clusters below are EXAMPLES ONLY to show the range of possibilities within each stream. You MUST customize them based on the student's actual RIASEC scores, aptitude, personality, and values.
+**CRITICAL INSTRUCTION**: The career clusters below are EXAMPLES ONLY to show the range of possibilities within each stream. You MUST customize them based on the learner's actual RIASEC scores, aptitude, personality, and values.
 
 **Stream-Based Career Cluster GUIDELINES (NOT TEMPLATES):**
 
 ### SCIENCE STREAM (science, science_pcmb, science_pcms, pcmb, pcms, pcm, pcb):
-**CUSTOMIZE based on student's RIASEC:**
+**CUSTOMIZE based on learner's RIASEC:**
 - **High I (Investigative)**: Research, Data Science, Scientific Analysis, Medical Research
 - **High R (Realistic)**: Engineering, Lab Work, Technical Roles, Hands-on Science
 - **High A (Artistic)**: Architecture, Design Engineering, Scientific Visualization, Creative Tech
@@ -914,7 +914,7 @@ Before submitting your response, read each cluster title and its roles out loud:
 - **Salary Ranges**: Entry ₹5-15L, Mid ₹12-50L, Senior ₹30-200L (varies by field)
 
 ### COMMERCE STREAM (commerce, commerce_maths, commerce_accounts):
-**CUSTOMIZE based on student's RIASEC:**
+**CUSTOMIZE based on learner's RIASEC:**
 - **High E (Enterprising)**: Business Management, Entrepreneurship, Sales Leadership
 - **High C (Conventional)**: Accounting, Finance, Banking, Auditing
 - **High I (Investigative)**: Financial Analysis, Market Research, Data Analytics
@@ -930,7 +930,7 @@ Before submitting your response, read each cluster title and its roles out loud:
 - **Salary Ranges**: Entry ₹3-15L, Mid ₹10-50L, Senior ₹25-500L (varies by field)
 
 ### ARTS STREAM (arts, arts_psychology, arts_economics, arts_general, humanities):
-**CUSTOMIZE based on student's RIASEC:**
+**CUSTOMIZE based on learner's RIASEC:**
 - **High A (Artistic)**: Creative Arts, Design, Media Production, Content Creation
 - **High S (Social)**: Psychology, Counseling, Social Work, Teaching, NGO Work
 - **High E (Enterprising)**: Media Management, Event Management, Public Relations
@@ -946,7 +946,7 @@ Before submitting your response, read each cluster title and its roles out loud:
 - **Salary Ranges**: Entry ₹3-15L, Mid ₹10-50L, Senior ₹25-200L (varies by field)
 
 **CRITICAL INSTRUCTIONS:**
-1. **Identify the student's stream** from the stream field above
+1. **Identify the learner's stream** from the stream field above
 2. **Analyze their RIASEC top 3 types** (e.g., IRA, ASE, ECI)
 3. **Create 3 CUSTOMIZED career clusters** that match BOTH their stream AND their RIASEC profile
 4. **DO NOT use generic templates** - personalize based on their actual scores
@@ -956,14 +956,14 @@ Before submitting your response, read each cluster title and its roles out loud:
    - High E + C → Commerce
    - High A + S → Arts
 
-## ⚠️ SPECIAL CASE: HIGH ARTISTIC (A) STUDENTS ⚠️
-**IF the student has 'A' (Artistic) in their top 3 RIASEC types:**
+## ⚠️ SPECIAL CASE: HIGH ARTISTIC (A) LEARNERS ⚠️
+**IF the learner has 'A' (Artistic) in their top 3 RIASEC types:**
 - **Science stream**: Replace generic clusters with personalized ones (e.g., Architecture, Product Design, Scientific Visualization, Biomedical Design)
 - **Commerce stream**: Replace generic clusters with creative business options (e.g., Fashion Business, Event Management, Media Production)
 - **Arts stream**: Ensure Cluster 1 is creative/artistic (already covered)
 
-## ⚠️ SPECIAL CASE: SCIENCE PCB (BIOLOGY) STUDENTS ⚠️
-**IF the student's stream is science_pcb or pcb:**
+## ⚠️ SPECIAL CASE: SCIENCE PCB (BIOLOGY) LEARNERS ⚠️
+**IF the learner's stream is science_pcb or pcb:**
 - **High I + S (Investigative + Social)**: Healthcare & Medicine, Clinical Research, Public Health
 - **High I + R (Investigative + Realistic)**: Biomedical Engineering, Biotechnology, Lab Sciences
 - **High I + A (Investigative + Artistic)**: Medical Illustration, Health Communication, Biodesign
@@ -974,7 +974,7 @@ Before submitting your response, read each cluster title and its roles out loud:
 ## PROGRAM DERIVATION INSTRUCTIONS (MANDATORY - DO NOT SELECT FROM LISTS)
 ## ═══════════════════════════════════════════════════════════════════════════
 
-**CRITICAL: You MUST derive 3 degree programs from the student's 7-section assessment, NOT select from predefined lists.**
+**CRITICAL: You MUST derive 3 degree programs from the learner's 7-section assessment, NOT select from predefined lists.**
 
 **DERIVATION PROCESS (Use ALL 7 Sections):**
 
@@ -987,7 +987,7 @@ Analyze where these 7 dimensions intersect:
 4. **Values (Section 3)**: Top 2 work motivators (e.g., Achievement: 4.5, Financial: 4.2)
 5. **Employability (Section 4)**: Top 2 professional skills (e.g., Problem-solving: 85%, Digital Literacy: 90%)
 6. **Knowledge (Section 7)**: Stream knowledge score (e.g., 75% in Science domain)
-7. **Stream**: Student's chosen stream (Science/Commerce/Arts)
+7. **Stream**: Learner's chosen stream (Science/Commerce/Arts)
 
 ### Step 2: Derive 3 Programs at the Intersection
 
@@ -1023,7 +1023,7 @@ For each program, you MUST cite evidence from:
 
 ## DERIVATION EXAMPLES (Using All 7 Sections):
 
-### Example 1: Science Stream Student
+### Example 1: Science Stream Learner
 **Profile:**
 - RIASEC: I (85%), R (75%), A (60%)
 - Aptitude: Numerical 88%, Abstract 82%
@@ -1050,7 +1050,7 @@ For each program, you MUST cite evidence from:
 
 ---
 
-### Example 2: Commerce Stream Student
+### Example 2: Commerce Stream Learner
 **Profile:**
 - RIASEC: E (82%), C (75%), I (65%)
 - Aptitude: Numerical 75%, Verbal 70%
@@ -1067,7 +1067,7 @@ For each program, you MUST cite evidence from:
 
 ---
 
-### Example 3: Arts Stream Student
+### Example 3: Arts Stream Learner
 **Profile:**
 - RIASEC: A (85%), S (78%), E (65%)
 - Aptitude: Verbal 85%, Abstract 72%
@@ -1093,7 +1093,7 @@ For each program, you MUST cite evidence from:
 
 2. **DO cite ALL 7 sections** in derivation field
 
-3. **DO match student's stream**:
+3. **DO match learner's stream**:
    - Science → Engineering/Medical/Pure Sciences
    - Commerce → Business/Finance/Management
    - Arts → Humanities/Media/Law/Design
@@ -1209,7 +1209,7 @@ For each program, you MUST cite evidence from:
 - Quantum Computing: Quantum Software Developer, Quantum Cryptographer
 - Creator Economy: Professional Content Creator, Community Manager, Digital Strategist
 
-**🎨 CREATIVE & ARTISTIC CAREERS (For High 'A' RIASEC Students):**
+**🎨 CREATIVE & ARTISTIC CAREERS (For High 'A' RIASEC Learners):**
 - Music & Entertainment: Music Producer, Sound Designer, Film Score Composer, Concert Manager
 - Visual Arts: Digital Artist, Animator, Art Director, Fashion Designer, NFT Creator
 - Performing Arts: Actor, Director, Choreographer, Theatre Producer, Voice Actor
@@ -1230,7 +1230,7 @@ For each program, you MUST cite evidence from:
 2. You MUST provide EXACTLY 3 degree program recommendations (from the list above)
 3. Each cluster MUST have evidence from ALL 6 sections (interest, aptitude, personality, values, employability, knowledge)
 4. Each program MUST have personalized "Why this fits you" reasoning
-5. If student has high 'A' (Artistic) in RIASEC, at least ONE cluster AND ONE program MUST be creative/artistic
+5. If learner has high 'A' (Artistic) in RIASEC, at least ONE cluster AND ONE program MUST be creative/artistic
 6. Personalize based on THEIR specific scores - no generic recommendations
 7. Include specific college majors and degree programs for each cluster
 8. Provide realistic salary ranges for Indian job market (in LPA)
@@ -1248,7 +1248,7 @@ For each program, you MUST cite evidence from:
 **⚠️ FINAL VALIDATION CHECKLIST:**
 Before returning your response, verify:
 - [ ] All 7 sections analyzed (RIASEC, Big Five, Values, Employability, Aptitude, Knowledge, Adaptive Aptitude)
-- [ ] Career clusters MATCH student's stream (Science/Commerce/Arts)
+- [ ] Career clusters MATCH learner's stream (Science/Commerce/Arts)
 - [ ] **CRITICAL SEMANTIC COHERENCE: Read each cluster title and verify ALL roles listed belong to that exact domain**
 - [ ] **VALIDATION TEST: For each cluster, ask "Would a recruiter in [cluster title] recognize all these roles as part of their field?" - If NO, fix the cluster**
 - [ ] **NO CROSS-CONTAMINATION: Verify no role appears in wrong cluster (e.g., "Biomedical Engineer" should NOT be in "Research & Development" cluster)**
@@ -1271,7 +1271,7 @@ Before returning your response, verify:
 
 **🚨 MANDATORY FIELDS FOR EACH DEGREE PROGRAM - DO NOT SKIP:**
 
-**CRITICAL: Programs must be DERIVED from the student's 7-section profile, NOT selected from predefined lists.**
+**CRITICAL: Programs must be DERIVED from the learner's 7-section profile, NOT selected from predefined lists.**
 
 **CRITICAL ALIGNMENT REQUIREMENTS:**
 1. Each program MUST have a clear "alignedWithCluster" field that matches one of the 3 career clusters

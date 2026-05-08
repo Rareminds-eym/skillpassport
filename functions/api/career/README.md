@@ -7,7 +7,7 @@ Migrated from `cloudflare-workers/career-api` (1925 lines, 6 endpoints)
 1. `/api/career/chat` - Career AI chat with streaming
 2. `/api/career/recommend-opportunities` - Job recommendations with AI matching
 3. `/api/career/analyze-assessment` - Comprehensive career assessment analysis
-4. `/api/career/generate-embedding` - Generate embeddings for opportunities/students
+4. `/api/career/generate-embedding` - Generate embeddings for opportunities/learners
 5. `/api/career/generate-field-keywords` - Generate domain keywords for fields
 6. `/api/career/parse-resume` - Parse resume text into structured data
 

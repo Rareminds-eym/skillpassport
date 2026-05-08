@@ -8,8 +8,8 @@ The hooks are distributed across multiple layers:
 
 - Features/Messaging Layer: 21 hooks (useMessageStore, useMessages selector, useConversations selector, useCurrentConversationId selector, useUnreadCount selector, useMessageLoadingStates selector, useCurrentConversation selector, useUnreadMessagesCount selector, useMessages main hook, useConversation, useCollegeAdminMessages, useCollegeAdminConversations, useCollegeLecturerMessages, useCollegeLecturerConversations, useCollegeLecturerStudents, useCollegeLecturerConversationActions, useCreateCollegeLecturerConversation, useCollegeLecturerSendMessage, useUnreadMessagesCount recruiter-specific, useTypingIndicator, useMessageNotifications)
 - Educator Feature: 8 hooks (useEducatorMessages, useEducatorAdminMessages, useCollegeEducatorAdminMessages, useCollegeEducatorAdminConversations, useCollegeEducatorAdminConversationsForEducator, useCollegeEducatorAdminConversationsForAdmin, useCollegeEducatorAdminMessagesForEducator, useCollegeEducatorAdminMessagesForAdmin)
-- Student Profile Feature: 1 hook (useStudentMessages)
-- Entities/Student Layer: 17 hooks (useStudentMessages, useStudentUnreadCount, useStudentConversations, useStudentAdminMessages, useStudentAdminConversations, useCreateStudentAdminConversation, useStudentCollegeAdminMessages, useStudentCollegeAdminConversations, useCreateStudentCollegeAdminConversation, useStudentCollegeLecturerMessages, useStudentCollegeLecturerConversations, useCreateStudentCollegeLecturerConversation, useStudentEducatorMessages, useStudentEducatorConversations, useCreateStudentEducatorConversation, useStudentMessageNotifications, useConversationStudents)
+- learner Profile Feature: 1 hook (useStudentMessages)
+- Entities/learner Layer: 17 hooks (useStudentMessages, useStudentUnreadCount, useStudentConversations, useStudentAdminMessages, useStudentAdminConversations, useCreateStudentAdminConversation, useStudentCollegeAdminMessages, useStudentCollegeAdminConversations, useCreateStudentCollegeAdminConversation, useStudentCollegeLecturerMessages, useStudentCollegeLecturerConversations, useCreateStudentCollegeLecturerConversation, useStudentEducatorMessages, useStudentEducatorConversations, useCreateStudentEducatorConversation, useStudentMessageNotifications, useConversationStudents)
 - Notifications Feature: 1 hook (useMessageNotifications - duplicate)
 - Shared: 1 hook (useTypingIndicator in shared/lib/hooks - duplicate)
 - Stores: 1 duplicate (useMessageStore exact duplicate)
@@ -31,12 +31,12 @@ Critical issues identified:
 
 - **Messaging_System**: The consolidated messaging infrastructure that handles conversations, messages, and notifications
 - **Message_Hook**: A React hook that provides messaging functionality to components
-- **Conversation**: A messaging thread between two users (student-recruiter, student-educator, student-admin, etc.)
+- **Conversation**: A messaging thread between two users (learner-recruiter, learner-educator, learner-admin, etc.)
 - **Message_Store**: A Zustand store managing global messaging state
 - **Optimistic_Update**: UI update that occurs immediately before server confirmation
 - **Real_Time_Subscription**: Supabase subscription that pushes live updates to clients
-- **User_Role**: One of: student, recruiter, educator, college_educator, school_admin, college_admin, university_admin
-- **Conversation_Type**: One of: student_recruiter, student_educator, educator_recruiter, student_admin, student_college_admin, student_college_educator, educator_admin, college_educator_admin
+- **User_Role**: One of: learner, recruiter, educator, college_educator, school_admin, college_admin, university_admin
+- **Conversation_Type**: One of: learner_recruiter, learner_educator, educator_recruiter, learner_admin, learner_college_admin, learner_college_educator, educator_admin, college_educator_admin
 - **Unread_Count**: Number of unread messages for a user
 - **Query_Key_Factory**: Centralized factory for generating React Query cache keys
 - **Cache_Layer**: One of three caching systems: MessageService Map cache, React Query cache, or Zustand store
@@ -70,7 +70,7 @@ Critical issues identified:
 #### Acceptance Criteria
 
 1. THE Messaging_System SHALL provide a base hook useMessages that accepts userId and userRole parameters
-2. THE base hook SHALL support all User_Role types (student, recruiter, educator, college_educator, school_admin, college_admin, university_admin)
+2. THE base hook SHALL support all User_Role types (learner, recruiter, educator, college_educator, school_admin, college_admin, university_admin)
 3. WHEN a component needs messaging functionality, THE base hook SHALL provide messages, conversations, and unread counts
 4. THE base hook SHALL implement consistent optimistic updates for all user roles
 5. THE base hook SHALL implement consistent real-time subscriptions for all user roles
@@ -138,7 +138,7 @@ Critical issues identified:
 
 #### Acceptance Criteria
 
-1. THE Messaging_System SHALL provide useStudentMessages hook that wraps the base hook with userRole="student"
+1. THE Messaging_System SHALL provide useStudentMessages hook that wraps the base hook with userRole="learner"
 2. THE Messaging_System SHALL provide useEducatorMessages hook that wraps the base hook with userRole="educator"
 3. THE Messaging_System SHALL provide useRecruiterMessages hook that wraps the base hook with userRole="recruiter"
 4. THE Messaging_System SHALL provide useAdminMessages hook that wraps the base hook with appropriate admin role
@@ -180,8 +180,8 @@ Critical issues identified:
 
 #### Acceptance Criteria
 
-1. THE Messaging_System SHALL define User_Role as: 'student' | 'recruiter' | 'educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin'
-2. THE Messaging_System SHALL define Conversation_Type as: 'student_recruiter' | 'student_educator' | 'educator_recruiter' | 'student_admin' | 'student_college_admin' | 'student_college_educator' | 'educator_admin' | 'college_educator_admin'
+1. THE Messaging_System SHALL define User_Role as: 'learner' | 'recruiter' | 'educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin'
+2. THE Messaging_System SHALL define Conversation_Type as: 'learner_recruiter' | 'learner_educator' | 'educator_recruiter' | 'learner_admin' | 'learner_college_admin' | 'learner_college_educator' | 'educator_admin' | 'college_educator_admin'
 3. THE Messaging_System SHALL NOT use "any" type except where absolutely necessary with justification comments
 4. WHEN User_Role types mismatch between hook and service, THE Messaging_System SHALL provide type adapters or guards
 5. THE Messaging_System SHALL export all public types through index.ts barrel files
@@ -357,12 +357,12 @@ Critical issues identified:
 
 #### Acceptance Criteria
 
-1. THE Messaging_System SHALL support student_recruiter conversation type
-2. THE Messaging_System SHALL support student_educator conversation type
+1. THE Messaging_System SHALL support learner_recruiter conversation type
+2. THE Messaging_System SHALL support learner_educator conversation type
 3. THE Messaging_System SHALL support educator_recruiter conversation type
-4. THE Messaging_System SHALL support student_admin conversation type (school_admin)
-5. THE Messaging_System SHALL support student_college_admin conversation type
-6. THE Messaging_System SHALL support student_college_educator conversation type
+4. THE Messaging_System SHALL support learner_admin conversation type (school_admin)
+5. THE Messaging_System SHALL support learner_college_admin conversation type
+6. THE Messaging_System SHALL support learner_college_educator conversation type
 7. THE Messaging_System SHALL support educator_admin conversation type
 8. THE Messaging_System SHALL support college_educator_admin conversation type
 9. THE Messaging_System SHALL reject invalid Conversation_Type values at compile time

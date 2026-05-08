@@ -26,7 +26,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
   onClose,
 }) => {
   const { theme } = useTheme();
-  const { student, setStudent } = usePortfolio();
+  const { learner, setLearner } = usePortfolio();
   const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
 
   // Refs for focus management
@@ -46,18 +46,18 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
     languages: [] as Array<string | { name: string; proficiency: string }>,
   });
 
-  // Initialize form data from student profile
+  // Initialize form data from learner profile
   useEffect(() => {
-    if (student?.profile) {
+    if (learner?.profile) {
       setFormData({
-        projects: student.profile.projects || [],
-        achievements: student.profile.achievements || [],
-        hobbies: student.profile.hobbies || [],
-        interests: student.profile.interests || [],
-        languages: student.profile.languages || [],
+        projects: learner.profile.projects || [],
+        achievements: learner.profile.achievements || [],
+        hobbies: learner.profile.hobbies || [],
+        interests: learner.profile.interests || [],
+        languages: learner.profile.languages || [],
       });
     }
-  }, [student]);
+  }, [learner]);
 
   // Memoize animation variants to prevent recreation on every render
   const modalVariants = React.useMemo(() => ({
@@ -176,8 +176,8 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
-      if (!student?.id) {
-        throw new Error('No student ID available');
+      if (!learner?.id) {
+        throw new Error('No learner ID available');
       }
 
       let hasUpdates = false;
@@ -187,12 +187,12 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
         const validProjects = formData.projects.filter(p => p.title.trim() !== '');
         if (validProjects.length > 0) {
           const projectRecords = validProjects.map(p => ({
-            student_id: student.id,
+            learner_id: learner.id,
             title: p.title,
             description: p.description,
             tech_stack: p.technologies || [],
             approval_status: 'pending',
-            approval_authority: student.school_id ? 'school_admin' : 'college_admin'
+            approval_authority: learner.school_id ? 'school_admin' : 'college_admin'
           }));
 
           const { error } = await supabase.from('projects').insert(projectRecords);
@@ -201,27 +201,27 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
         }
       }
 
-      // Hobbies, Interests, Languages, Achievements - save to students table
-      const studentUpdates: any = {};
+      // Hobbies, Interests, Languages, Achievements - save to learners table
+      const learnerUpdates: any = {};
 
       if (incompleteSections.includes('Achievements') && formData.achievements.length > 0) {
         const validAchievements = formData.achievements.filter(a => a.title.trim() !== '');
         if (validAchievements.length > 0) {
-          studentUpdates.achievements = validAchievements;
+          learnerUpdates.achievements = validAchievements;
         }
       }
 
       if (incompleteSections.includes('Hobbies') && formData.hobbies.length > 0) {
         const validHobbies = formData.hobbies.filter(h => h.trim() !== '');
         if (validHobbies.length > 0) {
-          studentUpdates.hobbies = validHobbies;
+          learnerUpdates.hobbies = validHobbies;
         }
       }
 
       if (incompleteSections.includes('Interests') && formData.interests.length > 0) {
         const validInterests = formData.interests.filter(i => i.trim() !== '');
         if (validInterests.length > 0) {
-          studentUpdates.interests = validInterests;
+          learnerUpdates.interests = validInterests;
         }
       }
 
@@ -230,15 +230,15 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
           typeof l === 'string' ? l.trim() !== '' : l.name.trim() !== ''
         );
         if (validLanguages.length > 0) {
-          studentUpdates.languages = validLanguages;
+          learnerUpdates.languages = validLanguages;
         }
       }
 
-      if (Object.keys(studentUpdates).length > 0) {
+      if (Object.keys(learnerUpdates).length > 0) {
         const { error } = await supabase
-          .from('students')
-          .update(studentUpdates)
-          .eq('id', student.id);
+          .from('learners')
+          .update(learnerUpdates)
+          .eq('id', learner.id);
 
         if (error) throw error;
         hasUpdates = true;
@@ -250,15 +250,15 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
         return;
       }
 
-      // Refresh student data
-      const { data: updatedStudent } = await supabase
-        .from('students')
+      // Refresh learner data
+      const { data: updatedLearner } = await supabase
+        .from('learners')
         .select('*')
-        .eq('id', student.id)
+        .eq('id', learner.id)
         .single();
 
-      if (updatedStudent) {
-        setStudent(updatedStudent as any);
+      if (updatedLearner) {
+        setLearner(updatedLearner as any);
       }
 
       setEditMode(false);

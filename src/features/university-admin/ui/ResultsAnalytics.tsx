@@ -9,15 +9,15 @@ import {
 
 interface AnalyticsProps {
   results: any[];
-  students: any[];
-  getStudentById: (id: string) => any;
+  learners: any[];
+  getlearnerById: (id: string) => any;
   getSubjectById: (id: string) => any;
 }
 
 export const ResultsAnalytics: React.FC<AnalyticsProps> = ({
   results,
-  students,
-  getStudentById,
+  learners,
+  getlearnerById,
   getSubjectById
 }) => {
   // Calculate analytics data
@@ -39,8 +39,8 @@ export const ResultsAnalytics: React.FC<AnalyticsProps> = ({
     // Program-wise analysis
     const programAnalysis = ['Computer Science', 'Mechanical Engineering', 'Electrical Engineering'].map(program => {
       const programResults = results.filter(r => {
-        const student = getStudentById(r.studentId);
-        return student?.program === program;
+        const learner = getlearnerById(r.learnerId);
+        return learner?.program === program;
       });
       const programPassed = programResults.filter(r => r.status === 'pass').length;
       const programPassRate = programResults.length > 0 ? (programPassed / programResults.length) * 100 : 0;
@@ -58,8 +58,8 @@ export const ResultsAnalytics: React.FC<AnalyticsProps> = ({
     // College-wise analysis
     const collegeAnalysis = ['Engineering College A', 'Engineering College B'].map(college => {
       const collegeResults = results.filter(r => {
-        const student = getStudentById(r.studentId);
-        return student?.college === college;
+        const learner = getlearnerById(r.learnerId);
+        return learner?.college === college;
       });
       const published = collegeResults.filter(r => r.publishedAt).length;
       const pending = collegeResults.length - published;
@@ -108,8 +108,8 @@ export const ResultsAnalytics: React.FC<AnalyticsProps> = ({
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Students</p>
-              <p className="text-3xl font-bold text-blue-600">{students.length}</p>
+              <p className="text-sm font-medium text-gray-600">Total Learners</p>
+              <p className="text-3xl font-bold text-blue-600">{learners.length}</p>
               <div className="flex items-center mt-2">
                 <ArrowTrendingUpIcon className="h-4 w-4 text-blue-500 mr-1" />
                 <span className="text-sm text-blue-600">+15 new admissions</span>

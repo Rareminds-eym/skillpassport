@@ -1,7 +1,7 @@
 import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Stream Recommendation Service
- * Generates AI-based Science/Commerce/Arts stream recommendations for students
+ * Generates AI-based Science/Commerce/Arts stream recommendations for learners
  * Based on: Subject marks, Projects, Experiences, Interests, Hobbies
  * 
  * Uses OpenRouter AI for detailed analysis and personalized recommendations
@@ -73,14 +73,14 @@ const INTEREST_STREAM_MAPPING = {
 };
 
 /**
- * Fetch student data for stream recommendation
+ * Fetch learner data for stream recommendation
  */
-export const fetchStudentStreamData = async (studentId) => {
+export const fetchlearnerStreamData = async (learnerId) => {
   const { data, error } = await supabase
-    .rpc('get_student_stream_recommendation_data', { p_student_id: studentId });
+    .rpc('get_learner_stream_recommendation_data', { p_learner_id: learnerId });
   
   if (error) {
-    logger.error('Error fetching student data', error instanceof Error ? error : new Error(String(error)));
+    logger.error('Error fetching learner data', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
   
@@ -223,19 +223,19 @@ const calculateExperienceBasedScores = (experiences) => {
 /**
  * Generate comprehensive stream recommendation
  */
-export const generateStreamRecommendation = async (studentId) => {
-  // Fetch all student data
-  const studentData = await fetchStudentStreamData(studentId);
+export const generateStreamRecommendation = async (learnerId) => {
+  // Fetch all learner data
+  const learnerData = await fetchlearnerStreamData(learnerId);
   
-  if (!studentData || !studentData.student) {
-    throw new Error('Student data not found');
+  if (!learnerData || !learnerData.learner) {
+    throw new Error('Learner data not found');
   }
   
-  const { student, subject_marks, projects, experiences } = studentData;
+  const { learner, subject_marks, projects, experiences } = learnerData;
   
   // Calculate scores from different sources
   const marksScores = calculateMarksBasedScores(subject_marks || {});
-  const interestScores = calculateInterestBasedScores(student.interests, student.hobbies);
+  const interestScores = calculateInterestBasedScores(learner.interests, learner.hobbies);
   const projectScores = calculateProjectBasedScores(projects);
   const experienceScores = calculateExperienceBasedScores(experiences);
   
@@ -318,9 +318,9 @@ export const generateStreamRecommendation = async (studentId) => {
   };
   
   return {
-    student_id: studentId,
-    student_name: student.name,
-    current_grade: student.grade,
+    learner_id: learnerId,
+    learner_name: learner.name,
+    current_grade: learner.grade,
     
     // Scores
     science_score: Math.round(finalScores.science * 100) / 100,
@@ -346,8 +346,8 @@ export const generateStreamRecommendation = async (studentId) => {
     subject_marks: subject_marks,
     projects_summary: projects,
     experiences_summary: experiences,
-    interests: student.interests,
-    hobbies: student.hobbies
+    interests: learner.interests,
+    hobbies: learner.hobbies
   };
 };
 
@@ -358,7 +358,7 @@ export const saveStreamRecommendationReport = async (recommendation) => {
   const { data, error } = await supabase
     .from('stream_recommendation_reports')
     .insert({
-      student_id: recommendation.student_id,
+      learner_id: recommendation.learner_id,
       academic_year: new Date().getFullYear() + '-' + (new Date().getFullYear() + 1),
       current_grade: recommendation.current_grade,
       
@@ -398,13 +398,13 @@ export const saveStreamRecommendationReport = async (recommendation) => {
 };
 
 /**
- * Get latest stream recommendation for a student
+ * Get latest stream recommendation for a learner
  */
-export const getLatestStreamRecommendation = async (studentId) => {
+export const getLatestStreamRecommendation = async (learnerId) => {
   const { data, error } = await supabase
     .from('stream_recommendation_reports')
     .select('*')
-    .eq('student_id', studentId)
+    .eq('learner_id', learnerId)
     .eq('is_latest', true)
     .single();
   
@@ -419,14 +419,14 @@ export const getLatestStreamRecommendation = async (studentId) => {
 /**
  * Generate and save stream recommendation
  */
-export const generateAndSaveStreamRecommendation = async (studentId) => {
-  const recommendation = await generateStreamRecommendation(studentId);
+export const generateAndSaveStreamRecommendation = async (learnerId) => {
+  const recommendation = await generateStreamRecommendation(learnerId);
   const savedReport = await saveStreamRecommendationReport(recommendation);
   return { ...recommendation, report_id: savedReport.id };
 };
 
 export default {
-  fetchStudentStreamData,
+  fetchlearnerStreamData,
   generateStreamRecommendation,
   saveStreamRecommendationReport,
   getLatestStreamRecommendation,
@@ -439,16 +439,16 @@ export default {
 /**
  * Build the AI prompt for stream recommendation
  */
-const buildStreamRecommendationPrompt = (studentData) => {
-  const { student, subject_marks, projects, experiences } = studentData;
+const buildStreamRecommendationPrompt = (learnerData) => {
+  const { learner, subject_marks, projects, experiences } = learnerData;
   
-  return `You are an expert career counselor helping a Grade ${student.grade || '10'} student choose between Science, Commerce, and Arts streams for their higher secondary education (11th-12th grade).
+  return `You are an expert career counselor helping a Grade ${learner.grade || '10'} learner choose between Science, Commerce, and Arts streams for their higher secondary education (11th-12th grade).
 
-## Student Profile
-- Name: ${student.name}
-- Current Grade: ${student.grade || '10'}
-- Interests: ${JSON.stringify(student.interests || [])}
-- Hobbies: ${JSON.stringify(student.hobbies || [])}
+## Learner Profile
+- Name: ${learner.name}
+- Current Grade: ${learner.grade || '10'}
+- Interests: ${JSON.stringify(learner.interests || [])}
+- Hobbies: ${JSON.stringify(learner.hobbies || [])}
 
 ## Academic Performance (Subject-wise Marks)
 ${Object.entries(subject_marks || {}).map(([subject, data]) => 
@@ -466,7 +466,7 @@ ${(experiences || []).map(e =>
 ).join('\n') || 'No experiences'}
 
 ## Your Task
-Analyze this student's profile comprehensively and provide a detailed stream recommendation. Consider:
+Analyze this learner's profile comprehensively and provide a detailed stream recommendation. Consider:
 1. Academic strengths and weaknesses
 2. Alignment of interests with each stream
 3. Project work indicating aptitude
@@ -498,7 +498,7 @@ Analyze this student's profile comprehensively and provide a detailed stream rec
     "commerce": ["Accountancy", "Business Studies", "Economics", "<optional>"],
     "arts": ["<subject1>", "<subject2>", "<subject3>", "<optional>"]
   },
-  "personalized_advice": "<2-3 sentences of personalized advice for this student>",
+  "personalized_advice": "<2-3 sentences of personalized advice for this learner>",
   "next_steps": ["<step1>", "<step2>", "<step3>"]
 }
 
@@ -508,7 +508,7 @@ Respond ONLY with valid JSON. No markdown, no explanations outside JSON.`;
 /**
  * Call OpenRouter AI for stream recommendation analysis
  */
-const callAIForStreamRecommendation = async (studentData) => {
+const callAIForStreamRecommendation = async (learnerData) => {
   // Get auth token
   const { data: { session } } = getCurrentSession();
   const token = session?.access_token;
@@ -517,7 +517,7 @@ const callAIForStreamRecommendation = async (studentData) => {
     throw new Error('Authentication required for AI analysis');
   }
 
-  const prompt = buildStreamRecommendationPrompt(studentData);
+  const prompt = buildStreamRecommendationPrompt(learnerData);
 
   const response = await fetch(`${CAREER_API_URL}/stream-recommendation`, {
     method: 'POST',
@@ -526,7 +526,7 @@ const callAIForStreamRecommendation = async (studentData) => {
       'Authorization': `Bearer ${token}`
     },
     body: JSON.stringify({ 
-      studentData,
+      learnerData,
       prompt 
     })
   });
@@ -550,22 +550,22 @@ const callAIForStreamRecommendation = async (studentData) => {
  * Generate AI-powered stream recommendation
  * Falls back to rule-based if AI fails
  */
-export const generateAIStreamRecommendation = async (studentId) => {
-  // Fetch all student data
-  const studentData = await fetchStudentStreamData(studentId);
+export const generateAIStreamRecommendation = async (learnerId) => {
+  // Fetch all learner data
+  const learnerData = await fetchlearnerStreamData(learnerId);
   
-  if (!studentData || !studentData.student) {
-    throw new Error('Student data not found');
+  if (!learnerData || !learnerData.learner) {
+    throw new Error('Learner data not found');
   }
 
   try {
     // Try AI-powered analysis first
-    const aiResult = await callAIForStreamRecommendation(studentData);
+    const aiResult = await callAIForStreamRecommendation(learnerData);
     
     return {
-      student_id: studentId,
-      student_name: studentData.student.name,
-      current_grade: studentData.student.grade,
+      learner_id: learnerId,
+      learner_name: learnerData.learner.name,
+      current_grade: learnerData.learner.grade,
       
       // AI scores
       science_score: aiResult.science_score,
@@ -588,11 +588,11 @@ export const generateAIStreamRecommendation = async (studentId) => {
       next_steps: aiResult.next_steps,
       
       // Input data snapshot
-      subject_marks: studentData.subject_marks,
-      projects_summary: studentData.projects,
-      experiences_summary: studentData.experiences,
-      interests: studentData.student.interests,
-      hobbies: studentData.student.hobbies,
+      subject_marks: learnerData.subject_marks,
+      projects_summary: learnerData.projects,
+      experiences_summary: learnerData.experiences,
+      interests: learnerData.learner.interests,
+      hobbies: learnerData.learner.hobbies,
       
       // Metadata
       ai_model_used: 'openrouter-gpt-4o-mini',
@@ -600,7 +600,7 @@ export const generateAIStreamRecommendation = async (studentId) => {
     };
   } catch (aiError) {
     // Fall back to rule-based recommendation
-    const ruleBasedResult = await generateStreamRecommendation(studentId);
+    const ruleBasedResult = await generateStreamRecommendation(learnerId);
     return {
       ...ruleBasedResult,
       ai_model_used: 'rule-based-v1',
@@ -613,14 +613,14 @@ export const generateAIStreamRecommendation = async (studentId) => {
 /**
  * Generate and save AI-powered stream recommendation
  */
-export const generateAndSaveAIStreamRecommendation = async (studentId) => {
-  const recommendation = await generateAIStreamRecommendation(studentId);
+export const generateAndSaveAIStreamRecommendation = async (learnerId) => {
+  const recommendation = await generateAIStreamRecommendation(learnerId);
   
   // Save to database
   const { data, error } = await supabase
     .from('stream_recommendation_reports')
     .insert({
-      student_id: recommendation.student_id,
+      learner_id: recommendation.learner_id,
       academic_year: new Date().getFullYear() + '-' + (new Date().getFullYear() + 1),
       current_grade: recommendation.current_grade,
       

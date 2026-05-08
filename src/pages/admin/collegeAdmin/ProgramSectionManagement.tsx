@@ -24,8 +24,8 @@ interface ProgramSection {
   program_name: string;
   semester: number;
   section: string;
-  max_students: number;
-  current_students: number;
+  max_learners: number;
+  current_learners: number;
   faculty_id?: string;
   faculty_name?: string;
   status: "active" | "inactive";
@@ -201,8 +201,8 @@ const ProgramSectionManagement: React.FC = () => {
           program_name: s.programs?.name || 'Unknown',
           semester: s.semester,
           section: s.section,
-          max_students: s.max_students,
-          current_students: s.current_students,
+          max_learners: s.max_learners,
+          current_learners: s.current_learners,
           faculty_id: s.faculty_id,
           faculty_name: s.faculty_name || 'Not Assigned',
           status: s.status,
@@ -241,7 +241,7 @@ const ProgramSectionManagement: React.FC = () => {
             program_id: data.program_id,
             semester: data.semester,
             section: data.section,
-            max_students: data.max_students,
+            max_learners: data.max_learners,
             faculty_id: data.faculty_id || null,
             status: data.status,
             updated_by: user?.id,
@@ -263,11 +263,11 @@ const ProgramSectionManagement: React.FC = () => {
             program_id: data.program_id,
             semester: data.semester,
             section: data.section,
-            max_students: data.max_students,
+            max_learners: data.max_learners,
             faculty_id: data.faculty_id || null,
             academic_year: academicYear,
             status: data.status || "active",
-            current_students: 0,
+            current_learners: 0,
             created_by: user?.id,
           });
 
@@ -321,8 +321,8 @@ const ProgramSectionManagement: React.FC = () => {
   // Calculate stats
   const totalSections = filteredSections.length;
   const activeSections = filteredSections.filter((s) => s.status === "active").length;
-  const totalCapacity = filteredSections.reduce((sum, s) => sum + s.max_students, 0);
-  const totalStudents = filteredSections.reduce((sum, s) => sum + s.current_students, 0);
+  const totalCapacity = filteredSections.reduce((sum, s) => sum + s.max_learners, 0);
+  const totallearners = filteredSections.reduce((sum, s) => sum + s.current_learners, 0);
 
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
@@ -395,9 +395,9 @@ const ProgramSectionManagement: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                Enrolled Students
+                Enrolled Learners
               </p>
-              <p className="text-2xl font-bold text-gray-900">{totalStudents}</p>
+              <p className="text-2xl font-bold text-gray-900">{totallearners}</p>
             </div>
             <div className="p-3 rounded-xl border bg-indigo-50 text-indigo-600 border-indigo-200">
               <AcademicCapIcon className="h-5 w-5" />
@@ -554,11 +554,11 @@ const ProgramSectionManagement: React.FC = () => {
                     <td className="px-4 py-3">
                       <span
                         className={`text-sm font-medium ${getCapacityColor(
-                          section.current_students,
-                          section.max_students
+                          section.current_learners,
+                          section.max_learners
                         )}`}
                       >
-                        {section.current_students} / {section.max_students}
+                        {section.current_learners} / {section.max_learners}
                       </span>
                     </td>
                     <td className="px-4 py-3">{getStatusBadge(section.status)}</td>
@@ -610,7 +610,7 @@ const SectionFormModal: React.FC<{
     program_id: section?.program_id || "",
     semester: section?.semester || 1,
     section: section?.section || "",
-    max_students: section?.max_students || 60,
+    max_learners: section?.max_learners || 60,
     faculty_id: section?.faculty_id || "",
     status: section?.status || "active",
   });
@@ -738,13 +738,13 @@ const SectionFormModal: React.FC<{
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Max Students *
+                  Max Learners *
                 </label>
                 <input
                   type="number"
-                  value={formData.max_students}
+                  value={formData.max_learners}
                   onChange={(e) =>
-                    setFormData({ ...formData, max_students: parseInt(e.target.value) })
+                    setFormData({ ...formData, max_learners: parseInt(e.target.value) })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   min="1"

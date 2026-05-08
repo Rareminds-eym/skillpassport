@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { UIExam, UIStudentMark } from '@/features/exams';
+import { UIExam, UIlearnerMark } from '@/features/exams';
 import { WorkflowStage } from './types';
 import ModalWrapper from './ModalWrapper';
 import WorkflowStepper from './WorkflowStepper';
@@ -18,13 +18,13 @@ interface ExamWorkflowManagerProps {
   teachers: unknown[];
   rooms: unknown[];
   allSchoolRooms: unknown[];
-  students: UIStudentMark[];
-  loadStudents: (targetClasses?: unknown, grade?: string, section?: string) => Promise<unknown[]>;
+  learners: UIlearnerMark[];
+  loadlearners: (targetClasses?: unknown, grade?: string, section?: string) => Promise<unknown[]>;
   createTimetableEntry: (examId: string, entry: unknown) => Promise<unknown>;
   deleteTimetableEntry: (examId: string, entryId: string) => Promise<void>;
   createInvigilationAssignment: (examId: string, assignment: unknown) => Promise<unknown>;
   deleteInvigilationAssignment: (examId: string, assignmentId: string) => Promise<void>;
-  saveMarks: (examId: string, subjectId: string, marks: UIStudentMark[]) => Promise<void>;
+  saveMarks: (examId: string, subjectId: string, marks: UIlearnerMark[]) => Promise<void>;
   moderateMarks: (markEntryId: string, moderationData: unknown) => Promise<void>;
   approveSubjectModeration: (examId: string, subjectId: string, userId?: string) => Promise<void>;
   getClassRoom: (grade: string, section?: string) => Promise<string | null>;

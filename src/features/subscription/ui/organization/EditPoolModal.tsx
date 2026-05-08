@@ -10,7 +10,7 @@ import { memo, useCallback, useEffect, useState } from 'react';
 interface LicensePool {
   id: string;
   poolName: string;
-  memberType: 'educator' | 'student';
+  memberType: 'educator' | 'learner';
   allocatedSeats: number;
   assignedSeats: number;
   availableSeats: number;

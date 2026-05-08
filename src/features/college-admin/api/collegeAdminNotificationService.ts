@@ -74,16 +74,16 @@ export class CollegeAdminNotificationService {
    */
   static async getPendingTrainings(collegeId) {
     try {
-      // Get trainings where approval_authority = 'college_admin' and student belongs to this college
+      // Get trainings where approval_authority = 'college_admin' and learner belongs to this college
       const { data, error } = await supabase
         .from('trainings')
         .select(`
           *,
-          student:students!trainings_student_id_fkey (
+          learner:learners!trainings_learner_id_fkey (
             id,
             name,
             email,
-            student_type,
+            learner_type,
             school_id,
             university_college_id,
             college_school_name
@@ -102,17 +102,17 @@ export class CollegeAdminNotificationService {
 
       // Filter by college_id to ensure security
       const filteredTrainings = (data || []).filter(training => {
-        const studentCollegeId = training.student?.university_college_id;
-        return studentCollegeId === collegeId;
+        const learnerCollegeId = training.learner?.university_college_id;
+        return learnerCollegeId === collegeId;
       });
 
       // Format for UI
       const formattedTrainings = filteredTrainings.map(training => ({
         ...training,
-        student_name: training.student?.name || 'Unknown Student',
-        student_email: training.student?.email || 'No email',
-        student_school_id: training.student?.school_id,
-        student_college_id: training.student?.university_college_id
+        learner_name: training.learner?.name || 'Unknown Learner',
+        learner_email: training.learner?.email || 'No email',
+        learner_school_id: training.learner?.school_id,
+        learner_college_id: training.learner?.university_college_id
       }));
 
       return formattedTrainings;
@@ -131,16 +131,16 @@ export class CollegeAdminNotificationService {
    */
   static async getPendingExperiences(collegeId) {
     try {
-      // Get experiences where approval_authority = 'college_admin' and student belongs to this college
+      // Get experiences where approval_authority = 'college_admin' and learner belongs to this college
       const { data, error } = await supabase
         .from('experience')
         .select(`
           *,
-          student:students!experience_student_id_fkey (
+          learner:learners!experience_learner_id_fkey (
             id,
             name,
             email,
-            student_type,
+            learner_type,
             school_id,
             university_college_id,
             college_school_name
@@ -159,18 +159,18 @@ export class CollegeAdminNotificationService {
 
       // Filter by college_id to ensure security
       const filteredExperiences = (data || []).filter(experience => {
-        const studentCollegeId = experience.student?.university_college_id;
-        return studentCollegeId === collegeId;
+        const learnerCollegeId = experience.learner?.university_college_id;
+        return learnerCollegeId === collegeId;
       });
 
       // Format for UI
       const formattedExperiences = filteredExperiences.map(experience => ({
         ...experience,
-        student_name: experience.student?.name || 'Unknown Student',
-        student_email: experience.student?.email || 'No email',
-        student_school_id: experience.student?.school_id,
-        student_college_id: experience.student?.university_college_id,
-        student_type: experience.student?.student_type
+        learner_name: experience.learner?.name || 'Unknown Learner',
+        learner_email: experience.learner?.email || 'No email',
+        learner_school_id: experience.learner?.school_id,
+        learner_college_id: experience.learner?.university_college_id,
+        learner_type: experience.learner?.learner_type
       }));
 
       return formattedExperiences;
@@ -412,16 +412,16 @@ export class CollegeAdminNotificationService {
    */
   static async getPendingProjects(collegeId) {
     try {
-      // Get projects where approval_authority = 'college_admin' and student belongs to this college
+      // Get projects where approval_authority = 'college_admin' and learner belongs to this college
       const { data, error } = await supabase
         .from('projects')
         .select(`
           *,
-          student:students!projects_student_id_fkey (
+          learner:learners!projects_learner_id_fkey (
             id,
             name,
             email,
-            student_type,
+            learner_type,
             school_id,
             university_college_id,
             college_school_name
@@ -440,17 +440,17 @@ export class CollegeAdminNotificationService {
 
       // Filter by college_id to ensure security
       const filteredProjects = (data || []).filter(project => {
-        const studentCollegeId = project.student?.university_college_id;
-        return studentCollegeId === collegeId;
+        const learnerCollegeId = project.learner?.university_college_id;
+        return learnerCollegeId === collegeId;
       });
 
       // Format for UI
       const formattedProjects = filteredProjects.map(project => ({
         ...project,
-        student_name: project.student?.name || 'Unknown Student',
-        student_email: project.student?.email || 'No email',
-        student_school_id: project.student?.school_id,
-        student_college_id: project.student?.university_college_id
+        learner_name: project.learner?.name || 'Unknown Learner',
+        learner_email: project.learner?.email || 'No email',
+        learner_school_id: project.learner?.school_id,
+        learner_college_id: project.learner?.university_college_id
       }));
 
       return formattedProjects;

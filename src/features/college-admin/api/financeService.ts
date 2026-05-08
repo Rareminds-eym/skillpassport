@@ -24,9 +24,9 @@ export interface DueSchedule {
   percentage: number;
 }
 
-export interface StudentLedger {
+export interface LearnerLedger {
   id: string;
-  student_id: string;
+  learner_id: string;
   fee_structure_id: string;
   fee_head_id: string;
   due_amount: number;
@@ -81,10 +81,10 @@ export interface ExpenditureSummary {
   total_due_amount: number;
   total_paid_amount: number;
   total_balance: number;
-  total_students: number;
-  overdue_students: number;
-  paid_students: number;
-  pending_students: number;
+  total_learners: number;
+  overdue_learners: number;
+  paid_learners: number;
+  pending_learners: number;
   collection_percentage: number;
 }
 
@@ -95,7 +95,7 @@ export interface DepartmentExpenditure {
   total_due_amount: number;
   total_paid_amount: number;
   total_balance: number;
-  student_count: number;
+  learner_count: number;
   collection_percentage: number;
 }
 
@@ -107,7 +107,7 @@ export interface ProgramExpenditure {
   total_due_amount: number;
   total_paid_amount: number;
   total_balance: number;
-  student_count: number;
+  learner_count: number;
   collection_percentage: number;
 }
 
@@ -127,12 +127,12 @@ export async function createFeeStructure(data: Partial<FeeStructure>): Promise<F
   return structure;
 }
 
-export async function recordPayment(studentId: string, feeHeadId: string, payment: Partial<Payment>): Promise<Payment> {
+export async function recordPayment(learnerId: string, feeHeadId: string, payment: Partial<Payment>): Promise<Payment> {
   // Get ledger
   const { data: ledger, error: ledgerError } = await supabase
-    .from('student_ledgers')
+    .from('learner_ledgers')
     .select('*')
-    .eq('student_id', studentId)
+    .eq('learner_id', learnerId)
     .eq('fee_head_id', feeHeadId)
     .single();
 
@@ -162,7 +162,7 @@ export async function recordPayment(studentId: string, feeHeadId: string, paymen
 
   // Update ledger
   const { error: updateError } = await supabase
-    .from('student_ledgers')
+    .from('learner_ledgers')
     .update({ paid_amount: ledger.paid_amount + payment.amount! })
     .eq('id', ledger.id);
 
@@ -171,28 +171,28 @@ export async function recordPayment(studentId: string, feeHeadId: string, paymen
   return paymentRecord;
 }
 
-export async function getStudentLedger(studentId: string): Promise<StudentLedger[]> {
+export async function getlearnerLedger(learnerId: string): Promise<LearnerLedger[]> {
   const { data, error } = await supabase
-    .from('student_ledgers')
+    .from('learner_ledgers')
     .select('*')
-    .eq('student_id', studentId);
+    .eq('learner_id', learnerId);
 
   if (error) throw error;
   return data || [];
 }
 
-export async function applyScholarship(studentId: string, feeHeadId: string, amount: number, reason: string): Promise<void> {
+export async function applyScholarship(learnerId: string, feeHeadId: string, amount: number, reason: string): Promise<void> {
   const { data: ledger, error: ledgerError } = await supabase
-    .from('student_ledgers')
+    .from('learner_ledgers')
     .select('*')
-    .eq('student_id', studentId)
+    .eq('learner_id', learnerId)
     .eq('fee_head_id', feeHeadId)
     .single();
 
   if (ledgerError) throw ledgerError;
 
   const { error } = await supabase
-    .from('student_ledgers')
+    .from('learner_ledgers')
     .update({ due_amount: ledger.due_amount - amount })
     .eq('id', ledger.id);
 
@@ -203,10 +203,10 @@ export async function applyScholarship(studentId: string, feeHeadId: string, amo
 
 export async function getDefaulterReport(filters?: { program_id?: string; semester?: number }): Promise<any[]> {
   let query = supabase
-    .from('student_ledgers')
+    .from('learner_ledgers')
     .select(`
       *,
-      student:student_id (name, email),
+      learner:learner_id (name, email),
       fee_structure:fee_structure_id (program_id, semester)
     `)
     .gt('balance', 0);
@@ -305,10 +305,10 @@ export async function getExpenditureSummary(collegeId: string): Promise<Expendit
     total_due_amount: 0,
     total_paid_amount: 0,
     total_balance: 0,
-    total_students: 0,
-    overdue_students: 0,
-    paid_students: 0,
-    pending_students: 0,
+    total_learners: 0,
+    overdue_learners: 0,
+    paid_learners: 0,
+    pending_learners: 0,
     collection_percentage: 0
   };
 }

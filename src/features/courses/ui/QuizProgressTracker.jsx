@@ -19,7 +19,7 @@ import { courseProgressService as progressService } from '@/features/courses';
  */
 const QuizProgressTracker = ({
   quiz,
-  studentId,
+  learnerId,
   courseId,
   lessonId,
   onComplete,
@@ -45,12 +45,12 @@ const QuizProgressTracker = ({
   // Initialize or resume quiz attempt
   useEffect(() => {
     const initQuiz = async () => {
-      if (!studentId || !quiz?.id) return;
+      if (!learnerId || !quiz?.id) return;
       
       setIsLoading(true);
       try {
         const result = await progressService.startQuizAttempt(
-          studentId,
+          learnerId,
           courseId,
           lessonId,
           quiz.id,
@@ -76,7 +76,7 @@ const QuizProgressTracker = ({
     };
 
     initQuiz();
-  }, [studentId, courseId, lessonId, quiz?.id, totalQuestions]);
+  }, [learnerId, courseId, lessonId, quiz?.id, totalQuestions]);
 
   // Track time spent
   useEffect(() => {
@@ -95,16 +95,16 @@ const QuizProgressTracker = ({
     setAnswers(newAnswers);
 
     // Save answer to database
-    if (studentId && quiz?.id) {
+    if (learnerId && quiz?.id) {
       await progressService.saveQuizAnswer(
-        studentId,
+        learnerId,
         quiz.id,
         attemptNumber,
         questionId,
         answer
       );
     }
-  }, [answers, studentId, quiz?.id, attemptNumber]);
+  }, [answers, learnerId, quiz?.id, attemptNumber]);
 
   // Navigate to next question
   const goToNext = useCallback(() => {
@@ -141,7 +141,7 @@ const QuizProgressTracker = ({
       });
 
       const result = await progressService.submitQuiz(
-        studentId,
+        learnerId,
         quiz.id,
         attemptNumber,
         correctCount,
@@ -167,7 +167,7 @@ const QuizProgressTracker = ({
     } finally {
       setIsSubmitting(false);
     }
-  }, [answeredCount, totalQuestions, questions, answers, studentId, quiz?.id, attemptNumber, timeSpent, onComplete]);
+  }, [answeredCount, totalQuestions, questions, answers, learnerId, quiz?.id, attemptNumber, timeSpent, onComplete]);
 
   // Format time
   const formatTime = (seconds) => {

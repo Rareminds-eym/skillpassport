@@ -10,7 +10,7 @@ export { generateQRCode } from './lib/exportppUtils';
 export { getCertificateProxyUrl } from './api/certificateService';
 export { downloadCertificate } from './api/certificateService';
 export { generateShareableLink } from './lib/exportppUtils';
-export { getStudentPortfolioByEmail } from './api/portfolioService';
+export { getlearnerPortfolioByEmail } from './api/portfolioService';
 export { parseResumeWithAI } from './api/resumeParserService';
 export { downloadQRCode } from './lib/exportppUtils';
 export { getBadgeProgress } from './api/badgeService';

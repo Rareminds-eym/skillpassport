@@ -34,8 +34,8 @@ import { authSessionService } from '@/features/auth';
 // ==================== TYPES ====================
 interface AttendanceRecord {
   id: string;
-  studentId: string;
-  studentName: string;
+  learnerId: string;
+  learnerName: string;
   rollNumber: string;
   class: string;
   section: string;
@@ -49,7 +49,7 @@ interface AttendanceRecord {
   deviceId?: string;
 }
 
-interface Student {
+interface Learner {
   id: string;
   rollNumber: string;
   name: string;
@@ -169,7 +169,7 @@ const StatusBadge = ({ status }: { status: string }) => {
 const logger = getLogger('school-admin-attendance-reports');
 
 const AttendanceReports: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"daily" | "student" | "chronic" | "classwise" | "rawlogs">("daily");
+  const [activeTab, setActiveTab] = useState<"daily" | "learner" | "chronic" | "classwise" | "rawlogs">("daily");
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -179,7 +179,7 @@ const AttendanceReports: React.FC = () => {
     from: "",
     to: "",
   });
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [selectedLearner, setSelectedLearner] = useState<Learner | null>(null);
 
   const [filters, setFilters] = useState({
     classes: [] as string[],
@@ -292,28 +292,28 @@ const AttendanceReports: React.FC = () => {
 
         logger.info('Fetched attendance records', { count: attendanceData?.length || 0 });
         
-        // Fetch students separately
-        const { data: studentsData } = await supabase
-          .from('students')
+        // Fetch learners separately
+        const { data: learnersData } = await supabase
+          .from('learners')
           .select('id, name, roll_number, grade, section')
           .eq('school_id', schoolId);
         
-        // Create a student lookup map
-        const studentMap = new Map();
-        (studentsData || []).forEach((s: any) => {
-          studentMap.set(s.id, s);
+        // Create a learner lookup map
+        const learnerMap = new Map();
+        (learnersData || []).forEach((s: any) => {
+          learnerMap.set(s.id, s);
         });
 
         // Transform data to match component format with manual join
         const transformedRecords: AttendanceRecord[] = (attendanceData || []).map((record: any) => {
-          const student = studentMap.get(record.student_id);
+          const learner = learnerMap.get(record.learner_id);
           return {
             id: record.id,
-            studentId: record.student_id,
-            studentName: student?.name || 'Unknown',
-            rollNumber: student?.roll_number || 'N/A',
-            class: student?.grade || 'N/A',
-            section: student?.section || 'N/A',
+            learnerId: record.learner_id,
+            learnerName: learner?.name || 'Unknown',
+            rollNumber: learner?.roll_number || 'N/A',
+            class: learner?.grade || 'N/A',
+            section: learner?.section || 'N/A',
             date: record.date,
             status: record.status as "present" | "absent" | "late" | "excused",
             timeIn: record.time_in,
@@ -340,29 +340,29 @@ const AttendanceReports: React.FC = () => {
     fetchAttendanceData();
   }, [schoolId]);
 
-  const [students, setStudents] = useState<Student[]>([]);
+  const [learners, setlearners] = useState<Learner[]>([]);
 
-  // Fetch students from backend
+  // Fetch learners from backend
   useEffect(() => {
     if (!schoolId) return; // Wait for schoolId to be set
 
-    const fetchStudents = async () => {
+    const fetchlearners = async () => {
       try {
-        logger.info('Fetching students for school', { schoolId });
+        logger.info('Fetching learners for school', { schoolId });
         
         const { data, error } = await supabase
-          .from('students')
+          .from('learners')
           .select('id, roll_number, name, grade, section, email, contactNumber')
           .eq('school_id', schoolId);
 
         if (error) {
-          logger.error('Error fetching students', error);
+          logger.error('Error fetching learners', error);
           return;
         }
 
-        logger.info('Fetched students', { count: data?.length || 0 });
+        logger.info('Fetched learners', { count: data?.length || 0 });
 
-        const transformedStudents: Student[] = (data || []).map((s: any) => ({
+        const transformedlearners: Learner[] = (data || []).map((s: any) => ({
           id: s.id,
           rollNumber: s.roll_number || 'N/A',
           name: s.name,
@@ -372,13 +372,13 @@ const AttendanceReports: React.FC = () => {
           phone: s.contactNumber || 'N/A',
         }));
 
-        setStudents(transformedStudents);
+        setlearners(transformedlearners);
       } catch (err) {
         logger.error('Error', err as Error);
       }
     };
 
-    fetchStudents();
+    fetchlearners();
   }, [schoolId]);
 
   // Filtered records (MUST be defined before analytics)
@@ -387,7 +387,7 @@ const AttendanceReports: React.FC = () => {
     const filtered = attendanceRecords.filter((record) => {
       const matchesSearch =
         searchQuery === "" ||
-        record.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        record.learnerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         record.rollNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
         record.class.toLowerCase().includes(searchQuery.toLowerCase());
 
@@ -439,39 +439,39 @@ const AttendanceReports: React.FC = () => {
   // Analytics calculations (use filtered records)
   const analytics = useMemo(() => {
     const todayRecords = filteredRecords.filter(r => r.date === selectedDate);
-    const totalStudents = new Set(todayRecords.map(r => r.studentId)).size;
+    const totallearners = new Set(todayRecords.map(r => r.learnerId)).size;
     const presentCount = todayRecords.filter(r => r.status === "present" || r.status === "late" || r.status === "excused").length;
     const absentCount = todayRecords.filter(r => r.status === "absent").length;
-    const attendancePercentage = totalStudents > 0 ? (presentCount / totalStudents) * 100 : 0;
+    const attendancePercentage = totallearners > 0 ? (presentCount / totallearners) * 100 : 0;
 
     // Calculate chronic absentees (attendance < 75% in last 30 days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const recentRecords = filteredRecords.filter(r => new Date(r.date) >= thirtyDaysAgo);
     
-    const studentAttendance = new Map<string, { present: number; total: number }>();
+    const learnerAttendance = new Map<string, { present: number; total: number }>();
     recentRecords.forEach(record => {
-      const current = studentAttendance.get(record.studentId) || { present: 0, total: 0 };
+      const current = learnerAttendance.get(record.learnerId) || { present: 0, total: 0 };
       current.total++;
       if (record.status === "present" || record.status === "late" || record.status === "excused") {
         current.present++;
       }
-      studentAttendance.set(record.studentId, current);
+      learnerAttendance.set(record.learnerId, current);
     });
 
-    const chronicAbsentees = Array.from(studentAttendance.entries()).filter(
+    const chronicAbsentees = Array.from(learnerAttendance.entries()).filter(
       ([, stats]) => (stats.present / stats.total) * 100 < 75
     ).length;
 
-    // Students below 75% attendance
-    const below75Count = Array.from(studentAttendance.entries()).filter(
+    // Learners below 75% attendance
+    const below75Count = Array.from(learnerAttendance.entries()).filter(
       ([, stats]) => (stats.present / stats.total) * 100 < 75
     ).length;
 
     return {
       todayAttendance: attendancePercentage.toFixed(1),
-      studentsAbsentToday: absentCount,
-      studentsBelow75: below75Count,
+      learnersAbsentToday: absentCount,
+      learnersBelow75: below75Count,
       chronicAbsentees,
     };
   }, [filteredRecords, selectedDate]);
@@ -536,7 +536,7 @@ const AttendanceReports: React.FC = () => {
   // Tab configurations
   const tabs = [
     { id: "daily", label: "Daily Summary", icon: CalendarIcon },
-    { id: "student", label: "Student Trend", icon: UserIcon },
+    { id: "learner", label: "Learner Trend", icon: UserIcon },
     { id: "chronic", label: "Chronic Absentee", icon: BellAlertIcon },
     { id: "classwise", label: "Class-wise Analysis", icon: AcademicCapIcon },
     { id: "rawlogs", label: "Raw Logs", icon: TableCellsIcon },
@@ -593,7 +593,7 @@ const AttendanceReports: React.FC = () => {
                 exportToCSV(filteredRecords.map(r => ({
                   Date: r.date,
                   'Roll Number': r.rollNumber,
-                  'Student Name': r.studentName,
+                  'Learner Name': r.learnerName,
                   Class: r.class,
                   Section: r.section,
                   Status: r.status,
@@ -626,13 +626,13 @@ const AttendanceReports: React.FC = () => {
           />
           <KPICard
             title="Absent Today"
-            value={analytics.studentsAbsentToday}
+            value={analytics.learnersAbsentToday}
             icon={<XCircleIcon className="h-6 w-6" />}
             color="red"
           />
           <KPICard
             title="Below 75% Attendance"
-            value={analytics.studentsBelow75}
+            value={analytics.learnersBelow75}
             icon={<ExclamationCircleIcon className="h-6 w-6" />}
             color="yellow"
           />
@@ -692,13 +692,13 @@ const AttendanceReports: React.FC = () => {
               />
             )}
 
-            {/* Student Trend Tab */}
-            {activeTab === "student" && (
-              <StudentTrendTab
-                students={students}
+            {/* Learner Trend Tab */}
+            {activeTab === "learner" && (
+              <LearnerTrendTab
+                learners={learners}
                 attendanceRecords={filteredRecords}
-                selectedStudent={selectedStudent}
-                setSelectedStudent={setSelectedStudent}
+                selectedLearner={selectedLearner}
+                setSelectedLearner={setSelectedLearner}
                 exportToCSV={exportToCSV}
               />
             )}
@@ -707,7 +707,7 @@ const AttendanceReports: React.FC = () => {
             {activeTab === "chronic" && (
               <ChronicAbsenteeTab
                 attendanceRecords={filteredRecords}
-                students={students}
+                learners={learners}
                 filters={filters}
                 searchQuery={searchQuery}
                 exportToCSV={exportToCSV}
@@ -876,7 +876,7 @@ const DailySummaryTab = ({ selectedDate, setSelectedDate, attendanceRecords, fil
           class: record.class,
           section: record.section,
           teacher: record.teacher,
-          totalStudents: 0,
+          totallearners: 0,
           present: 0,
           absent: 0,
           late: 0,
@@ -884,7 +884,7 @@ const DailySummaryTab = ({ selectedDate, setSelectedDate, attendanceRecords, fil
         });
       }
       const group = grouped.get(key)!;
-      group.totalStudents++;
+      group.totallearners++;
       if (record.status === "present") group.present++;
       if (record.status === "absent") group.absent++;
       if (record.status === "late") group.late++;
@@ -893,7 +893,7 @@ const DailySummaryTab = ({ selectedDate, setSelectedDate, attendanceRecords, fil
 
     return Array.from(grouped.values()).map(g => ({
       ...g,
-      percentage: ((g.present + g.late + g.excused) / g.totalStudents * 100).toFixed(1),
+      percentage: ((g.present + g.late + g.excused) / g.totallearners * 100).toFixed(1),
     }));
   }, [attendanceRecords, selectedDate]);
 
@@ -928,7 +928,7 @@ const DailySummaryTab = ({ selectedDate, setSelectedDate, attendanceRecords, fil
             onClick={() => exportToCSV(dailyData.map((d: any) => ({
               Class: d.class,
               Section: d.section,
-              'Total Students': d.totalStudents,
+              'Total Learners': d.totallearners,
               Present: d.present,
               Absent: d.absent,
               Late: d.late,
@@ -955,7 +955,7 @@ const DailySummaryTab = ({ selectedDate, setSelectedDate, attendanceRecords, fil
                 Section
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Total Students
+                Total Learners
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Present
@@ -987,7 +987,7 @@ const DailySummaryTab = ({ selectedDate, setSelectedDate, attendanceRecords, fil
                   {row.section}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {row.totalStudents}
+                  {row.totallearners}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-emerald-600 font-medium">
                   {row.present}
@@ -1032,9 +1032,9 @@ const DailySummaryTab = ({ selectedDate, setSelectedDate, attendanceRecords, fil
   );
 };
 
-// Student Trend Tab
-const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSelectedStudent, exportToCSV }: any) => {
-  const [studentSearch, setStudentSearch] = useState("");
+// Learner Trend Tab
+const LearnerTrendTab = ({ learners, attendanceRecords, selectedLearner, setSelectedLearner, exportToCSV }: any) => {
+  const [learnerSearch, setlearnerSearch] = useState("");
   const [selectedClass, setSelectedClass] = useState<string>("all");
   const [selectedSection, setSelectedSection] = useState<string>("all");
 
@@ -1042,20 +1042,20 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
   const { classes, sections } = useMemo(() => {
     const classSet = new Set<string>();
     const sectionSet = new Set<string>();
-    students.forEach((student: Student) => {
-      classSet.add(student.class);
-      sectionSet.add(student.section);
+    learners.forEach((learner: Learner) => {
+      classSet.add(learner.class);
+      sectionSet.add(learner.section);
     });
     return {
       classes: Array.from(classSet).sort(),
       sections: Array.from(sectionSet).sort(),
     };
-  }, [students]);
+  }, [learners]);
 
-  // Calculate stats for all students
-  const allStudentStats = useMemo(() => {
-    return students.map((student: Student) => {
-      const records = attendanceRecords.filter((r: AttendanceRecord) => r.studentId === student.id);
+  // Calculate stats for all learners
+  const alllearnerStats = useMemo(() => {
+    return learners.map((learner: Learner) => {
+      const records = attendanceRecords.filter((r: AttendanceRecord) => r.learnerId === learner.id);
       const present = records.filter((r: AttendanceRecord) => r.status === "present").length;
       const absent = records.filter((r: AttendanceRecord) => r.status === "absent").length;
       const late = records.filter((r: AttendanceRecord) => r.status === "late").length;
@@ -1064,7 +1064,7 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
       const percentage = total > 0 ? ((present + late + excused) / total * 100) : 0;
 
       return {
-        ...student,
+        ...learner,
         present,
         absent,
         late,
@@ -1074,11 +1074,11 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
         records,
       };
     }).sort((a: any, b: any) => parseFloat(b.percentage) - parseFloat(a.percentage));
-  }, [students, attendanceRecords]);
+  }, [learners, attendanceRecords]);
 
-  // Filter students based on search, class, and section
-  const filteredStudents = useMemo(() => {
-    let filtered = allStudentStats;
+  // Filter learners based on search, class, and section
+  const filteredlearners = useMemo(() => {
+    let filtered = alllearnerStats;
 
     // Apply class filter
     if (selectedClass !== "all") {
@@ -1091,8 +1091,8 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
     }
 
     // Apply search filter
-    if (studentSearch) {
-      const query = studentSearch.toLowerCase();
+    if (learnerSearch) {
+      const query = learnerSearch.toLowerCase();
       filtered = filtered.filter((s: any) => 
         s.name.toLowerCase().includes(query) ||
         s.rollNumber.toLowerCase().includes(query)
@@ -1100,19 +1100,19 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
     }
 
     return filtered;
-  }, [allStudentStats, studentSearch, selectedClass, selectedSection]);
+  }, [alllearnerStats, learnerSearch, selectedClass, selectedSection]);
 
-  const selectedStudentStats = useMemo(() => {
-    if (!selectedStudent) return null;
-    return allStudentStats.find((s: any) => s.id === selectedStudent.id);
-  }, [selectedStudent, allStudentStats]);
+  const selectedlearnerStats = useMemo(() => {
+    if (!selectedLearner) return null;
+    return alllearnerStats.find((s: any) => s.id === selectedLearner.id);
+  }, [selectedLearner, alllearnerStats]);
 
   const chartData = useMemo(() => {
-    if (!selectedStudentStats) return null;
+    if (!selectedlearnerStats) return null;
 
     // Group by month
     const monthlyData = new Map<string, { present: number; absent: number; total: number }>();
-    selectedStudentStats.records.forEach((record: AttendanceRecord) => {
+    selectedlearnerStats.records.forEach((record: AttendanceRecord) => {
       const month = record.date.slice(0, 7);
       if (!monthlyData.has(month)) {
         monthlyData.set(month, { present: 0, absent: 0, total: 0 });
@@ -1155,23 +1155,23 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
         grid: { borderColor: "#f1f5f9" },
       },
     };
-  }, [selectedStudentStats]);
+  }, [selectedlearnerStats]);
 
-  if (selectedStudent && selectedStudentStats) {
+  if (selectedLearner && selectedlearnerStats) {
     return (
       <div className="space-y-6">
         {/* Back Button */}
         <button
-          onClick={() => setSelectedStudent(null)}
+          onClick={() => setSelectedLearner(null)}
           className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          Back to student list
+          Back to learner list
         </button>
 
-        {/* Student Info Card */}
+        {/* Learner Info Card */}
         <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-6 shadow-lg text-white">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-4">
@@ -1181,13 +1181,13 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
                 </div>
               </div>
               <div className="flex-1">
-                <h3 className="text-2xl font-bold">{selectedStudent.name}</h3>
-                <p className="text-indigo-100 mt-1">Roll No: {selectedStudent.rollNumber}</p>
-                <p className="text-indigo-100">Class {selectedStudent.class} - Section {selectedStudent.section}</p>
+                <h3 className="text-2xl font-bold">{selectedLearner.name}</h3>
+                <p className="text-indigo-100 mt-1">Roll No: {selectedLearner.rollNumber}</p>
+                <p className="text-indigo-100">Class {selectedLearner.class} - Section {selectedLearner.section}</p>
               </div>
             </div>
             <div className="text-right">
-              <div className="text-4xl font-bold">{selectedStudentStats.percentage}%</div>
+              <div className="text-4xl font-bold">{selectedlearnerStats.percentage}%</div>
               <p className="text-indigo-100 text-sm mt-1">Overall Attendance</p>
             </div>
           </div>
@@ -1196,19 +1196,19 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
         {/* Stats Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-            <div className="text-2xl font-bold text-gray-900">{selectedStudentStats.total}</div>
+            <div className="text-2xl font-bold text-gray-900">{selectedlearnerStats.total}</div>
             <div className="text-sm text-gray-600">Total Days</div>
           </div>
           <div className="bg-emerald-50 rounded-xl border border-emerald-200 p-4 shadow-sm">
-            <div className="text-2xl font-bold text-emerald-700">{selectedStudentStats.present}</div>
+            <div className="text-2xl font-bold text-emerald-700">{selectedlearnerStats.present}</div>
             <div className="text-sm text-emerald-600">Present</div>
           </div>
           <div className="bg-rose-50 rounded-xl border border-rose-200 p-4 shadow-sm">
-            <div className="text-2xl font-bold text-rose-700">{selectedStudentStats.absent}</div>
+            <div className="text-2xl font-bold text-rose-700">{selectedlearnerStats.absent}</div>
             <div className="text-sm text-rose-600">Absent</div>
           </div>
           <div className="bg-amber-50 rounded-xl border border-amber-200 p-4 shadow-sm">
-            <div className="text-2xl font-bold text-amber-700">{selectedStudentStats.late}</div>
+            <div className="text-2xl font-bold text-amber-700">{selectedlearnerStats.late}</div>
             <div className="text-sm text-amber-600">Late</div>
           </div>
         </div>
@@ -1219,14 +1219,14 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Monthly Attendance Trend</h3>
               <button
-                onClick={() => exportToCSV(selectedStudentStats.records.map((r: AttendanceRecord) => ({
+                onClick={() => exportToCSV(selectedlearnerStats.records.map((r: AttendanceRecord) => ({
                   Date: r.date,
                   Status: r.status,
                   'Time In': r.timeIn || '',
                   'Time Out': r.timeOut || '',
                   Teacher: r.teacher,
                   Remarks: r.remarks || '',
-                })), `${selectedStudent.name}_attendance_history.csv`)}
+                })), `${selectedLearner.name}_attendance_history.csv`)}
                 className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700"
               >
                 <ArrowDownTrayIcon className="h-4 w-4" />
@@ -1259,7 +1259,7 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {selectedStudentStats.records.slice(0, 15).map((record: AttendanceRecord) => (
+                {selectedlearnerStats.records.slice(0, 15).map((record: AttendanceRecord) => (
                   <tr key={record.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {formatDate(record.date)}
@@ -1296,8 +1296,8 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
             <div className="relative">
               <input
                 type="text"
-                value={studentSearch}
-                onChange={(e) => setStudentSearch(e.target.value)}
+                value={learnerSearch}
+                onChange={(e) => setlearnerSearch(e.target.value)}
                 placeholder="Search by name or roll number..."
                 className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
@@ -1346,19 +1346,19 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
         {/* Results Count and Clear Filters */}
         <div className="flex items-center justify-between">
           <div className="text-sm text-gray-600">
-            Showing <span className="font-semibold text-gray-900">{filteredStudents.length}</span> of <span className="font-semibold text-gray-900">{allStudentStats.length}</span> students
-            {(selectedClass !== "all" || selectedSection !== "all" || studentSearch) && (
+            Showing <span className="font-semibold text-gray-900">{filteredlearners.length}</span> of <span className="font-semibold text-gray-900">{alllearnerStats.length}</span> learners
+            {(selectedClass !== "all" || selectedSection !== "all" || learnerSearch) && (
               <span className="ml-2 text-indigo-600">
                 (filtered)
               </span>
             )}
           </div>
-          {(selectedClass !== "all" || selectedSection !== "all" || studentSearch) && (
+          {(selectedClass !== "all" || selectedSection !== "all" || learnerSearch) && (
             <button
               onClick={() => {
                 setSelectedClass("all");
                 setSelectedSection("all");
-                setStudentSearch("");
+                setlearnerSearch("");
               }}
               className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
             >
@@ -1368,46 +1368,46 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
         </div>
       </div>
 
-      {/* Student Cards Grid */}
+      {/* Learner Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredStudents.map((student: any) => (
+        {filteredlearners.map((learner: any) => (
           <button
-            key={student.id}
-            onClick={() => setSelectedStudent(student)}
+            key={learner.id}
+            onClick={() => setSelectedLearner(learner)}
             className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all text-left group"
           >
             <div className="flex items-start gap-4">
               <div className="flex-shrink-0">
                 <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
-                  parseFloat(student.percentage) >= 75 
+                  parseFloat(learner.percentage) >= 75 
                     ? "bg-emerald-100 group-hover:bg-emerald-200" 
                     : "bg-rose-100 group-hover:bg-rose-200"
                 }`}>
                   <UserIcon className={`h-6 w-6 ${
-                    parseFloat(student.percentage) >= 75 ? "text-emerald-600" : "text-rose-600"
+                    parseFloat(learner.percentage) >= 75 ? "text-emerald-600" : "text-rose-600"
                   }`} />
                 </div>
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <h3 className="text-base font-semibold text-gray-900 truncate group-hover:text-indigo-600">
-                    {student.name}
+                    {learner.name}
                   </h3>
                   <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 text-xs font-medium whitespace-nowrap">
-                    {student.class}-{student.section}
+                    {learner.class}-{learner.section}
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 mt-1">
-                  {student.rollNumber}
+                  {learner.rollNumber}
                 </p>
                 <div className="mt-3 flex items-center gap-3">
                   <div className={`text-2xl font-bold ${
-                    parseFloat(student.percentage) >= 75 ? "text-emerald-600" : "text-rose-600"
+                    parseFloat(learner.percentage) >= 75 ? "text-emerald-600" : "text-rose-600"
                   }`}>
-                    {student.percentage}%
+                    {learner.percentage}%
                   </div>
                   <div className="text-xs text-gray-500">
-                    <div>{student.present}P • {student.absent}A • {student.late}L</div>
+                    <div>{learner.present}P • {learner.absent}A • {learner.late}L</div>
                   </div>
                 </div>
               </div>
@@ -1418,17 +1418,17 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
               <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div 
                   className={`h-full rounded-full transition-all ${
-                    parseFloat(student.percentage) >= 75 
+                    parseFloat(learner.percentage) >= 75 
                       ? "bg-gradient-to-r from-emerald-500 to-green-500" 
                       : "bg-gradient-to-r from-rose-500 to-red-500"
                   }`}
-                  style={{ width: `${student.percentage}%` }}
+                  style={{ width: `${learner.percentage}%` }}
                 />
               </div>
             </div>
 
             {/* Warning Badge */}
-            {parseFloat(student.percentage) < 75 && (
+            {parseFloat(learner.percentage) < 75 && (
               <div className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 text-xs font-medium">
                 <ExclamationCircleIcon className="h-3.5 w-3.5" />
                 Below 75%
@@ -1438,10 +1438,10 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
         ))}
       </div>
 
-      {filteredStudents.length === 0 && (
+      {filteredlearners.length === 0 && (
         <div className="text-center py-12">
           <UserGroupIcon className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No students found</h3>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No learners found</h3>
           <p className="mt-1 text-sm text-gray-500">
             Try adjusting your search query.
           </p>
@@ -1452,11 +1452,11 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
 };
 
 // Chronic Absentee Tab
-const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery, exportToCSV }: any) => {
+const ChronicAbsenteeTab = ({ attendanceRecords, learners, filters, searchQuery, exportToCSV }: any) => {
   const [duration, setDuration] = useState(30);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [showCounselorModal, setShowCounselorModal] = useState(false);
-  const [selectedStudentForAction, setSelectedStudentForAction] = useState<any>(null);
+  const [selectedlearnerForAction, setSelectedlearnerForAction] = useState<any>(null);
   const [meetingDate, setMeetingDate] = useState("");
   const [meetingTime, setMeetingTime] = useState("");
   const [meetingNotes, setMeetingNotes] = useState("");
@@ -1468,13 +1468,13 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
 
     const recentRecords = attendanceRecords.filter((r: AttendanceRecord) => new Date(r.date) >= cutoffDate);
     
-    const studentMap = new Map<string, any>();
+    const learnerMap = new Map<string, any>();
     recentRecords.forEach((record: AttendanceRecord) => {
-      if (!studentMap.has(record.studentId)) {
-        const student = students.find((s: Student) => s.id === record.studentId);
-        studentMap.set(record.studentId, {
-          studentId: record.studentId,
-          studentName: record.studentName,
+      if (!learnerMap.has(record.learnerId)) {
+        const learner = learners.find((s: Learner) => s.id === record.learnerId);
+        learnerMap.set(record.learnerId, {
+          learnerId: record.learnerId,
+          learnerName: record.learnerName,
           rollNumber: record.rollNumber,
           class: record.class,
           section: record.section,
@@ -1487,7 +1487,7 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
           lastAbsentDate: null,
         });
       }
-      const data = studentMap.get(record.studentId)!;
+      const data = learnerMap.get(record.learnerId)!;
       data.totalDays++;
       if (record.status === "present") data.present++;
       if (record.status === "absent") {
@@ -1501,13 +1501,13 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
     });
 
     // Calculate consecutive absences
-    studentMap.forEach((data, studentId) => {
-      const studentRecords = recentRecords
-        .filter((r: AttendanceRecord) => r.studentId === studentId)
+    learnerMap.forEach((data, learnerId) => {
+      const learnerRecords = recentRecords
+        .filter((r: AttendanceRecord) => r.learnerId === learnerId)
         .sort((a: AttendanceRecord, b: AttendanceRecord) => b.date.localeCompare(a.date));
       
       let consecutive = 0;
-      for (const record of studentRecords) {
+      for (const record of learnerRecords) {
         if (record.status === "absent") {
           consecutive++;
         } else {
@@ -1518,34 +1518,34 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
     });
 
     // Filter chronic absentees (< 75% or 5+ consecutive absences)
-    return Array.from(studentMap.values())
+    return Array.from(learnerMap.values())
       .map(d => ({
         ...d,
         percentage: ((d.present + d.late + d.excused) / d.totalDays * 100).toFixed(1),
       }))
       .filter(d => parseFloat(d.percentage) < 75 || d.consecutiveAbsences >= 5)
       .sort((a, b) => parseFloat(a.percentage) - parseFloat(b.percentage));
-  }, [attendanceRecords, students, duration]);
+  }, [attendanceRecords, learners, duration]);
 
-  const handleScheduleMeeting = (student: any) => {
-    setSelectedStudentForAction(student);
+  const handleScheduleMeeting = (learner: any) => {
+    setSelectedlearnerForAction(learner);
     setShowMeetingModal(true);
   };
 
-  const handleAssignCounselor = (student: any) => {
-    setSelectedStudentForAction(student);
+  const handleAssignCounselor = (learner: any) => {
+    setSelectedlearnerForAction(learner);
     setShowCounselorModal(true);
   };
 
   const submitMeeting = () => {
     // In production, this would call an API
     logger.info('Scheduling meeting', {
-      student: selectedStudentForAction,
+      learner: selectedlearnerForAction,
       date: meetingDate,
       time: meetingTime,
       notes: meetingNotes,
     });
-    toast.success(`Parent meeting scheduled for ${selectedStudentForAction.studentName} on ${meetingDate} at ${meetingTime}`);
+    toast.success(`Parent meeting scheduled for ${selectedlearnerForAction.learnerName} on ${meetingDate} at ${meetingTime}`);
     setShowMeetingModal(false);
     setMeetingDate("");
     setMeetingTime("");
@@ -1555,10 +1555,10 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
   const submitCounselor = () => {
     // In production, this would call an API
     logger.info('Assigning counselor', {
-      student: selectedStudentForAction,
+      learner: selectedlearnerForAction,
       counselor: selectedCounselor,
     });
-    toast.success(`Counselor ${selectedCounselor} assigned to ${selectedStudentForAction.studentName}`);
+    toast.success(`Counselor ${selectedCounselor} assigned to ${selectedlearnerForAction.learnerName}`);
     setShowCounselorModal(false);
     setSelectedCounselor("");
   };
@@ -1591,7 +1591,7 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
         <button
           onClick={() => exportToCSV(chronicData.map((d: any) => ({
             'Roll Number': d.rollNumber,
-            'Student Name': d.studentName,
+            'Learner Name': d.learnerName,
             Class: d.class,
             Section: d.section,
             'Attendance %': d.percentage,
@@ -1614,7 +1614,7 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
           <div className="flex items-center gap-2">
             <BellAlertIcon className="h-5 w-5 text-rose-600" />
             <p className="text-sm font-medium text-rose-800">
-              {chronicData.length} student{chronicData.length !== 1 ? 's' : ''} requiring intervention
+              {chronicData.length} learner{chronicData.length !== 1 ? 's' : ''} requiring intervention
             </p>
           </div>
         </div>
@@ -1624,7 +1624,7 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Learner</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Attendance %</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Days</th>
@@ -1637,9 +1637,9 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {chronicData.map((row: any) => (
-              <tr key={row.studentId} className="hover:bg-gray-50">
+              <tr key={row.learnerId} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{row.studentName}</div>
+                  <div className="text-sm font-medium text-gray-900">{row.learnerName}</div>
                   <div className="text-sm text-gray-500">{row.rollNumber}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -1694,7 +1694,7 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
                     <button 
                       className="inline-flex items-center justify-center h-8 w-8 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
                       title="Send notification to parent"
-                      onClick={() => toast.success(`Notification sent to parent of ${row.studentName}`)}
+                      onClick={() => toast.success(`Notification sent to parent of ${row.learnerName}`)}
                     >
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -1713,13 +1713,13 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
           <CheckCircleIcon className="mx-auto h-12 w-12 text-emerald-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">No chronic absentees</h3>
           <p className="mt-1 text-sm text-gray-500">
-            All students have good attendance records.
+            All learners have good attendance records.
           </p>
         </div>
       )}
 
       {/* Parent Meeting Modal */}
-      {showMeetingModal && selectedStudentForAction && (
+      {showMeetingModal && selectedlearnerForAction && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={() => setShowMeetingModal(false)} />
@@ -1739,10 +1739,10 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
                     <div className="mt-4 space-y-4">
                       <div>
                         <p className="text-sm text-gray-600">
-                          Student: <span className="font-semibold text-gray-900">{selectedStudentForAction.studentName}</span>
+                          Learner: <span className="font-semibold text-gray-900">{selectedlearnerForAction.learnerName}</span>
                         </p>
                         <p className="text-sm text-gray-600">
-                          Class: <span className="font-semibold text-gray-900">{selectedStudentForAction.class}-{selectedStudentForAction.section}</span>
+                          Class: <span className="font-semibold text-gray-900">{selectedlearnerForAction.class}-{selectedlearnerForAction.section}</span>
                         </p>
                       </div>
                       
@@ -1810,7 +1810,7 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
       )}
 
       {/* Assign Counselor Modal */}
-      {showCounselorModal && selectedStudentForAction && (
+      {showCounselorModal && selectedlearnerForAction && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={() => setShowCounselorModal(false)} />
@@ -1830,13 +1830,13 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
                     <div className="mt-4 space-y-4">
                       <div>
                         <p className="text-sm text-gray-600">
-                          Student: <span className="font-semibold text-gray-900">{selectedStudentForAction.studentName}</span>
+                          Learner: <span className="font-semibold text-gray-900">{selectedlearnerForAction.learnerName}</span>
                         </p>
                         <p className="text-sm text-gray-600">
-                          Class: <span className="font-semibold text-gray-900">{selectedStudentForAction.class}-{selectedStudentForAction.section}</span>
+                          Class: <span className="font-semibold text-gray-900">{selectedlearnerForAction.class}-{selectedlearnerForAction.section}</span>
                         </p>
                         <p className="text-sm text-rose-600 mt-2">
-                          Attendance: <span className="font-semibold">{selectedStudentForAction.percentage}%</span>
+                          Attendance: <span className="font-semibold">{selectedlearnerForAction.percentage}%</span>
                         </p>
                       </div>
                       
@@ -1860,7 +1860,7 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
 
                       <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                         <p className="text-xs text-amber-800">
-                          <strong>Note:</strong> The assigned counselor will be notified and will receive the student's attendance history.
+                          <strong>Note:</strong> The assigned counselor will be notified and will receive the learner's attendance history.
                         </p>
                       </div>
                     </div>
@@ -2142,13 +2142,13 @@ const RawLogsTab = ({ attendanceRecords, filteredRecords, searchQuery, setSearch
         <SearchBar
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder="Search by student name, roll number, or class..."
+          placeholder="Search by learner name, roll number, or class..."
         />
         <button
           onClick={() => exportToCSV(filteredRecords.map((r: AttendanceRecord) => ({
             Date: r.date,
             'Roll Number': r.rollNumber,
-            'Student Name': r.studentName,
+            'Learner Name': r.learnerName,
             Class: r.class,
             Section: r.section,
             Status: r.status,
@@ -2171,7 +2171,7 @@ const RawLogsTab = ({ attendanceRecords, filteredRecords, searchQuery, setSearch
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Learner</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time In</th>
@@ -2188,7 +2188,7 @@ const RawLogsTab = ({ attendanceRecords, filteredRecords, searchQuery, setSearch
                   {formatDate(record.date)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{record.studentName}</div>
+                  <div className="text-sm font-medium text-gray-900">{record.learnerName}</div>
                   <div className="text-sm text-gray-500">{record.rollNumber}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

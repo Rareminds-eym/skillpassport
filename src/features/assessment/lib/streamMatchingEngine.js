@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * STREAM RECOMMENDATION ENGINE FOR AFTER 10TH STUDENTS
+ * STREAM RECOMMENDATION ENGINE FOR AFTER 10TH LEARNERS
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
  * Uses the same multi-dimensional analysis as courseMatchingEngine to recommend
@@ -28,7 +28,7 @@ const STREAM_KNOWLEDGE_BASE = {
     keywords: { high: ["research", "medical", "doctor", "scientist", "lab", "experiment"], medium: ["biology", "healthcare", "medicine"] },
     careerPaths: ["Doctor/MBBS", "Research Scientist", "Biotechnologist", "Pharmacist", "Veterinarian"],
     entranceExams: ["NEET", "AIIMS", "JIPMER", "State Medical Exams"],
-    bestFor: "Students interested in medicine, biology, and life sciences"
+    bestFor: "Learners interested in medicine, biology, and life sciences"
   },
   pcms: {
     name: "Science (PCMS)",
@@ -42,7 +42,7 @@ const STREAM_KNOWLEDGE_BASE = {
     keywords: { high: ["software", "coding", "programming", "app", "web", "technology", "ai", "data"], medium: ["computer", "tech", "digital"] },
     careerPaths: ["Software Engineer", "Data Scientist", "AI/ML Engineer", "Cybersecurity Expert", "Game Developer"],
     entranceExams: ["JEE Main", "JEE Advanced", "BITSAT", "State Engineering Exams"],
-    bestFor: "Students interested in technology, programming, and computer science"
+    bestFor: "Learners interested in technology, programming, and computer science"
   },
   pcm: {
     name: "Science (PCM)",
@@ -56,7 +56,7 @@ const STREAM_KNOWLEDGE_BASE = {
     keywords: { high: ["engineering", "design", "mechanical", "electrical", "civil", "robot"], medium: ["build", "construct", "machine"] },
     careerPaths: ["Engineer (Mechanical/Civil/Electrical)", "Architect", "Pilot", "Defense Services", "Physicist"],
     entranceExams: ["JEE Main", "JEE Advanced", "NDA", "State Engineering Exams"],
-    bestFor: "Students interested in engineering, physics, and mathematics"
+    bestFor: "Learners interested in engineering, physics, and mathematics"
   },
   pcb: {
     name: "Science (PCB)",
@@ -70,7 +70,7 @@ const STREAM_KNOWLEDGE_BASE = {
     keywords: { high: ["medical", "nursing", "healthcare", "patient", "clinical"], medium: ["biology", "health", "care"] },
     careerPaths: ["Doctor/MBBS", "Nurse", "Physiotherapist", "Medical Lab Technician", "Dentist"],
     entranceExams: ["NEET", "AIIMS", "Nursing Entrance Exams"],
-    bestFor: "Students interested in healthcare and medical sciences"
+    bestFor: "Learners interested in healthcare and medical sciences"
   },
   commerce_maths: {
     name: "Commerce",
@@ -84,7 +84,7 @@ const STREAM_KNOWLEDGE_BASE = {
     keywords: { high: ["finance", "investment", "stock", "banking", "ca", "accounting"], medium: ["business", "money", "trade"] },
     careerPaths: ["Chartered Accountant", "Investment Banker", "Financial Analyst", "Actuary", "Economist"],
     entranceExams: ["CA Foundation", "CS Foundation", "CMA", "CUET"],
-    bestFor: "Students interested in finance, accounting, and quantitative analysis"
+    bestFor: "Learners interested in finance, accounting, and quantitative analysis"
   },
   commerce: {
     name: "Commerce",
@@ -98,7 +98,7 @@ const STREAM_KNOWLEDGE_BASE = {
     keywords: { high: ["business", "entrepreneur", "marketing", "sales", "management"], medium: ["trade", "company", "startup"] },
     careerPaths: ["Business Manager", "Marketing Executive", "HR Manager", "Entrepreneur", "Company Secretary"],
     entranceExams: ["CUET", "IPM", "BBA Entrance Exams"],
-    bestFor: "Students interested in business, management, and entrepreneurship"
+    bestFor: "Learners interested in business, management, and entrepreneurship"
   },
   arts_psychology: {
     name: "Arts/Humanities",
@@ -112,7 +112,7 @@ const STREAM_KNOWLEDGE_BASE = {
     keywords: { high: ["psychology", "counseling", "mental health", "behavior", "therapy"], medium: ["human", "mind", "social"] },
     careerPaths: ["Psychologist", "Counselor", "HR Professional", "Social Worker", "Clinical Therapist"],
     entranceExams: ["CUET", "DU JAT", "Psychology Entrance Exams"],
-    bestFor: "Students interested in understanding human behavior and mental health"
+    bestFor: "Learners interested in understanding human behavior and mental health"
   },
   arts_economics: {
     name: "Arts/Humanities",
@@ -126,7 +126,7 @@ const STREAM_KNOWLEDGE_BASE = {
     keywords: { high: ["economics", "policy", "government", "civil services", "ias"], medium: ["society", "politics", "development"] },
     careerPaths: ["Economist", "Civil Services (IAS/IPS)", "Policy Analyst", "Journalist", "Professor"],
     entranceExams: ["UPSC", "CUET", "Economics Honors Entrance"],
-    bestFor: "Students interested in economics, policy-making, and civil services"
+    bestFor: "Learners interested in economics, policy-making, and civil services"
   },
   arts: {
     name: "Arts/Humanities",
@@ -140,7 +140,7 @@ const STREAM_KNOWLEDGE_BASE = {
     keywords: { high: ["writing", "journalism", "content", "creative", "media", "law"], medium: ["art", "culture", "literature"] },
     careerPaths: ["Journalist", "Content Writer", "Lawyer", "Teacher", "Civil Services"],
     entranceExams: ["CLAT", "CUET", "Mass Communication Entrance"],
-    bestFor: "Students interested in humanities, writing, and creative fields"
+    bestFor: "Learners interested in humanities, writing, and creative fields"
   }
 };
 
@@ -322,8 +322,8 @@ const calculateStreamScore = (streamId, streamProfile, interestDNA, academicProf
     let subjectMatchScore = 0;
     Object.entries(streamProfile.subjects.core).forEach(([subject, weight]) => {
       const aliases = [subject, ...(streamProfile.subjects.aliases || [])];
-      Object.entries(academicProfile.subjectScores).forEach(([studentSubject, score]) => {
-        if (aliases.some(a => studentSubject.includes(a))) {
+      Object.entries(academicProfile.subjectScores).forEach(([learnerSubject, score]) => {
+        if (aliases.some(a => learnerSubject.includes(a))) {
           subjectMatchScore += (score / 100) * weight * 20;
         }
       });
@@ -416,7 +416,7 @@ const calculateStreamScore = (streamId, streamProfile, interestDNA, academicProf
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Calculate stream recommendations for after 10th students
+ * Calculate stream recommendations for after 10th learners
  * @param {Object} assessmentResults - RIASEC and other assessment results
  * @param {Object} academicData - Subject marks, projects, experiences
  * @returns {Object} Stream recommendations with scores

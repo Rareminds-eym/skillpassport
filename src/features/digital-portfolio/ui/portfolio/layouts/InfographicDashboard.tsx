@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Code, GraduationCap, Briefcase, Award, TrendingUp, Star, Github, ExternalLink, Calendar, MapPin, Mail, Phone, Target, BookOpen, Zap, Trophy, Sparkles } from 'lucide-react';
-import { Student, AnimationType, DisplayPreferences } from '@/shared/types/student';
+import { Learner, AnimationType, DisplayPreferences } from '@/shared/types/learner';
 
 interface InfographicDashboardProps {
-  student: Student;
+  learner: Learner;
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
@@ -13,7 +13,7 @@ interface InfographicDashboardProps {
 }
 
 const InfographicDashboard: React.FC<InfographicDashboardProps> = ({ 
-  student, 
+  learner, 
   primaryColor, 
   secondaryColor, 
   accentColor,
@@ -32,10 +32,10 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
 
   // Combine both technical and soft skills for accurate count
   const allSkills = [
-    ...(student.profile?.skills || []),
-    ...(student.profile?.technicalSkills || []),
-    ...(student.technicalSkills || []),
-    ...(student.skills || [])
+    ...(learner.profile?.skills || []),
+    ...(learner.profile?.technicalSkills || []),
+    ...(learner.technicalSkills || []),
+    ...(learner.skills || [])
   ];
   
   // Remove duplicates by id
@@ -43,9 +43,9 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
     index === self.findIndex((s) => s.id === skill.id)
   );
   
-  const projectCount = student.profile?.projects?.length || student.projects?.length || 0;
+  const projectCount = learner.profile?.projects?.length || learner.projects?.length || 0;
   const skillCount = uniqueSkills.length;
-  const achievementCount = student.profile?.achievements?.length || 0;
+  const achievementCount = learner.profile?.achievements?.length || 0;
 
   // Animated counters
   useEffect(() => {
@@ -121,8 +121,8 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
                     style={{ background: `linear-gradient(135deg, ${primaryColor}, ${accentColor})` }}
                   />
                   <img
-                    src={student.profile.profileImage || '/api/placeholder/200/200'}
-                    alt={student.name || 'Profile'}
+                    src={learner.profile.profileImage || '/api/placeholder/200/200'}
+                    alt={learner.name || 'Profile'}
                     className="relative w-48 h-48 rounded-full object-cover border-8 border-white dark:border-gray-800 shadow-2xl mx-auto"
                   />
                   {/* <motion.div
@@ -145,30 +145,30 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
                   transition={{ delay: 0.3 }}
                 >
                   <h1 className="text-5xl md:text-6xl font-black mb-4 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-700 dark:from-white dark:via-gray-200 dark:to-gray-400 bg-clip-text text-transparent">
-                    {student.name || student.profile.name}
+                    {learner.name || learner.profile.name}
                   </h1>
                   <div className="flex flex-wrap items-center gap-4 mb-6">
-                    {(student.branch_field || student.profile.branch_field) && (
+                    {(learner.branch_field || learner.profile.branch_field) && (
                       <div className="px-4 py-2 rounded-full font-semibold text-white shadow-lg"
                         style={{ background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})` }}
                       >
-                        {student.branch_field || student.profile.branch_field}
+                        {learner.branch_field || learner.profile.branch_field}
                       </div>
                     )}
-                    {/* Show school name for school students, university for college students */}
-                    {(student.school?.name || student.profile?.school?.name || 
-                      student.college_school_name || student.university || 
-                      student.universityCollege?.name || student.profile?.universityCollege?.name) && (
+                    {/* Show school name for school learners, university for college learners */}
+                    {(learner.school?.name || learner.profile?.school?.name || 
+                      learner.college_school_name || learner.university || 
+                      learner.universityCollege?.name || learner.profile?.universityCollege?.name) && (
                       <div className="px-4 py-2 rounded-full bg-white dark:bg-gray-800 shadow-lg border-2"
                         style={{ borderColor: accentColor }}
                       >
                         <span className="font-semibold" style={{ color: accentColor }}>
-                          {student.school?.name || 
-                           student.profile?.school?.name || 
-                           student.college_school_name || 
-                           student.universityCollege?.name || 
-                           student.profile?.universityCollege?.name ||
-                           student.university}
+                          {learner.school?.name || 
+                           learner.profile?.school?.name || 
+                           learner.college_school_name || 
+                           learner.universityCollege?.name || 
+                           learner.profile?.universityCollege?.name ||
+                           learner.university}
                         </span>
                       </div>
                     )}
@@ -347,10 +347,10 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
                   >
                     <Mail className="w-4 h-4" style={{ color: primaryColor }} />
                   </div>
-                  <span className="text-sm dark:text-gray-300 truncate">{student.email}</span>
+                  <span className="text-sm dark:text-gray-300 truncate">{learner.email}</span>
                 </motion.div>
                 
-                {student.contact_number && (
+                {learner.contact_number && (
                   <motion.div 
                     whileHover={{ x: 5 }}
                     className="flex items-center space-x-3 p-3 rounded-lg bg-white dark:bg-gray-800 shadow-sm"
@@ -360,11 +360,11 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
                     >
                       <Phone className="w-4 h-4" style={{ color: primaryColor }} />
                     </div>
-                    <span className="text-sm dark:text-gray-300">{student.contact_number}</span>
+                    <span className="text-sm dark:text-gray-300">{learner.contact_number}</span>
                   </motion.div>
                 )}
                 
-                {(student.district_name || student.city || student.state || student.country) && (
+                {(learner.district_name || learner.city || learner.state || learner.country) && (
                   <motion.div 
                     whileHover={{ x: 5 }}
                     className="flex items-center space-x-3 p-3 rounded-lg bg-white dark:bg-gray-800 shadow-sm"
@@ -376,10 +376,10 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
                     </div>
                     <span className="text-sm dark:text-gray-300">
                       {[
-                        student.city,
-                        student.district_name,
-                        student.state,
-                        student.country
+                        learner.city,
+                        learner.district_name,
+                        learner.state,
+                        learner.country
                       ].filter(Boolean).join(', ') || 'Location not specified'}
                     </span>
                   </motion.div>
@@ -391,8 +391,8 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
           {/* Main Content Area */}
           <div className="lg:col-span-8 space-y-8">
             {/* Education Timeline */}
-            {((student.profile?.education && student.profile.education.length > 0) || 
-              (student.education && student.education.length > 0)) && (
+            {((learner.profile?.education && learner.profile.education.length > 0) || 
+              (learner.education && learner.education.length > 0)) && (
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -415,7 +415,7 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
                   }} />
 
                   <div className="space-y-8">
-                    {(student.profile?.education || student.education || []).map((edu, index) => (
+                    {(learner.profile?.education || learner.education || []).map((edu, index) => (
                       <motion.div
                         key={edu.id}
                         initial={{ opacity: 0, x: -30 }}
@@ -469,8 +469,8 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
 
             {/* Projects Grid */}
             {displayPreferences.showProjectImages && 
-             ((student.profile?.projects && student.profile.projects.length > 0) || 
-              (student.projects && student.projects.length > 0)) && (
+             ((learner.profile?.projects && learner.profile.projects.length > 0) || 
+              (learner.projects && learner.projects.length > 0)) && (
               <motion.div
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -483,7 +483,7 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {(student.profile?.projects || student.projects || []).map((project, index) => (
+                  {(learner.profile?.projects || learner.projects || []).map((project, index) => (
                     <motion.div
                       key={project.id}
                       initial={{ opacity: 0, scale: 0.9 }}
@@ -565,10 +565,10 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
             )}
 
             {/* Training/Certifications Section */}
-            {((student.profile?.training && student.profile.training.length > 0) ||
-              (student.training && student.training.length > 0) ||
-              (student.profile?.certifications && student.profile.certifications.length > 0) ||
-              (student.certifications && student.certifications.length > 0)) && (
+            {((learner.profile?.training && learner.profile.training.length > 0) ||
+              (learner.training && learner.training.length > 0) ||
+              (learner.profile?.certifications && learner.profile.certifications.length > 0) ||
+              (learner.certifications && learner.certifications.length > 0)) && (
               <motion.div
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -587,7 +587,7 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
 
                 <div className="space-y-6">
                   {/* Training Programs */}
-                  {(student.profile?.training || student.training || []).map((training, index) => (
+                  {(learner.profile?.training || learner.training || []).map((training, index) => (
                     <motion.div
                       key={training.id}
                       initial={{ opacity: 0, x: -30 }}
@@ -627,7 +627,7 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
                   ))}
 
                   {/* Certifications */}
-                  {(student.profile?.certifications || student.certifications || []).map((cert, index) => (
+                  {(learner.profile?.certifications || learner.certifications || []).map((cert, index) => (
                     <motion.div
                       key={cert.id}
                       initial={{ opacity: 0, x: -30 }}
@@ -677,7 +677,7 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
             )}
 
             {/* Achievements Badge Carousel */}
-            {student.profile?.achievements && student.profile.achievements.length > 0 && (
+            {learner.profile?.achievements && learner.profile.achievements.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -690,7 +690,7 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
                 </div>
 
                 <div className="flex overflow-x-auto space-x-4 pb-4 scrollbar-thin">
-                  {student.profile.achievements.map((achievement, index) => (
+                  {learner.profile.achievements.map((achievement, index) => (
                     <motion.div
                       key={achievement.id}
                       initial={{ opacity: 0, rotate: -10 }}

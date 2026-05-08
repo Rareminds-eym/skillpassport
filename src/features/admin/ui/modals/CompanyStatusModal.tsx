@@ -55,7 +55,7 @@ const CompanyStatusModal: React.FC<CompanyStatusModalProps> = ({
     {
       value: 'active',
       label: 'Active',
-      description: 'Company can post jobs and recruit students',
+      description: 'Company can post jobs and recruit learners',
       icon: CheckCircle,
       color: 'text-green-700',
       bgColor: 'bg-green-50',

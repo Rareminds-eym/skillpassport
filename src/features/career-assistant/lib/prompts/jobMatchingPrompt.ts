@@ -1,4 +1,4 @@
-import { StudentContext, OpportunityContext } from '@/features/student-profile/model';
+import { LearnerContext, OpportunityContext } from '@/features/learner-profile/model';
 
 /**
  * Job Matching Prompt Templates
@@ -9,30 +9,30 @@ import { StudentContext, OpportunityContext } from '@/features/student-profile/m
  * Create detailed job matching prompt for AI
  */
 export function createJobMatchingPrompt(
-  studentContext: StudentContext,
+  learnerContext: LearnerContext,
   opportunities: OpportunityContext[],
   topN: number,
   userQuery?: string
 ): string {
   return `
-You are analyzing a student profile to find the BEST ${topN} job matches from ${opportunities.length} available opportunities.
+You are analyzing a learner profile to find the BEST ${topN} job matches from ${opportunities.length} available opportunities.
 
-**STUDENT PROFILE:**
-Name: ${studentContext.name}
-Department/Field: ${studentContext.department}
-University: ${studentContext.university}
-CGPA: ${studentContext.cgpa || 'Not specified'}
-Year of Passing: ${studentContext.year_of_passing || 'Not specified'}
-Experience: ${studentContext.experience_years} years
+**LEARNER PROFILE:**
+Name: ${learnerContext.name}
+Department/Field: ${learnerContext.department}
+University: ${learnerContext.university}
+CGPA: ${learnerContext.cgpa || 'Not specified'}
+Year of Passing: ${learnerContext.year_of_passing || 'Not specified'}
+Experience: ${learnerContext.experience_years} years
 
-Technical Skills (${studentContext.technical_skills.length}):
-${studentContext.technical_skills.map((s: any) => `- ${s.name} (Level: ${s.level}/5)${s.category ? ` [${s.category}]` : ''}`).join('\n') || '- None listed'}
+Technical Skills (${learnerContext.technical_skills.length}):
+${learnerContext.technical_skills.map((s: any) => `- ${s.name} (Level: ${s.level}/5)${s.category ? ` [${s.category}]` : ''}`).join('\n') || '- None listed'}
 
-Soft Skills: ${studentContext.soft_skills.join(', ') || 'None listed'}
+Soft Skills: ${learnerContext.soft_skills.join(', ') || 'None listed'}
 
-Experience Roles: ${studentContext.experience_roles.join(', ') || 'No experience yet'}
+Experience Roles: ${learnerContext.experience_roles.join(', ') || 'No experience yet'}
 
-Completed Training: ${studentContext.completed_training.join(', ') || 'None'}
+Completed Training: ${learnerContext.completed_training.join(', ') || 'None'}
 
 ---
 
@@ -60,7 +60,7 @@ ${opp.index}. [ID: ${opp.id}] ${opp.title} at ${opp.company}
 **MATCHING RULES:**
 
 1. **FIELD MATCH IS CRITICAL (50% of score)**
-   - Same field (e.g., CS student → Developer role) = 40-50 points
+   - Same field (e.g., CS learner → Developer role) = 40-50 points
    - Related field (e.g., CS → Data Analyst) = 25-35 points
    - Different field = MAX 15 points
 
@@ -89,8 +89,8 @@ ${opp.index}. [ID: ${opp.id}] ${opp.title} at ${opp.company}
 - Below 30: Not recommended currently
 
 **BE HONEST:**
-- If student is CS but jobs are all in Food Science → Low scores (20-35%)
-- If student is Food Science but jobs are Developer roles → Low scores (20-35%)
+- If learner is CS but jobs are all in Food Science → Low scores (20-35%)
+- If learner is Food Science but jobs are Developer roles → Low scores (20-35%)
 - NEVER inflate scores to make poor matches look good
 - It's better to be honest than misleading
 
@@ -108,7 +108,7 @@ Analyze ALL ${opportunities.length} opportunities and return the TOP ${topN} mat
       "match_reason": "<2-3 sentences explaining the match, be specific about skills>",
       "key_matching_skills": ["<skill1>", "<skill2>", "<skill3>"],
       "skills_gap": ["<missing_skill1>", "<missing_skill2>"],
-      "recommendation": "<What should the student do? Apply now, learn X first, good for beginners, etc.>"
+      "recommendation": "<What should the learner do? Apply now, learn X first, good for beginners, etc.>"
     }
   ]
 }
@@ -120,4 +120,4 @@ Return ONLY valid JSON. Be accurate, honest, and helpful.`;
  * System prompt for job matching AI
  */
 export const JOB_MATCHING_SYSTEM_PROMPT = 
-  'You are an expert career counselor and job matching AI with deep knowledge of the Indian job market, student career development, and skill assessment. You provide accurate, honest, and helpful career guidance.';
+  'You are an expert career counselor and job matching AI with deep knowledge of the Indian job market, learner career development, and skill assessment. You provide accurate, honest, and helpful career guidance.';

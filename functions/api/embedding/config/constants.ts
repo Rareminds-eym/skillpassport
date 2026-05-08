@@ -31,7 +31,7 @@ export const EMBEDDING_CONFIG = {
 
 export const ALLOWED_TABLES = [
   'opportunities', 
-  'students', 
+  'learners', 
   'profiles', 
   'courses', 
   'skills',

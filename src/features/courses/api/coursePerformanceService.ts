@@ -22,7 +22,7 @@ export const getCoursePerformance = async (
 
         const { data: results, error: queryErr } = await supabase
             .from('pipeline_candidates')
-            .select(`id, student_id, stage, status, students!inner(profile)`)
+            .select(`id, learner_id, stage, status, learners!inner(profile)`)
             .gte('added_at', startDate)
             .lte('added_at', endDate);
 
@@ -32,7 +32,7 @@ export const getCoursePerformance = async (
         const courseStats: Record<string, { total: number; hired: number }> = {};
 
         results.forEach((row: any) => {
-            const course = row.students?.profile?.course || row.students?.profile?.program || 'Unknown';
+            const course = row.learners?.profile?.course || row.learners?.profile?.program || 'Unknown';
             if (course && course !== 'Unknown') {
                 if (!courseStats[course]) courseStats[course] = { total: 0, hired: 0 };
                 courseStats[course].total += 1;

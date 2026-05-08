@@ -626,7 +626,7 @@ export const getCollegeSwapStatistics = async (collegeId: string): Promise<SwapS
 };
 
 /**
- * Get available slots for swapping (only slots for the SAME class to avoid student timetable conflicts)
+ * Get available slots for swapping (only slots for the SAME class to avoid learner timetable conflicts)
  */
 export const getAvailableSlotsForSwap = async (
   currentSlotId: string,
@@ -647,7 +647,7 @@ export const getAvailableSlotsForSwap = async (
     }
     
     // CRITICAL: Get all slots from the same timetable AND same class
-    // This ensures students don't have schedule conflicts
+    // This ensures learners don't have schedule conflicts
     if (isCollegeEducator) {
       const { data, error } = await supabase
         .from('college_timetable_slots')

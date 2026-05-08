@@ -219,7 +219,7 @@ function AboutRareMinds() {
       "category": "Talent Verification Infrastructure",
       "audience": {
         "@type": "Audience",
-        "audienceType": ["Employers", "Educational Institutions", "Students"]
+        "audienceType": ["Employers", "Educational Institutions", "Learners"]
       }
     }
   ];
@@ -617,7 +617,7 @@ function AboutRareMinds() {
                             Graduates with Degrees
                           </p>
                           <p className="text-sm text-gray-600 mt-2">
-                            Every year, millions of students graduate with degrees, certificates, and resumes
+                            Every year, millions of learners graduate with degrees, certificates, and resumes
                           </p>
                         </div>
                       </div>
@@ -794,7 +794,7 @@ function AboutRareMinds() {
                 </li>
                 <li className="flex items-start gap-2">
                   <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span>Early insight into student readiness</span>
+                  <span>Early insight into learner readiness</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
@@ -808,7 +808,7 @@ function AboutRareMinds() {
                 <CheckCircle className="text-yellow-500 text-2xl" />
               </div>
               <h3 className="text-lg font-bold text-black mb-4">For Universities</h3>
-              <p className="text-base font-semibold text-gray-800 mb-3">Graduate students with proof, not just qualifications.</p>
+              <p className="text-base font-semibold text-gray-800 mb-3">Graduate learners with proof, not just qualifications.</p>
               <ul className="space-y-3 text-gray-700 text-sm">
                 <li className="flex items-start gap-2">
                   <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />

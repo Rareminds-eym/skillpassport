@@ -28,7 +28,7 @@ interface Circular {
   id: number;
   title: string;
   audience: string;
-  audienceType: "all_universities" | "specific_colleges" | "all_colleges" | "departments" | "students" | "faculty";
+  audienceType: "all_universities" | "specific_colleges" | "all_colleges" | "departments" | "learners" | "faculty";
   targetColleges?: string[];
   priority: "normal" | "high" | "urgent";
   publishDate: string;
@@ -190,7 +190,7 @@ const CircularsManagement: React.FC = () => {
 
   const [formData, setFormData] = useState<{
     title: string;
-    audienceType: "all_universities" | "specific_colleges" | "all_colleges" | "departments" | "students" | "faculty";
+    audienceType: "all_universities" | "specific_colleges" | "all_colleges" | "departments" | "learners" | "faculty";
     targetColleges: string[];
     priority: "normal" | "high" | "urgent";
     messageBody: string;
@@ -1106,7 +1106,7 @@ const CircularsManagement: React.FC = () => {
                   <option value="all_colleges">All Affiliated Colleges</option>
                   <option value="specific_colleges">Specific Colleges</option>
                   <option value="departments">Department Heads</option>
-                  <option value="students">All Students</option>
+                  <option value="learners">All Learners</option>
                   <option value="faculty">All Faculty</option>
                   <option value="all_universities">All Universities (System-wide)</option>
                 </select>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { expenditureService, ExpenditureFilters, StudentFeeLedgerDetailed, ExpenditureSummary, DepartmentExpenditure, ProgramExpenditure } from '../services/expenditureService';
+import { expenditureService, ExpenditureFilters, LearnerFeeLedgerDetailed, ExpenditureSummary, DepartmentExpenditure, ProgramExpenditure } from '../services/expenditureService';
 import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
 
@@ -10,7 +10,7 @@ export const useExpenditureReports = () => {
   const [error, setError] = useState<string | null>(null);
   
   // Data states
-  const [studentLedgerData, setStudentLedgerData] = useState<StudentFeeLedgerDetailed[]>([]);
+  const [learnerLedgerData, setlearnerLedgerData] = useState<LearnerFeeLedgerDetailed[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [summary, setSummary] = useState<ExpenditureSummary | null>(null);
   const [departmentData, setDepartmentData] = useState<DepartmentExpenditure[]>([]);
@@ -28,8 +28,8 @@ export const useExpenditureReports = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
-  // Load student ledger data
-  const loadStudentLedger = useCallback(async (newFilters?: ExpenditureFilters, page?: number) => {
+  // Load learner ledger data
+  const loadlearnerLedger = useCallback(async (newFilters?: ExpenditureFilters, page?: number) => {
     try {
       setLoading(true);
       setError(null);
@@ -37,13 +37,13 @@ export const useExpenditureReports = () => {
       const currentFilters = newFilters || filters;
       const currentPage = page || 1;
       
-      const { data, count } = await expenditureService.getStudentFeeLedger({
+      const { data, count } = await expenditureService.getlearnerFeeLedger({
         ...currentFilters,
         page: currentPage,
         limit: pageSize
       });
       
-      setStudentLedgerData(data);
+      setlearnerLedgerData(data);
       setTotalCount(count || 0);
       setCurrentPage(currentPage);
       
@@ -52,7 +52,7 @@ export const useExpenditureReports = () => {
       }
       
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load student ledger data';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load learner ledger data';
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -132,39 +132,39 @@ export const useExpenditureReports = () => {
   // Apply filters
   const applyFilters = useCallback((newFilters: ExpenditureFilters) => {
     setCurrentPage(1);
-    loadStudentLedger(newFilters, 1);
-  }, [loadStudentLedger]);
+    loadlearnerLedger(newFilters, 1);
+  }, [loadlearnerLedger]);
 
   // Clear filters
   const clearFilters = useCallback(() => {
     const emptyFilters: ExpenditureFilters = {};
     setFilters(emptyFilters);
     setCurrentPage(1);
-    loadStudentLedger(emptyFilters, 1);
-  }, [loadStudentLedger]);
+    loadlearnerLedger(emptyFilters, 1);
+  }, [loadlearnerLedger]);
 
   // Change page
   const changePage = useCallback((page: number) => {
-    loadStudentLedger(filters, page);
-  }, [loadStudentLedger, filters]);
+    loadlearnerLedger(filters, page);
+  }, [loadlearnerLedger, filters]);
 
   // Change page size
   const changePageSize = useCallback((newPageSize: number) => {
     setPageSize(newPageSize);
     setCurrentPage(1);
-    loadStudentLedger(filters, 1);
-  }, [loadStudentLedger, filters]);
+    loadlearnerLedger(filters, 1);
+  }, [loadlearnerLedger, filters]);
 
   // Refresh all data
   const refreshData = useCallback(async () => {
     await Promise.all([
-      loadStudentLedger(),
+      loadlearnerLedger(),
       loadSummary(),
       loadDepartmentData(),
       loadProgramData(),
       loadFilterOptions()
     ]);
-  }, [loadStudentLedger, loadSummary, loadDepartmentData, loadProgramData, loadFilterOptions]);
+  }, [loadlearnerLedger, loadSummary, loadDepartmentData, loadProgramData, loadFilterOptions]);
 
   // Initial load
   useEffect(() => {
@@ -178,7 +178,7 @@ export const useExpenditureReports = () => {
 
   return {
     // Data
-    studentLedgerData,
+    learnerLedgerData,
     summary,
     departmentData,
     programData,
@@ -198,7 +198,7 @@ export const useExpenditureReports = () => {
     endIndex,
     
     // Actions
-    loadStudentLedger,
+    loadlearnerLedger,
     applyFilters,
     clearFilters,
     changePage,

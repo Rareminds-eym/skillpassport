@@ -52,7 +52,7 @@ export function isValidOrganizationType(type: string): type is OrganizationType 
 // Member Type Validation
 // ============================================================================
 
-const VALID_MEMBER_TYPES: MemberType[] = ['educator', 'student', 'both'];
+const VALID_MEMBER_TYPES: MemberType[] = ['educator', 'learner', 'both'];
 
 export function isValidMemberType(type: string): type is MemberType {
   return VALID_MEMBER_TYPES.includes(type as MemberType);

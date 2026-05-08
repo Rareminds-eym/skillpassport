@@ -26,7 +26,7 @@ interface InterventionResponseModalProps {
     follow_up_required?: boolean;
     follow_up_date?: string;
   };
-  studentName: string;
+  learnerName: string;
   onClose: () => void;
   onSave: (response: {
     educator_response?: string;
@@ -38,7 +38,7 @@ interface InterventionResponseModalProps {
 
 const InterventionResponseModal: React.FC<InterventionResponseModalProps> = ({
   note,
-  studentName,
+  learnerName,
   onClose,
   onSave,
 }) => {
@@ -93,7 +93,7 @@ const InterventionResponseModal: React.FC<InterventionResponseModalProps> = ({
               <h2 className="text-xl font-bold text-gray-900">Respond to Intervention</h2>
               <p className="text-gray-600 text-sm mt-0.5 flex items-center gap-1.5">
                 <UserCircleIcon className="h-4 w-4" />
-                {studentName}
+                {learnerName}
               </p>
             </div>
           </div>
@@ -197,7 +197,7 @@ const InterventionResponseModal: React.FC<InterventionResponseModalProps> = ({
                 onChange={(e) => setActionTaken(e.target.value)}
                 rows={3}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none text-sm"
-                placeholder="What specific actions have you taken or plan to take with this student?"
+                placeholder="What specific actions have you taken or plan to take with this learner?"
               />
             </div>
 

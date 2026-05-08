@@ -82,11 +82,11 @@ export const PrincipalDashboardExample = () => {
   const handleKPIClick = async (kpiType: string, data: any) => {
     // Fetch detailed data based on KPI type
     switch (kpiType) {
-      case 'students':
-        // Fetch student list with filters
+      case 'learners':
+        // Fetch learner list with filters
         setModalContent({
-          title: 'Student Details',
-          type: 'students',
+          title: 'Learner Details',
+          type: 'learners',
           data: data
         });
         break;

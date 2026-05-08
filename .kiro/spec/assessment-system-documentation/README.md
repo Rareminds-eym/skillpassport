@@ -11,7 +11,7 @@ This folder contains comprehensive documentation for the AI-enhanced assessment 
 ### 1. Problem Analysis & Initial Fixes
 - **[GOKUL_PROFILE_ANALYSIS.md](./GOKUL_PROFILE_ANALYSIS.md)** - Initial analysis of user profile and missing data
 - **[ASSESSMENT_MISSING_FIELDS_DISPLAY.md](./ASSESSMENT_MISSING_FIELDS_DISPLAY.md)** - Documentation of missing profile fields display feature
-- **[STUDENT_PROGRAM_IN_REPORT_ANALYSIS.md](./STUDENT_PROGRAM_IN_REPORT_ANALYSIS.md)** - Analysis of why program information wasn't being used
+- **[learner_PROGRAM_IN_REPORT_ANALYSIS.md](./learner_PROGRAM_IN_REPORT_ANALYSIS.md)** - Analysis of why program information wasn't being used
 
 ### 2. Auto-Retry & Loading Fixes
 - **[ASSESSMENT_INFINITE_RETRY_FIX.md](./ASSESSMENT_INFINITE_RETRY_FIX.md)** - Fix for infinite retry loop on "Generating Your Report" screen
@@ -151,7 +151,7 @@ This folder contains comprehensive documentation for the AI-enhanced assessment 
 #### Frontend (3 files)
 - `src/services/careerAssessmentAIService.js` - Validation + grade level fixes
 - `src/features/assessment/assessment-result/hooks/useAssessmentResults.js` - All auto-retry fixes
-- `src/services/studentSettingsService.js` - Settings sync fix
+- `src/services/learnerSettingsService.js` - Settings sync fix
 
 #### Cloudflare Workers (4 files)
 - `cloudflare-workers/assessment-api/src/index.ts` - Grade level fixes

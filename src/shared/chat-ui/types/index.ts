@@ -1,6 +1,6 @@
 /**
  * Shared types for reusable chat UI components
- * Used by both student career-assistant and educator-copilot
+ * Used by both learner career-assistant and educator-copilot
  */
 
 export interface BaseMessage {

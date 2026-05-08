@@ -29,7 +29,7 @@ function sleep(ms) {
  * @param {Object} options
  * @param {string} options.businessType  - 'b2b' | 'b2c'
  * @param {string} options.entityType    - 'school' | 'college' | 'university' | 'recruitment' | 'all'
- * @param {string} options.roleType      - 'student' | 'educator' | 'admin' | 'recruiter' | 'all'
+ * @param {string} options.roleType      - 'learner' | 'educator' | 'admin' | 'recruiter' | 'all'
  *
  * @returns {{ plans, loading, error, refetch }}
  */

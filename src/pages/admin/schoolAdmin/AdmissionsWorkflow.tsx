@@ -3,7 +3,7 @@ import {
   UserPlus, Upload, CheckCircle, XCircle, DollarSign, 
   FileText, Search, Filter, Download 
 } from 'lucide-react';
-import { admissionService } from '@/features/student-profile/api';
+import { admissionService } from '@/features/learner-profile/api';
 import type { AdmissionApplication } from '@/features/school-admin';
 
 const AdmissionsWorkflow: React.FC = () => {
@@ -13,7 +13,7 @@ const AdmissionsWorkflow: React.FC = () => {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold">Admissions Workflow</h1>
-      <p className="text-gray-600 mt-2">Manage student admissions applications</p>
+      <p className="text-gray-600 mt-2">Manage learner admissions applications</p>
       {loading ? (
         <div className="mt-8">Loading...</div>
       ) : (

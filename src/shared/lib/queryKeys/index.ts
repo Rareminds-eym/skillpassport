@@ -1,4 +1,4 @@
-export { studentKeys } from './student';
+export { learnerKeys } from './learner';
 export { educatorKeys } from './educator';
 export { collegeKeys } from './college';
 export { recruiterKeys } from './recruiter';
@@ -9,7 +9,7 @@ export { messagesKeys } from './messages';
 
 export type { QueryKey, UserType, ConversationType, ArchiveStatus } from './types';
 
-import { studentKeys } from './student';
+import { learnerKeys } from './learner';
 import { educatorKeys } from './educator';
 import { collegeKeys } from './college';
 import { recruiterKeys } from './recruiter';
@@ -30,26 +30,26 @@ import { messagesKeys } from './messages';
  * import { queryKeys } from '@/shared/lib/queryKeys';
  * 
  * useQuery({
- *   queryKey: queryKeys.student.messages.conversation(conversationId),
+ *   queryKey: queryKeys.learner.messages.conversation(conversationId),
  *   queryFn: fetchMessages,
  * });
  * 
  * @example
  * // Cache invalidation - specific query
  * queryClient.invalidateQueries({ 
- *   queryKey: queryKeys.student.messages.conversation(conversationId) 
+ *   queryKey: queryKeys.learner.messages.conversation(conversationId) 
  * });
  * 
  * @example
- * // Cache invalidation - all student messages
+ * // Cache invalidation - all learner messages
  * queryClient.invalidateQueries({ 
- *   queryKey: queryKeys.student.messages.all 
+ *   queryKey: queryKeys.learner.messages.all 
  * });
  * 
  * @example
- * // Cache invalidation - all student queries
+ * // Cache invalidation - all learner queries
  * queryClient.invalidateQueries({ 
- *   queryKey: queryKeys.student.all 
+ *   queryKey: queryKeys.learner.all 
  * });
  * 
  * @example
@@ -58,7 +58,7 @@ import { messagesKeys } from './messages';
  * queryKeys.analytics.diversity.data(orgId, { gender: 'all' });
  */
 export const queryKeys = {
-    student: studentKeys,
+    learner: learnerKeys,
     educator: educatorKeys,
     college: collegeKeys,
     recruiter: recruiterKeys,

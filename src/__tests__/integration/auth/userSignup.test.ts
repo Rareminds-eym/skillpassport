@@ -2,9 +2,9 @@
  * Integration Tests for User Signup
  * 
  * Tests user registration flows for different user types:
- * - School students and educators
- * - College students and lecturers
- * - University students and faculty
+ * - School learners and educators
+ * - College learners and lecturers
+ * - University learners and faculty
  * - Recruiters
  */
 
@@ -26,8 +26,8 @@ describe('User Signup Integration Tests', () => {
     vi.clearAllMocks();
   });
 
-  describe('School Student Signup', () => {
-    it('should successfully register a school student', async () => {
+  describe('School Learner Signup', () => {
+    it('should successfully register a school learner', async () => {
       const { supabase } = await import('@/shared/api/supabaseClient');
       const testUser = generateTestUser();
       
@@ -40,18 +40,18 @@ describe('User Signup Integration Tests', () => {
 
       // Mock auth user creation
       vi.mocked(supabase.auth.admin.createUser).mockResolvedValueOnce({
-        data: { user: { id: 'new-student-id', email: testUser.email } },
+        data: { user: { id: 'new-learner-id', email: testUser.email } },
         error: null
       } as any);
 
-      // Mock student record creation
+      // Mock learner record creation
       vi.mocked(supabase.from).mockReturnValueOnce({
         insert: vi.fn().mockReturnThis(),
         select: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({
           data: {
-            id: 'student-new',
-            user_id: 'new-student-id',
+            id: 'learner-new',
+            user_id: 'new-learner-id',
             ...testUser,
             school_id: mockSchool.id
           },
@@ -59,8 +59,8 @@ describe('User Signup Integration Tests', () => {
         })
       } as any);
 
-      const result = await supabase.from('students').insert({
-        user_id: 'new-student-id',
+      const result = await supabase.from('learners').insert({
+        user_id: 'new-learner-id',
         email: testUser.email,
         first_name: testUser.firstName,
         last_name: testUser.lastName,
@@ -106,7 +106,7 @@ describe('User Signup Integration Tests', () => {
         })
       } as any);
 
-      const result = await supabase.from('students').insert({
+      const result = await supabase.from('learners').insert({
         email: '', // Missing email
         school_id: mockSchool.id
       }).select().single();
@@ -162,10 +162,10 @@ describe('User Signup Integration Tests', () => {
     });
   });
 
-  describe('College Student Signup', () => {
-    it('should successfully register a college student', async () => {
+  describe('College Learner Signup', () => {
+    it('should successfully register a college learner', async () => {
       const { supabase } = await import('@/shared/api/supabaseClient');
-      const testUser = generateTestUser({ email: 'college.student@test.com' });
+      const testUser = generateTestUser({ email: 'college.learner@test.com' });
       
       // Mock college verification
       vi.mocked(supabase.from).mockReturnValueOnce({
@@ -176,18 +176,18 @@ describe('User Signup Integration Tests', () => {
 
       // Mock auth user creation
       vi.mocked(supabase.auth.admin.createUser).mockResolvedValueOnce({
-        data: { user: { id: 'new-college-student-id', email: testUser.email } },
+        data: { user: { id: 'new-college-learner-id', email: testUser.email } },
         error: null
       } as any);
 
-      // Mock college student record creation
+      // Mock college learner record creation
       vi.mocked(supabase.from).mockReturnValueOnce({
         insert: vi.fn().mockReturnThis(),
         select: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({
           data: {
-            id: 'college-student-new',
-            user_id: 'new-college-student-id',
+            id: 'college-learner-new',
+            user_id: 'new-college-learner-id',
             ...testUser,
             college_id: mockCollege.id
           },
@@ -195,8 +195,8 @@ describe('User Signup Integration Tests', () => {
         })
       } as any);
 
-      const result = await supabase.from('college_students').insert({
-        user_id: 'new-college-student-id',
+      const result = await supabase.from('learners').insert({
+        user_id: 'new-college-learner-id',
         email: testUser.email,
         first_name: testUser.firstName,
         last_name: testUser.lastName,

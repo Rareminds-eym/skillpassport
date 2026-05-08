@@ -21,7 +21,7 @@ export const STREAM_CONTEXTS: Record<string, {
     },
     'science_pcmb': {
         name: 'Science (PCMB - All Sciences)',
-        context: 'Focus on comprehensive scientific reasoning covering physics, chemistry, mathematics, and biology. Balance questions across all four subjects for students keeping both engineering and medical options open.',
+        context: 'Focus on comprehensive scientific reasoning covering physics, chemistry, mathematics, and biology. Balance questions across all four subjects for learners keeping both engineering and medical options open.',
         clericalExample: 'PCMB-678-SCI'
     },
     'science_pcms': {
@@ -63,7 +63,7 @@ export const STREAM_CONTEXTS: Record<string, {
     // --- College / After 12th Streams ---
     'engineering': {
         name: 'Engineering',
-        context: 'Focus on technical problem-solving, algorithmic thinking, spatial reasoning, and systems analysis suitable for engineering students.',
+        context: 'Focus on technical problem-solving, algorithmic thinking, spatial reasoning, and systems analysis suitable for engineering learners.',
         clericalExample: 'ENG-789-SYS'
     },
     'medical': {
@@ -148,7 +148,7 @@ export const STREAM_CONTEXTS: Record<string, {
     },
     'college': {
         name: 'General College',
-        context: 'Focus on general aptitude, reasoning, and critical thinking suitable for college-level students across various disciplines.',
+        context: 'Focus on general aptitude, reasoning, and critical thinking suitable for college-level learners across various disciplines.',
         clericalExample: 'COL-123-GEN'
     }
 };

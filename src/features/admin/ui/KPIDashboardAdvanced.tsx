@@ -17,7 +17,7 @@ import { getLogger } from '@/shared/config/logging';
 const logger = getLogger('kpi-dashboard-advanced');
 
 interface KPIData {
-  totalStudents: number;
+  totallearners: number;
   attendanceToday: number;
   examsScheduled: number;
   pendingAssessments: number;
@@ -64,23 +64,23 @@ const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({
       setError(null);
       
       // Build base query with filters
-      let studentsQuery = supabase
-        .from('students')
+      let learnersQuery = supabase
+        .from('learners')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'active');
 
-      if (schoolId) studentsQuery = studentsQuery.eq('school_id', schoolId);
-      if (filters.grade) studentsQuery = studentsQuery.eq('grade', filters.grade);
-      if (filters.section) studentsQuery = studentsQuery.eq('section', filters.section);
+      if (schoolId) learnersQuery = learnersQuery.eq('school_id', schoolId);
+      if (filters.grade) learnersQuery = learnersQuery.eq('grade', filters.grade);
+      if (filters.section) learnersQuery = learnersQuery.eq('section', filters.section);
 
-      const { count: totalStudents, error: studentsError } = await studentsQuery;
-      if (studentsError) throw studentsError;
+      const { count: totallearners, error: learnersError } = await learnersQuery;
+      if (learnersError) throw learnersError;
 
       // Fetch Attendance Today with real-time calculation
       const today = new Date().toISOString().split('T')[0];
       let attendanceQuery = supabase
         .from('attendance_records')
-        .select('status, student_id');
+        .select('status, learner_id');
 
       if (schoolId) attendanceQuery = attendanceQuery.eq('school_id', schoolId);
       attendanceQuery = attendanceQuery.eq('date', today);
@@ -158,7 +158,7 @@ const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({
       if (libraryError) logger.warn('Fetch library overdue items failed', { error: libraryError.message, schoolId });
 
       setKpiData({
-        totalStudents: totalStudents || 0,
+        totallearners: totallearners || 0,
         attendanceToday: attendancePercentage,
         examsScheduled: examsScheduled || 0,
         pendingAssessments: pendingAssessments || 0,
@@ -333,11 +333,11 @@ const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Total Students */}
-        <div onClick={() => handleKPIClick('students', kpiData?.totalStudents)}>
+        {/* Total Learners */}
+        <div onClick={() => handleKPIClick('learners', kpiData?.totallearners)}>
           <KPICard
-            title="Total Students"
-            value={kpiData?.totalStudents || 0}
+            title="Total Learners"
+            value={kpiData?.totallearners || 0}
             icon={<UsersIcon className="h-6 w-6" />}
             color="blue"
             loading={loading}

@@ -5,25 +5,25 @@ import { queryKeys } from '@/shared/lib/queryKeys';
 /**
  * Hook for managing course enrollment operations
  */
-export const useCourseEnrollment = (studentEmail: string | null, courseId: string | null) => {
+export const useCourseEnrollment = (learnerEmail: string | null, courseId: string | null) => {
   const queryClient = useQueryClient();
 
   // Query for checking enrollment status
   const enrollmentQuery = useQuery({
-    queryKey: queryKeys.courses.enrollment.byStudentAndCourse(studentEmail, courseId),
+    queryKey: queryKeys.courses.enrollment.bylearnerAndCourse(learnerEmail, courseId),
     queryFn: async () => {
-      if (!studentEmail || !courseId) return null;
-      const result = await enrollmentService.getEnrollment(studentEmail, courseId);
+      if (!learnerEmail || !courseId) return null;
+      const result = await enrollmentService.getEnrollment(learnerEmail, courseId);
       return result.success ? result.data : null;
     },
-    enabled: !!studentEmail && !!courseId,
+    enabled: !!learnerEmail && !!courseId,
     staleTime: 30 * 1000, // 30 seconds
   });
 
   // Mutation for enrolling in a course
   const enrollMutation = useMutation({
     mutationFn: async ({ email, course }: { email: string; course: string }) => {
-      const result = await enrollmentService.enrollStudent(email, course);
+      const result = await enrollmentService.enrollLearner(email, course);
       if (!result.success) {
         throw new Error(result.error || 'Failed to enroll');
       }
@@ -85,17 +85,17 @@ export const useCourseEnrollment = (studentEmail: string | null, courseId: strin
 };
 
 /**
- * Hook for fetching all enrollments for a student
+ * Hook for fetching all enrollments for a learner
  */
-export const useStudentEnrollments = (studentEmail: string | null) => {
+export const useLearnerEnrollments = (learnerEmail: string | null) => {
   const query = useQuery({
-    queryKey: queryKeys.courses.enrollment.byStudent(studentEmail),
+    queryKey: queryKeys.courses.enrollment.byLearner(learnerEmail),
     queryFn: async () => {
-      if (!studentEmail) return [];
-      const result = await enrollmentService.getStudentEnrollments(studentEmail);
+      if (!learnerEmail) return [];
+      const result = await enrollmentService.getlearnerEnrollments(learnerEmail);
       return result.success ? result.data : [];
     },
-    enabled: !!studentEmail,
+    enabled: !!learnerEmail,
     staleTime: 30 * 1000, // 30 seconds
   });
 

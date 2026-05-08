@@ -1,5 +1,5 @@
 import { ProjectContract, ContractMilestone } from '@/shared/types/project';
-import { mockStudents } from './mockProposals';
+import { mocklearners } from './mockProposals';
 import { mockProjects } from './mockProjects';
 
 export const mockContracts: ProjectContract[] = [
@@ -7,9 +7,9 @@ export const mockContracts: ProjectContract[] = [
     id: 'contract-001',
     project_id: 'proj-002',
     proposal_id: 'prop-005',
-    student_id: 'std-005',
+    learner_id: 'std-005',
     recruiter_id: 'rec-001',
-    student: mockStudents[4],
+    learner: mocklearners[4],
     project: mockProjects[1],
     agreed_budget: 95000,
     agreed_timeline: '10 weeks',
@@ -70,9 +70,9 @@ export const mockContracts: ProjectContract[] = [
     id: 'contract-002',
     project_id: 'proj-004',
     proposal_id: 'prop-006',
-    student_id: 'std-003',
+    learner_id: 'std-003',
     recruiter_id: 'rec-001',
-    student: mockStudents[2],
+    learner: mocklearners[2],
     project: mockProjects[3],
     agreed_budget: 38000,
     agreed_timeline: '4 weeks',

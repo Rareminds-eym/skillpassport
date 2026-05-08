@@ -456,7 +456,7 @@ class PipelineIntelligenceService {
       const recommendation = this.generateRecommendation(c, daysInCurrentStage);
 
       return {
-        candidate_id: c.student_id,
+        candidate_id: c.learner_id,
         candidate_name: c.candidate_name,
         current_stage: c.stage,
         previous_stage: c.previous_stage,

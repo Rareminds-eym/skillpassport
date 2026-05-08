@@ -1,5 +1,5 @@
 import { supabase } from '@/shared/api/supabaseClient';
-import { CandidateSummary } from '@/features/student-profile/model';
+import { CandidateSummary } from '@/features/learner-profile/model';
 import { ParsedRecruiterQuery } from './queryParser';
 
 /**
@@ -7,7 +7,7 @@ import { ParsedRecruiterQuery } from './queryParser';
  * 
  * Uses PostgreSQL pgvector extension for semantic similarity search
  * Leverages embeddings stored in:
- * - students.embedding (candidate profiles)
+ * - learners.embedding (candidate profiles)
  * - opportunities.embedding (job descriptions)
  * 
  * This enables finding candidates based on semantic understanding,
@@ -114,7 +114,7 @@ class SemanticSearchService {
 
       // Build SQL query with filters
       let query = supabase
-        .from('students')
+        .from('learners')
         .select('user_id, name, email, university, branch_field, city, state, currentCgpa, expectedGraduationDate, resumeUrl, embedding')
         .not('name', 'is', null);
 
@@ -133,43 +133,43 @@ class SemanticSearchService {
 
       // Execute base query
 
-      // FIRST: Try to get students who have skills (prioritize them)
-      const { data: studentsWithSkills } = await supabase
-        .from('students')
+      // FIRST: Try to get learners who have skills (prioritize them)
+      const { data: learnersWithSkills } = await supabase
+        .from('learners')
         .select('user_id')
         .not('name', 'is', null);
       
-      const studentIdsWithSkills = studentsWithSkills?.map(s => s.user_id) || [];
+      const learnerIdsWithSkills = learnersWithSkills?.map(s => s.user_id) || [];
       
-      // Get unique student IDs that have skills
+      // Get unique learner IDs that have skills
       const { data: skillsData } = await supabase
         .from('skills')
-        .select('student_id')
+        .select('learner_id')
         .eq('enabled', true);
       
-      const uniqueStudentIdsWithSkills = [...new Set(skillsData?.map(s => s.student_id) || [])];
+      const uniqueLearnerIdsWithSkills = [...new Set(skillsData?.map(s => s.learner_id) || [])];
 
-      // If we have students with skills, prioritize them
+      // If we have learners with skills, prioritize them
       let priorityQuery = query;
-      if (uniqueStudentIdsWithSkills.length > 0) {
-        // Fetch students who have skills first
-        priorityQuery = query.in('user_id', uniqueStudentIdsWithSkills);
+      if (uniqueLearnerIdsWithSkills.length > 0) {
+        // Fetch learners who have skills first
+        priorityQuery = query.in('user_id', uniqueLearnerIdsWithSkills);
       }
       
-      const { data: initialStudents, error: baseError } = await priorityQuery.limit(limit * 3);
-      let baseStudents = initialStudents;
+      const { data: initiallearners, error: baseError } = await priorityQuery.limit(limit * 3);
+      let baselearners = initiallearners;
 
       if (baseError) {
         return [];
       }
 
-      if (!baseStudents || baseStudents.length === 0) {
+      if (!baselearners || baselearners.length === 0) {
         return [];
       }
 
       // Now filter by skills and enrich
       const candidates = await this.filterBySkillsAndEnrich(
-        baseStudents,
+        baselearners,
         parsedQuery.required_skills,
         parsedQuery.preferred_skills
       );
@@ -214,82 +214,82 @@ class SemanticSearchService {
   }
 
   /**
-   * Filter students by skills and enrich with full data
+   * Filter learners by skills and enrich with full data
    */
   private async filterBySkillsAndEnrich(
-    students: any[],
+    learners: any[],
     requiredSkills: string[],
     preferredSkills: string[]
   ): Promise<CandidateSummary[]> {
-    const studentIds = students.map(s => s.user_id);
+    const learnerIds = learners.map(s => s.user_id);
 
-    if (studentIds.length === 0) return [];
+    if (learnerIds.length === 0) return [];
 
-    // Fetch all skills for these students
+    // Fetch all skills for these learners
     const { data: allSkills, error: skillsError } = await supabase
       .from('skills')
-      .select('student_id, name, level, type')
-      .in('student_id', studentIds)
+      .select('learner_id, name, level, type')
+      .in('learner_id', learnerIds)
       .eq('enabled', true);
 
-    // Group skills by student
-    const skillsByStudent = new Map<string, any[]>();
+    // Group skills by learner
+    const skillsByLearner = new Map<string, any[]>();
     allSkills?.forEach(skill => {
-      const existing = skillsByStudent.get(skill.student_id) || [];
-      skillsByStudent.set(skill.student_id, [...existing, skill]);
+      const existing = skillsByLearner.get(skill.learner_id) || [];
+      skillsByLearner.set(skill.learner_id, [...existing, skill]);
     });
 
-    // Filter students who have required skills (if specified)
-    let matchingStudents = students;
+    // Filter learners who have required skills (if specified)
+    let matchinglearners = learners;
     
     if (requiredSkills.length > 0) {
-      const studentsWithMatchingSkills = students.filter(student => {
-        const studentSkills = skillsByStudent.get(student.user_id) || [];
-        const studentSkillNames = studentSkills.map(s => s.name.toLowerCase());
+      const learnersWithMatchingSkills = learners.filter(learner => {
+        const learnerSkills = skillsByLearner.get(learner.user_id) || [];
+        const learnerSkillNames = learnerSkills.map(s => s.name.toLowerCase());
         
         // Must have at least one required skill
         return requiredSkills.some(reqSkill => 
-          studentSkillNames.some(ss => 
+          learnerSkillNames.some(ss => 
             ss.includes(reqSkill.toLowerCase()) || reqSkill.toLowerCase().includes(ss)
           )
         );
       });
       
-      if (studentsWithMatchingSkills.length > 0) {
-        matchingStudents = studentsWithMatchingSkills;
+      if (learnersWithMatchingSkills.length > 0) {
+        matchinglearners = learnersWithMatchingSkills;
       } else {
         // HONEST APPROACH: Return empty when skills don't exist
-        matchingStudents = []; // Return empty, not all students
+        matchinglearners = []; // Return empty, not all learners
       }
     }
 
     // Enrich with full candidate data
     return await Promise.all(
-      matchingStudents.map(async (student) => {
-        const skills = skillsByStudent.get(student.user_id) || [];
+      matchinglearners.map(async (learner) => {
+        const skills = skillsByLearner.get(learner.user_id) || [];
 
         // Get training count
         const { count: trainingCount } = await supabase
           .from('trainings')
           .select('id', { count: 'exact', head: true })
-          .eq('student_id', student.user_id);
+          .eq('learner_id', learner.user_id);
 
         // Get certificate count
         const { count: certCount } = await supabase
           .from('certificates')
           .select('id', { count: 'exact', head: true })
-          .eq('student_id', student.user_id)
+          .eq('learner_id', learner.user_id)
           .eq('enabled', true);
 
         // Calculate profile score
         const profileScore = this.calculateProfileScore({
-          hasName: !!student.name,
+          hasName: !!learner.name,
           skillCount: skills.length,
           trainingCount: trainingCount || 0,
           certCount: certCount || 0,
-          hasCGPA: !!student.currentCgpa,
-          hasResume: !!student.resumeUrl,
-          hasLocation: !!(student.city || student.state)
+          hasCGPA: !!learner.currentCgpa,
+          hasResume: !!learner.resumeUrl,
+          hasLocation: !!(learner.city || learner.state)
         });
 
         // Calculate skill match score
@@ -300,19 +300,19 @@ class SemanticSearchService {
         );
 
         return {
-          id: student.user_id,
-          name: student.name || 'Candidate',
-          email: student.email,
-          institution: student.university,
-          graduation_year: student.expectedGraduationDate?.split('-')[0],
-          cgpa: student.currentCgpa?.toString(),
+          id: learner.user_id,
+          name: learner.name || 'Candidate',
+          email: learner.email,
+          institution: learner.university,
+          graduation_year: learner.expectedGraduationDate?.split('-')[0],
+          cgpa: learner.currentCgpa?.toString(),
           skills: skills.map(s => s.name),
           projects_count: 0,
           training_count: trainingCount || 0,
           experience_count: certCount || 0,
-          career_interests: [student.branch_field].filter(Boolean),
-          location: [student.city, student.state].filter(Boolean).join(', '),
-          last_active: student.updated_at,
+          career_interests: [learner.branch_field].filter(Boolean),
+          location: [learner.city, learner.state].filter(Boolean).join(', '),
+          last_active: learner.updated_at,
           profile_completeness: profileScore,
           // Add match score for ranking
           __match_score: skillMatchScore + (profileScore * 0.3)
@@ -406,47 +406,47 @@ class SemanticSearchService {
   private async enrichCandidates(matches: any[]): Promise<CandidateSummary[]> {
     if (!matches || matches.length === 0) return [];
 
-    const studentIds = matches.map(m => m.user_id || m.id);
+    const learnerIds = matches.map(m => m.user_id || m.id);
     
-    const { data: students } = await supabase
-      .from('students')
+    const { data: learners } = await supabase
+      .from('learners')
       .select('user_id, name, email, university, branch_field, city, state, currentCgpa, expectedGraduationDate, resumeUrl')
-      .in('user_id', studentIds);
+      .in('user_id', learnerIds);
 
-    if (!students) return [];
+    if (!learners) return [];
 
     return Promise.all(
-      students.map(async (student) => {
+      learners.map(async (learner) => {
         const { data: skills } = await supabase
           .from('skills')
           .select('name')
-          .eq('student_id', student.user_id)
+          .eq('learner_id', learner.user_id)
           .eq('enabled', true);
 
         const { count: trainingCount } = await supabase
           .from('trainings')
           .select('id', { count: 'exact', head: true })
-          .eq('student_id', student.user_id);
+          .eq('learner_id', learner.user_id);
 
         const { count: certCount } = await supabase
           .from('certificates')
           .select('id', { count: 'exact', head: true })
-          .eq('student_id', student.user_id)
+          .eq('learner_id', learner.user_id)
           .eq('enabled', true);
 
         return {
-          id: student.user_id,
-          name: student.name || 'Candidate',
-          email: student.email,
-          institution: student.university,
-          graduation_year: student.expectedGraduationDate?.split('-')[0],
-          cgpa: student.currentCgpa?.toString(),
+          id: learner.user_id,
+          name: learner.name || 'Candidate',
+          email: learner.email,
+          institution: learner.university,
+          graduation_year: learner.expectedGraduationDate?.split('-')[0],
+          cgpa: learner.currentCgpa?.toString(),
           skills: skills?.map(s => s.name) || [],
           projects_count: 0,
           training_count: trainingCount || 0,
           experience_count: certCount || 0,
-          career_interests: [student.branch_field].filter(Boolean),
-          location: [student.city, student.state].filter(Boolean).join(', '),
+          career_interests: [learner.branch_field].filter(Boolean),
+          location: [learner.city, learner.state].filter(Boolean).join(', '),
           profile_completeness: 75
         };
       })

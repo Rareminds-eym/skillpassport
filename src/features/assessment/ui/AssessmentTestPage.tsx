@@ -31,7 +31,7 @@ import { normalizeStreamId } from '../api/careerAssessmentAIService';
 
 // Hooks
 import { useAssessmentFlow } from '../model/useCareerTestFlow';
-import { useStudentGrade } from '../model/useStudentGrade';
+import { useLearnerGrade } from '../model/useLearnerGrade';
 import { useAIQuestions } from '../model/useAIQuestions';
 import { useAssessmentSubmission } from '../model/useAssessmentSubmission';
 import { useAntiCheating, useAntiCheatingMonitor } from '@/shared/lib/hooks';
@@ -177,7 +177,7 @@ const shouldShowErrorScreen = (errorMessage: string): boolean => {
  */
 const buildSectionsWithQuestions = (
   gradeLevel: GradeLevel,
-  _studentStream: string | null,
+  _learnerStream: string | null,
   aiQuestions: any,
   _selectedCategory: string | null
 ) => {
@@ -272,16 +272,16 @@ const AssessmentTestPage: React.FC = () => {
     window.location.hostname === '127.0.0.1' || "dev.skillpassport.pages.dev"
   window.location.hostname === 'skilldevelopment.rareminds.in';
 
-  // Student grade info
+  // Learner grade info
   const {
-    studentId,
-    studentGrade,
-    isCollegeStudent,
-    studentProgram,
+    learnerId,
+    learnerGrade,
+    isCollegeLearner,
+    learnerProgram,
     monthsInGrade,
     profileData,
-    loading: loadingStudentGrade
-  } = useStudentGrade({ userId: user?.id, userEmail: user?.email });
+    loading: loadingLearnerGrade
+  } = useLearnerGrade({ userId: user?.id, userEmail: user?.email });
 
   // Database integration
   const {
@@ -291,7 +291,7 @@ const AssessmentTestPage: React.FC = () => {
     saveResponse: dbSaveResponse,
     updateProgress: dbUpdateProgress,
     checkInProgressAttempt,
-    studentRecordId
+    learnerRecordId
   } = useAssessment();
 
   // Local state
@@ -389,10 +389,10 @@ const AssessmentTestPage: React.FC = () => {
     error: questionsError
   } = useAIQuestions({
     gradeLevel: flow.gradeLevel,
-    studentStream: flow.studentStream,
-    studentId: studentId || null,
+    learnerStream: flow.learnerStream,
+    learnerId: learnerId || null,
     attemptId: currentAttempt?.id || null,
-    studentProgram: studentProgram || null
+    learnerProgram: learnerProgram || null
   });
 
   // Adaptive Aptitude Hook
@@ -437,10 +437,10 @@ const AssessmentTestPage: React.FC = () => {
   }, [flow]);
 
   const adaptiveAptitude = useAdaptiveAptitude({
-    studentId: user?.id || '',
+    learnerId: user?.id || '',
     gradeLevel: getAdaptiveGradeLevel(flow.gradeLevel || ('after12' as GradeLevel)),
     attemptId: currentAttempt?.id, // Pass attemptId to link session immediately
-    studentCourse: studentProgram || null, // Pass student's course for college students
+    learnerCourse: learnerProgram || null, // Pass learner's course for college learners
     onTestComplete: handleAdaptiveTestComplete,
     onError: handleAdaptiveTestError,
   });
@@ -499,7 +499,7 @@ const AssessmentTestPage: React.FC = () => {
   }, [sections]);
 
   // Check for existing in-progress attempt on mount
-  // OPTIMIZED: Start checking as soon as studentRecordId is available
+  // OPTIMIZED: Start checking as soon as learnerRecordId is available
   // FIXED: Only run ONCE on initial mount, not on every dependency change
   useEffect(() => {
     const checkExisting = async () => {
@@ -510,13 +510,13 @@ const AssessmentTestPage: React.FC = () => {
         return;
       }
 
-      // If still loading student record, wait
+      // If still loading learner record, wait
       if (dbLoading) {
         return;
       }
 
-      // If no student record found, proceed to grade selection
-      if (!studentRecordId) {
+      // If no learner record found, proceed to grade selection
+      if (!learnerRecordId) {
 
         initialCheckDoneRef.current = true;
         setCheckingExistingAttempt(false);
@@ -548,7 +548,7 @@ const AssessmentTestPage: React.FC = () => {
     };
 
     checkExisting();
-  }, [studentRecordId, dbLoading, checkInProgressAttempt, skipResumeCheck]);
+  }, [learnerRecordId, dbLoading, checkInProgressAttempt, skipResumeCheck]);
 
   // Build sections when grade level, stream, or AI questions change
   useEffect(() => {
@@ -557,9 +557,9 @@ const AssessmentTestPage: React.FC = () => {
     // For stream-based assessments (after12, college), wait for stream selection
     // For middle/highschool, build sections immediately
     // For after10, we use 'general' which is set automatically in handleGradeSelect
-    // For higher_secondary, students select their stream (Science/Commerce/Arts) before assessment
+    // For higher_secondary, learners select their stream (Science/Commerce/Arts) before assessment
     const needsStream = ['higher_secondary', 'after12', 'college'].includes(flow.gradeLevel);
-    const canBuild = flow.studentStream || !needsStream;
+    const canBuild = flow.learnerStream || !needsStream;
 
     // CRITICAL FIX: For grade levels that use AI knowledge questions (higher_secondary, after12, college),
     // wait for AI questions to load before building sections
@@ -576,13 +576,13 @@ const AssessmentTestPage: React.FC = () => {
     if (canBuild) {
       const builtSections = buildSectionsWithQuestions(
         flow.gradeLevel,
-        flow.studentStream,
+        flow.learnerStream,
         aiQuestions,
         flow.selectedCategory
       );
       setSections(builtSections);
     }
-  }, [flow.gradeLevel, flow.studentStream, aiQuestions, flow.selectedCategory, questionsLoading]);
+  }, [flow.gradeLevel, flow.learnerStream, aiQuestions, flow.selectedCategory, questionsLoading]);
 
   // FIX 2: Restore position after sections are built (handles race condition)
   useEffect(() => {
@@ -997,13 +997,13 @@ const AssessmentTestPage: React.FC = () => {
     // after10: Skip stream selection, use 'general' (AI will recommend best stream)
     // college and below: Skip category/stream selection
     if (level === 'after12' || level === 'higher_secondary') {
-      // Show category selection for after12 and higher_secondary students
+      // Show category selection for after12 and higher_secondary learners
       // They need to select Science/Commerce/Arts first, then specific stream
       flow.setCurrentScreen('category_selection');
     } else if (level === 'after10') {
-      // After 10th (11th grade) students skip stream selection - use 'general' stream
+      // After 10th (11th grade) learners skip stream selection - use 'general' stream
       // The AI analysis will recommend the best stream based on their assessment results
-      flow.setStudentStream('general');
+      flow.setlearnerStream('general');
       setAssessmentStarted(true);
 
       // DON'T create attempt here - wait until user clicks "Start Section"
@@ -1011,13 +1011,13 @@ const AssessmentTestPage: React.FC = () => {
 
       flow.setCurrentScreen('section_intro');
     } else if (level === 'college') {
-      // College students (UG/PG) skip category selection - use 'college' stream
+      // College learners (UG/PG) skip category selection - use 'college' stream
       // The 'college' stream exists in personal_assessment_streams table
       setAssessmentStarted(true);
 
-      // Always use 'college' stream for college students
+      // Always use 'college' stream for college learners
       // This is a general stream that works for all college programs
-      flow.setStudentStream('college');
+      flow.setlearnerStream('college');
 
       // DON'T create attempt here - wait until user clicks "Start Section"
       // This prevents orphan attempts when user just browses
@@ -1025,12 +1025,12 @@ const AssessmentTestPage: React.FC = () => {
       flow.setCurrentScreen('section_intro');
     } else if (level === 'middle') {
       // Middle school (6-8) - use 'middle_school' stream
-      flow.setStudentStream('middle_school');
+      flow.setlearnerStream('middle_school');
       setAssessmentStarted(true);
       flow.setCurrentScreen('section_intro');
     } else if (level === 'highschool') {
       // High school (9-10) - use 'high_school' stream
-      flow.setStudentStream('high_school');
+      flow.setlearnerStream('high_school');
       setAssessmentStarted(true);
       flow.setCurrentScreen('section_intro');
     } else {
@@ -1038,25 +1038,25 @@ const AssessmentTestPage: React.FC = () => {
       setAssessmentStarted(true);
       flow.setCurrentScreen('section_intro');
     }
-  }, [flow, studentRecordId, dbStartAssessment, studentProgram]);
+  }, [flow, learnerRecordId, dbStartAssessment, learnerProgram]);
 
   const handleCategorySelect = useCallback(async (category: string) => {
     flow.setSelectedCategory(category);
 
     // Show stream selection screen for the selected category
-    // This allows students to choose specific streams like PCMB, Commerce with Maths, Arts with Psychology, etc.
+    // This allows learners to choose specific streams like PCMB, Commerce with Maths, Arts with Psychology, etc.
     flow.setCurrentScreen('stream_selection');
   }, [flow]);
 
   const handleStreamSelect = useCallback(async (stream: string) => {
-    flow.setStudentStream(stream);
+    flow.setlearnerStream(stream);
     setAssessmentStarted(true);
 
     // DON'T create attempt here - wait until user clicks "Start Section"
     // This prevents orphan attempts when user just browses
 
     flow.setCurrentScreen('section_intro');
-  }, [flow, studentRecordId, dbStartAssessment]);
+  }, [flow, learnerRecordId, dbStartAssessment]);
 
   const handleResumeAssessment = useCallback(async () => {
     if (!pendingAttempt) return;
@@ -1093,7 +1093,7 @@ const AssessmentTestPage: React.FC = () => {
 
     // Restore state from pending attempt
     flow.setGradeLevel(pendingAttempt.grade_level as GradeLevel);
-    flow.setStudentStream(pendingAttempt.stream_id);
+    flow.setlearnerStream(pendingAttempt.stream_id);
 
 
 
@@ -1343,8 +1343,8 @@ const AssessmentTestPage: React.FC = () => {
       currentSectionIndex: flow.currentSectionIndex,
       sectionId: currentSection?.id,
       hasCurrentAttempt: !!currentAttempt,
-      hasStudentRecordId: !!studentRecordId,
-      studentRecordId,
+      haslearnerRecordId: !!learnerRecordId,
+      learnerRecordId,
       useDatabase
     });
 
@@ -1358,18 +1358,18 @@ const AssessmentTestPage: React.FC = () => {
     // Create database attempt if not already created (regardless of section index)
     // FIX: This ensures attemptId is available for all sections, not just section 0
     // CRITICAL: Check if currentAttempt has an ID, not just if it exists
-    if (!currentAttempt?.id && studentRecordId) {
+    if (!currentAttempt?.id && learnerRecordId) {
       try {
         console.log('💾 [handleStartSection] Setting useDatabase to true');
         setUseDatabase(true);
 
         // Determine the appropriate stream ID based on grade level
         // Use the stream that was set during grade selection
-        let streamId = flow.studentStream;
+        let streamId = flow.learnerStream;
 
-        // Fallback: If no stream selected, use 'college' for college students
-        // Note: College students have gradeLevel='after12' but isCollegeStudent=true
-        if (!streamId && isCollegeStudent) {
+        // Fallback: If no stream selected, use 'college' for college learners
+        // Note: College learners have gradeLevel='after12' but isCollegeLearner=true
+        if (!streamId && isCollegeLearner) {
           streamId = 'college';
         }
         // For after12, after10, middle, highschool: streamId should already be set
@@ -1377,7 +1377,7 @@ const AssessmentTestPage: React.FC = () => {
         console.log('🎯 [AssessmentTestPage] Creating attempt:', {
           streamId,
           gradeLevel: flow.gradeLevel,
-          studentRecordId,
+          learnerRecordId,
           currentSectionIndex: flow.currentSectionIndex,
           note: streamId === 'college' ? 'Using college stream (program-based)' :
             streamId ? 'Using selected stream' :
@@ -1391,10 +1391,10 @@ const AssessmentTestPage: React.FC = () => {
       }
     } else {
       console.log('⏭️ [handleStartSection] Skipping attempt creation:', {
-        reason: !studentRecordId ? 'No studentRecordId' : 'Already have currentAttempt with ID',
+        reason: !learnerRecordId ? 'No learnerRecordId' : 'Already have currentAttempt with ID',
         hasCurrentAttempt: !!currentAttempt,
         hasAttemptId: !!currentAttempt?.id,
-        studentRecordId: !!studentRecordId
+        learnerRecordId: !!learnerRecordId
       });
     }
 
@@ -1419,7 +1419,7 @@ const AssessmentTestPage: React.FC = () => {
     // Initialize adaptive test
     if (currentSection?.isAdaptive && !adaptiveAptitude.session) {
       console.log('🚀 [ADAPTIVE] Starting adaptive test...');
-      console.log('🚀 [ADAPTIVE] Student ID:', user?.id);
+      console.log('🚀 [ADAPTIVE] Learner ID:', user?.id);
       console.log('🚀 [ADAPTIVE] Current attempt ID:', currentAttempt?.id);
 
       // Initialize adaptive timer based on section config
@@ -1460,7 +1460,7 @@ const AssessmentTestPage: React.FC = () => {
     }
 
     flow.startSection();
-  }, [sections, flow, adaptiveAptitude, currentAttempt, studentRecordId, dbStartAssessment, showResumePrompt]);
+  }, [sections, flow, adaptiveAptitude, currentAttempt, learnerRecordId, dbStartAssessment, showResumePrompt]);
 
   const handleNextQuestion = useCallback(async () => {
     const currentSection = sections[flow.currentSectionIndex];
@@ -1706,7 +1706,7 @@ const AssessmentTestPage: React.FC = () => {
       submission.submit({
         answers: answersToSubmit,
         sections,
-        studentStream: flow.studentStream,
+        learnerStream: flow.learnerStream,
         gradeLevel: flow.gradeLevel,
         sectionTimings: timingsToSubmit,
         currentAttempt,
@@ -1714,7 +1714,7 @@ const AssessmentTestPage: React.FC = () => {
         timeRemaining: flow.timeRemaining,
         elapsedTime: flow.elapsedTime,
         selectedCategory: flow.selectedCategory,
-        studentProgram: studentProgram || null,
+        learnerProgram: learnerProgram || null,
         antiCheatingReport: antiCheatingMonitor.getReport()
       });
     } else {
@@ -2034,8 +2034,8 @@ const AssessmentTestPage: React.FC = () => {
       questionsLoading,
       assessmentStarted,
       dbLoading,
-      loadingStudentGrade,
-      studentRecordId,
+      loadinglearnerGrade,
+      learnerRecordId,
       currentScreen: flow.currentScreen,
       waitingForAIQuestions
     });
@@ -2053,8 +2053,8 @@ const AssessmentTestPage: React.FC = () => {
     return (
       <RestrictionScreen
         errorMessage={questionsError}
-        onViewLastReport={() => navigate('/student/assessment/result')}
-        onBackToDashboard={() => navigate('/student/dashboard')}
+        onViewLastReport={() => navigate('/learner/assessment/result')}
+        onBackToDashboard={() => navigate('/learner/dashboard')}
       />
     );
   }
@@ -2078,7 +2078,7 @@ const AssessmentTestPage: React.FC = () => {
             }
           }}
           onRefresh={() => window.location.reload()}
-          onBackToDashboard={() => navigate('/student/dashboard')}
+          onBackToDashboard={() => navigate('/learner/dashboard')}
           showContactSupport={errorType === 'server'}
         />
       );
@@ -2088,8 +2088,8 @@ const AssessmentTestPage: React.FC = () => {
     return (
       <RestrictionScreen
         errorMessage={flow.error}
-        onViewLastReport={() => navigate('/student/assessment/result')}
-        onBackToDashboard={() => navigate('/student/dashboard')}
+        onViewLastReport={() => navigate('/learner/assessment/result')}
+        onBackToDashboard={() => navigate('/learner/dashboard')}
       />
     );
   }
@@ -2108,19 +2108,19 @@ const AssessmentTestPage: React.FC = () => {
 
   // Grade Selection
   if (flow.currentScreen === 'grade_selection') {
-    const detectedGradeLevel = getGradeLevelFromGrade(studentGrade);
+    const detectedGradeLevel = getGradeLevelFromGrade(learnerGrade);
 
     return (
       <GradeSelectionScreen
         onGradeSelect={handleGradeSelect}
-        studentGrade={studentGrade}
+        learnerGrade={learnerGrade}
         detectedGradeLevel={detectedGradeLevel}
         monthsInGrade={monthsInGrade}
-        isCollegeStudent={isCollegeStudent}
-        loadingStudentGrade={loadingStudentGrade}
+        isCollegeLearner={isCollegeLearner}
+        loadinglearnerGrade={loadinglearnerGrade}
         shouldShowAllOptions={shouldShowAllOptions}
         shouldFilterByGrade={shouldFilterByGrade}
-        studentProgram={studentProgram}
+        learnerProgram={learnerProgram}
         profileData={profileData}
       />
     );
@@ -2145,7 +2145,7 @@ const AssessmentTestPage: React.FC = () => {
         onBack={() => flow.setCurrentScreen('category_selection')}
         selectedCategory={flow.selectedCategory}
         gradeLevel={flow.gradeLevel}
-        studentProgram={studentProgram}
+        learnerProgram={learnerProgram}
       />
     );
   }
@@ -2242,12 +2242,12 @@ const AssessmentTestPage: React.FC = () => {
               }
 
               // Enable database mode and create attempt if not already created
-              if (!currentAttempt && studentRecordId) {
+              if (!currentAttempt && learnerRecordId) {
                 setUseDatabase(true);
 
                 try {
-                  // Only use 'college' stream for actual college students
-                  const streamId = flow.studentStream ||
+                  // Only use 'college' stream for actual college learners
+                  const streamId = flow.learnerStream ||
                     (flow.gradeLevel === 'college' ? 'college' : null);
 
                   await dbStartAssessment(streamId, flow.gradeLevel || 'after12');
@@ -2291,7 +2291,7 @@ const AssessmentTestPage: React.FC = () => {
             }}
             onExitTestMode={() => setTestMode(false)}
             gradeLevel={flow.gradeLevel || undefined}
-            studentStream={flow.studentStream || undefined}
+            learnerStream={flow.learnerStream || undefined}
             currentSectionIndex={flow.currentSectionIndex}
             totalSections={sections.length}
             aiQuestionsLoading={questionsLoading}

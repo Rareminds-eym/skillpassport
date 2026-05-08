@@ -51,28 +51,28 @@ const question = (query) => new Promise((resolve) => rl.question(query, resolve)
 async function findUser(email) {
   console.log(`\n🔍 Looking up user: ${email}...`);
   
-  // Only query students table (auth.users is not accessible via regular queries)
-  const { data: student, error: studentError } = await supabase
-    .from('students')
+  // Only query learners table (auth.users is not accessible via regular queries)
+  const { data: learner, error: learnerError } = await supabase
+    .from('learners')
     .select('id, user_id, name, email, grade')
     .eq('email', email)
     .single();
   
-  if (studentError && studentError.code !== 'PGRST116') {
-    console.error('❌ Error querying students:', studentError.message);
+  if (learnerError && learnerError.code !== 'PGRST116') {
+    console.error('❌ Error querying learners:', learnerError.message);
     return null;
   }
   
-  if (!student) {
+  if (!learner) {
     return null;
   }
   
   return {
-    userId: student.user_id || student.id,
-    email: student.email,
-    name: student.name,
-    grade: student.grade,
-    studentId: student.id
+    userId: learner.user_id || learner.id,
+    email: learner.email,
+    name: learner.name,
+    grade: learner.grade,
+    learnerId: learner.id
   };
 }
 
@@ -94,21 +94,21 @@ async function countRecords(userId) {
   const { count: attemptsCount } = await supabase
     .from('personal_assessment_attempts')
     .select('*', { count: 'exact', head: true })
-    .eq('student_id', userId);
+    .eq('learner_id', userId);
   counts.attempts = attemptsCount || 0;
   
   // Count results
   const { count: resultsCount } = await supabase
     .from('personal_assessment_results')
     .select('*', { count: 'exact', head: true })
-    .eq('student_id', userId);
+    .eq('learner_id', userId);
   counts.results = resultsCount || 0;
   
   // Get attempt IDs for counting related records
   const { data: attempts } = await supabase
     .from('personal_assessment_attempts')
     .select('id')
-    .eq('student_id', userId);
+    .eq('learner_id', userId);
   
   const attemptIds = attempts?.map(a => a.id) || [];
   
@@ -132,14 +132,14 @@ async function countRecords(userId) {
   const { count: adaptiveSessionsCount } = await supabase
     .from('adaptive_aptitude_sessions')
     .select('*', { count: 'exact', head: true })
-    .eq('student_id', userId);
+    .eq('learner_id', userId);
   counts.adaptiveSessions = adaptiveSessionsCount || 0;
   
   // Get session IDs for counting adaptive responses
   const { data: sessions } = await supabase
     .from('adaptive_aptitude_sessions')
     .select('id')
-    .eq('student_id', userId);
+    .eq('learner_id', userId);
   
   const sessionIds = sessions?.map(s => s.id) || [];
   
@@ -161,7 +161,7 @@ async function getAttemptDetails(userId) {
   const { data: attempts } = await supabase
     .from('personal_assessment_attempts')
     .select('id, grade_level, stream_id, status, started_at, completed_at')
-    .eq('student_id', userId)
+    .eq('learner_id', userId)
     .order('started_at', { ascending: false });
   
   return attempts || [];
@@ -179,7 +179,7 @@ async function deleteRecords(userId) {
     const { error: resultsError } = await supabase
       .from('personal_assessment_results')
       .delete()
-      .eq('student_id', userId);
+      .eq('learner_id', userId);
     
     if (resultsError) throw resultsError;
     console.log('   ✅ Assessment results deleted');
@@ -188,7 +188,7 @@ async function deleteRecords(userId) {
     const { data: attempts } = await supabase
       .from('personal_assessment_attempts')
       .select('id')
-      .eq('student_id', userId);
+      .eq('learner_id', userId);
     
     const attemptIds = attempts?.map(a => a.id) || [];
     
@@ -218,7 +218,7 @@ async function deleteRecords(userId) {
     const { data: sessions } = await supabase
       .from('adaptive_aptitude_sessions')
       .select('id')
-      .eq('student_id', userId);
+      .eq('learner_id', userId);
     
     const sessionIds = sessions?.map(s => s.id) || [];
     
@@ -239,7 +239,7 @@ async function deleteRecords(userId) {
     const { error: adaptiveSessionsError } = await supabase
       .from('adaptive_aptitude_sessions')
       .delete()
-      .eq('student_id', userId);
+      .eq('learner_id', userId);
     
     if (adaptiveSessionsError) throw adaptiveSessionsError;
     console.log('   ✅ Adaptive sessions deleted');
@@ -249,7 +249,7 @@ async function deleteRecords(userId) {
     const { error: attemptsError } = await supabase
       .from('personal_assessment_attempts')
       .delete()
-      .eq('student_id', userId);
+      .eq('learner_id', userId);
     
     if (attemptsError) throw attemptsError;
     console.log('   ✅ Assessment attempts deleted');

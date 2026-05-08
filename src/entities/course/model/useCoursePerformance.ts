@@ -43,8 +43,8 @@ export const useCoursePerformance = ({
         // Invalidate when candidates are added or updated
         queryClient.invalidateQueries({ queryKey: ['course-performance'] });
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
-        // Invalidate when student profiles (courses) are updated
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'learners' }, () => {
+        // Invalidate when learner profiles (courses) are updated
         queryClient.invalidateQueries({ queryKey: ['course-performance'] });
       });
 

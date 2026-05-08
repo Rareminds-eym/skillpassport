@@ -8,7 +8,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createMockSupabaseClient, createMockRequest, parseResponse } from '../utils/testHelpers';
-import { mockAuthSession, mockStudent } from '../utils/mockData';
+import { mockAuthSession, mockLearner } from '../utils/mockData';
 
 // Mock Supabase client
 vi.mock('@/shared/api/supabaseClient', () => ({

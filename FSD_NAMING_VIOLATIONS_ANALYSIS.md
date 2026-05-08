@@ -76,8 +76,8 @@ FSD requires the `ui` segment name, not `components`.
 | `src/features/college-admin/ui/finance/components/` | Redundant nesting | Flatten to `src/features/college-admin/ui/finance/` |
 | `src/features/school-admin/ui/components/` | Redundant nesting | Flatten to `src/features/school-admin/ui/` |
 | `src/features/school-admin/ui/finance/components/` | Redundant nesting | Flatten to `src/features/school-admin/ui/finance/` |
-| `src/features/student-profile/ui/StudentProfileDrawer/components/` | Redundant nesting | Flatten to `ui/StudentProfileDrawer/` |
-| `src/entities/student/ui/StudentProfileDrawer/components/` | Redundant nesting | Flatten to `ui/StudentProfileDrawer/` |
+| `src/features/learner-profile/ui/learnerProfileDrawer/components/` | Redundant nesting | Flatten to `ui/learnerProfileDrawer/` |
+| `src/entities/learner/ui/learnerProfileDrawer/components/` | Redundant nesting | Flatten to `ui/learnerProfileDrawer/` |
 | `src/app/providers/tour-wrapper/ui/components/` | Redundant nesting | Flatten to `ui/` |
 | `src/features/college-admin/ui/components/Timetable/components/` | Double nesting | Flatten structure |
 | `src/pages/admin/collegeAdmin/components/Timetable/components/` | Double nesting | Move to features layer |
@@ -96,9 +96,9 @@ FSD requires the `ui` segment name, not `components`.
 | `src/features/college-admin/ui/events/hooks/` | `src/features/college-admin/lib/hooks/` |
 | `src/features/college-admin/ui/finance/hooks/` | `src/features/college-admin/lib/hooks/` |
 | `src/features/school-admin/ui/finance/hooks/` | `src/features/school-admin/lib/hooks/` |
-| `src/features/student-profile/ui/hooks/` | `src/features/student-profile/lib/hooks/` |
-| `src/features/student-profile/ui/StudentProfileDrawer/hooks/` | `src/features/student-profile/lib/hooks/` |
-| `src/entities/student/ui/StudentProfileDrawer/hooks/` | `src/entities/student/lib/hooks/` |
+| `src/features/learner-profile/ui/hooks/` | `src/features/learner-profile/lib/hooks/` |
+| `src/features/learner-profile/ui/learnerProfileDrawer/hooks/` | `src/features/learner-profile/lib/hooks/` |
+| `src/entities/learner/ui/learnerProfileDrawer/hooks/` | `src/entities/learner/lib/hooks/` |
 
 **Correctly Placed** ✓:
 - `src/shared/lib/hooks/` - This is the correct FSD pattern
@@ -144,8 +144,8 @@ FSD requires the `ui` segment name, not `components`.
 
 | Current Path | Should Be |
 |-------------|-----------|
-| `src/entities/student/ui/StudentProfileDrawer/types/` | `src/entities/student/model/types/` |
-| `src/features/student-profile/ui/StudentProfileDrawer/types/` | `src/features/student-profile/model/types/` |
+| `src/entities/learner/ui/learnerProfileDrawer/types/` | `src/entities/learner/model/types/` |
+| `src/features/learner-profile/ui/learnerProfileDrawer/types/` | `src/features/learner-profile/model/types/` |
 
 **Acceptable Patterns**:
 - `src/shared/types/` - Acceptable, though `src/shared/model/types/` would be more explicit
@@ -179,7 +179,7 @@ Config directories are acceptable in multiple locations:
 - `src/app/config/` ✓
 - `src/shared/config/` ✓
 - `src/shared/lib/config/` ✓ (acceptable duplication for scoped configs)
-- `src/widgets/student-dashboard/config/` ✓
+- `src/widgets/learner-dashboard/config/` ✓
 - Feature-level configs in `lib/config/` ✓
 
 ---
@@ -252,7 +252,7 @@ TabButton.tsx
 - etc. (100+ files)
 
 **Recommendation**: 
-- If project standard is kebab-case, convert to: `add-department-modal.tsx`, `add-student-modal.tsx`, etc.
+- If project standard is kebab-case, convert to: `add-department-modal.tsx`, `add-learner-modal.tsx`, etc.
 - Document the chosen convention in project guidelines
 
 ---
@@ -298,7 +298,7 @@ TabButton.tsx
 ```
 src/features/college-admin/ui/components/Timetable/components/modals/
 src/pages/admin/collegeAdmin/components/Timetable/components/
-src/features/student-profile/ui/StudentProfileDrawer/components/
+src/features/learner-profile/ui/learnerProfileDrawer/components/
 ```
 
 **Recommendation**: Flatten to maximum 3-4 levels:
@@ -478,32 +478,32 @@ Tasks are divided between **Member A** and **Member B** to work in parallel whil
 
 ---
 
-#### Member B: Features (Part 2) & Entities - Student & Profile Features
+#### Member B: Features (Part 2) & Entities - learner & Profile Features
 
 **Tasks**:
-1. **Fix student-profile Feature**
-   - Flatten `src/features/student-profile/ui/StudentProfileDrawer/components/` → `src/features/student-profile/ui/student-profile-drawer/`
-   - Move `src/features/student-profile/ui/hooks/` → `src/features/student-profile/lib/hooks/`
-   - Move `src/features/student-profile/ui/StudentProfileDrawer/hooks/` → `src/features/student-profile/lib/hooks/`
-   - Move `src/features/student-profile/ui/StudentProfileDrawer/types/` → `src/features/student-profile/model/types/`
+1. **Fix learner-profile Feature**
+   - Flatten `src/features/learner-profile/ui/learnerProfileDrawer/components/` → `src/features/learner-profile/ui/learner-profile-drawer/`
+   - Move `src/features/learner-profile/ui/hooks/` → `src/features/learner-profile/lib/hooks/`
+   - Move `src/features/learner-profile/ui/learnerProfileDrawer/hooks/` → `src/features/learner-profile/lib/hooks/`
+   - Move `src/features/learner-profile/ui/learnerProfileDrawer/types/` → `src/features/learner-profile/model/types/`
    - **Impact**: 4 directories, ~70 files affected
 
-2. **Fix student Entity**
-   - Flatten `src/entities/student/ui/StudentProfileDrawer/components/` → `src/entities/student/ui/student-profile-drawer/`
-   - Move `src/entities/student/ui/StudentProfileDrawer/hooks/` → `src/entities/student/lib/hooks/`
-   - Move `src/entities/student/ui/StudentProfileDrawer/types/` → `src/entities/student/model/types/`
+2. **Fix learner Entity**
+   - Flatten `src/entities/learner/ui/learnerProfileDrawer/components/` → `src/entities/learner/ui/learner-profile-drawer/`
+   - Move `src/entities/learner/ui/learnerProfileDrawer/hooks/` → `src/entities/learner/lib/hooks/`
+   - Move `src/entities/learner/ui/learnerProfileDrawer/types/` → `src/entities/learner/model/types/`
    - **Impact**: 3 directories, ~40 files affected
 
 3. **Update Cross-References**
-   - Update all imports between student-profile feature and student entity
+   - Update all imports between learner-profile feature and learner entity
    - Ensure no circular dependencies
    - **Impact**: ~50 import statements
 
 **Member B Subtotal**: ~110 files directly changed, ~150-200 imports updated
 
 **Deliverables**:
-- student-profile feature FSD-compliant
-- student entity FSD-compliant
+- learner-profile feature FSD-compliant
+- learner entity FSD-compliant
 - Cross-reference documentation
 
 **Dependencies**: None - works on independent features/entities
@@ -546,13 +546,13 @@ Tasks are divided between **Member A** and **Member B** to work in parallel whil
 
 **Tasks**:
 1. **Standardize File Naming in Features (N-Z)**
-   - Features: notifications, onboarding, opportunities, placement, promotional, recruiter, recruiter-copilot, recruiter-pipeline, school-admin, student-profile, subscription, university-admin, university-ai
+   - Features: notifications, onboarding, opportunities, placement, promotional, recruiter, recruiter-copilot, recruiter-pipeline, school-admin, learner-profile, subscription, university-admin, university-ai
    - Convert all PascalCase component files to kebab-case
    - Update all imports within these features
    - **Impact**: ~250-300 files to rename, ~400-500 import statements
 
 2. **Standardize Widget File Naming**
-   - All widgets: admin-dashboard, admin-navigation, educator-dashboard, exam-workflow, kpi-dashboard, message-modal, myclass, recruiter-dashboard, shared, student-dashboard, student-profile-drawer
+   - All widgets: admin-dashboard, admin-navigation, educator-dashboard, exam-workflow, kpi-dashboard, message-modal, myclass, recruiter-dashboard, shared, learner-dashboard, learner-profile-drawer
    - Convert PascalCase files to kebab-case
    - Update all imports
    - **Impact**: ~100-150 files to rename, ~200-300 import statements
@@ -649,7 +649,7 @@ main
 ├── phase1-member-a (shared & root fixes)
 ├── phase1-member-b (app & pages fixes)
 ├── phase2-member-a (admin features)
-├── phase2-member-b (student features)
+├── phase2-member-b (learner features)
 ├── phase3-member-a (features A-M)
 ├── phase3-member-b (features N-Z)
 └── phase4-integration (final merge)
@@ -711,7 +711,7 @@ main
 
 **Work Distribution**:
 - **Member A**: ~650-700 files (48% shared/admin features + A-M features)
-- **Member B**: ~450-500 files (52% app/pages/student features + N-Z features + widgets)
+- **Member B**: ~450-500 files (52% app/pages/learner features + N-Z features + widgets)
 
 ---
 
@@ -734,7 +734,7 @@ main
 
 - **Day 1-3**: Member A (college-admin, school-admin, career-assistant)
   - Member A: 215 files, ~300-400 imports
-- **Day 1-3**: Member B (student-profile, student entity) - parallel work
+- **Day 1-3**: Member B (learner-profile, learner entity) - parallel work
   - Member B: 110 files, ~150-200 imports
 - **Day 4-5**: Both members test their features independently
 - **Checkpoint**: Feature-level build verification

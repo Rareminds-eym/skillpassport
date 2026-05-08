@@ -2,7 +2,7 @@
 export type AssignmentStatus = 'active' | 'completed' | 'inactive' | 'pending';
 export type AssignmentType = 'homework' | 'project' | 'quiz' | 'exam' | 'lab' | 'other';
 export type AssignmentPriority = 'low' | 'medium' | 'high';
-export type StudentAssignmentStatus = 'todo' | 'in_progress' | 'submitted' | 'graded';
+export type LearnerAssignmentStatus = 'todo' | 'in_progress' | 'submitted' | 'graded';
 
 export interface Department {
     id: string;
@@ -26,8 +26,8 @@ export interface ProgramSection {
     semester: number;
     section: string;
     academic_year: string;
-    max_students: number;
-    current_students: number;
+    max_learners: number;
+    current_learners: number;
     faculty_id: string;
     status: string;
     program?: Program;
@@ -41,7 +41,7 @@ export interface Course {
     college_id: string;
 }
 
-export interface CollegeStudent {
+export interface CollegeLearner {
     id: string;
     user_id: string;
     name: string;
@@ -85,7 +85,7 @@ export interface CollegeAssignment {
     semester?: number;
     section?: string;
     academic_year?: string;
-    student_count?: number;
+    learner_count?: number;
 }
 
 export interface CreateAssignmentData {
@@ -107,9 +107,9 @@ export interface CreateAssignmentData {
     document_pdf?: string;
 }
 
-export interface CollegeStudentAssignment {
+export interface CollegeLearnerAssignment {
     assignment_id: string;
-    student_assignment_id: string;
+    learner_assignment_id: string;
     title: string;
     description: string;
     instructions: string;

@@ -13,7 +13,7 @@ import type {
   SectionTimings,
   AssessmentAttempt,
   AnswerValue,
-} from '@/features/student-profile/model';
+} from '@/features/learner-profile/model';
 
 // ============================================
 // Initial State
@@ -23,7 +23,7 @@ const initialState: AssessmentFlowState = {
   status: 'idle',
   gradeLevel: null,
   selectedCategory: null,
-  studentStream: null,
+  learnerStream: null,
   currentSectionIndex: 0,
   currentQuestionIndex: 0,
   answers: {},
@@ -98,7 +98,7 @@ function assessmentReducer(
     case 'SET_STREAM':
       return {
         ...state,
-        studentStream: action.payload,
+        learnerStream: action.payload,
         status: 'sectionIntro',
         currentSectionIndex: 0,
         currentQuestionIndex: 0,
@@ -178,7 +178,7 @@ function assessmentReducer(
         status: 'inProgress',
         pendingAttempt: null,
         gradeLevel: action.payload.attempt.grade_level,
-        studentStream: action.payload.attempt.stream_id,
+        learnerStream: action.payload.attempt.stream_id,
         currentSectionIndex: action.payload.attempt.current_section_index,
         currentQuestionIndex: action.payload.attempt.current_question_index,
         answers: action.payload.answers,

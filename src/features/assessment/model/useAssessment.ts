@@ -20,12 +20,12 @@ export const useAssessment = () => {
   const [currentAttempt, setCurrentAttempt] = useState(null);
   const [questions, setQuestions] = useState({});
   const [responses, setResponses] = useState({});
-  const [studentRecordId, setStudentRecordId] = useState(null);
+  const [learnerRecordId, setlearnerRecordId] = useState(null);
   
   // Track if initial load is complete
   const initialLoadComplete = useRef(false);
 
-  // OPTIMIZED: Load ALL initial data in parallel (sections, streams, student ID)
+  // OPTIMIZED: Load ALL initial data in parallel (sections, streams, learner ID)
   useEffect(() => {
     const loadAllInitialData = async () => {
       // Skip if no user or already loaded
@@ -40,14 +40,14 @@ export const useAssessment = () => {
         const startTime = performance.now();
         
         // Run ALL queries in parallel for maximum speed
-        const [sectionsData, streamsData, studentData] = await Promise.all([
+        const [sectionsData, streamsData, learnerData] = await Promise.all([
           // 1. Fetch sections
           assessmentService.fetchSections(),
           // 2. Fetch streams
           assessmentService.fetchStreams(),
-          // 3. Fetch student ID (optimized single query with OR condition)
+          // 3. Fetch learner ID (optimized single query with OR condition)
           supabase
-            .from('students')
+            .from('learners')
             .select('id')
             .or(`user_id.eq.${user.id},id.eq.${user.id}`)
             .maybeSingle()
@@ -60,11 +60,11 @@ export const useAssessment = () => {
         setSections(sectionsData || []);
         setStreams(streamsData || []);
         
-        if (studentData.data?.id) {
-          console.log('useAssessment: Found student record:', studentData.data.id);
-          setStudentRecordId(studentData.data.id);
+        if (learnerData.data?.id) {
+          console.log('useAssessment: Found learner record:', learnerData.data.id);
+          setlearnerRecordId(learnerData.data.id);
         } else {
-          console.log('useAssessment: No student record found for user:', user.id);
+          console.log('useAssessment: No learner record found for user:', user.id);
         }
         
         initialLoadComplete.current = true;
@@ -81,10 +81,10 @@ export const useAssessment = () => {
 
   // Check for in-progress attempt
   const checkInProgressAttempt = useCallback(async () => {
-    if (!studentRecordId) return null;
+    if (!learnerRecordId) return null;
     
     try {
-      const attempt = await assessmentService.getInProgressAttempt(studentRecordId);
+      const attempt = await assessmentService.getInProgressAttempt(learnerRecordId);
       if (attempt) {
         setCurrentAttempt(attempt);
         // Restore responses from the attempt
@@ -129,21 +129,21 @@ export const useAssessment = () => {
       console.error('Error checking in-progress attempt:', err);
       return null;
     }
-  }, [studentRecordId]);
+  }, [learnerRecordId]);
 
   // Start a new assessment
   const startAssessment = useCallback(async (streamId, gradeLevel) => {
-    console.log('useAssessment.startAssessment called with:', { streamId, gradeLevel, studentRecordId });
+    console.log('useAssessment.startAssessment called with:', { streamId, gradeLevel, learnerRecordId });
     
-    if (!studentRecordId) throw new Error('Student record not found');
+    if (!learnerRecordId) throw new Error('Learner record not found');
 
     try {
       setLoading(true);
       setError(null);
 
-      // Create new attempt using student record ID (not auth user ID)
-      console.log('Creating attempt with studentRecordId:', studentRecordId);
-      const attempt = await assessmentService.createAttempt(studentRecordId, streamId, gradeLevel);
+      // Create new attempt using learner record ID (not auth user ID)
+      console.log('Creating attempt with learnerRecordId:', learnerRecordId);
+      const attempt = await assessmentService.createAttempt(learnerRecordId, streamId, gradeLevel);
       console.log('Attempt created:', attempt);
       setCurrentAttempt(attempt);
 
@@ -160,7 +160,7 @@ export const useAssessment = () => {
     } finally {
       setLoading(false);
     }
-  }, [studentRecordId]);
+  }, [learnerRecordId]);
 
   // Resume an existing attempt
   const resumeAssessment = useCallback(async (attemptId) => {
@@ -292,15 +292,15 @@ export const useAssessment = () => {
 
   // Complete the assessment
   const completeAssessment = useCallback(async (geminiResults, sectionTimings) => {
-    if (!currentAttempt?.id || !studentRecordId) {
-      throw new Error('No active attempt or student record');
+    if (!currentAttempt?.id || !learnerRecordId) {
+      throw new Error('No active attempt or learner record');
     }
 
     try {
       setLoading(true);
       const results = await assessmentService.completeAttempt(
         currentAttempt.id,
-        studentRecordId,
+        learnerRecordId,
         currentAttempt.stream_id,
         currentAttempt.grade_level,
         geminiResults,
@@ -321,7 +321,7 @@ export const useAssessment = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentAttempt, studentRecordId]);
+  }, [currentAttempt, learnerRecordId]);
 
   // Abandon current attempt
   const abandonAssessment = useCallback(async () => {
@@ -339,27 +339,27 @@ export const useAssessment = () => {
 
   // Get assessment history
   const getHistory = useCallback(async () => {
-    if (!studentRecordId) return [];
+    if (!learnerRecordId) return [];
 
     try {
-      return await assessmentService.getStudentAttempts(studentRecordId);
+      return await assessmentService.getlearnerAttempts(learnerRecordId);
     } catch (err) {
       console.error('Error fetching history:', err);
       return [];
     }
-  }, [studentRecordId]);
+  }, [learnerRecordId]);
 
   // Get latest result
   const getLatestResult = useCallback(async () => {
-    if (!studentRecordId) return null;
+    if (!learnerRecordId) return null;
 
     try {
-      return await assessmentService.getLatestResult(studentRecordId);
+      return await assessmentService.getLatestResult(learnerRecordId);
     } catch (err) {
       console.error('Error fetching latest result:', err);
       return null;
     }
-  }, [studentRecordId]);
+  }, [learnerRecordId]);
 
   return {
     // State
@@ -370,7 +370,7 @@ export const useAssessment = () => {
     currentAttempt,
     questions,
     responses,
-    studentRecordId,
+    learnerRecordId,
     
     // Actions
     checkInProgressAttempt,

@@ -206,7 +206,7 @@ const TimelineSection = () => {
                         <p className="text-xs sm:text-sm font-bold text-red-600 uppercase tracking-wide mb-2">Today's Challenge</p>
                         <p className="text-base sm:text-lg font-semibold text-gray-800">
                           {isCorporate 
-                            ? 'Identifying job-ready students takes time'
+                            ? 'Identifying job-ready learners takes time'
                             : 'Resumes look the same'
                           }
                         </p>

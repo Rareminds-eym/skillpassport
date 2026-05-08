@@ -301,7 +301,7 @@ export const COMPREHENSIVE_SECTIONS: Omit<SectionConfig, 'icon'>[] = [
 
 /**
  * Section definitions for Higher Secondary (Grades 11-12)
- * Students have already chosen their stream (Science/Commerce/Arts)
+ * Learners have already chosen their stream (Science/Commerce/Arts)
  * Uses comprehensive assessment with stream-specific questions
  */
 export const HIGHER_SECONDARY_SECTIONS = COMPREHENSIVE_SECTIONS;

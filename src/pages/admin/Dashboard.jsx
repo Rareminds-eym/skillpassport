@@ -40,7 +40,7 @@ const AdminDashboard = () => {
           <div className="space-y-4">
             <div className="flex items-center space-x-3 pb-3 border-b border-gray-200">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <p className="text-gray-700">New student registered: John Doe</p>
+              <p className="text-gray-700">New learner registered: John Doe</p>
             </div>
             <div className="flex items-center space-x-3 pb-3 border-b border-gray-200">
               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>

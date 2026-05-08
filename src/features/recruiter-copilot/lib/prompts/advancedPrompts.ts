@@ -1,4 +1,4 @@
-import { RecruiterContext } from '@/features/student-profile/model';
+import { RecruiterContext } from '@/features/learner-profile/model';
 import { ParsedRecruiterQuery } from '@/shared/api/queryParser';
 
 /**

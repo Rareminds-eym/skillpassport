@@ -1,7 +1,7 @@
 /**
  * useAssessmentSubmission Hook
  * 
- * Handles assessment submission with proper student context for school and college students
+ * Handles assessment submission with proper learner context for school and college learners
  * 
  * @module features/assessment/career-test/hooks/useAssessmentSubmission
  */
@@ -29,7 +29,7 @@ import {
 // TYPES
 // ============================================================================
 
-interface StudentContext {
+interface LearnerContext {
   rawGrade: string;
   grade?: string | null;
   programName?: string;
@@ -37,7 +37,7 @@ interface StudentContext {
   degreeLevel?: string | null;
   selectedStream?: string | null;
   selectedCategory?: string | null;
-  studentType?: 'school' | 'college' | 'general';
+  learnerType?: 'school' | 'college' | 'general';
 }
 
 interface Section {
@@ -51,7 +51,7 @@ interface Section {
 interface SubmissionOptions {
   answers: Record<string, any>;
   sections: Section[];
-  studentStream: string | null;
+  learnerStream: string | null;
   gradeLevel: GradeLevel | null;
   sectionTimings: Record<string, number>;
   currentAttempt: any;
@@ -59,7 +59,7 @@ interface SubmissionOptions {
   timeRemaining: number | null;
   elapsedTime: number;
   selectedCategory?: string | null;
-  studentProgram?: string | null;
+  learnerProgram?: string | null;
 }
 
 interface UseAssessmentSubmissionResult {
@@ -73,48 +73,48 @@ interface UseAssessmentSubmissionResult {
 // ============================================================================
 
 /**
- * Get the student record ID from auth user ID
+ * Get the learner record ID from auth user ID
  */
-const getStudentRecordId = async (authUserId: string): Promise<string | null> => {
+const getlearnerRecordId = async (authUserId: string): Promise<string | null> => {
   try {
-    const { data: student, error } = await supabase
-      .from('students')
+    const { data: learner, error } = await supabase
+      .from('learners')
       .select('id')
       .eq('user_id', authUserId)
       .maybeSingle();
 
-    if (error || !student) {
+    if (error || !learner) {
       return null;
     }
 
-    return student.id;
+    return learner.id;
   } catch (err) {
-    console.error('Error looking up student record:', err);
+    console.error('Error looking up learner record:', err);
     return null;
   }
 };
 
 /**
- * Determine student type from all available sources
+ * Determine learner type from all available sources
  */
-const determineStudentType = (
+const determinelearnerType = (
   grade: string | null,
   programId: string | null,
   degreeLevel: string | null,
   schoolId: string | null,
   collegeId: string | null,
-  studentTypeField: string | null,
+  learnerTypeField: string | null,
   userMetadataRole: string | null
 ): 'school' | 'college' | 'general' => {
-  // Priority 1: College students have program_id, degree_level, or college_id
-  // Check this FIRST because student_type field might be incorrect
+  // Priority 1: College learners have program_id, degree_level, or college_id
+  // Check this FIRST because learner_type field might be incorrect
   if (programId || degreeLevel || collegeId) {
     return 'college';
   }
 
-  // Priority 2: Use student_type field if available
-  if (studentTypeField === 'school') return 'school';
-  if (studentTypeField === 'college') return 'college';
+  // Priority 2: Use learner_type field if available
+  if (learnerTypeField === 'school') return 'school';
+  if (learnerTypeField === 'college') return 'college';
 
   // Priority 3: Use user metadata role
   if (userMetadataRole) {
@@ -122,7 +122,7 @@ const determineStudentType = (
     if (userMetadataRole.includes('college')) return 'college';
   }
 
-  // Priority 4: School students have school_id
+  // Priority 4: School learners have school_id
   if (schoolId) {
     return 'school';
   }
@@ -239,10 +239,10 @@ const extractDegreeLevel = (
 const buildEnhancedGrade = (
   grade: string | null,
   programName: string | null,
-  studentStream: string | null,
+  learnerStream: string | null,
   gradeLevel: GradeLevel | null
 ): string => {
-  // For college students with program name
+  // For college learners with program name
   if (programName) {
     const programLower = programName.toLowerCase();
     
@@ -282,17 +282,17 @@ const buildEnhancedGrade = (
     return programName;
   }
 
-  // For school students with grade
+  // For school learners with grade
   if (grade) {
     // For higher_secondary (Grade 11/12), include stream
-    if (gradeLevel === 'higher_secondary' && studentStream) {
+    if (gradeLevel === 'higher_secondary' && learnerStream) {
       const streamMap: Record<string, string> = {
         science: 'Science',
         commerce: 'Commerce',
         arts: 'Arts',
         humanities: 'Humanities',
       };
-      const streamName = streamMap[studentStream.toLowerCase()] || studentStream;
+      const streamName = streamMap[learnerStream.toLowerCase()] || learnerStream;
       return `${grade} - ${streamName}`;
     }
 
@@ -333,7 +333,7 @@ const buildEnhancedGrade = (
       arts: 'Arts',
       humanities: 'Humanities',
     };
-    const streamName = studentStream ? streamMap[studentStream.toLowerCase()] || studentStream : 'General';
+    const streamName = learnerStream ? streamMap[learnerStream.toLowerCase()] || learnerStream : 'General';
     return `Grade 11/12 - ${streamName}`;
   }
 
@@ -342,16 +342,16 @@ const buildEnhancedGrade = (
   }
 
   // No fallback for highschool - grade must be present in database
-  return 'Student';
+  return 'Learner';
 };
 
 /**
  * Derive category from stream
  */
-const deriveCategory = (studentStream: string | null): string | null => {
-  if (!studentStream) return null;
+const deriveCategory = (learnerStream: string | null): string | null => {
+  if (!learnerStream) return null;
 
-  const streamLower = studentStream.toLowerCase();
+  const streamLower = learnerStream.toLowerCase();
 
   if (
     streamLower.includes('science') ||
@@ -374,26 +374,26 @@ const deriveCategory = (studentStream: string | null): string | null => {
 };
 
 /**
- * Build complete student context from database
+ * Build complete learner context from database
  */
-const buildStudentContext = async (
+const buildlearnerContext = async (
   userId: string,
-  studentStream: string | null,
+  learnerStream: string | null,
   gradeLevel: GradeLevel | null,
   selectedCategory: string | null,
-  studentProgram?: string | null
-): Promise<StudentContext> => {
+  learnerProgram?: string | null
+): Promise<LearnerContext> => {
   try {
-    // Fetch both student record and user metadata
-    const [studentResult, userResult] = await Promise.all([
+    // Fetch both learner record and user metadata
+    const [learnerResult, userResult] = await Promise.all([
       supabase
-        .from('students')
+        .from('learners')
         .select(`
           grade,
           branch_field,
           course_name,
           program_id,
-          student_type,
+          learner_type,
           school_id,
           college_id,
           programs (
@@ -407,120 +407,120 @@ const buildStudentContext = async (
       getCurrentUser()
     ]);
 
-    const { data: student, error: studentError } = studentResult;
+    const { data: learner, error: learnerError } = learnerResult;
     const userMetadata = userResult.data?.user?.user_metadata;
 
-    if (studentError || !student) {
-      console.warn('⚠️ Could not fetch student record:', studentError?.message);
-      return buildFallbackContext(studentStream, gradeLevel, selectedCategory, studentProgram);
+    if (learnerError || !learner) {
+      console.warn('⚠️ Could not fetch learner record:', learnerError?.message);
+      return buildFallbackContext(learnerStream, gradeLevel, selectedCategory, learnerProgram);
     }
 
     // Extract program information
     const programName =
-      (student.programs as any)?.name ||
-      (student.programs as any)?.code ||
-      student.course_name ||
-      student.branch_field ||
+      (learner.programs as any)?.name ||
+      (learner.programs as any)?.code ||
+      learner.course_name ||
+      learner.branch_field ||
       null;
 
-    const programCode = (student.programs as any)?.code || null;
-    const programDegreeLevel = (student.programs as any)?.degree_level || null;
+    const programCode = (learner.programs as any)?.code || null;
+    const programDegreeLevel = (learner.programs as any)?.degree_level || null;
 
     // Determine degree level
-    const degreeLevel = extractDegreeLevel(student.grade, programDegreeLevel, programName);
+    const degreeLevel = extractDegreeLevel(learner.grade, programDegreeLevel, programName);
 
-    // Determine student type using all available sources
-    const studentType = determineStudentType(
-      student.grade,
-      student.program_id,
+    // Determine learner type using all available sources
+    const learnerType = determinelearnerType(
+      learner.grade,
+      learner.program_id,
       degreeLevel,
-      (student as any).school_id,
-      (student as any).college_id,
-      (student as any).student_type,
+      (learner as any).school_id,
+      (learner as any).college_id,
+      (learner as any).learner_type,
       userMetadata?.role
     );
 
     // Build enhanced grade
-    const enhancedGrade = buildEnhancedGrade(student.grade, programName, studentStream, gradeLevel);
+    const enhancedGrade = buildEnhancedGrade(learner.grade, programName, learnerStream, gradeLevel);
 
     // Derive category
-    const category = selectedCategory || deriveCategory(studentStream);
+    const category = selectedCategory || deriveCategory(learnerStream);
 
-    const context: StudentContext = {
+    const context: LearnerContext = {
       rawGrade: enhancedGrade,
-      grade: student.grade,
+      grade: learner.grade,
       programName: programName || undefined,
       programCode: programCode,
       degreeLevel: degreeLevel,
-      selectedStream: studentStream,
+      selectedStream: learnerStream,
       selectedCategory: category,
-      studentType: studentType,
+      learnerType: learnerType,
     };
 
-    console.log('✅ [STUDENT-CONTEXT] Built from database:', JSON.stringify(context, null, 2));
+    console.log('✅ [LEARNER-CONTEXT] Built from database:', JSON.stringify(context, null, 2));
     return context;
   } catch (contextError) {
-    console.error('❌ Error building student context:', contextError);
-    return buildFallbackContext(studentStream, gradeLevel, selectedCategory, studentProgram);
+    console.error('❌ Error building learner context:', contextError);
+    return buildFallbackContext(learnerStream, gradeLevel, selectedCategory, learnerProgram);
   }
 };
 
 /**
- * Build fallback context when student record is not available
+ * Build fallback context when learner record is not available
  */
 const buildFallbackContext = (
-  studentStream: string | null,
+  learnerStream: string | null,
   gradeLevel: GradeLevel | null,
   selectedCategory: string | null,
-  studentProgram?: string | null
-): StudentContext => {
-  const category = selectedCategory || deriveCategory(studentStream);
-  const enhancedGrade = buildEnhancedGrade(null, studentProgram ?? null, studentStream, gradeLevel);
+  learnerProgram?: string | null
+): LearnerContext => {
+  const category = selectedCategory || deriveCategory(learnerStream);
+  const enhancedGrade = buildEnhancedGrade(null, learnerProgram ?? null, learnerStream, gradeLevel);
 
-  const context: StudentContext = {
+  const context: LearnerContext = {
     rawGrade: enhancedGrade,
-    selectedStream: studentStream,
+    selectedStream: learnerStream,
     selectedCategory: category,
-    studentType: 'general',
-    programName: studentProgram ?? undefined,
+    learnerType: 'general',
+    programName: learnerProgram ?? undefined,
   };
 
-  console.log('✅ [STUDENT-CONTEXT] Built fallback context:', JSON.stringify(context, null, 2));
+  console.log('✅ [LEARNER-CONTEXT] Built fallback context:', JSON.stringify(context, null, 2));
   return context;
 };
 
 /**
- * Store student context in assessment attempt
+ * Store learner context in assessment attempt
  */
-const storeStudentContext = async (attemptId: string, context: StudentContext): Promise<void> => {
+const storelearnerContext = async (attemptId: string, context: LearnerContext): Promise<void> => {
   try {
     // Check if context has meaningful data
     const hasMeaningfulData = context.rawGrade && context.rawGrade.trim() !== '';
 
     if (!hasMeaningfulData) {
-      console.warn('⚠️ [STUDENT-CONTEXT] Skipping update - no meaningful data');
+      console.warn('⚠️ [LEARNER-CONTEXT] Skipping update - no meaningful data');
       return;
     }
 
-    console.log('📝 [STUDENT-CONTEXT] Storing context:', {
+    console.log('📝 [LEARNER-CONTEXT] Storing context:', {
       attemptId,
       contextData: JSON.stringify(context, null, 2),
     });
 
     const { data, error } = await supabase
       .from('personal_assessment_attempts')
-      .update({ student_context: context })
+      .update({ learner_context: context })
       .eq('id', attemptId)
       .select();
 
     if (error) {
-      console.error('❌ [STUDENT-CONTEXT] Failed to store:', error);
+      console.error('❌ [LEARNER-CONTEXT] Failed to store:', error);
     } else {
-      console.log('✅ [STUDENT-CONTEXT] Successfully stored');
-      console.log('✅ [STUDENT-CONTEXT] Updated record:', data);
+      console.log('✅ [LEARNER-CONTEXT] Successfully stored');
+      console.log('✅ [LEARNER-CONTEXT] Updated record:', data);
     }
   } catch (err) {
-    console.error('❌ [STUDENT-CONTEXT] Exception:', err);
+    console.error('❌ [LEARNER-CONTEXT] Exception:', err);
   }
 };
 
@@ -570,7 +570,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
     async ({
       answers,
       sections,
-      studentStream,
+      learnerStream,
       gradeLevel,
       sectionTimings,
       currentAttempt,
@@ -578,7 +578,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
       timeRemaining,
       elapsedTime,
       selectedCategory,
-      studentProgram,
+      learnerProgram,
     }: SubmissionOptions) => {
       setIsSubmitting(true);
       setError(null);
@@ -593,15 +593,15 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         finalTimings[lastSection.id] = timeSpent;
       }
 
-      // ✅ CRITICAL FIX: Fetch student context for all students to get their actual grade
+      // ✅ CRITICAL FIX: Fetch learner context for all learners to get their actual grade
       // This ensures career recommendations are age-appropriate
-      let studentContext: any = {};
+      let learnerContext: any = {};
 
       if (userId) {
         try {
 
-          const { data: student, error: studentError } = await supabase
-            .from('students')
+          const { data: learner, error: learnerError } = await supabase
+            .from('learners')
             .select(`
               grade,
               branch_field,
@@ -616,7 +616,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
             .eq('user_id', userId)
             .maybeSingle();
 
-          if (!studentError && student) {
+          if (!learnerError && learner) {
             // Extract degree level from grade or program
             const extractDegreeLevel = (grade: string | null, programDegreeLevel: string | null): string | null => {
               if (programDegreeLevel) return programDegreeLevel;
@@ -642,84 +642,84 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
             };
 
             // Priority: program.name > program.code > course_name > branch_field
-            const programName = (student.programs as any)?.name ||
-              (student.programs as any)?.code ||
-              student.course_name ||
-              student.branch_field;
-            const programCode = (student.programs as any)?.code || null;
+            const programName = (learner.programs as any)?.name ||
+              (learner.programs as any)?.code ||
+              learner.course_name ||
+              learner.branch_field;
+            const programCode = (learner.programs as any)?.code || null;
             const degreeLevel = extractDegreeLevel(
-              student.grade,
-              (student.programs as any)?.degree_level
+              learner.grade,
+              (learner.programs as any)?.degree_level
             );
 
             // ✅ FIX: For higher_secondary, include the selected stream in rawGrade
-            // This ensures AI knows if student is in Arts/Science/Commerce
-            let enhancedGrade = student.grade;
-            let derivedCategory = selectedCategory || deriveCategory(studentStream);
+            // This ensures AI knows if learner is in Arts/Science/Commerce
+            let enhancedGrade = learner.grade;
+            let derivedCategory = selectedCategory || deriveCategory(learnerStream);
             
-            if (gradeLevel === 'higher_secondary' && studentStream) {
+            if (gradeLevel === 'higher_secondary' && learnerStream) {
               // Map stream ID to readable name
               const streamMap: Record<string, string> = {
                 'science': 'Science',
                 'commerce': 'Commerce',
                 'arts': 'Arts'
               };
-              const streamName = streamMap[studentStream] || studentStream;
+              const streamName = streamMap[learnerStream] || learnerStream;
               
               // Parse the grade to get specific grade number (11 or 12)
-              let specificGrade = student.grade;
-              if (student.grade) {
-                const gradeStr = String(student.grade).toLowerCase();
-                console.log(`🔍 Parsing student.grade: "${student.grade}" (lowercase: "${gradeStr}")`);
+              let specificGrade = learner.grade;
+              if (learner.grade) {
+                const gradeStr = String(learner.grade).toLowerCase();
+                console.log(`🔍 Parsing learner.grade: "${learner.grade}" (lowercase: "${gradeStr}")`);
                 
                 // CRITICAL: Check for 12 FIRST, then 11 (to avoid "11" matching in "11/12")
                 if (gradeStr.includes('12') || gradeStr.includes('xii') || gradeStr.includes('twelve')) {
                   specificGrade = 'Grade 12';
-                  console.log(`✅ Detected Grade 12 from: "${student.grade}"`);
+                  console.log(`✅ Detected Grade 12 from: "${learner.grade}"`);
                 } else if (gradeStr.includes('11') || gradeStr.includes('xi') || gradeStr.includes('eleven')) {
                   specificGrade = 'Grade 11';
-                  console.log(`✅ Detected Grade 11 from: "${student.grade}"`);
+                  console.log(`✅ Detected Grade 11 from: "${learner.grade}"`);
                 } else {
-                  console.warn(`⚠️ Could not parse grade from: "${student.grade}", keeping as-is`);
+                  console.warn(`⚠️ Could not parse grade from: "${learner.grade}", keeping as-is`);
                 }
               }
               
               enhancedGrade = `${specificGrade} - ${streamName}`;
-              console.log(`✅ Enhanced grade for higher_secondary: "${enhancedGrade}" (from student.grade: "${student.grade}")`);
+              console.log(`✅ Enhanced grade for higher_secondary: "${enhancedGrade}" (from learner.grade: "${learner.grade}")`);
             }
 
-            studentContext = {
+            learnerContext = {
               rawGrade: enhancedGrade,
-              grade: student.grade, // Keep original grade too
+              grade: learner.grade, // Keep original grade too
               programName: programName,
               programCode: programCode,
               degreeLevel: degreeLevel,
-              selectedStream: studentStream, // Include the selected stream
+              selectedStream: learnerStream, // Include the selected stream
               selectedCategory: derivedCategory // Include the category (arts/science/commerce)
             };
 
 
           } else {
-            console.warn('⚠️ Could not fetch student context:', studentError?.message);
+            console.warn('⚠️ Could not fetch learner context:', learnerError?.message);
           }
-        } catch (studentFetchErr) {
-          console.error('❌ Error fetching student context:', studentFetchErr);
+        } catch (learnerFetchErr) {
+          console.error('❌ Error fetching learner context:', learnerFetchErr);
         }
       }
 
-      // ✅ FIX: If no student record but we have a stream selection, still include it
-      if (Object.keys(studentContext).length === 0 && studentStream && gradeLevel === 'higher_secondary') {
+      // ✅ FIX: If no learner record but we have a stream selection, still include it
+      if (Object.keys(learnerContext).length === 0 && learnerStream && gradeLevel === 'higher_secondary') {
         const streamMap: Record<string, string> = {
           'science': 'Science',
           'commerce': 'Commerce',
           'arts': 'Arts'
         };
-        const streamName = streamMap[studentStream] || studentStream;
-        const derivedCategory = selectedCategory || deriveCategory(studentStream);
+        const streamName = streamMap[learnerStream] || learnerStream;
+        const derivedCategory = selectedCategory || deriveCategory(learnerStream);
         
         // Try to determine specific grade from answers if available
         // Check if there's a grade selection answer in the assessment
-        const gradeAnswer = answers['grade_selection'] || answers['student_grade'];
+        const gradeAnswer = answers['grade_selection'] || answers['learner_grade'];
         let specificGrade = 'Grade 11'; // Default to Grade 11 if unknown
         
         if (gradeAnswer) {
@@ -731,12 +731,12 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           // If it includes '11', keep default Grade 11
         }
         
-        studentContext = {
+        learnerContext = {
           rawGrade: `${specificGrade} - ${streamName}`,
-          selectedStream: studentStream,
+          selectedStream: learnerStream,
           selectedCategory: derivedCategory
         };
-        console.log(`✅ Created fallback student context: "${specificGrade} - ${streamName}"`);
+        console.log(`✅ Created fallback learner context: "${specificGrade} - ${streamName}"`);
       }
 
       try {
@@ -745,15 +745,15 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         }
 
         // ============================================================================
-        // STEP 1: Get student record ID
+        // STEP 1: Get learner record ID
         // ============================================================================
-        let studentRecordId = await getStudentRecordId(userId);
-        if (!studentRecordId) {
-          console.warn('⚠️ No student record found, using auth user_id directly');
-          studentRecordId = userId;
+        let learnerRecordId = await getlearnerRecordId(userId);
+        if (!learnerRecordId) {
+          console.warn('⚠️ No learner record found, using auth user_id directly');
+          learnerRecordId = userId;
         }
 
-        if (!studentRecordId) {
+        if (!learnerRecordId) {
           throw new Error('User ID is required for assessment submission');
         }
 
@@ -767,7 +767,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
             const { data: latestAttempt } = await supabase
               .from('personal_assessment_attempts')
               .select('id, stream_id, grade_level')
-              .eq('student_id', studentRecordId)
+              .eq('learner_id', learnerRecordId)
               .eq('status', 'in_progress')
               .order('created_at', { ascending: false })
               .limit(1)
@@ -786,20 +786,20 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         }
 
         // ============================================================================
-        // STEP 3: Build and store student context
+        // STEP 3: Build and store learner context
         // ============================================================================
         console.log('📊 [Stage 1/6] Preparing your responses...');
         window.setAnalysisProgress?.('preparing', 'Organizing assessment data...');
 
-        const studentContext = await buildStudentContext(
+        const learnerContext = await buildlearnerContext(
           userId!,
-          studentStream,
+          learnerStream,
           gradeLevel,
           selectedCategory || null,
-          studentProgram || null
+          learnerProgram || null
         );
 
-        await storeStudentContext(attemptId, studentContext);
+        await storelearnerContext(attemptId, learnerContext);
 
         // ============================================================================
         // STEP 4: Fetch adaptive aptitude results
@@ -932,15 +932,15 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           console.log('🤖 [AI Analysis] Calling analyzeAssessmentWithGemini...');
           console.log('🤖 [AI Analysis] Parameters:', {
             answerCount: Object.keys(answers).length,
-            stream: studentStream,
+            stream: learnerStream,
             gradeLevel: gradeLevel || 'after12',
             hasAdaptiveResults: !!adaptiveResults,
-            studentContext: studentContext,
+            learnerContext: learnerContext,
           });
 
           geminiResults = await analyzeAssessmentWithGemini(
             answers,
-            studentStream,
+            learnerStream,
             {
               riasecQuestions,
               aptitudeQuestions: [],
@@ -952,7 +952,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
             finalTimings,
             gradeLevel || 'after12',
             null,
-            studentContext,
+            learnerContext,
             adaptiveResults
           );
 
@@ -980,18 +980,18 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         console.log('� [Stage 5/6] Saving to database...');
         window.setAnalysisProgress?.('saving', 'Saving your personalized report...');
 
-        // stream_id should always be the student's input stream, not the AI recommendation
+        // stream_id should always be the learner's input stream, not the AI recommendation
         // The AI recommendation is stored in gemini_results JSON field
-        const finalStreamId = studentStream;
+        const finalStreamId = learnerStream;
 
         // Save completion to database
-        if (attemptId && studentRecordId) {
+        if (attemptId && learnerRecordId) {
           try {
             console.log('� [Database] Calling completeAttempt WITH AI results...');
             
             const dbResults = await assessmentService.completeAttempt(
               attemptId,
-              studentRecordId,
+              learnerRecordId,
               finalStreamId,
               gradeLevel || 'after12',
               geminiResults, // ← AI results included!
@@ -1012,7 +1012,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         console.log('🎉 Total time:', ((Date.now() - aiStartTime) / 1000).toFixed(1) + 's');
         console.log('🎉 Redirecting to results page...');
 
-        navigate(`/student/assessment/result?attemptId=${attemptId}`);
+        navigate(`/learner/assessment/result?attemptId=${attemptId}`);
       } catch (err: any) {
         console.error('❌ Assessment submission failed:', err);
 

@@ -30,16 +30,16 @@ interface Parent {
   name: string;
   email: string;
   phone: string;
-  studentName: string;
-  studentClass: string;
-  studentRoll: string;
+  learnerName: string;
+  learnerClass: string;
+  learnerRoll: string;
   relationship: "Father" | "Mother" | "Guardian";
   lastLogin: string;
   accountStatus: "active" | "inactive" | "pending";
   notifications: number;
 }
 
-interface StudentSummary {
+interface LearnerSummary {
   attendance: number;
   averageMarks: number;
   careerReadiness: number;
@@ -154,20 +154,20 @@ const ParentCard = ({
 
       <div className="bg-gray-50 rounded-lg p-3 mb-4">
         <p className="text-xs font-semibold text-gray-700 mb-2">
-          Student Details
+          Learner Details
         </p>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div>
             <p className="text-xs text-gray-500">Name</p>
-            <p className="font-medium text-gray-900">{parent.studentName}</p>
+            <p className="font-medium text-gray-900">{parent.learnerName}</p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Class</p>
-            <p className="font-medium text-gray-900">{parent.studentClass}</p>
+            <p className="font-medium text-gray-900">{parent.learnerClass}</p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Roll No</p>
-            <p className="font-medium text-gray-900">{parent.studentRoll}</p>
+            <p className="font-medium text-gray-900">{parent.learnerRoll}</p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Last Login</p>
@@ -218,8 +218,8 @@ const ParentDetailsModal = ({
 }) => {
   if (!isOpen || !parent) return null;
 
-  // Mock student summary data
-  const studentSummary: StudentSummary = {
+  // Mock learner summary data
+  const learnerSummary: LearnerSummary = {
     attendance: 92,
     averageMarks: 85,
     careerReadiness: 78,
@@ -299,10 +299,10 @@ const ParentDetailsModal = ({
               </div>
             </div>
 
-            {/* Student Summary */}
+            {/* Learner Summary */}
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                {parent.studentName}'s Overview
+                {parent.learnerName}'s Overview
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -313,7 +313,7 @@ const ParentDetailsModal = ({
                     <div>
                       <p className="text-xs text-gray-600">Attendance</p>
                       <p className="text-xl font-bold text-gray-900">
-                        {studentSummary.attendance}%
+                        {learnerSummary.attendance}%
                       </p>
                     </div>
                   </div>
@@ -327,7 +327,7 @@ const ParentDetailsModal = ({
                     <div>
                       <p className="text-xs text-gray-600">Average Marks</p>
                       <p className="text-xl font-bold text-gray-900">
-                        {studentSummary.averageMarks}%
+                        {learnerSummary.averageMarks}%
                       </p>
                     </div>
                   </div>
@@ -341,7 +341,7 @@ const ParentDetailsModal = ({
                     <div>
                       <p className="text-xs text-gray-600">Career Readiness</p>
                       <p className="text-xl font-bold text-gray-900">
-                        {studentSummary.careerReadiness}%
+                        {learnerSummary.careerReadiness}%
                       </p>
                     </div>
                   </div>
@@ -355,7 +355,7 @@ const ParentDetailsModal = ({
                     <div>
                       <p className="text-xs text-gray-600">Fee Dues</p>
                       <p className="text-xl font-bold text-gray-900">
-                        ₹{studentSummary.feeDues}
+                        ₹{learnerSummary.feeDues}
                       </p>
                     </div>
                   </div>
@@ -369,7 +369,7 @@ const ParentDetailsModal = ({
                     <div>
                       <p className="text-xs text-gray-600">Upcoming Events</p>
                       <p className="text-xl font-bold text-gray-900">
-                        {studentSummary.upcomingEvents}
+                        {learnerSummary.upcomingEvents}
                       </p>
                     </div>
                   </div>
@@ -433,9 +433,9 @@ const ParentPortal: React.FC = () => {
       name: "Rajesh Kumar",
       email: "rajesh.kumar@email.com",
       phone: "+91 98765 43210",
-      studentName: "Ananya Kumar",
-      studentClass: "10-A",
-      studentRoll: "10A-025",
+      learnerName: "Ananya Kumar",
+      learnerClass: "10-A",
+      learnerRoll: "10A-025",
       relationship: "Father",
       lastLogin: "2 hours ago",
       accountStatus: "active",
@@ -446,9 +446,9 @@ const ParentPortal: React.FC = () => {
       name: "Priya Sharma",
       email: "priya.sharma@email.com",
       phone: "+91 98765 43211",
-      studentName: "Rohan Sharma",
-      studentClass: "9-B",
-      studentRoll: "9B-018",
+      learnerName: "Rohan Sharma",
+      learnerClass: "9-B",
+      learnerRoll: "9B-018",
       relationship: "Mother",
       lastLogin: "1 day ago",
       accountStatus: "active",
@@ -459,9 +459,9 @@ const ParentPortal: React.FC = () => {
       name: "Amit Patel",
       email: "amit.patel@email.com",
       phone: "+91 98765 43212",
-      studentName: "Diya Patel",
-      studentClass: "11-C",
-      studentRoll: "11C-032",
+      learnerName: "Diya Patel",
+      learnerClass: "11-C",
+      learnerRoll: "11C-032",
       relationship: "Father",
       lastLogin: "3 days ago",
       accountStatus: "inactive",
@@ -472,9 +472,9 @@ const ParentPortal: React.FC = () => {
       name: "Sneha Reddy",
       email: "sneha.reddy@email.com",
       phone: "+91 98765 43213",
-      studentName: "Aarav Reddy",
-      studentClass: "12-A",
-      studentRoll: "12A-007",
+      learnerName: "Aarav Reddy",
+      learnerClass: "12-A",
+      learnerRoll: "12A-007",
       relationship: "Mother",
       lastLogin: "Never",
       accountStatus: "pending",
@@ -494,14 +494,14 @@ const ParentPortal: React.FC = () => {
       const matchesSearch =
         parent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         parent.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        parent.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        parent.learnerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         parent.phone.includes(searchQuery);
 
       const matchesStatus =
         filterStatus === "all" || parent.accountStatus === filterStatus;
 
       const matchesClass =
-        filterClass === "all" || parent.studentClass.startsWith(filterClass);
+        filterClass === "all" || parent.learnerClass.startsWith(filterClass);
 
       return matchesSearch && matchesStatus && matchesClass;
     });
@@ -543,7 +543,7 @@ const ParentPortal: React.FC = () => {
                 Parent Portal
               </h1>
               <p className="text-sm text-gray-600 mt-1">
-                Manage parent access and view student information
+                Manage parent access and view learner information
               </p>
             </div>
           </div>
@@ -616,7 +616,7 @@ const ParentPortal: React.FC = () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Student Class
+              Learner Class
             </label>
             <select
               value={filterClass}

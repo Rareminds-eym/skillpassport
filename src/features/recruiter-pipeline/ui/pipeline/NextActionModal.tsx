@@ -3,7 +3,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { updateNextAction } from '@/features/recruiter-pipeline';
 import { createNotification } from '@/features/notifications';
-import { PipelineCandidate } from '@/features/student-profile/model';
+import { PipelineCandidate } from '@/features/learner-profile/model';
 import { NEXT_ACTIONS } from './types';
 import { getLogger } from '@/shared/config/logging';
 

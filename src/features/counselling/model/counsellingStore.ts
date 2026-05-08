@@ -13,7 +13,7 @@ export interface CounsellingStore {
   sessionMessages: Record<string, CounsellingMessage[]>;
   
   // Actions
-  createSession: (topic: CounsellingTopicType, studentName?: string) => CounsellingSession;
+  createSession: (topic: CounsellingTopicType, learnerName?: string) => CounsellingSession;
   updateSession: (sessionId: string, updates: Partial<CounsellingSession>) => void;
   deleteSession: (sessionId: string) => void;
   addMessage: (sessionId: string, message: CounsellingMessage) => void;
@@ -26,11 +26,11 @@ export const useCounsellingStore = create<CounsellingStore>()(persist(
     sessions: [],
     sessionMessages: {},
 
-    createSession: (topic, studentName = 'Demo Student') => {
+    createSession: (topic, learnerName = 'Demo Learner') => {
       const newSession: CounsellingSession = {
         id: `session-${Date.now()}`,
-        student_id: 'student-demo',
-        student_name: studentName,
+        learner_id: 'learner-demo',
+        learner_name: learnerName,
         topic,
         status: 'active',
         created_at: new Date().toISOString(),

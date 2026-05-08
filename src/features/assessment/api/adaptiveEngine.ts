@@ -59,7 +59,7 @@ export interface ConfidenceTagResult {
 }
 
 /**
- * Classifies a student into a tier (L/M/H) based on their diagnostic screener responses.
+ * Classifies a learner into a tier (L/M/H) based on their diagnostic screener responses.
  * 
  * Classification logic:
  * - Low (L): 0-3 correct out of 8 (0-37% accuracy)
@@ -392,7 +392,7 @@ export function determineConfidenceTag(
  */
 export class AdaptiveEngine {
   /**
-   * Classifies a student into a tier based on diagnostic screener responses
+   * Classifies a learner into a tier based on diagnostic screener responses
    * 
    * Requirements: 2.1
    */

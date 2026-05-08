@@ -237,7 +237,7 @@ export const BADGE_DEFINITIONS = {
 };
 
 /**
- * Generate badges for a student based on their data
+ * Generate badges for a learner based on their data
  */
 export const generateBadges = (userData) => {
   if (!userData) return [];
@@ -374,11 +374,11 @@ export const getBadgesByCategory = (badges) => {
 /**
  * Save badges to database (optional - for persistence)
  */
-export const saveBadgesToDatabase = async (studentId, badges) => {
+export const saveBadgesToDatabase = async (learnerId, badges) => {
   try {
-    // Store in student profile metadata
+    // Store in learner profile metadata
     const { data, error } = await supabase
-      .from('students')
+      .from('learners')
       .update({
         metadata: {
           badges: badges.map(b => ({
@@ -387,7 +387,7 @@ export const saveBadgesToDatabase = async (studentId, badges) => {
           }))
         }
       })
-      .eq('id', studentId);
+      .eq('id', learnerId);
 
     if (error) throw error;
     return { success: true, data };

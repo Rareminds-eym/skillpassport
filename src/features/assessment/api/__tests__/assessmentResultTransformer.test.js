@@ -250,7 +250,7 @@ describe('transformAssessmentResults', () => {
   test('transforms complete database results', () => {
     const dbResults = {
       attempt_id: 'test-attempt-123',
-      student_id: 'student-456',
+      learner_id: 'learner-456',
       grade_level: 'after12',
       
       riasec_scores: { R: 15, I: 18, A: 8, S: 10, E: 7, C: 5 },
@@ -471,8 +471,8 @@ describe('validateTransformedResults', () => {
 
     const validation = validateTransformedResults(collegeResults);
 
-    expect(validation.warnings).toContain('Missing Big Five personality scores for college/after12 student');
-    expect(validation.warnings).toContain('Missing knowledge test scores for college/after12 student');
+    expect(validation.warnings).toContain('Missing Big Five personality scores for college/after12 learner');
+    expect(validation.warnings).toContain('Missing knowledge test scores for college/after12 learner');
   });
 
   test('calculates completeness percentage', () => {

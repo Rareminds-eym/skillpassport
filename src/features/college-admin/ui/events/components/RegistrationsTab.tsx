@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { ArrowDownTrayIcon, UserPlusIcon, TrashIcon, CheckCircleIcon, XMarkIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
-import { CollegeEvent, EventRegistration } from '@/features/student-profile/model';
+import { CollegeEvent, EventRegistration } from '@/features/learner-profile/model';
 import { formatDate, formatDateTime, getEventTypeColor, getEventTypeIcon } from "../helpers";
-import { useStudentSearch } from '../hooks/useStudentSearch';
+import { useLearnerSearch } from '../hooks/useLearnerSearch';
 
 interface Props {
   events: CollegeEvent[];
@@ -12,7 +12,7 @@ interface Props {
   selectedEvent: CollegeEvent | null;
   eventRegCounts: Record<string, number>;
   onSelectEvent: (event: CollegeEvent) => void;
-  onAddRegistration: (eventId: string, studentId: string) => void;
+  onAddRegistration: (eventId: string, learnerId: string) => void;
   onRemoveRegistration: (regId: string, eventId: string) => void;
   onMarkAttendance: (regId: string, attended: boolean) => void;
   onExportCSV: (event: CollegeEvent) => void;
@@ -25,16 +25,16 @@ export const RegistrationsTab: React.FC<Props> = ({
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Get registered student IDs to exclude from search
-  const registeredIds = useMemo(() => new Set(registrations.map((r) => r.student_id)), [registrations]);
+  // Get registered learner IDs to exclude from search
+  const registeredIds = useMemo(() => new Set(registrations.map((r) => r.learner_id)), [registrations]);
 
   // Use the search hook
-  const { students, loading: searchLoading, hasSearched, totalCount, searchStudents, clearSearch } = useStudentSearch(collegeId, registeredIds);
+  const { learners, loading: searchLoading, hasSearched, totalCount, searchlearners, clearSearch } = useLearnerSearch(collegeId, registeredIds);
 
   // Trigger search when query changes
   useEffect(() => {
-    searchStudents(searchQuery);
-  }, [searchQuery, searchStudents]);
+    searchlearners(searchQuery);
+  }, [searchQuery, searchlearners]);
 
   // Clear search when modal closes
   const handleCloseModal = () => {
@@ -43,9 +43,9 @@ export const RegistrationsTab: React.FC<Props> = ({
     clearSearch();
   };
 
-  const handleAddStudent = (studentId: string) => {
+  const handleAddLearner = (learnerId: string) => {
     if (selectedEvent) {
-      onAddRegistration(selectedEvent.id, studentId);
+      onAddRegistration(selectedEvent.id, learnerId);
       handleCloseModal();
     }
   };
@@ -97,7 +97,7 @@ export const RegistrationsTab: React.FC<Props> = ({
                   <ArrowDownTrayIcon className="h-4 w-4" />Export CSV
                 </button>
                 <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
-                  <UserPlusIcon className="h-4 w-4" />Add Student
+                  <UserPlusIcon className="h-4 w-4" />Add Learner
                 </button>
               </div>
             </div>
@@ -111,11 +111,11 @@ export const RegistrationsTab: React.FC<Props> = ({
                   <div key={reg.id} className="p-3 flex items-center justify-between hover:bg-gray-50">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-medium">
-                        {reg.student?.name?.[0]?.toUpperCase() || "?"}
+                        {reg.learner?.name?.[0]?.toUpperCase() || "?"}
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">{reg.student?.name || "Unknown"}</p>
-                        <p className="text-xs text-gray-500">{reg.student?.email}</p>
+                        <p className="font-medium text-gray-900">{reg.learner?.name || "Unknown"}</p>
+                        <p className="text-xs text-gray-500">{reg.learner?.email}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -139,13 +139,13 @@ export const RegistrationsTab: React.FC<Props> = ({
         )}
       </div>
 
-      {/* Add Student Modal - Modern Search */}
+      {/* Add Learner Modal - Modern Search */}
       {showAddModal && selectedEvent && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Add Student to Event</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Add Learner to Event</h2>
                 <p className="text-sm text-gray-500">{selectedEvent.title}</p>
               </div>
               <button onClick={handleCloseModal} className="p-2 hover:bg-white/50 rounded-lg transition">
@@ -178,28 +178,28 @@ export const RegistrationsTab: React.FC<Props> = ({
               ) : !hasSearched ? (
                 <div className="p-8 text-center">
                   <MagnifyingGlassIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500">Type to search students</p>
+                  <p className="text-gray-500">Type to search learners</p>
                   <p className="text-gray-400 text-sm mt-1">Search by name or email</p>
                 </div>
-              ) : students.length === 0 ? (
+              ) : learners.length === 0 ? (
                 <div className="p-8 text-center">
-                  <p className="text-gray-500">No students found</p>
+                  <p className="text-gray-500">No learners found</p>
                   <p className="text-gray-400 text-sm mt-1">Try a different search term</p>
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100">
-                  {students.map((student) => (
+                  {learners.map((learner) => (
                     <div
-                      key={student.id}
-                      onClick={() => handleAddStudent(student.id)}
+                      key={learner.id}
+                      onClick={() => handleAddLearner(learner.id)}
                       className="p-3 flex items-center gap-3 cursor-pointer hover:bg-blue-50 transition"
                     >
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-medium">
-                        {student.name?.[0]?.toUpperCase() || "?"}
+                        {learner.name?.[0]?.toUpperCase() || "?"}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">{student.name || "Unknown"}</p>
-                        <p className="text-xs text-gray-500 truncate">{student.email}</p>
+                        <p className="font-medium text-gray-900 truncate">{learner.name || "Unknown"}</p>
+                        <p className="text-xs text-gray-500 truncate">{learner.email}</p>
                       </div>
                       <UserPlusIcon className="h-5 w-5 text-blue-600" />
                     </div>
@@ -211,10 +211,10 @@ export const RegistrationsTab: React.FC<Props> = ({
             {/* Footer */}
             <div className="p-3 border-t bg-gray-50 flex items-center justify-between">
               <p className="text-xs text-gray-500">
-                Total: <span className="font-medium text-gray-700">{totalCount}</span> students
+                Total: <span className="font-medium text-gray-700">{totalCount}</span> learners
               </p>
               <p className="text-xs text-gray-400">
-                {hasSearched && students.length > 0 ? `${students.length} found` : "Max 30 results"}
+                {hasSearched && learners.length > 0 ? `${learners.length} found` : "Max 30 results"}
               </p>
             </div>
           </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from '@/shared/api/supabaseClient';
 import toast from "react-hot-toast";
-import { FeeStructure } from '@/features/student-profile/model';
+import { FeeStructure } from '@/features/learner-profile/model';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('useFeeStructures');

@@ -10,7 +10,7 @@ import { getLogger } from '@/shared/config/logging'
 
 const logger = getLogger('class-management-modals')
 
-interface Student {
+interface Learner {
   id: string
   name: string
   email: string
@@ -21,8 +21,8 @@ interface Student {
 interface SchoolClass {
   id: string
   name: string
-  current_students: number
-  max_students: number
+  current_learners: number
+  max_learners: number
   academic_year: string
 }
 
@@ -33,58 +33,58 @@ interface Educator {
   email: string
 }
 
-export const ManageStudentsModal = ({
+export const ManageLearnersModal = ({
   classItem,
-  students,
+  learners,
   onClose,
   onUpdate
 }: {
   classItem: SchoolClass
-  students: Student[]
+  learners: Learner[]
   onClose: () => void
   onUpdate: () => void
 }) => {
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedStudents, setSelectedStudents] = useState<string[]>([])
+  const [selectedlearners, setSelectedlearners] = useState<string[]>([])
 
-  const classStudents = students.filter(s => s.school_class_id === classItem.id)
-  const availableStudents = students.filter(s => !s.school_class_id)
+  const classlearners = learners.filter(s => s.school_class_id === classItem.id)
+  const availablelearners = learners.filter(s => !s.school_class_id)
 
-  const filteredAvailable = availableStudents.filter(s =>
+  const filteredAvailable = availablelearners.filter(s =>
     s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     s.email.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   useEffect(() => {
-    setSelectedStudents([])
+    setSelectedlearners([])
     setSearchQuery("")
   }, [classItem])
 
-  const toggleStudentSelection = (studentId: string) => {
-    setSelectedStudents((prev) =>
-      prev.includes(studentId) ? prev.filter((id) => id !== studentId) : [...prev, studentId]
+  const togglelearnerSelection = (learnerId: string) => {
+    setSelectedlearners((prev) =>
+      prev.includes(learnerId) ? prev.filter((id) => id !== learnerId) : [...prev, learnerId]
     )
   }
 
-  const handleAddStudents = async () => {
+  const handleAddlearners = async () => {
     if (loading) return
-    if (!selectedStudents.length) {
-      toast.error("Choose at least one student to add")
+    if (!selectedlearners.length) {
+      toast.error("Choose at least one learner to add")
       return
     }
 
-    // Check if adding these students would exceed the maximum capacity
-    const currentCount = classStudents.length
-    const newCount = currentCount + selectedStudents.length
+    // Check if adding these learners would exceed the maximum capacity
+    const currentCount = classlearners.length
+    const newCount = currentCount + selectedlearners.length
     
-    if (newCount > classItem.max_students) {
-      const availableSpots = classItem.max_students - currentCount
+    if (newCount > classItem.max_learners) {
+      const availableSpots = classItem.max_learners - currentCount
       if (availableSpots <= 0) {
         toast.error("This class is already at maximum capacity")
         return
       } else {
-        toast.error(`Cannot add ${selectedStudents.length} students. Only ${availableSpots} spot${availableSpots === 1 ? '' : 's'} available (${currentCount}/${classItem.max_students})`)
+        toast.error(`Cannot add ${selectedlearners.length} learners. Only ${availableSpots} spot${availableSpots === 1 ? '' : 's'} available (${currentCount}/${classItem.max_learners})`)
         return
       }
     }
@@ -92,71 +92,71 @@ export const ManageStudentsModal = ({
     setLoading(true)
     try {
       const { error } = await supabase
-        .from("students")
+        .from("learners")
         .update({ school_class_id: classItem.id })
-        .in("id", selectedStudents)
+        .in("id", selectedlearners)
 
       if (error) throw error
 
       await supabase
         .from("school_classes")
         .update({ 
-          current_students: newCount,
+          current_learners: newCount,
           updated_at: new Date().toISOString()
         })
         .eq("id", classItem.id)
 
-      const addedCount = selectedStudents.length
-      const studentNames = students.filter(s => selectedStudents.includes(s.id))
+      const addedCount = selectedlearners.length
+      const learnerNames = learners.filter(s => selectedlearners.includes(s.id))
       
       toast.success(
         addedCount === 1
-          ? `${studentNames[0]?.name || 'Student'} added`
-          : `${addedCount} students added`
+          ? `${learnerNames[0]?.name || 'Learner'} added`
+          : `${addedCount} learners added`
       )
-      setSelectedStudents([])
+      setSelectedlearners([])
       onUpdate()
     } catch (error: any) {
-      logger.error('Add students failed', error instanceof Error ? error : new Error(String(error)))
-      toast.error("Failed to add students")
+      logger.error('Add learners failed', error instanceof Error ? error : new Error(String(error)))
+      toast.error("Failed to add learners")
     } finally {
       setLoading(false)
     }
   }
 
-  const handleRemoveStudent = async (studentId: string, studentName: string) => {
+  const handleRemoveLearner = async (learnerId: string, learnerName: string) => {
     if (loading) return
     
     setLoading(true)
     try {
       const { error } = await supabase
-        .from("students")
+        .from("learners")
         .update({ school_class_id: null })
-        .eq("id", studentId)
+        .eq("id", learnerId)
 
       if (error) throw error
 
       await supabase
         .from("school_classes")
         .update({ 
-          current_students: Math.max(0, classStudents.length - 1),
+          current_learners: Math.max(0, classlearners.length - 1),
           updated_at: new Date().toISOString()
         })
         .eq("id", classItem.id)
 
-      toast.success(`${studentName} removed`)
+      toast.success(`${learnerName} removed`)
       onUpdate()
     } catch (error: any) {
-      logger.error('Remove student failed', error instanceof Error ? error : new Error(String(error)), { classId: classItem.id, studentId })
-      toast.error("Failed to remove student")
+      logger.error('Remove learner failed', error instanceof Error ? error : new Error(String(error)), { classId: classItem.id, learnerId })
+      toast.error("Failed to remove learner")
     } finally {
       setLoading(false)
     }
   }
 
-  const studentCount = classStudents.length
-  const isAtCapacity = studentCount >= classItem.max_students
-  const availableSpots = classItem.max_students - studentCount
+  const learnerCount = classlearners.length
+  const isAtCapacity = learnerCount >= classItem.max_learners
+  const availableSpots = classItem.max_learners - learnerCount
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -166,15 +166,15 @@ export const ManageStudentsModal = ({
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center space-x-3">
-                <h2 className="text-lg font-semibold text-gray-900">Manage Students</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Manage Learners</h2>
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                   isAtCapacity 
                     ? 'bg-red-100 text-red-700' 
-                    : studentCount > classItem.max_students * 0.8 
+                    : learnerCount > classItem.max_learners * 0.8 
                       ? 'bg-yellow-100 text-yellow-700'
                       : 'bg-indigo-100 text-indigo-700'
                 }`}>
-                  {studentCount} / {classItem.max_students}
+                  {learnerCount} / {classItem.max_learners}
                 </span>
                 {isAtCapacity && (
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -185,7 +185,7 @@ export const ManageStudentsModal = ({
               <p className="mt-1 text-sm text-gray-500">{classItem.name}</p>
               {isAtCapacity && (
                 <p className="mt-1 text-xs text-red-600">
-                  This class has reached its maximum capacity of {classItem.max_students} students.
+                  This class has reached its maximum capacity of {classItem.max_learners} learners.
                 </p>
               )}
               {!isAtCapacity && availableSpots <= 3 && availableSpots > 0 && (
@@ -201,27 +201,27 @@ export const ManageStudentsModal = ({
           </div>
 
           <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Current Students - Left side (2/3 width) */}
+            {/* Current Learners - Left side (2/3 width) */}
             <div className="lg:col-span-2">
               <div className="border border-gray-200 rounded-lg divide-y divide-gray-200">
-                {studentCount === 0 && (
+                {learnerCount === 0 && (
                   <div className="py-10 px-6 text-center text-sm text-gray-500">
-                    No students yet. Add learners to start tracking progress.
+                    No learners yet. Add learners to start tracking progress.
                   </div>
                 )}
-                {classStudents.map((student) => (
-                  <div key={student.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+                {classlearners.map((learner) => (
+                  <div key={learner.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{student.name}</p>
-                      <p className="text-xs text-gray-500">{student.email}</p>
+                      <p className="text-sm font-medium text-gray-900">{learner.name}</p>
+                      <p className="text-xs text-gray-500">{learner.email}</p>
                     </div>
                     <div className="flex items-center space-x-4">
                       <div className="text-right">
                         <p className="text-xs text-gray-500">Progress</p>
-                        <p className="text-sm font-semibold text-gray-900">{student.progress || 0}%</p>
+                        <p className="text-sm font-semibold text-gray-900">{learner.progress || 0}%</p>
                       </div>
                       <button
-                        onClick={() => handleRemoveStudent(student.id, student.name)}
+                        onClick={() => handleRemoveLearner(learner.id, learner.name)}
                         disabled={loading}
                         className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                         type="button"
@@ -235,23 +235,23 @@ export const ManageStudentsModal = ({
               </div>
             </div>
 
-            {/* Add Students - Right side (1/3 width) */}
+            {/* Add Learners - Right side (1/3 width) */}
             <div className="lg:col-span-1">
               <div className={`border border-gray-200 rounded-lg p-4 ${isAtCapacity ? 'bg-red-50' : 'bg-gray-50'}`}>
-                <h3 className="text-sm font-medium text-gray-900">Add Student</h3>
+                <h3 className="text-sm font-medium text-gray-900">Add Learner</h3>
                 
                 {isAtCapacity && (
                   <div className="mt-2 p-3 bg-red-100 border border-red-200 rounded-md">
                     <p className="text-xs text-red-700">
-                      <strong>Class Full:</strong> This class has reached its maximum capacity of {classItem.max_students} students. 
-                      To add more students, either increase the class capacity or remove some existing students.
+                      <strong>Class Full:</strong> This class has reached its maximum capacity of {classItem.max_learners} learners. 
+                      To add more learners, either increase the class capacity or remove some existing learners.
                     </p>
                   </div>
                 )}
                 
                 <div className="mt-4 space-y-4">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Choose Students</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Choose Learners</label>
                     <input
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
@@ -262,37 +262,37 @@ export const ManageStudentsModal = ({
                     />
                     <div className="max-h-64 overflow-y-auto rounded-md border border-gray-200 bg-white">
                       {isAtCapacity ? (
-                        <div className="px-3 py-2 text-sm text-gray-500">Cannot add students - class at maximum capacity</div>
-                      ) : availableStudents.length === 0 ? (
-                        <div className="px-3 py-2 text-sm text-gray-500">No students available</div>
+                        <div className="px-3 py-2 text-sm text-gray-500">Cannot add learners - class at maximum capacity</div>
+                      ) : availablelearners.length === 0 ? (
+                        <div className="px-3 py-2 text-sm text-gray-500">No learners available</div>
                       ) : filteredAvailable.length === 0 ? (
-                        <div className="px-3 py-2 text-sm text-gray-500">No students match your search</div>
+                        <div className="px-3 py-2 text-sm text-gray-500">No learners match your search</div>
                       ) : (
-                        filteredAvailable.map((student) => (
+                        filteredAvailable.map((learner) => (
                           <label
-                            key={student.id}
+                            key={learner.id}
                             className="flex items-start gap-3 border-b border-gray-100 px-3 py-2 last:border-none hover:bg-gray-50 cursor-pointer"
                           >
                             <input
                               type="checkbox"
-                              checked={selectedStudents.includes(student.id)}
-                              onChange={() => toggleStudentSelection(student.id)}
+                              checked={selectedlearners.includes(learner.id)}
+                              onChange={() => togglelearnerSelection(learner.id)}
                               className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                             />
                             <div>
-                              <p className="text-sm font-medium text-gray-900">{student.name}</p>
-                              <p className="text-xs text-gray-500">{student.email}</p>
+                              <p className="text-sm font-medium text-gray-900">{learner.name}</p>
+                              <p className="text-xs text-gray-500">{learner.email}</p>
                             </div>
                           </label>
                         ))
                       )}
                     </div>
-                    {selectedStudents.length > 0 && !isAtCapacity && (
+                    {selectedlearners.length > 0 && !isAtCapacity && (
                       <div className="mt-2">
                         <p className="text-xs text-gray-500">
-                          {selectedStudents.length} student{selectedStudents.length === 1 ? "" : "s"} selected
+                          {selectedlearners.length} learner{selectedlearners.length === 1 ? "" : "s"} selected
                         </p>
-                        {selectedStudents.length > availableSpots && (
+                        {selectedlearners.length > availableSpots && (
                           <p className="text-xs text-red-600">
                             Warning: Only {availableSpots} spot{availableSpots === 1 ? '' : 's'} available
                           </p>
@@ -303,13 +303,13 @@ export const ManageStudentsModal = ({
                 </div>
 
                 <button
-                  onClick={handleAddStudents}
-                  disabled={loading || selectedStudents.length === 0 || isAtCapacity}
+                  onClick={handleAddlearners}
+                  disabled={loading || selectedlearners.length === 0 || isAtCapacity}
                   className="mt-6 w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
                   type="button"
                 >
                   <UserPlusIcon className="h-4 w-4 mr-2" />
-                  {loading ? "Saving..." : isAtCapacity ? "Class Full" : "Add Student"}
+                  {loading ? "Saving..." : isAtCapacity ? "Class Full" : "Add Learner"}
                 </button>
               </div>
             </div>

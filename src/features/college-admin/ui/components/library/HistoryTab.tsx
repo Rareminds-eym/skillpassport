@@ -16,8 +16,8 @@ export function HistoryTab({ borrowHistory }: HistoryTabProps) {
   const filteredHistory = borrowHistory.filter(item => {
     const matchesSearch = 
       item.book?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.student_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.learner_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.learner_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.roll_number.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === "all" || item.status === statusFilter;
@@ -46,7 +46,7 @@ export function HistoryTab({ borrowHistory }: HistoryTabProps) {
             <div className="relative">
               <input
                 type="text"
-                placeholder="Search by book title, student name, or ID..."
+                placeholder="Search by book title, learner name, or ID..."
                 className="w-full p-2 pl-10 border rounded-lg"
                 value={searchTerm}
                 onChange={(e) => {
@@ -101,7 +101,7 @@ export function HistoryTab({ borrowHistory }: HistoryTabProps) {
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Book Title</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Student Name</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Learner Name</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Roll No</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Issue Date</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Due Date</th>
@@ -114,7 +114,7 @@ export function HistoryTab({ borrowHistory }: HistoryTabProps) {
                 {paginatedHistory.map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 font-semibold text-gray-900">{item.book?.title || 'Unknown Book'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{item.student_name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{item.learner_name}</td>
                     <td className="px-4 py-3 text-sm text-gray-600">{item.roll_number}</td>
                     <td className="px-4 py-3 text-sm text-gray-600">{item.issue_date}</td>
                     <td className="px-4 py-3 text-sm text-gray-600">{item.due_date}</td>

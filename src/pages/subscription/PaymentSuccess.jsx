@@ -95,10 +95,10 @@ const DASHBOARD_ROUTES = {
   college_educator: '/educator/dashboard',
   // Recruiter role
   recruiter: '/recruitment/overview',
-  // Student roles
-  student: '/student/dashboard',
-  school_student: '/student/dashboard',
-  college_student: '/student/dashboard',
+  // Learner roles
+  learner: '/learner/dashboard',
+  'school-learner': '/learner/dashboard',
+  'college-learner': '/learner/dashboard',
 };
 
 /** Subscription manage routes by role */
@@ -113,9 +113,9 @@ const MANAGE_ROUTES = {
   school_educator: '/educator/subscription/manage',
   college_educator: '/educator/subscription/manage',
   recruiter: '/recruitment/subscription/manage',
-  student: '/student/subscription/manage',
-  school_student: '/student/subscription/manage',
-  college_student: '/student/subscription/manage',
+  learner: '/learner/subscription/manage',
+  'school-learner': '/learner/subscription/manage',
+  'college-learner': '/learner/subscription/manage',
 };
 
 // ============================================================================
@@ -183,7 +183,7 @@ const getUserRole = (user, role) => {
     || user?.user_metadata?.role
     || user?.raw_user_meta_data?.user_role
     || user?.raw_user_meta_data?.role
-    || 'student';
+    || 'learner';
 };
 
 // ============================================================================
@@ -470,9 +470,9 @@ function PaymentSuccess() {
   const managePath = useMemo(() => {
     const userRole = getUserRole(user, role);
     // Return null if role is unknown to prevent wrong redirects
-    if (!userRole || userRole === 'student') {
-      // For student, we can safely use the default
-      return MANAGE_ROUTES[userRole] || '/student/subscription/manage';
+    if (!userRole || userRole === 'learner') {
+      // For learner, we can safely use the default
+      return MANAGE_ROUTES[userRole] || '/learner/subscription/manage';
     }
     return MANAGE_ROUTES[userRole] || null;
   }, [user, role]);
@@ -495,7 +495,7 @@ function PaymentSuccess() {
   const getDashboardUrl = useCallback(() => {
     const userRole = getUserRole(user, role);
     log.info('Getting dashboard URL for role:', userRole);
-    return DASHBOARD_ROUTES[userRole] || '/student/dashboard';
+    return DASHBOARD_ROUTES[userRole] || '/learner/dashboard';
   }, [user, role]);
 
   // Cache refresh hook
@@ -649,7 +649,7 @@ function PaymentSuccess() {
   // Redirect if no payment params
   useEffect(() => {
     if (!paymentParams.razorpay_payment_id && verificationStatus !== 'loading') {
-      const userType = planDetails?.studentType || role || 'student';
+      const userType = planDetails?.learnerType || role || 'learner';
       navigate(`/subscription/plans?type=${userType}`, { replace: true });
     }
   }, [paymentParams, verificationStatus, navigate, role, planDetails]);

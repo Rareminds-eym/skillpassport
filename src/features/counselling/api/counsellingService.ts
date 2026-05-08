@@ -3,7 +3,7 @@
 import OpenAI from 'openai';
 import type {
   CounsellingRequest,
-  StudentContext,
+  LearnerContext,
   CounsellingTopicType,
   MessageRole
 } from '../model/types';
@@ -31,15 +31,15 @@ function getOpenAIClient(): OpenAI {
 // System prompts for different counselling topics
 const SYSTEM_PROMPTS: Record<CounsellingTopicType, string> = {
   academic: `You are an experienced academic counsellor at a university. Your role is to:
-    - Help students with course selection and academic planning
+    - Help learners with course selection and academic planning
     - Provide study strategies and time management advice
-    - Guide students on academic goals and career pathways
+    - Guide learners on academic goals and career pathways
     - Offer constructive feedback on academic performance
     - Be supportive, empathetic, and professional
-    Always consider the student's background, interests, and goals when providing advice.`,
+    Always consider the learner's background, interests, and goals when providing advice.`,
   
-  career: `You are a professional career counsellor specializing in helping university students. Your role is to:
-    - Guide students on career exploration and planning
+  career: `You are a professional career counsellor specializing in helping university learners. Your role is to:
+    - Guide learners on career exploration and planning
     - Provide insights on industry trends and job market
     - Help with resume building and interview preparation
     - Suggest skill development and networking opportunities
@@ -47,14 +47,14 @@ const SYSTEM_PROMPTS: Record<CounsellingTopicType, string> = {
     Be practical, encouraging, and provide actionable advice.`,
   
   performance: `You are an academic performance advisor. Your role is to:
-    - Analyze student performance data and provide insights
+    - Analyze learner performance data and provide insights
     - Identify strengths and areas for improvement
     - Suggest personalized learning strategies
-    - Help students set realistic academic goals
+    - Help learners set realistic academic goals
     - Provide motivational support and accountability
     Be data-driven, objective, and constructive in your feedback.`,
   
-  'mental-health': `You are a supportive university counsellor focused on student wellbeing. Your role is to:
+  'mental-health': `You are a supportive university counsellor focused on learner wellbeing. Your role is to:
     - Provide emotional support and stress management strategies
     - Help with work-life balance and time management
     - Offer coping mechanisms for academic pressure
@@ -63,19 +63,19 @@ const SYSTEM_PROMPTS: Record<CounsellingTopicType, string> = {
     Be compassionate, understanding, and non-judgmental.`,
   
   general: `You are a friendly and knowledgeable university counsellor. Your role is to:
-    - Assist students with various university-related questions
+    - Assist learners with various university-related questions
     - Provide guidance on campus resources and opportunities
-    - Help with general student life concerns
+    - Help with general learner life concerns
     - Offer advice on extracurricular activities and personal development
     - Be approachable, helpful, and informative
     Always maintain a supportive and professional tone.`
 };
 
-// Build student context prompt
-function buildStudentContextPrompt(context?: StudentContext): string {
+// Build learner context prompt
+function buildlearnerContextPrompt(context?: LearnerContext): string {
   if (!context) return '';
   
-  let prompt = `\n\n=== Student Information ===\n`;
+  let prompt = `\n\n=== Learner Information ===\n`;
   prompt += `Name: ${context.name}\n`;
   
   if (context.department) prompt += `Department: ${context.department}\n`;
@@ -132,7 +132,7 @@ export async function* streamResponse(
 ) {
   try {
     const systemPrompt = SYSTEM_PROMPTS[request.topic];
-    const contextPrompt = buildStudentContextPrompt(request.student_context);
+    const contextPrompt = buildlearnerContextPrompt(request.learner_context);
     
     // Prepare messages
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -183,7 +183,7 @@ export async function getResponse(
 ): Promise<string> {
   try {
     const systemPrompt = SYSTEM_PROMPTS[request.topic];
-    const contextPrompt = buildStudentContextPrompt(request.student_context);
+    const contextPrompt = buildlearnerContextPrompt(request.learner_context);
     
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       {

@@ -78,8 +78,8 @@ export function getOrganizationTypeDisplayName(type: OrganizationType): string {
 export function getMemberTypeDisplayName(type: MemberType): string {
   const displayNames: Record<MemberType, string> = {
     educator: 'Educator',
-    student: 'Student',
-    both: 'Both Educators & Students'
+    learner: 'Learner',
+    both: 'Both Educators & Learners'
   };
   return displayNames[type] || type;
 }

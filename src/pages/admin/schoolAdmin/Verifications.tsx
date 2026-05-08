@@ -270,7 +270,7 @@ const Verifications: React.FC = () => {
   const getFilteredTrainings = () => {
     return pendingTrainings.filter(training => {
       const matchesSearch = (training.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           (training.student_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           (training.learner_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                            (training.organization || '').toLowerCase().includes(searchQuery.toLowerCase());
       
       const matchesStatus = statusFilter === 'all' || training.approval_status === statusFilter;
@@ -282,7 +282,7 @@ const Verifications: React.FC = () => {
   const getFilteredExperiences = () => {
     return pendingExperiences.filter(experience => {
       const matchesSearch = (experience.role || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           (experience.student_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           (experience.learner_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                            (experience.organization || '').toLowerCase().includes(searchQuery.toLowerCase());
       
       const matchesStatus = statusFilter === 'all' || experience.approval_status === statusFilter;
@@ -294,7 +294,7 @@ const Verifications: React.FC = () => {
   const getFilteredProjects = () => {
     return pendingProjects.filter(project => {
       const matchesSearch = (project.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           (project.student_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           (project.learner_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                            (project.organization || '').toLowerCase().includes(searchQuery.toLowerCase());
       
       const matchesStatus = statusFilter === 'all' || project.approval_status === statusFilter;
@@ -386,7 +386,7 @@ const Verifications: React.FC = () => {
           <div className="flex items-center gap-2">
             <User className="w-4 h-4 text-gray-600" />
             <h3 className="font-bold text-lg text-gray-900">
-              {training.student_name || 'Unknown Student'}
+              {training.learner_name || 'Unknown Learner'}
             </h3>
           </div>
           <div className="text-xs text-gray-500 ml-4">
@@ -397,7 +397,7 @@ const Verifications: React.FC = () => {
         <div className="space-y-2 mb-3">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Mail className="w-4 h-4" />
-            <span>{training.student_email || 'No email'}</span>
+            <span>{training.learner_email || 'No email'}</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Award className="w-4 h-4" />
@@ -485,7 +485,7 @@ const Verifications: React.FC = () => {
           <div className="flex items-center gap-2">
             <User className="w-4 h-4 text-gray-600" />
             <h3 className="font-bold text-lg text-gray-900">
-              {experience.student_name || 'Unknown Student'}
+              {experience.learner_name || 'Unknown Learner'}
             </h3>
           </div>
           <div className="text-xs text-gray-500 ml-4">
@@ -496,7 +496,7 @@ const Verifications: React.FC = () => {
         <div className="space-y-2 mb-4">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Mail className="w-4 h-4" />
-            <span>{experience.student_email || 'No email'}</span>
+            <span>{experience.learner_email || 'No email'}</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Briefcase className="w-4 h-4" />
@@ -548,7 +548,7 @@ const Verifications: React.FC = () => {
           <div className="flex items-center gap-2">
             <User className="w-4 h-4 text-gray-600" />
             <h3 className="font-bold text-lg text-gray-900">
-              {project.student_name || 'Unknown Student'}
+              {project.learner_name || 'Unknown Learner'}
             </h3>
           </div>
           <div className="text-xs text-gray-500 ml-4">
@@ -559,7 +559,7 @@ const Verifications: React.FC = () => {
         <div className="space-y-2 mb-3">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Mail className="w-4 h-4" />
-            <span>{project.student_email || 'No email'}</span>
+            <span>{project.learner_email || 'No email'}</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Building2 className="w-4 h-4" />
@@ -660,7 +660,7 @@ const Verifications: React.FC = () => {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">School Verifications</h1>
               <p className="text-gray-600 mt-2">
-                Review and approve student training and experience submissions
+                Review and approve learner training and experience submissions
               </p>
             </div>
           </div>
@@ -755,7 +755,7 @@ const Verifications: React.FC = () => {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <input
                       type="text"
-                      placeholder="Search trainings, students, or organizations..."
+                      placeholder="Search trainings, learners, or organizations..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -844,7 +844,7 @@ const Verifications: React.FC = () => {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <input
                       type="text"
-                      placeholder="Search experiences, students, or organizations..."
+                      placeholder="Search experiences, learners, or organizations..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -933,7 +933,7 @@ const Verifications: React.FC = () => {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <input
                       type="text"
-                      placeholder="Search projects, students, or organizations..."
+                      placeholder="Search projects, learners, or organizations..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

@@ -33,7 +33,7 @@ export type { UseTabVisibilityOptions, UseTabVisibilityReturn } from './useTabVi
 
 // Assessment test hooks (from career-test)
 export { default as useAssessmentSubmission } from './useAssessmentSubmission';
-export { default as useStudentGrade } from './useStudentGrade';
+export { default as useLearnerGrade } from './useLearnerGrade';
 export { default as useAIQuestions } from './useAIQuestions';
 export { default as useAssessmentProgress } from './useAssessmentProgress';
 

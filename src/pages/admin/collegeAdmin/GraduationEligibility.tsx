@@ -29,7 +29,7 @@ import { getLogger } from '@/shared/config/logging';
 const logger = getLogger('college-admin-graduation-eligibility');
 
 // Types
-interface Student {
+interface Learner {
   id: string;
   name: string;
   email: string;
@@ -125,11 +125,11 @@ const StatusBadge = ({ status }: { status: string }) => {
 };
 
 // Eligibility Badge Component
-const EligibilityBadge = ({ student }: { student: Student }) => {
-  const isEligible = student.credits_earned >= student.credits_required && 
-                    student.backlogs === 0 && 
-                    student.cgpa >= 6.0 && 
-                    student.documents_verified;
+const EligibilityBadge = ({ learner }: { learner: Learner }) => {
+  const isEligible = learner.credits_earned >= learner.credits_required && 
+                    learner.backlogs === 0 && 
+                    learner.cgpa >= 6.0 && 
+                    learner.documents_verified;
 
   return (
     <div className="flex items-center gap-2">
@@ -173,32 +173,32 @@ const ProgressBar = ({ current, total, label }: { current: number; total: number
   );
 };
 
-// Student Card Component
-const StudentCard = ({ 
-  student, 
+// Learner Card Component
+const LearnerCard = ({ 
+  learner, 
   onViewDetails, 
   onMarkGraduated, 
   onPromote, 
   onPushToAlumni, 
   onOverrideEligibility 
 }: {
-  student: Student;
-  onViewDetails: (student: Student) => void;
-  onMarkGraduated: (student: Student) => void;
-  onPromote: (student: Student) => void;
-  onPushToAlumni: (student: Student) => void;
-  onOverrideEligibility: (student: Student) => void;
+  learner: Learner;
+  onViewDetails: (learner: Learner) => void;
+  onMarkGraduated: (learner: Learner) => void;
+  onPromote: (learner: Learner) => void;
+  onPushToAlumni: (learner: Learner) => void;
+  onOverrideEligibility: (learner: Learner) => void;
 }) => {
-  const isEligible = student.credits_earned >= student.credits_required && 
-                    student.backlogs === 0 && 
-                    student.cgpa >= 6.0 && 
-                    student.documents_verified;
+  const isEligible = learner.credits_earned >= learner.credits_required && 
+                    learner.backlogs === 0 && 
+                    learner.cgpa >= 6.0 && 
+                    learner.documents_verified;
 
-  const canGraduate = isEligible && student.pipeline_status === 'enrolled';
-  const canPromote = student.semester < 8 && student.pipeline_status === 'enrolled';
-  const canPushToAlumni = student.pipeline_status === 'graduated';
+  const canGraduate = isEligible && learner.pipeline_status === 'enrolled';
+  const canPromote = learner.semester < 8 && learner.pipeline_status === 'enrolled';
+  const canPushToAlumni = learner.pipeline_status === 'graduated';
 
-  // Get avatar color - consistent blue for all students
+  // Get avatar color - consistent blue for all learners
   const getAvatarColor = (name: string) => {
     return 'bg-blue-600';
   };
@@ -209,34 +209,34 @@ const StudentCard = ({
       <div className="p-6 pb-4">
         <div className="flex items-start space-x-4">
           {/* Avatar */}
-          <div className={`w-14 h-14 ${getAvatarColor(student.name)} rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm`}>
+          <div className={`w-14 h-14 ${getAvatarColor(learner.name)} rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm`}>
             <span className="text-white font-bold text-xl">
-              {student.name?.charAt(0)?.toUpperCase() || '?'}
+              {learner.name?.charAt(0)?.toUpperCase() || '?'}
             </span>
           </div>
           
-          {/* Student Info and Status */}
+          {/* Learner Info and Status */}
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between mb-2">
               <div className="min-w-0 flex-1">
                 <h3 className="text-lg font-bold text-gray-900 truncate mb-1">
-                  {student.name}
+                  {learner.name}
                 </h3>
-                <p className="text-sm text-gray-600 truncate mb-2">{student.email}</p>
+                <p className="text-sm text-gray-600 truncate mb-2">{learner.email}</p>
               </div>
               
               {/* Status Badges - Top Right */}
               <div className="flex flex-col items-end space-y-2 ml-4 flex-shrink-0">
-                <StatusBadge status={student.pipeline_status} />
-                <EligibilityBadge student={student} />
+                <StatusBadge status={learner.pipeline_status} />
+                <EligibilityBadge learner={learner} />
               </div>
             </div>
             
             {/* Department and Semester */}
             <div className="flex items-center space-x-2 text-sm text-gray-500">
-              <span className="font-medium">{student.dept}</span>
+              <span className="font-medium">{learner.dept}</span>
               <span>•</span>
-              <span>Semester {student.semester}</span>
+              <span>Semester {learner.semester}</span>
             </div>
           </div>
         </div>
@@ -245,8 +245,8 @@ const StudentCard = ({
       {/* Credits Progress Section */}
       <div className="px-6 pb-4">
         <ProgressBar 
-          current={student.credits_earned} 
-          total={student.credits_required} 
+          current={learner.credits_earned} 
+          total={learner.credits_required} 
           label="Credits Progress" 
         />
       </div>
@@ -257,7 +257,7 @@ const StudentCard = ({
           {/* CGPA */}
           <div className="text-center bg-blue-50 rounded-xl py-4 px-2">
             <div className="text-2xl font-bold text-blue-700 mb-1">
-              {student.cgpa.toFixed(2)}
+              {learner.cgpa.toFixed(2)}
             </div>
             <div className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
               CGPA
@@ -266,15 +266,15 @@ const StudentCard = ({
           
           {/* Backlogs */}
           <div className={`text-center rounded-xl py-4 px-2 ${
-            student.backlogs > 0 ? 'bg-red-50' : 'bg-green-50'
+            learner.backlogs > 0 ? 'bg-red-50' : 'bg-green-50'
           }`}>
             <div className={`text-2xl font-bold mb-1 ${
-              student.backlogs > 0 ? 'text-red-700' : 'text-green-700'
+              learner.backlogs > 0 ? 'text-red-700' : 'text-green-700'
             }`}>
-              {student.backlogs}
+              {learner.backlogs}
             </div>
             <div className={`text-xs font-semibold uppercase tracking-wide ${
-              student.backlogs > 0 ? 'text-red-600' : 'text-green-600'
+              learner.backlogs > 0 ? 'text-red-600' : 'text-green-600'
             }`}>
               BACKLOGS
             </div>
@@ -282,17 +282,17 @@ const StudentCard = ({
           
           {/* Documents */}
           <div className={`text-center rounded-xl py-4 px-2 ${
-            student.documents_verified ? 'bg-green-50' : 'bg-gray-50'
+            learner.documents_verified ? 'bg-green-50' : 'bg-gray-50'
           }`}>
             <div className="flex items-center justify-center mb-2">
-              {student.documents_verified ? (
+              {learner.documents_verified ? (
                 <CheckCircleIcon className="h-7 w-7 text-green-600" />
               ) : (
                 <XCircleIcon className="h-7 w-7 text-gray-400" />
               )}
             </div>
             <div className={`text-xs font-semibold uppercase tracking-wide ${
-              student.documents_verified ? 'text-green-600' : 'text-gray-500'
+              learner.documents_verified ? 'text-green-600' : 'text-gray-500'
             }`}>
               DOCUMENTS
             </div>
@@ -316,7 +316,7 @@ const StudentCard = ({
             <div className={`space-y-2 min-h-[80px] flex flex-col ${hasMultipleActions ? 'justify-end' : 'justify-start'}`}>
               {/* View Details Button - Always on top row */}
               <button
-                onClick={() => onViewDetails(student)}
+                onClick={() => onViewDetails(learner)}
                 className="w-full inline-flex items-center justify-center px-3 py-2 bg-gray-50 text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-100 hover:border-gray-300 transition-all text-xs font-medium"
               >
                 <EyeIcon className="h-3.5 w-3.5 mr-1.5" />
@@ -328,7 +328,7 @@ const StudentCard = ({
                 <div className="flex gap-2">
                   {canGraduate && (
                     <button
-                      onClick={() => onMarkGraduated(student)}
+                      onClick={() => onMarkGraduated(learner)}
                       className="flex-1 inline-flex items-center justify-center px-3 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all text-xs font-semibold shadow-sm"
                     >
                       <AcademicCapIcon className="h-3.5 w-3.5 mr-1.5" />
@@ -338,7 +338,7 @@ const StudentCard = ({
                   
                   {canPromote && (
                     <button
-                      onClick={() => onPromote(student)}
+                      onClick={() => onPromote(learner)}
                       className="flex-1 inline-flex items-center justify-center px-3 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all text-xs font-semibold shadow-sm"
                     >
                       <ArrowUpIcon className="h-3.5 w-3.5 mr-1.5" />
@@ -348,7 +348,7 @@ const StudentCard = ({
                   
                   {canPushToAlumni && (
                     <button
-                      onClick={() => onPushToAlumni(student)}
+                      onClick={() => onPushToAlumni(learner)}
                       className="flex-1 inline-flex items-center justify-center px-3 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all text-xs font-semibold shadow-sm"
                     >
                       <TrophyIcon className="h-3.5 w-3.5 mr-1.5" />
@@ -358,7 +358,7 @@ const StudentCard = ({
                   
                   {!isEligible && (
                     <button
-                      onClick={() => onOverrideEligibility(student)}
+                      onClick={() => onOverrideEligibility(learner)}
                       className="flex-1 inline-flex items-center justify-center px-3 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all text-xs font-semibold shadow-sm"
                     >
                       <PencilSquareIcon className="h-3.5 w-3.5 mr-1.5" />
@@ -379,21 +379,21 @@ const ActionModal = ({
   isOpen, 
   onClose, 
   title, 
-  student, 
+  learner, 
   actionType, 
   onConfirm 
 }: {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  student: Student | null;
+  learner: Learner | null;
   actionType: string;
   onConfirm: (reason?: string) => void;
 }) => {
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
 
-  if (!isOpen || !student) return null;
+  if (!isOpen || !learner) return null;
 
   const handleConfirm = async () => {
     setLoading(true);
@@ -422,8 +422,8 @@ const ActionModal = ({
             </div>
             
             <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-2">Student: <span className="font-medium">{student.name}</span></p>
-              <p className="text-sm text-gray-600">Email: <span className="font-medium">{student.email}</span></p>
+              <p className="text-sm text-gray-600 mb-2">Learner: <span className="font-medium">{learner.name}</span></p>
+              <p className="text-sm text-gray-600">Email: <span className="font-medium">{learner.email}</span></p>
             </div>
 
             {actionType === 'override' && (
@@ -479,19 +479,19 @@ const ActionModal = ({
   );
 };
 
-// Student Details Modal Component
-const StudentDetailsModal = ({ 
+// Learner Details Modal Component
+const LearnerDetailsModal = ({ 
   isOpen, 
   onClose, 
-  student 
+  learner 
 }: {
   isOpen: boolean;
   onClose: () => void;
-  student: Student | null;
+  learner: Learner | null;
 }) => {
-  if (!isOpen || !student) return null;
+  if (!isOpen || !learner) return null;
 
-  // Get avatar color - consistent blue for all students
+  // Get avatar color - consistent blue for all learners
   const getAvatarColor = (name: string) => {
     return 'bg-blue-600';
   };
@@ -506,17 +506,17 @@ const StudentDetailsModal = ({
           <div className="bg-white border-b border-gray-200 px-6 py-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className={`w-16 h-16 ${getAvatarColor(student.name)} rounded-2xl flex items-center justify-center shadow-sm`}>
+                <div className={`w-16 h-16 ${getAvatarColor(learner.name)} rounded-2xl flex items-center justify-center shadow-sm`}>
                   <span className="text-white font-bold text-2xl">
-                    {student.name?.charAt(0)?.toUpperCase() || '?'}
+                    {learner.name?.charAt(0)?.toUpperCase() || '?'}
                   </span>
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold text-gray-900">{student.name}</h3>
-                  <p className="text-gray-600 text-sm">{student.email}</p>
+                  <h3 className="text-2xl font-bold text-gray-900">{learner.name}</h3>
+                  <p className="text-gray-600 text-sm">{learner.email}</p>
                   <div className="flex items-center gap-3 mt-2">
-                    <StatusBadge status={student.pipeline_status} />
-                    <EligibilityBadge student={student} />
+                    <StatusBadge status={learner.pipeline_status} />
+                    <EligibilityBadge learner={learner} />
                   </div>
                 </div>
               </div>
@@ -535,19 +535,19 @@ const StudentDetailsModal = ({
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               <div className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100">
                 <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide font-medium">Department</p>
-                <p className="font-bold text-gray-900 text-sm">{student.dept}</p>
+                <p className="font-bold text-gray-900 text-sm">{learner.dept}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100">
                 <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide font-medium">Semester</p>
-                <p className="font-bold text-gray-900 text-xl">{student.semester}</p>
+                <p className="font-bold text-gray-900 text-xl">{learner.semester}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100">
                 <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide font-medium">College</p>
-                <p className="font-bold text-gray-900 text-sm truncate">{student.college}</p>
+                <p className="font-bold text-gray-900 text-sm truncate">{learner.college}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100">
                 <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide font-medium">Phone</p>
-                <p className="font-bold text-gray-900 text-sm">{student.phone || 'N/A'}</p>
+                <p className="font-bold text-gray-900 text-sm">{learner.phone || 'N/A'}</p>
               </div>
             </div>
 
@@ -561,8 +561,8 @@ const StudentDetailsModal = ({
               {/* Credits Progress Bar */}
               <div className="mb-8">
                 <ProgressBar 
-                  current={student.credits_earned} 
-                  total={student.credits_required} 
+                  current={learner.credits_earned} 
+                  total={learner.credits_required} 
                   label="Credits Progress" 
                 />
               </div>
@@ -573,19 +573,19 @@ const StudentDetailsModal = ({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-blue-700 mb-2 font-semibold">Current CGPA</p>
-                      <p className="text-4xl font-bold text-blue-600">{student.cgpa.toFixed(2)}</p>
+                      <p className="text-4xl font-bold text-blue-600">{learner.cgpa.toFixed(2)}</p>
                     </div>
                     <StarIcon className="h-10 w-10 text-blue-500" />
                   </div>
                 </div>
                 
-                <div className={`${student.backlogs > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'} border rounded-xl p-6`}>
+                <div className={`${learner.backlogs > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'} border rounded-xl p-6`}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className={`text-sm mb-2 font-semibold ${student.backlogs > 0 ? 'text-red-700' : 'text-green-700'}`}>Active Backlogs</p>
-                      <p className={`text-4xl font-bold ${student.backlogs > 0 ? 'text-red-600' : 'text-green-600'}`}>{student.backlogs}</p>
+                      <p className={`text-sm mb-2 font-semibold ${learner.backlogs > 0 ? 'text-red-700' : 'text-green-700'}`}>Active Backlogs</p>
+                      <p className={`text-4xl font-bold ${learner.backlogs > 0 ? 'text-red-600' : 'text-green-600'}`}>{learner.backlogs}</p>
                     </div>
-                    {student.backlogs > 0 ? (
+                    {learner.backlogs > 0 ? (
                       <ExclamationTriangleIcon className="h-10 w-10 text-red-500" />
                     ) : (
                       <CheckCircleIcon className="h-10 w-10 text-green-500" />
@@ -593,15 +593,15 @@ const StudentDetailsModal = ({
                   </div>
                 </div>
                 
-                <div className={`${student.documents_verified ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'} border rounded-xl p-6`}>
+                <div className={`${learner.documents_verified ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'} border rounded-xl p-6`}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className={`text-sm mb-2 font-semibold ${student.documents_verified ? 'text-green-700' : 'text-yellow-700'}`}>Documents</p>
-                      <p className={`text-xl font-bold ${student.documents_verified ? 'text-green-600' : 'text-yellow-600'}`}>
-                        {student.documents_verified ? 'Verified' : 'Pending'}
+                      <p className={`text-sm mb-2 font-semibold ${learner.documents_verified ? 'text-green-700' : 'text-yellow-700'}`}>Documents</p>
+                      <p className={`text-xl font-bold ${learner.documents_verified ? 'text-green-600' : 'text-yellow-600'}`}>
+                        {learner.documents_verified ? 'Verified' : 'Pending'}
                       </p>
                     </div>
-                    {student.documents_verified ? (
+                    {learner.documents_verified ? (
                       <CheckCircleIcon className="h-10 w-10 text-green-500" />
                     ) : (
                       <ClockIcon className="h-10 w-10 text-yellow-500" />
@@ -619,11 +619,11 @@ const StudentDetailsModal = ({
               </h4>
               <div className="space-y-4">
                 <div className={`flex items-center gap-4 p-4 rounded-xl border-2 ${
-                  student.credits_earned >= student.credits_required 
+                  learner.credits_earned >= learner.credits_required 
                     ? 'bg-green-50 border-green-200' 
                     : 'bg-red-50 border-red-200'
                 }`}>
-                  {student.credits_earned >= student.credits_required ? (
+                  {learner.credits_earned >= learner.credits_required ? (
                     <CheckCircleIcon className="h-6 w-6 text-green-500 flex-shrink-0" />
                   ) : (
                     <XCircleIcon className="h-6 w-6 text-red-500 flex-shrink-0" />
@@ -631,17 +631,17 @@ const StudentDetailsModal = ({
                   <div>
                     <span className="text-sm font-semibold text-gray-900">Credits Requirement</span>
                     <p className="text-xs text-gray-600 mt-1">
-                      {student.credits_earned}/{student.credits_required} credits completed
+                      {learner.credits_earned}/{learner.credits_required} credits completed
                     </p>
                   </div>
                 </div>
                 
                 <div className={`flex items-center gap-4 p-4 rounded-xl border-2 ${
-                  student.backlogs === 0 
+                  learner.backlogs === 0 
                     ? 'bg-green-50 border-green-200' 
                     : 'bg-red-50 border-red-200'
                 }`}>
-                  {student.backlogs === 0 ? (
+                  {learner.backlogs === 0 ? (
                     <CheckCircleIcon className="h-6 w-6 text-green-500 flex-shrink-0" />
                   ) : (
                     <XCircleIcon className="h-6 w-6 text-red-500 flex-shrink-0" />
@@ -649,17 +649,17 @@ const StudentDetailsModal = ({
                   <div>
                     <span className="text-sm font-semibold text-gray-900">No Active Backlogs</span>
                     <p className="text-xs text-gray-600 mt-1">
-                      {student.backlogs === 0 ? 'All subjects cleared' : `${student.backlogs} subjects pending`}
+                      {learner.backlogs === 0 ? 'All subjects cleared' : `${learner.backlogs} subjects pending`}
                     </p>
                   </div>
                 </div>
                 
                 <div className={`flex items-center gap-4 p-4 rounded-xl border-2 ${
-                  student.cgpa >= 6.0 
+                  learner.cgpa >= 6.0 
                     ? 'bg-green-50 border-green-200' 
                     : 'bg-red-50 border-red-200'
                 }`}>
-                  {student.cgpa >= 6.0 ? (
+                  {learner.cgpa >= 6.0 ? (
                     <CheckCircleIcon className="h-6 w-6 text-green-500 flex-shrink-0" />
                   ) : (
                     <XCircleIcon className="h-6 w-6 text-red-500 flex-shrink-0" />
@@ -667,17 +667,17 @@ const StudentDetailsModal = ({
                   <div>
                     <span className="text-sm font-semibold text-gray-900">Minimum CGPA Requirement</span>
                     <p className="text-xs text-gray-600 mt-1">
-                      Current: {student.cgpa.toFixed(2)} (Required: 6.0)
+                      Current: {learner.cgpa.toFixed(2)} (Required: 6.0)
                     </p>
                   </div>
                 </div>
                 
                 <div className={`flex items-center gap-4 p-4 rounded-xl border-2 ${
-                  student.documents_verified 
+                  learner.documents_verified 
                     ? 'bg-green-50 border-green-200' 
                     : 'bg-yellow-50 border-yellow-200'
                 }`}>
-                  {student.documents_verified ? (
+                  {learner.documents_verified ? (
                     <CheckCircleIcon className="h-6 w-6 text-green-500 flex-shrink-0" />
                   ) : (
                     <ClockIcon className="h-6 w-6 text-yellow-500 flex-shrink-0" />
@@ -685,7 +685,7 @@ const StudentDetailsModal = ({
                   <div>
                     <span className="text-sm font-semibold text-gray-900">Document Verification</span>
                     <p className="text-xs text-gray-600 mt-1">
-                      {student.documents_verified ? 'All documents verified' : 'Verification pending'}
+                      {learner.documents_verified ? 'All documents verified' : 'Verification pending'}
                     </p>
                   </div>
                 </div>
@@ -696,22 +696,22 @@ const StudentDetailsModal = ({
             <div className="mb-6">
               <h4 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
                 <CalendarDaysIcon className="h-6 w-6 text-indigo-600" />
-                Student Timeline
+                Learner Timeline
               </h4>
               <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                   <div>
                     <span className="font-semibold text-gray-900">Enrolled:</span>
-                    <p className="text-gray-600 mt-1">{new Date(student.created_at).toLocaleDateString()}</p>
+                    <p className="text-gray-600 mt-1">{new Date(learner.created_at).toLocaleDateString()}</p>
                   </div>
                   <div>
                     <span className="font-semibold text-gray-900">Last Updated:</span>
-                    <p className="text-gray-600 mt-1">{new Date(student.last_updated).toLocaleDateString()}</p>
+                    <p className="text-gray-600 mt-1">{new Date(learner.last_updated).toLocaleDateString()}</p>
                   </div>
-                  {student.graduation_date && (
+                  {learner.graduation_date && (
                     <div>
                       <span className="font-semibold text-gray-900">Graduation Date:</span>
-                      <p className="text-gray-600 mt-1">{new Date(student.graduation_date).toLocaleDateString()}</p>
+                      <p className="text-gray-600 mt-1">{new Date(learner.graduation_date).toLocaleDateString()}</p>
                     </div>
                   )}
                 </div>
@@ -736,7 +736,7 @@ const StudentDetailsModal = ({
 // Main Component
 const GraduationEligibility: React.FC = () => {
   // State
-  const [students, setStudents] = useState<Student[]>([]);
+  const [learners, setlearners] = useState<Learner[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -746,7 +746,7 @@ const GraduationEligibility: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('name');
 
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [selectedLearner, setSelectedLearner] = useState<Learner | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showActionModal, setShowActionModal] = useState(false);
   const [actionType, setActionType] = useState<string>('');
@@ -760,7 +760,7 @@ const GraduationEligibility: React.FC = () => {
   });
 
   // Mock data for demonstration - In real app, this would come from Supabase
-  const mockStudents: Student[] = [
+  const mocklearners: Learner[] = [
     {
       id: '1',
       name: 'Arjun Sharma',
@@ -875,7 +875,7 @@ const GraduationEligibility: React.FC = () => {
 
   // Initialize with mock data
   useEffect(() => {
-    setStudents(mockStudents);
+    setlearners(mocklearners);
     setLoading(false);
   }, []);
 
@@ -886,7 +886,7 @@ const GraduationEligibility: React.FC = () => {
   // Generate filter options from data
   const departmentOptions = useMemo(() => {
     const deptCounts: Record<string, number> = {};
-    students.forEach((s) => {
+    learners.forEach((s) => {
       if (s.dept) {
         deptCounts[s.dept] = (deptCounts[s.dept] || 0) + 1;
       }
@@ -896,11 +896,11 @@ const GraduationEligibility: React.FC = () => {
       label: dept,
       count,
     }));
-  }, [students]);
+  }, [learners]);
 
   const semesterOptions = useMemo(() => {
     const semCounts: Record<string, number> = {};
-    students.forEach((s) => {
+    learners.forEach((s) => {
       const sem = s.semester.toString();
       semCounts[sem] = (semCounts[sem] || 0) + 1;
     });
@@ -911,11 +911,11 @@ const GraduationEligibility: React.FC = () => {
         count,
       }))
       .sort((a, b) => parseInt(a.value) - parseInt(b.value));
-  }, [students]);
+  }, [learners]);
 
   const statusOptions = useMemo(() => {
     const statusCounts: Record<string, number> = {};
-    students.forEach((s) => {
+    learners.forEach((s) => {
       statusCounts[s.pipeline_status] = (statusCounts[s.pipeline_status] || 0) + 1;
     });
     return Object.entries(statusCounts).map(([status, count]) => ({
@@ -923,16 +923,16 @@ const GraduationEligibility: React.FC = () => {
       label: status.charAt(0).toUpperCase() + status.slice(1),
       count,
     }));
-  }, [students]);
+  }, [learners]);
 
   const eligibilityOptions = [
-    { value: 'eligible', label: 'Eligible', count: students.filter(s => s.eligibility_flag).length },
-    { value: 'ineligible', label: 'Ineligible', count: students.filter(s => !s.eligibility_flag).length },
+    { value: 'eligible', label: 'Eligible', count: learners.filter(s => s.eligibility_flag).length },
+    { value: 'ineligible', label: 'Ineligible', count: learners.filter(s => !s.eligibility_flag).length },
   ];
 
   // Apply filters and sorting
-  const filteredStudents = useMemo(() => {
-    let filtered = students;
+  const filteredlearners = useMemo(() => {
+    let filtered = learners;
 
     // Search filter
     if (searchQuery) {
@@ -994,69 +994,69 @@ const GraduationEligibility: React.FC = () => {
     }
 
     return sorted;
-  }, [students, searchQuery, filters, sortBy]);
+  }, [learners, searchQuery, filters, sortBy]);
 
-  const totalItems = filteredStudents.length;
+  const totalItems = filteredlearners.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedStudents = filteredStudents.slice(startIndex, endIndex);
+  const paginatedlearners = filteredlearners.slice(startIndex, endIndex);
 
   // Statistics
   const stats = useMemo(() => {
-    const total = students.length;
-    const eligible = students.filter(s => s.eligibility_flag).length;
-    const graduated = students.filter(s => s.pipeline_status === 'graduated').length;
-    const alumni = students.filter(s => s.pipeline_status === 'alumni').length;
-    const avgCgpa = students.reduce((sum, s) => sum + s.cgpa, 0) / total;
+    const total = learners.length;
+    const eligible = learners.filter(s => s.eligibility_flag).length;
+    const graduated = learners.filter(s => s.pipeline_status === 'graduated').length;
+    const alumni = learners.filter(s => s.pipeline_status === 'alumni').length;
+    const avgCgpa = learners.reduce((sum, s) => sum + s.cgpa, 0) / total;
 
     return { total, eligible, graduated, alumni, avgCgpa };
-  }, [students]);
+  }, [learners]);
 
   // Action handlers
-  const handleViewDetails = (student: Student) => {
-    setSelectedStudent(student);
+  const handleViewDetails = (learner: Learner) => {
+    setSelectedLearner(learner);
     setShowDetailsModal(true);
   };
 
-  const handleMarkGraduated = (student: Student) => {
-    setSelectedStudent(student);
+  const handleMarkGraduated = (learner: Learner) => {
+    setSelectedLearner(learner);
     setActionType('graduate');
     setActionTitle('Mark as Graduated');
     setShowActionModal(true);
   };
 
-  const handlePromote = (student: Student) => {
-    setSelectedStudent(student);
+  const handlePromote = (learner: Learner) => {
+    setSelectedLearner(learner);
     setActionType('promote');
     setActionTitle('Promote to Next Semester');
     setShowActionModal(true);
   };
 
-  const handlePushToAlumni = (student: Student) => {
-    setSelectedStudent(student);
+  const handlePushToAlumni = (learner: Learner) => {
+    setSelectedLearner(learner);
     setActionType('alumni');
     setActionTitle('Push to Alumni');
     setShowActionModal(true);
   };
 
-  const handleOverrideEligibility = (student: Student) => {
-    setSelectedStudent(student);
+  const handleOverrideEligibility = (learner: Learner) => {
+    setSelectedLearner(learner);
     setActionType('override');
     setActionTitle('Override Eligibility');
     setShowActionModal(true);
   };
 
   const handleActionConfirm = async (reason?: string) => {
-    if (!selectedStudent) return;
+    if (!selectedLearner) return;
 
     try {
       // In a real app, this would make API calls to update the database
-      logger.info('Student action performed', { actionType, studentName: selectedStudent.name, reason });
+      logger.info('Learner action performed', { actionType, learnerName: selectedLearner.name, reason });
       
       // Update local state for demo
-      setStudents(prev => prev.map(s => {
-        if (s.id === selectedStudent.id) {
+      setlearners(prev => prev.map(s => {
+        if (s.id === selectedLearner.id) {
           switch (actionType) {
             case 'graduate':
               return { ...s, pipeline_status: 'graduated', graduation_date: new Date().toISOString() };
@@ -1096,9 +1096,9 @@ const GraduationEligibility: React.FC = () => {
   };
 
   const handleGenerateEligibilityList = () => {
-    const eligibleStudents = students.filter(s => s.eligibility_flag);
-    logger.info('Generating eligibility list', { eligibleCount: eligibleStudents.length });
-    toast.success(`Generated eligibility list for ${eligibleStudents.length} students`);
+    const eligiblelearners = learners.filter(s => s.eligibility_flag);
+    logger.info('Generating eligibility list', { eligibleCount: eligiblelearners.length });
+    toast.success(`Generated eligibility list for ${eligiblelearners.length} learners`);
   };
 
   if (loading) {
@@ -1143,7 +1143,7 @@ const GraduationEligibility: React.FC = () => {
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
-          title="Total Students"
+          title="Total Learners"
           value={stats.total}
           icon={<UserGroupIcon className="h-6 w-6" />}
           color="blue"
@@ -1239,7 +1239,7 @@ const GraduationEligibility: React.FC = () => {
           <p className="text-sm text-gray-600">
             Showing <span className="font-semibold text-gray-900">{startIndex + 1}</span> to{' '}
             <span className="font-semibold text-gray-900">{Math.min(endIndex, totalItems)}</span> of{' '}
-            <span className="font-semibold text-gray-900">{totalItems}</span> student{totalItems !== 1 ? 's' : ''}
+            <span className="font-semibold text-gray-900">{totalItems}</span> learner{totalItems !== 1 ? 's' : ''}
             {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
           </p>
         </div>
@@ -1299,17 +1299,17 @@ const GraduationEligibility: React.FC = () => {
         <div className="flex-1">
 
 
-          {/* Students Grid/Table */}
+          {/* Learners Grid/Table */}
           {viewMode === 'grid' ? (
             <div className={`grid gap-6 ${
               showFilters 
                 ? 'grid-cols-1 lg:grid-cols-2' 
                 : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-3'
             }`}>
-              {paginatedStudents.map((student) => (
-                <StudentCard
-                  key={student.id}
-                  student={student}
+              {paginatedlearners.map((learner) => (
+                <LearnerCard
+                  key={learner.id}
+                  learner={learner}
                   onViewDetails={handleViewDetails}
                   onMarkGraduated={handleMarkGraduated}
                   onPromote={handlePromote}
@@ -1325,7 +1325,7 @@ const GraduationEligibility: React.FC = () => {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Student
+                        Learner
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Department
@@ -1351,50 +1351,50 @@ const GraduationEligibility: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {paginatedStudents.map((student) => (
-                      <tr key={student.id} className="hover:bg-gray-50">
+                    {paginatedlearners.map((learner) => (
+                      <tr key={learner.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
                               <span className="text-white font-semibold text-sm">
-                                {student.name?.charAt(0)?.toUpperCase() || '?'}
+                                {learner.name?.charAt(0)?.toUpperCase() || '?'}
                               </span>
                             </div>
                             <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                              <div className="text-sm text-gray-500">{student.email}</div>
+                              <div className="text-sm font-medium text-gray-900">{learner.name}</div>
+                              <div className="text-sm text-gray-500">{learner.email}</div>
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {student.dept}
+                          {learner.dept}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {student.semester}
+                          {learner.semester}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {student.credits_earned}/{student.credits_required}
+                          {learner.credits_earned}/{learner.credits_required}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {student.cgpa.toFixed(2)}
+                          {learner.cgpa.toFixed(2)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <StatusBadge status={student.pipeline_status} />
+                          <StatusBadge status={learner.pipeline_status} />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <EligibilityBadge student={student} />
+                          <EligibilityBadge learner={learner} />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
                             <button
-                              onClick={() => handleViewDetails(student)}
+                              onClick={() => handleViewDetails(learner)}
                               className="text-indigo-600 hover:text-indigo-900"
                             >
                               <EyeIcon className="h-4 w-4" />
                             </button>
-                            {student.eligibility_flag && student.pipeline_status === 'enrolled' && (
+                            {learner.eligibility_flag && learner.pipeline_status === 'enrolled' && (
                               <button
-                                onClick={() => handleMarkGraduated(student)}
+                                onClick={() => handleMarkGraduated(learner)}
                                 className="text-green-600 hover:text-green-900"
                               >
                                 <AcademicCapIcon className="h-4 w-4" />
@@ -1457,14 +1457,14 @@ const GraduationEligibility: React.FC = () => {
           )}
 
           {/* Empty State */}
-          {paginatedStudents.length === 0 && !loading && (
+          {paginatedlearners.length === 0 && !loading && (
             <div className="text-center py-12">
               <AcademicCapIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No students found</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No learners found</h3>
               <p className="text-gray-500">
                 {searchQuery || Object.values(filters).some(f => f.length > 0)
                   ? 'Try adjusting your search or filters'
-                  : 'No students are currently enrolled in the system'}
+                  : 'No learners are currently enrolled in the system'}
               </p>
             </div>
           )}
@@ -1472,17 +1472,17 @@ const GraduationEligibility: React.FC = () => {
       </div>
 
       {/* Modals */}
-      <StudentDetailsModal
+      <LearnerDetailsModal
         isOpen={showDetailsModal}
         onClose={() => setShowDetailsModal(false)}
-        student={selectedStudent}
+        learner={selectedLearner}
       />
 
       <ActionModal
         isOpen={showActionModal}
         onClose={() => setShowActionModal(false)}
         title={actionTitle}
-        student={selectedStudent}
+        learner={selectedLearner}
         actionType={actionType}
         onConfirm={handleActionConfirm}
       />

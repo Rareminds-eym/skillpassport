@@ -59,8 +59,8 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         error: 'Not found',
         message: 'Use POST /analyze-assessment to analyze assessment data',
         availableEndpoints: [
-          'POST /analyze-assessment - Analyze student assessment',
-          'POST /analyze-assessment/analyze - Analyze student assessment (alias)',
+          'POST /analyze-assessment - Analyze learner assessment',
+          'POST /analyze-assessment/analyze - Analyze learner assessment (alias)',
           'POST /analyze-assessment/generate-program-career-paths - Generate career paths for program',
           'GET /analyze-assessment/health - Health check'
         ],

@@ -9,7 +9,7 @@
 /**
  * Validate and correct aptitude scores
  * @param {Object} aptitudeData - Aptitude data from gemini_results
- * @param {Object} allResponses - All student responses
+ * @param {Object} allResponses - All learner responses
  * @param {Array} questions - Array of aptitude questions
  * @returns {Object} Corrected aptitude data
  */
@@ -129,11 +129,11 @@ export const validateAptitudeScores = (aptitudeData, allResponses, questions) =>
 };
 
 /**
- * Match student answer with correct answer
+ * Match learner answer with correct answer
  * Handles different answer formats (Option A, A, full text, etc.)
  */
-const matchAnswer = (studentAnswer, correctAnswer) => {
-  if (!studentAnswer || !correctAnswer) return false;
+const matchAnswer = (learnerAnswer, correctAnswer) => {
+  if (!learnerAnswer || !correctAnswer) return false;
 
   // Normalize answers
   const normalize = (str) => {
@@ -141,22 +141,22 @@ const matchAnswer = (studentAnswer, correctAnswer) => {
     return str.toLowerCase().trim();
   };
 
-  const student = normalize(studentAnswer);
+  const learner = normalize(learnerAnswer);
   const correct = normalize(correctAnswer);
 
   // Direct match
-  if (student === correct) return true;
+  if (learner === correct) return true;
 
   // Option format matching (e.g., "Option A" vs "A")
   if (correct.startsWith('option ')) {
     const optionLetter = correct.replace('option ', '');
-    if (student === optionLetter) return true;
-    // Also check if student answer starts with the option letter
-    if (student.startsWith(optionLetter)) return true;
+    if (learner === optionLetter) return true;
+    // Also check if learner answer starts with the option letter
+    if (learner.startsWith(optionLetter)) return true;
   }
 
-  if (student.startsWith('option ')) {
-    const optionLetter = student.replace('option ', '');
+  if (learner.startsWith('option ')) {
+    const optionLetter = learner.replace('option ', '');
     if (optionLetter === correct) return true;
     // Also check if correct answer starts with the option letter
     if (correct.startsWith(optionLetter)) return true;
@@ -168,16 +168,16 @@ const matchAnswer = (studentAnswer, correctAnswer) => {
     return match ? (match[1] || match[2]).toLowerCase() : null;
   };
 
-  const studentOption = extractOptionLetter(student);
+  const learnerOption = extractOptionLetter(learner);
   const correctOption = extractOptionLetter(correct);
 
-  if (studentOption && correctOption && studentOption === correctOption) {
+  if (learnerOption && correctOption && learnerOption === correctOption) {
     return true;
   }
 
   // Check if one is a substring of the other (for full text answers)
-  if (student.length > 10 && correct.length > 10) {
-    if (student.includes(correct) || correct.includes(student)) {
+  if (learner.length > 10 && correct.length > 10) {
+    if (learner.includes(correct) || correct.includes(learner)) {
       return true;
     }
   }

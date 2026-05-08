@@ -181,8 +181,8 @@ export function validateProposal(proposal: Partial<Proposal>): {
     errors.push('Project ID is required');
   }
 
-  if (!proposal.student_id) {
-    errors.push('Student ID is required');
+  if (!proposal.learner_id) {
+    errors.push('Learner ID is required');
   }
 
   if (!proposal.cover_letter || proposal.cover_letter.trim().length === 0) {
@@ -227,8 +227,8 @@ export function validateContract(contract: Partial<ProjectContract>): {
     errors.push('Proposal ID is required');
   }
 
-  if (!contract.student_id) {
-    errors.push('Student ID is required');
+  if (!contract.learner_id) {
+    errors.push('Learner ID is required');
   }
 
   if (!contract.recruiter_id) {

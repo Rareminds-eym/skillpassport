@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { X, CreditCard, Calendar, FileText, AlertCircle } from "lucide-react";
-import { StudentFeeSummary, PaymentMode } from '@/features/student-profile/model';
+import { LearnerFeeSummary, PaymentMode } from '@/features/learner-profile/model';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (ledgerId: string, studentId: string, data: any) => Promise<boolean>;
-  student: StudentFeeSummary | null;
+  onSave: (ledgerId: string, learnerId: string, data: any) => Promise<boolean>;
+  learner: LearnerFeeSummary | null;
 }
 
 const paymentModes: { value: PaymentMode; label: string }[] = [
@@ -23,7 +23,7 @@ export const PaymentFormModal: React.FC<Props> = ({
   isOpen,
   onClose,
   onSave,
-  student,
+  learner,
 }) => {
   const [formData, setFormData] = useState({
     amount: "",
@@ -41,9 +41,9 @@ export const PaymentFormModal: React.FC<Props> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (isOpen && student) {
+    if (isOpen && learner) {
       setFormData({
-        amount: student.balance.toString(),
+        amount: learner.balance.toString(),
         mode: "cash",
         reference_number: "",
         transaction_id: "",
@@ -56,7 +56,7 @@ export const PaymentFormModal: React.FC<Props> = ({
       });
       setErrors({});
     }
-  }, [isOpen, student]);
+  }, [isOpen, learner]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -65,7 +65,7 @@ export const PaymentFormModal: React.FC<Props> = ({
       newErrors.amount = "Amount is required and must be greater than 0";
     }
 
-    if (parseFloat(formData.amount) > (student?.balance || 0)) {
+    if (parseFloat(formData.amount) > (learner?.balance || 0)) {
       newErrors.amount = "Amount cannot exceed outstanding balance";
     }
 
@@ -108,13 +108,13 @@ export const PaymentFormModal: React.FC<Props> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm() || !student) return;
+    if (!validateForm() || !learner) return;
 
     setLoading(true);
     try {
       // Use the first ledger entry for payment recording
-      const ledgerId = student.ledger_entries[0]?.id || "mock-ledger";
-      const success = await onSave(ledgerId, student.student_id, {
+      const ledgerId = learner.ledger_entries[0]?.id || "mock-ledger";
+      const success = await onSave(ledgerId, learner.learner_id, {
         ...formData,
         amount: parseFloat(formData.amount),
       });
@@ -136,7 +136,7 @@ export const PaymentFormModal: React.FC<Props> = ({
     }
   };
 
-  if (!isOpen || !student) return null;
+  if (!isOpen || !learner) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -150,7 +150,7 @@ export const PaymentFormModal: React.FC<Props> = ({
             <div>
               <h2 className="text-xl font-bold text-gray-900">Record Payment</h2>
               <p className="text-sm text-gray-600">
-                {student.student_name} ({student.roll_number})
+                {learner.learner_name} ({learner.roll_number})
               </p>
             </div>
           </div>
@@ -168,10 +168,10 @@ export const PaymentFormModal: React.FC<Props> = ({
             <AlertCircle className="h-4 w-4 text-red-600" />
             <span className="text-sm font-medium text-red-800">Outstanding Balance</span>
           </div>
-          <p className="text-2xl font-bold text-red-900">₹{student.balance.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-red-900">₹{learner.balance.toLocaleString()}</p>
           <p className="text-sm text-red-700 mt-1">
-            Total Due: ₹{student.total_due.toLocaleString()} | 
-            Paid: ₹{student.total_paid.toLocaleString()}
+            Total Due: ₹{learner.total_due.toLocaleString()} | 
+            Paid: ₹{learner.total_paid.toLocaleString()}
           </p>
         </div>
 
@@ -188,7 +188,7 @@ export const PaymentFormModal: React.FC<Props> = ({
                 type="number"
                 step="0.01"
                 min="0"
-                max={student.balance}
+                max={learner.balance}
                 value={formData.amount}
                 onChange={(e) => handleInputChange("amount", e.target.value)}
                 className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${

@@ -22,11 +22,11 @@ export type NotificationType =
   | "candidate_rejected"
   | "new_application"
   // Educator notifications
-  | "student_verification_required"
+  | "learner_verification_required"
   | "assignment_submitted"
   | "class_activity_pending"
-  | "student_achievement"
-  | "new_student_enrolled"
+  | "learner_achievement"
+  | "new_learner_enrolled"
   | "attendance_reminder"
   // Course notifications
   | "course_added"
@@ -70,14 +70,14 @@ async function resolveUserId(identifier: string): Promise<string | null> {
 
   if (educatorData?.id) return educatorData.id;
 
-  // Try students
-  const { data: studentData } = await supabase
-    .from("students")
+  // Try learners
+  const { data: learnerData } = await supabase
+    .from("learners")
     .select("id")
     .ilike("email", identifier)
     .maybeSingle();
 
-  if (studentData?.id) return studentData.id;
+  if (learnerData?.id) return learnerData.id;
 
   // Try recruiters
   const { data: recruiter } = await supabase

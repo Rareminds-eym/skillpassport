@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { X, Plus, Trash2, ChevronLeft, ChevronRight, Check, GraduationCap, Tag, IndianRupee, Calendar, CheckCircle, AlertCircle, Sparkles } from "lucide-react";
-import { FeeStructure, FeeHead, DueSchedule, Program, Department } from '@/features/student-profile/model';
+import { FeeStructure, FeeHead, DueSchedule, Program, Department } from '@/features/learner-profile/model';
 import { FEE_CATEGORIES, FEE_QUOTAS, DEFAULT_FEE_HEADS, PU_STREAMS, PU_YEARS } from '../types';
 
 interface Props {
@@ -148,7 +148,7 @@ export const FeeStructureFormModal: React.FC<Props> = ({ isOpen, onClose, onSave
                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl mb-4"><div className="flex items-center justify-between"><span className="text-blue-900 font-medium">Total Fee Amount</span><span className="text-xl font-bold text-blue-600">₹{totalAmount.toLocaleString()}</span></div>{(formData.due_schedule?.length || 0) > 0 && scheduleTotal !== totalAmount && <p className="text-sm text-orange-600 mt-2 flex items-center gap-1"><AlertCircle className="h-4 w-4" />Schedule total (₹{scheduleTotal.toLocaleString()}) doesn&apos;t match</p>}</div>
                 <div className="space-y-3">{(formData.due_schedule || []).map((s, i) => (<div key={i} className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200"><div className="w-28 text-center"><span className="inline-flex items-center justify-center w-8 h-8 bg-orange-100 text-orange-700 rounded-full font-semibold text-sm">{s.installment}</span></div><input type="date" value={s.due_date} onChange={(e) => updateDueSchedule(i, "due_date", e.target.value)} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm" /><div className="w-36 relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span><input type="number" value={s.amount || ""} onChange={(e) => updateDueSchedule(i, "amount", parseFloat(e.target.value) || 0)} className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm" min="0" /></div><button type="button" onClick={() => removeDueSchedule(i)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="h-5 w-5" /></button></div>))}</div>
                 <button type="button" onClick={addDueSchedule} className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-orange-400 hover:text-orange-600 flex items-center justify-center gap-2"><Plus className="h-5 w-5" /> Add Installment</button>
-                {(formData.due_schedule?.length || 0) === 0 && <div className="p-4 bg-gray-50 rounded-xl text-center text-gray-500"><Calendar className="h-10 w-10 mx-auto mb-2 text-gray-400" /><p>No installments. Students pay full amount at once.</p></div>}
+                {(formData.due_schedule?.length || 0) === 0 && <div className="p-4 bg-gray-50 rounded-xl text-center text-gray-500"><Calendar className="h-10 w-10 mx-auto mb-2 text-gray-400" /><p>No installments. Learners pay full amount at once.</p></div>}
               </div>
             )}
             {currentStep === 5 && (

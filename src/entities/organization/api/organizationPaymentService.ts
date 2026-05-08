@@ -23,7 +23,7 @@ export interface OrganizationPurchaseData {
   planId: string;
   planName: string;
   seatCount: number;
-  targetMemberType: 'educator' | 'student' | 'both';
+  targetMemberType: 'educator' | 'learner' | 'both';
   billingCycle: 'monthly' | 'annual';
   autoRenew: boolean;
   pricing: {

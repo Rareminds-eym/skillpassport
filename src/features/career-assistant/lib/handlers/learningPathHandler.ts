@@ -1,5 +1,5 @@
 import { getOpenAIClient, DEFAULT_MODEL } from '@/features/career-assistant';
-import { fetchStudentProfile, fetchOpportunities } from '@/features/career-assistant';
+import { fetchlearnerProfile, fetchOpportunities } from '@/features/career-assistant';
 import { extractInDemandSkills } from '@/features/career-assistant';
 import {
   createLearningPathPrompt,
@@ -12,24 +12,24 @@ import {
   SYSTEM_PROMPTS,
   QueryContext
 } from '../prompts/intelligentPrompt';
-import { AIResponse, StudentProfile } from '@/features/student-profile/model';
+import { AIResponse, LearnerProfile } from '@/features/learner-profile/model';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('learning-path-handler');
 
 /**
  * Learning Path Handler
- * Creates personalized learning roadmaps for students
+ * Creates personalized learning roadmaps for learners
  */
 
 export async function handleLearningPath(
   message: string,
-  studentId: string
+  learnerId: string
 ): Promise<AIResponse> {
   try {
-    // 1. Fetch student profile
-    const studentProfile = await fetchStudentProfile(studentId);
-    if (!studentProfile) {
+    // 1. Fetch learner profile
+    const learnerProfile = await fetchlearnerProfile(learnerId);
+    if (!learnerProfile) {
       return {
         success: false,
         error: 'Unable to fetch your profile. Please try again.'
@@ -37,15 +37,15 @@ export async function handleLearningPath(
     }
 
     // 2. Analyze skill gaps and career goals from message and profile
-    const learningPath = await generateLearningPath(studentProfile, message);
+    const learningPath = await generateLearningPath(learnerProfile, message);
 
     return {
       success: true,
       message: learningPath
     };
   } catch (error: any) {
-    logger.error('Failed to generate learning path for student', error instanceof Error ? error : new Error(String(error)), {
-      studentId,
+    logger.error('Failed to generate learning path for learner', error instanceof Error ? error : new Error(String(error)), {
+      learnerId,
       messageLength: message?.length
     });
     return {
@@ -59,11 +59,11 @@ export async function handleLearningPath(
  * Generate personalized learning path with AI
  */
 async function generateLearningPath(
-  studentProfile: StudentProfile,
+  learnerProfile: LearnerProfile,
   userMessage: string
 ): Promise<string> {
   try {
-    const studentName = studentProfile.name?.split(' ')[0] || 'there';
+    const learnerName = learnerProfile.name?.split(' ')[0] || 'there';
 
     // Fetch job opportunities to understand market demand
     const opportunities = await fetchOpportunities();
@@ -74,7 +74,7 @@ async function generateLearningPath(
 
     // Build context for intelligent prompt
     const context: QueryContext = {
-      studentProfile,
+      learnerProfile,
       marketData: {
         inDemandSkills,
         totalJobs: opportunities.length,
@@ -107,19 +107,19 @@ async function generateLearningPath(
 
     // Add personalized header only for comprehensive plans
     if (queryType === 'comprehensive-plan') {
-      const header = `Hey ${studentName}! 🎓\n\nI've created a personalized learning roadmap for you based on your ${studentProfile.department} background and current market demands. Let's level up your skills! 🚀\n\n`;
+      const header = `Hey ${learnerName}! 🎓\n\nI've created a personalized learning roadmap for you based on your ${learnerProfile.department} background and current market demands. Let's level up your skills! 🚀\n\n`;
       response = header + response;
     } else if (queryType === 'quick-answer') {
       // Simple greeting for quick answers
-      response = `Hey ${studentName}! 👋\n\n` + response;
+      response = `Hey ${learnerName}! 👋\n\n` + response;
     }
 
     return response;
   } catch (error) {
     logger.error('Failed to generate learning path', error instanceof Error ? error : new Error(String(error)), {
-      studentId: studentProfile.id,
+      learnerId: learnerProfile.id,
       messageLengthAndQueryAnalysis: userMessage?.length
     });
-    return createFallbackLearningPath(studentProfile, userMessage);
+    return createFallbackLearningPath(learnerProfile, userMessage);
   }
 }

@@ -498,7 +498,7 @@ const AddLearningOutcomeModal = ({
       subtitle={
         editOutcome
           ? "Update learning outcome details"
-          : "Define what students should achieve"
+          : "Define what learners should achieve"
       }
     >
       {error && (
@@ -542,7 +542,7 @@ const AddLearningOutcomeModal = ({
             className={`w-full rounded-lg border ${
               error && !outcome.trim() ? "border-red-300" : "border-gray-300"
             } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none`}
-            placeholder="Describe what students should be able to do after this chapter..."
+            placeholder="Describe what learners should be able to do after this chapter..."
           />
         </div>
 

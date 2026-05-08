@@ -524,7 +524,7 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                         value={outcome}
                         onChange={(e) => handleUpdateOutcome(index, e.target.value)}
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        placeholder="e.g., Students will be able to..."
+                        placeholder="e.g., Learners will be able to..."
                       />
                       {courseData.targetOutcomes!.length > 1 && (
                         <button
@@ -554,7 +554,7 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Skill Mapping</h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  Select skills that students will develop in this course. This links to the Skill Passport.
+                  Select skills that learners will develop in this course. This links to the Skill Passport.
                 </p>
               </div>
 

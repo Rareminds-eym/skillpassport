@@ -3,7 +3,7 @@
  * 
  * Components for organization-level subscription management including:
  * - Seat selection with volume discounts
- * - Member type selection (educator/student/both)
+ * - Member type selection (educator/learner/both)
  * - Pricing breakdown display
  * - Organization purchase panel
  * - Subscription dashboard and management

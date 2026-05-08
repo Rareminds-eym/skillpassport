@@ -1,0 +1,265 @@
+/**
+ * Learner Notifications Service
+ * Handles notifications for learners about pipeline changes, interviews, etc.
+ */
+
+import { supabase } from '@/shared/api/supabaseClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('learner-notification');
+
+export class LearnerNotificationService {
+  /**
+   * Get all notifications for a learner
+   * @param {string} learnerId - Learner's UUID
+   * @param {Object} options - Query options
+   * @returns {Promise<Array>} List of notifications
+   */
+  static async getlearnerNotifications(learnerId, options = {}) {
+    try {
+      let query = supabase
+        .from('learner_notifications')
+        .select('*')
+        .eq('learner_id', learnerId)
+        .order('created_at', { ascending: false });
+
+      if (options.unreadOnly) {
+        query = query.eq('is_read', false);
+      }
+
+      if (options.type) {
+        query = query.eq('notification_type', options.type);
+      }
+
+      if (options.limit) {
+        query = query.limit(options.limit);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      return data || [];
+    } catch (error) {
+      logger.error('Error fetching learner notifications', error, { learnerId });
+      throw error;
+    }
+  }
+
+  /**
+   * Get unread notification count
+   * @param {string} learnerId - Learner's UUID
+   * @returns {Promise<number>} Count of unread notifications
+   */
+  static async getUnreadCount(learnerId) {
+    try {
+      const { count, error } = await supabase
+        .from('learner_notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('learner_id', learnerId)
+        .eq('is_read', false);
+
+      if (error) throw error;
+
+      return count || 0;
+    } catch (error) {
+      logger.error('Error fetching unread count', error, { learnerId });
+      return 0;
+    }
+  }
+
+  /**
+   * Mark notification as read
+   * @param {number} notificationId - Notification ID
+   * @param {string} learnerId - Learner's UUID for verification
+   * @returns {Promise<boolean>} Success status
+   */
+  static async markAsRead(notificationId, learnerId) {
+    try {
+      const { data, error } = await supabase
+        .from('learner_notifications')
+        .update({
+          is_read: true,
+          read_at: new Date().toISOString()
+        })
+        .eq('id', notificationId)
+        .eq('learner_id', learnerId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return !!data;
+    } catch (error) {
+      logger.error('Error marking notification as read', error, { notificationId });
+      return false;
+    }
+  }
+
+  /**
+   * Mark all notifications as read
+   * @param {string} learnerId - Learner's UUID
+   * @returns {Promise<boolean>} Success status
+   */
+  static async markAllAsRead(learnerId) {
+    try {
+      const { error } = await supabase
+        .from('learner_notifications')
+        .update({
+          is_read: true,
+          read_at: new Date().toISOString()
+        })
+        .eq('learner_id', learnerId)
+        .eq('is_read', false);
+
+      if (error) throw error;
+
+      return true;
+    } catch (error) {
+      logger.error('Error marking all notifications as read', error, { learnerId });
+      return false;
+    }
+  }
+
+  /**
+   * Create a manual notification (for system/admin use)
+   * @param {Object} notificationData - Notification data
+   * @returns {Promise<Object>} Created notification
+   */
+  static async createNotification(notificationData) {
+    try {
+      const { data, error } = await supabase
+        .from('learner_notifications')
+        .insert([{
+          learner_id: notificationData.learner_id,
+          notification_type: notificationData.notification_type,
+          title: notificationData.title,
+          message: notificationData.message,
+          pipeline_candidate_id: notificationData.pipeline_candidate_id || null,
+          opportunity_id: notificationData.opportunity_id || null,
+          interview_id: notificationData.interview_id || null,
+          application_id: notificationData.application_id || null,
+          metadata: notificationData.metadata || null
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return data;
+    } catch (error) {
+      logger.error('Error creating notification', error, { learnerId });
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a notification
+   * @param {number} notificationId - Notification ID
+   * @param {string} learnerId - Learner's UUID for verification
+   * @returns {Promise<boolean>} Success status
+   */
+  static async deleteNotification(notificationId, learnerId) {
+    try {
+      const { error } = await supabase
+        .from('learner_notifications')
+        .delete()
+        .eq('id', notificationId)
+        .eq('learner_id', learnerId);
+
+      if (error) throw error;
+
+      return true;
+    } catch (error) {
+      logger.error('Error deleting notification', error, { notificationId });
+      return false;
+    }
+  }
+
+  /**
+   * Subscribe to real-time notifications
+   * @param {string} learnerId - Learner's UUID
+   * @param {Function} onNotification - Callback when new notification arrives
+   * @returns {Object} Supabase subscription channel
+   */
+  static subscribeToNotifications(learnerId, onNotification) {
+    const channel = supabase
+      .channel(`learner-notifications-${learnerId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'learner_notifications',
+          filter: `learner_id=eq.${learnerId}`
+        },
+        (payload) => {
+          onNotification(payload.new);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'learner_notifications',
+          filter: `learner_id=eq.${learnerId}`
+        },
+        (payload) => {
+          onNotification(payload.new);
+        }
+      )
+      .subscribe();
+
+    return channel;
+  }
+
+  /**
+   * Unsubscribe from notifications
+   * @param {Object} channel - Supabase channel to unsubscribe
+   */
+  static unsubscribeFromNotifications(channel) {
+    if (channel) {
+      supabase.removeChannel(channel);
+    }
+  }
+
+  /**
+   * Get notification icon and color based on type
+   * @param {string} type - Notification type
+   * @returns {Object} Icon and color configuration
+   */
+  static getNotificationConfig(type) {
+    const configs = {
+      stage_change: {
+        icon: 'ArrowRight',
+        color: 'text-blue-600',
+        bgColor: 'bg-blue-100'
+      },
+      interview_scheduled: {
+        icon: 'Video',
+        color: 'text-indigo-600',
+        bgColor: 'bg-indigo-100'
+      },
+      offer_received: {
+        icon: 'Award',
+        color: 'text-green-600',
+        bgColor: 'bg-green-100'
+      },
+      application_status: {
+        icon: 'FileText',
+        color: 'text-purple-600',
+        bgColor: 'bg-purple-100'
+      },
+      message: {
+        icon: 'MessageSquare',
+        color: 'text-gray-600',
+        bgColor: 'bg-gray-100'
+      }
+    };
+
+    return configs[type] || configs.application_status;
+  }
+}
+
+export default LearnerNotificationService;

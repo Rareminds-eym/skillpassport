@@ -13,7 +13,7 @@ import { useCalendar } from "./hooks/useCalendar";
 import { useEventAnalytics } from "./hooks/useEventAnalytics";
 import { useEvents } from "./hooks/useEvents";
 import { useRegistrations } from "./hooks/useRegistrations";
-import { CollegeEvent } from '@/features/student-profile/model';
+import { CollegeEvent } from '@/features/learner-profile/model';
 import { authSessionService } from '@/features/auth';
 
 const tabs = [
@@ -110,7 +110,7 @@ const EventManagement: React.FC = () => {
     setConfirmModal({
       isOpen: true,
       title: "Cancel Event",
-      message: "Are you sure you want to cancel this event? Registered students will be notified.",
+      message: "Are you sure you want to cancel this event? Registered learners will be notified.",
       variant: "warning",
       onConfirm: () => eventsHook.cancelEvent(id),
     });
@@ -120,7 +120,7 @@ const EventManagement: React.FC = () => {
     setConfirmModal({
       isOpen: true,
       title: "Remove Registration",
-      message: "Are you sure you want to remove this student's registration?",
+      message: "Are you sure you want to remove this learner's registration?",
       variant: "warning",
       onConfirm: () => registrationsHook.removeRegistration(regId, eventId),
     });

@@ -5,8 +5,8 @@ import EducatorCopilot from '@/features/educator-copilot/ui/EducatorCopilot';
  * Teaching Intelligence Page
  * 
  * Intelligent system specifically designed for educators to:
- * - Get student career insights and analytics
- * - Identify students needing intervention
+ * - Get learner career insights and analytics
+ * - Identify learners needing intervention
  * - Receive guidance recommendations
  * - Analyze class performance and trends
  * - Get skill development suggestions

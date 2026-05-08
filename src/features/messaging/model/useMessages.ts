@@ -138,10 +138,10 @@ export interface UseMessagesReturn {
  * @returns Messaging data, loading states, mutations, and errors
  * 
  * @example
- * // Student messaging
+ * // Learner messaging
  * const { messages, sendMessage } = useMessages({
- *   userId: 'student-123',
- *   userRole: 'student',
+ *   userId: 'learner-123',
+ *   userRole: 'learner',
  *   conversationId: 'conv-456'
  * });
  * 
@@ -150,7 +150,7 @@ export interface UseMessagesReturn {
  * const { conversations } = useMessages({
  *   userId: 'admin-123',
  *   userRole: 'college_admin',
- *   conversationType: 'student_college_admin'
+ *   conversationType: 'learner_college_admin'
  * });
  */
 export function useMessages(options: UseMessagesOptions): UseMessagesReturn {
@@ -394,7 +394,7 @@ export function useMessages(options: UseMessagesOptions): UseMessagesReturn {
 
           // Get role-specific unread count
           let roleUnreadCount = 0;
-          if (userRole === 'student') roleUnreadCount = conversation.student_unread_count;
+          if (userRole === 'learner') roleUnreadCount = conversation.learner_unread_count;
           else if (userRole === 'recruiter') roleUnreadCount = conversation.recruiter_unread_count;
           else if (userRole === 'educator') roleUnreadCount = conversation.educator_unread_count;
           else if (userRole === 'school_admin' || userRole === 'university_admin') {
@@ -411,7 +411,7 @@ export function useMessages(options: UseMessagesOptions): UseMessagesReturn {
       const conversation = conversations.find(c => c.id === conversationId);
       if (conversation) {
         let roleUnreadCount = 0;
-        if (userRole === 'student') roleUnreadCount = conversation.student_unread_count;
+        if (userRole === 'learner') roleUnreadCount = conversation.learner_unread_count;
         else if (userRole === 'recruiter') roleUnreadCount = conversation.recruiter_unread_count;
         else if (userRole === 'educator') roleUnreadCount = conversation.educator_unread_count;
         else if (userRole === 'school_admin' || userRole === 'university_admin') {

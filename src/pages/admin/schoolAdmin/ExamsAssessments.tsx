@@ -16,7 +16,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { SearchBar } from '@/shared/ui';
 import toast from 'react-hot-toast';
-import { useExams, UIExam, UIStudentMark } from '@/features/exams';
+import { useExams, UIExam, UIlearnerMark } from '@/features/exams';
 
 import { supabase } from '@/shared/api/supabaseClient';
 
@@ -25,7 +25,7 @@ import { StatsCard, TypeBadge, ModalWrapper, ExamCard, CreateExamForm, ExamWorkf
 
 import { useUser } from '@/shared/model/authStore';
 // Types
-type StudentMark = UIStudentMark;
+type LearnerMark = UIlearnerMark;
 type Exam = UIExam;
 
 const logger = getLogger('school-admin-exams-assessments');
@@ -77,7 +77,7 @@ const ExamsAssessments: React.FC = () => {
     grades,
     loading,
     error,
-    loadStudents,
+    loadlearners,
     createExam,
     updateExam,
     createTimetableEntry,
@@ -102,7 +102,7 @@ const ExamsAssessments: React.FC = () => {
   const [managingExam, setManagingExam] = useState<Exam | null>(null);
   const [activeView, setActiveView] = useState<"exams" | "reports">("exams");
   const [dateOverlapWarning, setDateOverlapWarning] = useState<string | null>(null);
-  const [currentStudents] = useState<StudentMark[]>([]);
+  const [currentlearners] = useState<LearnerMark[]>([]);
 
   // Keep managingExam in sync with exams state
   React.useEffect(() => {
@@ -177,7 +177,7 @@ const ExamsAssessments: React.FC = () => {
     try {
       const overlaps = checkDateOverlap(examData);
       if (overlaps.length > 0 && !editingExam) {
-        setDateOverlapWarning(`⚠️ Date overlap detected with: ${overlaps.join(", ")}. Students may have conflicting exams.`);
+        setDateOverlapWarning(`⚠️ Date overlap detected with: ${overlaps.join(", ")}. Learners may have conflicting exams.`);
         setTimeout(() => setDateOverlapWarning(null), 5000);
       }
 
@@ -211,7 +211,7 @@ const ExamsAssessments: React.FC = () => {
     return createInvigilationAssignment(examId, assignment, user?.id);
   }, [createInvigilationAssignment, user?.id]);
 
-  const handleSaveMarks = useCallback(async (examId: string, subjectId: string, marks: UIStudentMark[]) => {
+  const handleSaveMarks = useCallback(async (examId: string, subjectId: string, marks: UIlearnerMark[]) => {
     return saveMarks(examId, subjectId, marks, user?.id);
   }, [saveMarks, user?.id]);
 
@@ -229,12 +229,12 @@ const ExamsAssessments: React.FC = () => {
 
   const handleExportCSV = useCallback((exam: Exam) => {
     const csvData = exam.marks.map(sm => 
-      sm.studentMarks.map(student => 
-        `${student.rollNumber},${student.studentName},${sm.subjectName},${student.marks || "Absent"}`
+      sm.learnerMarks.map(learner => 
+        `${learner.rollNumber},${learner.learnerName},${sm.subjectName},${learner.marks || "Absent"}`
       ).join('\n')
     ).join('\n');
     
-    const blob = new Blob([`Roll No,Student Name,Subject,Marks\n${csvData}`], { type: 'text/csv' });
+    const blob = new Blob([`Roll No,Learner Name,Subject,Marks\n${csvData}`], { type: 'text/csv' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `${exam.name.replace(/\s+/g, '_')}_results.csv`;
@@ -321,8 +321,8 @@ const ExamsAssessments: React.FC = () => {
           {/* Analytics Overview */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <StatsCard 
-              label="Total Students Assessed" 
-              value={exams.reduce((acc, exam) => acc + (exam.marks[0]?.studentMarks.length || 0), 0)} 
+              label="Total Learners Assessed" 
+              value={exams.reduce((acc, exam) => acc + (exam.marks[0]?.learnerMarks.length || 0), 0)} 
               icon={UserGroupIcon} 
               color="blue" 
             />
@@ -362,11 +362,11 @@ const ExamsAssessments: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                       {exam.marks.slice(0, 3).map(subjectMark => {
                         const subject = exam.subjects.find(s => s.id === subjectMark.subjectId);
-                        const totalStudents = subjectMark.studentMarks.length;
-                        const presentStudents = subjectMark.studentMarks.filter(s => !s.isAbsent);
-                        const passedStudents = presentStudents.filter(s => s.marks !== null && s.marks >= (subject?.passingMarks || 0));
-                        // Pass rate based on total students (absent students count as failed)
-                        const passRate = totalStudents > 0 ? Math.round((passedStudents.length / totalStudents) * 100) : 0;
+                        const totallearners = subjectMark.learnerMarks.length;
+                        const presentlearners = subjectMark.learnerMarks.filter(s => !s.isAbsent);
+                        const passedlearners = presentlearners.filter(s => s.marks !== null && s.marks >= (subject?.passingMarks || 0));
+                        // Pass rate based on total learners (absent learners count as failed)
+                        const passRate = totallearners > 0 ? Math.round((passedlearners.length / totallearners) * 100) : 0;
                         
                         return (
                           <div key={subjectMark.subjectId} className="bg-gray-50 rounded-lg p-3">
@@ -398,7 +398,7 @@ const ExamsAssessments: React.FC = () => {
                       <button 
                         onClick={() => {
                           // Generate report card
-                          toast.success("📄 Report card generation feature\n\nThis will generate:\n- Individual student report cards\n- Class performance summary\n- Subject-wise analysis\n- Export to PDF");
+                          toast.success("📄 Report card generation feature\n\nThis will generate:\n- Individual learner report cards\n- Class performance summary\n- Subject-wise analysis\n- Export to PDF");
                         }}
                         className="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100"
                       >
@@ -577,8 +577,8 @@ const ExamsAssessments: React.FC = () => {
           teachers={teachers}
           rooms={rooms}
           allSchoolRooms={allSchoolRooms}
-          students={currentStudents}
-          loadStudents={loadStudents}
+          learners={currentlearners}
+          loadlearners={loadlearners}
           createTimetableEntry={createTimetableEntry}
           deleteTimetableEntry={deleteTimetableEntry}
           createInvigilationAssignment={handleCreateInvigilationAssignment}

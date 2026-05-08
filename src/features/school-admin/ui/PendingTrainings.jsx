@@ -155,15 +155,15 @@ const PendingTrainings = ({ schoolId, onTrainingAction, currentUserId }) => {
               key={training.id}
               className="border border-gray-200 rounded-xl p-4 hover:border-blue-200 hover:bg-blue-50/30 transition-all duration-200"
             >
-              {/* Student Info */}
+              {/* Learner Info */}
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-100 rounded-lg">
                     <User className="h-4 w-4 text-blue-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">{training.student_name}</h3>
-                    <p className="text-sm text-gray-600">{training.student_email}</p>
+                    <h3 className="font-semibold text-gray-900">{training.learner_name}</h3>
+                    <p className="text-sm text-gray-600">{training.learner_email}</p>
                   </div>
                 </div>
                 

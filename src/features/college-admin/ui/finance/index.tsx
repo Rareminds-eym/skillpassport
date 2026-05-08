@@ -8,12 +8,12 @@ import { FeeStructureFormModal } from "./components/FeeStructureFormModal";
 import { FeeStructureTab } from "./components/FeeStructureTab";
 import { FeeTrackingTab } from "./components/FeeTrackingTab";
 import { PaymentFormModal } from "./components/PaymentFormModal";
-import { StudentLedgerModal } from "./components/StudentLedgerModal";
+import { LearnerLedgerModal } from "./components/LearnerLedgerModal";
 import { useDepartmentBudgets } from "./hooks/useDepartmentBudgets";
 import { useFeeStructures } from "./hooks/useFeeStructures";
 import { useFeeTracking } from "./hooks/useFeeTracking";
 import { usePrograms } from "./hooks/usePrograms";
-import { FeeStructure, StudentFeeSummary } from '@/features/student-profile/model';
+import { FeeStructure, LearnerFeeSummary } from '@/features/learner-profile/model';
 import { authSessionService } from '@/features/auth';
 
 const logger = getLogger('finance-module');
@@ -33,7 +33,7 @@ const FinanceModule: React.FC = () => {
   // Fee Tracking state
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isLedgerModalOpen, setIsLedgerModalOpen] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<StudentFeeSummary | null>(null);
+  const [selectedLearner, setSelectedLearner] = useState<LearnerFeeSummary | null>(null);
 
   // Fetch college ID for fee structures and programs (still needed for those hooks)
   useEffect(() => {
@@ -108,19 +108,19 @@ const FinanceModule: React.FC = () => {
   };
 
   // Handlers - Fee Tracking
-  const handleViewLedger = (student: StudentFeeSummary) => {
-    setSelectedStudent(student);
+  const handleViewLedger = (learner: LearnerFeeSummary) => {
+    setSelectedLearner(learner);
     setIsLedgerModalOpen(true);
   };
-  const handleRecordPayment = (student: StudentFeeSummary) => {
-    setSelectedStudent(student);
+  const handleRecordPayment = (learner: LearnerFeeSummary) => {
+    setSelectedLearner(learner);
     setIsPaymentModalOpen(true);
   };
-  const handlePaymentSave = async (ledgerId: string, studentId: string, data: any) => {
-    const success = await feeTrackingHook.recordPayment(ledgerId, studentId, data);
+  const handlePaymentSave = async (ledgerId: string, learnerId: string, data: any) => {
+    const success = await feeTrackingHook.recordPayment(ledgerId, learnerId, data);
     if (success) {
       setIsPaymentModalOpen(false);
-      setSelectedStudent(null);
+      setSelectedLearner(null);
     }
     return success;
   };
@@ -190,7 +190,7 @@ const FinanceModule: React.FC = () => {
 
         {activeTab === "tracking" && (
           <FeeTrackingTab
-            studentSummaries={feeTrackingHook.studentSummaries}
+            learnerSummaries={feeTrackingHook.learnerSummaries}
             loading={feeTrackingHook.loading}
             stats={feeTrackingHook.stats}
             onViewLedger={handleViewLedger}
@@ -224,16 +224,16 @@ const FinanceModule: React.FC = () => {
       {/* Payment Form Modal */}
       <PaymentFormModal
         isOpen={isPaymentModalOpen}
-        onClose={() => { setIsPaymentModalOpen(false); setSelectedStudent(null); }}
+        onClose={() => { setIsPaymentModalOpen(false); setSelectedLearner(null); }}
         onSave={handlePaymentSave}
-        student={selectedStudent}
+        learner={selectedLearner}
       />
 
-      {/* Student Ledger Modal */}
-      <StudentLedgerModal
+      {/* Learner Ledger Modal */}
+      <LearnerLedgerModal
         isOpen={isLedgerModalOpen}
-        onClose={() => { setIsLedgerModalOpen(false); setSelectedStudent(null); }}
-        student={selectedStudent}
+        onClose={() => { setIsLedgerModalOpen(false); setSelectedLearner(null); }}
+        learner={selectedLearner}
       />
     </div>
   );

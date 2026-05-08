@@ -21,7 +21,7 @@ interface UseClassmatesDataReturn {
  */
 export const useClassmatesData = (
   classId: string | undefined,
-  studentId: string | undefined
+  learnerId: string | undefined
 ): UseClassmatesDataReturn => {
   const [classmates, setClassmates] = useState<SchoolClassmate[]>([]);
   const [loading, setLoading] = useState(false);
@@ -29,13 +29,13 @@ export const useClassmatesData = (
   const [hasFetched, setHasFetched] = useState(false);
 
   const fetchData = useCallback(async () => {
-    if (!classId || !studentId || hasFetched) return;
+    if (!classId || !learnerId || hasFetched) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      const classmatesData = await getClassmates(classId, studentId);
+      const classmatesData = await getClassmates(classId, learnerId);
       setClassmates(classmatesData);
       setHasFetched(true);
     } catch (err) {
@@ -43,7 +43,7 @@ export const useClassmatesData = (
     } finally {
       setLoading(false);
     }
-  }, [classId, studentId, hasFetched]);
+  }, [classId, learnerId, hasFetched]);
 
   return {
     classmates,

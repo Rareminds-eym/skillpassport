@@ -55,8 +55,8 @@ interface FeeStructure {
 
 interface PaymentRecord {
   id: string;
-  student_id: string;
-  student_name: string;
+  learner_id: string;
+  learner_name: string;
   college_id: string;
   college_name: string;
   fee_structure_id: string;
@@ -81,7 +81,7 @@ interface FinanceStats {
   completedPayments: number;
   overduePayments: number;
   totalColleges: number;
-  totalStudents: number;
+  totallearners: number;
   collectionRate: number;
   averagePaymentTime: number;
 }
@@ -195,8 +195,8 @@ const mockFeeStructures: FeeStructure[] = [
 const mockPaymentRecords: PaymentRecord[] = [
   {
     id: '1',
-    student_id: '1',
-    student_name: 'Rajesh Kumar',
+    learner_id: '1',
+    learner_name: 'Rajesh Kumar',
     college_id: '1',
     college_name: 'Anna University College of Engineering',
     fee_structure_id: '1',
@@ -216,8 +216,8 @@ const mockPaymentRecords: PaymentRecord[] = [
   },
   {
     id: '2',
-    student_id: '2',
-    student_name: 'Priya Sharma',
+    learner_id: '2',
+    learner_name: 'Priya Sharma',
     college_id: '2',
     college_name: 'PSG College of Technology',
     fee_structure_id: '2',
@@ -235,8 +235,8 @@ const mockPaymentRecords: PaymentRecord[] = [
   },
   {
     id: '3',
-    student_id: '3',
-    student_name: 'Arun Krishnan',
+    learner_id: '3',
+    learner_name: 'Arun Krishnan',
     college_id: '1',
     college_name: 'Anna University College of Engineering',
     fee_structure_id: '1',
@@ -261,7 +261,7 @@ const mockStats: FinanceStats = {
   completedPayments: 13410000, // ₹1.341 Cr
   overduePayments: 890000, // ₹8.9 L
   totalColleges: 45,
-  totalStudents: 12500,
+  totallearners: 12500,
   collectionRate: 85.2,
   averagePaymentTime: 12
 };
@@ -630,7 +630,7 @@ const UniversityFinance: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Student/College
+                  Learner/College
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Amount
@@ -654,7 +654,7 @@ const UniversityFinance: React.FC = () => {
                 <tr key={payment.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
-                      <div className="text-sm font-medium text-gray-900">{payment.student_name}</div>
+                      <div className="text-sm font-medium text-gray-900">{payment.learner_name}</div>
                       <div className="text-sm text-gray-500">{payment.college_name}</div>
                     </div>
                   </td>
@@ -729,7 +729,7 @@ const UniversityFinance: React.FC = () => {
             </div>
             <h3 className="text-lg font-semibold text-gray-900">Overdue Report</h3>
           </div>
-          <p className="text-sm text-gray-600 mb-4">Students with overdue payments and late fees</p>
+          <p className="text-sm text-gray-600 mb-4">Learners with overdue payments and late fees</p>
           <button className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition-colors">
             Generate Report
           </button>

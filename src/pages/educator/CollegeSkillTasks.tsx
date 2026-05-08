@@ -43,8 +43,8 @@ interface ProgramSection {
     semester: number;
     section: string;
     academic_year: string;
-    max_students: number;
-    current_students: number;
+    max_learners: number;
+    current_learners: number;
     faculty_id: string;
     status: string;
     program?: Program;
@@ -57,7 +57,7 @@ interface Course {
     course_code: string;
 }
 
-interface CollegeStudent {
+interface CollegeLearner {
     id: string;
     user_id: string;
     name: string;
@@ -119,7 +119,7 @@ export default function CollegeSkillTasks() {
     const [programs, setPrograms] = useState<Program[]>([]);
     const [programSections, setProgramSections] = useState<ProgramSection[]>([]);
     const [courses, setCourses] = useState<Course[]>([]);
-    const [students, setStudents] = useState<CollegeStudent[]>([]);
+    const [learners, setlearners] = useState<CollegeLearner[]>([]);
     const [assignments, setAssignments] = useState<TaskAssignment[]>([]);
     const [statistics, setStatistics] = useState({
         totalAssignments: 0,
@@ -131,7 +131,7 @@ export default function CollegeSkillTasks() {
     
     // Modal states
     const [createTaskModal, setCreateTaskModal] = useState(false);
-    const [assignStudentsModal, setAssignStudentsModal] = useState(false);
+    const [assignlearnersModal, setAssignlearnersModal] = useState(false);
     const [selectedAssignment, setSelectedAssignment] = useState<TaskAssignment | null>(null);
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
     const [viewDetailsModal, setViewDetailsModal] = useState(false);
@@ -169,10 +169,10 @@ export default function CollegeSkillTasks() {
     const [selectedProgram, setSelectedProgram] = useState("all");
     const [selectedStatus, setSelectedStatus] = useState("all");
     
-    // Student selection states
-    const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
-    const [assignedStudentIds, setAssignedStudentIds] = useState<string[]>([]);
-    const [studentSearchQuery, setStudentSearchQuery] = useState("");
+    // Learner selection states
+    const [selectedLearnerIds, setSelectedLearnerIds] = useState<string[]>([]);
+    const [assignedLearnerIds, setAssignedLearnerIds] = useState<string[]>([]);
+    const [learnerSearchQuery, setlearnerSearchQuery] = useState("");
     
     // Get educator information
     const { college: educatorCollege, educatorType, loading: schoolLoading } = useEducatorSchool();
@@ -327,17 +327,17 @@ export default function CollegeSkillTasks() {
         }
     };
 
-    const fetchStudentsForSection = async (sectionId: string) => {
-        logger.info('Fetching students for section', { sectionId });
-        const { data, error } = await collegeAssignmentService.fetchProgramSectionStudents(sectionId);
+    const fetchlearnersForSection = async (sectionId: string) => {
+        logger.info('Fetching learners for section', { sectionId });
+        const { data, error } = await collegeAssignmentService.fetchProgramSectionlearners(sectionId);
         if (error) {
-            logger.error('Error fetching students', error);
-            toast.error('Failed to load students');
-            setStudents([]);
+            logger.error('Error fetching learners', error);
+            toast.error('Failed to load learners');
+            setlearners([]);
         } else {
-            logger.info('Received students', { count: data?.length || 0 });
-            logger.info('Student data', { data });
-            setStudents(data || []);
+            logger.info('Received learners', { count: data?.length || 0 });
+            logger.info('Learner data', { data });
+            setlearners(data || []);
         }
     };
 
@@ -455,13 +455,13 @@ export default function CollegeSkillTasks() {
         });
     }, [assignments, searchQuery, selectedStatus]);
 
-    const filteredStudents = useMemo(() => {
-        return students.filter(student => {
-            if (studentSearchQuery && !student.name.toLowerCase().includes(studentSearchQuery.toLowerCase()) && 
-                !student.email.toLowerCase().includes(studentSearchQuery.toLowerCase())) return false;
+    const filteredlearners = useMemo(() => {
+        return learners.filter(learner => {
+            if (learnerSearchQuery && !learner.name.toLowerCase().includes(learnerSearchQuery.toLowerCase()) && 
+                !learner.email.toLowerCase().includes(learnerSearchQuery.toLowerCase())) return false;
             return true;
         });
-    }, [students, studentSearchQuery]);
+    }, [learners, learnerSearchQuery]);
 
     // Handle form changes
     const handleTaskFormChange = (field: string, value: any) => {
@@ -487,7 +487,7 @@ export default function CollegeSkillTasks() {
         setPrograms([]);
         // setProgramSections([]); // ❌ DON'T clear sections!
         setCourses([]);
-        setStudents([]);
+        setlearners([]);
         
         // Fetch programs for this department
         if (departmentId) {
@@ -531,7 +531,7 @@ export default function CollegeSkillTasks() {
         
         // Clear dependent data
         setCourses([]);
-        setStudents([]);
+        setlearners([]);
         
         // Fetch courses for this program
         if (programId) {
@@ -598,13 +598,13 @@ export default function CollegeSkillTasks() {
             section_id: sectionId
         }));
         
-        // Fetch students for this section
+        // Fetch learners for this section
         if (sectionId) {
-            logger.info('Fetching students for section', { sectionId });
-            await fetchStudentsForSection(sectionId);
+            logger.info('Fetching learners for section', { sectionId });
+            await fetchlearnersForSection(sectionId);
         } else {
-            logger.warn('No section ID provided, clearing students');
-            setStudents([]);
+            logger.warn('No section ID provided, clearing learners');
+            setlearners([]);
         }
     };
 
@@ -667,11 +667,11 @@ export default function CollegeSkillTasks() {
             toast.success("Task created successfully");
             setCreateTaskModal(false);
             setSelectedAssignment(assignment);
-            setSelectedStudentIds([]); // Clear previous selections
+            setSelectedLearnerIds([]); // Clear previous selections
             
-            // Fetch students for the section
-            await fetchStudentsForSection(taskForm.section_id);
-            setAssignStudentsModal(true);
+            // Fetch learners for the section
+            await fetchlearnersForSection(taskForm.section_id);
+            setAssignlearnersModal(true);
             
             // Reset form
             setTaskForm({
@@ -702,78 +702,78 @@ export default function CollegeSkillTasks() {
         }
     };
 
-    const handleAssignToStudents = async () => {
+    const handleAssignTolearners = async () => {
         try {
-            if (!selectedAssignment || selectedStudentIds.length === 0) {
-                toast.error("Please select students to assign the task");
+            if (!selectedAssignment || selectedLearnerIds.length === 0) {
+                toast.error("Please select learners to assign the task");
                 return;
             }
 
             logger.info('Starting assignment process', {
-                selectedStudentIds,
-                filteredStudentsCount: filteredStudents.length
+                selectedLearnerIds,
+                filteredlearnersCount: filteredlearners.length
             });
 
-            // Get selected students
-            const selectedStudents = filteredStudents.filter(student => 
-                selectedStudentIds.includes(student.id)
+            // Get selected learners
+            const selectedlearners = filteredlearners.filter(learner => 
+                selectedLearnerIds.includes(learner.id)
             );
 
-            logger.info('Selected students', { selectedStudents });
+            logger.info('Selected learners', { selectedlearners });
 
-            if (selectedStudents.length === 0) {
-                toast.error("No students selected");
+            if (selectedlearners.length === 0) {
+                toast.error("No learners selected");
                 return;
             }
 
-            // Get emails from selected students
-            const selectedEmails = selectedStudents
-                .map(student => student.email)
+            // Get emails from selected learners
+            const selectedEmails = selectedlearners
+                .map(learner => learner.email)
                 .filter(email => email);
 
             logger.info('Selected emails', { selectedEmails });
 
             if (selectedEmails.length === 0) {
-                toast.error("Selected students do not have email addresses");
+                toast.error("Selected learners do not have email addresses");
                 return;
             }
 
-            // Query students table to get user IDs by email
-            const { data: students, error: studentsError } = await supabase
-                .from('students')
+            // Query learners table to get user IDs by email
+            const { data: learners, error: learnersError } = await supabase
+                .from('learners')
                 .select('id, user_id, email')
                 .in('email', selectedEmails);
 
-            logger.info('Students query result', { students });
+            logger.info('Learners query result', { learners });
 
-            if (studentsError) {
-                logger.error('Error fetching students', studentsError);
-                toast.error('Failed to fetch student accounts');
+            if (learnersError) {
+                logger.error('Error fetching learners', learnersError);
+                toast.error('Failed to fetch learner accounts');
                 return;
             }
 
-            if (!students || students.length === 0) {
-                toast.error("No matching student accounts found for selected students");
+            if (!learners || learners.length === 0) {
+                toast.error("No matching learner accounts found for selected learners");
                 return;
             }
 
-            // Filter students who have user_id (required for foreign key constraint)
-            const studentsWithUserId = students.filter(student => student.user_id !== null);
+            // Filter learners who have user_id (required for foreign key constraint)
+            const learnersWithUserId = learners.filter(learner => learner.user_id !== null);
             
-            if (studentsWithUserId.length === 0) {
-                toast.error("Selected students don't have user accounts. Please ensure students are registered.");
+            if (learnersWithUserId.length === 0) {
+                toast.error("Selected learners don't have user accounts. Please ensure learners are registered.");
                 return;
             }
 
-            const userIds = studentsWithUserId.map(student => student.user_id);
+            const userIds = learnersWithUserId.map(learner => learner.user_id);
             logger.info('User IDs to assign', { userIds });
 
-            if (studentsWithUserId.length < selectedStudents.length) {
-                const skipped = selectedStudents.length - studentsWithUserId.length;
-                toast(`Warning: ${skipped} student(s) skipped (no user account). Assigning to ${studentsWithUserId.length} students.`);
+            if (learnersWithUserId.length < selectedlearners.length) {
+                const skipped = selectedlearners.length - learnersWithUserId.length;
+                toast(`Warning: ${skipped} learner(s) skipped (no user account). Assigning to ${learnersWithUserId.length} learners.`);
             }
 
-            const { error } = await collegeAssignmentService.assignTaskToStudents(
+            const { error } = await collegeAssignmentService.assignTaskTolearners(
                 selectedAssignment.assignment_id,
                 userIds
             );
@@ -784,9 +784,9 @@ export default function CollegeSkillTasks() {
                 return;
             }
 
-            toast.success(`Task assigned to ${userIds.length} students`);
-            setAssignStudentsModal(false);
-            setSelectedStudentIds([]);
+            toast.success(`Task assigned to ${userIds.length} learners`);
+            setAssignlearnersModal(false);
+            setSelectedLearnerIds([]);
             setSelectedAssignment(null);
             
             // Refresh statistics
@@ -795,8 +795,8 @@ export default function CollegeSkillTasks() {
                 await fetchStatistics(user.id);
             }
         } catch (error) {
-            logger.error('Error assigning task to students', error);
-            toast.error('Failed to assign task to students');
+            logger.error('Error assigning task to learners', error);
+            toast.error('Failed to assign task to learners');
         }
     };
 
@@ -1321,39 +1321,39 @@ export default function CollegeSkillTasks() {
                                                     });
                                                     
                                                     setSelectedAssignment(assignment);
-                                                    setSelectedStudentIds([]); // Clear previous selections
+                                                    setSelectedLearnerIds([]); // Clear previous selections
                                                     
                                                     if (assignment.program_section_id) {
-                                                        logger.info('Fetching students for section', {
+                                                        logger.info('Fetching learners for section', {
                                                             sectionId: assignment.program_section_id
                                                         });
-                                                        await fetchStudentsForSection(assignment.program_section_id);
+                                                        await fetchlearnersForSection(assignment.program_section_id);
                                                         
-                                                        // Fetch already assigned students
+                                                        // Fetch already assigned learners
                                                         try {
-                                                            const { data: assignedStudents, error } = await supabase
-                                                                .from('college_student_assignments')
-                                                                .select('student_id')
+                                                            const { data: assignedlearners, error } = await supabase
+                                                                .from('college_learner_assignments')
+                                                                .select('learner_id')
                                                                 .eq('assignment_id', assignment.assignment_id)
                                                                 .eq('is_deleted', false);
                                                             
                                                             if (error) {
-                                                                logger.error('Error fetching assigned students', error);
-                                                                setAssignedStudentIds([]);
+                                                                logger.error('Error fetching assigned learners', error);
+                                                                setAssignedLearnerIds([]);
                                                             } else {
-                                                                const assignedIds = (assignedStudents || []).map(sa => sa.student_id);
-                                                                setAssignedStudentIds(assignedIds);
+                                                                const assignedIds = (assignedlearners || []).map(sa => sa.learner_id);
+                                                                setAssignedLearnerIds(assignedIds);
                                                             }
                                                         } catch (error) {
-                                                            logger.error('Error fetching assigned students', error);
-                                                            setAssignedStudentIds([]);
+                                                            logger.error('Error fetching assigned learners', error);
+                                                            setAssignedLearnerIds([]);
                                                         }
                                                     } else {
                                                         logger.error('No program_section_id found in assignment');
                                                         toast.error('Assignment is missing section information');
                                                     }
                                                     
-                                                    setAssignStudentsModal(true);
+                                                    setAssignlearnersModal(true);
                                                 }}
                                                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm mt-4"
                                             >
@@ -1414,7 +1414,7 @@ export default function CollegeSkillTasks() {
                                             <textarea
                                                 value={taskForm.instructions}
                                                 onChange={(e) => handleTaskFormChange('instructions', e.target.value)}
-                                                placeholder="Detailed instructions for students..."
+                                                placeholder="Detailed instructions for learners..."
                                                 rows={4}
                                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                             />
@@ -1688,18 +1688,18 @@ export default function CollegeSkillTasks() {
                 </div>
             )}
 
-            {/* Assign Students Modal */}
-            {assignStudentsModal && selectedAssignment && (
+            {/* Assign Learners Modal */}
+            {assignlearnersModal && selectedAssignment && (
                 <div className="fixed inset-0 z-50 overflow-y-auto">
                     <div className="flex items-center justify-center min-h-screen px-4 py-8 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" onClick={() => setAssignStudentsModal(false)} />
+                        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" onClick={() => setAssignlearnersModal(false)} />
                         <div className="inline-block w-full max-w-2xl align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:p-6">
                             <div className="flex items-center justify-between mb-6">
                                 <div>
-                                    <h2 className="text-xl font-semibold text-gray-900">Assign to Section Students</h2>
-                                    <p className="text-sm text-gray-600 mt-1">Select students from the chosen program section</p>
+                                    <h2 className="text-xl font-semibold text-gray-900">Assign to Section Learners</h2>
+                                    <p className="text-sm text-gray-600 mt-1">Select learners from the chosen program section</p>
                                 </div>
-                                <button onClick={() => setAssignStudentsModal(false)} className="text-gray-400 hover:text-gray-600">
+                                <button onClick={() => setAssignlearnersModal(false)} className="text-gray-400 hover:text-gray-600">
                                     <X size={24} />
                                 </button>
                             </div>
@@ -1710,8 +1710,8 @@ export default function CollegeSkillTasks() {
                                     <input
                                         type="text"
                                         placeholder="Search by name or email..."
-                                        value={studentSearchQuery}
-                                        onChange={(e) => setStudentSearchQuery(e.target.value)}
+                                        value={learnerSearchQuery}
+                                        onChange={(e) => setlearnerSearchQuery(e.target.value)}
                                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     />
                                 </div>
@@ -1721,47 +1721,47 @@ export default function CollegeSkillTasks() {
                                 <label className="flex items-center">
                                     <input
                                         type="checkbox"
-                                        checked={selectedStudentIds.length === filteredStudents.length && filteredStudents.length > 0}
+                                        checked={selectedLearnerIds.length === filteredlearners.length && filteredlearners.length > 0}
                                         onChange={(e) => {
                                             if (e.target.checked) {
-                                                setSelectedStudentIds(filteredStudents.map(s => s.id));
+                                                setSelectedLearnerIds(filteredlearners.map(s => s.id));
                                             } else {
-                                                setSelectedStudentIds([]);
+                                                setSelectedLearnerIds([]);
                                             }
                                         }}
                                         className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                                     />
                                     <span className="ml-2 text-sm font-medium text-gray-700">
-                                        Select All ({filteredStudents.length} students found)
+                                        Select All ({filteredlearners.length} learners found)
                                     </span>
                                 </label>
-                                {selectedStudentIds.length > 0 && (
-                                    <p className="text-sm text-blue-600 mt-1">{selectedStudentIds.length} selected</p>
+                                {selectedLearnerIds.length > 0 && (
+                                    <p className="text-sm text-blue-600 mt-1">{selectedLearnerIds.length} selected</p>
                                 )}
                             </div>
 
                             <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
-                                {filteredStudents.length === 0 ? (
+                                {filteredlearners.length === 0 ? (
                                     <div className="p-8 text-center">
                                         <Users className="mx-auto h-12 w-12 text-gray-400" />
-                                        <h3 className="mt-2 text-sm font-medium text-gray-900">No students found</h3>
-                                        <p className="mt-1 text-sm text-gray-500">No students are enrolled in the selected program section.</p>
+                                        <h3 className="mt-2 text-sm font-medium text-gray-900">No learners found</h3>
+                                        <p className="mt-1 text-sm text-gray-500">No learners are enrolled in the selected program section.</p>
                                     </div>
                                 ) : (
                                     <div className="divide-y divide-gray-200">
-                                        {filteredStudents.map((student) => {
-                                            const isAssigned = assignedStudentIds.includes(student.user_id);
+                                        {filteredlearners.map((learner) => {
+                                            const isAssigned = assignedLearnerIds.includes(learner.user_id);
                                             return (
-                                            <label key={student.id} className={`flex items-center p-4 ${isAssigned ? 'bg-gray-50 cursor-not-allowed' : 'hover:bg-gray-50 cursor-pointer'}`}>
+                                            <label key={learner.id} className={`flex items-center p-4 ${isAssigned ? 'bg-gray-50 cursor-not-allowed' : 'hover:bg-gray-50 cursor-pointer'}`}>
                                                 <input
                                                     type="checkbox"
-                                                    checked={selectedStudentIds.includes(student.id)}
+                                                    checked={selectedLearnerIds.includes(learner.id)}
                                                     disabled={isAssigned}
                                                     onChange={(e) => {
                                                         if (e.target.checked) {
-                                                            setSelectedStudentIds(prev => [...prev, student.id]);
+                                                            setSelectedLearnerIds(prev => [...prev, learner.id]);
                                                         } else {
-                                                            setSelectedStudentIds(prev => prev.filter(id => id !== student.id));
+                                                            setSelectedLearnerIds(prev => prev.filter(id => id !== learner.id));
                                                         }
                                                     }}
                                                     className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1769,12 +1769,12 @@ export default function CollegeSkillTasks() {
                                                 <div className="ml-3 flex-1">
                                                     <div className="flex items-center justify-between">
                                                         <div>
-                                                            <p className="text-sm font-medium text-gray-900">{student.name}</p>
-                                                            <p className="text-sm text-gray-500">{student.email}</p>
+                                                            <p className="text-sm font-medium text-gray-900">{learner.name}</p>
+                                                            <p className="text-sm text-gray-500">{learner.email}</p>
                                                         </div>
                                                         <div className="text-right">
-                                                            <p className="text-sm text-gray-500">Roll: {student.roll_number}</p>
-                                                            <p className="text-sm text-gray-500">Sem {student.semester} - {student.section}</p>
+                                                            <p className="text-sm text-gray-500">Roll: {learner.roll_number}</p>
+                                                            <p className="text-sm text-gray-500">Sem {learner.semester} - {learner.section}</p>
                                                             {isAssigned && (
                                                                 <span className="inline-block mt-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
                                                                     Assigned
@@ -1792,17 +1792,17 @@ export default function CollegeSkillTasks() {
 
                             <div className="mt-6 flex items-center justify-end space-x-3">
                                 <button
-                                    onClick={() => setAssignStudentsModal(false)}
+                                    onClick={() => setAssignlearnersModal(false)}
                                     className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                                 >
                                     Cancel
                                 </button>
                                 <button
-                                    onClick={handleAssignToStudents}
-                                    disabled={selectedStudentIds.length === 0}
+                                    onClick={handleAssignTolearners}
+                                    disabled={selectedLearnerIds.length === 0}
                                     className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
                                 >
-                                    Assign to {selectedStudentIds.length} Student{selectedStudentIds.length !== 1 ? 's' : ''}
+                                    Assign to {selectedLearnerIds.length} Learner{selectedLearnerIds.length !== 1 ? 's' : ''}
                                 </button>
                             </div>
                         </div>
@@ -2032,7 +2032,7 @@ export default function CollegeSkillTasks() {
                                             <textarea
                                                 value={taskForm.instructions}
                                                 onChange={(e) => handleTaskFormChange('instructions', e.target.value)}
-                                                placeholder="Detailed instructions for students..."
+                                                placeholder="Detailed instructions for learners..."
                                                 rows={4}
                                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                             />

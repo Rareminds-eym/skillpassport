@@ -56,7 +56,7 @@ class MultiModalLearningService {
   async generateVisualContent(
     topic: string,
     context?: string,
-    studentLevel?: 'beginner' | 'intermediate' | 'advanced'
+    learnerLevel?: 'beginner' | 'intermediate' | 'advanced'
   ): Promise<VisualLearningContent> {
     
     try {
@@ -64,7 +64,7 @@ class MultiModalLearningService {
 
 **TOPIC:** ${topic}
 ${context ? `**CONTEXT:** ${context}` : ''}
-**STUDENT LEVEL:** ${studentLevel || 'intermediate'}
+**LEARNER LEVEL:** ${learnerLevel || 'intermediate'}
 
 **YOUR TASK:**
 Create multi-modal learning content that includes:
@@ -111,7 +111,7 @@ Create multi-modal learning content that includes:
    - Visual aids per step
 
 **GUIDELINES:**
-- For ${studentLevel} level: ${studentLevel === 'beginner' ? 'Simpler visuals, more explanation' : studentLevel === 'advanced' ? 'Complex diagrams, less hand-holding' : 'Balanced approach'}
+- For ${learnerLevel} level: ${learnerLevel === 'beginner' ? 'Simpler visuals, more explanation' : learnerLevel === 'advanced' ? 'Complex diagrams, less hand-holding' : 'Balanced approach'}
 - Always include at least ONE visual element (diagram, comparison table, or annotated code)
 - Make it ACTIONABLE and CLEAR
 - Use colors in Mermaid (%%{init: {'theme':'base'}}%%)
@@ -181,7 +181,7 @@ Create multi-modal learning content that includes:
     } catch (error) {
       logger.error('Failed to generate visual learning content', error as Error, {
         topic,
-        studentLevel,
+        learnerLevel,
         hasContext: !!context
       });
       throw new Error('Failed to generate visual learning content');

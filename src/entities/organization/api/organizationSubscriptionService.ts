@@ -25,7 +25,7 @@ export interface OrganizationSubscription {
   totalSeats: number;
   assignedSeats: number;
   availableSeats: number;
-  targetMemberType: 'educator' | 'student' | 'both';
+  targetMemberType: 'educator' | 'learner' | 'both';
   status: 'active' | 'paused' | 'cancelled' | 'expired' | 'grace_period';
   startDate: string;
   endDate: string;
@@ -47,7 +47,7 @@ export interface OrgSubscriptionPurchaseRequest {
   organizationType: 'school' | 'college' | 'university';
   planId: string;
   seatCount: number;
-  targetMemberType: 'educator' | 'student' | 'both';
+  targetMemberType: 'educator' | 'learner' | 'both';
   billingCycle: 'monthly' | 'annual';
   autoRenew: boolean;
   paymentMethod: string;

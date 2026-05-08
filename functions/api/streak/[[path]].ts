@@ -1,12 +1,12 @@
 /**
  * Streak API - Pages Function
- * Handles student streak management
+ * Handles learner streak management
  * 
  * Endpoints:
- * - GET /:studentId - Get student streak info
- * - POST /:studentId/complete - Mark activity complete (update streak)
- * - GET /:studentId/notifications - Get notification history
- * - POST /:studentId/process - Process streak check
+ * - GET /:learnerId - Get learner streak info
+ * - POST /:learnerId/complete - Mark activity complete (update streak)
+ * - GET /:learnerId/notifications - Get notification history
+ * - POST /:learnerId/process - Process streak check
  * - POST /reset-daily - Reset daily flags (cron)
  */
 
@@ -15,17 +15,17 @@ import { corsHeaders, jsonResponse, createSupabaseClient } from '../../../src/fu
 import { authenticateUser } from '../shared/auth';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-// ==================== GET STUDENT STREAK ====================
+// ==================== GET LEARNER STREAK ====================
 
-async function handleGetStreak(supabase: SupabaseClient, studentId: string): Promise<Response> {
-  if (!studentId) {
-    return jsonResponse({ error: 'Student ID is required' }, 400);
+async function handleGetStreak(supabase: SupabaseClient, learnerId: string): Promise<Response> {
+  if (!learnerId) {
+    return jsonResponse({ error: 'Learner ID is required' }, 400);
   }
 
   const { data, error } = await supabase
-    .from('student_streaks')
+    .from('learner_streaks')
     .select('*')
-    .eq('student_id', studentId)
+    .eq('learner_id', learnerId)
     .single();
 
   if (error) {
@@ -34,7 +34,7 @@ async function handleGetStreak(supabase: SupabaseClient, studentId: string): Pro
       return jsonResponse({
         success: true,
         data: {
-          student_id: studentId,
+          learner_id: learnerId,
           current_streak: 0,
           longest_streak: 0,
           streak_completed_today: false,
@@ -52,14 +52,14 @@ async function handleGetStreak(supabase: SupabaseClient, studentId: string): Pro
 
 // ==================== UPDATE STREAK (COMPLETE ACTIVITY) ====================
 
-async function handleCompleteStreak(supabase: SupabaseClient, studentId: string): Promise<Response> {
-  if (!studentId) {
-    return jsonResponse({ error: 'Student ID is required' }, 400);
+async function handleCompleteStreak(supabase: SupabaseClient, learnerId: string): Promise<Response> {
+  if (!learnerId) {
+    return jsonResponse({ error: 'Learner ID is required' }, 400);
   }
 
   const { data, error } = await supabase
-    .rpc('update_student_streak', {
-      p_student_id: studentId,
+    .rpc('update_learner_streak', {
+      p_learner_id: learnerId,
       p_activity_date: new Date().toISOString().split('T')[0],
     });
 
@@ -76,15 +76,15 @@ async function handleCompleteStreak(supabase: SupabaseClient, studentId: string)
 
 // ==================== GET NOTIFICATION HISTORY ====================
 
-async function handleGetNotifications(supabase: SupabaseClient, studentId: string, limit: number = 10): Promise<Response> {
-  if (!studentId) {
-    return jsonResponse({ error: 'Student ID is required' }, 400);
+async function handleGetNotifications(supabase: SupabaseClient, learnerId: string, limit: number = 10): Promise<Response> {
+  if (!learnerId) {
+    return jsonResponse({ error: 'Learner ID is required' }, 400);
   }
 
   const { data, error } = await supabase
     .from('streak_notification_log')
     .select('*')
-    .eq('student_id', studentId)
+    .eq('learner_id', learnerId)
     .order('sent_at', { ascending: false })
     .limit(limit);
 
@@ -101,16 +101,16 @@ async function handleGetNotifications(supabase: SupabaseClient, studentId: strin
 
 // ==================== PROCESS STREAK ====================
 
-async function checkStudentActivityToday(supabase: SupabaseClient, studentId: string): Promise<boolean> {
+async function checklearnerActivityToday(supabase: SupabaseClient, learnerId: string): Promise<boolean> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayEnd = new Date();
   todayEnd.setHours(23, 59, 59, 999);
 
   const { data, error } = await supabase
-    .from('student_course_progress')
+    .from('learner_course_progress')
     .select('id')
-    .eq('student_id', studentId)
+    .eq('learner_id', learnerId)
     .gte('last_accessed', today.toISOString())
     .lte('last_accessed', todayEnd.toISOString())
     .limit(1);
@@ -123,18 +123,18 @@ async function checkStudentActivityToday(supabase: SupabaseClient, studentId: st
   return data && data.length > 0;
 }
 
-async function handleProcessStreak(supabase: SupabaseClient, studentId: string): Promise<Response> {
-  if (!studentId) {
-    return jsonResponse({ error: 'Student ID is required' }, 400);
+async function handleProcessStreak(supabase: SupabaseClient, learnerId: string): Promise<Response> {
+  if (!learnerId) {
+    return jsonResponse({ error: 'Learner ID is required' }, 400);
   }
 
   try {
-    const hasActivity = await checkStudentActivityToday(supabase, studentId);
+    const hasActivity = await checklearnerActivityToday(supabase, learnerId);
 
     if (hasActivity) {
       const { data, error } = await supabase
-        .rpc('update_student_streak', {
-          p_student_id: studentId,
+        .rpc('update_learner_streak', {
+          p_learner_id: learnerId,
           p_activity_date: new Date().toISOString().split('T')[0],
         });
 
@@ -187,7 +187,7 @@ async function handleResetDailyFlags(supabase: SupabaseClient): Promise<Response
 
   return jsonResponse({
     success: true,
-    message: `Reset daily flags for ${data} students`,
+    message: `Reset daily flags for ${data} learners`,
     count: data,
   });
 }
@@ -206,7 +206,7 @@ export const onRequest: PagesFunction = async (context) => {
   const path = url.pathname;
 
   try {
-    // Parse path: /api/streak/:studentId, /api/streak/:studentId/complete, etc.
+    // Parse path: /api/streak/:learnerId, /api/streak/:learnerId/complete, etc.
     const pathParts = path.replace('/api/streak', '').split('/').filter(Boolean);
 
     // Health check (public endpoint)
@@ -215,7 +215,7 @@ export const onRequest: PagesFunction = async (context) => {
         return jsonResponse({
           status: 'ok',
           service: 'streak-api',
-          endpoints: ['/:studentId', '/:studentId/complete', '/:studentId/notifications', '/:studentId/process', '/reset-daily'],
+          endpoints: ['/:learnerId', '/:learnerId/complete', '/:learnerId/notifications', '/:learnerId/process', '/reset-daily'],
           timestamp: new Date().toISOString()
         });
       }
@@ -233,40 +233,40 @@ export const onRequest: PagesFunction = async (context) => {
       return await handleResetDailyFlags(supabase);
     }
 
-    // Routes with studentId
+    // Routes with learnerId
     if (pathParts.length >= 1) {
-      const studentId = pathParts[0];
+      const learnerId = pathParts[0];
 
       // Validate UUID format
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(studentId)) {
-        return jsonResponse({ error: 'Invalid student ID format' }, 400);
+      if (!uuidRegex.test(learnerId)) {
+        return jsonResponse({ error: 'Invalid learner ID format' }, 400);
       }
 
       // Security: Users can only access their own streak data
-      if (studentId !== user.id) {
+      if (learnerId !== user.id) {
         return jsonResponse({ error: 'Forbidden: Can only access your own streak data' }, 403);
       }
 
-      // GET /:studentId
+      // GET /:learnerId
       if (pathParts.length === 1 && request.method === 'GET') {
-        return await handleGetStreak(supabase, studentId);
+        return await handleGetStreak(supabase, learnerId);
       }
 
-      // POST /:studentId/complete
+      // POST /:learnerId/complete
       if (pathParts.length === 2 && pathParts[1] === 'complete' && request.method === 'POST') {
-        return await handleCompleteStreak(supabase, studentId);
+        return await handleCompleteStreak(supabase, learnerId);
       }
 
-      // GET /:studentId/notifications
+      // GET /:learnerId/notifications
       if (pathParts.length === 2 && pathParts[1] === 'notifications' && request.method === 'GET') {
         const limit = parseInt(url.searchParams.get('limit') || '10');
-        return await handleGetNotifications(supabase, studentId, limit);
+        return await handleGetNotifications(supabase, learnerId, limit);
       }
 
-      // POST /:studentId/process
+      // POST /:learnerId/process
       if (pathParts.length === 2 && pathParts[1] === 'process' && request.method === 'POST') {
-        return await handleProcessStreak(supabase, studentId);
+        return await handleProcessStreak(supabase, learnerId);
       }
     }
 

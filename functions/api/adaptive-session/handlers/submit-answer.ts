@@ -86,24 +86,24 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
       );
     }
 
-    // Verify session ownership by checking if the student's user_id matches the authenticated user
-    const { data: studentData, error: studentError } = await supabase
-      .from('students')
+    // Verify session ownership by checking if the learner's user_id matches the authenticated user
+    const { data: learnerData, error: learnerError } = await supabase
+      .from('learners')
       .select('user_id')
-      .eq('id', sessionData.student_id)
+      .eq('id', sessionData.learner_id)
       .single();
 
-    if (studentError || !studentData) {
-      console.error('❌ [SubmitAnswerHandler] Failed to fetch student:', studentError);
+    if (learnerError || !learnerData) {
+      console.error('❌ [SubmitAnswerHandler] Failed to fetch learner:', learnerError);
       return jsonResponse(
-        { error: 'Student not found' },
+        { error: 'Learner not found' },
         404
       );
     }
 
-    if (studentData.user_id !== auth.user.id) {
+    if (learnerData.user_id !== auth.user.id) {
       console.error('❌ [SubmitAnswerHandler] Session ownership verification failed', {
-        studentUserId: studentData.user_id,
+        learnerUserId: learnerData.user_id,
         authUserId: auth.user.id
       });
       return jsonResponse(

@@ -34,10 +34,10 @@ const ApplicationTracking: React.FC = () => {
   const [applicationSearchTerm, setApplicationSearchTerm] = useState("");
   const [selectedApplicationStatus, setSelectedApplicationStatus] = useState("");
   const [showApplicationFilterModal, setShowApplicationFilterModal] = useState(false);
-  const [showStudentDetailsModal, setShowStudentDetailsModal] = useState(false);
+  const [showlearnerDetailsModal, setShowlearnerDetailsModal] = useState(false);
   const [showPipelineModal, setShowPipelineModal] = useState(false);
   const [selectedApplicationPipeline, setSelectedApplicationPipeline] = useState<any>(null);
-  const [pipelineModalView, setPipelineModalView] = useState<'pipeline' | 'student'>('pipeline');
+  const [pipelineModalView, setPipelineModalView] = useState<'pipeline' | 'learner'>('pipeline');
   const [showUpdateStageModal, setShowUpdateStageModal] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<ApplicationTrackingData | null>(null);
   const [showJobDetailsModal, setShowJobDetailsModal] = useState(false);
@@ -182,8 +182,8 @@ const ApplicationTracking: React.FC = () => {
     if (applicationSearchTerm) {
       const search = applicationSearchTerm.toLowerCase();
       filtered = filtered.filter(app => 
-        app.student?.name?.toLowerCase().includes(search) ||
-        app.student?.email?.toLowerCase().includes(search) ||
+        app.learner?.name?.toLowerCase().includes(search) ||
+        app.learner?.email?.toLowerCase().includes(search) ||
         app.opportunity?.title?.toLowerCase().includes(search) ||
         app.opportunity?.job_title?.toLowerCase().includes(search) ||
         app.opportunity?.company_name?.toLowerCase().includes(search) ||
@@ -258,14 +258,14 @@ const ApplicationTracking: React.FC = () => {
 
   const viewApplicationDetails = (application: ApplicationTrackingData) => {
     setSelectedApplication(application);
-    setShowStudentDetailsModal(true);
+    setShowlearnerDetailsModal(true);
   };
 
   const viewPipelineDetails = async (application: ApplicationTrackingData) => {
     try {
       // Get pipeline data for this application
       const pipelineData = await applicationTrackingService.getPipelineDataForApplication(
-        application.student_id,
+        application.learner_id,
         application.opportunity_id
       );
       
@@ -279,8 +279,8 @@ const ApplicationTracking: React.FC = () => {
     }
   };
 
-  const switchToStudentView = () => {
-    setPipelineModalView('student');
+  const switchTolearnerView = () => {
+    setPipelineModalView('learner');
   };
 
   const switchToPipelineView = () => {
@@ -302,7 +302,7 @@ const ApplicationTracking: React.FC = () => {
           newApplicationStage || undefined
         );
         
-        toast.success(`${selectedApplication.student?.name}'s application updated successfully!`);
+        toast.success(`${selectedApplication.learner?.name}'s application updated successfully!`);
         
         // Reload applications to reflect changes
         await loadApplications();
@@ -324,15 +324,15 @@ const ApplicationTracking: React.FC = () => {
 
   const exportApplications = () => {
     // Create CSV content
-    const headers = ['Application ID', 'Student Name', 'Email', 'Department', 'CGPA', 'Company', 'Job Title', 'Status', 'Applied Date', 'Last Updated'];
+    const headers = ['Application ID', 'Learner Name', 'Email', 'Department', 'CGPA', 'Company', 'Job Title', 'Status', 'Applied Date', 'Last Updated'];
     const csvContent = [
       headers.join(','),
       ...filteredApplications.map(app => [
         app.id,
-        `"${app.student?.name || 'N/A'}"`,
-        app.student?.email || 'N/A',
-        `"${app.student?.branch_field || app.student?.course_name || 'N/A'}"`,
-        app.student?.currentCgpa || 'N/A',
+        `"${app.learner?.name || 'N/A'}"`,
+        app.learner?.email || 'N/A',
+        `"${app.learner?.branch_field || app.learner?.course_name || 'N/A'}"`,
+        app.learner?.currentCgpa || 'N/A',
         `"${app.opportunity?.company_name || 'N/A'}"`,
         `"${app.opportunity?.title || app.opportunity?.job_title || 'N/A'}"`,
         app.application_status,
@@ -459,7 +459,7 @@ const ApplicationTracking: React.FC = () => {
         </div>
       </div>
       
-      <p className="text-gray-600 mb-4">Track application stages, update student status, and manage recruitment rounds for all students.</p>
+      <p className="text-gray-600 mb-4">Track application stages, update learner status, and manage recruitment rounds for all learners.</p>
 
       {/* Loading State */}
       {isLoadingApplications && (
@@ -496,7 +496,7 @@ const ApplicationTracking: React.FC = () => {
                   <Users className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-blue-900">All Student Applications</h3>
+                  <h3 className="font-semibold text-blue-900">All Learner Applications</h3>
                   <p className="text-sm text-blue-700">Viewing applications across all job postings</p>
                 </div>
               </div>
@@ -567,7 +567,7 @@ const ApplicationTracking: React.FC = () => {
             type="text"
             value={applicationSearchTerm}
             onChange={(e) => setApplicationSearchTerm(e.target.value)}
-            placeholder="Search applications by student name, email, or job title..."
+            placeholder="Search applications by learner name, email, or job title..."
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
@@ -592,7 +592,7 @@ const ApplicationTracking: React.FC = () => {
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Student Details
+                  Learner Details
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Academic Info
@@ -623,17 +623,17 @@ const ApplicationTracking: React.FC = () => {
                           </div>
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{application.student?.name || 'Unknown Student'}</div>
-                          <div className="text-sm text-gray-500">{application.student?.email || 'No email available'}</div>
-                          <div className="text-sm text-gray-500">{application.student?.contact_number || 'No contact'}</div>
+                          <div className="text-sm font-medium text-gray-900">{application.learner?.name || 'Unknown Learner'}</div>
+                          <div className="text-sm text-gray-500">{application.learner?.email || 'No email available'}</div>
+                          <div className="text-sm text-gray-500">{application.learner?.contact_number || 'No contact'}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{application.student?.branch_field || application.student?.course_name || 'N/A'}</div>
-                      <div className="text-sm text-gray-500">CGPA: {application.student?.currentCgpa || 'N/A'}</div>
+                      <div className="text-sm text-gray-900">{application.learner?.branch_field || application.learner?.course_name || 'N/A'}</div>
+                      <div className="text-sm text-gray-500">CGPA: {application.learner?.currentCgpa || 'N/A'}</div>
                       <div className="text-sm text-gray-500">
-                        University: {application.student?.university || 'N/A'}
+                        University: {application.learner?.university || 'N/A'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -672,7 +672,7 @@ const ApplicationTracking: React.FC = () => {
                       <p className="text-gray-500 mb-4">
                         {applicationSearchTerm || selectedApplicationStatus
                           ? "Try adjusting your search or filters"
-                          : "No student applications found in the system"}
+                          : "No learner applications found in the system"}
                       </p>
                     </div>
                   </td>
@@ -819,8 +819,8 @@ const ApplicationTracking: React.FC = () => {
         </div>
       )}
 
-      {/* Student Details Modal */}
-      {showStudentDetailsModal && selectedApplication && (
+      {/* Learner Details Modal */}
+      {showlearnerDetailsModal && selectedApplication && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
@@ -830,13 +830,13 @@ const ApplicationTracking: React.FC = () => {
                   <User className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">{selectedApplication.student?.name || 'Unknown Student'}</h2>
+                  <h2 className="text-xl font-bold text-gray-900">{selectedApplication.learner?.name || 'Unknown Learner'}</h2>
                   <div className="flex items-center gap-4 text-sm text-gray-600">
                     <span>Application Details</span>
-                    {selectedApplication.student?.contact_number && (
+                    {selectedApplication.learner?.contact_number && (
                       <>
                         <span>•</span>
-                        <span className="font-medium">{selectedApplication.student.contact_number}</span>
+                        <span className="font-medium">{selectedApplication.learner.contact_number}</span>
                       </>
                     )}
                   </div>
@@ -847,7 +847,7 @@ const ApplicationTracking: React.FC = () => {
                   {getStatusBadge(selectedApplication.application_status)}
                 </div>
                 <button
-                  onClick={() => setShowStudentDetailsModal(false)}
+                  onClick={() => setShowlearnerDetailsModal(false)}
                   className="p-2 hover:bg-gray-100 rounded-lg transition"
                 >
                   <X className="h-5 w-5 text-gray-500" />
@@ -856,24 +856,24 @@ const ApplicationTracking: React.FC = () => {
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Student Information */}
+              {/* Learner Information */}
               <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <User className="h-5 w-5 text-blue-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">Student Information</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Learner Information</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <p className="text-sm text-gray-600">Email Address</p>
-                    <p className="font-medium text-gray-900">{selectedApplication.student?.email || 'N/A'}</p>
+                    <p className="font-medium text-gray-900">{selectedApplication.learner?.email || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Department</p>
-                    <p className="font-medium text-gray-900">{selectedApplication.student?.branch_field || selectedApplication.student?.course_name || 'N/A'}</p>
+                    <p className="font-medium text-gray-900">{selectedApplication.learner?.branch_field || selectedApplication.learner?.course_name || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">University</p>
-                    <p className="font-medium text-gray-900">{selectedApplication.student?.university || 'N/A'}</p>
+                    <p className="font-medium text-gray-900">{selectedApplication.learner?.university || 'N/A'}</p>
                   </div>
                 </div>
               </div>
@@ -888,11 +888,11 @@ const ApplicationTracking: React.FC = () => {
                   <div className="space-y-3">
                     <div>
                       <p className="text-sm text-gray-600">CGPA</p>
-                      <p className="font-medium text-gray-900">{selectedApplication.student?.currentCgpa || 'N/A'}</p>
+                      <p className="font-medium text-gray-900">{selectedApplication.learner?.currentCgpa || 'N/A'}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Expected Graduation</p>
-                      <p className="font-medium text-gray-900">{selectedApplication.student?.expectedGraduationDate || 'N/A'}</p>
+                      <p className="font-medium text-gray-900">{selectedApplication.learner?.expectedGraduationDate || 'N/A'}</p>
                     </div>
                   </div>
                 </div>
@@ -955,7 +955,7 @@ const ApplicationTracking: React.FC = () => {
             {/* Modal Footer */}
             <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
               <button
-                onClick={() => setShowStudentDetailsModal(false)}
+                onClick={() => setShowlearnerDetailsModal(false)}
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
               >
                 Close
@@ -977,7 +977,7 @@ const ApplicationTracking: React.FC = () => {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-gray-900">Update Application Status</h2>
-                  <p className="text-sm text-gray-600">{selectedApplication.student?.name} • {selectedApplication.student?.branch_field || selectedApplication.student?.course_name}</p>
+                  <p className="text-sm text-gray-600">{selectedApplication.learner?.name} • {selectedApplication.learner?.branch_field || selectedApplication.learner?.course_name}</p>
                 </div>
               </div>
               <button
@@ -1286,9 +1286,9 @@ const ApplicationTracking: React.FC = () => {
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-gray-900">
-                    {pipelineModalView === 'pipeline' ? 'Recruitment Pipeline Status' : 'Student Details'}
+                    {pipelineModalView === 'pipeline' ? 'Recruitment Pipeline Status' : 'Learner Details'}
                   </h2>
-                  <p className="text-sm text-gray-600">{selectedApplication.student?.name} • {selectedApplication.opportunity?.title}</p>
+                  <p className="text-sm text-gray-600">{selectedApplication.learner?.name} • {selectedApplication.opportunity?.title}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -1305,14 +1305,14 @@ const ApplicationTracking: React.FC = () => {
                     Pipeline
                   </button>
                   <button
-                    onClick={switchToStudentView}
+                    onClick={switchTolearnerView}
                     className={`px-3 py-1 text-sm font-medium rounded-md transition ${
-                      pipelineModalView === 'student'
+                      pipelineModalView === 'learner'
                         ? 'bg-white text-blue-600 shadow-sm'
                         : 'text-gray-600 hover:text-gray-900'
                     }`}
                   >
-                    Student
+                    Learner
                   </button>
                 </div>
                 <button
@@ -1476,27 +1476,27 @@ const ApplicationTracking: React.FC = () => {
                   </div>
                 )
               ) : (
-                // Student Details View
+                // Learner Details View
                 <div className="space-y-6">
-                  {/* Student Overview */}
+                  {/* Learner Overview */}
                   <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">{selectedApplication.student?.name || 'Unknown'}</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">{selectedApplication.learner?.name || 'Unknown'}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm text-gray-600">Email Address:</p>
-                        <p className="font-medium text-gray-900">{selectedApplication.student?.email || 'N/A'}</p>
+                        <p className="font-medium text-gray-900">{selectedApplication.learner?.email || 'N/A'}</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">Department:</p>
-                        <p className="font-medium text-gray-900">{selectedApplication.student?.branch_field || selectedApplication.student?.course_name || 'N/A'}</p>
+                        <p className="font-medium text-gray-900">{selectedApplication.learner?.branch_field || selectedApplication.learner?.course_name || 'N/A'}</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">University:</p>
-                        <p className="font-medium text-gray-900">{selectedApplication.student?.university || 'N/A'}</p>
+                        <p className="font-medium text-gray-900">{selectedApplication.learner?.university || 'N/A'}</p>
                       </div>
                        <div>
                           <p className="text-sm text-gray-600">Contact Number</p>
-                          <p className="font-medium text-gray-900">{selectedApplication.student?.contact_number || 'N/A'}</p>
+                          <p className="font-medium text-gray-900">{selectedApplication.learner?.contact_number || 'N/A'}</p>
                         </div>
                     </div>
                   </div>

@@ -10,4 +10,4 @@ export { useAdminNotifications } from './model/useAdminNotifications';
 export type { NotificationType } from './model/useNotifications';
 
 // API
-export { createStudentNotification, createNotification } from './api/notificationService';
+export { createlearnerNotification, createNotification } from './api/notificationService';

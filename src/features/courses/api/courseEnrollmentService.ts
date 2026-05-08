@@ -4,22 +4,22 @@ import { getLogger } from '@/shared/config/logging';
 const logger = getLogger('course-enrollment-service');
 export const courseEnrollmentService = {
   /**
-   * Enroll a student in a course
-   * @param {string} studentEmail - Student's email
+   * Enroll a learner in a course
+   * @param {string} learnerEmail - Learner's email
    * @param {string} courseId - Course ID
    * @returns {Object} - Enrollment data
    */
-  async enrollStudent(studentEmail, courseId) {
+  async enrollLearner(learnerEmail, courseId) {
     try {
-      // Get student ID from email
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
+      // Get learner ID from email
+      const { data: learnerData, error: learnerError } = await supabase
+        .from('learners')
         .select('id, name, email')
-        .eq('email', studentEmail)
+        .eq('email', learnerEmail)
         .single();
 
-      if (studentError) throw studentError;
-      if (!studentData) throw new Error('Student not found');
+      if (learnerError) throw learnerError;
+      if (!learnerData) throw new Error('Learner not found');
 
       // Get course details with educator name - join directly to users since admin_users.id = users.id
       const { data: courseData, error: courseError } = await supabase
@@ -53,7 +53,7 @@ export const courseEnrollmentService = {
       const { data: existingEnrollment, error: checkError } = await supabase
         .from('course_enrollments')
         .select('*')
-        .eq('student_id', studentData.id)
+        .eq('learner_id', learnerData.id)
         .eq('course_id', courseId)
         .maybeSingle();
 
@@ -71,7 +71,7 @@ export const courseEnrollmentService = {
           status: existingEnrollment.status === 'completed' ? 'completed' : 'in_progress'
         };
         
-        // If progress is 0, set it to 1 to indicate the student has started the course
+        // If progress is 0, set it to 1 to indicate the learner has started the course
         if (existingEnrollment.progress === 0) {
           updateData.progress = 1;
         }
@@ -88,7 +88,7 @@ export const courseEnrollmentService = {
         };
       }
 
-      // If we reach here, student is not enrolled yet
+      // If we reach here, learner is not enrolled yet
 
       // Get total lessons count from course modules
       const { data: modulesData } = await supabase
@@ -106,9 +106,9 @@ export const courseEnrollmentService = {
       const { data: enrollment, error: enrollError } = await supabase
         .from('course_enrollments')
         .insert({
-          student_id: studentData.id,
-          student_name: studentData.name,
-          student_email: studentData.email,
+          learner_id: learnerData.id,
+          learner_name: learnerData.name,
+          learner_email: learnerData.email,
           course_id: courseId,
           course_title: courseData.title,
           educator_id: courseData.educator_id,
@@ -129,7 +129,7 @@ export const courseEnrollmentService = {
         const { data: existingRecord } = await supabase
           .from('course_enrollments')
           .select('*')
-          .eq('student_id', studentData.id)
+          .eq('learner_id', learnerData.id)
           .eq('course_id', courseId)
           .maybeSingle();
         
@@ -159,37 +159,37 @@ export const courseEnrollmentService = {
         data: enrollment
       };
     } catch (error) {
-      logger.error('Error enrolling student', error instanceof Error ? error : new Error(String(error)));
+      logger.error('Error enrolling learner', error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
-        error: error.message || 'Failed to enroll student'
+        error: error.message || 'Failed to enroll learner'
       };
     }
   },
 
   /**
-   * Update student progress in a course
-   * @param {string} studentEmail - Student's email
+   * Update learner progress in a course
+   * @param {string} learnerEmail - Learner's email
    * @param {string} courseId - Course ID
    * @param {Array} completedLessons - Array of completed lesson keys (e.g., ["0-0", "0-1"])
    * @returns {Object} - Updated enrollment data
    */
-  async updateProgress(studentEmail, courseId, completedLessons) {
+  async updateProgress(learnerEmail, courseId, completedLessons) {
     try {
-      // Get student ID
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
+      // Get learner ID
+      const { data: learnerData, error: learnerError } = await supabase
+        .from('learners')
         .select('id')
-        .eq('email', studentEmail)
+        .eq('email', learnerEmail)
         .single();
 
-      if (studentError) throw studentError;
+      if (learnerError) throw learnerError;
 
       // Get enrollment - use maybeSingle to avoid 406 error
       const { data: enrollment, error: enrollError } = await supabase
         .from('course_enrollments')
         .select('*')
-        .eq('student_id', studentData.id)
+        .eq('learner_id', learnerData.id)
         .eq('course_id', courseId)
         .maybeSingle();
 
@@ -259,25 +259,25 @@ export const courseEnrollmentService = {
   },
 
   /**
-   * Get student's enrollment for a course
-   * @param {string} studentEmail - Student's email
+   * Get learner's enrollment for a course
+   * @param {string} learnerEmail - Learner's email
    * @param {string} courseId - Course ID
    * @returns {Object} - Enrollment data
    */
-  async getEnrollment(studentEmail, courseId) {
+  async getEnrollment(learnerEmail, courseId) {
     try {
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
+      const { data: learnerData, error: learnerError } = await supabase
+        .from('learners')
         .select('id')
-        .eq('email', studentEmail)
+        .eq('email', learnerEmail)
         .single();
 
-      if (studentError) throw studentError;
+      if (learnerError) throw learnerError;
 
       const { data, error } = await supabase
         .from('course_enrollments')
         .select('*')
-        .eq('student_id', studentData.id)
+        .eq('learner_id', learnerData.id)
         .eq('course_id', courseId)
         .maybeSingle();
 
@@ -297,24 +297,24 @@ export const courseEnrollmentService = {
   },
 
   /**
-   * Get all enrollments for a student
-   * @param {string} studentEmail - Student's email
+   * Get all enrollments for a learner
+   * @param {string} learnerEmail - Learner's email
    * @returns {Array} - List of enrollments
    */
-  async getStudentEnrollments(studentEmail) {
+  async getlearnerEnrollments(learnerEmail) {
     try {
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
+      const { data: learnerData, error: learnerError } = await supabase
+        .from('learners')
         .select('id')
-        .eq('email', studentEmail)
+        .eq('email', learnerEmail)
         .single();
 
-      if (studentError) throw studentError;
+      if (learnerError) throw learnerError;
 
       const { data, error } = await supabase
         .from('course_enrollments')
         .select('*')
-        .eq('student_id', studentData.id)
+        .eq('learner_id', learnerData.id)
         .order('enrolled_at', { ascending: false });
 
       if (error) throw error;
@@ -324,7 +324,7 @@ export const courseEnrollmentService = {
         data: data || []
       };
     } catch (error) {
-      logger.error('Error getting student enrollments', error instanceof Error ? error : new Error(String(error)));
+      logger.error('Error getting learner enrollments', error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
         error: error.message,
@@ -380,8 +380,8 @@ export const courseEnrollmentService = {
 
       const stats = {
         total_enrollments: enrollments.length,
-        active_students: enrollments.filter(e => e.status === 'active').length,
-        completed_students: enrollments.filter(e => e.status === 'completed').length,
+        active_learners: enrollments.filter(e => e.status === 'active').length,
+        completed_learners: enrollments.filter(e => e.status === 'completed').length,
         average_progress: enrollments.length > 0
           ? Math.round(enrollments.reduce((acc, e) => acc + (e.progress || 0), 0) / enrollments.length)
           : 0,

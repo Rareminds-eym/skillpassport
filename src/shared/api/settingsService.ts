@@ -320,7 +320,7 @@ export const getModulesForRole = async (roleType: string): Promise<Module[]> => 
   // Filter modules based on role type
   if (roleType === 'college_admin') {
     return allModules.filter(m => 
-      ['Dashboard', 'Students', 'Departments & Faculty', 'Academics', 
+      ['Dashboard', 'Learners', 'Departments & Faculty', 'Academics', 
        'Examinations', 'Placements & Skills', 'Operations', 'Administration', 'Settings']
       .includes(m.module_name)
     );

@@ -9,7 +9,7 @@ import { getLogger } from '@/shared/config/logging';
 const logger = getLogger('educator-courses');
 
 /**
- * Create a notification for all students in a school
+ * Create a notification for all learners in a school
  * This is used when a course is added or updated
  */
 const createCourseNotification = async (
@@ -38,26 +38,26 @@ const createCourseNotification = async (
       return;
     }
 
-    // Get all students in the school
-    const { data: studentData, error: studentError } = await supabase
-      .from('students')
+    // Get all learners in the school
+    const { data: learnerData, error: learnerError } = await supabase
+      .from('learners')
       .select('user_id')
       .eq('school_id', finalSchoolId);
 
-    if (studentError) {
-      logger.error('Error fetching students for notification', studentError as Error, {
+    if (learnerError) {
+      logger.error('Error fetching learners for notification', learnerError as Error, {
         schoolId: finalSchoolId,
       });
       return;
     }
 
-    if (!studentData || studentData.length === 0) {
+    if (!learnerData || learnerData.length === 0) {
       return;
     }
 
-    // Create notifications for each student
-    const notifications = studentData.map(student => ({
-      recipient_id: student.user_id,
+    // Create notifications for each learner
+    const notifications = learnerData.map(learner => ({
+      recipient_id: learner.user_id,
       type: type,
       title: type === 'course_added'
         ? `New Course: ${courseTitle}`

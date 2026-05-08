@@ -2,7 +2,7 @@ import { Building2, MessageCircle, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
 
-const NewCollegeAdminConversationModal = ({ isOpen, onClose, studentId, onConversationCreated }) => {
+const NewCollegeAdminConversationModal = ({ isOpen, onClose, learnerId, onConversationCreated }) => {
   const [college, setCollege] = useState(null);
   const [loading, setLoading] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState('');
@@ -27,23 +27,23 @@ const NewCollegeAdminConversationModal = ({ isOpen, onClose, studentId, onConver
     'Other'
   ];
 
-  // Fetch student's college information
+  // Fetch learner's college information
   useEffect(() => {
-    if (isOpen && studentId) {
-      fetchStudentCollege();
+    if (isOpen && learnerId) {
+      fetchlearnerCollege();
     }
-  }, [isOpen, studentId]);
+  }, [isOpen, learnerId]);
 
-  const fetchStudentCollege = async () => {
+  const fetchlearnerCollege = async () => {
     setLoading(true);
     try {
-      // First try to get student's college information via college_id (organizations table)
-      const { data: studentData, error } = await supabase
-        .from('students')
+      // First try to get learner's college information via college_id (organizations table)
+      const { data: learnerData, error } = await supabase
+        .from('learners')
         .select(`
           college_id,
           university_college_id,
-          college:organizations!students_college_id_fkey (
+          college:organizations!learners_college_id_fkey (
             id,
             name,
             city,
@@ -63,7 +63,7 @@ const NewCollegeAdminConversationModal = ({ isOpen, onClose, studentId, onConver
             )
           )
         `)
-        .eq('id', studentId)
+        .eq('id', learnerId)
         .single();
 
       if (error) throw error;
@@ -71,20 +71,20 @@ const NewCollegeAdminConversationModal = ({ isOpen, onClose, studentId, onConver
       let collegeData = null;
 
       // Check college_id first (direct organization link)
-      if (studentData?.college) {
+      if (learnerData?.college) {
         collegeData = {
-          id: studentData.college.id,
-          name: studentData.college.name,
-          address: studentData.college.city && studentData.college.state 
-            ? `${studentData.college.city}, ${studentData.college.state}` 
+          id: learnerData.college.id,
+          name: learnerData.college.name,
+          address: learnerData.college.city && learnerData.college.state 
+            ? `${learnerData.college.city}, ${learnerData.college.state}` 
             : null,
           phone: null,
           email: null
         };
       }
       // Fallback to university_college_id (university_colleges table)
-      else if (studentData?.university_colleges) {
-        const universityCollege = studentData.university_colleges;
+      else if (learnerData?.university_colleges) {
+        const universityCollege = learnerData.university_colleges;
         collegeData = {
           id: universityCollege.id,
           name: universityCollege.name,
@@ -99,7 +99,7 @@ const NewCollegeAdminConversationModal = ({ isOpen, onClose, studentId, onConver
       if (collegeData) {
         setCollege(collegeData);
       } else {
-        console.error('Student has no associated college');
+        console.error('Learner has no associated college');
       }
     } catch (error) {
       console.error('Error fetching college:', error);

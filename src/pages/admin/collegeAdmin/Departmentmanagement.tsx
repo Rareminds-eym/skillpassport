@@ -69,7 +69,7 @@ type Department = DepartmentWithStats & {
   hodId?: string;
   email?: string;
   facultyCount?: number;
-  studentCount?: number;
+  learnerCount?: number;
   courses?: Course[];
   faculty?: Faculty[];
   description?: string | null; // Make compatible with modal components
@@ -254,7 +254,7 @@ const DepartmentManagement: React.FC = () => {
       ...dept,
       id: dept.id as any, // Keep as string but cast for compatibility
       facultyCount: dept.faculty_count || 0,
-      studentCount: dept.student_count || 0,
+      learnerCount: dept.learner_count || 0,
       status: dept.status || 'Active',
       hod: dept.metadata?.hod || 'Not Assigned',
       email: dept.metadata?.email || '',
@@ -356,7 +356,7 @@ const DepartmentManagement: React.FC = () => {
   });
 
   // Sorting state
-  type SortField = 'name' | 'code' | 'facultyCount' | 'studentCount' | 'programCount' | 'createdAt';
+  type SortField = 'name' | 'code' | 'facultyCount' | 'learnerCount' | 'programCount' | 'createdAt';
   type SortDirection = 'asc' | 'desc';
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -366,7 +366,7 @@ const DepartmentManagement: React.FC = () => {
     { value: 'name', label: 'Department Name' },
     { value: 'code', label: 'Department Code' },
     { value: 'facultyCount', label: 'Faculty Count' },
-    { value: 'studentCount', label: 'Student Count' },
+    { value: 'learnerCount', label: 'Learner Count' },
     { value: 'programCount', label: 'Program Count' },
     { value: 'createdAt', label: 'Date Created' },
   ];
@@ -436,8 +436,8 @@ const DepartmentManagement: React.FC = () => {
         case 'facultyCount':
           comparison = (a.facultyCount || a.faculty_count || 0) - (b.facultyCount || b.faculty_count || 0);
           break;
-        case 'studentCount':
-          comparison = (a.studentCount || a.student_count || 0) - (b.studentCount || b.student_count || 0);
+        case 'learnerCount':
+          comparison = (a.learnerCount || a.learner_count || 0) - (b.learnerCount || b.learner_count || 0);
           break;
         case 'programCount':
           comparison = (a.programs_offered?.length || 0) - (b.programs_offered?.length || 0);
@@ -611,11 +611,11 @@ const DepartmentManagement: React.FC = () => {
     }
   };
 
-  // Add students mutation
-  const addStudentsMutation = useMutation({
-    mutationFn: ({ departmentId, students }: { 
+  // Add learners mutation
+  const addlearnersMutation = useMutation({
+    mutationFn: ({ departmentId, learners }: { 
       departmentId: string; 
-      students: Array<{
+      learners: Array<{
         rollNumber: string;
         firstName: string;
         lastName: string;
@@ -624,19 +624,19 @@ const DepartmentManagement: React.FC = () => {
         semester?: number;
         program?: string;
       }> 
-    }) => departmentService.addStudentsToDepartment(departmentId, students),
+    }) => departmentService.addlearnersToDepartment(departmentId, learners),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.college.departments.all });
-      toast.success('Students added successfully');
+      toast.success('Learners added successfully');
       setSelectedDepartment(null);
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to add students');
+      toast.error(error.message || 'Failed to add learners');
     },
   });
 
-  const handleSaveStudents = (deptId: string, students: any[]) => {
-    addStudentsMutation.mutate({ departmentId: deptId, students });
+  const handleSavelearners = (deptId: string, learners: any[]) => {
+    addlearnersMutation.mutate({ departmentId: deptId, learners });
   };
 
   const handleEditDepartment = (dept: Department) => {
@@ -1129,9 +1129,9 @@ const DepartmentManagement: React.FC = () => {
                             <AcademicCapIcon className="h-6 w-6 text-amber-600" />
                           </div>
                           <p className="text-2xl font-bold text-gray-900">
-                            {dept.studentCount || 0}
+                            {dept.learnerCount || 0}
                           </p>
-                          <p className="text-xs text-gray-500 mt-0.5">Students</p>
+                          <p className="text-xs text-gray-500 mt-0.5">Learners</p>
                         </div>
 
                         <div className="text-center">
@@ -1206,7 +1206,7 @@ const DepartmentManagement: React.FC = () => {
                           Faculty
                         </th>
                         <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Students
+                          Learners
                         </th>
                         <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Status
@@ -1251,7 +1251,7 @@ const DepartmentManagement: React.FC = () => {
                             {dept.facultyCount || 0}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">
-                            {dept.studentCount}
+                            {dept.learnerCount}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center">
                             <StatusBadge status={dept.status || 'Active'} />

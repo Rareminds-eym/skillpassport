@@ -20,7 +20,7 @@ interface CreatePoolModalProps {
 
 export interface PoolFormData {
   poolName: string;
-  memberType: 'educator' | 'student';
+  memberType: 'educator' | 'learner';
   allocatedSeats: number;
   autoAssignNewMembers: boolean;
   assignmentCriteria?: {
@@ -40,7 +40,7 @@ function CreatePoolModal({
   const [error, setError] = useState('');
   const [formData, setFormData] = useState<PoolFormData>({
     poolName: '',
-    memberType: 'student',
+    memberType: 'learner',
     allocatedSeats: Math.min(10, totalAvailableSeats),
     autoAssignNewMembers: false,
   });
@@ -93,7 +93,7 @@ function CreatePoolModal({
       // Reset form on success
       setFormData({
         poolName: '',
-        memberType: 'student',
+        memberType: 'learner',
         allocatedSeats: Math.min(10, totalAvailableSeats),
         autoAssignNewMembers: false,
       });
@@ -106,7 +106,7 @@ function CreatePoolModal({
   const handleClose = useCallback(() => {
     setFormData({
       poolName: '',
-      memberType: 'student',
+      memberType: 'learner',
       allocatedSeats: Math.min(10, totalAvailableSeats),
       autoAssignNewMembers: false,
     });
@@ -179,7 +179,7 @@ function CreatePoolModal({
                     name="poolName"
                     value={formData.poolName}
                     onChange={handleInputChange}
-                    placeholder="e.g., Science Department, Grade 10 Students"
+                    placeholder="e.g., Science Department, Grade 10 Learners"
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                   />
                 </div>
@@ -191,19 +191,19 @@ function CreatePoolModal({
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, memberType: 'student' }))}
+                      onClick={() => setFormData(prev => ({ ...prev, memberType: 'learner' }))}
                       className={`p-4 rounded-xl border-2 transition-all ${
-                        formData.memberType === 'student'
+                        formData.memberType === 'learner'
                           ? 'border-blue-500 bg-blue-50'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
                       <Users className={`w-6 h-6 mx-auto mb-2 ${
-                        formData.memberType === 'student' ? 'text-blue-600' : 'text-gray-400'
+                        formData.memberType === 'learner' ? 'text-blue-600' : 'text-gray-400'
                       }`} />
                       <span className={`text-sm font-medium ${
-                        formData.memberType === 'student' ? 'text-blue-700' : 'text-gray-600'
-                      }`}>Students</span>
+                        formData.memberType === 'learner' ? 'text-blue-700' : 'text-gray-600'
+                      }`}>Learners</span>
                     </button>
                     <button
                       type="button"

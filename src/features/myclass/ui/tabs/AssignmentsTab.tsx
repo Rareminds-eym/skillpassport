@@ -13,11 +13,11 @@ interface AssignmentsTabProps {
   totalPages: number;
   itemsPerPage: number;
   loading?: boolean;
-  onStatusChange?: (assignmentId: string, studentAssignmentId: string, newStatus: string) => void;
+  onStatusChange?: (assignmentId: string, learnerAssignmentId: string, newStatus: string) => void;
   onUploadClick?: (assignment: Assignment) => void;
   onViewDetails?: (assignment: Assignment) => void;
   onPageChange: (page: number) => void;
-  // For college students, these might be disabled
+  // For college learners, these might be disabled
   isReadOnly?: boolean;
 }
 
@@ -75,7 +75,7 @@ const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
         <h3 className="text-xl font-semibold text-gray-900 mb-3">No Assignments Yet</h3>
         <p className="text-gray-500 max-w-md mx-auto leading-relaxed">
           {isReadOnly 
-            ? "Assignment management will be available soon for college students!"
+            ? "Assignment management will be available soon for college learners!"
             : "Your assignments will appear here when your teachers create them. Check back soon for new learning opportunities!"
           }
         </p>
@@ -89,7 +89,7 @@ const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
         {paginatedAssignments.map(assignment => (
           <div key={assignment.assignment_id}>
             {isReadOnly ? (
-              // Read-only version for college students
+              // Read-only version for college learners
               <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1 min-w-0">
@@ -126,12 +126,12 @@ const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
 
                 <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
                   <p className="text-blue-700 text-sm font-medium">
-                    Assignment management coming soon for college students!
+                    Assignment management coming soon for college learners!
                   </p>
                 </div>
               </div>
             ) : (
-              // Full interactive version for school students
+              // Full interactive version for school learners
               <AssignmentCard
                 assignment={assignment}
                 onStatusChange={onStatusChange!}

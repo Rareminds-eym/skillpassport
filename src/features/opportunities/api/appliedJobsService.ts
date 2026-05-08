@@ -1,5 +1,5 @@
 import { supabase } from '@/shared/api/supabaseClient';
-import { createStudentNotification } from '@/features/notifications';
+import { createlearnerNotification } from '@/features/notifications';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('appliedJobsService');
@@ -10,17 +10,17 @@ const logger = getLogger('appliedJobsService');
 export class AppliedJobsService {
   /**
    * Apply to a job opportunity
-   * @param {string} studentId - Student's UUID
+   * @param {string} learnerId - Learner's UUID
    * @param {number} opportunityId - Opportunity's ID
    * @returns {Promise<Object>} Application result
    */
   /**
    * Apply to a job opportunity
-   * @param {string} studentId - Student's ID (students.id, not user_id)
+   * @param {string} learnerId - Learner's ID (learners.id, not user_id)
    * @param {string} opportunityId - Opportunity's ID
    * @returns {Promise<Object>} Application result
    */
-  static async applyToJob(studentId, opportunityId) {
+  static async applyToJob(learnerId, opportunityId) {
     try {
       // Check if opportunity has available openings
       const { data: opportunity, error: oppError } = await supabase
@@ -45,7 +45,7 @@ export class AppliedJobsService {
       const { data: existing } = await supabase
         .from('applied_jobs')
         .select('id')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('opportunity_id', opportunityId)
         .maybeSingle();
 
@@ -57,35 +57,35 @@ export class AppliedJobsService {
         };
       }
 
-      // Get student details for pipeline
-      const { data: student, error: studentError } = await supabase
-        .from('students')
+      // Get learner details for pipeline
+      const { data: learner, error: learnerError } = await supabase
+        .from('learners')
         .select('name, email, contact_number')
-        .eq('id', studentId)
+        .eq('id', learnerId)
         .maybeSingle();
 
-      if (studentError) {
-        throw studentError;
+      if (learnerError) {
+        throw learnerError;
       }
 
-      if (!student) {
+      if (!learner) {
         return {
           success: false,
-          message: 'Student profile not found'
+          message: 'Learner profile not found'
         };
       }
 
       const profile = {
-        name: student?.name || '',
-        email: student?.email || '',
-        contact_number: student?.contact_number || ''
+        name: learner?.name || '',
+        email: learner?.email || '',
+        contact_number: learner?.contact_number || ''
       };
 
       // Insert application
       const { data, error } = await supabase
         .from('applied_jobs')
         .insert([{
-          student_id: studentId,
+          learner_id: learnerId,
           opportunity_id: opportunityId,
           application_status: 'applied'
         }])
@@ -102,7 +102,7 @@ export class AppliedJobsService {
           .from('pipeline_candidates')
           .insert([{
             opportunity_id: opportunityId,
-            student_id: studentId,
+            learner_id: learnerId,
             candidate_name: profile.name || 'Unknown',
             candidate_email: profile.email || '',
             candidate_phone: profile.contact_number || '',
@@ -135,17 +135,17 @@ export class AppliedJobsService {
   }
 
   /**
-   * Check if student has already applied to a job
-   * @param {string} studentId - Student's ID (students.id)
+   * Check if learner has already applied to a job
+   * @param {string} learnerId - Learner's ID (learners.id)
    * @param {string} opportunityId - Opportunity's ID
    * @returns {Promise<boolean>} True if already applied
    */
-  static async hasApplied(studentId, opportunityId) {
+  static async hasApplied(learnerId, opportunityId) {
     try {
       const { data } = await supabase
         .from('applied_jobs')
         .select('id')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('opportunity_id', opportunityId)
         .maybeSingle();
 
@@ -156,12 +156,12 @@ export class AppliedJobsService {
   }
 
   /**
-   * Get all applications for a student
-   * @param {string} studentId - Student's ID (students.id)
+   * Get all applications for a learner
+   * @param {string} learnerId - Learner's ID (learners.id)
    * @param {Object} options - Query options
    * @returns {Promise<Array>} List of applications
    */
-  static async getStudentApplications(studentId, options = {}) {
+  static async getlearnerApplications(learnerId, options = {}) {
     try {
       let query = supabase
         .from('applied_jobs')
@@ -183,7 +183,7 @@ export class AppliedJobsService {
             experience_level
           )
         `)
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .order('applied_at', { ascending: false });
 
       if (options.status) query = query.eq('application_status', options.status);
@@ -199,16 +199,16 @@ export class AppliedJobsService {
   }
 
   /**
-   * Get application statistics for a student
-   * @param {string} studentId - Student's ID (students.id)
+   * Get application statistics for a learner
+   * @param {string} learnerId - Learner's ID (learners.id)
    * @returns {Promise<Object>} Application statistics
    */
-  static async getApplicationStats(studentId) {
+  static async getApplicationStats(learnerId) {
     try {
       const { data, error } = await supabase
         .from('applied_jobs')
         .select('application_status')
-        .eq('student_id', studentId);
+        .eq('learner_id', learnerId);
 
       if (error) throw error;
 
@@ -258,21 +258,21 @@ export class AppliedJobsService {
         .eq('id', applicationId)
         .select(`
           *,
-          students!inner(email, name),
+          learners!inner(email, name),
           opportunities!inner(title, company_name)
         `)
         .single();
 
       if (error) throw error;
 
-      // Send notification to student (respects their preferences)
+      // Send notification to learner (respects their preferences)
       try {
-        if (data?.students?.email) {
+        if (data?.learners?.email) {
           const jobTitle = data?.opportunities?.title || 'Position';
           const statusText = status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
           
-          await createStudentNotification(
-            data.students.email,
+          await createlearnerNotification(
+            data.learners.email,
             'application_update',
             `Application Status Updated: ${jobTitle}`,
             `Your application status has been updated to: ${statusText}`
@@ -293,10 +293,10 @@ export class AppliedJobsService {
   /**
    * Withdraw application
    * @param {string} applicationId - Application ID (UUID)
-   * @param {string} studentId - Student ID (students.id) for verification
+   * @param {string} learnerId - Learner ID (learners.id) for verification
    * @returns {Promise<Object>} Result
    */
-  static async withdrawApplication(applicationId, studentId) {
+  static async withdrawApplication(applicationId, learnerId) {
     try {
       const { data, error } = await supabase
         .from('applied_jobs')
@@ -305,7 +305,7 @@ export class AppliedJobsService {
           updated_at: new Date().toISOString()
         })
         .eq('id', applicationId)
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .select()
         .single();
 
@@ -320,16 +320,16 @@ export class AppliedJobsService {
   /**
    * Delete application completely
    * @param {string} applicationId - Application ID (UUID)
-   * @param {string} studentId - Student ID (students.id) for verification
+   * @param {string} learnerId - Learner ID (learners.id) for verification
    * @returns {Promise<Object>} Result
    */
-  static async deleteApplication(applicationId, studentId) {
+  static async deleteApplication(applicationId, learnerId) {
     try {
       const { error } = await supabase
         .from('applied_jobs')
         .delete()
         .eq('id', applicationId)
-        .eq('student_id', studentId);
+        .eq('learner_id', learnerId);
 
       if (error) throw error;
       return { success: true, message: 'Application deleted successfully' };
@@ -341,10 +341,10 @@ export class AppliedJobsService {
 
   /**
    * Get recent applications (last 30 days)
-   * @param {string} studentId - Student's ID (students.id)
+   * @param {string} learnerId - Learner's ID (learners.id)
    * @returns {Promise<Array>} Recent applications
    */
-  static async getRecentApplications(studentId) {
+  static async getRecentApplications(learnerId) {
     try {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -352,7 +352,7 @@ export class AppliedJobsService {
       const { data, error } = await supabase
         .from('applied_jobs')
         .select('*, opportunity:opportunities!fk_applied_jobs_opportunity(job_title, company_name, company_logo)')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .gte('applied_at', thirtyDaysAgo.toISOString())
         .order('applied_at', { ascending: false });
 
@@ -365,7 +365,7 @@ export class AppliedJobsService {
   }
 
   /**
-   * Get all applicants for recruiter (with student and opportunity details)
+   * Get all applicants for recruiter (with learner and opportunity details)
    * @param {Object} options - Query options
    * @returns {Promise<Array>} List of all applicants
    */
@@ -403,18 +403,18 @@ export class AppliedJobsService {
         return [];
       }
 
-      // Fetch student details for all applicants
-      // Note: applied_jobs.student_id references students.user_id (not students.id)
-      const studentIds = [...new Set(appliedJobs.map(job => job.student_id))];
+      // Fetch learner details for all applicants
+      // Note: applied_jobs.learner_id references learners.user_id (not learners.id)
+      const learnerIds = [...new Set(appliedJobs.map(job => job.learner_id))];
 
-      // applied_jobs.student_id references students.id (not user_id)
-      const { data: students, error: studentsError } = await supabase
-        .from('students')
+      // applied_jobs.learner_id references learners.id (not user_id)
+      const { data: learners, error: learnersError } = await supabase
+        .from('learners')
         .select('id, user_id, name, email, contact_number, university, branch_field, course_name, college_school_name, district_name, currentCgpa, expectedGraduationDate, approval_status')
-        .in('id', studentIds);
+        .in('id', learnerIds);
 
-      if (studentsError) {
-        logger.error('Failed to fetch student details', studentsError as Error);
+      if (learnersError) {
+        logger.error('Failed to fetch learner details', learnersError as Error);
       }
 
       // Fetch opportunity details for all jobs
@@ -428,24 +428,24 @@ export class AppliedJobsService {
         logger.error('Failed to fetch opportunity details', opportunitiesError as Error);
       }
 
-      // Create lookup maps - Use direct fields from students table
-      // Key by id since applied_jobs.student_id references students.id
-      const studentMap = (students || []).reduce((acc, student) => {
-        acc[student.id] = {
-          id: student.id, // Use id for consistency with applied_jobs.student_id
-          name: student.name || 'Unknown',
-          email: student.email || '',
-          phone: student.contact_number ? String(student.contact_number) : '',
-          photo: null, // Photo not stored in students table
+      // Create lookup maps - Use direct fields from learners table
+      // Key by id since applied_jobs.learner_id references learners.id
+      const learnerMap = (learners || []).reduce((acc, learner) => {
+        acc[learner.id] = {
+          id: learner.id, // Use id for consistency with applied_jobs.learner_id
+          name: learner.name || 'Unknown',
+          email: learner.email || '',
+          phone: learner.contact_number ? String(learner.contact_number) : '',
+          photo: null, // Photo not stored in learners table
           // Use direct DB columns
-          department: student.branch_field || student.course_name || '',
-          university: student.university || '',
-          college: student.college_school_name || student.university || '',
-          district: student.district_name || '',
-          course: student.course_name || '',
-          cgpa: student.currentCgpa || '',
-          year_of_passing: student.expectedGraduationDate ? student.expectedGraduationDate.split('-')[0] : '',
-          verified: student.approval_status === 'approved' || false,
+          department: learner.branch_field || learner.course_name || '',
+          university: learner.university || '',
+          college: learner.college_school_name || learner.university || '',
+          district: learner.district_name || '',
+          course: learner.course_name || '',
+          cgpa: learner.currentCgpa || '',
+          year_of_passing: learner.expectedGraduationDate ? learner.expectedGraduationDate.split('-')[0] : '',
+          verified: learner.approval_status === 'approved' || false,
           employability_score: 0, // Not available in schema, set default
           skill: ''
         };
@@ -460,7 +460,7 @@ export class AppliedJobsService {
       // Combine all data
       const result = appliedJobs.map(job => ({
         ...job,
-        student: studentMap[job.student_id] || null,
+        learner: learnerMap[job.learner_id] || null,
         opportunity: opportunityMap[job.opportunity_id] || null
       }));
 

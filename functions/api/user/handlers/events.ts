@@ -84,7 +84,7 @@ export async function handleCreateEventUser(request: Request, env: any): Promise
   }
 
   // Map role to database format
-  const dbRole = roleMapping[role] || 'college_student';
+  const dbRole = roleMapping[role] || 'learner';
 
   // Create public.users record
   const { error: usersError } = await supabaseAdmin.from('users').insert({

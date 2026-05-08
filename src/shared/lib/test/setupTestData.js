@@ -1,11 +1,11 @@
 /**
  * Quick Test Data Setup for Supabase
  * 
- * This script helps you quickly add test student data to your Supabase database
+ * This script helps you quickly add test learner data to your Supabase database
  * so you can see real data instead of the dummy "Sarah Johnson" mock data.
  * 
  * HOW TO USE:
- * 1. Make sure you're logged in as a student
+ * 1. Make sure you're logged in as a learner
  * 2. Open browser console (F12)
  * 3. Copy and paste this entire file
  * 4. Call: await setupTestData()
@@ -13,7 +13,7 @@
 
 import { supabase } from './api';
 import { 
-  studentData as mockStudentData,
+  learnerData as mocklearnerData,
   educationData,
   trainingData,
   experienceData,
@@ -39,15 +39,15 @@ export async function setupTestData() {
     }
 
 
-    // 2. Check if student record exists
-    const { data: existingStudent, error: checkError } = await supabase
-      .from('students')
+    // 2. Check if learner record exists
+    const { data: existingLearner, error: checkError } = await supabase
+      .from('learners')
       .select('*')
       .eq('userId', user.id)
       .maybeSingle();
 
     if (checkError) {
-      console.error('❌ Error checking student:', checkError);
+      console.error('❌ Error checking learner:', checkError);
       return {
         success: false,
         error: checkError.message
@@ -57,16 +57,16 @@ export async function setupTestData() {
     // 3. Build complete profile from mock data
     const profile = {
       // Basic info from mock data
-      name: mockStudentData.name || "Anannya Banerjee",
-      department: mockStudentData.department || "Computer Science Engineering",
-      photo: mockStudentData.photo || "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
-      verified: mockStudentData.verified !== undefined ? mockStudentData.verified : true,
-      employabilityScore: mockStudentData.employabilityScore || 85,
-      cgpa: mockStudentData.cgpa || "8.50",
-      yearOfPassing: mockStudentData.yearOfPassing || "2025",
-      passportId: mockStudentData.passportId || "SKP001",
+      name: mocklearnerData.name || "Anannya Banerjee",
+      department: mocklearnerData.department || "Computer Science Engineering",
+      photo: mocklearnerData.photo || "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
+      verified: mocklearnerData.verified !== undefined ? mocklearnerData.verified : true,
+      employabilityScore: mocklearnerData.employabilityScore || 85,
+      cgpa: mocklearnerData.cgpa || "8.50",
+      yearOfPassing: mocklearnerData.yearOfPassing || "2025",
+      passportId: mocklearnerData.passportId || "SKP001",
       email: user.email,
-      phone: mockStudentData.phone || "+91 98765 43210",
+      phone: mocklearnerData.phone || "+91 98765 43210",
       
       // Arrays from mock data
       education: educationData || [],
@@ -148,13 +148,13 @@ export async function setupTestData() {
       ]
     };
 
-    let studentId;
+    let learnerId;
 
-    if (existingStudent) {
-      // 4a. Update existing student
+    if (existingLearner) {
+      // 4a. Update existing learner
       
       const { error: updateError } = await supabase
-        .from('students')
+        .from('learners')
         .update({
           profile: profile,
           updatedAt: new Date().toISOString()
@@ -162,19 +162,19 @@ export async function setupTestData() {
         .eq('userId', user.id);
 
       if (updateError) {
-        console.error('❌ Error updating student:', updateError);
+        console.error('❌ Error updating learner:', updateError);
         return {
           success: false,
           error: updateError.message
         };
       }
 
-      studentId = existingStudent.id;
+      learnerId = existingLearner.id;
     } else {
-      // 4b. Create new student record
+      // 4b. Create new learner record
       
-      const { data: newStudent, error: insertError } = await supabase
-        .from('students')
+      const { data: newLearner, error: insertError } = await supabase
+        .from('learners')
         .insert({
           userId: user.id,
           universityId: 'UNI001',
@@ -186,20 +186,20 @@ export async function setupTestData() {
         .single();
 
       if (insertError) {
-        console.error('❌ Error creating student:', insertError);
+        console.error('❌ Error creating learner:', insertError);
         return {
           success: false,
           error: insertError.message
         };
       }
 
-      studentId = newStudent.id;
+      learnerId = newLearner.id;
     }
 
 
     return {
       success: true,
-      studentId,
+      learnerId,
       userId: user.id,
       profile
     };
@@ -222,8 +222,8 @@ export async function checkCurrentData() {
       return null;
     }
 
-    const { data: student, error } = await supabase
-      .from('students')
+    const { data: learner, error } = await supabase
+      .from('learners')
       .select('*')
       .eq('userId', user.id)
       .maybeSingle();
@@ -233,7 +233,7 @@ export async function checkCurrentData() {
       return null;
     }
 
-    return student;
+    return learner;
   } catch (err) {
     console.error('Error:', err);
     return null;

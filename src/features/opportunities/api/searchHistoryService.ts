@@ -7,11 +7,11 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 // export class SearchHistoryService {
 //   /**
 //    * Add a search term to history
-//    * @param {string} studentId - Student's UUID
+//    * @param {string} learnerId - Learner's UUID
 //    * @param {string} searchTerm - Search term to save
 //    * @returns {Promise<Object>} Result
 //    */
-//   static async addSearchTerm(studentId, searchTerm) {
+//   static async addSearchTerm(learnerId, searchTerm) {
 //     try {
 //       if (!searchTerm || !searchTerm.trim()) {
 //         return { success: false, message: 'Search term is empty' };
@@ -29,7 +29,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //       const { data: existing } = await supabase
 //         .from('search_history')
 //         .select('id, search_count')
-//         .eq('student_id', session.user.id) // Use authenticated user's ID
+//         .eq('learner_id', session.user.id) // Use authenticated user's ID
 //         .eq('search_term', trimmedTerm)
 //         .maybeSingle();
 
@@ -58,14 +58,14 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //       const { count } = await supabase
 //         .from('search_history')
 //         .select('*', { count: 'exact', head: true })
-//         .eq('student_id', studentId);
+//         .eq('learner_id', learnerId);
 
 //       // If we have 5 or more entries, delete the oldest one
 //       if (count >= 5) {
 //         const { data: oldestEntry } = await supabase
 //           .from('search_history')
 //           .select('id')
-//           .eq('student_id', studentId)
+//           .eq('learner_id', learnerId)
 //           .order('last_searched_at', { ascending: true })
 //           .limit(1)
 //           .single();
@@ -82,7 +82,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //       const { data, error } = await supabase
 //         .from('search_history')
 //         .insert([{
-//           student_id: session.user.id, // Use authenticated user's ID
+//           learner_id: session.user.id, // Use authenticated user's ID
 //           search_term: trimmedTerm,
 //           search_count: 1,
 //           last_searched_at: new Date().toISOString()
@@ -108,11 +108,11 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //   }
 
 //   /**
-//    * Get search history for a student (limited to 5, sorted by most recent)
-//    * @param {string} studentId - Student's UUID
+//    * Get search history for a learner (limited to 5, sorted by most recent)
+//    * @param {string} learnerId - Learner's UUID
 //    * @returns {Promise<Array>} List of recent searches
 //    */
-//   static async getSearchHistory(studentId) {
+//   static async getSearchHistory(learnerId) {
 //     try {
 //       // Get user session
 //       const { data: { session } } = getCurrentSession();
@@ -123,7 +123,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //       const { data, error } = await supabase
 //         .from('search_history')
 //         .select('*')
-//         .eq('student_id', session.user.id)
+//         .eq('learner_id', session.user.id)
 //         .order('last_searched_at', { ascending: false })
 //         .limit(5);
 
@@ -138,11 +138,11 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 
 //   /**
 //    * Delete a specific search term
-//    * @param {string} studentId - Student's UUID
+//    * @param {string} learnerId - Learner's UUID
 //    * @param {number} searchHistoryId - Search history entry ID
 //    * @returns {Promise<Object>} Result
 //    */
-//   static async deleteSearchTerm(studentId, searchHistoryId) {
+//   static async deleteSearchTerm(learnerId, searchHistoryId) {
 //     try {
 //       // Get user session
 //       const { data: { session } } = getCurrentSession();
@@ -154,7 +154,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //         .from('search_history')
 //         .delete()
 //         .eq('id', searchHistoryId)
-//         .eq('student_id', session.user.id);
+//         .eq('learner_id', session.user.id);
 
 //       if (error) throw error;
 
@@ -173,11 +173,11 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //   }
 
 //   /**
-//    * Clear all search history for a student
-//    * @param {string} studentId - Student's UUID
+//    * Clear all search history for a learner
+//    * @param {string} learnerId - Learner's UUID
 //    * @returns {Promise<Object>} Result
 //    */
-//   static async clearSearchHistory(studentId) {
+//   static async clearSearchHistory(learnerId) {
 //     try {
 //       // Get user session
 //       const { data: { session } } = getCurrentSession();
@@ -188,7 +188,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //       const { error } = await supabase
 //         .from('search_history')
 //         .delete()
-//         .eq('student_id', session.user.id);
+//         .eq('learner_id', session.user.id);
 
 //       if (error) throw error;
 
@@ -207,12 +207,12 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //   }
 
 //   /**
-//    * Get most searched terms for a student
-//    * @param {string} studentId - Student's UUID
+//    * Get most searched terms for a learner
+//    * @param {string} learnerId - Learner's UUID
 //    * @param {number} limit - Number of terms to return (default 5)
 //    * @returns {Promise<Array>} List of popular searches
 //    */
-//   static async getMostSearchedTerms(studentId, limit = 5) {
+//   static async getMostSearchedTerms(learnerId, limit = 5) {
 //     try {
 //       // Get user session
 //       const { data: { session } } = getCurrentSession();
@@ -223,7 +223,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //       const { data, error } = await supabase
 //         .from('search_history')
 //         .select('*')
-//         .eq('student_id', session.user.id)
+//         .eq('learner_id', session.user.id)
 //         .order('search_count', { ascending: false })
 //         .limit(limit);
 
@@ -252,15 +252,15 @@ const logger = getLogger('SearchHistoryService');
 export class SearchHistoryService {
   /**
    * Add a search term to history
-   * @param {string} studentId - Student's UUID
+   * @param {string} learnerId - Learner's UUID
    * @param {string} searchTerm - Search term to save
    * @returns {Promise<Object>} Result
    */
-  static async addSearchTerm(studentId, searchTerm) {
+  static async addSearchTerm(learnerId, searchTerm) {
     try {
       
-      if (!studentId) {
-        return { success: false, message: 'Student ID is required' };
+      if (!learnerId) {
+        return { success: false, message: 'Learner ID is required' };
       }
 
       if (!searchTerm || !searchTerm.trim()) {
@@ -273,7 +273,7 @@ export class SearchHistoryService {
       const { data: existing, error: existingError } = await supabase
         .from('search_history')
         .select('id, search_count')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('search_term', trimmedTerm)
         .maybeSingle();
 
@@ -309,7 +309,7 @@ export class SearchHistoryService {
       const { count, error: countError } = await supabase
         .from('search_history')
         .select('*', { count: 'exact', head: true })
-        .eq('student_id', studentId);
+        .eq('learner_id', learnerId);
 
 
       if (countError) {
@@ -321,7 +321,7 @@ export class SearchHistoryService {
         const { data: oldestEntry, error: oldestError } = await supabase
           .from('search_history')
           .select('id')
-          .eq('student_id', studentId)
+          .eq('learner_id', learnerId)
           .order('last_searched_at', { ascending: true })
           .limit(1)
           .maybeSingle();
@@ -346,7 +346,7 @@ export class SearchHistoryService {
       const { data, error } = await supabase
         .from('search_history')
         .insert([{
-          student_id: studentId,
+          learner_id: learnerId,
           search_term: trimmedTerm,
           search_count: 1,
           last_searched_at: new Date().toISOString()
@@ -373,21 +373,21 @@ export class SearchHistoryService {
   }
 
   /**
-   * Get search history for a student (limited to 5, sorted by most recent)
-   * @param {string} studentId - Student's UUID
+   * Get search history for a learner (limited to 5, sorted by most recent)
+   * @param {string} learnerId - Learner's UUID
    * @returns {Promise<Array>} List of recent searches
    */
-  static async getSearchHistory(studentId) {
+  static async getSearchHistory(learnerId) {
     try {
       
-      if (!studentId) {
+      if (!learnerId) {
         return [];
       }
 
       const { data, error } = await supabase
         .from('search_history')
         .select('*')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .order('last_searched_at', { ascending: false })
         .limit(5);
 
@@ -403,22 +403,22 @@ export class SearchHistoryService {
 
   /**
    * Delete a specific search term
-   * @param {string} studentId - Student's UUID
+   * @param {string} learnerId - Learner's UUID
    * @param {number} searchHistoryId - Search history entry ID
    * @returns {Promise<Object>} Result
    */
-  static async deleteSearchTerm(studentId, searchHistoryId) {
+  static async deleteSearchTerm(learnerId, searchHistoryId) {
     try {
       
-      if (!studentId) {
-        return { success: false, message: 'Student ID is required' };
+      if (!learnerId) {
+        return { success: false, message: 'Learner ID is required' };
       }
 
       const { error } = await supabase
         .from('search_history')
         .delete()
         .eq('id', searchHistoryId)
-        .eq('student_id', studentId);
+        .eq('learner_id', learnerId);
 
       if (error) {
         throw error;
@@ -438,21 +438,21 @@ export class SearchHistoryService {
   }
 
   /**
-   * Clear all search history for a student
-   * @param {string} studentId - Student's UUID
+   * Clear all search history for a learner
+   * @param {string} learnerId - Learner's UUID
    * @returns {Promise<Object>} Result
    */
-  static async clearSearchHistory(studentId) {
+  static async clearSearchHistory(learnerId) {
     try {
       
-      if (!studentId) {
-        return { success: false, message: 'Student ID is required' };
+      if (!learnerId) {
+        return { success: false, message: 'Learner ID is required' };
       }
 
       const { error } = await supabase
         .from('search_history')
         .delete()
-        .eq('student_id', studentId);
+        .eq('learner_id', learnerId);
 
       if (error) {
         throw error;
@@ -472,22 +472,22 @@ export class SearchHistoryService {
   }
 
   /**
-   * Get most searched terms for a student
-   * @param {string} studentId - Student's UUID
+   * Get most searched terms for a learner
+   * @param {string} learnerId - Learner's UUID
    * @param {number} limit - Number of terms to return (default 5)
    * @returns {Promise<Array>} List of popular searches
    */
-  static async getMostSearchedTerms(studentId, limit = 5) {
+  static async getMostSearchedTerms(learnerId, limit = 5) {
     try {
       
-      if (!studentId) {
+      if (!learnerId) {
         return [];
       }
 
       const { data, error } = await supabase
         .from('search_history')
         .select('*')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .order('search_count', { ascending: false })
         .limit(limit);
 

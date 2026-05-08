@@ -11,7 +11,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const supabase = getServiceClient(env as any);
 
   const url = new URL(context.request.url);
-  const studentId = url.searchParams.get('student_id');
+  const learnerId = url.searchParams.get('learner_id');
 
   let query = supabase
     .from('transcripts')
@@ -19,8 +19,8 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     .eq('org_id', user.org_id)
     .order('created_at', { ascending: false });
 
-  if (studentId) {
-    query = query.eq('student_id', studentId);
+  if (learnerId) {
+    query = query.eq('learner_id', learnerId);
   }
 
   const { data, error } = await query;

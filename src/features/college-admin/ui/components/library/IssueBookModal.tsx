@@ -1,13 +1,13 @@
 import { BookOpenIcon, UsersIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { LibraryBook, LibraryBookIssue } from '@/features/library';
-import { StudentSearch } from "./StudentSearch";
+import { LearnerSearch } from "./LearnerSearch";
 
 interface IssueBookModalProps {
   isOpen: boolean;
   onClose: () => void;
   issueForm: {
-    studentId: string;
-    studentName: string;
+    learnerId: string;
+    learnerName: string;
     rollNumber: string;
     enrollmentNumber: string;
     admissionNumber: string;
@@ -24,19 +24,19 @@ interface IssueBookModalProps {
   loading: boolean;
   issueBook: () => Promise<void>;
   LIBRARY_RULES: {
-    maxBooksPerStudent: number;
+    maxBooksPerLearner: number;
     defaultLoanPeriodDays: number;
     finePerDay: number;
   };
-  studentSearch: string;
-  setStudentSearch: (value: string) => void;
-  studentSearchResults: any[];
-  showStudentDropdown: boolean;
-  selectedStudent: any;
+  learnerSearch: string;
+  setlearnerSearch: (value: string) => void;
+  learnerSearchResults: any[];
+  showlearnerDropdown: boolean;
+  selectedLearner: any;
   searchLoading: boolean;
-  studentSearchRef: React.RefObject<HTMLDivElement>;
-  selectStudent: (student: any) => Promise<void>;
-  clearStudentSelection: () => void;
+  learnerSearchRef: React.RefObject<HTMLDivElement>;
+  selectLearner: (learner: any) => Promise<void>;
+  clearlearnerSelection: () => void;
 }
 
 export function IssueBookModal({
@@ -49,15 +49,15 @@ export function IssueBookModal({
   loading,
   issueBook,
   LIBRARY_RULES,
-  studentSearch,
-  setStudentSearch,
-  studentSearchResults,
-  showStudentDropdown,
-  selectedStudent,
+  learnerSearch,
+  setlearnerSearch,
+  learnerSearchResults,
+  showlearnerDropdown,
+  selectedLearner,
   searchLoading,
-  studentSearchRef,
-  selectStudent,
-  clearStudentSelection,
+  learnerSearchRef,
+  selectLearner,
+  clearlearnerSelection,
 }: IssueBookModalProps) {
   if (!isOpen) return null;
 
@@ -67,7 +67,7 @@ export function IssueBookModal({
   };
 
   const handleClose = () => {
-    clearStudentSelection();
+    clearlearnerSelection();
     onClose();
   };
 
@@ -102,7 +102,7 @@ export function IssueBookModal({
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
               <div>
-                <span className="font-medium">Max Books per Student:</span> {LIBRARY_RULES.maxBooksPerStudent}
+                <span className="font-medium">Max Books per Learner:</span> {LIBRARY_RULES.maxBooksPerLearner}
               </div>
               <div>
                 <span className="font-medium">Loan Period:</span> {LIBRARY_RULES.defaultLoanPeriodDays} days
@@ -113,17 +113,17 @@ export function IssueBookModal({
             </div>
           </div>
 
-          {/* Student Search Section */}
+          {/* Learner Search Section */}
           <div className="mb-6">
-            {!selectedStudent ? (
-              <StudentSearch
-                studentSearch={studentSearch}
-                setStudentSearch={setStudentSearch}
-                studentSearchResults={studentSearchResults}
-                showStudentDropdown={showStudentDropdown}
+            {!selectedLearner ? (
+              <LearnerSearch
+                learnerSearch={learnerSearch}
+                setlearnerSearch={setlearnerSearch}
+                learnerSearchResults={learnerSearchResults}
+                showlearnerDropdown={showlearnerDropdown}
                 searchLoading={searchLoading}
-                studentSearchRef={studentSearchRef}
-                selectStudent={selectStudent}
+                learnerSearchRef={learnerSearchRef}
+                selectLearner={selectLearner}
               />
             ) : (
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
@@ -131,32 +131,32 @@ export function IssueBookModal({
                   <div className="w-10 h-10 rounded-full bg-white shadow flex items-center justify-center">
                     <UsersIcon className="w-6 h-6 text-blue-600" />
                   </div>
-                  Selected Student
+                  Selected Learner
                 </h3>
                 <div className="p-4 bg-white border border-green-200 rounded-lg">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="font-semibold text-gray-800 text-lg flex items-center gap-2">
                         <span className="text-green-600">✓</span>
-                        {selectedStudent.name}
+                        {selectedLearner.name}
                       </div>
                       <div className="text-sm text-gray-600 mt-1">
-                        {selectedStudent.roll_number && `Roll: ${selectedStudent.roll_number}`}
-                        {selectedStudent.enrollmentNumber && ` | Enrollment: ${selectedStudent.enrollmentNumber}`}
-                        {selectedStudent.admission_number && ` | Admission: ${selectedStudent.admission_number}`}
+                        {selectedLearner.roll_number && `Roll: ${selectedLearner.roll_number}`}
+                        {selectedLearner.enrollmentNumber && ` | Enrollment: ${selectedLearner.enrollmentNumber}`}
+                        {selectedLearner.admission_number && ` | Admission: ${selectedLearner.admission_number}`}
                       </div>
                       <div className="text-sm text-gray-600">
-                        {selectedStudent.grade && `Grade: ${selectedStudent.grade}`}
-                        {selectedStudent.section && ` Section: ${selectedStudent.section}`}
-                        {selectedStudent.course_name && ` | Course: ${selectedStudent.course_name}`}
-                        {selectedStudent.semester && ` | Semester: ${selectedStudent.semester}`}
+                        {selectedLearner.grade && `Grade: ${selectedLearner.grade}`}
+                        {selectedLearner.section && ` Section: ${selectedLearner.section}`}
+                        {selectedLearner.course_name && ` | Course: ${selectedLearner.course_name}`}
+                        {selectedLearner.semester && ` | Semester: ${selectedLearner.semester}`}
                       </div>
-                      {selectedStudent.email && (
-                        <div className="text-xs text-gray-500 mt-1">{selectedStudent.email}</div>
+                      {selectedLearner.email && (
+                        <div className="text-xs text-gray-500 mt-1">{selectedLearner.email}</div>
                       )}
                     </div>
                     <button
-                      onClick={clearStudentSelection}
+                      onClick={clearlearnerSelection}
                       className="ml-3 text-red-600 hover:text-red-800 hover:bg-red-100 rounded-full p-1 transition-colors"
                       title="Clear selection"
                     >
@@ -170,15 +170,15 @@ export function IssueBookModal({
             )}
           </div>
 
-          {/* Student Details (Read-only) */}
+          {/* Learner Details (Read-only) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
-              <label className="block mb-2 font-medium text-gray-700">Student Name</label>
+              <label className="block mb-2 font-medium text-gray-700">Learner Name</label>
               <input 
                 className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50" 
-                value={issueForm.studentName}
+                value={issueForm.learnerName}
                 readOnly
-                placeholder="Select student from search above"
+                placeholder="Select learner from search above"
               />
             </div>
             
@@ -188,7 +188,7 @@ export function IssueBookModal({
                 className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50" 
                 value={issueForm.grade}
                 readOnly
-                placeholder="Auto-filled from student data"
+                placeholder="Auto-filled from learner data"
               />
             </div>
             
@@ -198,7 +198,7 @@ export function IssueBookModal({
                 className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50" 
                 value={issueForm.section}
                 readOnly
-                placeholder="Auto-filled from student data"
+                placeholder="Auto-filled from learner data"
               />
             </div>
             
@@ -208,7 +208,7 @@ export function IssueBookModal({
                 className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50" 
                 value={issueForm.courseName}
                 readOnly
-                placeholder="Auto-filled from student data"
+                placeholder="Auto-filled from learner data"
               />
             </div>
           </div>
@@ -246,10 +246,10 @@ export function IssueBookModal({
             </button>
             <button 
               onClick={handleSubmit}
-              disabled={loading || !selectedStudent || !issueForm.bookId}
+              disabled={loading || !selectedLearner || !issueForm.bookId}
               className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Issuing...' : selectedStudent && issueForm.bookId ? `Issue Book to ${selectedStudent.name}` : 'Select Student and Book to Issue'}
+              {loading ? 'Issuing...' : selectedLearner && issueForm.bookId ? `Issue Book to ${selectedLearner.name}` : 'Select Learner and Book to Issue'}
             </button>
           </div>
         </div>

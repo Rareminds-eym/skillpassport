@@ -29,5 +29,5 @@ export const MODERATION_TYPES = [
   { value: "revaluation", label: "Revaluation", description: "Re-evaluating answer scripts", icon: "📝" },
   { value: "grace_marks", label: "Grace Marks", description: "Awarding additional marks for specific reasons", icon: "⭐" },
   { value: "normalization", label: "Normalization", description: "Statistical adjustment of marks", icon: "📊" },
-  { value: "appeal", label: "Appeal", description: "Result of student appeal or review", icon: "⚖️" },
+  { value: "appeal", label: "Appeal", description: "Result of learner appeal or review", icon: "⚖️" },
 ];

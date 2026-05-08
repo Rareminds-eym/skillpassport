@@ -114,7 +114,7 @@ const CareerAIToolsGrid: React.FC<CareerAIToolsGridProps> = ({
     if (onAction) {
       onAction(action.prompt, action.label);
     } else if (navigateOnClick) {
-      navigate('/student/career-ai', { state: { query: action.prompt } });
+      navigate('/learner/career-ai', { state: { query: action.prompt } });
     }
   };
 

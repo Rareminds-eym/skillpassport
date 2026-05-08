@@ -182,12 +182,12 @@ const ExaminationManagement: React.FC = () => {
     enabled: !!collegeId
   });
 
-  // Fetch students
-  const { data: students = [] } = useQuery({
-    queryKey: ['students', collegeId],
+  // Fetch learners
+  const { data: learners = [] } = useQuery({
+    queryKey: ['learners', collegeId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('students')
+        .from('learners')
         .select('id, roll_number, name, email, phone, department_id, program_id, semester, college_id')
         .eq('college_id', collegeId);
       if (error) throw error;
@@ -447,7 +447,7 @@ const ExaminationManagement: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('mark_entries')
-        .upsert(marks, { onConflict: 'assessment_id,student_id' })
+        .upsert(marks, { onConflict: 'assessment_id,learner_id' })
         .select();
 
       if (error) throw error;
@@ -865,7 +865,7 @@ const ExaminationManagement: React.FC = () => {
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Student</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Learner</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Type</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Semesters</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Verification ID</th>
@@ -875,11 +875,11 @@ const ExaminationManagement: React.FC = () => {
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                       {transcripts.map((transcript) => {
-                        const student = students.find((s: any) => s.id === transcript.student_id);
+                        const learner = learners.find((s: any) => s.id === transcript.learner_id);
                         return (
                           <tr key={transcript.id} className="hover:bg-gray-50">
                             <td className="px-4 py-3 text-sm text-gray-900">
-                              {student?.roll_number} - {student?.name}
+                              {learner?.roll_number} - {learner?.name}
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-600 capitalize">
                               {transcript.type}
@@ -941,7 +941,7 @@ const ExaminationManagement: React.FC = () => {
             assessmentId={selectedAssessmentForAction.id}
             assessmentName={`${selectedAssessmentForAction.type} - Semester ${selectedAssessmentForAction.semester}`}
             totalMarks={selectedAssessmentForAction.total_marks}
-            students={students}
+            learners={learners}
             existingMarks={markEntries.filter((m: any) => m.assessment_id === selectedAssessmentForAction.id)}
             onSave={handleSaveMarks}
             onSubmit={handleSubmitMarks}
@@ -973,7 +973,7 @@ const ExaminationManagement: React.FC = () => {
           isOpen={showTranscriptModal}
           onClose={() => setShowTranscriptModal(false)}
           onGenerate={handleGenerateTranscript}
-          students={students}
+          learners={learners}
           departments={departments}
         />
       )}

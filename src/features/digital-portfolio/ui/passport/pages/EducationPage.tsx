@@ -1,16 +1,16 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { GraduationCap, Calendar, Award } from 'lucide-react';
-import { Student } from '@/shared/types/student';
+import { Learner } from '@/shared/types/learner';
 import PassportPage from '../PassportPage';
 
 interface EducationPageProps {
-  student: Student;
+  learner: Learner;
   isActive: boolean;
 }
 
-const EducationPage: React.FC<EducationPageProps> = ({ student, isActive }) => {
-  const education = student.profile.education || [];
+const EducationPage: React.FC<EducationPageProps> = ({ learner, isActive }) => {
+  const education = learner.profile.education || [];
 
   return (
     <PassportPage pageNumber={2} isActive={isActive}>
@@ -35,13 +35,13 @@ const EducationPage: React.FC<EducationPageProps> = ({ student, isActive }) => {
             <div className="flex-1">
               <h3 className="text-lg font-bold text-gray-800 mb-1">Current Education</h3>
               <p className="text-base font-semibold text-blue-600 mb-1">
-                {student.branch_field || 'N/A'}
+                {learner.branch_field || 'N/A'}
               </p>
-              <p className="text-gray-700 mb-2">{student.university || 'N/A'}</p>
-              <p className="text-sm text-gray-600">{student.college_school_name || 'N/A'}</p>
-              {student.registration_number && (
+              <p className="text-gray-700 mb-2">{learner.university || 'N/A'}</p>
+              <p className="text-sm text-gray-600">{learner.college_school_name || 'N/A'}</p>
+              {learner.registration_number && (
                 <p className="text-xs text-gray-500 mt-2">
-                  Registration: {student.registration_number}
+                  Registration: {learner.registration_number}
                 </p>
               )}
             </div>

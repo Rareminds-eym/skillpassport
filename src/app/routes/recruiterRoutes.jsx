@@ -17,7 +17,7 @@ const Interviews = lazy(() => import("@/pages/recruiter/Interviews"));
 const OffersDecisions = lazy(() =>
   import("@/pages/recruiter/OffersDecisions")
 );
-const VerifiedWork = lazy(() => import("@/pages/recruiter/VerifiedStudentWork"));
+const VerifiedWork = lazy(() => import("@/pages/recruiter/VerifiedLearnerWork"));
 const Analytics = lazy(() => import("@/pages/recruiter/Analytics"));
 const Activities = lazy(() => import("@/pages/recruiter/Activities"));
 const RecruiterMessages = lazy(() => import("@/pages/recruiter/Messages"));

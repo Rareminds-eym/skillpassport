@@ -16,7 +16,7 @@ export { default as NotificationPanel } from './ui/NotificationPanel';
 export { default as Pagination } from './ui/Pagination';
 export { default as Sidebar } from './ui/Sidebar';
 export { default as StreakTestPanel } from './ui/StreakTestPanel';
-export { default as StudentProfileDrawer } from './ui/StudentProfileDrawer';
+export { default as LearnerProfileDrawer } from './ui/LearnerProfileDrawer';
 
 // College Admin Components - Now exported from @/features/college-admin
 // These components have been moved to the consolidated college-admin feature
@@ -30,7 +30,7 @@ export { default as CourseDetailModal } from '@/features/courses/ui/CourseDetail
 export { default as CoursePurchaseModal } from './ui/modals/CoursePurchaseModal';
 export { default as DocumentViewerModal } from '@/features/school-admin/ui/modals/DocumentViewerModal';
 export { default as FacultyDocumentViewerModal } from './ui/modals/FacultyDocumentViewerModal';
-export { default as StudentHistoryModal } from './ui/modals/StudentHistoryModal';
+export { default as LearnerHistoryModal } from './ui/modals/LearnerHistoryModal';
 
 // University Admin Components - Now exported from @/features/university-ai
 // These components have been moved to the consolidated university-ai feature

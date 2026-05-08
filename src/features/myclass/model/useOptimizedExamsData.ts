@@ -1,11 +1,11 @@
 import { useState, useCallback } from 'react';
-import { getGroupedStudentExams, getStudentResults, getStudentResultStats } from '@/features/exams';
+import { getGroupedlearnerExams, getlearnerResults, getlearnerResultStats } from '@/features/exams';
 import { SchoolGroupedExam } from '@/features/myclass';
-import { SchoolStudentResult, SchoolResultStats } from '@/features/myclass';
+import { SchoolLearnerResult, SchoolResultStats } from '@/features/myclass';
 
 interface UseExamsDataReturn {
   groupedExams: SchoolGroupedExam[];
-  results: SchoolStudentResult[];
+  results: SchoolLearnerResult[];
   resultStats: SchoolResultStats;
   loading: boolean;
   error: Error | null;
@@ -17,9 +17,9 @@ interface UseExamsDataReturn {
  * Only fetches when explicitly called via fetchData()
  * Does NOT auto-fetch on mount
  */
-export const useOptimizedExamsData = (studentId: string | undefined): UseExamsDataReturn => {
+export const useOptimizedExamsData = (learnerId: string | undefined): UseExamsDataReturn => {
   const [groupedExams, setGroupedExams] = useState<SchoolGroupedExam[]>([]);
-  const [results, setResults] = useState<SchoolStudentResult[]>([]);
+  const [results, setResults] = useState<SchoolLearnerResult[]>([]);
   const [resultStats, setResultStats] = useState<SchoolResultStats>({
     totalExams: 0,
     passed: 0,
@@ -32,7 +32,7 @@ export const useOptimizedExamsData = (studentId: string | undefined): UseExamsDa
   const [hasFetched, setHasFetched] = useState(false);
 
   const fetchData = useCallback(async () => {
-    if (!studentId || hasFetched) {
+    if (!learnerId || hasFetched) {
       return;
     }
 
@@ -42,20 +42,20 @@ export const useOptimizedExamsData = (studentId: string | undefined): UseExamsDa
       setHasFetched(true);
 
       const [groupedExamsData, resultsData, resultStatsData] = await Promise.all([
-        getGroupedStudentExams(studentId),
-        getStudentResults(studentId),
-        getStudentResultStats(studentId)
+        getGroupedlearnerExams(learnerId),
+        getlearnerResults(learnerId),
+        getlearnerResultStats(learnerId)
       ]);
 
       setGroupedExams(groupedExamsData);
-      setResults(resultsData as SchoolStudentResult[]);
+      setResults(resultsData as SchoolLearnerResult[]);
       setResultStats(resultStatsData);
     } catch (err) {
       setError(err as Error);
     } finally {
       setLoading(false);
     }
-  }, [studentId, hasFetched]);
+  }, [learnerId, hasFetched]);
 
   return { groupedExams, results, resultStats, loading, error, fetchData };
 };

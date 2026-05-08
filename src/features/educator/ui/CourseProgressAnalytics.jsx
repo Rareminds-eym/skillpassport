@@ -26,7 +26,7 @@ import { supabase } from '@/shared/api/supabaseClient';
 
 /**
  * Course Progress Analytics Dashboard for Educators
- * Shows detailed student progress metrics and insights
+ * Shows detailed learner progress metrics and insights
  */
 const CourseProgressAnalytics = ({ courseId, courseName }) => {
   const [loading, setLoading] = useState(true);
@@ -58,7 +58,7 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
 
       // Fetch lesson-level progress
       const { data: progressData, error: progressError } = await supabase
-        .from('student_course_progress')
+        .from('learner_course_progress')
         .select('*')
         .eq('course_id', courseId);
 
@@ -75,13 +75,13 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
   // Calculate summary stats
   const stats = {
     totalEnrollments: enrollments.length,
-    activeStudents: enrollments.filter(e => e.status === 'active').length,
-    completedStudents: enrollments.filter(e => e.status === 'completed' || e.progress === 100).length,
+    activelearners: enrollments.filter(e => e.status === 'active').length,
+    completedlearners: enrollments.filter(e => e.status === 'completed' || e.progress === 100).length,
     averageProgress: enrollments.length > 0
       ? Math.round(enrollments.reduce((acc, e) => acc + (e.progress || 0), 0) / enrollments.length)
       : 0,
     totalTimeSpent: enrollments.reduce((acc, e) => acc + (e.total_time_spent_seconds || 0), 0),
-    averageTimePerStudent: enrollments.length > 0
+    averageTimePerLearner: enrollments.length > 0
       ? Math.round(enrollments.reduce((acc, e) => acc + (e.total_time_spent_seconds || 0), 0) / enrollments.length)
       : 0
   };
@@ -122,11 +122,11 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
     return weeks;
   };
 
-  // Filter and sort students
-  const filteredStudents = enrollments
+  // Filter and sort learners
+  const filteredlearners = enrollments
     .filter(e => {
-      const matchesSearch = e.student_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           e.student_email?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = e.learner_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           e.learner_email?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesFilter = filterStatus === 'all' ||
                            (filterStatus === 'completed' && e.progress === 100) ||
                            (filterStatus === 'in_progress' && e.progress > 0 && e.progress < 100) ||
@@ -138,7 +138,7 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
         case 'progress':
           return (b.progress || 0) - (a.progress || 0);
         case 'name':
-          return (a.student_name || '').localeCompare(b.student_name || '');
+          return (a.learner_name || '').localeCompare(b.learner_name || '');
         case 'recent':
           return new Date(b.last_accessed || 0) - new Date(a.last_accessed || 0);
         case 'time':
@@ -169,10 +169,10 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
 
   // Export to CSV
   const exportToCSV = () => {
-    const headers = ['Student Name', 'Email', 'Progress', 'Status', 'Time Spent', 'Last Accessed', 'Enrolled Date'];
+    const headers = ['Learner Name', 'Email', 'Progress', 'Status', 'Time Spent', 'Last Accessed', 'Enrolled Date'];
     const rows = enrollments.map(e => [
-      e.student_name || '',
-      e.student_email || '',
+      e.learner_name || '',
+      e.learner_email || '',
       `${e.progress || 0}%`,
       e.progress === 100 ? 'Completed' : e.progress > 0 ? 'In Progress' : 'Not Started',
       formatDuration(e.total_time_spent_seconds),
@@ -244,7 +244,7 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
             </div>
             <div>
               <p className="text-sm text-gray-600">Completed</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.completedStudents}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.completedlearners}</p>
             </div>
           </div>
         </motion.div>
@@ -277,8 +277,8 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
               <Clock className="w-6 h-6 text-amber-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Avg Time/Student</p>
-              <p className="text-2xl font-bold text-gray-900">{formatDuration(stats.averageTimePerStudent)}</p>
+              <p className="text-sm text-gray-600">Avg Time/Learner</p>
+              <p className="text-2xl font-bold text-gray-900">{formatDuration(stats.averageTimePerLearner)}</p>
             </div>
           </div>
         </motion.div>
@@ -350,7 +350,7 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
         </motion.div>
       </div>
 
-      {/* Student List */}
+      {/* Learner List */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -358,7 +358,7 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
         className="bg-white rounded-xl shadow-sm border border-gray-200"
       >
         <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Student Progress</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Learner Progress</h3>
           
           {/* Filters */}
           <div className="flex flex-wrap gap-4">
@@ -367,7 +367,7 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search students..."
+                  placeholder="Search learners..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -399,13 +399,13 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
           </div>
         </div>
 
-        {/* Student Table */}
+        {/* Learner Table */}
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Student
+                  Learner
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Progress
@@ -422,23 +422,23 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {filteredStudents.length === 0 ? (
+              {filteredlearners.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                    No students found
+                    No learners found
                   </td>
                 </tr>
               ) : (
-                filteredStudents.map((student) => (
-                  <tr key={student.id} className="hover:bg-gray-50">
+                filteredlearners.map((learner) => (
+                  <tr key={learner.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold">
-                          {(student.student_name || student.student_email || '?')[0].toUpperCase()}
+                          {(learner.learner_name || learner.learner_email || '?')[0].toUpperCase()}
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">{student.student_name || 'Unknown'}</p>
-                          <p className="text-sm text-gray-500">{student.student_email}</p>
+                          <p className="font-medium text-gray-900">{learner.learner_name || 'Unknown'}</p>
+                          <p className="text-sm text-gray-500">{learner.learner_email}</p>
                         </div>
                       </div>
                     </td>
@@ -447,33 +447,33 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
                         <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full ${
-                              student.progress === 100 ? 'bg-emerald-500' :
-                              student.progress > 50 ? 'bg-blue-500' :
-                              student.progress > 0 ? 'bg-amber-500' : 'bg-gray-300'
+                              learner.progress === 100 ? 'bg-emerald-500' :
+                              learner.progress > 50 ? 'bg-blue-500' :
+                              learner.progress > 0 ? 'bg-amber-500' : 'bg-gray-300'
                             }`}
-                            style={{ width: `${student.progress || 0}%` }}
+                            style={{ width: `${learner.progress || 0}%` }}
                           />
                         </div>
                         <span className="text-sm font-medium text-gray-900">
-                          {student.progress || 0}%
+                          {learner.progress || 0}%
                         </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
-                      {formatDuration(student.total_time_spent_seconds)}
+                      {formatDuration(learner.total_time_spent_seconds)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
-                      {formatDate(student.last_accessed)}
+                      {formatDate(learner.last_accessed)}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        student.progress === 100
+                        learner.progress === 100
                           ? 'bg-emerald-100 text-emerald-800'
-                          : student.progress > 0
+                          : learner.progress > 0
                           ? 'bg-blue-100 text-blue-800'
                           : 'bg-gray-100 text-gray-800'
                       }`}>
-                        {student.progress === 100 ? 'Completed' : student.progress > 0 ? 'In Progress' : 'Not Started'}
+                        {learner.progress === 100 ? 'Completed' : learner.progress > 0 ? 'In Progress' : 'Not Started'}
                       </span>
                     </td>
                   </tr>

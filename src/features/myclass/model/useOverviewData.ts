@@ -18,7 +18,7 @@ interface UseOverviewDataReturn {
  */
 export const useOverviewData = (
   classId: string | undefined,
-  studentId: string | undefined
+  learnerId: string | undefined
 ): UseOverviewDataReturn => {
   const [todaySchedule, setTodaySchedule] = useState<SchoolTimetableSlot[]>([]);
   const [stats, setStats] = useState<AssignmentStats>({
@@ -34,7 +34,7 @@ export const useOverviewData = (
   const [hasFetched, setHasFetched] = useState(false);
 
   const fetchData = useCallback(async () => {
-    if (!classId || !studentId || hasFetched) return;
+    if (!classId || !learnerId || hasFetched) return;
 
     try {
       setLoading(true);
@@ -42,7 +42,7 @@ export const useOverviewData = (
 
       const [todayData, statsData] = await Promise.all([
         getTodaySchedule(classId),
-        getAssignmentStats(studentId)
+        getAssignmentStats(learnerId)
       ]);
 
       setTodaySchedule(todayData);
@@ -53,7 +53,7 @@ export const useOverviewData = (
     } finally {
       setLoading(false);
     }
-  }, [classId, studentId, hasFetched]);
+  }, [classId, learnerId, hasFetched]);
 
   return {
     todaySchedule,

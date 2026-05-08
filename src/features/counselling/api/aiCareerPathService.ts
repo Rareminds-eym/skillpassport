@@ -25,7 +25,7 @@ function getOpenAIClient(): OpenAI {
   return openaiInstance;
 }
 
-export interface StudentProfile {
+export interface LearnerProfile {
   id: string;
   name: string;
   email: string;
@@ -56,7 +56,7 @@ export interface CareerPathStep {
 }
 
 export interface CareerPathResponse {
-  studentName: string;
+  learnerName: string;
   currentRole: string;
   careerGoal: string;
   overallScore: number;
@@ -67,8 +67,8 @@ export interface CareerPathResponse {
   actionItems: string[];
   nextSteps: string[];
   generatedAt: string;
-  // Store original student data for chat context
-  studentData?: {
+  // Store original learner data for chat context
+  learnerData?: {
     skills?: string[];
     certificates?: string[];
     experience?: string[];
@@ -79,9 +79,9 @@ export interface CareerPathResponse {
   };
 }
 
-const CAREER_PATH_SYSTEM_PROMPT = `You are an expert career counsellor and AI career path advisor specializing in student career development. Your role is to analyze student profiles and generate comprehensive, personalized career development paths.
+const CAREER_PATH_SYSTEM_PROMPT = `You are an expert career counsellor and AI career path advisor specializing in learner career development. Your role is to analyze learner profiles and generate comprehensive, personalized career development paths.
 
-Analyze the student based on:
+Analyze the learner based on:
 1. **Skill-Based Roles**: Match their technical skills to relevant job roles and positions
 2. **Interest Alignment**: Consider their stated interests and career aspirations
 3. **Skill Gap Analysis**: Identify missing skills needed for target roles
@@ -98,68 +98,68 @@ Generate career paths that are:
 
 Always format your response as valid JSON. Be specific, encouraging, and data-driven with current market insights.`;
 
-function buildStudentProfileContext(student: StudentProfile): string {
-  let context = `\n=== STUDENT PROFILE ===\n`;
-  context += `Name: ${student.name}\n`;
-  context += `Email: ${student.email}\n`;
-  context += `Department/Field: ${student.dept}\n`;
-  context += `College/University: ${student.college}\n`;
+function buildlearnerProfileContext(learner: LearnerProfile): string {
+  let context = `\n=== LEARNER PROFILE ===\n`;
+  context += `Name: ${learner.name}\n`;
+  context += `Email: ${learner.email}\n`;
+  context += `Department/Field: ${learner.dept}\n`;
+  context += `College/University: ${learner.college}\n`;
   
-  if (student.currentCgpa) {
-    context += `Current CGPA: ${student.currentCgpa}/4.0\n`;
+  if (learner.currentCgpa) {
+    context += `Current CGPA: ${learner.currentCgpa}/4.0\n`;
   }
   
-  if (student.ai_score_overall !== undefined) {
-    context += `AI Assessment Score: ${student.ai_score_overall}%\n`;
+  if (learner.ai_score_overall !== undefined) {
+    context += `AI Assessment Score: ${learner.ai_score_overall}%\n`;
   }
   
-  if (student.skills && student.skills.length > 0) {
+  if (learner.skills && learner.skills.length > 0) {
     context += `\nSkills:\n`;
-    student.skills.forEach(skill => {
+    learner.skills.forEach(skill => {
       context += `  • ${skill}\n`;
     });
   }
   
-  if (student.certificates && student.certificates.length > 0) {
-    context += `\nCertificates & Credentials (${student.certificates.length} total):\n`;
-    student.certificates.forEach(cert => {
+  if (learner.certificates && learner.certificates.length > 0) {
+    context += `\nCertificates & Credentials (${learner.certificates.length} total):\n`;
+    learner.certificates.forEach(cert => {
       context += `  • ${cert}\n`;
     });
   } else {
     context += `\nCertificates & Credentials: None listed\n`;
   }
   
-  if (student.experience && student.experience.length > 0) {
+  if (learner.experience && learner.experience.length > 0) {
     context += `\nExperience:\n`;
-    student.experience.forEach(exp => {
+    learner.experience.forEach(exp => {
       context += `  • ${exp}\n`;
     });
   }
   
-  if (student.trainings && student.trainings.length > 0) {
+  if (learner.trainings && learner.trainings.length > 0) {
     context += `\nTrainings & Courses:\n`;
-    student.trainings.forEach(training => {
+    learner.trainings.forEach(training => {
       context += `  • ${training}\n`;
     });
   }
   
-  if (student.projects && student.projects.length > 0) {
+  if (learner.projects && learner.projects.length > 0) {
     context += `\nProjects:\n`;
-    student.projects.forEach(project => {
+    learner.projects.forEach(project => {
       context += `  • ${project}\n`;
     });
   }
   
-  if (student.education && student.education.length > 0) {
+  if (learner.education && learner.education.length > 0) {
     context += `\nEducation:\n`;
-    student.education.forEach(edu => {
+    learner.education.forEach(edu => {
       context += `  • ${edu}\n`;
     });
   }
   
-  if (student.interests && student.interests.length > 0) {
+  if (learner.interests && learner.interests.length > 0) {
     context += `\nInterests & Goals:\n`;
-    student.interests.forEach(interest => {
+    learner.interests.forEach(interest => {
       context += `  • ${interest}\n`;
     });
   }
@@ -177,7 +177,7 @@ function parseCareerPathResponse(content: string): CareerPathResponse {
   const parsed = JSON.parse(jsonMatch[0]);
   
   return {
-    studentName: parsed.studentName || '',
+    learnerName: parsed.learnerName || '',
     currentRole: parsed.currentRole || 'Entry Level',
     careerGoal: parsed.careerGoal || 'Career Development',
     overallScore: Math.min(100, Math.max(0, parsed.overallScore || 65)),
@@ -202,14 +202,14 @@ function parseCareerPathResponse(content: string): CareerPathResponse {
   };
 }
 
-export async function generateCareerPath(student: StudentProfile): Promise<CareerPathResponse> {
+export async function generateCareerPath(learner: LearnerProfile): Promise<CareerPathResponse> {
   try {
     // Get OpenAI client (will throw if API key not configured)
     const client = getOpenAIClient();
 
-    const profileContext = buildStudentProfileContext(student);
+    const profileContext = buildlearnerProfileContext(learner);
     
-    const userPrompt = `Based on the following student profile, generate a comprehensive career development path with focus on:
+    const userPrompt = `Based on the following learner profile, generate a comprehensive career development path with focus on:
 1. Skill-based job/role recommendations
 2. Interest-aligned career paths
 3. Detailed skill gap analysis
@@ -265,17 +265,17 @@ Ensure all arrays are properly formatted and the JSON is valid.`;
     }
 
     const careerPath = parseCareerPathResponse(responseContent);
-    careerPath.studentName = student.name;
+    careerPath.learnerName = learner.name;
     
-    // Store original student data for chat context
-    careerPath.studentData = {
-      skills: student.skills,
-      certificates: student.certificates,
-      experience: student.experience,
-      trainings: student.trainings,
-      interests: student.interests,
-      projects: student.projects,
-      education: student.education,
+    // Store original learner data for chat context
+    careerPath.learnerData = {
+      skills: learner.skills,
+      certificates: learner.certificates,
+      experience: learner.experience,
+      trainings: learner.trainings,
+      interests: learner.interests,
+      projects: learner.projects,
+      education: learner.education,
     };
     
     return careerPath;
@@ -451,12 +451,12 @@ Return ONLY a JSON array of 3 strings, nothing else. Example format:
 }
 
 export async function generateCareerPathStreaming(
-  student: StudentProfile
+  learner: LearnerProfile
 ): Promise<AsyncGenerator<string, void, unknown>> {
   const client = getOpenAIClient();
-  const profileContext = buildStudentProfileContext(student);
+  const profileContext = buildlearnerProfileContext(learner);
   
-  const userPrompt = `Based on the following student profile, generate a comprehensive career development path. Consider their skills, interests, background, and market demands.
+  const userPrompt = `Based on the following learner profile, generate a comprehensive career development path. Consider their skills, interests, background, and market demands.
 
 ${profileContext}
 

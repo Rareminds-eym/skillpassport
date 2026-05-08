@@ -77,7 +77,7 @@ export function useCareerConversations(): UseCareerConversationsReturn {
       const { data, error: fetchError, count } = await supabase
         .from('career_ai_conversations')
         .select('id, title, created_at, updated_at, message_count', { count: 'exact' })
-        .eq('student_id', user.id)
+        .eq('learner_id', user.id)
         .order('updated_at', { ascending: false })
         .range(from, to);
 
@@ -145,7 +145,7 @@ export function useCareerConversations(): UseCareerConversationsReturn {
         .from('career_ai_conversations')
         .select('*')
         .eq('id', id)
-        .eq('student_id', user.id)
+        .eq('learner_id', user.id)
         .single();
 
       if (fetchError) {
@@ -196,7 +196,7 @@ export function useCareerConversations(): UseCareerConversationsReturn {
         .from('career_ai_conversations')
         .delete()
         .eq('id', id)
-        .eq('student_id', user.id);
+        .eq('learner_id', user.id);
 
       if (deleteError) {
         logger.error('Failed to delete conversation', deleteError instanceof Error ? deleteError : new Error(String(deleteError)));

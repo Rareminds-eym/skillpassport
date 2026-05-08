@@ -32,23 +32,23 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
     const foundRoles: UserRole[] = [];
     const foundUserData: UserData[] = [];
 
-    // 1. Check students table
-    const { data: studentData, error: studentError } = await supabase
-      .from('students')
+    // 1. Check learners table
+    const { data: learnerData, error: learnerError } = await supabase
+      .from('learners')
       .select('*')
       .eq('user_id', userId)
       .maybeSingle();
 
-    if (!studentError && studentData) {
-      foundRoles.push('student');
+    if (!learnerError && learnerData) {
+      foundRoles.push('learner');
       foundUserData.push({
-        id: studentData.id,
-        email: studentData.email,
-        name: studentData.name,
-        school_id: studentData.school_id,
-        university_college_id: studentData.university_college_id,
-        role: 'student',
-        ...studentData
+        id: learnerData.id,
+        email: learnerData.email,
+        name: learnerData.name,
+        school_id: learnerData.school_id,
+        university_college_id: learnerData.university_college_id,
+        role: 'learner',
+        ...learnerData
       });
     }
 
@@ -135,18 +135,18 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
           ...userData
         });
       }
-      // Handle student roles (college_student, school_student)
-      else if (['college_student', 'school_student'].includes(userRole)) {
-        foundRoles.push('student');
+      // Handle learner roles (learner, learner)
+      else if (['learner', 'learner'].includes(userRole)) {
+        foundRoles.push('learner');
         foundUserData.push({
           id: userData.id,
           email: userData.email || email,
           name: userData.firstName && userData.lastName 
             ? `${userData.firstName} ${userData.lastName}`
             : userData.firstName || userData.lastName || undefined,
-          role: 'student',
-          school_id: userRole === 'school_student' ? userData.organizationId : undefined,
-          university_college_id: userRole === 'college_student' ? userData.organizationId : undefined,
+          role: 'learner',
+          school_id: userRole === 'learner' ? userData.organizationId : undefined,
+          university_college_id: userRole === 'learner' ? userData.organizationId : undefined,
           ...userData
         });
       }

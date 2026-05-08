@@ -24,7 +24,7 @@ interface GenerateCareerPathsRequest {
   programName: string;
   programCategory: string;
   programStream: string;
-  studentProfile: {
+  learnerProfile: {
     riasecScores: {
       R: number;
       I: number;
@@ -51,21 +51,21 @@ interface GenerateCareerPathsRequest {
  * Build prompt for career path generation
  */
 function buildCareerPathPrompt(request: GenerateCareerPathsRequest): string {
-  const { programName, programCategory, programStream, studentProfile } = request;
-  const { riasecScores, aptitudeScores, topSkills, interests, projects, experiences } = studentProfile;
+  const { programName, programCategory, programStream, learnerProfile } = request;
+  const { riasecScores, aptitudeScores, topSkills, interests, projects, experiences } = learnerProfile;
 
   // Get top 3 RIASEC types
   const riasecEntries = Object.entries(riasecScores).sort((a, b) => b[1] - a[1]);
   const topRiasec = riasecEntries.slice(0, 3).map(([type, score]) => `${type}: ${score}`).join(', ');
 
-  const prompt = `You are a career counselor helping a student understand career opportunities for their degree program.
+  const prompt = `You are a career counselor helping a learner understand career opportunities for their degree program.
 
 Program Details:
 - Program: ${programName}
 - Category: ${programCategory}
 - Stream: ${programStream}
 
-Student Profile:
+Learner Profile:
 - RIASEC Personality (top 3): ${topRiasec}
 ${aptitudeScores ? `- Aptitude Strengths: ${Object.entries(aptitudeScores).filter(([_, v]) => v && v > 60).map(([k, v]) => `${k}: ${v}%`).join(', ') || 'Not assessed'}` : ''}
 ${topSkills && topSkills.length > 0 ? `- Top Skills: ${topSkills.join(', ')}` : ''}
@@ -75,7 +75,7 @@ ${experiences && experiences.length > 0 ? `- Experience: ${experiences.map(e => 
 
 Generate 5-8 career paths that:
 1. Are realistic for graduates of ${programName}
-2. Match the student's RIASEC personality profile
+2. Match the learner's RIASEC personality profile
 3. Consider their aptitude strengths and interests
 4. Include both traditional and emerging roles
 5. Cover a range of salary levels
@@ -83,8 +83,8 @@ Generate 5-8 career paths that:
 For each career path, provide:
 - role: Job title
 - salary: {min: number, max: number} in USD per year
-- matchScore: 1-100 based on student profile fit
-- whyItFits: 2-3 sentences explaining why this role suits the student
+- matchScore: 1-100 based on learner profile fit
+- whyItFits: 2-3 sentences explaining why this role suits the learner
 - requiredSkills: Array of 3-5 key skills needed
 - growthPotential: 1-2 sentences about career growth
 
@@ -170,11 +170,11 @@ export async function handleGenerateProgramCareerPaths(
     const body = await request.json() as GenerateCareerPathsRequest;
 
     // Validate required fields
-    if (!body.programName || !body.programCategory || !body.studentProfile?.riasecScores) {
+    if (!body.programName || !body.programCategory || !body.learnerProfile?.riasecScores) {
       return jsonResponse(
         {
           success: false,
-          error: 'Missing required fields: programName, programCategory, studentProfile.riasecScores',
+          error: 'Missing required fields: programName, programCategory, learnerProfile.riasecScores',
         },
         400
       );

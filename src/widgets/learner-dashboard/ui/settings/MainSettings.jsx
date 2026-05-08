@@ -1,0 +1,1765 @@
+import React, { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
+import {
+  AlertCircle,
+  Bell,
+  ChevronRight,
+  CreditCard,
+  Lock,
+  Settings as SettingsIcon,
+  Shield,
+  User
+} from "lucide-react";
+import { Badge } from '@/shared/ui/Badge';
+import { Button } from '@/shared/ui/ButtonNew';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
+
+import { useLearnerSettings } from '@/entities/learner';
+import { useLearnerDataByEmail } from '@/entities/learner';
+import { useLearnerCertificates } from '@/entities/learner';
+import { useLearnerProjects } from '@/entities/learner';
+import { useLearnerExperience } from '@/entities/learner';
+import { useLearnerEducation } from '@/entities/learner';
+import { useLearnerTechnicalSkills, useLearnerSoftSkills } from '@/entities/learner';
+import { useInstitutions } from '@/entities/institution';
+import { SubscriptionSettingsSection } from '@/features/subscription';
+import { 
+  EducationEditModal, 
+  SoftSkillsEditModal, 
+  SkillsEditModal, 
+  ExperienceEditModal, 
+  CertificatesEditModal, 
+  ProjectsEditModal 
+} from '@/features/learner-profile';
+import toast from 'react-hot-toast';
+import { useLearnerMessageNotifications } from '@/entities/learner';
+import { useLearnerUnreadCount } from "@/entities/learner";
+import { useLearnerRealtimeActivities } from '@/entities/learner/model/useLearnerRealtimeActivities';
+import ResumeParser from "../ResumeParser";
+import { mergeResumeData } from '@/features/digital-portfolio';
+import { safeSave } from '@/shared/lib/settingsErrorHandler';
+
+// Import tab components
+import ProfileTab from "./ProfileTab";
+import SecurityTab from "./SecurityTab";
+import NotificationsTab from "./NotificationsTab";
+import PrivacyTab from "./PrivacyTab";
+
+import { useUser } from '@/shared/model/authStore';
+const MainSettings = () => {
+  const user = useUser();
+  const location = useLocation();
+  const userEmail = user?.email;
+  const recentUpdatesRef = useRef(null);
+
+  const {
+    learnerData,
+    loading: learnerLoading,
+    error: learnerError,
+    updateProfile,
+    updatePassword,
+  } = useLearnerSettings(userEmail);
+
+  // Get education data from the same source as Dashboard
+  const {
+    learnerData: learnerDataWithEducation,
+    loading: educationLoading,
+    updateEducation,
+    updateTechnicalSkills,
+    updateSoftSkills,
+    updateSkills,
+    updateExperience,
+    updateProjects,
+    updateCertificates,
+  } = useLearnerDataByEmail(userEmail);
+
+  // Get learner ID for messaging
+  const learnerId = learnerData?.id;
+
+  // Fetch certificates from dedicated table
+  const {
+    certificates: tableCertificates,
+    loading: certificatesLoading,
+    error: certificatesError,
+    refresh: refreshCertificates
+  } = useLearnerCertificates(learnerId, !!learnerId);
+
+  // Fetch projects from dedicated table
+  const {
+    projects: tableProjects,
+    loading: projectsLoading,
+    error: projectsError,
+    refresh: refreshProjects
+  } = useLearnerProjects(learnerId, !!learnerId);
+
+  // Fetch experience from dedicated table
+  const {
+    experience: tableExperience,
+    loading: experienceLoading,
+    error: experienceError,
+    refresh: refreshExperience
+  } = useLearnerExperience(learnerId, !!learnerId);
+
+  // Fetch education from dedicated table
+  const {
+    education: tableEducation,
+    loading: educationTableLoading,
+    error: educationTableError,
+    refresh: refreshEducation
+  } = useLearnerEducation(learnerId, !!learnerId);
+
+  // Fetch technical skills from dedicated table
+  const {
+    skills: tableTechnicalSkills,
+    loading: technicalSkillsLoading,
+    error: technicalSkillsError,
+    refresh: refreshTechnicalSkills
+  } = useLearnerTechnicalSkills(learnerId, !!learnerId);
+
+  // Fetch soft skills from dedicated table
+  const {
+    skills: tableSoftSkills,
+    loading: softSkillsLoading,
+    error: softSkillsError,
+    refresh: refreshSoftSkills
+  } = useLearnerSoftSkills(learnerId, !!learnerId);
+
+  // Setup message notifications with hot-toast
+  useLearnerMessageNotifications({
+    learnerId,
+    enabled: !!learnerId,
+    playSound: true,
+    onMessageReceived: () => {
+      // Refresh Recent Updates to show new message activity
+      setTimeout(() => {
+        try {
+          if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+            refreshRecentUpdates();
+          }
+        } catch (error) {
+          console.warn('Could not refresh recent updates:', error);
+        }
+      }, 1000);
+    },
+  });
+
+  // Get unread message count with realtime updates
+  const { unreadCount } = useLearnerUnreadCount(learnerId, !!learnerId);
+
+  // Fetch recent updates data from recruitment tables (learner-specific)
+  const {
+    activities: recentUpdates,
+    isLoading: recentUpdatesLoading,
+    isError: recentUpdatesError,
+    refetch: refreshRecentUpdates,
+    isConnected: realtimeConnected,
+  } = useLearnerRealtimeActivities(userEmail, 10);
+
+  const [showAllRecentUpdates, setShowAllRecentUpdates] = useState(false);
+  const [activeTab, setActiveTab] = useState("profile");
+  const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
+
+  // Handle navigation state to set active tab
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+    }
+  }, [location.state]);
+
+  // Education management state - now using real data from dedicated table
+  const educationData = Array.isArray(tableEducation) && tableEducation.length > 0 
+    ? tableEducation 
+    : learnerDataWithEducation?.education || [];
+  
+  const [showEducationModal, setShowEducationModal] = useState(false);
+
+  // Profile sections data - now using real data from learnerDataWithEducation
+  const softSkillsData = Array.isArray(tableSoftSkills) && tableSoftSkills.length > 0 
+    ? tableSoftSkills 
+    : learnerDataWithEducation?.softSkills || [];
+  const [showSoftSkillsModal, setShowSoftSkillsModal] = useState(false);
+  
+  const technicalSkillsData = Array.isArray(tableTechnicalSkills) && tableTechnicalSkills.length > 0 
+    ? tableTechnicalSkills 
+    : learnerDataWithEducation?.technicalSkills || [];
+  const [showTechnicalSkillsModal, setShowTechnicalSkillsModal] = useState(false);
+  
+  // Use experience from dedicated table, fallback to profile data
+  const experienceData = Array.isArray(tableExperience) && tableExperience.length > 0 
+    ? tableExperience 
+    : learnerDataWithEducation?.experience || [];
+  const [showExperienceModal, setShowExperienceModal] = useState(false);
+  
+  // Use certificates from dedicated table, fallback to profile data
+  const certificatesData = Array.isArray(tableCertificates) && tableCertificates.length > 0 
+    ? tableCertificates 
+    : learnerDataWithEducation?.certificates || [];
+  const [showCertificatesModal, setShowCertificatesModal] = useState(false);
+  
+  // Use projects from dedicated table, fallback to profile data
+  const projectsData = Array.isArray(tableProjects) && tableProjects.length > 0 
+    ? tableProjects 
+    : learnerDataWithEducation?.projects || [];
+  const [showProjectsModal, setShowProjectsModal] = useState(false);
+
+  // Resume parser state
+  const [showResumeParser, setShowResumeParser] = useState(false);
+
+  // State for custom institution entry (B2C learners)
+  const [showCustomSchool, setShowCustomSchool] = useState(false);
+  const [showCustomUniversity, setShowCustomUniversity] = useState(false);
+  const [showCustomCollege, setShowCustomCollege] = useState(false);
+  const [showCustomSchoolClass, setShowCustomSchoolClass] = useState(false);
+  const [showCustomProgram, setShowCustomProgram] = useState(false);
+  const [showCustomSemester, setShowCustomSemester] = useState(false);
+  const [customSchoolName, setCustomSchoolName] = useState('');
+  const [customUniversityName, setCustomUniversityName] = useState('');
+  const [customCollegeName, setCustomCollegeName] = useState('');
+  const [customSchoolClassName, setCustomSchoolClassName] = useState('');
+  const [customProgramName, setCustomProgramName] = useState('');
+  const [customSemesterName, setCustomSemesterName] = useState('');
+
+  // Fetch institutions data
+  const {
+    schools,
+    colleges,
+    universities,
+    universityColleges,
+    departments,
+    programs,
+    programSections,
+    schoolClasses,
+    loading: institutionsLoading,
+    refreshInstitutions,
+  } = useInstitutions();
+
+  // Profile settings state
+  const [profileData, setProfileData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    alternatePhone: "",
+    location: "",
+    address: "",
+    state: "",
+    country: "India",
+    pincode: "",
+    dateOfBirth: "",
+    age: "",
+    gender: "",
+    bloodGroup: "",
+    university: "",
+    branch: "",
+    college: "",
+    registrationNumber: "",
+    enrollmentNumber: "",
+    currentCgpa: "",
+    grade: "",
+    gradeStartDate: "",
+    universityCollegeId: "",
+    universityId: "",
+    schoolId: "",
+    schoolClassId: "",
+    collegeId: "",
+    programId: "",
+    programSectionId: "",
+    semester: "",
+    section: "",
+    guardianName: "",
+    guardianPhone: "",
+    guardianEmail: "",
+    guardianRelation: "",
+    bio: "",
+    linkedIn: "",
+    github: "",
+    twitter: "",
+    facebook: "",
+    instagram: "",
+    portfolio: "",
+    // Required fields for profile validation
+    aadharNumber: "",
+    gapInStudies: false,
+    gapYears: 0,
+    gapReason: "",
+    currentBacklogs: 0,
+    backlogsHistory: "",
+    workExperience: "",
+    // New JSON fields
+    interests: "",
+    languages: "",
+    hobbies: "",
+  });
+
+  // Password settings state
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  // Notification settings state
+  const [notificationSettings, setNotificationSettings] = useState({
+    emailNotifications: true,
+    pushNotifications: true,
+    applicationUpdates: true,
+    newOpportunities: true,
+    recruitingMessages: true,
+    weeklyDigest: false,
+    monthlyReport: false,
+  });
+
+  // Privacy settings state
+  const [privacySettings, setPrivacySettings] = useState({
+    profileVisibility: "public",
+    showEmail: false,
+    showPhone: false,
+    showLocation: true,
+    allowRecruiterContact: true,
+    showInTalentPool: true,
+  });
+
+  // Load learner data into form - only update when learnerData actually changes with valid data
+  useEffect(() => {
+    // Only update if we have valid learner data and we're not currently saving
+    if (learnerData && learnerData.id && !savingRef.current && !learnerLoading) {
+      setProfileData({
+        name: learnerData.name || "",
+        email: learnerData.email || userEmail || "",
+        phone: learnerData.phone || "",
+        alternatePhone: learnerData.alternatePhone || "",
+        location: learnerData.location || "",
+        address: learnerData.address || "",
+        state: learnerData.state || "",
+        country: learnerData.country || "India",
+        pincode: learnerData.pincode || "",
+        dateOfBirth: learnerData.dateOfBirth || "",
+        age: learnerData.age || "",
+        gender: learnerData.gender || "",
+        bloodGroup: learnerData.bloodGroup || "",
+        university: learnerData.university || "",
+        branch: learnerData.branch || "",
+        college: learnerData.college || "",
+        schoolName: learnerData.schoolName || "",
+        registrationNumber: learnerData.registrationNumber || "",
+        enrollmentNumber: learnerData.enrollmentNumber || "",
+        currentCgpa: learnerData.currentCgpa || "",
+        grade: learnerData.grade || "",
+        gradeStartDate: learnerData.gradeStartDate || "",
+        universityCollegeId: learnerData.universityCollegeId || "",
+        universityId: learnerData.universityId || "",
+        schoolId: learnerData.schoolId || "",
+        schoolClassId: learnerData.schoolClassId || "",
+        collegeId: learnerData.collegeId || "",
+        programId: learnerData.programId || "",
+        programSectionId: learnerData.programSectionId || "",
+        semester: learnerData.semester || "",
+        section: learnerData.section || "",
+        guardianName: learnerData.guardianName || "",
+        guardianPhone: learnerData.guardianPhone || "",
+        guardianEmail: learnerData.guardianEmail || "",
+        guardianRelation: learnerData.guardianRelation || "",
+        bio: learnerData.bio || "",
+        linkedIn: learnerData.linkedIn || "",
+        github: learnerData.github || "",
+        twitter: learnerData.twitter || "",
+        facebook: learnerData.facebook || "",
+        instagram: learnerData.instagram || "",
+        portfolio: learnerData.portfolio || "",
+        // New fields for gap years, work experience, and academic info
+        gapInStudies: learnerData.gapInStudies || false,
+        gapYears: learnerData.gapYears || 0,
+        gapReason: learnerData.gapReason || "",
+        workExperience: learnerData.workExperience || "",
+        aadharNumber: learnerData.aadharNumber || "",
+        backlogsHistory: learnerData.backlogsHistory || "",
+        currentBacklogs: learnerData.currentBacklogs || 0,
+        // New JSON fields
+        interests: learnerData.interests || "",
+        languages: learnerData.languages || "",
+        hobbies: learnerData.hobbies || "",
+      });
+
+      // Detect custom entries (B2C learners) and show custom input fields
+      // Determine learner type from role
+      const userRole = learnerData?.userRole;
+      const isSchoolLearner = userRole === 'learner';
+      const isCollegeLearner = userRole === 'learner';
+      
+      // Check if it's a school path (has schoolId or schoolClassId) vs university path
+      // For role-based detection, also consider the role itself
+      const hasSchoolData = learnerData.schoolId || learnerData.schoolClassId || learnerData.schoolName;
+      const hasUniversityData = learnerData.universityId || learnerData.universityCollegeId || learnerData.programId || learnerData.university || learnerData.college;
+      const isSchoolPath = hasSchoolData || (isSchoolLearner && !hasUniversityData);
+      const isUniversityPath = hasUniversityData || (isCollegeLearner && !hasSchoolData);
+      
+      // Custom school name (for school learners, stored in schoolName field)
+      if (isSchoolLearner && learnerData.schoolName && (!learnerData.schoolId || learnerData.schoolId === '')) {
+        setShowCustomSchool(true);
+        setCustomSchoolName(learnerData.schoolName);
+      }
+      
+      // Custom school class - derive from grade field, NOT from section
+      // Section field should remain independent for roll numbers
+      if (learnerData.grade && (!learnerData.schoolClassId || learnerData.schoolClassId === '') && (learnerData.schoolId || learnerData.schoolName) && !isUniversityPath) {
+        // Extract numeric grade from grade field (e.g., "Grade 10" -> "10")
+        const gradeMatch = learnerData.grade.match(/Grade\s*(\d+)/i);
+        if (gradeMatch) {
+          setShowCustomSchoolClass(true);
+          setCustomSchoolClassName(gradeMatch[1]); // Just the number, e.g., "10"
+        }
+      }
+      
+      // Custom university name
+      console.log('🔍 Checking university:', {
+        university: learnerData.university,
+        universityId: learnerData.universityId,
+        shouldShow: learnerData.university && (!learnerData.universityId || learnerData.universityId === '')
+      });
+      if (learnerData.university && (!learnerData.universityId || learnerData.universityId === '')) {
+        setShowCustomUniversity(true);
+        setCustomUniversityName(learnerData.university);
+        console.log('✅ Set custom university:', learnerData.university);
+      }
+      
+      // Custom college name (for college learners, stored in college field)
+      // Check after university to ensure university path is established
+      console.log('🔍 Checking college:', {
+        isCollegeLearner,
+        college: learnerData.college,
+        universityCollegeId: learnerData.universityCollegeId,
+        shouldShow: isCollegeLearner && learnerData.college && (!learnerData.universityCollegeId || learnerData.universityCollegeId === '')
+      });
+      if (isCollegeLearner && learnerData.college && (!learnerData.universityCollegeId || learnerData.universityCollegeId === '')) {
+        setShowCustomCollege(true);
+        setCustomCollegeName(learnerData.college);
+        console.log('✅ Set custom college:', learnerData.college);
+        
+        // IMPORTANT: If there's a custom college but no university, enable custom university input
+        // This allows B2C college learners to enter both custom college and custom university
+        if (!learnerData.university && !learnerData.universityId) {
+          console.log('🔓 Enabling custom university input for custom college');
+          setShowCustomUniversity(true);
+        }
+      }
+      
+      // Custom program name
+      if (learnerData.branch && (!learnerData.programId || learnerData.programId === '')) {
+        setShowCustomProgram(true);
+        setCustomProgramName(learnerData.branch);
+      }
+      
+      // Custom semester (only for university path)
+      if (learnerData.section && (!learnerData.programSectionId || learnerData.programSectionId === '') && isUniversityPath) {
+        setShowCustomSemester(true);
+        setCustomSemesterName(learnerData.section);
+      }
+
+      // Load notification settings
+      if (learnerData.notificationSettings && !savingRef.current) {
+        setNotificationSettings(learnerData.notificationSettings);
+      }
+
+      // Load privacy settings
+      if (learnerData.privacySettings && !savingRef.current) {
+        setPrivacySettings(learnerData.privacySettings);
+      }
+
+      // Education data is now handled automatically by the hook
+      // No need to manually set education data
+    }
+  }, [learnerData, userEmail, learnerLoading]);
+
+  // Education data is now automatically available from learnerDataWithEducation
+  // No separate useEffect needed
+
+  const handleProfileChange = (field, value) => {
+    setProfileData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handlePasswordChange = (field, value) => {
+    setPasswordData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleNotificationToggle = (setting) => {
+    setNotificationSettings((prev) => ({ ...prev, [setting]: !prev[setting] }));
+  };
+
+  const handlePrivacyChange = (setting, value) => {
+    setPrivacySettings((prev) => ({ ...prev, [setting]: value }));
+  };
+
+  // Handle "Add New" selection for institutions
+  const handleInstitutionChange = (field, value) => {
+    if (value === 'add_new') {
+      const typeMap = {
+        schoolId: 'School',
+        collegeId: 'College',
+        universityId: 'University',
+        universityCollegeId: 'University College',
+        programId: 'Program',
+        programSectionId: 'Semester/Section',
+        schoolClassId: 'Class',
+      };
+      
+      // Show custom input for B2C learners
+      if (field === 'schoolId') {
+        setShowCustomSchool(true);
+        return;
+      } else if (field === 'universityId') {
+        setShowCustomUniversity(true);
+        return;
+      } else if (field === 'universityCollegeId') {
+        setShowCustomCollege(true);
+        return;
+      } else if (field === 'schoolClassId') {
+        setShowCustomSchoolClass(true);
+        return;
+      } else if (field === 'programId') {
+        setShowCustomProgram(true);
+        return;
+      } else if (field === 'programSectionId') {
+        setShowCustomSemester(true);
+        return;
+      }
+      
+      toast.success(`Please contact your administrator to add a new ${typeMap[field].toLowerCase()}.`);
+      return;
+    }
+    
+    // Sync School Class with grade field ONLY for school learners
+    if (field === 'schoolClassId' && value) {
+      // Check if this is a school learner (not university path)
+      const isUniversityPath = profileData.universityId || profileData.universityCollegeId || profileData.programId;
+      
+      if (!isUniversityPath) {
+        const selectedClass = schoolClasses.find(sc => sc.id === value);
+        if (selectedClass && selectedClass.grade) {
+          // Map school class grade to Academic Details grade format
+          const gradeMapping = {
+            '6': 'Grade 6',
+            '7': 'Grade 7',
+            '8': 'Grade 8',
+            '9': 'Grade 9',
+            '10': 'Grade 10',
+            '11': 'Grade 11',
+            '12': 'Grade 12',
+          };
+          const mappedGrade = gradeMapping[selectedClass.grade] || `Grade ${selectedClass.grade}`;
+          handleProfileChange('grade', mappedGrade);
+          
+          // Don't update section field - it should remain independent
+          // The schoolClassId foreign key is sufficient for tracking the class
+        }
+      }
+    }
+    
+    // Handle cascading logic and field updates
+    handleProfileChange(field, value);
+  };
+
+  // Education management functions
+  const handleEducationSave = async (educationList) => {
+    try {
+      setIsSaving(true);
+      
+      console.log('💾 MainSettings: Saving education list:', educationList);
+      
+      const result = await updateEducation(educationList);
+      
+      console.log('✅ MainSettings: Education save result:', result);
+      
+      if (result.success) {
+        // Refresh education data from table to get updated versioning fields
+        if (refreshEducation && typeof refreshEducation === 'function') {
+          console.log('🔄 MainSettings: Refreshing education data...');
+          await refreshEducation();
+          console.log('✅ MainSettings: Education data refreshed');
+        }
+        
+        setShowEducationModal(false);
+        
+        toast.success("Education updated successfully");
+        
+        try {
+          if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+            refreshRecentUpdates().catch(err => 
+              console.warn('Could not refresh recent updates:', err)
+            );
+          }
+        } catch (refreshError) {
+          console.warn('Could not refresh recent updates:', refreshError);
+        }
+      } else {
+        throw new Error(result.error || 'Failed to update education');
+      }
+    } catch (error) {
+      console.error('❌ Error saving education:', error);
+      toast.error(error.message || "Failed to save education");
+      return { success: false, error: error.message };
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Soft Skills management functions
+  const handleSoftSkillsSave = async (skillsList) => {
+    try {
+      setIsSaving(true);
+      
+      const result = await updateSoftSkills(skillsList);
+      
+      if (result.success) {
+        setShowSoftSkillsModal(false);
+        
+        // Refresh soft skills data from table to get updated versioning fields
+        if (refreshSoftSkills && typeof refreshSoftSkills === 'function') {
+          await refreshSoftSkills();
+        }
+        
+        toast.success("Soft skills updated successfully");
+      } else {
+        throw new Error(result.error || 'Failed to update soft skills');
+      }
+    } catch (error) {
+      console.error('❌ Error saving soft skills:', error);
+      toast.error(error.message || "Failed to save soft skills");
+      return { success: false, error: error.message };
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Technical Skills management functions
+  const handleTechnicalSkillsSave = async (skillsList) => {
+    try {
+      setIsSaving(true);
+      
+      // Ensure all skills have type: "technical" when coming from Technical Skills (matching Dashboard)
+      const skillsWithType = skillsList.map(skill => ({
+        ...skill,
+        type: "technical" // Force technical type for skills from Technical Skills
+      }));
+      
+      console.log('🔧 Settings: Technical skills data being saved:', skillsWithType);
+      
+      // Use updateSkills (same as Dashboard) instead of updateTechnicalSkills
+      const result = await updateSkills(skillsWithType);
+      
+      if (result.success) {
+        setShowTechnicalSkillsModal(false);
+        
+        // Refresh technical skills data from table to get updated versioning fields
+        if (refreshTechnicalSkills && typeof refreshTechnicalSkills === 'function') {
+          await refreshTechnicalSkills();
+        }
+        
+        toast.success("Technical skills updated successfully");
+      } else {
+        throw new Error(result.error || 'Failed to update technical skills');
+      }
+    } catch (error) {
+      console.error('❌ Error saving technical skills:', error);
+      toast.error(error.message || "Failed to save technical skills");
+      return { success: false, error: error.message };
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Experience management functions
+  const handleExperienceSave = async (experienceList) => {
+    try {
+      setIsSaving(true);
+      
+      console.log('💾 MainSettings: Saving experience list:', experienceList);
+      
+      const result = await updateExperience(experienceList);
+      
+      console.log('✅ MainSettings: Experience save result:', result);
+      
+      if (result.success) {
+        // Refresh experience from table
+        if (refreshExperience) {
+          console.log('🔄 MainSettings: Refreshing experience data...');
+          await refreshExperience();
+          console.log('✅ MainSettings: Experience data refreshed');
+        }
+        
+        setShowExperienceModal(false);
+        
+        toast.success("Experience updated successfully");
+      } else {
+        throw new Error(result.error || 'Failed to update experience');
+      }
+    } catch (error) {
+      console.error('❌ Error saving experience:', error);
+      toast.error(error.message || "Failed to save experience");
+      return { success: false, error: error.message };
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Certificates management functions
+  const handleCertificatesSave = async (certificatesList) => {
+    setIsSaving(true);
+
+    const result = await safeSave(
+      () => updateCertificates(certificatesList),
+      {
+        section: 'certificates',
+        action: 'update_certificates',
+        data: certificatesList,
+        toast,
+        onSuccess: () => {
+          setShowCertificatesModal(false);
+          if (refreshCertificates) {
+            refreshCertificates();
+          }
+        },
+      }
+    );
+
+    setIsSaving(false);
+    return result;
+  };
+
+  // Projects management functions
+  const handleProjectsSave = async (projectsList) => {
+    try {
+      setIsSaving(true);
+      
+      const result = await updateProjects(projectsList);
+      
+      if (result.success) {
+        setShowProjectsModal(false);
+        
+        // Refresh projects from table
+        if (refreshProjects) {
+          refreshProjects();
+        }
+        
+        toast.success("Projects updated successfully");
+      } else {
+        throw new Error(result.error || 'Failed to update projects');
+      }
+    } catch (error) {
+      console.error('❌ Error saving projects:', error);
+      toast.error(error.message || "Failed to save projects");
+      return { success: false, error: error.message };
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Technical Skills toggle enabled handler
+  const handleToggleTechnicalSkillEnabled = async (index) => {
+    const skill = tableTechnicalSkills[index];
+    if (!skill) return;
+    
+    const newState = !skill.enabled;
+    
+    // Don't allow hiding/showing items that are pending verification or approval
+    if (skill.approval_status === 'pending' || skill._hasPendingEdit) {
+      toast.error("You cannot hide or show skills that are pending verification or approval.", { duration: 4000 });
+      return;
+    }
+    
+    try {
+      // Import supabase client
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_ANON_KEY
+      );
+      
+      // Update only the enabled field directly in database
+      const { error } = await supabase
+        .from('skills')
+        .update({ enabled: newState })
+        .eq('id', skill.id);
+      
+      if (error) throw error;
+      
+      // Refresh technical skills to get updated data
+      if (refreshTechnicalSkills) {
+        await refreshTechnicalSkills();
+      }
+      
+      toast.success(`Technical skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`, { duration: 3000 });
+    } catch (error) {
+      console.error('Error toggling technical skill visibility:', error);
+      toast.error("Failed to update visibility. Please try again.");
+    }
+  };
+
+  // Soft Skills toggle enabled handler
+  const handleToggleSoftSkillEnabled = async (index) => {
+    const skill = tableSoftSkills[index];
+    if (!skill) return;
+    
+    const newState = !skill.enabled;
+    
+    // Don't allow hiding/showing items that are pending verification or approval
+    if (skill.approval_status === 'pending' || skill._hasPendingEdit) {
+      toast.error("You cannot hide or show skills that are pending verification or approval.", { duration: 4000 });
+      return;
+    }
+    
+    try {
+      // Import supabase client
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_ANON_KEY
+      );
+      
+      // Update only the enabled field directly in database
+      const { error } = await supabase
+        .from('skills')
+        .update({ enabled: newState })
+        .eq('id', skill.id);
+      
+      if (error) throw error;
+      
+      // Refresh soft skills to get updated data
+      if (refreshSoftSkills) {
+        await refreshSoftSkills();
+      }
+      
+      toast.success(`Soft skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`, { duration: 3000 });
+    } catch (error) {
+      console.error('Error toggling soft skill visibility:', error);
+      toast.error("Failed to update visibility. Please try again.");
+    }
+  };
+
+  // General profile save handler - validates and saves all profile data
+  const handleSaveProfile = async () => {
+    // Validate Aadhar number before saving (only if it has a value and is not empty)
+    if (profileData.aadharNumber && profileData.aadharNumber.trim() !== '') {
+      if (profileData.aadharNumber.length !== 12) {
+        toast.error("Aadhar number must be exactly 12 digits");
+        return;
+      }
+      
+      if (profileData.aadharNumber.startsWith('0') || profileData.aadharNumber.startsWith('1')) {
+        toast.error("Aadhar number cannot start with 0 or 1");
+        return;
+      }
+    }
+
+    setIsSaving(true);
+    try {
+      await updateProfile(profileData);
+      toast.success("Profile updated successfully");
+      
+      window.dispatchEvent(new CustomEvent('learner_settings_updated', {
+        detail: { type: 'profile_updated', data: profileData }
+      }));
+      
+      try {
+        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+          await refreshRecentUpdates();
+        }
+      } catch (refreshError) {
+        console.warn('Could not refresh recent updates:', refreshError);
+      }
+    } catch (error) {
+      console.error('❌ Error updating profile:', error);
+      toast.error(error.message || "Failed to update profile");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Tab-specific save handlers - only save relevant fields for each tab
+  
+  // Personal Info Tab - save basic personal information
+  const handleSavePersonalInfo = async () => {
+    setIsSaving(true);
+    
+    const personalInfoFields = {
+      name: profileData.name,
+      phone: profileData.phone,
+      alternatePhone: profileData.alternatePhone,
+      address: profileData.address,
+      location: profileData.location,
+      state: profileData.state,
+      country: profileData.country,
+      pincode: profileData.pincode,
+      dateOfBirth: profileData.dateOfBirth,
+      age: profileData.age,
+      gender: profileData.gender,
+      bloodGroup: profileData.bloodGroup,
+    };
+
+    const result = await safeSave(
+      () => updateProfile(personalInfoFields),
+      {
+        section: 'personal',
+        action: 'update_personal_info',
+        validationFields: ['phone', 'alternatePhone', 'pincode', 'age'],
+        data: personalInfoFields,
+        toast,
+        onSuccess: () => {
+          window.dispatchEvent(new CustomEvent('learner_settings_updated', {
+            detail: { type: 'profile_updated', data: personalInfoFields }
+          }));
+          
+          if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+            refreshRecentUpdates().catch(err => 
+              console.warn('Could not refresh recent updates:', err)
+            );
+          }
+        },
+      }
+    );
+
+    setIsSaving(false);
+    return result;
+  };
+
+  // Additional Info Tab - save additional fields including Aadhar
+  const handleSaveAdditionalInfo = async () => {
+    setIsSaving(true);
+    
+    // Only send fields relevant to Additional Info tab
+    const additionalInfoFields = {
+      aadharNumber: profileData.aadharNumber,
+      gapInStudies: profileData.gapInStudies,
+      gapYears: profileData.gapYears,
+      gapReason: profileData.gapReason,
+      workExperience: profileData.workExperience,
+      currentBacklogs: profileData.currentBacklogs,
+      backlogsHistory: profileData.backlogsHistory,
+      interests: profileData.interests,
+      languages: profileData.languages,
+      hobbies: profileData.hobbies,
+    };
+
+    const result = await safeSave(
+      () => updateProfile(additionalInfoFields),
+      {
+        section: 'additional',
+        action: 'update_additional_info',
+        validationFields: ['aadhar'],
+        data: additionalInfoFields,
+        toast,
+        onSuccess: () => {
+          window.dispatchEvent(new CustomEvent('learner_settings_updated', {
+            detail: { type: 'profile_updated', data: additionalInfoFields }
+          }));
+          
+          if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+            refreshRecentUpdates().catch(err => 
+              console.warn('Could not refresh recent updates:', err)
+            );
+          }
+        },
+      }
+    );
+
+    setIsSaving(false);
+    return result;
+  };
+
+  // Institution Details Tab - save institution information
+  const handleSaveInstitutionDetails = async () => {
+    setIsSaving(true);
+    
+    try {
+      const dataToSave = { ...profileData };
+      
+      // Determine learner type from role
+      const userRole = learnerData?.userRole;
+      const isSchoolLearner = userRole === 'learner';
+      const isCollegeLearner = userRole === 'learner';
+      
+      // Determine which path the learner is on
+      const isUniversityPath = dataToSave.universityId || showCustomUniversity || customUniversityName || 
+                               dataToSave.universityCollegeId || showCustomCollege || customCollegeName ||
+                               dataToSave.programId || showCustomProgram || customProgramName;
+      const isSchoolPath = dataToSave.schoolId || showCustomSchool || customSchoolName ||
+                           dataToSave.schoolClassId || showCustomSchoolClass || customSchoolClassName;
+      
+      // Clear school fields if on university path
+      if (isUniversityPath) {
+        dataToSave.schoolId = null;
+        dataToSave.schoolClassId = null;
+        // Don't clear college field as it's used for university college name
+      }
+      
+      // Clear university fields if on school path
+      if (isSchoolPath && !isUniversityPath) {
+        dataToSave.universityId = null;
+        dataToSave.universityCollegeId = null;
+        dataToSave.programId = null;
+        dataToSave.programSectionId = null;
+        dataToSave.university = null;
+        dataToSave.branch = null;
+        
+        // IMPORTANT: Clear section field for school learners
+        // Section should only be used for university learners (semester/section)
+        // For school learners, class info comes from schoolClassId or grade
+        if (!dataToSave.programSectionId && !showCustomSemester) {
+          dataToSave.section = null;
+        }
+      }
+      
+      // Clear grade if no program/class is selected
+      if (isUniversityPath && !dataToSave.programId && !showCustomProgram && !customProgramName) {
+        dataToSave.grade = null;
+      }
+      if (isSchoolPath && !dataToSave.schoolClassId && !showCustomSchoolClass && !customSchoolClassName) {
+        dataToSave.grade = null;
+      }
+      
+      // Convert empty string IDs to null
+      if (dataToSave.programId === '') dataToSave.programId = null;
+      if (dataToSave.universityCollegeId === '') dataToSave.universityCollegeId = null;
+      if (dataToSave.schoolId === '') dataToSave.schoolId = null;
+      if (dataToSave.schoolClassId === '') dataToSave.schoolClassId = null;
+      if (dataToSave.collegeId === '') dataToSave.collegeId = null;
+      if (dataToSave.universityId === '') dataToSave.universityId = null;
+      if (dataToSave.programSectionId === '') dataToSave.programSectionId = null;
+      
+      // Convert empty course_name to null
+      if (dataToSave.courseName === '' || dataToSave.courseName === undefined) {
+        dataToSave.courseName = null;
+      }
+      
+      // Custom program name → branch field (for assessment tests)
+      if (showCustomProgram && customProgramName) {
+        dataToSave.branch = customProgramName;
+        dataToSave.programId = null;
+      }
+      
+      // Custom college name → college field (for college learners)
+      if (showCustomCollege && customCollegeName) {
+        dataToSave.college = customCollegeName;
+        dataToSave.universityCollegeId = null;
+      }
+      
+      // Custom university name → university field
+      if (showCustomUniversity && customUniversityName) {
+        dataToSave.university = customUniversityName;
+        dataToSave.universityId = null;
+      }
+      
+      // Custom school name → college field (for school learners)
+      // The college_school_name column is shared between school and college learners
+      if (showCustomSchool && customSchoolName) {
+        dataToSave.college = customSchoolName;
+        dataToSave.schoolId = null;
+      }
+      
+      // Custom semester → section field AND sync grade for university learners
+      if (showCustomSemester && customSemesterName) {
+        dataToSave.section = customSemesterName;
+        dataToSave.programSectionId = null;
+        
+        // Auto-detect year from semester and update grade for university learners
+        const lowerSemester = customSemesterName.toLowerCase();
+        let yearNumber = null;
+        let semesterNumber = null;
+        let validationError = null;
+        
+        // Check for patterns like "1st year", "2nd year", "3rd year", "4th year"
+        const yearMatch = lowerSemester.match(/(\d+)(?:st|nd|rd|th)?\s*year/);
+        if (yearMatch) {
+          yearNumber = parseInt(yearMatch[1]);
+          
+          // Validate year based on program type
+          if (dataToSave.grade && dataToSave.grade.includes('UG') && yearNumber > 5) {
+            validationError = 'UG programs typically have max 5 years (10 semesters)';
+          } else if (dataToSave.grade && dataToSave.grade.includes('PG') && yearNumber > 2) {
+            validationError = 'PG programs typically have max 2 years (4 semesters)';
+          }
+        } else {
+          // Check for semester numbers and convert to year
+          const semMatch = lowerSemester.match(/(?:semester|sem)?\s*(\d+)/);
+          if (semMatch) {
+            semesterNumber = parseInt(semMatch[1]);
+            
+            // Validate semester based on program type
+            if (dataToSave.grade && dataToSave.grade.includes('UG') && semesterNumber > 10) {
+              validationError = 'UG programs typically have max 10 semesters';
+            } else if (dataToSave.grade && dataToSave.grade.includes('PG') && semesterNumber > 4) {
+              validationError = 'PG programs typically have max 4 semesters';
+            } else if (dataToSave.grade && dataToSave.grade.includes('Diploma') && semesterNumber > 6) {
+              validationError = 'Diploma programs typically have max 6 semesters';
+            }
+            
+            yearNumber = Math.ceil(semesterNumber / 2);
+          }
+        }
+        
+        // Show validation error if semester/year is invalid
+        if (validationError) {
+          toast.error(validationError);
+          return; // Don't save if validation fails
+        }
+        
+        // Update grade based on detected year and current program type (only if no validation error)
+        if (yearNumber && dataToSave.grade) {
+          let newGrade = '';
+          if (dataToSave.grade.includes('UG')) {
+            newGrade = `UG Year ${yearNumber}`;
+          } else if (dataToSave.grade.includes('PG')) {
+            newGrade = `PG Year ${yearNumber}`;
+          }
+          
+          // Validate grade length (database limit is 10 characters)
+          if (newGrade && newGrade.length > 10) {
+            toast.error("Grade value is too long. Please use shorter format (max 10 characters).");
+            return;
+          }
+          
+          dataToSave.grade = newGrade;
+        }
+      }
+      
+      // Custom school class → sync to grade ONLY (ONLY for school learners)
+      // NOTE: We do NOT store custom class in section field - section should remain independent
+      if (showCustomSchoolClass && customSchoolClassName) {
+        dataToSave.schoolClassId = null;
+        
+        // Only sync grade for school learners (not university path)
+        const isUniversityPath = dataToSave.universityId || dataToSave.universityCollegeId || dataToSave.programId;
+        if (!isUniversityPath) {
+          // Extract grade from custom class name (e.g., "Grade 10-A" or "10" -> "Grade 10")
+          const gradeMatch = customSchoolClassName.match(/(?:Grade\s*)?(\d+)/i);
+          if (gradeMatch) {
+            const numericGrade = gradeMatch[1];
+            dataToSave.grade = `Grade ${numericGrade}`;
+          }
+        }
+        // Store custom class name in a display field if needed, but NOT in section
+        // The section field should remain independent for roll number/section assignment
+      }
+      
+      // If schoolClassId is selected from dropdown, clear custom class
+      if (dataToSave.schoolClassId && dataToSave.schoolClassId !== null) {
+        // Don't override section if it's a valid schoolClassId
+        // The section field should only be used for custom entries
+      }
+      
+      await updateProfile(dataToSave);
+      toast.success("Institution details updated successfully");
+      
+      window.dispatchEvent(new CustomEvent('learner_settings_updated', {
+        detail: { type: 'profile_updated', data: dataToSave }
+      }));
+      
+      try {
+        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+          await refreshRecentUpdates();
+        }
+      } catch (refreshError) {
+        console.warn('Could not refresh recent updates:', refreshError);
+      }
+    } catch (error) {
+      console.error('❌ Error updating institution details:', error);
+      toast.error(error.message || "Failed to update institution details");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Academic Details Tab - save academic-related fields
+  const handleSaveAcademicDetails = async () => {
+    setIsSaving(true);
+    try {
+      const academicFields = {
+        registrationNumber: profileData.registrationNumber,
+        enrollmentNumber: profileData.enrollmentNumber,
+        currentCgpa: profileData.currentCgpa,
+        grade: profileData.grade,
+        gradeStartDate: profileData.gradeStartDate,
+      };
+      
+      await updateProfile(academicFields);
+      toast.success("Academic details updated successfully");
+      
+      window.dispatchEvent(new CustomEvent('learner_settings_updated', {
+        detail: { type: 'profile_updated', data: academicFields }
+      }));
+      
+      try {
+        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+          await refreshRecentUpdates();
+        }
+      } catch (refreshError) {
+        console.warn('Could not refresh recent updates:', refreshError);
+      }
+    } catch (error) {
+      console.error('❌ Error updating academic details:', error);
+      toast.error(error.message || "Failed to update academic details");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Guardian Info Tab - save guardian information
+  const handleSaveGuardianInfo = async () => {
+    setIsSaving(true);
+    
+    const guardianFields = {
+      guardianName: profileData.guardianName,
+      guardianPhone: profileData.guardianPhone,
+      guardianEmail: profileData.guardianEmail,
+      guardianRelation: profileData.guardianRelation,
+    };
+
+    const result = await safeSave(
+      () => updateProfile(guardianFields),
+      {
+        section: 'guardian',
+        action: 'update_guardian_info',
+        validationFields: ['email'],
+        data: { email: guardianFields.guardianEmail },
+        toast,
+        onSuccess: () => {
+          window.dispatchEvent(new CustomEvent('learner_settings_updated', {
+            detail: { type: 'profile_updated', data: guardianFields }
+          }));
+          
+          if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+            refreshRecentUpdates().catch(err => 
+              console.warn('Could not refresh recent updates:', err)
+            );
+          }
+        },
+      }
+    );
+
+    setIsSaving(false);
+    return result;
+  };
+
+  // Social Links Tab - save social media and bio
+  const handleSaveSocialLinks = async () => {
+    setIsSaving(true);
+    
+    const socialFields = {
+      bio: profileData.bio,
+      linkedIn: profileData.linkedIn,
+      github: profileData.github,
+      twitter: profileData.twitter,
+      facebook: profileData.facebook,
+      instagram: profileData.instagram,
+      portfolio: profileData.portfolio,
+    };
+
+    const result = await safeSave(
+      () => updateProfile(socialFields),
+      {
+        section: 'social',
+        action: 'update_social_links',
+        validationFields: ['url'],
+        data: socialFields,
+        toast,
+        onSuccess: () => {
+          window.dispatchEvent(new CustomEvent('learner_settings_updated', {
+            detail: { type: 'profile_updated', data: socialFields }
+          }));
+          
+          if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+            refreshRecentUpdates().catch(err => 
+              console.warn('Could not refresh recent updates:', err)
+            );
+          }
+        },
+      }
+    );
+
+    setIsSaving(false);
+    return result;
+  };
+
+  const handleSavePassword = async () => {
+    // Validation
+    if (!passwordData.currentPassword) {
+      toast.error("Please enter your current password");
+      return;
+    }
+
+    if (!passwordData.newPassword) {
+      toast.error("Please enter a new password");
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error("New passwords do not match");
+      return;
+    }
+
+    if (passwordData.newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters long");
+      return;
+    }
+
+    if (passwordData.newPassword === passwordData.currentPassword) {
+      toast.error("New password must be different from current password");
+      return;
+    }
+
+    setIsSaving(true);
+
+    const result = await safeSave(
+      () => updatePassword(passwordData.currentPassword, passwordData.newPassword),
+      {
+        section: 'password',
+        action: 'update_password',
+        toast,
+        enableRetry: false, // Don't retry password changes
+        onSuccess: () => {
+          setPasswordData({
+            currentPassword: "",
+            newPassword: "",
+            confirmPassword: "",
+          });
+          
+          if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+            refreshRecentUpdates().catch(err => 
+              console.warn('Could not refresh recent updates:', err)
+            );
+          }
+        },
+      }
+    );
+
+    setIsSaving(false);
+    return result;
+  };
+
+  const handleSaveNotifications = async () => {
+    setIsSaving(true);
+    savingRef.current = true;
+
+    const currentSettings = { ...notificationSettings };
+
+    const result = await safeSave(
+      () => updateProfile({ notificationSettings: currentSettings }),
+      {
+        section: 'notifications',
+        action: 'update_notification_settings',
+        data: currentSettings,
+        toast,
+        onSuccess: () => {
+          setNotificationSettings(currentSettings);
+          
+          if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+            refreshRecentUpdates().catch(err => 
+              console.warn('Could not refresh recent updates:', err)
+            );
+          }
+        },
+      }
+    );
+
+    setIsSaving(false);
+    setTimeout(() => {
+      savingRef.current = false;
+    }, 1000);
+    
+    return result;
+  };
+
+  const handleSavePrivacy = async () => {
+    setIsSaving(true);
+    savingRef.current = true;
+
+    const currentSettings = { ...privacySettings };
+
+    const result = await safeSave(
+      () => updateProfile({ privacySettings: currentSettings }),
+      {
+        section: 'privacy',
+        action: 'update_privacy_settings',
+        data: currentSettings,
+        toast,
+        onSuccess: () => {
+          setPrivacySettings(currentSettings);
+          
+          if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+            refreshRecentUpdates().catch(err => 
+              console.warn('Could not refresh recent updates:', err)
+            );
+          }
+        },
+      }
+    );
+
+    setIsSaving(false);
+    setTimeout(() => {
+      savingRef.current = false;
+    }, 1000);
+    
+    return result;
+  };
+
+  // Handle resume data extraction and auto-fill
+  const handleResumeDataExtracted = async (parsedData) => {
+    try {
+      const currentProfile = profileData;
+      const mergedData = mergeResumeData(currentProfile, parsedData);
+      
+      setProfileData(mergedData);
+      
+      await updateProfile(mergedData);
+      
+      if (parsedData.education && parsedData.education.length > 0) {
+        // Education data will be automatically updated by the hook
+        if (updateEducation) {
+          await updateEducation(parsedData.education);
+        }
+      }
+      
+      toast.success("Profile auto-filled from resume successfully!");
+      
+      setShowResumeParser(false);
+      
+      try {
+        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+          await refreshRecentUpdates();
+        }
+      } catch (refreshError) {
+        console.warn('Could not refresh recent updates:', refreshError);
+      }
+    } catch (error) {
+      toast.error("Failed to auto-fill profile from resume. Please try again.");
+    }
+  };
+
+  const tabs = [
+    { id: "profile", label: "Profile", icon: User },
+    { id: "security", label: "Security", icon: Lock },
+    { id: "notifications", label: "Notifications", icon: Bell },
+    { id: "privacy", label: "Privacy", icon: Shield },
+    { id: "subscription", label: "Subscription", icon: CreditCard },
+  ];
+
+  // Show loading state
+  if (learnerLoading || educationLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (learnerError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center py-20">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Error Loading Settings
+            </h2>
+            <p className="text-gray-600 mb-4">{learnerError}</p>
+            <Button
+              onClick={() => window.location.reload()}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Retry
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 py-4 sm:py-8 px-4 sm:px-6 lg:px-8">
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+          .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+          }
+        `
+      }} />
+      
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-6 lg:mb-10">
+          <div className="flex items-center gap-3 lg:gap-4 mb-3">
+            <div className="p-2.5 lg:p-3 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl lg:rounded-2xl shadow-sm shadow-blue-500/20">
+              <SettingsIcon className="w-6 h-6 lg:w-7 lg:h-7 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">Settings</h1>
+              <p className="text-sm lg:text-base text-gray-600 mt-0.5">Manage your account preferences</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
+          {/* LEFT SIDEBAR - Navigation */}
+          <div className="lg:col-span-1 space-y-6 order-1 lg:order-1">
+            <div className="sticky top-8">
+              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-sm shadow-slate-200/50">
+                <CardHeader className="pb-4 border-b border-gray-100">
+                  <CardTitle className="text-sm font-semibold text-gray-800 tracking-wide flex items-center gap-2">
+                    <SettingsIcon className="w-4 h-4 text-blue-600" />
+                    Account Settings
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4 px-3">
+                  <nav className="space-y-3">
+                    {tabs.map((tab) => {
+                      const Icon = tab.icon;
+                      const isActive = activeTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => setActiveTab(tab.id)}
+                          className={`w-full rounded-xl transition-all duration-300 group relative ${
+                            isActive
+                              ? "bg-gradient-to-r from-blue-50/70 to-indigo-50/60 border-l-4 border-blue-500"
+                              : "hover:bg-gray-50/70 border-l-4 border-transparent hover:border-gray-200 hover:shadow-[0_1px_6px_rgba(0,0,0,0.03)]"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between px-3 py-3">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`p-2 rounded-lg transition-all duration-300 ${
+                                  isActive
+                                    ? "bg-blue-500"
+                                    : "bg-gray-100 group-hover:bg-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
+                                }`}
+                              >
+                                <Icon
+                                  className={`w-4 h-4 transition-colors ${
+                                    isActive
+                                      ? "text-white"
+                                      : "text-gray-600 group-hover:text-gray-800"
+                                  }`}
+                                />
+                              </div>
+                              <div className="text-left">
+                                <p
+                                  className={`font-medium text-[0.9rem] transition-colors leading-tight ${
+                                    isActive
+                                      ? "text-gray-900"
+                                      : "text-gray-700 group-hover:text-gray-900"
+                                  }`}
+                                >
+                                  {tab.label}
+                                </p>
+                              </div>
+                            </div>
+                            <ChevronRight
+                              className={`w-4 h-4 transition-all duration-300 ${
+                                isActive
+                                  ? "text-blue-500 translate-x-1"
+                                  : "text-gray-400 group-hover:text-gray-600 group-hover:translate-x-1"
+                              }`}
+                            />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </nav>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* RIGHT CONTENT AREA */}
+          <div className="lg:col-span-3 order-2 lg:order-2">
+              {/* Profile Settings */}
+              {activeTab === "profile" && (
+              <ProfileTab
+                profileData={profileData}
+                handleProfileChange={handleProfileChange}
+                handleInstitutionChange={handleInstitutionChange}
+                isSaving={isSaving}
+                initialActiveSubTab={location.state?.activeSubTab}
+                // Tab-specific save handlers
+                handleSavePersonalInfo={handleSavePersonalInfo}
+                handleSaveAdditionalInfo={handleSaveAdditionalInfo}
+                handleSaveInstitutionDetails={handleSaveInstitutionDetails}
+                handleSaveAcademicDetails={handleSaveAcademicDetails}
+                handleSaveGuardianInfo={handleSaveGuardianInfo}
+                handleSaveSocialLinks={handleSaveSocialLinks}
+                setShowResumeParser={setShowResumeParser}
+                schools={schools}
+                colleges={colleges}
+                universities={universities}
+                universityColleges={universityColleges}
+                departments={departments}
+                programs={programs}
+                programSections={programSections}
+                schoolClasses={schoolClasses}
+                showCustomSchool={showCustomSchool}
+                setShowCustomSchool={setShowCustomSchool}
+                showCustomUniversity={showCustomUniversity}
+                setShowCustomUniversity={setShowCustomUniversity}
+                showCustomCollege={showCustomCollege}
+                setShowCustomCollege={setShowCustomCollege}
+                showCustomSchoolClass={showCustomSchoolClass}
+                setShowCustomSchoolClass={setShowCustomSchoolClass}
+                showCustomProgram={showCustomProgram}
+                setShowCustomProgram={setShowCustomProgram}
+                showCustomSemester={showCustomSemester}
+                setShowCustomSemester={setShowCustomSemester}
+                customSchoolName={customSchoolName}
+                setCustomSchoolName={setCustomSchoolName}
+                customUniversityName={customUniversityName}
+                setCustomUniversityName={setCustomUniversityName}
+                customCollegeName={customCollegeName}
+                setCustomCollegeName={setCustomCollegeName}
+                customSchoolClassName={customSchoolClassName}
+                setCustomSchoolClassName={setCustomSchoolClassName}
+                customProgramName={customProgramName}
+                setCustomProgramName={setCustomProgramName}
+                customSemesterName={customSemesterName}
+                setCustomSemesterName={setCustomSemesterName}
+                educationData={educationData}
+                setShowEducationModal={setShowEducationModal}
+                // New profile section props - now using real data
+                softSkillsData={softSkillsData}
+                setShowSoftSkillsModal={setShowSoftSkillsModal}
+                technicalSkillsData={technicalSkillsData}
+                setShowTechnicalSkillsModal={setShowTechnicalSkillsModal}
+                experienceData={experienceData}
+                setShowExperienceModal={setShowExperienceModal}
+                certificatesData={certificatesData}
+                setShowCertificatesModal={setShowCertificatesModal}
+                projectsData={projectsData}
+                setShowProjectsModal={setShowProjectsModal}
+                learnerData={learnerData}
+                // Toggle handlers for skills
+                onToggleTechnicalSkillEnabled={handleToggleTechnicalSkillEnabled}
+                onToggleSoftSkillEnabled={handleToggleSoftSkillEnabled}
+              />
+            )}
+
+            {/* Security Settings */}
+            {activeTab === "security" && (
+              <SecurityTab
+                passwordData={passwordData}
+                handlePasswordChange={handlePasswordChange}
+                handleSavePassword={handleSavePassword}
+                isSaving={isSaving}
+                userEmail={userEmail}
+              />
+            )}
+
+            {/* Notification Settings */}
+            {activeTab === "notifications" && (
+              <NotificationsTab
+                notificationSettings={notificationSettings}
+                handleNotificationToggle={handleNotificationToggle}
+                handleSaveNotifications={handleSaveNotifications}
+                isSaving={isSaving}
+              />
+            )}
+
+            {/* Privacy Settings */}
+            {activeTab === "privacy" && (
+              <PrivacyTab
+                privacySettings={privacySettings}
+                handlePrivacyChange={handlePrivacyChange}
+                handleSavePrivacy={handleSavePrivacy}
+                isSaving={isSaving}
+              />
+            )}
+
+            {/* Subscription Settings */}
+            {activeTab === "subscription" && (
+              <SubscriptionSettingsSection />
+            )}
+          </div>
+        </div>
+
+        {/* Education Edit Modal */}
+        {showEducationModal && (
+          <EducationEditModal
+            isOpen={showEducationModal}
+            onClose={() => setShowEducationModal(false)}
+            data={educationData}
+            onSave={handleEducationSave}
+          />
+        )}
+
+        {/* Soft Skills Edit Modal */}
+        {showSoftSkillsModal && (
+          <SoftSkillsEditModal
+            isOpen={showSoftSkillsModal}
+            onClose={() => setShowSoftSkillsModal(false)}
+            data={softSkillsData}
+            onSave={handleSoftSkillsSave}
+          />
+        )}
+
+        {/* Technical Skills Edit Modal - Using same modal type as Dashboard */}
+        {showTechnicalSkillsModal && (
+          <SkillsEditModal
+            isOpen={showTechnicalSkillsModal}
+            onClose={() => setShowTechnicalSkillsModal(false)}
+            data={technicalSkillsData || []}
+            onSave={handleTechnicalSkillsSave}
+            title="Skills"
+          />
+        )}
+
+        {/* Experience Edit Modal */}
+        {showExperienceModal && (
+          <ExperienceEditModal
+            isOpen={showExperienceModal}
+            onClose={() => setShowExperienceModal(false)}
+            data={experienceData}
+            onSave={handleExperienceSave}
+          />
+        )}
+
+        {/* Certificates Edit Modal */}
+        {showCertificatesModal && (
+          <CertificatesEditModal
+            isOpen={showCertificatesModal}
+            onClose={() => setShowCertificatesModal(false)}
+            data={certificatesData}
+            onSave={handleCertificatesSave}
+          />
+        )}
+
+        {/* Projects Edit Modal */}
+        {showProjectsModal && (
+          <ProjectsEditModal
+            isOpen={showProjectsModal}
+            onClose={() => setShowProjectsModal(false)}
+            data={projectsData}
+            onSave={handleProjectsSave}
+          />
+        )}
+
+        {/* Resume Parser Modal */}
+        {showResumeParser && (
+          <ResumeParser
+            onDataExtracted={handleResumeDataExtracted}
+            onClose={() => setShowResumeParser(false)}
+            userEmail={userEmail}
+            learnerData={learnerData}
+            user={user}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default MainSettings;

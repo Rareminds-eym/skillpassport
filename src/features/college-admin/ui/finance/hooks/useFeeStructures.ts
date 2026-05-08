@@ -2,7 +2,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { supabase } from '@/shared/api/supabaseClient';
-import { FeeStructure } from '@/features/student-profile/model';
+import { FeeStructure } from '@/features/learner-profile/model';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('fee-structures');

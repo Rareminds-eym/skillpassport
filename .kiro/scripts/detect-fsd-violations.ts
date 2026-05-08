@@ -356,7 +356,7 @@ function detectStructuralViolations(srcDir: string): {
   // Check for domain-specific code in shared
   const sharedDir = path.join(srcDir, 'shared');
   if (fs.existsSync(sharedDir)) {
-    const domainKeywords = ['student', 'teacher', 'recruiter', 'admin', 'college', 'school', 'university', 'educator'];
+    const domainKeywords = ['learner', 'teacher', 'recruiter', 'admin', 'college', 'school', 'university', 'educator'];
     
     function checkSharedDirectory(dir: string) {
       const entries = fs.readdirSync(dir, { withFileTypes: true });

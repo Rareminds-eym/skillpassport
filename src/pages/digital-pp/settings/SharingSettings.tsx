@@ -11,7 +11,7 @@ const logger = getLogger('sharing-settings');
 
 const SharingSettings: React.FC = () => {
   const navigate = useNavigate();
-  const { student } = usePortfolio();
+  const { learner } = usePortfolio();
   const [shareLink, setShareLink] = useState('');
   const [copied, setCopied] = useState(false);
   const [isPublic, setIsPublic] = useState(true);
@@ -19,7 +19,7 @@ const SharingSettings: React.FC = () => {
 
   // Generate initial share link
   useEffect(() => {
-    const userId = student?.id || 'demo-user';
+    const userId = learner?.id || 'demo-user';
     const link = generateShareableLink(userId);
     setShareLink(link);
     
@@ -29,7 +29,7 @@ const SharingSettings: React.FC = () => {
     }).catch(err => {
       logger.error('Failed to generate QR code', err as Error);
     });
-  }, [student?.id]);
+  }, [learner?.id]);
 
   const handleCopyLink = async () => {
     try {
@@ -55,7 +55,7 @@ const SharingSettings: React.FC = () => {
   };
 
   const handleSocialShare = async (platform: string) => {
-    const title = `${student?.profile.name || 'My'} Portfolio`;
+    const title = `${learner?.profile.name || 'My'} Portfolio`;
     const text = `Check out my digital portfolio!`;
     
     switch (platform) {
@@ -78,7 +78,7 @@ const SharingSettings: React.FC = () => {
   };
 
   const handleDownloadQR = async () => {
-    const fileName = `${student?.profile.name?.replace(/\s+/g, '_') || 'Portfolio'}_QR.png`;
+    const fileName = `${learner?.profile.name?.replace(/\s+/g, '_') || 'Portfolio'}_QR.png`;
     await downloadQRCode(shareLink, fileName);
   };
 

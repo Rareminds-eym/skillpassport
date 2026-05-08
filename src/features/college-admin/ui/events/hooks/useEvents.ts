@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
-import { CollegeEvent } from '@/features/student-profile/model';
+import { CollegeEvent } from '@/features/learner-profile/model';
 import { collegeEventsService, organizationsService } from "@/features/college-admin";
 
 const logger = getLogger('college-admin:useEvents');

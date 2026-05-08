@@ -75,7 +75,7 @@ const ReportsAnalytics: React.FC = () => {
       id: "attendance",
       title: "Attendance",
       icon: <Users className="h-5 w-5" />,
-      description: "Student and faculty attendance tracking",
+      description: "Learner and faculty attendance tracking",
       color: "blue"
     },
     {

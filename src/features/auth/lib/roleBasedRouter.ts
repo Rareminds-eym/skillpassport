@@ -6,7 +6,7 @@ import { UserRole } from '@/features/auth';
  * Maps user roles to their respective dashboard routes
  */
 const ROLE_ROUTES: Record<UserRole, string> = {
-  student: '/student/dashboard',
+  learner: '/learner/dashboard',
   recruiter: '/recruitment/overview',
   educator: '/educator/dashboard',
   school_admin: '/school-admin/dashboard',

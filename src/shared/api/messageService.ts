@@ -16,9 +16,9 @@ export interface Message {
   id: number;
   conversation_id: string;
   sender_id: string;
-  sender_type: 'student' | 'recruiter' | 'educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
+  sender_type: 'learner' | 'recruiter' | 'educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
   receiver_id: string;
-  receiver_type: 'student' | 'recruiter' | 'educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
+  receiver_type: 'learner' | 'recruiter' | 'educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
   message_text: string;
   attachments?: any[];
   application_id?: number;
@@ -32,7 +32,7 @@ export interface Message {
 
 export interface Conversation {
   id: string;
-  student_id?: string;
+  learner_id?: string;
   recruiter_id?: string;
   educator_id?: string;
   school_id?: string;
@@ -42,11 +42,11 @@ export interface Conversation {
   class_id?: number;
   subject?: string;
   status: 'active' | 'archived' | 'closed';
-  conversation_type: 'student_recruiter' | 'student_educator' | 'educator_recruiter' | 'student_admin' | 'student_college_admin' | 'student_college_educator' | 'educator_admin' | 'college_educator_admin';
+  conversation_type: 'learner_recruiter' | 'learner_educator' | 'educator_recruiter' | 'learner_admin' | 'learner_college_admin' | 'learner_college_educator' | 'educator_admin' | 'college_educator_admin';
   last_message_at?: string;
   last_message_preview?: string;
   last_message_sender?: string;
-  student_unread_count: number;
+  learner_unread_count: number;
   recruiter_unread_count: number;
   educator_unread_count: number;
   admin_unread_count?: number;
@@ -55,19 +55,19 @@ export interface Conversation {
   updated_at: string;
   
   // Soft delete fields
-  deleted_by_student?: boolean;
+  deleted_by_learner?: boolean;
   deleted_by_recruiter?: boolean;
   deleted_by_educator?: boolean;
   deleted_by_admin?: boolean;
   deleted_by_college_admin?: boolean;
-  student_deleted_at?: string;
+  learner_deleted_at?: string;
   recruiter_deleted_at?: string;
   educator_deleted_at?: string;
   admin_deleted_at?: string;
   college_admin_deleted_at?: string;
   
   // Joined data
-  student?: any;
+  learner?: any;
   recruiter?: any;
   educator?: any;
   application?: any;
@@ -83,8 +83,8 @@ export class MessageService {
     if (!conversations || conversations.length === 0) return conversations;
 
     // Group conversations by type
-    const schoolEducatorConvs = conversations.filter(c => c.conversation_type === 'student_educator');
-    const collegeEducatorConvs = conversations.filter(c => c.conversation_type === 'student_college_educator');
+    const schoolEducatorConvs = conversations.filter(c => c.conversation_type === 'learner_educator');
+    const collegeEducatorConvs = conversations.filter(c => c.conversation_type === 'learner_college_educator');
 
     // Fetch school educator details
     if (schoolEducatorConvs.length > 0) {
@@ -129,17 +129,17 @@ export class MessageService {
   }
 
   /**
-   * Get or create conversation between student and recruiter
+   * Get or create conversation between learner and recruiter
    * Optimized with request deduplication
    */
   static async getOrCreateConversation(
-    studentId: string,
+    learnerId: string,
     recruiterId: string,
     applicationId?: number | string,
     opportunityId?: number | string,
     subject?: string
   ): Promise<Conversation> {
-    const cacheKey = `${studentId}:${recruiterId}:${applicationId || 'null'}`;
+    const cacheKey = `${learnerId}:${recruiterId}:${applicationId || 'null'}`;
     
     // Deduplicate concurrent requests
     if (pendingRequests.has(cacheKey)) {
@@ -147,7 +147,7 @@ export class MessageService {
     }
     
     const request = this._getOrCreateConversationInternal(
-      studentId,
+      learnerId,
       recruiterId,
       applicationId,
       opportunityId,
@@ -165,7 +165,7 @@ export class MessageService {
   }
 
   private static async _getOrCreateConversationInternal(
-    studentId: string,
+    learnerId: string,
     recruiterId: string,
     applicationId?: number | string,
     opportunityId?: number | string,
@@ -219,8 +219,8 @@ export class MessageService {
       // Optimized query: fetch only necessary fields initially
       let query = supabase
         .from('conversations')
-        .select('id, status, deleted_by_student, deleted_by_recruiter, student_id, recruiter_id, application_id, opportunity_id, subject, created_at, updated_at')
-        .eq('student_id', studentId)
+        .select('id, status, deleted_by_learner, deleted_by_recruiter, learner_id, recruiter_id, application_id, opportunity_id, subject, created_at, updated_at')
+        .eq('learner_id', learnerId)
         .eq('recruiter_id', recruiterId)
         .limit(1);
       
@@ -236,13 +236,13 @@ export class MessageService {
       
       if (existing) {
         // If conversation was deleted, restore it (WhatsApp behavior)
-        if (existing.deleted_by_student || existing.deleted_by_recruiter) {
+        if (existing.deleted_by_learner || existing.deleted_by_recruiter) {
           const { data: restored, error: restoreError } = await supabase
             .from('conversations')
             .update({
-              deleted_by_student: false,
+              deleted_by_learner: false,
               deleted_by_recruiter: false,
-              student_deleted_at: null,
+              learner_deleted_at: null,
               recruiter_deleted_at: null,
               updated_at: new Date().toISOString()
             })
@@ -268,7 +268,7 @@ export class MessageService {
         .from('conversations')
         .insert({
           id: conversationId,
-          student_id: studentId,
+          learner_id: learnerId,
           recruiter_id: recruiterId,
           application_id: applicationIdOld,
           opportunity_id: opportunityIdOld,
@@ -287,24 +287,24 @@ export class MessageService {
   }
 
   /**
-   * Get or create conversation between student and educator
+   * Get or create conversation between learner and educator
    * For school class-related discussions, assignments, etc.
    */
-  static async getOrCreateStudentEducatorConversation(
-    studentId: string,
+  static async getOrCreatelearnerEducatorConversation(
+    learnerId: string,
     educatorId: string,
     classId?: string,
     subject?: string
   ): Promise<Conversation> {
-    const cacheKey = `student_educator:${studentId}:${educatorId}:${classId || 'null'}:${subject || 'general'}`;
+    const cacheKey = `learner_educator:${learnerId}:${educatorId}:${classId || 'null'}:${subject || 'general'}`;
     
     // Deduplicate concurrent requests
     if (pendingRequests.has(cacheKey)) {
       return pendingRequests.get(cacheKey)!;
     }
     
-    const request = this._getOrCreateStudentEducatorConversationInternal(
-      studentId,
+    const request = this._getOrCreatelearnerEducatorConversationInternal(
+      learnerId,
       educatorId,
       classId,
       subject
@@ -320,8 +320,8 @@ export class MessageService {
     }
   }
 
-  private static async _getOrCreateStudentEducatorConversationInternal(
-    studentId: string,
+  private static async _getOrCreatelearnerEducatorConversationInternal(
+    learnerId: string,
     educatorId: string,
     classId?: string,
     subject?: string
@@ -330,10 +330,10 @@ export class MessageService {
       // Check for existing conversation
       let query = supabase
         .from('conversations')
-        .select('id, status, deleted_by_student, deleted_by_educator, student_id, educator_id, class_id, subject, created_at, updated_at')
-        .eq('student_id', studentId)
+        .select('id, status, deleted_by_learner, deleted_by_educator, learner_id, educator_id, class_id, subject, created_at, updated_at')
+        .eq('learner_id', learnerId)
         .eq('educator_id', educatorId)
-        .eq('conversation_type', 'student_educator')
+        .eq('conversation_type', 'learner_educator')
         .limit(1);
       
       if (classId) {
@@ -352,13 +352,13 @@ export class MessageService {
       
       if (existing) {
         // If conversation was deleted, restore it
-        if (existing.deleted_by_student || existing.deleted_by_educator) {
+        if (existing.deleted_by_learner || existing.deleted_by_educator) {
           const { data: restored, error: restoreError } = await supabase
             .from('conversations')
             .update({
-              deleted_by_student: false,
+              deleted_by_learner: false,
               deleted_by_educator: false,
-              student_deleted_at: null,
+              learner_deleted_at: null,
               educator_deleted_at: null,
               updated_at: new Date().toISOString()
             })
@@ -367,7 +367,7 @@ export class MessageService {
             .maybeSingle();
 
           if (restoreError) {
-            logger.warn('Could not restore student-educator conversation, using as-is', { conversationId: existing.id });
+            logger.warn('Could not restore learner-educator conversation, using as-is', { conversationId: existing.id });
             return existing as Conversation;
           }
 
@@ -384,11 +384,11 @@ export class MessageService {
         .from('conversations')
         .insert({
           id: conversationId,
-          student_id: studentId,
+          learner_id: learnerId,
           educator_id: educatorId,
           class_id: classId,
           subject: subject || 'General Discussion',
-          conversation_type: 'student_educator',
+          conversation_type: 'learner_educator',
           status: 'active'
         })
         .select()
@@ -403,17 +403,17 @@ export class MessageService {
   }
 
   /**
-   * Get or create a conversation between a student and college lecturer
+   * Get or create a conversation between a learner and college lecturer
    * For college course-related discussions, assignments, etc.
    */
-  static async getOrCreateStudentCollegeLecturerConversation(
-    studentId: string,
+  static async getOrCreatelearnerCollegeLecturerConversation(
+    learnerId: string,
     collegeLecturerId: string,
     collegeId: string,
     programSectionId?: string,
     subject?: string
   ): Promise<Conversation> {
-    const cacheKey = `student_college_lecturer_${studentId}_${collegeLecturerId}_${subject || 'general'}`;
+    const cacheKey = `learner_college_lecturer_${learnerId}_${collegeLecturerId}_${subject || 'general'}`;
     
     if (conversationCache.has(cacheKey)) {
       const cached = conversationCache.get(cacheKey);
@@ -422,8 +422,8 @@ export class MessageService {
       }
     }
     
-    const request = this._getOrCreateStudentCollegeLecturerConversationInternal(
-      studentId,
+    const request = this._getOrCreatelearnerCollegeLecturerConversationInternal(
+      learnerId,
       collegeLecturerId,
       collegeId,
       programSectionId,
@@ -443,8 +443,8 @@ export class MessageService {
     return request;
   }
 
-  private static async _getOrCreateStudentCollegeLecturerConversationInternal(
-    studentId: string,
+  private static async _getOrCreatelearnerCollegeLecturerConversationInternal(
+    learnerId: string,
     collegeLecturerId: string,
     collegeId: string,
     programSectionId?: string,
@@ -454,10 +454,10 @@ export class MessageService {
       // Check for existing conversation
       let query = supabase
         .from('conversations')
-        .select('id, status, deleted_by_student, deleted_by_educator, student_id, educator_id, subject, created_at, updated_at')
-        .eq('student_id', studentId)
+        .select('id, status, deleted_by_learner, deleted_by_educator, learner_id, educator_id, subject, created_at, updated_at')
+        .eq('learner_id', learnerId)
         .eq('educator_id', collegeLecturerId)
-        .eq('conversation_type', 'student_college_educator')
+        .eq('conversation_type', 'learner_college_educator')
         .limit(1);
       
       if (subject) {
@@ -472,13 +472,13 @@ export class MessageService {
       
       if (existing) {
         // If conversation was deleted, restore it
-        if (existing.deleted_by_student || existing.deleted_by_educator) {
+        if (existing.deleted_by_learner || existing.deleted_by_educator) {
           const { data: restored, error: restoreError } = await supabase
             .from('conversations')
             .update({
-              deleted_by_student: false,
+              deleted_by_learner: false,
               deleted_by_educator: false,
-              student_deleted_at: null,
+              learner_deleted_at: null,
               educator_deleted_at: null,
               updated_at: new Date().toISOString()
             })
@@ -487,7 +487,7 @@ export class MessageService {
             .maybeSingle();
 
           if (restoreError) {
-            logger.warn('Could not restore student-college lecturer conversation, using as-is', { conversationId: existing.id });
+            logger.warn('Could not restore learner-college lecturer conversation, using as-is', { conversationId: existing.id });
             return existing as Conversation;
           }
 
@@ -504,12 +504,12 @@ export class MessageService {
         .from('conversations')
         .insert({
           id: conversationId,
-          student_id: studentId,
+          learner_id: learnerId,
           educator_id: collegeLecturerId,
           college_id: collegeId,
           program_section_id: programSectionId,
           subject: subject || 'General Discussion',
-          conversation_type: 'student_college_educator',
+          conversation_type: 'learner_college_educator',
           status: 'active'
         })
         .select()
@@ -530,9 +530,9 @@ export class MessageService {
   static async sendMessage(
     conversationId: string,
     senderId: string,
-    senderType: 'student' | 'recruiter' | 'educator' | 'college_educator' | 'school_admin' | 'college_admin',
+    senderType: 'learner' | 'recruiter' | 'educator' | 'college_educator' | 'school_admin' | 'college_admin',
     receiverId: string,
-    receiverType: 'student' | 'recruiter' | 'educator' | 'college_educator' | 'school_admin' | 'college_admin',
+    receiverType: 'learner' | 'recruiter' | 'educator' | 'college_educator' | 'school_admin' | 'college_admin',
     messageText: string,
     applicationId?: number | string,
     opportunityId?: number | string,
@@ -617,12 +617,12 @@ export class MessageService {
   }
 
   /**
-   * Send a student-educator message
-   * Convenience method for student-educator messaging
+   * Send a learner-educator message
+   * Convenience method for learner-educator messaging
    */
-  static async sendStudentEducatorMessage(
+  static async sendlearnerEducatorMessage(
     conversationId: string,
-    studentId: string,
+    learnerId: string,
     messageText: string,
     classId?: string,
     subject?: string,
@@ -656,8 +656,8 @@ export class MessageService {
 
       return this.sendMessage(
         conversationId,
-        studentId,
-        'student',
+        learnerId,
+        'learner',
         conversation.educator_id,
         'educator',
         messageText,
@@ -668,7 +668,7 @@ export class MessageService {
         attachments
       );
     } catch (error) {
-      logger.error('Error in sendStudentEducatorMessage', error instanceof Error ? error : new Error(String(error)), { conversationId, studentId });
+      logger.error('Error in sendlearnerEducatorMessage', error instanceof Error ? error : new Error(String(error)), { conversationId, learnerId });
       throw error;
     }
   }
@@ -770,7 +770,7 @@ export class MessageService {
    */
   static async getUserConversations(
     userId: string,
-    userType: 'student' | 'recruiter' | 'educator' | 'college_educator',
+    userType: 'learner' | 'recruiter' | 'educator' | 'college_educator',
     includeArchived: boolean = false,
     useCache: boolean = true,
     conversationType?: string
@@ -810,15 +810,15 @@ export class MessageService {
 
   private static async _getUserConversationsInternal(
     userId: string,
-    userType: 'student' | 'recruiter' | 'educator' | 'college_educator',
+    userType: 'learner' | 'recruiter' | 'educator' | 'college_educator',
     includeArchived: boolean,
     cacheKey: string,
     useCache: boolean,
     conversationType?: string
   ): Promise<Conversation[]> {
     try {
-      const column = userType === 'student' ? 'student_id' : userType === 'recruiter' ? 'recruiter_id' : 'educator_id';
-      const deletedColumn = userType === 'student' ? 'deleted_by_student' : userType === 'recruiter' ? 'deleted_by_recruiter' : 'deleted_by_educator';
+      const column = userType === 'learner' ? 'learner_id' : userType === 'recruiter' ? 'recruiter_id' : 'educator_id';
+      const deletedColumn = userType === 'learner' ? 'deleted_by_learner' : userType === 'recruiter' ? 'deleted_by_recruiter' : 'deleted_by_educator';
       
       // Create different queries based on user type to avoid unnecessary JOINs
       let query;
@@ -829,7 +829,7 @@ export class MessageService {
           .from('conversations')
           .select(`
             id,
-            student_id,
+            learner_id,
             educator_id,
             class_id,
             subject,
@@ -842,7 +842,7 @@ export class MessageService {
             created_at,
             updated_at,
             deleted_by_educator,
-            student:students(
+            learner:learners(
               id,
               user_id,
               email,
@@ -854,14 +854,14 @@ export class MessageService {
             school_class:school_classes(id, name, grade, section)
           `)
           .eq(column, userId)
-          .eq('conversation_type', 'student_educator'); // Only school educator conversations
+          .eq('conversation_type', 'learner_educator'); // Only school educator conversations
       } else if (userType === 'college_educator') {
         // Query for college educators - include college lecturer details
         query = supabase
           .from('conversations')
           .select(`
             id,
-            student_id,
+            learner_id,
             educator_id,
             subject,
             status,
@@ -873,7 +873,7 @@ export class MessageService {
             created_at,
             updated_at,
             deleted_by_educator,
-            student:students(
+            learner:learners(
               id,
               user_id,
               email,
@@ -886,14 +886,14 @@ export class MessageService {
             )
           `)
           .eq(column, userId)
-          .eq('conversation_type', 'student_college_educator'); // Only college educator conversations
-      } else if (userType === 'student') {
-        // Simplified query for students - remove educator JOIN to avoid issues with college lecturers
+          .eq('conversation_type', 'learner_college_educator'); // Only college educator conversations
+      } else if (userType === 'learner') {
+        // Simplified query for learners - remove educator JOIN to avoid issues with college lecturers
         query = supabase
           .from('conversations')
           .select(`
             id,
-            student_id,
+            learner_id,
             recruiter_id,
             educator_id,
             class_id,
@@ -903,10 +903,10 @@ export class MessageService {
             last_message_at,
             last_message_preview,
             last_message_sender,
-            student_unread_count,
+            learner_unread_count,
             created_at,
             updated_at,
-            deleted_by_student,
+            deleted_by_learner,
             school_id,
             college_id,
             recruiter:recruiters(id, name, email, phone),
@@ -921,7 +921,7 @@ export class MessageService {
           .from('conversations')
           .select(`
             id,
-            student_id,
+            learner_id,
             recruiter_id,
             educator_id,
             application_id,
@@ -933,15 +933,15 @@ export class MessageService {
             last_message_at,
             last_message_preview,
             last_message_sender,
-            student_unread_count,
+            learner_unread_count,
             recruiter_unread_count,
             educator_unread_count,
             created_at,
             updated_at,
-            deleted_by_student,
+            deleted_by_learner,
             deleted_by_recruiter,
             deleted_by_educator,
-            student:students(
+            learner:learners(
               id,
               user_id,
               email,
@@ -993,7 +993,7 @@ export class MessageService {
             .from('conversations')
             .select(`
               id,
-              student_id,
+              learner_id,
               recruiter_id,
               educator_id,
               application_id,
@@ -1005,12 +1005,12 @@ export class MessageService {
               last_message_at,
               last_message_preview,
               last_message_sender,
-              student_unread_count,
+              learner_unread_count,
               recruiter_unread_count,
               educator_unread_count,
               created_at,
               updated_at,
-              student:students(id, name, email, contact_number, university, branch_field),
+              learner:learners(id, name, email, contact_number, university, branch_field),
               recruiter:recruiters(id, name, email, phone),
               opportunity:opportunities(id, title, company_name, location, employment_type),
               application:applied_jobs(id, application_status),
@@ -1036,8 +1036,8 @@ export class MessageService {
           
           const conversations = retryData || [];
           
-          // Fetch educator details for student and educator conversations
-          const conversationsWithEducators = (userType === 'student' || userType === 'educator' || userType === 'college_educator')
+          // Fetch educator details for learner and educator conversations
+          const conversationsWithEducators = (userType === 'learner' || userType === 'educator' || userType === 'college_educator')
             ? await this.fetchEducatorDetails(conversations)
             : conversations;
           
@@ -1054,8 +1054,8 @@ export class MessageService {
       
       const conversations = data || [];
       
-      // Fetch educator details for student and educator conversations
-      const conversationsWithEducators = (userType === 'student' || userType === 'educator' || userType === 'college_educator')
+      // Fetch educator details for learner and educator conversations
+      const conversationsWithEducators = (userType === 'learner' || userType === 'educator' || userType === 'college_educator')
         ? await this.fetchEducatorDetails(conversations)
         : conversations;
       
@@ -1148,7 +1148,7 @@ export class MessageService {
         // Get conversation details
         supabase
           .from('conversations')
-          .select('student_id, recruiter_id, educator_id, school_id, college_id, conversation_type')
+          .select('learner_id, recruiter_id, educator_id, school_id, college_id, conversation_type')
           .eq('id', conversationId)
           .maybeSingle()
       ]);
@@ -1160,12 +1160,12 @@ export class MessageService {
       
       if (conversationResult.status === 'fulfilled' && conversationResult.value.data) {
         const conversation = conversationResult.value.data as any; // Type assertion to handle dynamic select
-        const isStudent = conversation.student_id === userId;
+        const isLearner = conversation.learner_id === userId;
         const isRecruiter = conversation.recruiter_id === userId;
         const isEducator = conversation.educator_id === userId;
         
         // Handle admin conversations
-        if (conversation.conversation_type === 'student_admin') {
+        if (conversation.conversation_type === 'learner_admin') {
           // For admin conversations, we need to check if the user is a school admin
           const { data: schoolAdmin, error: adminError } = await supabase
             .from('school_educators')
@@ -1181,14 +1181,14 @@ export class MessageService {
               .from('conversations')
               .update({ admin_unread_count: 0 })
               .eq('id', conversationId);
-          } else if (isStudent) {
-            // User is the student, update student_unread_count
+          } else if (isLearner) {
+            // User is the learner, update learner_unread_count
             await supabase
               .from('conversations')
-              .update({ student_unread_count: 0 })
+              .update({ learner_unread_count: 0 })
               .eq('id', conversationId);
           }
-        } else if (conversation.conversation_type === 'student_college_admin') {
+        } else if (conversation.conversation_type === 'learner_college_admin') {
           // For college admin conversations, we need to check if the user is a college admin
           // Only proceed if we have a valid college_id
           if (conversation.college_id) {
@@ -1221,31 +1221,31 @@ export class MessageService {
                   .from('conversations')
                   .update({ college_admin_unread_count: 0 })
                   .eq('id', conversationId);
-              } else if (isStudent) {
-                // User is the student, update student_unread_count
+              } else if (isLearner) {
+                // User is the learner, update learner_unread_count
                 await supabase
                   .from('conversations')
-                  .update({ student_unread_count: 0 })
+                  .update({ learner_unread_count: 0 })
                   .eq('id', conversationId);
               }
             }
           } else {
-            // Handle case where college_id is missing - just update student count if applicable
+            // Handle case where college_id is missing - just update learner count if applicable
             logger.warn('College ID missing for college admin conversation', { conversationId });
-            if (isStudent) {
+            if (isLearner) {
               await supabase
                 .from('conversations')
-                .update({ student_unread_count: 0 })
+                .update({ learner_unread_count: 0 })
                 .eq('id', conversationId);
             }
           }
-        } else if (conversation.conversation_type === 'student_college_educator') {
-          // For student-college lecturer conversations
-          if (isStudent) {
-            // User is the student, update student_unread_count
+        } else if (conversation.conversation_type === 'learner_college_educator') {
+          // For learner-college lecturer conversations
+          if (isLearner) {
+            // User is the learner, update learner_unread_count
             await supabase
               .from('conversations')
-              .update({ student_unread_count: 0 })
+              .update({ learner_unread_count: 0 })
               .eq('id', conversationId);
           } else {
             // Check if user is the college lecturer
@@ -1298,7 +1298,7 @@ export class MessageService {
           }
         } else {
           // Handle regular conversations
-          const updateField = isStudent ? 'student_unread_count' : 
+          const updateField = isLearner ? 'learner_unread_count' : 
                               isRecruiter ? 'recruiter_unread_count' : 
                               'educator_unread_count';
           
@@ -1378,7 +1378,7 @@ export class MessageService {
    */
   static async getUnreadCount(
     userId: string,
-    userType: 'student' | 'recruiter' | 'educator'
+    userType: 'learner' | 'recruiter' | 'educator'
   ): Promise<number> {
     try {
       const { count, error } = await supabase
@@ -1401,16 +1401,16 @@ export class MessageService {
    */
   static subscribeToUserConversations(
     userId: string,
-    userType: 'student' | 'recruiter' | 'educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin',
+    userType: 'learner' | 'recruiter' | 'educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin',
     onUpdate: (conversation: Conversation) => void
   ) {
     let column: string;
     let filter: string;
     
     switch (userType) {
-      case 'student':
-        column = 'student_id';
-        filter = `student_id=eq.${userId}`;
+      case 'learner':
+        column = 'learner_id';
+        filter = `learner_id=eq.${userId}`;
         break;
       case 'recruiter':
         column = 'recruiter_id';
@@ -1465,9 +1465,9 @@ export class MessageService {
   }
 
   /**
-   * Get conversation with student details for recruiter
+   * Get conversation with learner details for recruiter
    */
-  static async getConversationWithStudent(
+  static async getConversationWithLearner(
     conversationId: string
   ): Promise<Conversation | null> {
     try {
@@ -1475,7 +1475,7 @@ export class MessageService {
         .from('conversations')
         .select(`
           *,
-          student:students(id, name, email, contact_number, university, branch_field),
+          learner:learners(id, name, email, contact_number, university, branch_field),
           application:applied_jobs(
             id,
             application_status,
@@ -1532,23 +1532,23 @@ export class MessageService {
   }
 
   /**
-   * Get or create conversation between student and school admin
+   * Get or create conversation between learner and school admin
    * For school-related discussions, issues, etc.
    */
-  static async getOrCreateStudentAdminConversation(
-    studentId: string,
+  static async getOrCreatelearnerAdminConversation(
+    learnerId: string,
     schoolId: string,
     subject?: string
   ): Promise<Conversation> {
-    const cacheKey = `student_admin:${studentId}:${schoolId}:${subject || 'general'}`;
+    const cacheKey = `learner_admin:${learnerId}:${schoolId}:${subject || 'general'}`;
     
     // Deduplicate concurrent requests
     if (pendingRequests.has(cacheKey)) {
       return pendingRequests.get(cacheKey)!;
     }
 
-    const request = this._getOrCreateStudentAdminConversationInternal(
-      studentId,
+    const request = this._getOrCreatelearnerAdminConversationInternal(
+      learnerId,
       schoolId,
       subject
     );
@@ -1563,16 +1563,16 @@ export class MessageService {
     }
   }
 
-  private static async _getOrCreateStudentAdminConversationInternal(
-    studentId: string,
+  private static async _getOrCreatelearnerAdminConversationInternal(
+    learnerId: string,
     schoolId: string,
     subject?: string
   ): Promise<Conversation> {
     try {
       // Use the database function for consistency
       const { data, error } = await supabase
-        .rpc('get_or_create_student_admin_conversation', {
-          p_student_id: studentId,
+        .rpc('get_or_create_learner_admin_conversation', {
+          p_learner_id: learnerId,
           p_school_id: schoolId,
           p_subject: subject || 'General Discussion'
         });
@@ -1580,7 +1580,7 @@ export class MessageService {
       if (error) throw error;
       
       if (!data || data.length === 0) {
-        throw new Error('Failed to create student-admin conversation');
+        throw new Error('Failed to create learner-admin conversation');
       }
 
       const conversationId = data[0].conversation_id;
@@ -1590,7 +1590,7 @@ export class MessageService {
         .from('conversations')
         .select(`
           *,
-          student:students(id, name, email)
+          learner:learners(id, name, email)
         `)
         .eq('id', conversationId)
         .single();
@@ -1599,7 +1599,7 @@ export class MessageService {
       
       return conversation;
     } catch (error) {
-      logger.error('Error creating student-admin conversation', error instanceof Error ? error : new Error(String(error)));
+      logger.error('Error creating learner-admin conversation', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -1611,16 +1611,16 @@ export class MessageService {
   static async deleteConversationForUser(
     conversationId: string,
     userId: string,
-    userType: 'student' | 'recruiter' | 'educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin'
+    userType: 'learner' | 'recruiter' | 'educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin'
   ): Promise<void> {
     try {
       let deletedColumn: string;
       let deletedAtColumn: string;
       
       switch (userType) {
-        case 'student':
-          deletedColumn = 'deleted_by_student';
-          deletedAtColumn = 'student_deleted_at';
+        case 'learner':
+          deletedColumn = 'deleted_by_learner';
+          deletedAtColumn = 'learner_deleted_at';
           break;
         case 'recruiter':
           deletedColumn = 'deleted_by_recruiter';
@@ -1665,16 +1665,16 @@ export class MessageService {
   static async restoreConversation(
     conversationId: string,
     userId: string,
-    userType: 'student' | 'recruiter' | 'educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin'
+    userType: 'learner' | 'recruiter' | 'educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin'
   ): Promise<void> {
     try {
       let deletedColumn: string;
       let deletedAtColumn: string;
       
       switch (userType) {
-        case 'student':
-          deletedColumn = 'deleted_by_student';
-          deletedAtColumn = 'student_deleted_at';
+        case 'learner':
+          deletedColumn = 'deleted_by_learner';
+          deletedAtColumn = 'learner_deleted_at';
           break;
         case 'recruiter':
           deletedColumn = 'deleted_by_recruiter';
@@ -1734,23 +1734,23 @@ export class MessageService {
   }
 
   /**
-   * Get or create conversation between student and college admin
+   * Get or create conversation between learner and college admin
    * For college-related discussions, issues, etc.
    */
-  static async getOrCreateStudentCollegeAdminConversation(
-    studentId: string,
+  static async getOrCreatelearnerCollegeAdminConversation(
+    learnerId: string,
     collegeId: string,
     subject?: string
   ): Promise<Conversation> {
-    const cacheKey = `student_college_admin:${studentId}:${collegeId}:${subject || 'general'}`;
+    const cacheKey = `learner_college_admin:${learnerId}:${collegeId}:${subject || 'general'}`;
     
     // Deduplicate concurrent requests
     if (pendingRequests.has(cacheKey)) {
       return pendingRequests.get(cacheKey)!;
     }
 
-    const request = this._getOrCreateStudentCollegeAdminConversationInternal(
-      studentId,
+    const request = this._getOrCreatelearnerCollegeAdminConversationInternal(
+      learnerId,
       collegeId,
       subject
     );
@@ -1765,16 +1765,16 @@ export class MessageService {
     }
   }
 
-  private static async _getOrCreateStudentCollegeAdminConversationInternal(
-    studentId: string,
+  private static async _getOrCreatelearnerCollegeAdminConversationInternal(
+    learnerId: string,
     collegeId: string,
     subject?: string
   ): Promise<Conversation> {
     try {
       // Use the database function for consistency
       const { data, error } = await supabase
-        .rpc('get_or_create_student_college_admin_conversation', {
-          p_student_id: studentId,
+        .rpc('get_or_create_learner_college_admin_conversation', {
+          p_learner_id: learnerId,
           p_college_id: collegeId,
           p_subject: subject || 'General Discussion'
         });
@@ -1782,7 +1782,7 @@ export class MessageService {
       if (error) throw error;
       
       if (!data || data.length === 0) {
-        throw new Error('Failed to create student-college_admin conversation');
+        throw new Error('Failed to create learner-college_admin conversation');
       }
 
       const conversationId = data[0].conversation_id;
@@ -1793,19 +1793,19 @@ export class MessageService {
         .from('conversations')
         .select(`
           *,
-          student:students(id, name, email, college_id)
+          learner:learners(id, name, email, college_id)
         `)
         .eq('id', conversationId)
         .single();
 
       if (fetchError) throw fetchError;
       
-      // Fetch college name from organizations table if student has college_id
-      if (conversation?.student?.college_id) {
+      // Fetch college name from organizations table if learner has college_id
+      if (conversation?.learner?.college_id) {
         const { data: orgData } = await supabase
           .from('organizations')
           .select('id, name')
-          .eq('id', conversation.student.college_id)
+          .eq('id', conversation.learner.college_id)
           .maybeSingle();
         
         if (orgData) {
@@ -1815,7 +1815,7 @@ export class MessageService {
 
       return conversation;
     } catch (error) {
-      logger.error('Error creating student-college_admin conversation', error instanceof Error ? error : new Error(String(error)));
+      logger.error('Error creating learner-college_admin conversation', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }

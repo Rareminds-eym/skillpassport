@@ -16,12 +16,12 @@ const FloatingAIButton: React.FC = () => {
   }, []);
 
   // Don't show on the Career AI page itself
-  if (location.pathname === '/student/career-ai') {
+  if (location.pathname === '/learner/career-ai') {
     return null;
   }
 
   const handleClick = () => {
-    navigate('/student/career-ai');
+    navigate('/learner/career-ai');
   };
 
   const handleMouseEnter = () => {

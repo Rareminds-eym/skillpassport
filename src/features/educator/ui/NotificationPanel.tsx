@@ -14,17 +14,17 @@ import { useNotifications } from '@/features/notifications'
 
 // Mock notification type
 type NotificationType =
-    | 'student_verification_required'
+    | 'learner_verification_required'
     | 'verification_pending_review'
     | 'verification_approved'
     | 'verification_rejected'
     | 'assignment_submitted'
     | 'class_activity_pending'
-    | 'new_student_enrolled'
+    | 'new_learner_enrolled'
     | 'attendance_reminder'
     | 'system_maintenance'
 
-type FilterKey = 'all' | 'unread' | 'students' | 'assignments' | 'verifications'
+type FilterKey = 'all' | 'unread' | 'learners' | 'assignments' | 'verifications'
 
 interface NotificationPanelProps {
     isOpen: boolean
@@ -68,7 +68,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose, 
     const getNotificationIcon = (type: NotificationType) => {
         const base = 'h-5 w-5'
         switch (type) {
-            case 'student_verification_required':
+            case 'learner_verification_required':
             case 'verification_pending_review':
                 return <ShieldCheckIcon className={`${base} text-amber-500`} />
             case 'verification_approved':
@@ -79,7 +79,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose, 
                 return <DocumentTextIcon className={`${base} text-green-500`} />
             case 'class_activity_pending':
                 return <ExclamationTriangleIcon className={`${base} text-amber-500`} />
-            case 'new_student_enrolled':
+            case 'new_learner_enrolled':
                 return <UserGroupIcon className={`${base} text-indigo-500`} />
             case 'attendance_reminder':
                 return <ExclamationTriangleIcon className={`${base} text-orange-500`} />
@@ -109,12 +109,12 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose, 
         switch (selectedFilter) {
             case 'unread':
                 return !n.read
-            case 'students':
-                return ['student_verification_required', 'new_student_enrolled'].includes(n.type)
+            case 'learners':
+                return ['learner_verification_required', 'new_learner_enrolled'].includes(n.type)
             case 'assignments':
                 return ['assignment_submitted', 'class_activity_pending'].includes(n.type)
             case 'verifications':
-                return ['student_verification_required', 'verification_approved', 'verification_rejected', 'verification_pending_review'].includes(n.type)
+                return ['learner_verification_required', 'verification_approved', 'verification_rejected', 'verification_pending_review'].includes(n.type)
             default:
                 return true
         }
@@ -133,9 +133,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose, 
                 return notifications.length
             case 'unread':
                 return notifications.filter((n) => !n.read).length
-            case 'students':
+            case 'learners':
                 return notifications.filter((n) =>
-                    ['student_verification_required', 'new_student_enrolled'].includes(n.type)
+                    ['learner_verification_required', 'new_learner_enrolled'].includes(n.type)
                 ).length
             case 'assignments':
                 return notifications.filter((n) =>
@@ -143,7 +143,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose, 
                 ).length
             case 'verifications':
                 return notifications.filter((n) =>
-                    ['student_verification_required', 'verification_approved', 'verification_rejected', 'verification_pending_review'].includes(n.type)
+                    ['learner_verification_required', 'verification_approved', 'verification_rejected', 'verification_pending_review'].includes(n.type)
                 ).length
             default:
                 return 0
@@ -205,13 +205,13 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose, 
 
                 {/* Filter Tabs */}
                 <div className="flex gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50 overflow-x-auto flex-shrink-0">
-                    {(['all', 'unread', 'students', 'assignments', 'verifications'] as FilterKey[]).map(
+                    {(['all', 'unread', 'learners', 'assignments', 'verifications'] as FilterKey[]).map(
                         (key) => {
                             const count = getFilterCount(key)
                             const labels: Record<FilterKey, string> = {
                                 all: 'All',
                                 unread: 'Unread',
-                                students: 'Students',
+                                learners: 'Learners',
                                 assignments: 'Assignments',
                                 verifications: 'Verifications'
                             }

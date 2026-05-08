@@ -54,7 +54,7 @@ const BrowseCourses = () => {
     try {
       setLoading(true);
 
-      // Fetch courses with status Active or Upcoming (students shouldn't see Drafts)
+      // Fetch courses with status Active or Upcoming (learners shouldn't see Drafts)
       // Also exclude deleted courses
       let query = supabase
         .from('courses')
@@ -67,7 +67,7 @@ const BrowseCourses = () => {
 
       if (error) throw error;
 
-      console.log('📚 Fetched courses for students:', data?.length || 0);
+      console.log('📚 Fetched courses for learners:', data?.length || 0);
       setCourses(data || []);
 
       // Ensure loader displays for at least 1 second
@@ -496,7 +496,7 @@ const BrowseCourses = () => {
                           </div>
                           <div className="flex items-center gap-2">
                             <Users className="w-4 h-4" />
-                            <span>{course.enrollment_count || 0} students</span>
+                            <span>{course.enrollment_count || 0} learners</span>
                           </div>
                           {course.educator_name && (
                             <div className="flex items-center gap-2">

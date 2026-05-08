@@ -5,7 +5,7 @@ const logger = getLogger('applicationTrackingService');
 
 export interface ApplicationTrackingData {
   id: number;
-  student_id: string;
+  learner_id: string;
   opportunity_id: number;
   application_status: 'applied' | 'viewed' | 'under_review' | 'interview_scheduled' | 'interviewed' | 'offer_received' | 'accepted' | 'rejected' | 'withdrawn';
   applied_at: string;
@@ -15,7 +15,7 @@ export interface ApplicationTrackingData {
   notes?: string;
   
   // Joined data
-  student?: {
+  learner?: {
     id: string;
     user_id: string;
     name: string;
@@ -90,7 +90,7 @@ export interface ApplicationStats {
 
 class ApplicationTrackingService {
   /**
-   * Get all applications with student, opportunity, and company details
+   * Get all applications with learner, opportunity, and company details
    */
   async getAllApplications(filters: ApplicationFilters = {}): Promise<ApplicationTrackingData[]> {
     try {
@@ -123,13 +123,13 @@ class ApplicationTrackingService {
         return [];
       }
 
-      // Get unique student IDs and opportunity IDs
-      const studentIds = [...new Set(appliedJobs.map(job => job.student_id))];
+      // Get unique learner IDs and opportunity IDs
+      const learnerIds = [...new Set(appliedJobs.map(job => job.learner_id))];
       const opportunityIds = [...new Set(appliedJobs.map(job => job.opportunity_id))];
 
-      // Fetch students data with university name from organizations table
-      const { data: students, error: studentsError } = await supabase
-        .from('students')
+      // Fetch learners data with university name from organizations table
+      const { data: learners, error: learnersError } = await supabase
+        .from('learners')
         .select(`
           id, 
           user_id, 
@@ -151,7 +151,7 @@ class ApplicationTrackingService {
             name
           )
         `)
-        .in('id', studentIds);
+        .in('id', learnerIds);
 
 
       // Fetch opportunities data
@@ -180,9 +180,9 @@ class ApplicationTrackingService {
         }
       }
 
-      // Create lookup maps - applied_jobs.student_id references students.id
-      const studentMap = (students || []).reduce((acc, student) => {
-        acc[student.id] = student;
+      // Create lookup maps - applied_jobs.learner_id references learners.id
+      const learnerMap = (learners || []).reduce((acc, learner) => {
+        acc[learner.id] = learner;
         return acc;
       }, {} as Record<string, any>);
       const opportunityMap = (opportunities || []).reduce((acc, opp) => {
@@ -197,32 +197,32 @@ class ApplicationTrackingService {
 
       // Combine all data
       let result = appliedJobs.map(job => {
-        const student = studentMap[job.student_id];
+        const learner = learnerMap[job.learner_id];
         const opportunity = opportunityMap[job.opportunity_id];
         const company = opportunity ? companyMap[opportunity.company_name] : null;
 
 
         return {
           ...job,
-          student: student ? {
-            id: student.id,
-            user_id: student.user_id,
-            name: student.name || 'Unknown Student',
-            email: student.email || 'No email',
-            contact_number: student.contact_number || student.contactNumber || '',
-            university: student.organizations?.name || student.university || 'N/A',
-            branch_field: student.branch_field || '',
-            course_name: student.course_name || '',
-            college_school_name: student.college_school_name || '',
-            district_name: student.district_name || '',
-            currentCgpa: student.currentCgpa || null,
-            expectedGraduationDate: student.expectedGraduationDate || '',
-            approval_status: student.approval_status,
-            college_id: student.college_id
+          learner: learner ? {
+            id: learner.id,
+            user_id: learner.user_id,
+            name: learner.name || 'Unknown Learner',
+            email: learner.email || 'No email',
+            contact_number: learner.contact_number || learner.contactNumber || '',
+            university: learner.organizations?.name || learner.university || 'N/A',
+            branch_field: learner.branch_field || '',
+            course_name: learner.course_name || '',
+            college_school_name: learner.college_school_name || '',
+            district_name: learner.district_name || '',
+            currentCgpa: learner.currentCgpa || null,
+            expectedGraduationDate: learner.expectedGraduationDate || '',
+            approval_status: learner.approval_status,
+            college_id: learner.college_id
           } : {
-            id: job.student_id,
+            id: job.learner_id,
             user_id: '',
-            name: 'Unknown Student',
+            name: 'Unknown Learner',
             email: 'No email',
             contact_number: '',
             university: 'N/A',
@@ -244,8 +244,8 @@ class ApplicationTrackingService {
       if (filters.search) {
         const search = filters.search.toLowerCase();
         result = result.filter(app => 
-          app.student?.name?.toLowerCase().includes(search) ||
-          app.student?.email?.toLowerCase().includes(search) ||
+          app.learner?.name?.toLowerCase().includes(search) ||
+          app.learner?.email?.toLowerCase().includes(search) ||
           app.opportunity?.title?.toLowerCase().includes(search) ||
           app.opportunity?.job_title?.toLowerCase().includes(search) ||
           app.opportunity?.company_name?.toLowerCase().includes(search) ||
@@ -259,8 +259,8 @@ class ApplicationTrackingService {
 
       if (filters.department) {
         result = result.filter(app => 
-          app.student?.branch_field === filters.department ||
-          app.student?.course_name === filters.department ||
+          app.learner?.branch_field === filters.department ||
+          app.learner?.course_name === filters.department ||
           app.opportunity?.department === filters.department
         );
       }
@@ -270,7 +270,7 @@ class ApplicationTrackingService {
       }
 
       if (filters.college_id) {
-        result = result.filter(app => app.student?.college_id === filters.college_id);
+        result = result.filter(app => app.learner?.college_id === filters.college_id);
       }
 
       return result;
@@ -285,22 +285,22 @@ class ApplicationTrackingService {
    */
   async getApplicationStats(filters: ApplicationFilters = {}): Promise<ApplicationStats> {
     try {
-      // If college_id filter is provided, we need to filter by students from that college
+      // If college_id filter is provided, we need to filter by learners from that college
       if (filters.college_id) {
-        // First get student IDs from the college
-        const { data: students, error: studentsError } = await supabase
-          .from('students')
+        // First get learner IDs from the college
+        const { data: learners, error: learnersError } = await supabase
+          .from('learners')
           .select('id')
           .eq('college_id', filters.college_id);
 
-        if (studentsError) {
-          logger.error('Failed to fetch students for stats', studentsError as Error);
-          throw studentsError;
+        if (learnersError) {
+          logger.error('Failed to fetch learners for stats', learnersError as Error);
+          throw learnersError;
         }
 
-        const studentIds = (students || []).map(s => s.id);
+        const learnerIds = (learners || []).map(s => s.id);
 
-        if (studentIds.length === 0) {
+        if (learnerIds.length === 0) {
           return {
             total: 0,
             applied: 0,
@@ -315,11 +315,11 @@ class ApplicationTrackingService {
           };
         }
 
-        // Now query applied_jobs for these students
+        // Now query applied_jobs for these learners
         let query = supabase
           .from('applied_jobs')
           .select('application_status')
-          .in('student_id', studentIds);
+          .in('learner_id', learnerIds);
 
         // Apply other filters
         if (filters.status) {
@@ -572,8 +572,8 @@ class ApplicationTrackingService {
       const departments = new Set<string>();
       
       applications.forEach(app => {
-        if (app.student?.branch_field) departments.add(app.student.branch_field);
-        if (app.student?.course_name) departments.add(app.student.course_name);
+        if (app.learner?.branch_field) departments.add(app.learner.branch_field);
+        if (app.learner?.course_name) departments.add(app.learner.course_name);
         if (app.opportunity?.department) departments.add(app.opportunity.department);
       });
 
@@ -587,12 +587,12 @@ class ApplicationTrackingService {
   /**
    * Get pipeline data for a specific application
    */
-  async getPipelineDataForApplication(studentId: string, opportunityId: number): Promise<any> {
+  async getPipelineDataForApplication(learnerId: string, opportunityId: number): Promise<any> {
     try {
       const { data, error } = await supabase
         .from('pipeline_candidates')
         .select('*')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('opportunity_id', opportunityId)
         .maybeSingle();
 

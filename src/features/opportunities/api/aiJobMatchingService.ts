@@ -1,17 +1,17 @@
 import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * AI Job Matching Service
- * Uses vector embeddings and cosine similarity to match student profiles with job opportunities
- * Implements industrial-grade caching - AI only processes when student data changes
+ * Uses vector embeddings and cosine similarity to match learner profiles with job opportunities
+ * Implements industrial-grade caching - AI only processes when learner data changes
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl } from '@/shared/api/apiUtils';
 
 /**
- * Match student profile with opportunities using AI
+ * Match learner profile with opportunities using AI
  * Results are cached in the database and only recomputed when:
- * - Student profile data changes (skills, interests, etc.)
+ * - Learner profile data changes (skills, interests, etc.)
  * - Course enrollments change
  * - Training records change
  * - Opportunities catalog changes
@@ -20,16 +20,16 @@ import { getApiUrl } from '@/shared/api/apiUtils';
  * 
  * NOTE: The API queries opportunities directly from the database using 
  * vector similarity search for better performance.
- * NOTE: The API auto-generates student embeddings if missing.
+ * NOTE: The API auto-generates learner embeddings if missing.
  * 
- * @param {Object} studentProfile - Student profile data
+ * @param {Object} learnerProfile - Learner profile data
  * @param {number} topN - Number of top matches to return (default: 3)
  * @param {boolean} forceRefresh - Force recomputation even if cache is valid
  * @returns {Promise<Array>} Top N matched jobs with scores and reasons
  */
-export async function matchJobsWithAI(studentProfile, topN = 3, forceRefresh = false) {
-  if (!studentProfile) {
-    throw new Error('Student profile is required');
+export async function matchJobsWithAI(learnerProfile, topN = 3, forceRefresh = false) {
+  if (!learnerProfile) {
+    throw new Error('Learner profile is required');
   }
 
   const API_URL = getApiUrl('career');
@@ -38,13 +38,13 @@ export async function matchJobsWithAI(studentProfile, topN = 3, forceRefresh = f
   const { data: { session } } = getCurrentSession();
   const token = session?.access_token;
 
-  const studentId = studentProfile?.id || studentProfile?.student_id;
-  if (!studentId) {
-    throw new Error('studentId is required');
+  const learnerId = learnerProfile?.id || learnerProfile?.learner_id;
+  if (!learnerId) {
+    throw new Error('learnerId is required');
   }
 
-  // NOTE: The API auto-generates student embeddings if missing
-  // No need to call ensureStudentEmbedding here
+  // NOTE: The API auto-generates learner embeddings if missing
+  // No need to call ensurelearnerEmbedding here
 
   const response = await fetch(`${API_URL}/recommend-opportunities`, {
     method: 'POST',
@@ -53,7 +53,7 @@ export async function matchJobsWithAI(studentProfile, topN = 3, forceRefresh = f
       ...(token && { 'Authorization': `Bearer ${token}` })
     },
     body: JSON.stringify({
-      studentId,
+      learnerId,
       limit: topN,
       forceRefresh
     })
@@ -90,10 +90,10 @@ export async function matchJobsWithAI(studentProfile, topN = 3, forceRefresh = f
 
 /**
  * Force refresh job matches - bypasses cache and recomputes
- * Use this when you know the student data has changed but triggers haven't fired yet
+ * Use this when you know the learner data has changed but triggers haven't fired yet
  */
-export async function refreshJobMatches(studentProfile, topN = 3) {
-  return matchJobsWithAI(studentProfile, topN, true);
+export async function refreshJobMatches(learnerProfile, topN = 3) {
+  return matchJobsWithAI(learnerProfile, topN, true);
 }
 
 export default { matchJobsWithAI, refreshJobMatches };

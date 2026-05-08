@@ -1,4 +1,4 @@
-import { TimePeriod } from '@/features/student-profile/model';
+import { TimePeriod } from '@/features/learner-profile/model';
 
 // Faculty colors for visual distinction
 export const FACULTY_COLORS = [

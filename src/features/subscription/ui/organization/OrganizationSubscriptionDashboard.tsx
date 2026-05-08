@@ -38,13 +38,13 @@ interface Subscription {
   startDate: string;
   endDate: string;
   autoRenew: boolean;
-  targetMemberType: 'educator' | 'student' | 'both';
+  targetMemberType: 'educator' | 'learner' | 'both';
 }
 
 interface LicensePool {
   id: string;
   poolName: string;
-  memberType: 'educator' | 'student';
+  memberType: 'educator' | 'learner';
   allocatedSeats: number;
   assignedSeats: number;
   availableSeats: number;
@@ -57,7 +57,7 @@ interface Member {
   id: string;
   name: string;
   email: string;
-  memberType: 'educator' | 'student';
+  memberType: 'educator' | 'learner';
   department?: string;
   hasLicense: boolean;
   assignedAt?: string;
@@ -106,7 +106,7 @@ interface OrganizationSubscriptionDashboardProps {
   onUnassignLicenses: (memberIds: string[]) => void;
   onTransferLicense: (fromMemberId: string, toMemberId: string) => void;
   onViewMemberHistory: (memberId: string) => void;
-  onRemoveMember?: (memberId: string, memberType: 'educator' | 'student') => void;
+  onRemoveMember?: (memberId: string, memberType: 'educator' | 'learner') => void;
   onMemberAdded?: () => void;
 }
 

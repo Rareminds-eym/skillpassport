@@ -13,7 +13,7 @@
  * - POST /ai-tutor-suggestions - Generate suggested questions for a lesson
  * - POST /ai-tutor-chat - AI tutor chat with streaming responses
  * - POST /ai-tutor-feedback - Submit feedback on AI responses
- * - GET /ai-tutor-progress - Get student progress
+ * - GET /ai-tutor-progress - Get learner progress
  * - POST /ai-tutor-progress - Update lesson progress
  * - POST /ai-video-summarizer - Transcribe and summarize videos
  */

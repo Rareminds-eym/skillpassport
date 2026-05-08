@@ -291,7 +291,7 @@ function getDefaultSuggestions(): string[] {
 // ==================== PROGRESS FUNCTIONS ====================
 
 /**
- * Get student progress for a course
+ * Get learner progress for a course
  */
 export async function getCourseProgress(courseId: string): Promise<CourseProgress> {
   const { data: { session } } = getCurrentSession();

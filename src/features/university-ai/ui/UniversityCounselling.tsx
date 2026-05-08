@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Plus, ArrowDown, Square, Bot, User, Sparkles } from 'lucide-react';
 import { universityCounsellingService } from '../api/counsellingService';
 import { universityAIConfig } from '../lib/config/universityAIConfig';
-import { Message, CounsellingTopic, StudentContext } from '../model';
+import { Message, CounsellingTopic, LearnerContext } from '../model';
 
 const UniversityCounselling: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -23,9 +23,9 @@ const UniversityCounselling: React.FC = () => {
   const scrollTimeoutRef = useRef<number | null>(null);
   const lastScrollTopRef = useRef(0);
 
-  // Mock student context (replace with actual data in production)
-  const studentContext: StudentContext = {
-    name: 'Demo Student',
+  // Mock learner context (replace with actual data in production)
+  const learnerContext: LearnerContext = {
+    name: 'Demo Learner',
     department: 'Computer Science',
     year: 3,
     gpa: 3.5,
@@ -136,7 +136,7 @@ const UniversityCounselling: React.FC = () => {
       const result = await universityCounsellingService.processQueryStream(
         userInput,
         detectedTopic,
-        studentContext,
+        learnerContext,
         messages,
         (chunk: string) => {
           // Update message content as chunks arrive

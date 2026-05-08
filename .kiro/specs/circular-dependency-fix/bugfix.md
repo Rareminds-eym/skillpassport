@@ -8,7 +8,7 @@ The build process (`npm run build:dev`) produces multiple circular dependency wa
 
 ### Current Behavior (Defect)
 
-1.1 WHEN `useStudentMessageNotifications`, `useStudentUnreadCount`, or `useStudentConversations` hooks import from `src/entities/student/index.ts` AND that index file re-exports those same hooks THEN the system produces circular dependency warnings during build
+1.1 WHEN `useStudentMessageNotifications`, `useStudentUnreadCount`, or `useStudentConversations` hooks import from `src/entities/learner/index.ts` AND that index file re-exports those same hooks THEN the system produces circular dependency warnings during build
 
 1.2 WHEN `analyzeAssessmentWithGemini` from `geminiAssessmentService.js` imports from `src/features/assessment/api/index.ts` AND that index file re-exports the function THEN the system produces circular dependency warnings during build
 
@@ -32,7 +32,7 @@ The build process (`npm run build:dev`) produces multiple circular dependency wa
 
 ### Unchanged Behavior (Regression Prevention)
 
-3.1 WHEN external consumers import from `@/entities/student` THEN the system SHALL CONTINUE TO provide all public API exports through the barrel export
+3.1 WHEN external consumers import from `@/entities/learner` THEN the system SHALL CONTINUE TO provide all public API exports through the barrel export
 
 3.2 WHEN external consumers import from `@/features/assessment/api` THEN the system SHALL CONTINUE TO provide all assessment services through the barrel export
 

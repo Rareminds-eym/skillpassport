@@ -16,17 +16,17 @@ import {
 
 /**
  * Educator Card Components
- * Visual, interactive cards for displaying student insights, analytics, and recommendations
+ * Visual, interactive cards for displaying learner insights, analytics, and recommendations
  */
 
 // ============================================================================
-// STUDENT INSIGHT CARD
-// Shows analysis about individual student
+// LEARNER INSIGHT CARD
+// Shows analysis about individual learner
 // ============================================================================
 
-interface StudentInsightCardProps {
-  studentId: string;
-  studentName: string;
+interface LearnerInsightCardProps {
+  learnerId: string;
+  learnerName: string;
   insightType: 'strength' | 'gap' | 'interest' | 'concern' | 'opportunity';
   title: string;
   description: string;
@@ -36,8 +36,8 @@ interface StudentInsightCardProps {
   onViewProfile?: () => void;
 }
 
-export const StudentInsightCard: React.FC<StudentInsightCardProps> = ({
-  studentName,
+export const LearnerInsightCard: React.FC<LearnerInsightCardProps> = ({
+  learnerName,
   insightType,
   title,
   description,
@@ -102,7 +102,7 @@ export const StudentInsightCard: React.FC<StudentInsightCardProps> = ({
             <Icon className={`w-5 h-5 ${config.iconColor}`} />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900 text-base">{studentName}</h3>
+            <h3 className="font-semibold text-gray-900 text-base">{learnerName}</h3>
             <p className="text-xs text-gray-600 mt-0.5">{title}</p>
           </div>
         </div>
@@ -159,7 +159,7 @@ export const StudentInsightCard: React.FC<StudentInsightCardProps> = ({
 interface ClassAnalyticsCardProps {
   className: string;
   metrics: {
-    totalStudents: number;
+    totallearners: number;
     activeRate: number;
     avgSkillLevel: number;
     careerReadinessScore: number;
@@ -202,9 +202,9 @@ export const ClassAnalyticsCard: React.FC<ClassAnalyticsCardProps> = ({
         <div className="bg-white rounded-lg p-3 border border-purple-100">
           <div className="flex items-center gap-2 mb-1">
             <Users className="w-4 h-4 text-purple-600" />
-            <p className="text-xs text-gray-600 font-medium">Students</p>
+            <p className="text-xs text-gray-600 font-medium">Learners</p>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{metrics.totalStudents}</p>
+          <p className="text-2xl font-bold text-gray-900">{metrics.totallearners}</p>
           <p className="text-xs text-green-600 mt-1">
             {metrics.activeRate}% active
           </p>
@@ -233,7 +233,7 @@ export const ClassAnalyticsCard: React.FC<ClassAnalyticsCardProps> = ({
               {trends.popularCareers.slice(0, 3).map((career, idx) => (
                 <div key={idx} className="flex items-center justify-between">
                   <span className="text-sm text-gray-700">{career.career}</span>
-                  <span className="text-xs font-semibold text-purple-600">{career.count} students</span>
+                  <span className="text-xs font-semibold text-purple-600">{career.count} learners</span>
                 </div>
               ))}
             </div>
@@ -277,11 +277,11 @@ export const ClassAnalyticsCard: React.FC<ClassAnalyticsCardProps> = ({
 
 // ============================================================================
 // INTERVENTION CARD
-// Alerts for at-risk students requiring intervention
+// Alerts for at-risk learners requiring intervention
 // ============================================================================
 
 interface InterventionCardProps {
-  studentName: string;
+  learnerName: string;
   concernType: 'disengagement' | 'skill_gap' | 'career_confusion' | 'performance';
   severity: 'critical' | 'high' | 'medium';
   description: string;
@@ -291,7 +291,7 @@ interface InterventionCardProps {
 }
 
 export const InterventionCard: React.FC<InterventionCardProps> = ({
-  studentName,
+  learnerName,
   concernType,
   severity,
   description,
@@ -340,7 +340,7 @@ export const InterventionCard: React.FC<InterventionCardProps> = ({
             <AlertCircle className={`w-5 h-5 ${config.iconColor}`} />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900 text-base">{studentName}</h3>
+            <h3 className="font-semibold text-gray-900 text-base">{learnerName}</h3>
             <p className="text-xs text-gray-600 mt-0.5">{concernLabels[concernType]}</p>
           </div>
         </div>

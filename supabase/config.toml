@@ -84,7 +84,7 @@ sql_paths = [
   "./public_programs.sql",
   "./public_program_sections.sql",
   "./public_university_colleges.sql",
-  "./public_students.sql",
+  "./public_learners.sql",
   "./public_*.sql",
   "./seed_adaptive_questions_after10.sql",
   "./seed_adaptive_questions_after12.sql",

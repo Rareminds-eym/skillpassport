@@ -134,7 +134,7 @@ const GRADE_LEVEL_MAPPINGS = {
  * This is critical for correct answer extraction from the database.
  * 
  * @param {string} baseSection - The base section name ('riasec', 'bigfive', 'aptitude', 'knowledge', 'values', 'employability')
- * @param {string} gradeLevel - The student's grade level ('middle', 'highschool', 'higher_secondary', 'after10', 'after12', 'college')
+ * @param {string} gradeLevel - The learner's grade level ('middle', 'highschool', 'higher_secondary', 'after10', 'after12', 'college')
  * @returns {string} The database section prefix to use for answer extraction
  * 
  * Examples:
@@ -179,7 +179,7 @@ export const getSectionPrefix = (baseSection, gradeLevel) => {
   // Default case: return base section without modification
   return baseSection;
 };
-export const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = {}, gradeLevel = 'after12', preCalculatedScores = null, studentContext = {}, adaptiveResults = null) => {
+export const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = {}, gradeLevel = 'after12', preCalculatedScores = null, learnerContext = {}, adaptiveResults = null) => {
   const { 
     riasecQuestions, 
     aptitudeQuestions, 
@@ -269,7 +269,7 @@ export const prepareAssessmentData = (answers, stream, questionBanks, sectionTim
         const isCorrect = value === (question.correct_answer || question.correctAnswer || question.correct);
         knowledgeAnswers[questionId] = {
           question: question.text,
-          studentAnswer: value,
+          learnerAnswer: value,
           correctAnswer: question.correct_answer || question.correctAnswer || question.correct,
           isCorrect
         };
@@ -331,11 +331,11 @@ export const prepareAssessmentData = (answers, stream, questionBanks, sectionTim
     totalAptitudeQuestions: aptitudeQuestions?.length || 50,
     sectionTimings: timingData,
     adaptiveAptitudeResults: adaptiveResults,
-    studentContext: {
-      rawGrade: studentContext.rawGrade || null,
-      programName: studentContext.programName || null,
-      programCode: studentContext.programCode || null,
-      degreeLevel: studentContext.degreeLevel || null
+    learnerContext: {
+      rawGrade: learnerContext.rawGrade || null,
+      programName: learnerContext.programName || null,
+      programCode: learnerContext.programCode || null,
+      degreeLevel: learnerContext.degreeLevel || null
     }
   };
 };

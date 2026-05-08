@@ -6,7 +6,7 @@ const supabase = createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwb29sZWR1aW55eXp4Z3Jjd2tvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTk5NDY5OCwiZXhwIjoyMDc1NTcwNjk4fQ.WIrwkA_-2oCjwmD6WpCf9N38hYXEwrIIXXHB4x5km10'
 );
 
-const studentId = '95364f0d-23fb-4616-b0f4-48caafee5439';
+const learnerId = '95364f0d-23fb-4616-b0f4-48caafee5439';
 const subscriptionId = '17650748-914d-4662-9d82-b5057412fdb1';
 
 async function removeSubscriptions() {
@@ -79,7 +79,7 @@ async function removeSubscriptions() {
   const { data: verify } = await supabase
     .from('subscriptions')
     .select('id')
-    .eq('user_id', studentId);
+    .eq('user_id', learnerId);
 
   console.log('\n=== VERIFICATION ===');
   console.log('Remaining subscriptions for user:', verify?.length || 0);

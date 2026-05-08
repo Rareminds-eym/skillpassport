@@ -61,9 +61,9 @@ ${weakAreas.length > 0 ? weakAreas.map(s => `- ${s}`).join('\n') : '- No signifi
 function buildDegreeLevelInstructions(degreeLevel: string | undefined, programName: string | undefined): string {
   if (degreeLevel === 'postgraduate') {
     return `
-### ⚠️ POSTGRADUATE STUDENT - SPECIAL INSTRUCTIONS ⚠️
+### ⚠️ POSTGRADUATE LEARNER - SPECIAL INSTRUCTIONS ⚠️
 
-This student is pursuing a POSTGRADUATE degree (Master's/PG Diploma). Your recommendations MUST reflect this:
+This learner is pursuing a POSTGRADUATE degree (Master's/PG Diploma). Your recommendations MUST reflect this:
 
 **MANDATORY REQUIREMENTS:**
 1. **NO Undergraduate Programs**: Do NOT recommend Bachelor's degrees (B.Tech, BCA, B.Sc, etc.)
@@ -89,9 +89,9 @@ This student is pursuing a POSTGRADUATE degree (Master's/PG Diploma). Your recom
 
   if (degreeLevel === 'undergraduate') {
     return `
-### 📚 UNDERGRADUATE STUDENT INSTRUCTIONS
+### 📚 UNDERGRADUATE LEARNER INSTRUCTIONS
 
-This student is pursuing an UNDERGRADUATE degree (Bachelor's).
+This learner is pursuing an UNDERGRADUATE degree (Bachelor's).
 
 **RECOMMENDATIONS SHOULD INCLUDE:**
 1. **Entry-Level Roles**: Focus on campus placements and fresher positions
@@ -105,9 +105,9 @@ This student is pursuing an UNDERGRADUATE degree (Bachelor's).
 
   if (degreeLevel === 'diploma') {
     return `
-### 🔧 DIPLOMA STUDENT INSTRUCTIONS
+### 🔧 DIPLOMA LEARNER INSTRUCTIONS
 
-This student is pursuing a DIPLOMA program.
+This learner is pursuing a DIPLOMA program.
 
 **RECOMMENDATIONS SHOULD INCLUDE:**
 1. **Technical/Vocational Roles**: Focus on hands-on, skill-based positions
@@ -129,7 +129,7 @@ function buildProgramAnalysisSection(): string {
   return `
 ## PROGRAM-TO-CAREER ANALYSIS INSTRUCTIONS
 
-**DO NOT rely on hardcoded mappings.** Instead, dynamically analyze the student's program:
+**DO NOT rely on hardcoded mappings.** Instead, dynamically analyze the learner's program:
 
 1. **Identify the Program Domain:**
    - Parse the program name/code to identify the field (e.g., "M.Sc Data Science" → Data Science/Analytics)
@@ -167,7 +167,7 @@ function buildValidationRulesSection(): string {
 ## CRITICAL VALIDATION RULES
 
 **MANDATORY:**
-- ✅ Ensure ALL 3 career clusters are related to the student's program field
+- ✅ Ensure ALL 3 career clusters are related to the learner's program field
 - ✅ Match salary ranges to the field's industry standards
 - ✅ Recommend certifications relevant to the field
 - ✅ Consider degree level (UG = entry-level, PG = mid-senior level)
@@ -175,13 +175,13 @@ function buildValidationRulesSection(): string {
 **PROHIBITED:**
 - ❌ Recommend careers from completely unrelated fields
 - ❌ Ignore the program information and give generic recommendations
-- ❌ Recommend UG programs to PG students or vice versa
+- ❌ Recommend UG programs to PG learners or vice versa
 `;
 }
 
 /**
  * Generate deterministic but varied match scores based on answersHash
- * This ensures same student gets same scores, but different students get different scores
+ * This ensures same learner gets same scores, but different learners get different scores
  */
 function generateMatchScores(answersHash: number): { track1: number; track2: number; track3: number } {
   // Use answersHash as seed for deterministic randomization
@@ -211,7 +211,7 @@ function generateMatchScores(answersHash: number): { track1: number; track2: num
 }
 
 export function buildCollegePrompt(assessmentData: AssessmentData, answersHash: number): string {
-  // Generate deterministic match scores for this student
+  // Generate deterministic match scores for this learner
   const matchScores = generateMatchScores(answersHash);
   
   // Pre-process adaptive results for efficiency
@@ -219,35 +219,35 @@ export function buildCollegePrompt(assessmentData: AssessmentData, answersHash: 
     ? processAdaptiveResults(assessmentData.adaptiveAptitudeResults)
     : '';
 
-  // Student context for program-specific recommendations
-  const studentContext = assessmentData.studentContext;
-  const hasStudentContext = studentContext && (studentContext.rawGrade || studentContext.programName || studentContext.degreeLevel);
+  // Learner context for program-specific recommendations
+  const learnerContext = assessmentData.learnerContext;
+  const haslearnerContext = learnerContext && (learnerContext.rawGrade || learnerContext.programName || learnerContext.degreeLevel);
 
-  // 🔍 DEBUG: Log student context
-  console.log('[COLLEGE-PROMPT] === STUDENT CONTEXT DEBUG ===');
-  console.log('[COLLEGE-PROMPT] Has studentContext:', !!studentContext);
-  console.log('[COLLEGE-PROMPT] rawGrade:', studentContext?.rawGrade);
-  console.log('[COLLEGE-PROMPT] programName:', studentContext?.programName);
-  console.log('[COLLEGE-PROMPT] programCode:', studentContext?.programCode);
-  console.log('[COLLEGE-PROMPT] degreeLevel:', studentContext?.degreeLevel);
-  console.log('[COLLEGE-PROMPT] hasStudentContext:', hasStudentContext);
+  // 🔍 DEBUG: Log learner context
+  console.log('[COLLEGE-PROMPT] === LEARNER CONTEXT DEBUG ===');
+  console.log('[COLLEGE-PROMPT] Has learnerContext:', !!learnerContext);
+  console.log('[COLLEGE-PROMPT] rawGrade:', learnerContext?.rawGrade);
+  console.log('[COLLEGE-PROMPT] programName:', learnerContext?.programName);
+  console.log('[COLLEGE-PROMPT] programCode:', learnerContext?.programCode);
+  console.log('[COLLEGE-PROMPT] degreeLevel:', learnerContext?.degreeLevel);
+  console.log('[COLLEGE-PROMPT] haslearnerContext:', haslearnerContext);
 
-  // Build student context section
-  const studentContextSection = hasStudentContext ? `
-## 🎓 STUDENT ACADEMIC CONTEXT (CRITICAL - READ CAREFULLY)
+  // Build learner context section
+  const learnerContextSection = haslearnerContext ? `
+## 🎓 LEARNER ACADEMIC CONTEXT (CRITICAL - READ CAREFULLY)
 
-**Current Academic Level**: ${studentContext.rawGrade || 'Not specified'}
-**Program/Course**: ${studentContext.programName || 'Not specified'}
-**Program Code**: ${studentContext.programCode || 'Not specified'}
-**Degree Level**: ${studentContext.degreeLevel || 'Not specified'}
+**Current Academic Level**: ${learnerContext.rawGrade || 'Not specified'}
+**Program/Course**: ${learnerContext.programName || 'Not specified'}
+**Program Code**: ${learnerContext.programCode || 'Not specified'}
+**Degree Level**: ${learnerContext.degreeLevel || 'Not specified'}
 
-${buildDegreeLevelInstructions(studentContext.degreeLevel ?? undefined, studentContext.programName ?? undefined)}
+${buildDegreeLevelInstructions(learnerContext.degreeLevel ?? undefined, learnerContext.programName ?? undefined)}
 
 **Program Field Alignment:**
 
 🚨🚨🚨 CRITICAL - PROGRAM ALIGNMENT IS ABSOLUTELY MANDATORY 🚨🚨🚨
 
-The student is studying **${studentContext.programName || 'their chosen program'}**. 
+The learner is studying **${learnerContext.programName || 'their chosen program'}**. 
 
 **YOU MUST GENERATE CAREER RECOMMENDATIONS THAT ARE 100% ALIGNED WITH THIS PROGRAM.**
 
@@ -266,7 +266,7 @@ The student is studying **${studentContext.programName || 'their chosen program'
 **MANDATORY STEP-BY-STEP PROCESS (FOLLOW EXACTLY):**
 
 **STEP 1: IDENTIFY THE PROGRAM FIELD**
-   - Extract the EXACT field from "${studentContext.programName || 'the program'}"
+   - Extract the EXACT field from "${learnerContext.programName || 'the program'}"
    - Is it Physics? Chemistry? Computer Science? Business? Engineering? Medicine? Law?
    - Write down the field: _________________
 
@@ -283,19 +283,19 @@ The student is studying **${studentContext.programName || 'their chosen program'
 **STEP 4: FINAL VALIDATION (MANDATORY)**
    Before returning your response, answer these questions:
    
-   ✅ Question 1: Are ALL 3 career clusters related to "${studentContext.programName || 'the program'}"?
+   ✅ Question 1: Are ALL 3 career clusters related to "${learnerContext.programName || 'the program'}"?
       - If NO → GO BACK TO STEP 2 and start over
    
-   ✅ Question 2: Would a graduate of "${studentContext.programName || 'the program'}" realistically pursue these careers?
+   ✅ Question 2: Would a graduate of "${learnerContext.programName || 'the program'}" realistically pursue these careers?
       - If NO → GO BACK TO STEP 2 and start over
    
    ✅ Question 3: Did you avoid generic careers (Creative Arts, Social Work, NGO, Teaching) unless the program is specifically in those fields?
       - If NO → GO BACK TO STEP 2 and start over
    
    ❌ WRONG EXAMPLES (DO NOT DO THIS):
-      - "Bsc Physics" student → Creative Arts (85%), Education (75%), Media (65%) ← COMPLETELY WRONG
-      - "B.Tech CS" student → Social Work (80%), NGO Management (70%), Teaching (65%) ← COMPLETELY WRONG
-      - "BBA" student → Physics Research (85%), Chemical Engineering (75%), Medical Research (65%) ← COMPLETELY WRONG
+      - "Bsc Physics" learner → Creative Arts (85%), Education (75%), Media (65%) ← COMPLETELY WRONG
+      - "B.Tech CS" learner → Social Work (80%), NGO Management (70%), Teaching (65%) ← COMPLETELY WRONG
+      - "BBA" learner → Physics Research (85%), Chemical Engineering (75%), Medical Research (65%) ← COMPLETELY WRONG
 
 **NAMING RULES FOR CAREER CLUSTER TITLES:**
    - ✅ PREFERRED: Entry-level role names (e.g., "Data Scientist", "Research Scientist", "Software Developer")
@@ -304,20 +304,20 @@ The student is studying **${studentContext.programName || 'their chosen program'
    - The title should represent roles accessible to fresh graduates or early-career professionals
 ` : '';
 
-  // Always include program analysis and validation for college students
+  // Always include program analysis and validation for college learners
   const programAnalysisSection = buildProgramAnalysisSection();
   const validationRulesSection = buildValidationRulesSection();
 
-  // 🔍 DEBUG: Log if student context section was included
+  // 🔍 DEBUG: Log if learner context section was included
   console.log('[COLLEGE-PROMPT] === PROMPT ASSEMBLY DEBUG ===');
-  console.log('[COLLEGE-PROMPT] Student context section included:', !!studentContextSection);
-  if (studentContextSection) {
-    console.log('[COLLEGE-PROMPT] Student context section length:', studentContextSection.length);
-    console.log('[COLLEGE-PROMPT] Program name in prompt:', studentContext?.programName);
+  console.log('[COLLEGE-PROMPT] Learner context section included:', !!learnerContextSection);
+  if (learnerContextSection) {
+    console.log('[COLLEGE-PROMPT] Learner context section length:', learnerContextSection.length);
+    console.log('[COLLEGE-PROMPT] Program name in prompt:', learnerContext?.programName);
   }
   console.log('[COLLEGE-PROMPT] === END PROMPT ASSEMBLY ===');
 
-  return `You are a career counselor and psychometric assessment expert. Analyze the following student assessment data and provide comprehensive results.
+  return `You are a career counselor and psychometric assessment expert. Analyze the following learner assessment data and provide comprehensive results.
 
 ## CONSISTENCY REQUIREMENT - CRITICAL:
 This analysis must be DETERMINISTIC and CONSISTENT. Given the same input data, you must ALWAYS produce the SAME output.
@@ -327,9 +327,9 @@ This analysis must be DETERMINISTIC and CONSISTENT. Given the same input data, y
 - If this same data is analyzed again, the results MUST be identical
 - Session ID for consistency verification: ${answersHash}
 
-## Student Grade Level: ${assessmentData.gradeLevel.toUpperCase()}
-## Student Stream: ${assessmentData.stream.toUpperCase()}
-${studentContextSection}
+## Learner Grade Level: ${assessmentData.gradeLevel.toUpperCase()}
+## Learner Stream: ${assessmentData.stream.toUpperCase()}
+${learnerContextSection}
 ${programAnalysisSection}
 ${validationRulesSection}
 
@@ -352,17 +352,17 @@ RIASEC SCORING RULES:
 6. DO NOT guess or assume - calculate from the actual responses above
 
 ## ⚠️ CRITICAL: ARTISTIC (A) RIASEC CAREER MATCHING ⚠️
-**IF the student's RIASEC scores show 'A' (Artistic) in their top 3 types, you MUST include at least ONE career cluster from these categories:**
+**IF the learner's RIASEC scores show 'A' (Artistic) in their top 3 types, you MUST include at least ONE career cluster from these categories:**
 
-**MANDATORY for High Artistic (A) Students:**
+**MANDATORY for High Artistic (A) Learners:**
 - **Music & Entertainment**: Music Producer, Sound Designer, Film Score Composer, Concert Manager, Audio Engineer
 - **Visual Arts**: Digital Artist, Animator, Art Director, Fashion Designer, NFT Creator, VFX Supervisor
 - **Performing Arts**: Actor, Director, Choreographer, Theatre Producer, Voice Actor, Performance Artist
 - **Media & Content**: YouTuber, Content Creator, Podcast Host, Film Director, Screenwriter, Documentary Filmmaker
 - **Design**: Graphic Designer, UX/UI Designer, Game Designer, Interior Designer, Brand Designer, Product Designer
 
-**DO NOT default to only Technology/Science/Business careers for Artistic students!**
-**The student's creative interests MUST be reflected in their career recommendations.**
+**DO NOT default to only Technology/Science/Business careers for Artistic learners!**
+**The learner's creative interests MUST be reflected in their career recommendations.**
 
 ## MULTI-APTITUDE BATTERY RESULTS:
 Pre-calculated Scores:
@@ -540,7 +540,7 @@ Return ONLY a valid JSON object with this EXACT structure (no markdown, no extra
       {
         "title": "<ENTRY-LEVEL ROLE OR CAREER CLUSTER - e.g., 'Software Developer', 'Data Analyst', 'Technology & Innovation' - REQUIRED>",
         "fit": "High",
-        "matchScore": "<CALCULATE from 90-97 range with ±1 variation - Examples: 89, 91, 92, 94, 96, 97 - MUST be unique per student>",
+        "matchScore": "<CALCULATE from 90-97 range with ±1 variation - Examples: 89, 91, 92, 94, 96, 97 - MUST be unique per learner>",
         "description": "<2-3 sentences explaining WHY this fits based on assessment - REQUIRED>",
         "evidence": {
           "interest": "<RIASEC evidence - REQUIRED>",
@@ -552,12 +552,12 @@ Return ONLY a valid JSON object with this EXACT structure (no markdown, no extra
         },
         "roles": {"entry": ["<entry role 1>", "<entry role 2>"], "mid": ["<mid role 1>", "<mid role 2>"]},
         "domains": ["<domain 1>", "<domain 2>"],
-        "whyItFits": "<Specific connection to student's profile - REQUIRED>"
+        "whyItFits": "<Specific connection to learner's profile - REQUIRED>"
       },
       {
         "title": "<ENTRY-LEVEL ROLE OR CAREER CLUSTER - e.g., 'Business Analyst', 'UI/UX Designer', 'Business & Management' - REQUIRED>",
         "fit": "Medium",
-        "matchScore": "<CALCULATE from 79-89 range with ±1 variation - Examples: 78, 80, 82, 85, 87, 89 - MUST be unique per student>",
+        "matchScore": "<CALCULATE from 79-89 range with ±1 variation - Examples: 78, 80, 82, 85, 87, 89 - MUST be unique per learner>",
         "description": "<2-3 sentences explaining fit - REQUIRED>",
         "evidence": {
           "interest": "<RIASEC evidence - REQUIRED>",
@@ -569,12 +569,12 @@ Return ONLY a valid JSON object with this EXACT structure (no markdown, no extra
         },
         "roles": {"entry": ["<entry role 1>", "<entry role 2>"], "mid": ["<mid role 1>", "<mid role 2>"]},
         "domains": ["<domain 1>", "<domain 2>"],
-        "whyItFits": "<Connection to student's profile - REQUIRED>"
+        "whyItFits": "<Connection to learner's profile - REQUIRED>"
       },
       {
         "title": "<ENTRY-LEVEL ROLE OR CAREER CLUSTER - e.g., 'Quality Analyst', 'Research Assistant', 'Creative Industries' - REQUIRED>",
         "fit": "Explore",
-        "matchScore": "<CALCULATE from 61-78 range with ±1 variation - Examples: 62, 65, 68, 71, 74, 77 - MUST be unique per student>",
+        "matchScore": "<CALCULATE from 61-78 range with ±1 variation - Examples: 62, 65, 68, 71, 74, 77 - MUST be unique per learner>",
         "description": "<2-3 sentences explaining potential - REQUIRED>",
         "evidence": {
           "interest": "<RIASEC evidence - REQUIRED>",
@@ -638,9 +638,9 @@ CRITICAL REQUIREMENTS - YOU MUST FOLLOW ALL:
    - Cluster 2: Medium fit (matchScore 70-85%)
    - Cluster 3: Explore fit (matchScore 60-75%)
 
-**MATCH SCORE CALCULATION (MANDATORY - MUST BE UNIQUE PER STUDENT):**
+**MATCH SCORE CALCULATION (MANDATORY - MUST BE UNIQUE PER LEARNER):**
 
-**CRITICAL**: Each student MUST get different match scores. Use the following ranges with variation:
+**CRITICAL**: Each learner MUST get different match scores. Use the following ranges with variation:
 
 **Track 1 (High Fit):**
 - Base range: 90-97%
@@ -665,7 +665,7 @@ CRITICAL REQUIREMENTS - YOU MUST FOLLOW ALL:
 - Aptitude fit (30% weight): Cognitive strengths alignment with career demands
 - Program relevance (30% weight): How directly the career relates to their program/degree
 
-**YOU MUST CALCULATE UNIQUE SCORES - Each student should get different percentages based on their specific profile**
+**YOU MUST CALCULATE UNIQUE SCORES - Each learner should get different percentages based on their specific profile**
 
 2. **CLUSTER TITLE MUST USE ENTRY-LEVEL JOB ROLE NAMES (NOT SENIOR TITLES)**:
    - ✅ CORRECT: "Research Scientist", "Data Scientist", "Software Developer", "Business Analyst", "Product Manager"
@@ -677,8 +677,8 @@ CRITICAL REQUIREMENTS - YOU MUST FOLLOW ALL:
 3. Each cluster MUST have: title, fit, matchScore, description, evidence (all 6 fields), roles (entry + mid), domains, whyItFits
 4. ALL arrays must have at least 2 items - NO empty arrays
 5. ALL career clusters must have roles.entry, roles.mid, and domains filled with real job titles
-6. Career clusters should be based on the student's program/degree field and assessment results
+6. Career clusters should be based on the learner's program/degree field and assessment results
 7. Use EXACT scoring formulas provided - Be DETERMINISTIC (same input = same output)
-8. Provide SPECIFIC, ACTIONABLE career guidance based on the student's actual scores
+8. Provide SPECIFIC, ACTIONABLE career guidance based on the learner's actual scores
 9. DO NOT truncate the response - complete ALL fields`;
 }

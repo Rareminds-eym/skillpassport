@@ -54,8 +54,8 @@ export type AdminNotificationType =
   | 'project_rejected'
   | 'system_alert';
 
-// Student Types
-export interface Student {
+// Learner Types
+export interface Learner {
   id: string;
   name: string;
   email?: string;
@@ -97,7 +97,7 @@ export interface StatusOption {
 
 // KPI Types
 export interface KPIData {
-  totalStudents: number;
+  totallearners: number;
   attendanceToday: number;
   activeClasses: number;
   pendingApprovals: number;

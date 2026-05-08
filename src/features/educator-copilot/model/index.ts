@@ -13,7 +13,7 @@ export interface EducatorProfile {
   experience_years?: number;
 }
 
-export interface StudentSummary {
+export interface LearnerSummary {
   id: string;
   name: string;
   department: string;
@@ -30,16 +30,16 @@ export interface ClassSummary {
   id: string;
   name: string;
   department: string;
-  total_students: number;
-  active_students: number;
+  total_learners: number;
+  active_learners: number;
   avg_engagement: number;
   common_interests: string[];
   skill_gaps: string[];
 }
 
-export interface StudentInsight {
-  student_id: string;
-  student_name: string;
+export interface LearnerInsight {
+  learner_id: string;
+  learner_name: string;
   insight_type: 'strength' | 'gap' | 'interest' | 'concern' | 'opportunity';
   title: string;
   description: string;
@@ -52,7 +52,7 @@ export interface ClassAnalytics {
   class_id: string;
   class_name: string;
   metrics: {
-    total_students: number;
+    total_learners: number;
     active_rate: number;
     avg_skill_level: number;
     career_readiness_score: number;
@@ -66,8 +66,8 @@ export interface ClassAnalytics {
 }
 
 export interface InterventionRecommendation {
-  student_id: string;
-  student_name: string;
+  learner_id: string;
+  learner_name: string;
   concern_type: 'disengagement' | 'skill_gap' | 'career_confusion' | 'performance';
   severity: 'critical' | 'high' | 'medium';
   description: string;
@@ -80,14 +80,14 @@ export interface EducatorContext {
   name: string;
   institution: string;
   department?: string;
-  total_students: number;
+  total_learners: number;
   active_classes: number;
   subjects_taught: string[];
   recent_activities: string[];
 }
 
 export type EducatorIntent = 
-  | 'student-insights'
+  | 'learner-insights'
   | 'class-analytics'
   | 'intervention-needed'
   | 'guidance-request'

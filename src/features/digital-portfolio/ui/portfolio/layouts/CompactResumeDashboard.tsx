@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Phone, MapPin, Github, Linkedin, Twitter, Code, Briefcase, GraduationCap, Award, Download, FileText, ExternalLink, Calendar } from 'lucide-react';
-import { Student, AnimationType, DisplayPreferences } from '@/shared/types/student';
+import { Learner, AnimationType, DisplayPreferences } from '@/shared/types/learner';
 
 interface CompactResumeDashboardProps {
-  student: Student;
+  learner: Learner;
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
@@ -15,7 +15,7 @@ interface CompactResumeDashboardProps {
 type TabType = 'skills' | 'projects' | 'achievements' | 'resume';
 
 const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({ 
-  student, 
+  learner, 
   primaryColor, 
   secondaryColor, 
   accentColor,
@@ -33,10 +33,10 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
 
   // Combine both technical and soft skills
   const allSkills = [
-    ...(student.profile?.skills || []),
-    ...(student.profile?.technicalSkills || []),
-    ...(student.technicalSkills || []),
-    ...(student.skills || [])
+    ...(learner.profile?.skills || []),
+    ...(learner.profile?.technicalSkills || []),
+    ...(learner.technicalSkills || []),
+    ...(learner.skills || [])
   ];
   // Remove duplicates by id
   const uniqueSkills = allSkills.filter((skill, index, self) => 
@@ -77,8 +77,8 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
             className="mb-6"
           >
             <img
-              src={student.profile.profileImage || '/api/placeholder/120/120'}
-              alt={student.name || 'Profile'}
+              src={learner.profile.profileImage || '/api/placeholder/120/120'}
+              alt={learner.name || 'Profile'}
               className="w-32 h-32 rounded-full object-cover mx-auto border-4 shadow-lg"
               style={{ borderColor: primaryColor }}
             />
@@ -90,34 +90,34 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
             transition={{ delay: 0.3 }}
           >
             <h1 className="text-2xl font-bold mb-2 dark:text-white" style={{ color: secondaryColor }}>
-              {student.name || student.profile.name}
+              {learner.name || learner.profile.name}
             </h1>
-            {student.branch_field && (
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{student.branch_field}</p>
+            {learner.branch_field && (
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{learner.branch_field}</p>
             )}
-            {/* Show school name for school students, university for college students */}
-            {(student.school?.name || student.profile?.school?.name || 
-              student.college_school_name || student.university || 
-              student.universityCollege?.name || student.profile?.universityCollege?.name) && (
+            {/* Show school name for school learners, university for college learners */}
+            {(learner.school?.name || learner.profile?.school?.name || 
+              learner.college_school_name || learner.university || 
+              learner.universityCollege?.name || learner.profile?.universityCollege?.name) && (
               <p className="text-xs text-gray-500 dark:text-gray-500">
-                {student.school?.name || 
-                 student.profile?.school?.name || 
-                 student.college_school_name || 
-                 student.universityCollege?.name || 
-                 student.profile?.universityCollege?.name ||
-                 student.university}
+                {learner.school?.name || 
+                 learner.profile?.school?.name || 
+                 learner.college_school_name || 
+                 learner.universityCollege?.name || 
+                 learner.profile?.universityCollege?.name ||
+                 learner.university}
               </p>
             )}
           </motion.div>
 
-          {student.profile.bio && (
+          {learner.profile.bio && (
             <motion.p
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.4 }}
               className="text-sm text-gray-700 dark:text-gray-300 mt-4 leading-relaxed"
             >
-              {student.profile.bio}
+              {learner.profile.bio}
             </motion.p>
           )}
         </div>
@@ -135,23 +135,23 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
           >
             <div className="flex items-start space-x-3">
               <Mail className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: primaryColor }} />
-              <span className="text-sm dark:text-gray-300 break-all">{student.email}</span>
+              <span className="text-sm dark:text-gray-300 break-all">{learner.email}</span>
             </div>
-            {student.contact_number && (
+            {learner.contact_number && (
               <div className="flex items-center space-x-3">
                 <Phone className="w-4 h-4 flex-shrink-0" style={{ color: primaryColor }} />
-                <span className="text-sm dark:text-gray-300">{student.contact_number}</span>
+                <span className="text-sm dark:text-gray-300">{learner.contact_number}</span>
               </div>
             )}
-            {(student.district_name || student.city || student.state || student.country) && (
+            {(learner.district_name || learner.city || learner.state || learner.country) && (
               <div className="flex items-start space-x-3">
                 <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: primaryColor }} />
                 <span className="text-sm dark:text-gray-300">
                   {[
-                    student.city,
-                    student.district_name,
-                    student.state,
-                    student.country
+                    learner.city,
+                    learner.district_name,
+                    learner.state,
+                    learner.country
                   ].filter(Boolean).join(', ') || 'Location not specified'}
                 </span>
               </div>
@@ -172,9 +172,9 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
           >
             {displayPreferences.showSocialLinks && (
               <>
-                {student.github_link && (
+                {learner.github_link && (
                   <a
-                    href={student.github_link}
+                    href={learner.github_link}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -183,9 +183,9 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
                     <Github className="w-5 h-5" />
                   </a>
                 )}
-                {student.linkedin_link && (
+                {learner.linkedin_link && (
                   <a
-                    href={student.linkedin_link}
+                    href={learner.linkedin_link}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -194,9 +194,9 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
                     <Linkedin className="w-5 h-5" />
                   </a>
                 )}
-                {student.twitter_link && (
+                {learner.twitter_link && (
                   <a
-                    href={student.twitter_link}
+                    href={learner.twitter_link}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -211,14 +211,14 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
         </div>
 
         {/* Education Summary */}
-        {student.profile.education && student.profile.education.length > 0 && (
+        {learner.profile.education && learner.profile.education.length > 0 && (
           <div className="p-6 flex-1 overflow-y-auto">
             <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4 flex items-center space-x-2">
               <GraduationCap className="w-4 h-4" />
               <span>Education</span>
             </h2>
             <div className="space-y-4">
-              {student.profile.education.map((edu, index) => (
+              {learner.profile.education.map((edu, index) => (
                 <motion.div
                   key={edu.id}
                   initial={{ x: -20, opacity: 0 }}
@@ -378,8 +378,8 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
                 Featured Projects
               </h2>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {(student.profile?.projects || student.projects || []).length > 0 ? (
-                  (student.profile?.projects || student.projects || []).map((project, index) => (
+                {(learner.profile?.projects || learner.projects || []).length > 0 ? (
+                  (learner.profile?.projects || learner.projects || []).map((project, index) => (
                   <motion.div
                     key={project.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -452,7 +452,7 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
                 Achievements & Recognition
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {student.profile.achievements?.map((achievement, index) => (
+                {learner.profile.achievements?.map((achievement, index) => (
                   <motion.div
                     key={achievement.id}
                     initial={{ opacity: 0, rotate: -2 }}

@@ -12,12 +12,12 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 
   const url = new URL(context.request.url);
   const courseId = url.searchParams.get('course_id');
-  const studentId = url.searchParams.get('student_id') || user.sub;
+  const learnerId = url.searchParams.get('learner_id') || user.sub;
 
   let query = supabase
     .from('course_performance')
     .select('*')
-    .eq('student_id', studentId);
+    .eq('learner_id', learnerId);
 
   if (courseId) {
     query = query.eq('course_id', courseId);

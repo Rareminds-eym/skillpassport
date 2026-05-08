@@ -25,8 +25,8 @@ describe('Security Tests: Cross-Organization Access Prevention', () => {
     users = new Map([
       ['admin-1', { id: 'admin-1', role: 'school_admin', organization_id: 'org-1' }],
       ['admin-2', { id: 'admin-2', role: 'college_admin', organization_id: 'org-2' }],
-      ['student-1', { id: 'student-1', role: 'student', organization_id: 'org-1' }],
-      ['student-2', { id: 'student-2', role: 'student', organization_id: 'org-2' }]
+      ['learner-1', { id: 'learner-1', role: 'learner', organization_id: 'org-1' }],
+      ['learner-2', { id: 'learner-2', role: 'learner', organization_id: 'org-2' }]
     ]);
 
     subscriptions = new Map([
@@ -40,8 +40,8 @@ describe('Security Tests: Cross-Organization Access Prevention', () => {
     ]);
 
     assignments = new Map([
-      ['assign-1', { id: 'assign-1', user_id: 'student-1', organization_subscription_id: 'sub-1' }],
-      ['assign-2', { id: 'assign-2', user_id: 'student-2', organization_subscription_id: 'sub-2' }]
+      ['assign-1', { id: 'assign-1', user_id: 'learner-1', organization_subscription_id: 'sub-1' }],
+      ['assign-2', { id: 'assign-2', user_id: 'learner-2', organization_subscription_id: 'sub-2' }]
     ]);
 
     invitations = new Map([
@@ -149,12 +149,12 @@ describe('Security Tests: Cross-Organization Access Prevention', () => {
         return { success: true, assignment_id: 'new-assign' };
       };
 
-      // Admin-1 can assign to student-1 (same org)
-      const result = await assignLicense('admin-1', 'pool-1', 'student-1');
+      // Admin-1 can assign to learner-1 (same org)
+      const result = await assignLicense('admin-1', 'pool-1', 'learner-1');
       expect(result.success).toBe(true);
 
-      // Admin-1 cannot assign to student-2 (different org)
-      await expect(assignLicense('admin-1', 'pool-1', 'student-2')).rejects.toThrow(
+      // Admin-1 cannot assign to learner-2 (different org)
+      await expect(assignLicense('admin-1', 'pool-1', 'learner-2')).rejects.toThrow(
         'Unauthorized: Cannot assign license to user from different organization'
       );
     });

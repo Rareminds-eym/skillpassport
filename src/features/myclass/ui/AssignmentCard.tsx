@@ -29,13 +29,13 @@ export interface Assignment {
   submission_date?: string;
   submission_content?: string;
   submission_url?: string;
-  student_assignment_id: string;
+  learner_assignment_id: string;
   allow_late_submission?: boolean;
 }
 
 interface AssignmentCardProps {
   assignment: Assignment;
-  onStatusChange: (assignmentId: string, studentAssignmentId: string, newStatus: string) => void;
+  onStatusChange: (assignmentId: string, learnerAssignmentId: string, newStatus: string) => void;
   onUploadClick: (assignment: Assignment) => void;
   onViewDetails: (assignment: Assignment) => void;
 }
@@ -367,7 +367,7 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
                   <label className="text-sm font-medium text-blue-800 block mb-2">Update Status</label>
                   <select
                     value={assignment.status}
-                    onChange={(e) => onStatusChange(assignment.assignment_id, assignment.student_assignment_id, e.target.value)}
+                    onChange={(e) => onStatusChange(assignment.assignment_id, assignment.learner_assignment_id, e.target.value)}
                     className="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   >
                     <option value="todo">To Do</option>

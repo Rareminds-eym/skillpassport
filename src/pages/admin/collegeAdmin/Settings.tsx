@@ -215,7 +215,7 @@ const RolePermissionModal = ({
 
     if (isCollegeAdmin) {
       return availableModules.filter(m =>
-        ['Dashboard', 'Students', 'Departments & Faculty', 'Academics',
+        ['Dashboard', 'Learners', 'Departments & Faculty', 'Academics',
           'Examinations', 'Placements & Skills', 'Operations', 'Administration', 'Settings']
           .includes(m.module_name)
       ).map(m => ({ name: m.module_name, description: m.description || '' }));

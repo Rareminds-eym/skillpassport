@@ -18,8 +18,8 @@ Generate comprehensive role overview data for a career role.
 {
   "roleTitle": "string",
   "gradeLevel": "middle_school" | "high_school" | "college",
-  "studentInterests": string[],
-  "studentStrengths": string[]
+  "learnerInterests": string[],
+  "learnerStrengths": string[]
 }
 ```
 

@@ -41,8 +41,8 @@ describe('Signed URL Handlers', () => {
         const parts = url.split('.r2.dev/');
         return parts[1] || null;
       }
-      if (url.includes('/teachers/') || url.includes('/students/')) {
-        const match = url.match(/\/(teachers|students)\/(.+)$/);
+      if (url.includes('/teachers/') || url.includes('/learners/')) {
+        const match = url.match(/\/(teachers|learners)\/(.+)$/);
         return match ? `${match[1]}/${match[2]}` : null;
       }
       return null;

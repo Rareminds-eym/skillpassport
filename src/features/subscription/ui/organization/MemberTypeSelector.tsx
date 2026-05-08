@@ -2,13 +2,13 @@
  * MemberTypeSelector Component
  * 
  * Allows organization admins to select which member types will receive the subscription.
- * Options: Educators only, Students only, or Both.
+ * Options: Educators only, Learners only, or Both.
  */
 
 import { GraduationCap, UserCheck, Users } from 'lucide-react';
 import { memo, useCallback } from 'react';
 
-export type MemberType = 'educator' | 'student' | 'both';
+export type MemberType = 'educator' | 'learner' | 'both';
 
 interface MemberTypeOption {
   value: MemberType;
@@ -25,15 +25,15 @@ const MEMBER_TYPE_OPTIONS: MemberTypeOption[] = [
     icon: <UserCheck className="w-5 h-5" />,
   },
   {
-    value: 'student',
-    label: 'Students Only',
-    description: 'Enrolled students and learners',
+    value: 'learner',
+    label: 'Learners Only',
+    description: 'Enrolled learners and learners',
     icon: <GraduationCap className="w-5 h-5" />,
   },
   {
     value: 'both',
     label: 'Both',
-    description: 'All educators and students',
+    description: 'All educators and learners',
     icon: <Users className="w-5 h-5" />,
   },
 ];

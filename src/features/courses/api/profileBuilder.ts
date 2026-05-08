@@ -1,6 +1,6 @@
 /**
  * Profile Builder
- * Builds composite text representation of student profile from assessment results.
+ * Builds composite text representation of learner profile from assessment results.
  */
 
 import { getDomainKeywordsWithCache } from './fieldDomainService';
@@ -9,7 +9,7 @@ import { getLogger } from '@/shared/config/logging';
 const logger = getLogger('profile-builder');
 
 /**
- * Build a composite text representation of the student's profile
+ * Build a composite text representation of the learner's profile
  * from assessment results for embedding generation.
  * 
  * Includes skill gaps, career clusters, and employability areas
@@ -31,7 +31,7 @@ export const buildProfileText = async (assessmentResults) => {
   // Add field-specific context at the beginning to strongly influence embedding
   const stream = assessmentResults.stream || assessmentResults.branch_field;
   if (stream) {
-    parts.push(`Student Field of Study: ${stream}`);
+    parts.push(`Learner Field of Study: ${stream}`);
 
     // Generate domain-specific keywords using AI service
     // This works for ALL fields, not just hardcoded ones

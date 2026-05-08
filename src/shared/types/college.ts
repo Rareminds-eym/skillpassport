@@ -8,20 +8,20 @@ export interface User {
   email: string;
   name: string;
   employee_id?: string;
-  student_id?: string;
+  learner_id?: string;
   roles: string[];
   department_id?: string;
   status: 'active' | 'inactive';
   created_at: string;
   updated_at: string;
   metadata?: {
-    type?: 'lecturer' | 'student';
+    type?: 'lecturer' | 'learner';
     // Lecturer specific
     specialization?: string;
     qualification?: string;
     experienceYears?: number;
     dateOfJoining?: string;
-    // Student specific
+    // Learner specific
     grade?: string;
     section?: string;
     roll_number?: string;
@@ -139,7 +139,7 @@ export interface Document {
   verified_by?: string;
 }
 
-export interface StudentAdmission {
+export interface LearnerAdmission {
   id: string;
   application_number: string;
   user_id?: string;
@@ -205,7 +205,7 @@ export interface ExamSlot {
 }
 
 export interface Conflict {
-  type: 'room' | 'student_batch' | 'faculty';
+  type: 'room' | 'learner_batch' | 'faculty';
   slot1: ExamSlot;
   slot2: ExamSlot;
   message: string;
@@ -214,7 +214,7 @@ export interface Conflict {
 export interface MarkEntry {
   id: string;
   assessment_id: string;
-  student_id: string;
+  learner_id: string;
   marks_obtained: number;
   is_absent: boolean;
   is_exempt: boolean;
@@ -239,7 +239,7 @@ export interface GradingScale {
 
 export interface Transcript {
   id: string;
-  student_id: string;
+  learner_id: string;
   type: 'provisional' | 'final';
   template_id?: string;
   semester_from: number;
@@ -256,7 +256,7 @@ export interface Transcript {
 }
 
 export interface TranscriptData {
-  student: {
+  learner: {
     name: string;
     roll_number: string;
     program: string;
@@ -320,9 +320,9 @@ export interface Scholarship {
   applied_by: string;
 }
 
-export interface StudentLedger {
+export interface LearnerLedger {
   id: string;
-  student_id: string;
+  learner_id: string;
   fee_structure_id: string;
   fee_head_id: string;
   due_amount: number;
@@ -335,8 +335,8 @@ export interface StudentLedger {
 }
 
 export interface DefaulterReport {
-  students: Array<{
-    student_id: string;
+  learners: Array<{
+    learner_id: string;
     name: string;
     roll_number: string;
     program: string;

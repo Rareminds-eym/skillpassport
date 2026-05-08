@@ -8,12 +8,12 @@ import { matchJobsWithAI, refreshJobMatches } from '@/features/opportunities';
  * - Database-level caching (24-hour TTL)
  * - Automatic cache invalidation
  * 
- * @param {Object} studentProfile - Student profile data
+ * @param {Object} learnerProfile - Learner profile data
  * @param {boolean} enabled - Whether to run matching (default: true)
  * @param {number} topN - Number of matches to return (default: 3)
  * @returns {Object} Hook state with matched jobs, loading, error, cacheInfo, and refreshMatches
  */
-export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
+export const useAIJobMatching = (learnerProfile, enabled = true, topN = 3) => {
   const [matchedJobs, setMatchedJobs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -22,15 +22,15 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
   useEffect(() => {
     const fetchMatches = async () => {
       // Don't run if disabled or no profile
-      if (!enabled || !studentProfile) {
+      if (!enabled || !learnerProfile) {
         setMatchedJobs([]);
         setLoading(false);
         return;
       }
 
-      // Check if studentProfile has an ID
-      const studentId = studentProfile?.id || studentProfile?.student_id;
-      if (!studentId) {
+      // Check if learnerProfile has an ID
+      const learnerId = learnerProfile?.id || learnerProfile?.learner_id;
+      if (!learnerId) {
         setMatchedJobs([]);
         setLoading(false);
         return;
@@ -41,7 +41,7 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
         setError(null);
 
         // Call the API - it handles opportunities fetching internally
-        const matches = await matchJobsWithAI(studentProfile, topN, false);
+        const matches = await matchJobsWithAI(learnerProfile, topN, false);
 
         // Extract cache info from first match if available
         if (matches.length > 0) {
@@ -63,11 +63,11 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
 
     fetchMatches();
   }, [
-    studentProfile?.id, 
-    studentProfile?.email,
-    studentProfile?.department,
-    studentProfile?.profile?.department,
-    studentProfile?.profile?.branch_field,
+    learnerProfile?.id, 
+    learnerProfile?.email,
+    learnerProfile?.department,
+    learnerProfile?.profile?.department,
+    learnerProfile?.profile?.branch_field,
     enabled, 
     topN
   ]);
@@ -76,14 +76,14 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
    * Manually refresh job matches - forces cache bypass
    */
   const refreshMatches = async () => {
-    if (!studentProfile) return;
+    if (!learnerProfile) return;
 
     try {
       setLoading(true);
       setError(null);
 
       // Force refresh bypasses cache
-      const matches = await refreshJobMatches(studentProfile, topN);
+      const matches = await refreshJobMatches(learnerProfile, topN);
       
       if (matches.length > 0) {
         setCacheInfo({

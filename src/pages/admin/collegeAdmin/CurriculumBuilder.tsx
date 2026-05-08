@@ -740,7 +740,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
       isOpen: true,
       type: 'publish',
       title: 'Publish Curriculum',
-      message: 'Are you sure you want to publish this curriculum? It will be immediately available to students and faculty.',
+      message: 'Are you sure you want to publish this curriculum? It will be immediately available to learners and faculty.',
       onConfirm: () => confirmPublish(),
     });
   };
@@ -772,7 +772,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
       const result = await curriculumService.publishCurriculum(curriculumId);
       if (result.success) {
         setStatus("published");
-        toast.success('Curriculum published successfully! It is now active and available to students and faculty.');
+        toast.success('Curriculum published successfully! It is now active and available to learners and faculty.');
       } else {
         toast.error(result.error?.message || 'Failed to publish curriculum');
       }

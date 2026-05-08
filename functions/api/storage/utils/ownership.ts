@@ -16,7 +16,7 @@ export interface OwnershipValidationResult {
  * Extract user ID from file path patterns
  * 
  * Supported patterns:
- * - certificates/{studentId}/...
+ * - certificates/{learnerId}/...
  * - payment_pdf/{name}_{userId}/...
  * - uploads/{userId}/...
  * 
@@ -26,7 +26,7 @@ export interface OwnershipValidationResult {
 export function extractUserIdFromPath(fileKey: string): string | null {
   if (!fileKey) return null;
 
-  // Pattern 1: certificates/{studentId}/...
+  // Pattern 1: certificates/{learnerId}/...
   const certificateMatch = fileKey.match(/^certificates\/([^\/]+)\//);
   if (certificateMatch) {
     return certificateMatch[1];
@@ -50,8 +50,8 @@ export function extractUserIdFromPath(fileKey: string): string | null {
 /**
  * Validate certificate ownership
  * 
- * Certificates follow the pattern: certificates/{studentId}/...
- * Only the student who owns the certificate can delete it.
+ * Certificates follow the pattern: certificates/{learnerId}/...
+ * Only the learner who owns the certificate can delete it.
  * 
  * @param fileKey - The file key/path in R2 storage
  * @param userId - The authenticated user's ID
@@ -66,7 +66,7 @@ export function validateCertificateOwnership(
   if (!extractedUserId) {
     return {
       isOwner: false,
-      reason: 'Could not extract student ID from certificate path',
+      reason: 'Could not extract learner ID from certificate path',
     };
   }
 

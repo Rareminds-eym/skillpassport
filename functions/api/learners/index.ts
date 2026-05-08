@@ -1,0 +1,107 @@
+/**
+ * Learners API
+ *
+ * CRUD operations for learner records.
+ * All endpoints require SSO authentication. Data scoped by org_id.
+ */
+import { withAuth } from '../../lib/auth';
+import { getServiceClient } from '../../lib/supabase';
+import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+
+/**
+ * GET /api/learners — List learners (for admins) or get own profile (for learners)
+ */
+export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
+  const user = context.data.user;
+  const env = context.env as Record<string, string>;
+  const supabase = getServiceClient(env as any);
+
+  const url = new URL(context.request.url);
+  const learnerId = url.searchParams.get('id');
+
+  // If specific learner requested
+  if (learnerId) {
+    const { data, error } = await supabase
+      .from('learners')
+      .select('*')
+      .eq('id', learnerId)
+      .single();
+
+    if (error) return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ learner: data });
+  }
+
+  // If user is a learner, return their own profile
+  const isLearner = user.roles.some((r: string) =>
+    ['learner', 'learner', 'learner'].includes(r)
+  );
+
+  if (isLearner) {
+    const { data, error } = await supabase
+      .from('learners')
+      .select('*')
+      .eq('user_id', user.sub)
+      .single();
+
+    if (error) return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ learner: data });
+  }
+
+  // Admin: list learners in their org
+  const limit = parseInt(url.searchParams.get('limit') || '50', 10);
+  const offset = parseInt(url.searchParams.get('offset') || '0', 10);
+
+  const { data, error, count } = await supabase
+    .from('learners')
+    .select('*', { count: 'exact' })
+    .eq('org_id', user.org_id)
+    .range(offset, offset + limit - 1)
+    .order('created_at', { ascending: false });
+
+  if (error) return Response.json({ error: error.message }, { status: 500 });
+  return Response.json({ learners: data, total: count });
+});
+
+/**
+ * POST /api/learners — Create or update learner record
+ */
+export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
+  const user = context.data.user;
+  const env = context.env as Record<string, string>;
+  const supabase = getServiceClient(env as any);
+
+  let body: Record<string, any>;
+  try {
+    body = await context.request.json() as any;
+  } catch {
+    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  // Ensure org_id is set from the JWT (prevent cross-org writes)
+  body.org_id = user.org_id;
+
+  if (body.id) {
+    // Update existing
+    const { data, error } = await supabase
+      .from('learners')
+      .update(body)
+      .eq('id', body.id)
+      .eq('org_id', user.org_id)
+      .select()
+      .single();
+
+    if (error) return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ learner: data });
+  }
+
+  // Create new
+  body.user_id = body.user_id || user.sub;
+  const { data, error } = await supabase
+    .from('learners')
+    .insert(body)
+    .select()
+    .single();
+
+  if (error) return Response.json({ error: error.message }, { status: 500 });
+  return Response.json({ learner: data }, { status: 201 });
+});

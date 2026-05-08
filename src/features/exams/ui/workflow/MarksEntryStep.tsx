@@ -9,7 +9,7 @@ import {
   ArrowDownTrayIcon,
   EyeIcon,
 } from '@heroicons/react/24/outline';
-import { UIExam, UIStudentMark } from '@/features/exams';
+import { UIExam, UIlearnerMark } from '@/features/exams';
 import { WorkflowStage } from '../types';
 
 const logger = getLogger('MarksEntryStep');
@@ -17,22 +17,22 @@ const logger = getLogger('MarksEntryStep');
 interface MarksEntryStepProps {
   exam: UIExam;
   setActiveStep: (step: WorkflowStage) => void;
-  loadStudents: (targetClasses?: any, grade?: string, section?: string) => Promise<any[]>;
-  saveMarks: (examId: string, subjectId: string, marks: UIStudentMark[]) => Promise<void>;
+  loadlearners: (targetClasses?: any, grade?: string, section?: string) => Promise<any[]>;
+  saveMarks: (examId: string, subjectId: string, marks: UIlearnerMark[]) => Promise<void>;
   updateExam: (updates: Partial<UIExam>) => void;
 }
 
 const MarksEntryStep: React.FC<MarksEntryStepProps> = ({ 
   exam, 
   setActiveStep, 
-  loadStudents, 
+  loadlearners, 
   saveMarks, 
   updateExam 
 }) => {
   const [selectedSubject, setSelectedSubject] = useState(exam.subjects[0]?.id || "");
-  const [studentMarks, setStudentMarks] = useState<UIStudentMark[]>([]);
-  const [loadingStudents, setLoadingStudents] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<{[studentId: string]: string}>({});
+  const [learnerMarks, setlearnerMarks] = useState<UIlearnerMark[]>([]);
+  const [loadinglearners, setLoadinglearners] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<{[learnerId: string]: string}>({});
   const [saveStatus, setSaveStatus] = useState<{type: 'success' | 'error' | null, message: string}>({type: null, message: ''});
 
   // Initialize selectedSubject when exam changes
@@ -42,49 +42,49 @@ const MarksEntryStep: React.FC<MarksEntryStepProps> = ({
     }
   }, [exam.subjects, selectedSubject]);
 
-  // Load students when component mounts or when selected subject changes
+  // Load learners when component mounts or when selected subject changes
   useEffect(() => {
-    const loadExamStudents = async () => {
+    const loadExamlearners = async () => {
       if (exam.grade) {
-        setLoadingStudents(true);
+        setLoadinglearners(true);
         try {
           // Use new targeting system
-          const studentsData = await loadStudents(exam.targetClasses, exam.grade, exam.section);
+          const learnersData = await loadlearners(exam.targetClasses, exam.grade, exam.section);
           
           // Check if we have existing marks for the selected subject
           const existingMarks = exam.marks.find(m => m.subjectId === selectedSubject);
           
           if (existingMarks) {
-            setStudentMarks(existingMarks.studentMarks);
+            setlearnerMarks(existingMarks.learnerMarks);
           } else {
-            const transformedStudents: UIStudentMark[] = studentsData.map(student => ({
-              studentId: student.id,
-              studentName: student.name,
-              rollNumber: student.roll_number || student.admission_number || 'N/A',
+            const transformedlearners: UIlearnerMark[] = learnersData.map(learner => ({
+              learnerId: learner.id,
+              learnerName: learner.name,
+              rollNumber: learner.roll_number || learner.admission_number || 'N/A',
               marks: null,
               isAbsent: false,
               isExempt: false
             }));
-            setStudentMarks(transformedStudents);
+            setlearnerMarks(transformedlearners);
           }
         } catch (error) {
-          logger.error('Failed to load students', error as Error);
-          setStudentMarks([]);
+          logger.error('Failed to load learners', error as Error);
+          setlearnerMarks([]);
         } finally {
-          setLoadingStudents(false);
+          setLoadinglearners(false);
         }
       }
     };
 
-    loadExamStudents();
-  }, [exam.targetClasses, selectedSubject, exam.marks, loadStudents]);
+    loadExamlearners();
+  }, [exam.targetClasses, selectedSubject, exam.marks, loadlearners]);
 
-  // Update studentMarks when selectedSubject changes
+  // Update learnerMarks when selectedSubject changes
   useEffect(() => {
     if (selectedSubject) {
       const existing = exam.marks.find(m => m.subjectId === selectedSubject);
-      if (existing?.studentMarks) {
-        setStudentMarks(existing.studentMarks);
+      if (existing?.learnerMarks) {
+        setlearnerMarks(existing.learnerMarks);
       }
     }
   }, [selectedSubject, exam.marks]);
@@ -105,7 +105,7 @@ const MarksEntryStep: React.FC<MarksEntryStepProps> = ({
   };
 
   // Handle marks change with validation
-  const handleMarksChange = (studentId: string, value: string) => {
+  const handleMarksChange = (learnerId: string, value: string) => {
     const newValue = value ? parseInt(value) : null;
     const currentSubject = exam.subjects.find(s => s.id === selectedSubject);
     const totalMarks = currentSubject?.totalMarks || 100;
@@ -116,13 +116,13 @@ const MarksEntryStep: React.FC<MarksEntryStepProps> = ({
     // Update validation errors
     setValidationErrors(prev => ({
       ...prev,
-      [studentId]: error || ''
+      [learnerId]: error || ''
     }));
     
     // Only update marks if valid or null
     if (!error || newValue === null) {
-      setStudentMarks(prev => prev.map(s => 
-        s.studentId === studentId ? { ...s, marks: newValue } : s
+      setlearnerMarks(prev => prev.map(s => 
+        s.learnerId === learnerId ? { ...s, marks: newValue } : s
       ));
     }
   };
@@ -140,14 +140,14 @@ const MarksEntryStep: React.FC<MarksEntryStepProps> = ({
 
     try {
       setSaveStatus({type: null, message: ''});
-      await saveMarks(exam.id, selectedSubject, studentMarks);
+      await saveMarks(exam.id, selectedSubject, learnerMarks);
       
       // Update local exam state immediately to show the saved marks
       const subjectMarks = {
         subjectId: selectedSubject,
         subjectName: exam.subjects.find(s => s.id === selectedSubject)?.name || 'Unknown',
         totalMarks: exam.subjects.find(s => s.id === selectedSubject)?.totalMarks || 100,
-        studentMarks: studentMarks,
+        learnerMarks: learnerMarks,
         submittedBy: 'Current User',
         submittedAt: new Date().toISOString()
       };
@@ -185,7 +185,7 @@ const MarksEntryStep: React.FC<MarksEntryStepProps> = ({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Enter Student Marks</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Enter Learner Marks</h3>
           <p className="text-sm text-gray-500 mt-1">Enter marks for each subject</p>
         </div>
       </div>
@@ -233,22 +233,22 @@ const MarksEntryStep: React.FC<MarksEntryStepProps> = ({
                       // Skip header row
                       const dataLines = lines.slice(1);
                       
-                      const uploadedMarks: UIStudentMark[] = [];
+                      const uploadedMarks: UIlearnerMark[] = [];
                       let successCount = 0;
                       let errorCount = 0;
                       
                       dataLines.forEach(line => {
                         const [rollNumber, , marks, absent] = line.split(',').map(s => s.trim());
                         
-                        // Find existing student by roll number
-                        const existingStudent = studentMarks.find(s => s.rollNumber === rollNumber);
+                        // Find existing learner by roll number
+                        const existingLearner = learnerMarks.find(s => s.rollNumber === rollNumber);
                         
-                        if (existingStudent) {
+                        if (existingLearner) {
                           const isAbsent = absent?.toLowerCase() === 'yes' || absent?.toLowerCase() === 'true';
                           const parsedMarks = isAbsent ? null : (marks ? parseInt(marks) : null);
                           
                           uploadedMarks.push({
-                            ...existingStudent,
+                            ...existingLearner,
                             marks: parsedMarks,
                             isAbsent: isAbsent
                           });
@@ -259,13 +259,13 @@ const MarksEntryStep: React.FC<MarksEntryStepProps> = ({
                       });
                       
                       if (uploadedMarks.length > 0) {
-                        // Merge uploaded marks with existing student marks
-                        const updatedMarks = studentMarks.map(student => {
-                          const uploaded = uploadedMarks.find(u => u.studentId === student.studentId);
-                          return uploaded || student;
+                        // Merge uploaded marks with existing learner marks
+                        const updatedMarks = learnerMarks.map(learner => {
+                          const uploaded = uploadedMarks.find(u => u.learnerId === learner.learnerId);
+                          return uploaded || learner;
                         });
                         
-                        setStudentMarks(updatedMarks);
+                        setlearnerMarks(updatedMarks);
                         setSaveStatus({
                           type: 'success',
                           message: `Bulk upload successful! ${successCount} records imported${errorCount > 0 ? `, ${errorCount} records skipped` : ''}`
@@ -297,12 +297,12 @@ const MarksEntryStep: React.FC<MarksEntryStepProps> = ({
           </button>
           <button
             onClick={() => {
-              // Generate CSV template with current students
+              // Generate CSV template with current learners
               const subject = exam.subjects.find(s => s.id === selectedSubject);
               const csvContent = [
-                ['Roll Number', 'Student Name', 'Marks', 'Absent (Yes/No)'].join(','),
-                ...studentMarks.map(student => 
-                  [student.rollNumber, student.studentName, '', 'No'].join(',')
+                ['Roll Number', 'Learner Name', 'Marks', 'Absent (Yes/No)'].join(','),
+                ...learnerMarks.map(learner => 
+                  [learner.rollNumber, learner.learnerName, '', 'No'].join(',')
                 )
               ].join('\n');
               
@@ -341,15 +341,15 @@ const MarksEntryStep: React.FC<MarksEntryStepProps> = ({
           {exam.subjects.map(subject => {
             const subjectMarks = exam.marks.find(m => m.subjectId === subject.id);
             
-            // If this is the currently selected subject, use live studentMarks data
+            // If this is the currently selected subject, use live learnerMarks data
             // Otherwise use saved data from exam.marks
-            const currentMarks = subject.id === selectedSubject && studentMarks.length > 0 
-              ? studentMarks 
-              : subjectMarks?.studentMarks || [];
+            const currentMarks = subject.id === selectedSubject && learnerMarks.length > 0 
+              ? learnerMarks 
+              : subjectMarks?.learnerMarks || [];
             
             const isCompleted = !!subjectMarks;
             const enteredCount = currentMarks.filter(s => s.marks !== null || s.isAbsent).length;
-            const totalStudents = currentMarks.length > 0 ? currentMarks.length : studentMarks.length;
+            const totallearners = currentMarks.length > 0 ? currentMarks.length : learnerMarks.length;
             
             return (
               <button
@@ -385,7 +385,7 @@ const MarksEntryStep: React.FC<MarksEntryStepProps> = ({
                       selectedSubject === subject.id ? 'text-indigo-700' : 
                       isCompleted ? 'text-green-700' : 'text-gray-700'
                     }`}>
-                      {enteredCount} / {totalStudents}
+                      {enteredCount} / {totallearners}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-1.5">
@@ -394,7 +394,7 @@ const MarksEntryStep: React.FC<MarksEntryStepProps> = ({
                         selectedSubject === subject.id ? 'bg-indigo-500' :
                         isCompleted ? 'bg-green-500' : 'bg-gray-400'
                       }`}
-                      style={{ width: `${totalStudents > 0 ? (enteredCount / totalStudents) * 100 : 0}%` }}
+                      style={{ width: `${totallearners > 0 ? (enteredCount / totallearners) * 100 : 0}%` }}
                     />
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
@@ -421,13 +421,13 @@ const MarksEntryStep: React.FC<MarksEntryStepProps> = ({
             </div>
             <div className="text-right">
               <p className="text-xs text-blue-700">
-                {studentMarks.filter(s => s.marks !== null || s.isAbsent).length} / {studentMarks.length} entered
+                {learnerMarks.filter(s => s.marks !== null || s.isAbsent).length} / {learnerMarks.length} entered
               </p>
               <div className="w-24 bg-blue-200 rounded-full h-2 mt-1">
                 <div 
                   className="bg-blue-600 h-2 rounded-full transition-all"
                   style={{ 
-                    width: `${studentMarks.length > 0 ? (studentMarks.filter(s => s.marks !== null || s.isAbsent).length / studentMarks.length) * 100 : 0}%` 
+                    width: `${learnerMarks.length > 0 ? (learnerMarks.filter(s => s.marks !== null || s.isAbsent).length / learnerMarks.length) * 100 : 0}%` 
                   }}
                 />
               </div>
@@ -437,24 +437,24 @@ const MarksEntryStep: React.FC<MarksEntryStepProps> = ({
           {/* Quick Stats */}
           <div className="grid grid-cols-4 gap-3 text-center">
             <div className="bg-white rounded-lg p-2 border border-blue-200">
-              <p className="text-lg font-bold text-blue-900">{studentMarks.length}</p>
-              <p className="text-xs text-blue-600">Total Students</p>
+              <p className="text-lg font-bold text-blue-900">{learnerMarks.length}</p>
+              <p className="text-xs text-blue-600">Total Learners</p>
             </div>
             <div className="bg-white rounded-lg p-2 border border-blue-200">
               <p className="text-lg font-bold text-green-600">
-                {studentMarks.filter(s => s.marks !== null && !s.isAbsent).length}
+                {learnerMarks.filter(s => s.marks !== null && !s.isAbsent).length}
               </p>
               <p className="text-xs text-blue-600">Marks Entered</p>
             </div>
             <div className="bg-white rounded-lg p-2 border border-blue-200">
               <p className="text-lg font-bold text-red-600">
-                {studentMarks.filter(s => s.isAbsent).length}
+                {learnerMarks.filter(s => s.isAbsent).length}
               </p>
               <p className="text-xs text-blue-600">Absent</p>
             </div>
             <div className="bg-white rounded-lg p-2 border border-blue-200">
               <p className="text-lg font-bold text-gray-600">
-                {studentMarks.filter(s => s.marks === null && !s.isAbsent).length}
+                {learnerMarks.filter(s => s.marks === null && !s.isAbsent).length}
               </p>
               <p className="text-xs text-blue-600">Pending</p>
             </div>
@@ -462,16 +462,16 @@ const MarksEntryStep: React.FC<MarksEntryStepProps> = ({
         </div>
       )}
 
-      {loadingStudents ? (
+      {loadinglearners ? (
         <div className="text-center py-8">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-          <p className="mt-2 text-sm text-gray-500">Loading students...</p>
+          <p className="mt-2 text-sm text-gray-500">Loading learners...</p>
         </div>
-      ) : studentMarks.length === 0 ? (
+      ) : learnerMarks.length === 0 ? (
         <div className="text-center py-8 bg-amber-50 rounded-lg border border-amber-200">
-          <div className="text-amber-600 mb-2">⚠️ No students found</div>
+          <div className="text-amber-600 mb-2">⚠️ No learners found</div>
           <p className="text-sm text-amber-700 mb-2">
-            No students found for Grade {exam.grade}{exam.section ? ` Section ${exam.section}` : ' (All Sections)'}
+            No learners found for Grade {exam.grade}{exam.section ? ` Section ${exam.section}` : ' (All Sections)'}
           </p>
         </div>
       ) : (
@@ -480,43 +480,43 @@ const MarksEntryStep: React.FC<MarksEntryStepProps> = ({
             <thead>
               <tr className="bg-gray-50">
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Roll No</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Student Name</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Learner Name</th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Marks</th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Absent</th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {studentMarks.map(student => {
+              {learnerMarks.map(learner => {
               const maxMarks = exam.subjects.find(s => s.id === selectedSubject)?.totalMarks || 100;
               const passingMarks = exam.subjects.find(s => s.id === selectedSubject)?.passingMarks || 35;
-              const isPassing = student.marks !== null && student.marks >= passingMarks;
+              const isPassing = learner.marks !== null && learner.marks >= passingMarks;
               
               return (
-                <tr key={student.studentId} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{student.rollNumber}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{student.studentName}</td>
+                <tr key={learner.learnerId} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{learner.rollNumber}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{learner.learnerName}</td>
                   <td className="px-4 py-3">
                     <div className="relative">
                       <input
                         type="number"
-                        value={student.marks ?? ""}
-                        onChange={(e) => handleMarksChange(student.studentId, e.target.value)}
-                        disabled={student.isAbsent || exam.status === "published"}
+                        value={learner.marks ?? ""}
+                        onChange={(e) => handleMarksChange(learner.learnerId, e.target.value)}
+                        disabled={learner.isAbsent || exam.status === "published"}
                         min="0"
                         max={maxMarks}
                         className={`w-20 mx-auto block rounded-lg border px-3 py-1.5 text-sm text-center ${
-                          student.isAbsent || exam.status === "published" 
+                          learner.isAbsent || exam.status === "published" 
                             ? "bg-gray-100 text-gray-400" 
-                            : validationErrors[student.studentId] 
+                            : validationErrors[learner.learnerId] 
                               ? "border-red-300 bg-red-50" 
                               : "border-gray-300"
                         }`}
                         placeholder="-"
                       />
-                      {validationErrors[student.studentId] && (
+                      {validationErrors[learner.learnerId] && (
                         <div className="absolute top-full left-0 right-0 mt-1 text-xs text-red-600 text-center bg-white border border-red-200 rounded px-2 py-1 shadow-sm z-10">
-                          {validationErrors[student.studentId]}
+                          {validationErrors[learner.learnerId]}
                         </div>
                       )}
                     </div>
@@ -524,8 +524,8 @@ const MarksEntryStep: React.FC<MarksEntryStepProps> = ({
                   <td className="px-4 py-3 text-center">
                     <input
                       type="checkbox"
-                      checked={student.isAbsent}
-                      onChange={() => setStudentMarks(prev => prev.map(s => s.studentId === student.studentId ? { ...s, isAbsent: !s.isAbsent, marks: !s.isAbsent ? null : s.marks } : s))}
+                      checked={learner.isAbsent}
+                      onChange={() => setlearnerMarks(prev => prev.map(s => s.learnerId === learner.learnerId ? { ...s, isAbsent: !s.isAbsent, marks: !s.isAbsent ? null : s.marks } : s))}
                       disabled={exam.status === "published"}
                       className={`h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 ${
                         exam.status === "published" ? "opacity-50 cursor-not-allowed" : ""
@@ -533,9 +533,9 @@ const MarksEntryStep: React.FC<MarksEntryStepProps> = ({
                     />
                   </td>
                   <td className="px-4 py-3 text-center">
-                    {student.isAbsent ? (
+                    {learner.isAbsent ? (
                       <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">Absent</span>
-                    ) : student.marks !== null ? (
+                    ) : learner.marks !== null ? (
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${isPassing ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
                         {isPassing ? "Pass" : "Fail"}
                       </span>

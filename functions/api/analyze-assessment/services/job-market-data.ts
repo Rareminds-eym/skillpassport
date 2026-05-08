@@ -68,7 +68,7 @@ Return ONLY valid JSON in this exact format:
     "category": "Technology & Digital Innovation",
     "description": "Why this sector is attractive (growth stats, job additions, market trends)",
     "whyBetter": "Specific reasons this is better than alternatives (e.g., 'Healthcare sector added 7.5M jobs (62% YoY growth). Entry-level roles growing 25% annually. Stable, recession-proof.')",
-    "bestFor": "Student profile types (e.g., 'BEST for S+I combinations, moderate aptitude')",
+    "bestFor": "Learner profile types (e.g., 'BEST for S+I combinations, moderate aptitude')",
     "roles": [
       {
         "title": "AI/ML Engineer",
@@ -178,13 +178,13 @@ ${riasecGuidance}
 1. ✅ Use ONLY the salary ranges and roles from the data above
 2. ✅ Use the "Why Better" descriptions to explain career cluster advantages
 3. ✅ These are CURRENT 2026 market rates - do NOT use hardcoded/outdated salaries
-4. ✅ Match student profile to roles with appropriate demand levels
+4. ✅ Match learner profile to roles with appropriate demand levels
 5. ✅ Prioritize HIGH demand roles for better career prospects
 6. ✅ Consider growth rate when recommending career paths
 7. ✅ Copy the exact salary format: "₹X-YL entry, ₹X-YL mid, ₹X-YL senior"
 8. ✅ Include the "Why Better" market insights in your career cluster descriptions
-9. ✅ The categories above were SPECIFICALLY SELECTED for this student's RIASEC profile (${riasecCode})
-10. ✅ Prioritize roles from the categories above - they are the best fit for this student
+9. ✅ The categories above were SPECIFICALLY SELECTED for this learner's RIASEC profile (${riasecCode})
+10. ✅ Prioritize roles from the categories above - they are the best fit for this learner
 
 DO NOT use the hardcoded examples below - they are FALLBACK ONLY if this real-time data is missing!
 
@@ -237,7 +237,7 @@ The categories above were selected because they align with your ${riasecCode} pr
 }
 
 /**
- * Extract career categories from student profile
+ * Extract career categories from learner profile
  * Uses RIASEC profile to dynamically determine relevant categories
  * Works for ALL RIASEC combinations, not just specific profiles
  */

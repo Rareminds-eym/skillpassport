@@ -18,7 +18,7 @@ export const GRADE_CONFIGS: Record<GradeLevel, GradePromptConfig> = {
 
 /**
  * Get grade-specific prompt configuration
- * @param gradeLevel - Student's grade level
+ * @param gradeLevel - Learner's grade level
  * @returns Grade-specific prompt configuration
  */
 export function getGradeConfig(gradeLevel: GradeLevel): GradePromptConfig {
@@ -26,8 +26,8 @@ export function getGradeConfig(gradeLevel: GradeLevel): GradePromptConfig {
 }
 
 /**
- * Detect grade level from student profile
- * @param profile - Student profile data
+ * Detect grade level from learner profile
+ * @param profile - Learner profile data
  * @returns Detected grade level
  */
 export function detectGradeLevel(profile: any): GradeLevel {
@@ -94,7 +94,7 @@ export function detectGradeLevel(profile: any): GradeLevel {
 
 /**
  * Build grade-specific guardrails section for prompt
- * @param gradeLevel - Student's grade level
+ * @param gradeLevel - Learner's grade level
  * @returns Formatted guardrails string
  */
 export function buildGuardrailsSection(gradeLevel: GradeLevel): string {
@@ -109,7 +109,7 @@ ${config.guardrails.map(g =>
 
 /**
  * Build grade-specific examples section for prompt
- * @param gradeLevel - Student's grade level
+ * @param gradeLevel - Learner's grade level
  * @param intent - Current conversation intent
  * @returns Formatted examples string with chain-of-thought reasoning
  */
@@ -126,7 +126,7 @@ export function buildExamplesSection(gradeLevel: GradeLevel, intent?: string): s
   }
   
   return `<examples>
-<instruction>Study these examples to understand the correct approach for ${gradeLevel} students:</instruction>
+<instruction>Study these examples to understand the correct approach for ${gradeLevel} learners:</instruction>
 
 ${relevantExamples.map(ex => `
 <example intent="${ex.intent}">

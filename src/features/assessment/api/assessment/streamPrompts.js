@@ -1,7 +1,7 @@
 /**
  * Stream Configuration for Career Assessment
- * Contains topic mappings for non-college students (after10, after12)
- * College/higher_secondary students use dynamic AI topic generation
+ * Contains topic mappings for non-college learners (after10, after12)
+ * College/higher_secondary learners use dynamic AI topic generation
  */
 
 // Stream-specific prompts for knowledge questions

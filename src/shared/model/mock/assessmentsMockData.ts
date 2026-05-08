@@ -106,7 +106,7 @@ export const mockAssessments: Assessment[] = [
     duration_minutes: 180,
     total_marks: 100,
     pass_marks: 40,
-    instructions: 'Arrears examination for failed students. Answer all questions.',
+    instructions: 'Arrears examination for failed learners. Answer all questions.',
     syllabus_coverage: ['All Units'],
     status: 'scheduled',
     created_by: 'user-1',

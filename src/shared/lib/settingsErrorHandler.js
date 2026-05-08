@@ -1,5 +1,5 @@
 /**
- * Industrial-grade error handling for student settings
+ * Industrial-grade error handling for learner settings
  * Provides validation, error mapping, retry logic, and user-friendly messages
  */
 

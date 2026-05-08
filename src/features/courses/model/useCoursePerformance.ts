@@ -36,7 +36,7 @@ export const useCoursePerformance = ({
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pipeline_candidates' }, () => {
         queryClient.invalidateQueries({ queryKey: queryKeys.courses.performance.all });
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'learners' }, () => {
         queryClient.invalidateQueries({ queryKey: queryKeys.courses.performance.all });
       });
 

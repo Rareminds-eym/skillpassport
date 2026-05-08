@@ -6,27 +6,27 @@ import { educatorAnalyticsService } from './educatorAnalyticsService';
  * Pulls real data and produces educator-focused answers for key intents.
  */
 export class EducatorInsightsOrchestrator {
-  // 1) At-risk students
-  async getAtRiskStudents(universityId?: string) {
-    const students = await dataFetcherService.getStudentsWithAssignments(universityId);
-    const insights = educatorAnalyticsService.buildStudentInsights(students);
-    return educatorAnalyticsService.identifyAtRiskStudents(insights);
+  // 1) At-risk learners
+  async getAtRisklearners(universityId?: string) {
+    const learners = await dataFetcherService.getlearnersWithAssignments(universityId);
+    const insights = educatorAnalyticsService.buildlearnerInsights(learners);
+    return educatorAnalyticsService.identifyAtRisklearners(insights);
   }
 
-  // 2) Career readiness: match students to active opportunities
+  // 2) Career readiness: match learners to active opportunities
   async getOpportunityMatches(universityId?: string, limitJobs = 50) {
-    const [students, opportunities] = await Promise.all([
-      dataFetcherService.getStudentsWithAssignments(universityId),
+    const [learners, opportunities] = await Promise.all([
+      dataFetcherService.getlearnersWithAssignments(universityId),
       dataFetcherService.getActiveOpportunities(limitJobs),
     ]);
-    const matches = educatorAnalyticsService.matchStudentsToOpportunities(students, opportunities);
+    const matches = educatorAnalyticsService.matchlearnersToOpportunities(learners, opportunities);
     return matches;
   }
 
   // 3) Class-wide analytics
   async getClassAnalytics(universityId?: string) {
-    const students = await dataFetcherService.getStudentsWithAssignments(universityId);
-    return educatorAnalyticsService.buildClassAnalytics(students);
+    const learners = await dataFetcherService.getlearnersWithAssignments(universityId);
+    return educatorAnalyticsService.buildClassAnalytics(learners);
   }
 }
 

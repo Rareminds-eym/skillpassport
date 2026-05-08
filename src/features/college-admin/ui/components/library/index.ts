@@ -5,7 +5,7 @@ export { DashboardTab } from './DashboardTab';
 export { AddBookModal } from './AddBookModal';
 export { IssueBookModal } from './IssueBookModal';
 export { ReturnBookModal } from './ReturnBookModal';
-export { StudentSearch } from './StudentSearch';
+export { LearnerSearch } from './LearnerSearch';
 export { DetailsTab } from './DetailsTab';
 export { HistoryTab } from './HistoryTab';
 export { OverdueTab } from './OverdueTab';

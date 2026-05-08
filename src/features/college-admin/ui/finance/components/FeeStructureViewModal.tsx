@@ -1,6 +1,6 @@
 import React from "react";
 import { X, FileDown, Calendar, Tag, Users, Percent, IndianRupee } from "lucide-react";
-import { FeeStructure } from '@/features/student-profile/model';
+import { FeeStructure } from '@/features/learner-profile/model';
 import { exportFeeStructurePDF } from '../utils/exportFeeStructurePDF';
 
 interface Props {

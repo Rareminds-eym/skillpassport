@@ -22,7 +22,7 @@ interface NotificationPanelProps {
     userId?: string
 }
 
-type FilterKey = 'all' | 'unread' | 'approvals' | 'students' | 'system'
+type FilterKey = 'all' | 'unread' | 'approvals' | 'learners' | 'system'
 
 const NotificationPanel: React.FC<NotificationPanelProps> = ({
     isOpen,
@@ -101,8 +101,8 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
             case 'experience_rejected':
             case 'project_rejected':
                 return <XMarkIcon className={`${base} text-red-500`} />
-            case 'student_enrolled':
-            case 'student_achievement':
+            case 'learner_enrolled':
+            case 'learner_achievement':
                 return <UserGroupIcon className={`${base} text-blue-500`} />
             case 'assignment_submitted':
             case 'class_activity_pending':
@@ -158,10 +158,10 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                     'approval_required',
                     'verification_required'
                 ].includes(n.type)
-            case 'students':
+            case 'learners':
                 return [
-                    'student_enrolled',
-                    'student_achievement',
+                    'learner_enrolled',
+                    'learner_achievement',
                     'assignment_submitted',
                     'class_activity_pending',
                     'assessment_completed',
@@ -198,11 +198,11 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                         'verification_required'
                     ].includes(n.type)
                 ).length
-            case 'students':
+            case 'learners':
                 return notifications.filter((n) =>
                     [
-                        'student_enrolled',
-                        'student_achievement',
+                        'learner_enrolled',
+                        'learner_achievement',
                         'assignment_submitted',
                         'class_activity_pending',
                         'assessment_completed',
@@ -290,7 +290,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
                 {/* Filter Tabs - Responsive */}
                 <div className="flex gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 border-b border-gray-100 bg-gray-50 overflow-x-auto flex-shrink-0">
-                    {(['all', 'unread', 'approvals', 'students', 'system'] as FilterKey[]).map(
+                    {(['all', 'unread', 'approvals', 'learners', 'system'] as FilterKey[]).map(
                         (key) => {
                             const count = getFilterCount(key)
                             const label =
@@ -300,8 +300,8 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                                         ? 'Unread'
                                         : key === 'approvals'
                                             ? 'Approvals'
-                                            : key === 'students'
-                                                ? 'Students'
+                                            : key === 'learners'
+                                                ? 'Learners'
                                                 : 'System'
 
                             return (

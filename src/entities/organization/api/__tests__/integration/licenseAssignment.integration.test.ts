@@ -42,8 +42,8 @@ const mockUsers = [
   { id: 'user-1', email: 'teacher1@test.com', role: 'educator' },
   { id: 'user-2', email: 'teacher2@test.com', role: 'educator' },
   { id: 'user-3', email: 'teacher3@test.com', role: 'educator' },
-  { id: 'user-4', email: 'student1@test.com', role: 'student' },
-  { id: 'user-5', email: 'student2@test.com', role: 'student' }
+  { id: 'user-4', email: 'learner1@test.com', role: 'learner' },
+  { id: 'user-5', email: 'learner2@test.com', role: 'learner' }
 ];
 
 describe('License Assignment Integration Tests', () => {

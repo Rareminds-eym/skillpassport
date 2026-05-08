@@ -2,7 +2,7 @@ import { TourStep } from '@/shared/types';
 
 /**
  * Generic Assessment Result Tour Configuration
- * For students who don't have stream or program recommendations
+ * For learners who don't have stream or program recommendations
  */
 
 export const GENERIC_ASSESSMENT_TOUR_STEPS: TourStep[] = [

@@ -12,7 +12,7 @@ The consolidation will:
 - Provide type-safe conversation filtering and role handling
 - Establish FSD-compliant architecture
 
-The system will support all conversation types (student-recruiter, student-educator, educator-recruiter, student-admin, student-college-admin, student-college-educator, educator-admin, college-educator-admin) and all user roles (student, recruiter, educator, college_educator, school_admin, college_admin, university_admin).
+The system will support all conversation types (learner-recruiter, learner-educator, educator-recruiter, learner-admin, learner-college-admin, learner-college-educator, educator-admin, college-educator-admin) and all user roles (learner, recruiter, educator, college_educator, school_admin, college_admin, university_admin).
 
 ## Architecture
 
@@ -21,7 +21,7 @@ The system will support all conversation types (student-recruiter, student-educa
 ```mermaid
 graph TB
     subgraph "Component Layer"
-        C1[Student Components]
+        C1[learner Components]
         C2[Educator Components]
         C3[Admin Components]
         C4[Recruiter Components]
@@ -133,7 +133,7 @@ src/
 ```typescript
 // User roles
 export type UserRole = 
-  | 'student' 
+  | 'learner' 
   | 'recruiter' 
   | 'educator' 
   | 'college_educator' 
@@ -146,12 +146,12 @@ export type CollegeLecturer = 'college_educator';
 
 // Conversation types
 export type ConversationType = 
-  | 'student_recruiter'
-  | 'student_educator'
+  | 'learner_recruiter'
+  | 'learner_educator'
   | 'educator_recruiter'
-  | 'student_admin'
-  | 'student_college_admin'
-  | 'student_college_educator'
+  | 'learner_admin'
+  | 'learner_college_admin'
+  | 'learner_college_educator'
   | 'educator_admin'
   | 'college_educator_admin';
 
@@ -178,7 +178,7 @@ export interface Message {
 
 export interface Conversation {
   id: string;
-  student_id?: string;
+  learner_id?: string;
   recruiter_id?: string;
   educator_id?: string;
   school_id?: string;
@@ -194,7 +194,7 @@ export interface Conversation {
   last_message_sender?: string;
   
   // Unread counts per role
-  student_unread_count: number;
+  learner_unread_count: number;
   recruiter_unread_count: number;
   educator_unread_count: number;
   admin_unread_count?: number;
@@ -218,7 +218,7 @@ export interface Conversation {
   updated_at: string;
   
   // Joined data
-  student?: any;
+  learner?: any;
   recruiter?: any;
   educator?: any;
   application?: any;
@@ -279,12 +279,12 @@ export function useMessages(options: UseMessagesOptions): UseMessagesReturn;
 ### Role-Specific Wrapper Hooks
 
 ```typescript
-// Student wrapper
+// learner wrapper
 export function useStudentMessages(
-  studentId: string,
+  learnerId: string,
   options?: Omit<UseMessagesOptions, 'userId' | 'userRole'>
 ): UseMessagesReturn {
-  return useMessages({ userId: studentId, userRole: 'student', ...options });
+  return useMessages({ userId: learnerId, userRole: 'learner', ...options });
 }
 
 // Educator wrapper
@@ -972,7 +972,7 @@ This section defines executable correctness properties for property-based testin
 **Goal**: Migrate existing components to use new hooks.
 
 **Migration Order**:
-1. Student components (5 files)
+1. learner components (5 files)
    - Update imports to use new hooks
    - Test messaging functionality
    - Verify real-time updates work
@@ -1011,8 +1011,8 @@ This section defines executable correctness properties for property-based testin
 3. Remove deprecated hooks after all migrations complete:
    - Remove 21 hooks from features/messaging layer
    - Remove 8 hooks from educator feature
-   - Remove 1 hook from student-profile feature
-   - Remove 17 hooks from entities/student layer
+   - Remove 1 hook from learner-profile feature
+   - Remove 17 hooks from entities/learner layer
    - Remove duplicate hooks from notifications and shared
 
 4. Update all index.ts exports
@@ -1073,17 +1073,17 @@ Add to each deprecated hook:
  * Migration guide:
  * 
  * Before:
- * const { messages } = useStudentMessages(studentId, conversationId);
+ * const { messages } = useStudentMessages(learnerId, conversationId);
  * 
  * After:
  * const { messages } = useMessages({ 
- *   userId: studentId, 
- *   userRole: 'student', 
+ *   userId: learnerId, 
+ *   userRole: 'learner', 
  *   conversationId 
  * });
  * 
  * Or use the convenience wrapper:
- * const { messages } = useStudentMessages(studentId, { conversationId });
+ * const { messages } = useStudentMessages(learnerId, { conversationId });
  */
 ```
 
@@ -1253,9 +1253,9 @@ describe('Property 1: Message Store Uniqueness', () => {
 
 ### Manual Testing Checklist
 
-- [ ] Send message as student to recruiter
-- [ ] Send message as educator to student
-- [ ] Send message as admin to student
+- [ ] Send message as learner to recruiter
+- [ ] Send message as educator to learner
+- [ ] Send message as admin to learner
 - [ ] Receive real-time message
 - [ ] Mark conversation as read
 - [ ] Archive conversation

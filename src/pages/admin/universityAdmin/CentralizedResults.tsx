@@ -27,7 +27,7 @@ import {
 } from '@/features/university-admin';
 import { ResultsAnalytics } from '@/features/university-admin';
 
-interface Student {
+interface Learner {
   id: string;
   name: string;
   rollNumber: string;
@@ -48,7 +48,7 @@ interface Subject {
 
 interface Result {
   id: string;
-  studentId: string;
+  learnerId: string;
   subjectId: string;
   examType: string;
   marksObtained: number;
@@ -64,7 +64,7 @@ interface Result {
 const CentralizedResults: React.FC = () => {
   // State management
   const [activeTab, setActiveTab] = useState('overview');
-  const [students, setStudents] = useState<Student[]>([]);
+  const [learners, setlearners] = useState<Learner[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [results, setResults] = useState<Result[]>([]);
   
@@ -95,8 +95,8 @@ const CentralizedResults: React.FC = () => {
   }, []);
 
   const loadMockData = () => {
-    // Mock students data
-    const mockStudents: Student[] = [
+    // Mock learners data
+    const mocklearners: Learner[] = [
       {
         id: '1',
         name: 'John Doe',
@@ -143,7 +143,7 @@ const CentralizedResults: React.FC = () => {
     const mockResults: Result[] = [
       {
         id: '1',
-        studentId: '1',
+        learnerId: '1',
         subjectId: '1',
         examType: 'End Semester',
         marksObtained: 85,
@@ -157,7 +157,7 @@ const CentralizedResults: React.FC = () => {
       },
       {
         id: '2',
-        studentId: '1',
+        learnerId: '1',
         subjectId: '2',
         examType: 'End Semester',
         marksObtained: 78,
@@ -171,7 +171,7 @@ const CentralizedResults: React.FC = () => {
       },
       {
         id: '3',
-        studentId: '2',
+        learnerId: '2',
         subjectId: '1',
         examType: 'End Semester',
         marksObtained: 92,
@@ -185,7 +185,7 @@ const CentralizedResults: React.FC = () => {
       },
       {
         id: '4',
-        studentId: '3',
+        learnerId: '3',
         subjectId: '5',
         examType: 'Mid Semester',
         marksObtained: 0,
@@ -197,26 +197,26 @@ const CentralizedResults: React.FC = () => {
       }
     ];
 
-    setStudents(mockStudents);
+    setlearners(mocklearners);
     setSubjects(mockSubjects);
     setResults(mockResults);
   };
 
   // Helper functions
-  const getStudentById = (id: string) => students.find(s => s.id === id);
+  const getlearnerById = (id: string) => learners.find(s => s.id === id);
   const getSubjectById = (id: string) => subjects.find(s => s.id === id);
 
   // Filter and search results
   const filteredResults = results.filter(result => {
-    const student = getStudentById(result.studentId);
+    const learner = getlearnerById(result.learnerId);
     const subject = getSubjectById(result.subjectId);
     
-    if (!student || !subject) return false;
+    if (!learner || !subject) return false;
     
     // Apply filters
-    if (filters.program && student.program !== filters.program) return false;
+    if (filters.program && learner.program !== filters.program) return false;
     if (filters.semester && result.semester !== filters.semester) return false;
-    if (filters.college && student.college !== filters.college) return false;
+    if (filters.college && learner.college !== filters.college) return false;
     if (filters.examType && result.examType !== filters.examType) return false;
     if (filters.status && result.status !== filters.status) return false;
     if (filters.academicYear && result.academicYear !== filters.academicYear) return false;
@@ -225,8 +225,8 @@ const CentralizedResults: React.FC = () => {
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       return (
-        student.name.toLowerCase().includes(searchLower) ||
-        student.rollNumber.toLowerCase().includes(searchLower) ||
+        learner.name.toLowerCase().includes(searchLower) ||
+        learner.rollNumber.toLowerCase().includes(searchLower) ||
         subject.name.toLowerCase().includes(searchLower) ||
         subject.code.toLowerCase().includes(searchLower)
       );
@@ -474,7 +474,7 @@ const CentralizedResults: React.FC = () => {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
               <div className="space-y-3">
                 {results.filter(r => r.publishedAt).slice(0, 5).map((result) => {
-                  const student = getStudentById(result.studentId);
+                  const learner = getlearnerById(result.learnerId);
                   const subject = getSubjectById(result.subjectId);
                   return (
                     <div key={result.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -482,7 +482,7 @@ const CentralizedResults: React.FC = () => {
                         <CheckCircleIcon className="h-5 w-5 text-green-500" />
                         <div>
                           <p className="text-sm font-medium text-gray-900">
-                            Result published for {student?.name} - {subject?.name}
+                            Result published for {learner?.name} - {subject?.name}
                           </p>
                           <p className="text-xs text-gray-500">
                             Grade: {result.grade} | Published by: {result.publishedBy}
@@ -577,7 +577,7 @@ const CentralizedResults: React.FC = () => {
                     <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                     <input
                       type="text"
-                      placeholder="Search by student name, roll number, or subject..."
+                      placeholder="Search by learner name, roll number, or subject..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -625,7 +625,7 @@ const CentralizedResults: React.FC = () => {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Student
+                        Learner
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Subject
@@ -652,7 +652,7 @@ const CentralizedResults: React.FC = () => {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {paginatedResults.map((result) => {
-                      const student = getStudentById(result.studentId);
+                      const learner = getlearnerById(result.learnerId);
                       const subject = getSubjectById(result.subjectId);
                       
                       return (
@@ -660,10 +660,10 @@ const CentralizedResults: React.FC = () => {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div>
                               <div className="text-sm font-medium text-gray-900">
-                                {student?.name}
+                                {learner?.name}
                               </div>
                               <div className="text-sm text-gray-500">
-                                {student?.rollNumber} | {student?.program}
+                                {learner?.rollNumber} | {learner?.program}
                               </div>
                             </div>
                           </td>
@@ -776,8 +776,8 @@ const CentralizedResults: React.FC = () => {
         {activeTab === 'analytics' && (
           <ResultsAnalytics
             results={results}
-            students={students}
-            getStudentById={getStudentById}
+            learners={learners}
+            getlearnerById={getlearnerById}
             getSubjectById={getSubjectById}
           />
         )}
@@ -809,9 +809,9 @@ const AddResultModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Add New Result</h3>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Student</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Learner</label>
             <select className="w-full border border-gray-300 rounded-lg px-3 py-2">
-              <option>Select Student</option>
+              <option>Select Learner</option>
               <option>John Doe (CS2021001)</option>
               <option>Jane Smith (CS2021002)</option>
             </select>
@@ -936,7 +936,7 @@ const BulkUploadModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             <p className="font-medium mb-2">File Requirements:</p>
             <ul className="list-disc list-inside space-y-1">
               <li>Excel format (.xlsx or .xls)</li>
-              <li>Include columns: Student ID, Subject Code, Marks, Total Marks</li>
+              <li>Include columns: Learner ID, Subject Code, Marks, Total Marks</li>
               <li>Maximum 1000 records per upload</li>
             </ul>
           </div>

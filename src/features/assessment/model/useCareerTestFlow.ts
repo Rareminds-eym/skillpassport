@@ -61,7 +61,7 @@ interface UseAssessmentFlowResult {
 
   // Grade/Stream
   gradeLevel: GradeLevel | null;
-  studentStream: string | null;
+  learnerStream: string | null;
   selectedCategory: string | null;
 
   // Timers
@@ -86,7 +86,7 @@ interface UseAssessmentFlowResult {
   setCurrentQuestionIndex: (index: number) => void;
   setShowSectionIntro: (show: boolean) => void;
   setGradeLevel: (level: GradeLevel) => void;
-  setStudentStream: (stream: string) => void;
+  setlearnerStream: (stream: string) => void;
   setSelectedCategory: (category: string) => void;
   setAnswer: (questionId: string, value: any) => void;
   goToNextQuestion: () => void;
@@ -129,7 +129,7 @@ export const useAssessmentFlow = ({
 
   // Grade/Stream
   const [gradeLevel, setGradeLevel] = useState<GradeLevel | null>(null);
-  const [studentStream, setStudentStream] = useState<string | null>(null);
+  const [learnerStream, setlearnerStream] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   // Timers
@@ -324,7 +324,7 @@ export const useAssessmentFlow = ({
     setCurrentQuestionIndex(0);
     setAnswers({});
     setGradeLevel(null);
-    setStudentStream(null);
+    setlearnerStream(null);
     setSelectedCategory(null);
     setTimeRemaining(null);
     setElapsedTime(0);
@@ -351,7 +351,7 @@ export const useAssessmentFlow = ({
 
     // Grade/Stream
     gradeLevel,
-    studentStream,
+    learnerStream,
     selectedCategory,
 
     // Timers
@@ -376,7 +376,7 @@ export const useAssessmentFlow = ({
     setCurrentQuestionIndex, // Added for resume functionality
     setShowSectionIntro, // Added for resume functionality
     setGradeLevel,
-    setStudentStream,
+    setlearnerStream,
     setSelectedCategory,
     setAnswer,
     goToNextQuestion,

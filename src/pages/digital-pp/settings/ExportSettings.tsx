@@ -11,7 +11,7 @@ const logger = getLogger('export-settings');
 
 const ExportSettings: React.FC = () => {
   const navigate = useNavigate();
-  const { student, settings } = usePortfolio();
+  const { learner, settings } = usePortfolio();
   const [showExportConfirmation, setShowExportConfirmation] = useState(false);
   const [exportType, setExportType] = useState('');
   const [isExporting, setIsExporting] = useState(false);
@@ -24,7 +24,7 @@ const ExportSettings: React.FC = () => {
   });
 
   const handleExport = async (type: string) => {
-    if (!student) {
+    if (!learner) {
       setExportError('No portfolio data available to export');
       return;
     }
@@ -53,13 +53,13 @@ const ExportSettings: React.FC = () => {
       // For JSON and Resume, proceed directly
       switch (type) {
         case 'PDF':
-          await exportAsPDF(student, settings, getFileName('Portfolio.pdf'));
+          await exportAsPDF(learner, settings, getFileName('Portfolio.pdf'));
           break;
         case 'JSON':
-          exportAsJSON(student, settings, getFileName('Data.json'));
+          exportAsJSON(learner, settings, getFileName('Data.json'));
           break;
         case 'Resume':
-          await exportResume(student, getFileName('Resume.pdf'));
+          await exportResume(learner, getFileName('Resume.pdf'));
           break;
         default:
           throw new Error('Unknown export type');
@@ -85,7 +85,7 @@ const ExportSettings: React.FC = () => {
   };
 
   const getFileName = (prefix: string): string => {
-    const name = student?.profile.name || 'Portfolio';
+    const name = learner?.profile.name || 'Portfolio';
     return `${name.replace(/\s+/g, '_')}_${prefix}`;
   };
 

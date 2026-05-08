@@ -69,7 +69,7 @@ export const useTopHiringColleges = ({
         invalidateQuery
       )
       .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'students' },
+        { event: '*', schema: 'public', table: 'learners' },
         invalidateQuery
       );
 

@@ -76,14 +76,14 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
       try {
         const body = await request.json() as any;
         console.log('📥 Request body:', JSON.stringify(body, null, 2));
-        const { streamId, questionsPerCategory = 5, studentId, attemptId, gradeLevel } = body;
+        const { streamId, questionsPerCategory = 5, learnerId, attemptId, gradeLevel } = body;
 
         if (!streamId) {
           console.error('❌ Missing streamId in request');
           return jsonResponse({ error: 'Stream ID is required' }, 400);
         }
 
-        const result = await generateAptitudeQuestions(env, streamId, questionsPerCategory, studentId, attemptId, gradeLevel);
+        const result = await generateAptitudeQuestions(env, streamId, questionsPerCategory, learnerId, attemptId, gradeLevel);
         console.log(`✅ Aptitude generation complete: ${result?.length || 0} questions`);
         // Wrap in {questions: [...]} format for frontend compatibility
         return jsonResponse({ questions: result });
@@ -109,23 +109,23 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
       try {
         const body = await request.json() as any;
         console.log('📥 Request body:', JSON.stringify(body, null, 2));
-        const { streamId, streamName, topics, questionCount = 20, studentId, attemptId, gradeLevel, isCollegeStudent } = body;
+        const { streamId, streamName, topics, questionCount = 20, learnerId, attemptId, gradeLevel, isCollegeLearner } = body;
 
-        // For college students and higher secondary (11th/12th), topics can be null (AI will determine dynamically)
-        const usesDynamicTopics = isCollegeStudent || gradeLevel === 'higher_secondary';
+        // For college learners and higher secondary (11th/12th), topics can be null (AI will determine dynamically)
+        const usesDynamicTopics = isCollegeLearner || gradeLevel === 'higher_secondary';
         
         if (!streamId || !streamName) {
           console.error('❌ Missing required fields:', { streamId, streamName });
           return jsonResponse({ error: 'Stream ID and name are required' }, 400);
         }
         
-        // Topics are optional for college students and 11th/12th students
+        // Topics are optional for college learners and 11th/12th learners
         if (!usesDynamicTopics && !topics) {
-          console.error('❌ Topics required for non-college/non-higher-secondary students');
-          return jsonResponse({ error: 'Topics are required for students below 11th grade' }, 400);
+          console.error('❌ Topics required for non-college/non-higher-secondary learners');
+          return jsonResponse({ error: 'Topics are required for learners below 11th grade' }, 400);
         }
 
-        const result = await generateKnowledgeQuestions(env, streamId, streamName, topics, questionCount, studentId, attemptId, gradeLevel, isCollegeStudent);
+        const result = await generateKnowledgeQuestions(env, streamId, streamName, topics, questionCount, learnerId, attemptId, gradeLevel, isCollegeLearner);
         console.log(`✅ Knowledge generation complete: ${result?.length || 0} questions`);
         // Wrap in {questions: [...]} format for frontend compatibility
         return jsonResponse({ questions: result });
@@ -157,8 +157,8 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     if (path === '/generate/diagnostic' && request.method === 'POST') {
       try {
         const body = await request.json() as any;
-        const { gradeLevel, excludeQuestionIds, excludeQuestionTexts, studentCourse } = body;
-        const result = await generateDiagnosticScreenerQuestions(env, gradeLevel, excludeQuestionIds, excludeQuestionTexts, studentCourse);
+        const { gradeLevel, excludeQuestionIds, excludeQuestionTexts, learnerCourse } = body;
+        const result = await generateDiagnosticScreenerQuestions(env, gradeLevel, excludeQuestionIds, excludeQuestionTexts, learnerCourse);
         return jsonResponse(result);
       } catch (error: any) {
         console.error('❌ Diagnostic generation error:', error);
@@ -169,8 +169,8 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     if (path === '/generate/adaptive' && request.method === 'POST') {
       try {
         const body = await request.json() as any;
-        const { gradeLevel, startingDifficulty, excludeQuestionIds, excludeQuestionTexts, studentCourse } = body;
-        const result = await generateAdaptiveCoreQuestions(env, gradeLevel, startingDifficulty, excludeQuestionIds, excludeQuestionTexts, studentCourse);
+        const { gradeLevel, startingDifficulty, excludeQuestionIds, excludeQuestionTexts, learnerCourse } = body;
+        const result = await generateAdaptiveCoreQuestions(env, gradeLevel, startingDifficulty, excludeQuestionIds, excludeQuestionTexts, learnerCourse);
         return jsonResponse(result);
       } catch (error: any) {
         console.error('❌ Adaptive generation error:', error);
@@ -181,8 +181,8 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     if (path === '/generate/stability' && request.method === 'POST') {
       try {
         const body = await request.json() as any;
-        const { gradeLevel, provisionalBand, excludeQuestionIds, excludeQuestionTexts, studentCourse } = body;
-        const result = await generateStabilityConfirmationQuestions(env, gradeLevel, provisionalBand, excludeQuestionIds, excludeQuestionTexts, studentCourse);
+        const { gradeLevel, provisionalBand, excludeQuestionIds, excludeQuestionTexts, learnerCourse } = body;
+        const result = await generateStabilityConfirmationQuestions(env, gradeLevel, provisionalBand, excludeQuestionIds, excludeQuestionTexts, learnerCourse);
         return jsonResponse(result);
       } catch (error: any) {
         console.error('❌ Stability generation error:', error);
@@ -193,9 +193,9 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     if (path === '/generate/single' && request.method === 'POST') {
       try {
         const body = await request.json() as any;
-        const { gradeLevel, phase, difficulty, subtag, excludeQuestionIds, excludeQuestionTexts, studentCourse } = body;
+        const { gradeLevel, phase, difficulty, subtag, excludeQuestionIds, excludeQuestionTexts, learnerCourse } = body;
         console.log('🎯 [Router] /generate/single called with:', { gradeLevel, phase, difficulty, subtag, excludeCount: excludeQuestionIds?.length || 0 });
-        const result = await generateSingleQuestion(env, gradeLevel, phase || 'adaptive_core', difficulty, subtag, excludeQuestionIds, excludeQuestionTexts, studentCourse);
+        const result = await generateSingleQuestion(env, gradeLevel, phase || 'adaptive_core', difficulty, subtag, excludeQuestionIds, excludeQuestionTexts, learnerCourse);
         console.log('✅ [Router] Single question generated:', { questionId: result.id, difficulty: result.difficulty });
         // Wrap in array format expected by next-question handler
         return jsonResponse({ questions: [result] });

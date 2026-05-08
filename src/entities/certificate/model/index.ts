@@ -8,7 +8,7 @@ export type {
   CertificateType,
   Certificate,
   CertificateMetadata,
-  StudentCertificate,
+  LearnerCertificate,
   CertificateTemplate,
   CertificateIssuanceRequest,
   BulkCertificateIssuance,

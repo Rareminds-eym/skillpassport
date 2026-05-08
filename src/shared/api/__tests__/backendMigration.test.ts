@@ -108,30 +108,30 @@ describe('Backend Migration Services', () => {
     });
 
     describe('userApiService', () => {
-        it('createStudent calls the correct worker endpoint', async () => {
+        it('createLearner calls the correct worker endpoint', async () => {
             const userApiService = (await import('../userApiService')).default;
 
             mockFetch.mockResolvedValueOnce({
                 ok: true,
-                json: async () => ({ success: true, data: { id: 'student-123' } })
+                json: async () => ({ success: true, data: { id: 'learner-123' } })
             });
 
-            const studentData = {
+            const learnerData = {
                 userEmail: 'admin@school.com',
                 schoolId: 'school-123',
-                student: { name: 'John Doe', email: 'john@example.com' }
+                learner: { name: 'John Doe', email: 'john@example.com' }
             };
 
-            await userApiService.createStudent(studentData, 'mock-token');
+            await userApiService.createLearner(learnerData, 'mock-token');
 
             expect(mockFetch).toHaveBeenCalledWith(
-                'https://user-api.worker/create-student',
+                'https://user-api.worker/create-learner',
                 expect.objectContaining({
                     method: 'POST',
                     headers: expect.objectContaining({
                         'Authorization': 'Bearer mock-token'
                     }),
-                    body: JSON.stringify(studentData)
+                    body: JSON.stringify(learnerData)
                 })
             );
         });
@@ -146,8 +146,8 @@ describe('Backend Migration Services', () => {
 
             const reminderData = {
                 interviewId: 'int-123',
-                recipientEmail: 'student@example.com',
-                recipientName: 'Student Name',
+                recipientEmail: 'learner@example.com',
+                recipientName: 'Learner Name',
                 interviewDetails: 'Details'
             };
 
@@ -259,7 +259,7 @@ describe('Backend Migration Services', () => {
     });
 
     describe('streakApiService', () => {
-        it('getStudentStreak calls the correct worker endpoint', async () => {
+        it('getlearnerStreak calls the correct worker endpoint', async () => {
             const streakApiService = (await import('../streakApiService')).default;
 
             mockFetch.mockResolvedValueOnce({
@@ -267,10 +267,10 @@ describe('Backend Migration Services', () => {
                 json: async () => ({ currentStreak: 5 })
             });
 
-            await streakApiService.getStudentStreak('student-123', 'mock-token');
+            await streakApiService.getlearnerStreak('learner-123', 'mock-token');
 
             expect(mockFetch).toHaveBeenCalledWith(
-                'https://streak-api.worker/student-123',
+                'https://streak-api.worker/learner-123',
                 expect.objectContaining({
                     method: 'GET',
                     headers: expect.objectContaining({
@@ -288,10 +288,10 @@ describe('Backend Migration Services', () => {
                 json: async () => ({ success: true })
             });
 
-            await streakApiService.completeStreak('student-123', 'mock-token');
+            await streakApiService.completeStreak('learner-123', 'mock-token');
 
             expect(mockFetch).toHaveBeenCalledWith(
-                'https://streak-api.worker/student-123/complete',
+                'https://streak-api.worker/learner-123/complete',
                 expect.objectContaining({
                     method: 'POST'
                 })

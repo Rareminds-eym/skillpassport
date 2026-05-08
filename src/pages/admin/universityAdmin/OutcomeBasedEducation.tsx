@@ -975,7 +975,7 @@ const OutcomeBasedEducation: React.FC = () => {
                 <div className="bg-white rounded-xl p-4">
                   <h4 className="font-semibold text-gray-900 mb-2">Indirect Attainment (30%)</h4>
                   <ul className="text-sm text-gray-600 space-y-1">
-                    <li>• Student feedback surveys</li>
+                    <li>• Learner feedback surveys</li>
                     <li>• Alumni feedback</li>
                     <li>• Employer feedback</li>
                     <li>• Exit surveys</li>

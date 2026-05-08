@@ -8,4 +8,4 @@ export const TOUR_KEYS: Record<string, TourKey> = {
   ASSESSMENT_RESULT_GENERIC: 'assessment_result_generic',
 } as const;
 
-export const TOUR_STORAGE_KEY = 'student_tour_progress';
+export const TOUR_STORAGE_KEY = 'learner_tour_progress';

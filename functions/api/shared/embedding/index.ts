@@ -11,7 +11,7 @@
 // Re-export from new locations
 export { callEmbeddingWorker, getEmbeddingConfig } from '../../embedding/services/embeddingWorkerClient';
 export {
-  buildStudentTextFromDatabase,
+  buildlearnerTextFromDatabase,
   buildCourseTextFromDatabase,
   buildCourseText,
   buildOpportunityTextFromDatabase,

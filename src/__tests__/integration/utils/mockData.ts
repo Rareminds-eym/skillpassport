@@ -4,10 +4,10 @@
  * Reusable mock data objects for testing
  */
 
-export const mockStudent = {
-  id: 'student-123',
+export const mockLearner = {
+  id: 'learner-123',
   user_id: 'user-123',
-  email: 'student@example.com',
+  email: 'learner@example.com',
   first_name: 'John',
   last_name: 'Doe',
   phone_number: '+919876543210',
@@ -92,11 +92,11 @@ export const mockCompany = {
 
 export const mockConversation = {
   id: 'conv_123',
-  student_id: 'student-123',
+  learner_id: 'learner-123',
   recruiter_id: 'recruiter-123',
-  conversation_type: 'student_recruiter',
+  conversation_type: 'learner_recruiter',
   status: 'active',
-  student_unread_count: 0,
+  learner_unread_count: 0,
   recruiter_unread_count: 0,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString()
@@ -105,8 +105,8 @@ export const mockConversation = {
 export const mockMessage = {
   id: 1,
   conversation_id: 'conv_123',
-  sender_id: 'student-123',
-  sender_type: 'student',
+  sender_id: 'learner-123',
+  sender_type: 'learner',
   receiver_id: 'recruiter-123',
   receiver_type: 'recruiter',
   message_text: 'Hello, I am interested in this opportunity.',
@@ -117,9 +117,9 @@ export const mockMessage = {
 
 export const mockRole = {
   id: 'role-123',
-  role_type: 'student',
-  role_name: 'Student',
-  description: 'Student role with basic access',
+  role_type: 'learner',
+  role_name: 'Learner',
+  description: 'Learner role with basic access',
   created_at: new Date().toISOString()
 };
 

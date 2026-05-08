@@ -21,7 +21,7 @@ import toast from "react-hot-toast"
 import { Pagination } from '@/shared/ui'
 import { useAuth } from "@/features/auth"
 import { ProgramSection } from "@/features/college-admin"
-import { ManageProgramStudentsModal } from '@/features/educator'
+import { ManageProgramLearnersModal } from '@/features/educator'
 import { usePermission } from '@/entities/user/model/usePermissions'
 
 const StatusBadge = ({ status }: { status: string }) => {
@@ -47,12 +47,12 @@ const formatDate = (value: string) => {
 const ProgramSectionDetailsDrawer = ({
   section,
   onClose,
-  onManageStudents,
+  onManagelearners,
   onUnassign
 }: {
   section: ProgramSection | null
   onClose: () => void
-  onManageStudents: (section: ProgramSection) => void
+  onManagelearners: (section: ProgramSection) => void
   onUnassign: (section: ProgramSection) => void
 }) => {
   if (!section) return null
@@ -95,12 +95,12 @@ const ProgramSectionDetailsDrawer = ({
         <div className="border-b border-gray-200 bg-gray-50 px-6 py-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="rounded-lg border border-gray-200 bg-white p-4">
-              <p className="text-xs uppercase tracking-wide text-gray-500">Current Students</p>
-              <p className="mt-2 text-2xl font-semibold text-gray-900">{section.current_students}</p>
+              <p className="text-xs uppercase tracking-wide text-gray-500">Current Learners</p>
+              <p className="mt-2 text-2xl font-semibold text-gray-900">{section.current_learners}</p>
             </div>
             <div className="rounded-lg border border-gray-200 bg-white p-4">
-              <p className="text-xs uppercase tracking-wide text-gray-500">Max Students</p>
-              <p className="mt-2 text-2xl font-semibold text-gray-900">{section.max_students}</p>
+              <p className="text-xs uppercase tracking-wide text-gray-500">Max Learners</p>
+              <p className="mt-2 text-2xl font-semibold text-gray-900">{section.max_learners}</p>
             </div>
             <div className="rounded-lg border border-gray-200 bg-white p-4">
               <p className="text-xs uppercase tracking-wide text-gray-500">Degree Level</p>
@@ -114,12 +114,12 @@ const ProgramSectionDetailsDrawer = ({
             </div>
             <div className="flex flex-wrap gap-2">
               <button
-                onClick={() => onManageStudents(section)}
+                onClick={() => onManagelearners(section)}
                 className="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
                 type="button"
               >
                 <UserGroupIcon className="mr-1.5 h-4 w-4" />
-                Manage Students
+                Manage Learners
               </button>
               <button
                 onClick={() => onUnassign(section)}
@@ -212,7 +212,7 @@ const ProgramSectionsPage = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(25)
   const [detailSection, setDetailSection] = useState<ProgramSection | null>(null)
-  const [manageStudentsSection, setManageStudentsSection] = useState<ProgramSection | null>(null)
+  const [managelearnersSection, setManagelearnersSection] = useState<ProgramSection | null>(null)
 
   // Security check
   useEffect(() => {
@@ -317,7 +317,7 @@ const ProgramSectionsPage = () => {
     <div className="flex overflow-y-auto mb-4 flex-col h-screen">
       <div className='p-4 sm:p-6 lg:p-8 mb-2'>
         <h1 className="text-xl md:text-3xl font-bold text-gray-900">Program Sections</h1>
-        <p className="text-base md:text-lg mt-2 text-gray-600">Manage your assigned program sections and students.</p>
+        <p className="text-base md:text-lg mt-2 text-gray-600">Manage your assigned program sections and learners.</p>
       </div>
 
       <div className="px-4 sm:px-6 lg:px-8 hidden lg:flex items-center p-4 bg-white border-b border-gray-200">
@@ -449,9 +449,9 @@ const ProgramSectionsPage = () => {
 
                     <div className="mb-4 space-y-3">
                       <div className="flex items-center justify-between text-sm text-gray-600">
-                        <span>Students</span>
+                        <span>Learners</span>
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
-                          {section.current_students} / {section.max_students}
+                          {section.current_learners} / {section.max_learners}
                         </span>
                       </div>
                       {section.faculty && (
@@ -477,10 +477,10 @@ const ProgramSectionsPage = () => {
                         <button
                           onClick={() => {
                             if (!canCreate) {
-                              alert('❌ Access Denied: You need CREATE permission to manage students');
+                              alert('❌ Access Denied: You need CREATE permission to manage learners');
                               return;
                             }
-                            setManageStudentsSection(section);
+                            setManagelearnersSection(section);
                           }}
                           disabled={!canCreate.allowed}
                           className={`inline-flex items-center px-3 py-1.5 border rounded text-xs font-medium transition-all ${
@@ -489,10 +489,10 @@ const ProgramSectionsPage = () => {
                               : 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed opacity-50 blur-sm'
                           }`}
                           type="button"
-                          title={canCreate.allowed ? 'Manage Students' : '❌ No CREATE permission'}
+                          title={canCreate.allowed ? 'Manage Learners' : '❌ No CREATE permission'}
                         >
                           <UserGroupIcon className="h-4 w-4 mr-1" />
-                          Students
+                          Learners
                         </button>
                       </div>
                       <div className="flex items-center gap-2">
@@ -532,7 +532,7 @@ const ProgramSectionsPage = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Faculty</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Semester</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Section</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Students</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Learners</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Academic Year</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -551,7 +551,7 @@ const ProgramSectionsPage = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{section.semester}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{section.section}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {section.current_students} / {section.max_students}
+                          {section.current_learners} / {section.max_learners}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{section.academic_year}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -562,10 +562,10 @@ const ProgramSectionsPage = () => {
                             <button 
                               onClick={() => {
                                 if (!canCreate) {
-                                  alert('❌ Access Denied: You need CREATE permission to manage students');
+                                  alert('❌ Access Denied: You need CREATE permission to manage learners');
                                   return;
                                 }
-                                setManageStudentsSection(section);
+                                setManagelearnersSection(section);
                               }} 
                               disabled={!canCreate.allowed}
                               className={`transition-all ${
@@ -574,9 +574,9 @@ const ProgramSectionsPage = () => {
                                   : 'text-gray-400 cursor-not-allowed opacity-50 blur-sm'
                               }`}
                               type="button"
-                              title={canCreate.allowed ? 'Manage Students' : '❌ No CREATE permission'}
+                              title={canCreate.allowed ? 'Manage Learners' : '❌ No CREATE permission'}
                             >
-                              Students
+                              Learners
                             </button>
                             <button onClick={() => {
                               if (!canView) {
@@ -624,12 +624,12 @@ const ProgramSectionsPage = () => {
         </div>
       </div>
 
-      <ManageProgramStudentsModal
-        isOpen={!!manageStudentsSection}
-        onClose={() => setManageStudentsSection(null)}
-        programSection={manageStudentsSection}
-        onStudentsUpdated={() => {
-          // Refresh program sections to update student counts
+      <ManageProgramLearnersModal
+        isOpen={!!managelearnersSection}
+        onClose={() => setManagelearnersSection(null)}
+        programSection={managelearnersSection}
+        onlearnersUpdated={() => {
+          // Refresh program sections to update learner counts
           refetch()
         }}
       />
@@ -637,8 +637,8 @@ const ProgramSectionsPage = () => {
       <ProgramSectionDetailsDrawer
         section={detailSection}
         onClose={() => setDetailSection(null)}
-        onManageStudents={(section) => {
-          setManageStudentsSection(section)
+        onManagelearners={(section) => {
+          setManagelearnersSection(section)
           setDetailSection(null)
         }}
         onUnassign={handleUnassignFromSection}

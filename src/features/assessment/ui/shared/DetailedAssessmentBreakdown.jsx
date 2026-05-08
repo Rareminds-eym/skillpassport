@@ -375,7 +375,7 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
     const stages = getStagesForGradeLevel();
     
     // 🔧 CRITICAL FIX: Total expected stages should show ALL possible stages for the grade level
-    // This shows students what they SHOULD complete, not just what they DID complete
+    // This shows learners what they SHOULD complete, not just what they DID complete
     // For after10: 6 stages (RIASEC, BigFive, WorkValues, Employability, Adaptive Aptitude, Stream Aptitude)
     const getTotalExpectedStages = () => {
         switch (gradeLevel) {

@@ -7,7 +7,7 @@ export { default as EducatorCopilot } from './ui/EducatorCopilot';
 export { educatorIntelligenceEngine } from './api/educatorIntelligenceEngine';
 export { educatorWelcomeConfig, educatorChatConfig } from './lib/config/educatorConfig';
 export {
-  StudentInsightCard,
+  LearnerInsightCard,
   ClassAnalyticsCard,
   InterventionCard,
   TrendCard
@@ -16,7 +16,7 @@ export * from './model';
 
 // API & Data Access
 export * from './api';
-export { getAssignmentsByStudentId } from './api/assignmentsService';
+export { getAssignmentsByLearnerId } from './api/assignmentsService';
 export { deleteResource } from '@/features/educator/api/coursesService';
 export { addLesson } from '@/features/educator/api/coursesService';
 export { submitAssignmentWithStagedFiles } from './api/assignmentsService';

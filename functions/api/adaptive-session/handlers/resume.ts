@@ -1,7 +1,7 @@
 /**
  * Resume and Find Session Handlers
  * 
- * Handles GET /resume/:sessionId and GET /find-in-progress/:studentId endpoints
+ * Handles GET /resume/:sessionId and GET /find-in-progress/:learnerId endpoints
  * Manages session resumption and discovery
  */
 
@@ -138,8 +138,8 @@ export const resumeHandler: PagesFunction = async (context) => {
       // Special case: adaptive_core with empty questions array - fetch first question
       console.log('🔄 [ResumeHandler] Adaptive core with no questions - fetching first question...');
       
-      // Extract specific grade from student_course if available
-      const specificGrade = extractGradeNumber(sessionData.student_course as string | null);
+      // Extract specific grade from learner_course if available
+      const specificGrade = extractGradeNumber(sessionData.learner_course as string | null);
       console.log('🎯 [ResumeHandler] Using specific grade:', specificGrade || 'fallback to range');
       
       // Get all previously answered question IDs
@@ -203,10 +203,10 @@ export const resumeHandler: PagesFunction = async (context) => {
 };
 
 /**
- * Finds an in-progress session for a student
+ * Finds an in-progress session for a learner
  * 
  * Requirements: Session discovery
- * - Queries for in-progress sessions for student
+ * - Queries for in-progress sessions for learner
  * - Optional grade level filter
  * - Returns most recent in-progress session or null
  */
@@ -214,10 +214,10 @@ export const findInProgressHandler: PagesFunction = async (context) => {
   const { request, env } = context;
   const url = new URL(request.url);
   const pathParts = url.pathname.split('/');
-  const studentId = pathParts[pathParts.length - 1];
+  const learnerId = pathParts[pathParts.length - 1];
 
-  if (!studentId) {
-    return jsonResponse({ error: 'Student ID is required' }, 400);
+  if (!learnerId) {
+    return jsonResponse({ error: 'Learner ID is required' }, 400);
   }
 
   // Get optional gradeLevel query parameter
@@ -225,7 +225,7 @@ export const findInProgressHandler: PagesFunction = async (context) => {
 
   try {
     console.log('🔍 [FindInProgressHandler] findInProgressSession called:', { 
-      studentId, 
+      learnerId, 
       gradeLevel 
     });
 
@@ -234,7 +234,7 @@ export const findInProgressHandler: PagesFunction = async (context) => {
     let query = supabase
       .from('adaptive_aptitude_sessions')
       .select('*')
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .eq('status', 'in_progress')
       .order('started_at', { ascending: false })
       .limit(1);

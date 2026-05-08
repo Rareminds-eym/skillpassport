@@ -7,14 +7,14 @@ const logger = getLogger('use-ai-recommendations');
 /**
  * Custom hook for AI-powered job recommendations using vector similarity
  * @param {Object} options - Configuration options
- * @param {string} options.studentId - Student ID
+ * @param {string} options.learnerId - Learner ID
  * @param {boolean} options.enabled - Whether to fetch recommendations (default: true)
  * @param {boolean} options.autoFetch - Whether to fetch on mount (default: true)
  * @param {number} options.limit - Number of recommendations to fetch (default: 20)
  * @returns {Object} Hook state with recommendations, loading, error, and actions
  */
 export const useAIRecommendations = ({
-  studentId,
+  learnerId,
   enabled = true,
   autoFetch = true,
   limit = 20
@@ -29,7 +29,7 @@ export const useAIRecommendations = ({
    * Fetch recommendations from the service
    */
   const fetchRecommendations = useCallback(async (forceRefresh = false) => {
-    if (!studentId || !enabled) {
+    if (!learnerId || !enabled) {
       setRecommendations([]);
       setLoading(false);
       return;
@@ -40,7 +40,7 @@ export const useAIRecommendations = ({
       setError(null);
 
       const result = await AIRecommendationService.getRecommendations(
-        studentId,
+        learnerId,
         forceRefresh
       );
 
@@ -57,7 +57,7 @@ export const useAIRecommendations = ({
     } finally {
       setLoading(false);
     }
-  }, [studentId, enabled]);
+  }, [learnerId, enabled]);
 
   /**
    * Refresh recommendations (bypass cache)
@@ -70,69 +70,69 @@ export const useAIRecommendations = ({
    * Track when user views an opportunity
    */
   const trackView = useCallback(async (opportunityId) => {
-    if (!studentId) return;
+    if (!learnerId) return;
 
     try {
       await AIRecommendationService.trackInteraction(
-        studentId,
+        learnerId,
         opportunityId,
         'view'
       );
     } catch (err) {
-      logger.error('Error tracking view', err instanceof Error ? err : new Error(String(err)), { studentId, opportunityId, action: 'view' });
+      logger.error('Error tracking view', err instanceof Error ? err : new Error(String(err)), { learnerId, opportunityId, action: 'view' });
     }
-  }, [studentId]);
+  }, [learnerId]);
 
   /**
    * Track when user saves an opportunity
    */
   const trackSave = useCallback(async (opportunityId) => {
-    if (!studentId) return;
+    if (!learnerId) return;
 
     try {
       await AIRecommendationService.trackInteraction(
-        studentId,
+        learnerId,
         opportunityId,
         'save'
       );
     } catch (err) {
-      logger.error('Error tracking save', err instanceof Error ? err : new Error(String(err)), { studentId, opportunityId, action: 'save' });
+      logger.error('Error tracking save', err instanceof Error ? err : new Error(String(err)), { learnerId, opportunityId, action: 'save' });
     }
-  }, [studentId]);
+  }, [learnerId]);
 
   /**
    * Track when user applies to an opportunity
    */
   const trackApply = useCallback(async (opportunityId) => {
-    if (!studentId) return;
+    if (!learnerId) return;
 
     try {
       await AIRecommendationService.trackInteraction(
-        studentId,
+        learnerId,
         opportunityId,
         'apply'
       );
       // Invalidate cache after apply
-      await AIRecommendationService.invalidateCache(studentId);
+      await AIRecommendationService.invalidateCache(learnerId);
     } catch (err) {
-      logger.error('Error tracking apply', err instanceof Error ? err : new Error(String(err)), { studentId, opportunityId, action: 'apply' });
+      logger.error('Error tracking apply', err instanceof Error ? err : new Error(String(err)), { learnerId, opportunityId, action: 'apply' });
     }
-  }, [studentId]);
+  }, [learnerId]);
 
   /**
    * Dismiss an opportunity (won't show again)
    */
   const dismissOpportunity = useCallback(async (opportunityId) => {
-    if (!studentId) return;
+    if (!learnerId) return;
 
     try {
-      await AIRecommendationService.dismissOpportunity(studentId, opportunityId);
+      await AIRecommendationService.dismissOpportunity(learnerId, opportunityId);
       // Remove from current recommendations
       setRecommendations(prev => prev.filter(rec => rec.id !== opportunityId));
     } catch (err) {
-      logger.error('Error dismissing opportunity', err instanceof Error ? err : new Error(String(err)), { studentId, opportunityId });
+      logger.error('Error dismissing opportunity', err instanceof Error ? err : new Error(String(err)), { learnerId, opportunityId });
     }
-  }, [studentId]);
+  }, [learnerId]);
 
   /**
    * Get match reasons for an opportunity
@@ -143,15 +143,15 @@ export const useAIRecommendations = ({
   }, []);
 
   /**
-   * Generate embedding for student profile
+   * Generate embedding for learner profile
    */
-  const generateStudentEmbedding = useCallback(async () => {
-    if (!studentId) return;
+  const generatelearnerEmbedding = useCallback(async () => {
+    if (!learnerId) return;
 
     try {
       setLoading(true);
 
-      const result = await AIRecommendationService.generateStudentEmbedding(studentId);
+      const result = await AIRecommendationService.generatelearnerEmbedding(learnerId);
 
       if (result.success) {
         // Fetch fresh recommendations after generating embedding
@@ -164,14 +164,14 @@ export const useAIRecommendations = ({
     } finally {
       setLoading(false);
     }
-  }, [studentId, fetchRecommendations]);
+  }, [learnerId, fetchRecommendations]);
 
   // Auto-fetch on mount if enabled
   useEffect(() => {
-    if (autoFetch && studentId && enabled) {
+    if (autoFetch && learnerId && enabled) {
       fetchRecommendations();
     }
-  }, [autoFetch, studentId, enabled, fetchRecommendations]);
+  }, [autoFetch, learnerId, enabled, fetchRecommendations]);
 
   return {
     recommendations,
@@ -186,7 +186,7 @@ export const useAIRecommendations = ({
     trackApply,
     dismissOpportunity,
     getMatchReasons,
-    generateStudentEmbedding
+    generatelearnerEmbedding
   };
 };
 

@@ -97,7 +97,7 @@ app → shared (✅ Correct)
 #### 1. Tour Types Migration (7 files fixed)
 
 **Created**: `src/shared/types/tour.ts`
-- Moved all tour-related types from `@/features/student-profile/model` to shared layer
+- Moved all tour-related types from `@/features/learner-profile/model` to shared layer
 - Types: `TourStep`, `TourConfig`, `TourProgress`, `TourState`, `TourKey`
 
 **Updated**: `src/shared/types/index.ts`
@@ -116,7 +116,7 @@ app → shared (✅ Correct)
 7. `src/app/providers/tour-wrapper/lib/configs/assessmentTestTourConfig.tsx`
 
 ```diff
-- import { TourStep, TourProgress, TourKey } from '@/features/student-profile/model';
+- import { TourStep, TourProgress, TourKey } from '@/features/learner-profile/model';
 + import { TourStep, TourProgress, TourKey } from '@/shared/types';
 ```
 
@@ -141,20 +141,20 @@ app → shared (✅ Correct)
 
 #### 3. Mock Data Migration (1 file fixed)
 
-**Problem**: `StudentLayout` was importing mock data from widget internals
+**Problem**: `learnerLayout` was importing mock data from widget internals
 
 **Solution**: Moved mock data to shared config layer
 
 **Created**: `src/shared/config/mockData.js`
-- Moved all mock data from `@/widgets/student-dashboard/model/mockData`
-- Data: `studentData`, `educationData`, `trainingData`, `experienceData`, `technicalSkills`, `softSkills`, `opportunities`, `recentUpdates`, `suggestions`
+- Moved all mock data from `@/widgets/learner-dashboard/model/mockData`
+- Data: `learnerData`, `educationData`, `trainingData`, `experienceData`, `technicalSkills`, `softSkills`, `opportunities`, `recentUpdates`, `suggestions`
 
-**Updated**: `src/widgets/student-dashboard/model/mockData.js`
+**Updated**: `src/widgets/learner-dashboard/model/mockData.js`
 - Changed to re-export from `@/shared/config/mockData` with deprecation notice
 
-**File: src/app/layouts/StudentLayout.jsx**
+**File: src/app/layouts/learnerLayout.jsx**
 ```diff
-- } from '@/widgets/student-dashboard/model/mockData';
+- } from '@/widgets/learner-dashboard/model/mockData';
 + } from '@/shared/config/mockData';
 ```
 
@@ -228,7 +228,7 @@ pages → features (✅ Correct)
 ### Files Modified
 - 4 page files (Section 4)
 - 7 tour config/util files (Section 5)
-- 2 layout files (StudentLayout, PublicLayout)
+- 2 layout files (learnerLayout, PublicLayout)
 - 2 guard files (OrganizationGuard)
 - 3 index/export files (shared/ui, shared/types, tour-wrapper types)
 - 1 widget mockData file (now re-exports)
@@ -241,7 +241,7 @@ pages → features (✅ Correct)
 ### Section 5: App → Features Layer Violations (10 remaining)
 
 **Tour-related violations (7 files):**
-- Move `TourProgress`, `TourKey`, `TourStep` types from `@/features/student-profile/model` to `@/shared/types` or `@/shared/lib/tour`
+- Move `TourProgress`, `TourKey`, `TourStep` types from `@/features/learner-profile/model` to `@/shared/types` or `@/shared/lib/tour`
 
 **Guard violation (1 file):**
 - Refactor `OrganizationGuard` to not render feature UI directly

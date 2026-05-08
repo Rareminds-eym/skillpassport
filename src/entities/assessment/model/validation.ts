@@ -49,8 +49,8 @@ export function validateAssessmentAttempt(attempt: Partial<AssessmentAttempt>): 
 } {
   const errors: string[] = [];
 
-  if (!attempt.student_id) {
-    errors.push('Student ID is required');
+  if (!attempt.learner_id) {
+    errors.push('Learner ID is required');
   }
 
   if (!attempt.grade_level) {

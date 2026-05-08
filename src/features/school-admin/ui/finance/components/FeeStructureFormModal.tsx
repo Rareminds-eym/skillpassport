@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { X, IndianRupee, Calendar, FileText, AlertCircle } from "lucide-react";
-import { FeeStructure } from '@/features/student-profile/model';
+import { FeeStructure } from '@/features/learner-profile/model';
 
 interface Props {
   isOpen: boolean;
@@ -339,7 +339,7 @@ export const FeeStructureFormModal: React.FC<Props> = ({
               <div>
                 <h4 className="text-sm font-medium text-blue-800 mb-1">Fee Structure Information</h4>
                 <p className="text-xs text-blue-700">
-                  This fee structure will be applied to all students in the specified class. 
+                  This fee structure will be applied to all learners in the specified class. 
                   You can create multiple fee structures for different fee heads (tuition, transport, etc.) 
                   for the same class.
                 </p>

@@ -17,18 +17,18 @@ import { usePortfolio } from '@/features/digital-portfolio/model/portfolioStore'
 const logger = getLogger('portfolio-page');
 const PortfolioPage: React.FC = () => {
   const navigate = useNavigate();
-  const { student, settings, isLoading, isManuallySet, viewerRole, loadStudentByEmail } = usePortfolio();
+  const { learner, settings, isLoading, isManuallySet, viewerRole, loadlearnerByEmail } = usePortfolio();
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Auto-load current user's data if not already loaded
   useEffect(() => {
-    if (!student && !isLoading && !isManuallySet) {
+    if (!learner && !isLoading && !isManuallySet) {
       const email = localStorage.getItem('userEmail');
       if (email) {
-        loadStudentByEmail(email);
+        loadlearnerByEmail(email);
       }
     }
-  }, [student, isLoading, isManuallySet, loadStudentByEmail]);
+  }, [learner, isLoading, isManuallySet, loadlearnerByEmail]);
 
   // Check if user is admin
   const isAdminViewing = viewerRole && (viewerRole.includes('admin') || viewerRole === 'admin');
@@ -81,11 +81,11 @@ const PortfolioPage: React.FC = () => {
               } else if (type === 'HTML') {
                 // For HTML, we don't need fullscreen - just wait for render
                 timers.push(setTimeout(async () => {
-                  if (!student || !settings) {
-                    throw new Error('Student or settings data not available');
+                  if (!learner || !settings) {
+                    throw new Error('Learner or settings data not available');
                   }
 
-                  await exportAsHTML(student, settings, preferences, filename);
+                  await exportAsHTML(learner, settings, preferences, filename);
                   sessionStorage.removeItem('pendingExport');
 
                   // Navigate back to export settings
@@ -107,7 +107,7 @@ const PortfolioPage: React.FC = () => {
 
     handlePendingExport();
     return () => timers.forEach(t => clearTimeout(t));
-  }, [student, settings, navigate]);
+  }, [learner, settings, navigate]);
 
   if (isLoading) {
     return (
@@ -120,11 +120,11 @@ const PortfolioPage: React.FC = () => {
     );
   }
 
-  if (!student) {
+  if (!learner) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600 dark:text-gray-400">No student data available</p>
+          <p className="text-gray-600 dark:text-gray-400">No learner data available</p>
           <Link to="/" className="text-blue-600 hover:underline mt-4 inline-block">
             Return to Home
           </Link>
@@ -135,7 +135,7 @@ const PortfolioPage: React.FC = () => {
 
   const renderLayout = () => {
     const layoutProps = {
-      student,
+      learner,
       primaryColor: settings.primaryColor,
       secondaryColor: settings.secondaryColor,
       accentColor: settings.accentColor,

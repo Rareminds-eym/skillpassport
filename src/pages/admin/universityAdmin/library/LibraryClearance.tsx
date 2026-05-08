@@ -36,8 +36,8 @@ const LibraryClearance = () => {
   const clearanceRequests = [
     {
       id: 1,
-      studentName: 'John Doe',
-      studentId: 'ST2025001',
+      learnerName: 'John Doe',
+      learnerId: 'ST2025001',
       college: 'Engineering College A',
       program: 'B.Tech Computer Science',
       semester: '8th Semester',
@@ -50,8 +50,8 @@ const LibraryClearance = () => {
     },
     {
       id: 2,
-      studentName: 'Jane Smith',
-      studentId: 'ST2025002',
+      learnerName: 'Jane Smith',
+      learnerId: 'ST2025002',
       college: 'Arts & Science College B',
       program: 'M.Sc Physics',
       semester: '4th Semester',
@@ -64,8 +64,8 @@ const LibraryClearance = () => {
     },
     {
       id: 3,
-      studentName: 'Mike Johnson',
-      studentId: 'ST2025003',
+      learnerName: 'Mike Johnson',
+      learnerId: 'ST2025003',
       college: 'Engineering College A',
       program: 'B.Tech Mechanical',
       semester: '8th Semester',
@@ -148,8 +148,8 @@ const LibraryClearance = () => {
 
   const filteredRequests = clearanceRequests.filter(request => {
     const matchesTab = activeTab === 'graduation' || request.status === activeTab;
-    const matchesSearch = request.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         request.studentId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = request.learnerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         request.learnerId.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          request.college.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCollege = !filterCollege || filterCollege === 'All Colleges' || request.college === filterCollege;
     const matchesProgram = !filterProgram || filterProgram === 'All Programs' || request.program === filterProgram;
@@ -166,8 +166,8 @@ const LibraryClearance = () => {
             <Users className="h-6 w-6 text-purple-600" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-gray-900">{request.studentName}</h3>
-            <p className="text-sm text-gray-600">ID: {request.studentId}</p>
+            <h3 className="text-lg font-bold text-gray-900">{request.learnerName}</h3>
+            <p className="text-sm text-gray-600">ID: {request.learnerId}</p>
             <p className="text-sm text-gray-600">{request.college}</p>
           </div>
         </div>
@@ -279,7 +279,7 @@ const LibraryClearance = () => {
                 Integration Points
               </h4>
               <ul className="text-sm text-gray-600 space-y-1">
-                <li>• Student Information System</li>
+                <li>• Learner Information System</li>
                 <li>• Graduation Processing Module</li>
                 <li>• Certificate Generation</li>
                 <li>• Alumni Database</li>
@@ -308,7 +308,7 @@ const LibraryClearance = () => {
           Library Clearance
         </h1>
         <p className="text-gray-600 mt-2">
-          Manage library clearances for graduation and student services across all affiliated colleges
+          Manage library clearances for graduation and learner services across all affiliated colleges
         </p>
       </div>
 
@@ -354,7 +354,7 @@ const LibraryClearance = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search by student name, ID, or college..."
+                  placeholder="Search by learner name, ID, or college..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"

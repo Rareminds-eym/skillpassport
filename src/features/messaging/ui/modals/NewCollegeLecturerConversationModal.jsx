@@ -4,7 +4,7 @@ import { supabase } from '@/shared/api/supabaseClient';
 import toast from 'react-hot-toast';
 
 // Small Message Modal Component
-const MessageModal = ({ student, isOpen, onClose, onSend, isLoading }) => {
+const MessageModal = ({ learner, isOpen, onClose, onSend, isLoading }) => {
   const [message, setMessage] = useState('');
   const [subject, setSubject] = useState('');
 
@@ -13,21 +13,21 @@ const MessageModal = ({ student, isOpen, onClose, onSend, isLoading }) => {
       setMessage('');
       setSubject('');
     }
-  }, [isOpen, student]);
+  }, [isOpen, learner]);
 
   const handleSend = () => {
     if (message.trim() && subject.trim()) {
       onSend({
-        studentId: student.id,
-        collegeLecturerId: student.collegeLecturerId,
-        programSectionId: student.programSectionId,
+        learnerId: learner.id,
+        collegeLecturerId: learner.collegeLecturerId,
+        programSectionId: learner.programSectionId,
         subject: subject.trim(),
         initialMessage: message.trim()
       });
     }
   };
 
-  if (!isOpen || !student) return null;
+  if (!isOpen || !learner) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
@@ -40,7 +40,7 @@ const MessageModal = ({ student, isOpen, onClose, onSend, isLoading }) => {
             </div>
             <div>
               <h3 className="font-semibold text-gray-900">New Conversation</h3>
-              <p className="text-xs text-gray-500">Message your student</p>
+              <p className="text-xs text-gray-500">Message your learner</p>
             </div>
           </div>
           <button
@@ -53,16 +53,16 @@ const MessageModal = ({ student, isOpen, onClose, onSend, isLoading }) => {
 
         {/* Content */}
         <div className="p-4 space-y-4">
-          {/* Selected Student */}
+          {/* Selected Learner */}
           <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
             <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium">
-              {student.name.charAt(0).toUpperCase()}
+              {learner.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1">
-              <p className="font-medium text-gray-900 text-sm">{student.name}</p>
+              <p className="font-medium text-gray-900 text-sm">{learner.name}</p>
               <p className="text-xs text-blue-600">
-                {student.programCode || student.program}
-                {student.section && ` • Section ${student.section}`}
+                {learner.programCode || learner.program}
+                {learner.section && ` • Section ${learner.section}`}
               </p>
             </div>
             <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
@@ -171,17 +171,17 @@ const NewCollegeLecturerConversationModal = ({
   collegeLecturerId,
   collegeId 
 }) => {
-  const [students, setStudents] = useState([]);
+  const [learners, setlearners] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [selectedLearner, setSelectedLearner] = useState(null);
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
 
-  // Fetch students from the same college and programs
+  // Fetch learners from the same college and programs
   useEffect(() => {
-    const fetchStudents = async () => {
-      console.log('🚀 === FETCH STUDENTS DEBUG START ===');
+    const fetchlearners = async () => {
+      console.log('🚀 === FETCH LEARNERS DEBUG START ===');
       console.log('📋 Modal Props:', { isOpen, collegeLecturerId, collegeId });
       
       if (!isOpen || !collegeLecturerId || !collegeId) {
@@ -213,11 +213,11 @@ const NewCollegeLecturerConversationModal = ({
         
         if (!departments || departments.length === 0) {
           console.log('⚠️ No departments found in college:', collegeId);
-          console.log('💡 Fallback: Fetching ALL students from college');
+          console.log('💡 Fallback: Fetching ALL learners from college');
           
-          // Fallback: Get all students from the same college
-          const { data: allStudentsData, error: allStudentsError } = await supabase
-            .from('students')
+          // Fallback: Get all learners from the same college
+          const { data: alllearnersData, error: alllearnersError } = await supabase
+            .from('learners')
             .select(`
               id,
               user_id,
@@ -235,42 +235,42 @@ const NewCollegeLecturerConversationModal = ({
             .eq('is_deleted', false)
             .order('name');
           
-          console.log('📊 All college students query result:', { 
-            data: allStudentsData, 
-            error: allStudentsError,
-            count: allStudentsData?.length || 0
+          console.log('📊 All college learners query result:', { 
+            data: alllearnersData, 
+            error: alllearnersError,
+            count: alllearnersData?.length || 0
           });
           
-          if (allStudentsError) {
-            console.error('❌ Error fetching all college students:', allStudentsError);
-            throw allStudentsError;
+          if (alllearnersError) {
+            console.error('❌ Error fetching all college learners:', alllearnersError);
+            throw alllearnersError;
           }
           
-          if (allStudentsData && allStudentsData.length > 0) {
-            console.log('👥 Found', allStudentsData.length, 'students in college (fallback)');
+          if (alllearnersData && alllearnersData.length > 0) {
+            console.log('👥 Found', alllearnersData.length, 'learners in college (fallback)');
             
-            // Transform students data
-            const transformedStudents = allStudentsData.map(student => ({
-              id: student.user_id || student.id,
-              name: student.name || student.email,
-              email: student.email,
-              program: student.course_name || student.branch_field || 'Unknown Program',
-              programCode: student.course_name || '',
-              section: student.section || '',
-              semester: student.semester || '',
+            // Transform learners data
+            const transformedlearners = alllearnersData.map(learner => ({
+              id: learner.user_id || learner.id,
+              name: learner.name || learner.email,
+              email: learner.email,
+              program: learner.course_name || learner.branch_field || 'Unknown Program',
+              programCode: learner.course_name || '',
+              section: learner.section || '',
+              semester: learner.semester || '',
               academicYear: '',
-              programSectionId: student.program_section_id,
-              programId: student.program_id
+              programSectionId: learner.program_section_id,
+              programId: learner.program_id
             }));
             
-            console.log('✅ Fallback: Transformed students:', transformedStudents);
+            console.log('✅ Fallback: Transformed learners:', transformedlearners);
             
-            setStudents(transformedStudents);
+            setlearners(transformedlearners);
             return;
           }
           
-          console.log('❌ No students found in college at all');
-          setStudents([]);
+          console.log('❌ No learners found in college at all');
+          setlearners([]);
           return;
         }
         
@@ -301,18 +301,18 @@ const NewCollegeLecturerConversationModal = ({
         
         if (!programs || programs.length === 0) {
           console.log('⚠️ No programs found in college departments');
-          setStudents([]);
+          setlearners([]);
           return;
         }
         
         const programIds = programs.map(p => p.id);
         console.log('🎓 Program IDs in college:', programIds);
         
-        console.log('🔍 Step 2: Fetching students from programs:', programIds, 'in college:', collegeId);
+        console.log('🔍 Step 2: Fetching learners from programs:', programIds, 'in college:', collegeId);
         
-        // Get all students from these programs in the same college
-        const { data: studentsData, error: studentsError } = await supabase
-          .from('students')
+        // Get all learners from these programs in the same college
+        const { data: learnersData, error: learnersError } = await supabase
+          .from('learners')
           .select(`
             id,
             user_id,
@@ -340,22 +340,22 @@ const NewCollegeLecturerConversationModal = ({
           .eq('is_deleted', false)
           .order('name');
         
-        console.log('📊 Students query result:', { 
-          data: studentsData, 
-          error: studentsError,
-          count: studentsData?.length || 0
+        console.log('📊 Learners query result:', { 
+          data: learnersData, 
+          error: learnersError,
+          count: learnersData?.length || 0
         });
         
-        if (studentsError) {
-          console.error('❌ Error fetching students:', studentsError);
-          throw studentsError;
+        if (learnersError) {
+          console.error('❌ Error fetching learners:', learnersError);
+          throw learnersError;
         }
         
-        console.log('👥 Step 4: Found', studentsData?.length || 0, 'students');
+        console.log('👥 Step 4: Found', learnersData?.length || 0, 'learners');
         
-        if (studentsData && studentsData.length > 0) {
-          console.log('📋 Sample student data:', studentsData[0]);
-          console.log('🎯 All students:', studentsData.map(s => ({
+        if (learnersData && learnersData.length > 0) {
+          console.log('📋 Sample learner data:', learnersData[0]);
+          console.log('🎯 All learners:', learnersData.map(s => ({
             id: s.id,
             user_id: s.user_id,
             name: s.name,
@@ -366,23 +366,23 @@ const NewCollegeLecturerConversationModal = ({
           })));
         }
         
-        // Transform students data
-        const transformedStudents = (studentsData || []).map(student => ({
-          id: student.user_id || student.id,
-          name: student.name || student.email,
-          email: student.email,
-          program: student.programs?.name || 'Unknown Program',
-          programCode: student.programs?.code || '',
-          section: student.program_sections?.section || '',
-          semester: student.program_sections?.semester || student.semester || '',
-          academicYear: student.program_sections?.academic_year || '',
-          programSectionId: student.program_section_id,
-          programId: student.program_id
+        // Transform learners data
+        const transformedlearners = (learnersData || []).map(learner => ({
+          id: learner.user_id || learner.id,
+          name: learner.name || learner.email,
+          email: learner.email,
+          program: learner.programs?.name || 'Unknown Program',
+          programCode: learner.programs?.code || '',
+          section: learner.program_sections?.section || '',
+          semester: learner.program_sections?.semester || learner.semester || '',
+          academicYear: learner.program_sections?.academic_year || '',
+          programSectionId: learner.program_section_id,
+          programId: learner.program_id
         }));
         
-        console.log('✅ Step 5: Transformed students:', transformedStudents);
+        console.log('✅ Step 5: Transformed learners:', transformedlearners);
         
-        setStudents(transformedStudents);
+        setlearners(transformedlearners);
         
       } catch (error) {
         console.error('❌ FETCH ERROR:', error);
@@ -392,14 +392,14 @@ const NewCollegeLecturerConversationModal = ({
           details: error.details,
           hint: error.hint
         });
-        toast.error('Failed to load students: ' + error.message);
+        toast.error('Failed to load learners: ' + error.message);
       } finally {
         setLoading(false);
-        console.log('🏁 === FETCH STUDENTS DEBUG END ===');
+        console.log('🏁 === FETCH LEARNERS DEBUG END ===');
       }
     };
 
-    fetchStudents();
+    fetchlearners();
   }, [isOpen, collegeLecturerId, collegeId]);
 
   const handleCreateConversation = async (conversationData) => {
@@ -415,16 +415,16 @@ const NewCollegeLecturerConversationModal = ({
     }
   };
 
-  const handleStudentSelect = (student) => {
-    setSelectedStudent({
-      ...student,
+  const handlelearnerSelect = (learner) => {
+    setSelectedLearner({
+      ...learner,
       collegeLecturerId
     });
     setShowMessageModal(true);
   };
 
   const handleClose = () => {
-    setSelectedStudent(null);
+    setSelectedLearner(null);
     setShowMessageModal(false);
     setSearchQuery('');
     onClose();
@@ -432,25 +432,25 @@ const NewCollegeLecturerConversationModal = ({
 
   const handleMessageModalClose = () => {
     setShowMessageModal(false);
-    setSelectedStudent(null);
+    setSelectedLearner(null);
   };
 
-  const filteredStudents = students.filter(student => {
+  const filteredlearners = learners.filter(learner => {
     if (!searchQuery.trim()) return true;
 
     const query = searchQuery.toLowerCase();
-    return student.name.toLowerCase().includes(query) ||
-           student.email.toLowerCase().includes(query) ||
-           student.program.toLowerCase().includes(query) ||
-           student.programCode.toLowerCase().includes(query) ||
-           student.section.toLowerCase().includes(query);
+    return learner.name.toLowerCase().includes(query) ||
+           learner.email.toLowerCase().includes(query) ||
+           learner.program.toLowerCase().includes(query) ||
+           learner.programCode.toLowerCase().includes(query) ||
+           learner.section.toLowerCase().includes(query);
   });
 
   if (!isOpen) return null;
 
   return (
     <>
-      {/* Main Student Selection Modal */}
+      {/* Main Learner Selection Modal */}
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-hidden">
           {/* Header */}
@@ -460,7 +460,7 @@ const NewCollegeLecturerConversationModal = ({
                 <GraduationCap className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Select Student</h2>
+                <h2 className="text-xl font-bold text-gray-900">Select Learner</h2>
                 <p className="text-sm text-gray-500">Choose who you want to message</p>
               </div>
             </div>
@@ -480,7 +480,7 @@ const NewCollegeLecturerConversationModal = ({
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search students..."
+                  placeholder="Search learners..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
@@ -491,47 +491,47 @@ const NewCollegeLecturerConversationModal = ({
                 <div className="flex items-center justify-center py-12">
                   <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
                 </div>
-              ) : filteredStudents.length === 0 ? (
+              ) : filteredlearners.length === 0 ? (
                 <div className="text-center py-12">
                   <GraduationCap className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500 text-sm">
-                    {searchQuery ? `No students found for "${searchQuery}"` : 'No students found in your programs'}
+                    {searchQuery ? `No learners found for "${searchQuery}"` : 'No learners found in your programs'}
                   </p>
                   {!searchQuery && (
                     <p className="text-gray-400 text-xs mt-2">
-                      Make sure you are assigned to programs with enrolled students.
+                      Make sure you are assigned to programs with enrolled learners.
                     </p>
                   )}
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {filteredStudents.map((student) => (
+                  {filteredlearners.map((learner) => (
                     <button
-                      key={student.id}
-                      onClick={() => handleStudentSelect(student)}
+                      key={learner.id}
+                      onClick={() => handlelearnerSelect(learner)}
                       className="w-full text-left p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-all group"
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium">
-                          {student.name.charAt(0).toUpperCase()}
+                          {learner.name.charAt(0).toUpperCase()}
                         </div>
                         <div className="flex-1">
                           <h3 className="font-semibold text-gray-900 group-hover:text-blue-700">
-                            {student.name}
+                            {learner.name}
                           </h3>
-                          <p className="text-sm text-gray-500">{student.email}</p>
+                          <p className="text-sm text-gray-500">{learner.email}</p>
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                              {student.programCode || student.program}
+                              {learner.programCode || learner.program}
                             </span>
-                            {student.section && (
+                            {learner.section && (
                               <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                                Section {student.section}
+                                Section {learner.section}
                               </span>
                             )}
-                            {student.semester && (
+                            {learner.semester && (
                               <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
-                                Sem {student.semester}
+                                Sem {learner.semester}
                               </span>
                             )}
                           </div>
@@ -561,7 +561,7 @@ const NewCollegeLecturerConversationModal = ({
 
       {/* Message Modal */}
       <MessageModal
-        student={selectedStudent}
+        learner={selectedLearner}
         isOpen={showMessageModal}
         onClose={handleMessageModalClose}
         onSend={handleCreateConversation}

@@ -1,7 +1,7 @@
 import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api';
 import userApiService from './userApiService';
-import type { QualificationData, ImportError, UserRoleHistoryRecord } from '@/types/StudentManagement';
+import type { QualificationData, ImportError, UserRoleHistoryRecord } from '@/types/LearnerManagement';
 
 const { unifiedSignup } = userApiService;
 
@@ -184,9 +184,7 @@ class UserManagementService {
 
     // Map role to worker API expected format
     const roleMapping: Record<string, string> = {
-      'student': 'school_student',
-      'school_student': 'school_student',
-      'college_student': 'college_student',
+      'learner': 'learner',
       'educator': 'school_educator',
       'school_educator': 'school_educator',
       'college_educator': 'college_educator',
@@ -197,7 +195,7 @@ class UserManagementService {
       'university_admin': 'university_admin',
     };
 
-    const mappedRole = roleMapping[userData.role] || 'school_student';
+    const mappedRole = roleMapping[userData.role] || 'learner';
 
     // Use Worker API for signup with proper rollback
     const result = await unifiedSignup({

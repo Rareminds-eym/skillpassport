@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/features/auth';
 import { ProfileCompletionModal, ProfileCompletionErrorBoundary } from '@/features/digital-portfolio';
-import { useProfileCompletionPrompt } from '@/features/student-profile';
+import { useProfileCompletionPrompt } from '@/features/learner-profile';
 import { getLogger } from '@/shared/config/logging';
 
 import { usePortfolio } from '@/features/digital-portfolio/model/portfolioStore';
@@ -14,7 +14,7 @@ import { useUserRole } from '@/shared/model/authStore';
 const logger = getLogger('passport-page');
 const PassportPage: React.FC = () => {
   const navigate = useNavigate();
-  const { student, isLoading, loadStudentByEmail } = usePortfolio();
+  const { learner, isLoading, loadlearnerByEmail } = usePortfolio();
   const { role } = useUserRole();
   const [currentPage, setCurrentPage] = useState(0);
   const [direction, setDirection] = useState(0);
@@ -25,13 +25,13 @@ const PassportPage: React.FC = () => {
 
   // Auto-load current user's data if not already loaded
   React.useEffect(() => {
-    if (!student && !isLoading) {
+    if (!learner && !isLoading) {
       const email = localStorage.getItem('userEmail');
       if (email) {
-        loadStudentByEmail(email);
+        loadlearnerByEmail(email);
       }
     }
-  }, [student, isLoading, loadStudentByEmail]);
+  }, [learner, isLoading, loadlearnerByEmail]);
 
   // Profile completion prompt hook
   const {
@@ -160,7 +160,7 @@ const PassportPage: React.FC = () => {
             <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/30 shadow-xl">
               <p className="text-sm uppercase tracking-widest mb-2 opacity-80">Issued by</p>
               <p className="text-2xl font-bold">RAREMINDS</p>
-              <p className="text-sm mt-2 opacity-80">Student Portfolio System</p>
+              <p className="text-sm mt-2 opacity-80">Learner Portfolio System</p>
             </div>
 
             <div className="mt-12 text-xs opacity-60">
@@ -190,12 +190,12 @@ const PassportPage: React.FC = () => {
             <div className="flex space-x-6 mb-8">
               <div className="relative">
                 <img
-                  src={student?.profile.profileImage || '/api/placeholder/150/180'}
-                  alt={student?.name || 'Profile'}
+                  src={learner?.profile.profileImage || '/api/placeholder/150/180'}
+                  alt={learner?.name || 'Profile'}
                   className="w-32 h-40 object-cover border-4 border-gray-800 shadow-lg"
                 />
                 <div className="absolute -bottom-2 -right-2 bg-white rounded-full p-1 shadow-lg">
-                  {student?.approval_status === 'approved' ? (
+                  {learner?.approval_status === 'approved' ? (
                     <CheckCircle className="w-6 h-6 text-green-600" />
                   ) : (
                     <XCircle className="w-6 h-6 text-red-600" />
@@ -206,33 +206,33 @@ const PassportPage: React.FC = () => {
               <div className="flex-1 space-y-2">
                 <div className="border-b border-gray-300 pb-2">
                   <p className="text-xs text-gray-500 uppercase">Full Name</p>
-                  <p className="font-bold text-lg text-gray-900">{student?.name || 'N/A'}</p>
+                  <p className="font-bold text-lg text-gray-900">{learner?.name || 'N/A'}</p>
                 </div>
                 <div className="border-b border-gray-300 pb-2">
                   <p className="text-xs text-gray-500 uppercase">
-                    {student?.school_id
+                    {learner?.school_id
                       ? 'School'
-                      : student?.college_id
+                      : learner?.college_id
                         ? 'College'
                         : 'University'}
                   </p>
                   <p className="font-semibold text-gray-800">
-                    {student?.school_id
-                      ? (student?.school?.name || student?.college_school_name || 'N/A')
-                      : student?.college_id
-                        ? (student?.college_school_name || 'N/A')
-                        : (student?.university || student?.universityInfo?.name || 'N/A')
+                    {learner?.school_id
+                      ? (learner?.school?.name || learner?.college_school_name || 'N/A')
+                      : learner?.college_id
+                        ? (learner?.college_school_name || 'N/A')
+                        : (learner?.university || learner?.universityInfo?.name || 'N/A')
                     }
                   </p>
                 </div>
                 <div className="border-b border-gray-300 pb-2">
                   <p className="text-xs text-gray-500 uppercase">
-                    {student?.school_id ? 'Grade/Section' : 'Field of Study'}
+                    {learner?.school_id ? 'Grade/Section' : 'Field of Study'}
                   </p>
                   <p className="font-semibold text-gray-800">
-                    {student?.school_id
-                      ? (student?.section || student?.grade || 'N/A')
-                      : (student?.branch_field || 'N/A')
+                    {learner?.school_id
+                      ? (learner?.section || learner?.grade || 'N/A')
+                      : (learner?.branch_field || 'N/A')
                     }
                   </p>
                 </div>
@@ -243,25 +243,25 @@ const PassportPage: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-gray-500 font-medium">Email</p>
-                  <p className="text-sm font-medium text-gray-800">{student?.email}</p>
+                  <p className="text-sm font-medium text-gray-800">{learner?.email}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 font-medium">Contact</p>
-                  <p className="text-sm font-medium text-gray-800">{student?.contact_number || 'N/A'}</p>
+                  <p className="text-sm font-medium text-gray-800">{learner?.contact_number || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 font-medium">Location</p>
                   <p className="text-sm font-medium text-gray-800">
-                    {student?.city && student?.state
-                      ? `${student.city}, ${student.state}${student.country ? `, ${student.country}` : ''}`
-                      : (student?.district_name || 'N/A')
+                    {learner?.city && learner?.state
+                      ? `${learner.city}, ${learner.state}${learner.country ? `, ${learner.country}` : ''}`
+                      : (learner?.district_name || 'N/A')
                     }
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 font-medium">ID Number</p>
                   <p className="text-sm font-bold text-blue-600">
-                    {student?.student_id || student?.profile?.passportId || 'N/A'}
+                    {learner?.learner_id || learner?.profile?.passportId || 'N/A'}
                   </p>
                 </div>
               </div>
@@ -269,7 +269,7 @@ const PassportPage: React.FC = () => {
 
             {/* Verification Stamp */}
             <div className="absolute bottom-8 right-8">
-              {student?.approval_status === 'approved' ? (
+              {learner?.approval_status === 'approved' ? (
                 <div className="relative">
                   <div className="w-32 h-32 rounded-full border-4 border-green-600 flex items-center justify-center transform -rotate-12">
                     <div className="text-center">
@@ -310,7 +310,7 @@ const PassportPage: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            {student?.profile.education?.slice(0, 2).map((edu) => (
+            {learner?.profile.education?.slice(0, 2).map((edu) => (
               <div key={edu.id} className="bg-white rounded-lg p-5 shadow-md border-l-4 border-blue-600">
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-bold text-lg text-gray-900">{edu.degree}</h3>
@@ -326,7 +326,7 @@ const PassportPage: React.FC = () => {
               </div>
             ))}
 
-            {(!student?.profile.education || student.profile.education.length === 0) && (
+            {(!learner?.profile.education || learner.profile.education.length === 0) && (
               <div className="text-center text-gray-500 py-8">
                 <Book className="w-12 h-12 mx-auto mb-2 opacity-30" />
                 <p>No education records available</p>
@@ -352,7 +352,7 @@ const PassportPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            {student?.profile.skills?.slice(0, 8).map((skill, index) => (
+            {learner?.profile.skills?.slice(0, 8).map((skill, index) => (
               <div key={index} className="bg-white rounded-lg p-4 shadow-sm border-l-3 border-purple-400">
                 <div className="flex items-center justify-between mb-1">
                   <p className="font-semibold text-gray-900">{skill.name}</p>
@@ -364,7 +364,7 @@ const PassportPage: React.FC = () => {
               </div>
             ))}
 
-            {(!student?.profile.skills || student.profile.skills.length === 0) && (
+            {(!learner?.profile.skills || learner.profile.skills.length === 0) && (
               <div className="col-span-2 text-center text-gray-500 py-8">
                 <Code className="w-12 h-12 mx-auto mb-2 opacity-30" />
                 <p>No skills listed</p>
@@ -390,7 +390,7 @@ const PassportPage: React.FC = () => {
           </div>
 
           <div className="space-y-3">
-            {student?.profile.languages?.map((language, index) => {
+            {learner?.profile.languages?.map((language, index) => {
               // Handle both string format and object format
               const languageName = typeof language === 'string' ? language : language.name;
               const proficiency = typeof language === 'string' ? 'Proficient' : (language.proficiency || 'Proficient');
@@ -408,7 +408,7 @@ const PassportPage: React.FC = () => {
               );
             })}
 
-            {(!student?.profile.languages || student.profile.languages.length === 0) && (
+            {(!learner?.profile.languages || learner.profile.languages.length === 0) && (
               <div className="text-center text-gray-500 py-12">
                 <Globe className="w-12 h-12 mx-auto mb-2 opacity-30" />
                 <p>No languages listed</p>
@@ -434,7 +434,7 @@ const PassportPage: React.FC = () => {
           </div>
 
           <div className="space-y-4 overflow-y-auto max-h-[500px]">
-            {student?.profile.projects?.slice(0, 3).map((project) => (
+            {learner?.profile.projects?.slice(0, 3).map((project) => (
               <div key={project.id} className="bg-white rounded-lg p-4 shadow-md border-l-4 border-orange-500">
                 <h3 className="font-bold text-gray-900 mb-2">{project.title}</h3>
                 <p className="text-sm text-gray-600 mb-3 line-clamp-2">{project.description}</p>
@@ -448,7 +448,7 @@ const PassportPage: React.FC = () => {
               </div>
             ))}
 
-            {(!student?.profile.projects || student.profile.projects.length === 0) && (
+            {(!learner?.profile.projects || learner.profile.projects.length === 0) && (
               <div className="text-center text-gray-500 py-12">
                 <Briefcase className="w-12 h-12 mx-auto mb-2 opacity-30" />
                 <p>No projects listed</p>
@@ -474,7 +474,7 @@ const PassportPage: React.FC = () => {
           </div>
 
           <div className="space-y-3">
-            {student?.profile.achievements?.slice(0, 4).map((achievement) => (
+            {learner?.profile.achievements?.slice(0, 4).map((achievement) => (
               <div key={achievement.id} className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-yellow-500">
                 <div className="flex items-start space-x-3">
                   <Award className="w-5 h-5 text-yellow-600 mt-1 flex-shrink-0" />
@@ -487,7 +487,7 @@ const PassportPage: React.FC = () => {
               </div>
             ))}
 
-            {student?.profile.certifications?.slice(0, 2).map((cert) => (
+            {learner?.profile.certifications?.slice(0, 2).map((cert) => (
               <div key={cert.id} className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-blue-500">
                 <div className="flex items-start space-x-3">
                   <Shield className="w-5 h-5 text-blue-600 mt-1 flex-shrink-0" />
@@ -500,8 +500,8 @@ const PassportPage: React.FC = () => {
               </div>
             ))}
 
-            {(!student?.profile.achievements || student.profile.achievements.length === 0) &&
-              (!student?.profile.certifications || student.profile.certifications.length === 0) && (
+            {(!learner?.profile.achievements || learner.profile.achievements.length === 0) &&
+              (!learner?.profile.certifications || learner.profile.certifications.length === 0) && (
                 <div className="text-center text-gray-500 py-12">
                   <Award className="w-12 h-12 mx-auto mb-2 opacity-30" />
                   <p>No achievements or certifications</p>
@@ -527,7 +527,7 @@ const PassportPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {student?.profile.hobbies?.map((hobby, index) => {
+            {learner?.profile.hobbies?.map((hobby, index) => {
               const IconComponent = getHobbyIcon(hobby);
               return (
                 <div key={index} className="bg-white rounded-lg p-4 shadow-md border-l-4 border-slate-500 hover:shadow-lg transition-shadow">
@@ -544,7 +544,7 @@ const PassportPage: React.FC = () => {
               );
             })}
 
-            {(!student?.profile.hobbies || student.profile.hobbies.length === 0) && (
+            {(!learner?.profile.hobbies || learner.profile.hobbies.length === 0) && (
               <div className="col-span-2 text-center text-gray-500 py-12">
                 <Star className="w-12 h-12 mx-auto mb-2 opacity-30" />
                 <p>No hobbies or interests listed</p>
@@ -570,7 +570,7 @@ const PassportPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            {student?.profile.interests?.map((interest, index) => (
+            {learner?.profile.interests?.map((interest, index) => (
               <div key={index} className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-teal-500">
                 <div className="flex items-center space-x-2">
                   <Target className="w-5 h-5 text-teal-600" />
@@ -579,7 +579,7 @@ const PassportPage: React.FC = () => {
               </div>
             ))}
 
-            {(!student?.profile.interests || student.profile.interests.length === 0) && (
+            {(!learner?.profile.interests || learner.profile.interests.length === 0) && (
               <div className="col-span-2 text-center text-gray-500 py-12">
                 <Target className="w-12 h-12 mx-auto mb-2 opacity-30" />
                 <p>No interests listed</p>

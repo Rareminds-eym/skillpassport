@@ -106,7 +106,7 @@ describe('Portfolio Store', () => {
     const { usePortfolioStore } = await import('../index');
     const state = usePortfolioStore.getState();
     
-    expect(state.student).toBeNull();
+    expect(state.learner).toBeNull();
     expect(state.viewerRole).toBeNull();
     expect(state.isLoading).toBe(false);
     expect(state.isManuallySet).toBe(false);
@@ -116,9 +116,9 @@ describe('Portfolio Store', () => {
     const { usePortfolioStore } = await import('../index');
     const store = usePortfolioStore.getState();
     
-    store.setViewerRole('student');
+    store.setViewerRole('learner');
     
-    expect(usePortfolioStore.getState().viewerRole).toBe('student');
+    expect(usePortfolioStore.getState().viewerRole).toBe('learner');
     expect(usePortfolioStore.getState().settings.layout).toBe('infographic');
   });
 });
@@ -143,7 +143,7 @@ describe('Tour Store', () => {
     store.setLoading(false);
     
     // Should be eligible for new tour
-    expect(store.isEligible('student_dashboard')).toBe(true);
+    expect(store.isEligible('learner_dashboard')).toBe(true);
   });
 });
 
@@ -277,7 +277,7 @@ describe('Global Presence Store', () => {
     store.addOnlineUser({
       userId: '1',
       userName: 'Test User',
-      userType: 'student',
+      userType: 'learner',
       status: 'online',
       lastSeen: new Date().toISOString()
     });

@@ -64,7 +64,7 @@ interface SettingsState {
   resumeUrl: string;
   emailNotifications: boolean;
   activityNotifications: boolean;
-  studentSubmissionNotifications: boolean;
+  learnerSubmissionNotifications: boolean;
   weeklyReportNotifications: boolean;
   pushNotifications: boolean;
   classTimeZone: string;
@@ -329,7 +329,7 @@ const Settings: React.FC = () => {
     resumeUrl: '',
     emailNotifications: true,
     activityNotifications: true,
-    studentSubmissionNotifications: true,
+    learnerSubmissionNotifications: true,
     weeklyReportNotifications: true,
     pushNotifications: false,
     classTimeZone: 'EST',
@@ -1478,7 +1478,7 @@ const Settings: React.FC = () => {
                         <textarea
                           value={settings.bio}
                           onChange={(e) => updateSetting('bio', e.target.value)}
-                          placeholder="Tell students about yourself..."
+                          placeholder="Tell learners about yourself..."
                           rows={4}
                           maxLength={500}
                           className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent resize-none"
@@ -2106,15 +2106,15 @@ const Settings: React.FC = () => {
                   />
                   <SettingToggle
                     label="Activity Alerts"
-                    description="Get notified when students engage with content"
+                    description="Get notified when learners engage with content"
                     enabled={settings.activityNotifications}
                     onChange={(value) => updateSetting('activityNotifications', value)}
                   />
                   <SettingToggle
                     label="Submission Notifications"
                     description="Receive alerts for new assignment submissions"
-                    enabled={settings.studentSubmissionNotifications}
-                    onChange={(value) => updateSetting('studentSubmissionNotifications', value)}
+                    enabled={settings.learnerSubmissionNotifications}
+                    onChange={(value) => updateSetting('learnerSubmissionNotifications', value)}
                   />
                   <SettingToggle
                     label="Weekly Reports"
@@ -2183,14 +2183,14 @@ const Settings: React.FC = () => {
               {/* Assessment Configuration */}
               <SettingsSection
                 title="Assessment Configuration"
-                description="Define how student assessments and feedback are managed"
+                description="Define how learner assessments and feedback are managed"
                 icon={<CheckCircleIcon className="w-5 h-5" />}
               >
                 <div className="space-y-0">
                   {/* Peer Review */}
                   <SettingToggle
                     label="Enable Peer Review"
-                    description="Allow students to review and provide feedback on each other's assignments"
+                    description="Allow learners to review and provide feedback on each other's assignments"
                     enabled={settings.enablePeerReview}
                     onChange={(value) => updateSetting('enablePeerReview', value)}
                   />
@@ -2198,7 +2198,7 @@ const Settings: React.FC = () => {
                   {/* Auto Skill Tagging */}
                   <SettingToggle
                     label="Auto Skill Tagging"
-                    description="Automatically tag student submissions with relevant skill categories"
+                    description="Automatically tag learner submissions with relevant skill categories"
                     enabled={settings.shareAnalytics}
                     onChange={(value) => updateSetting('shareAnalytics', value)}
                   />
@@ -2206,7 +2206,7 @@ const Settings: React.FC = () => {
                   {/* Assignment Due Reminders */}
                   <SettingToggle
                     label="Assignment Due Reminders"
-                    description="Send automated reminders to students 24 hours before deadlines"
+                    description="Send automated reminders to learners 24 hours before deadlines"
                     enabled={settings.weeklyReportNotifications}
                     onChange={(value) => updateSetting('weeklyReportNotifications', value)}
                   />
@@ -2230,7 +2230,7 @@ const Settings: React.FC = () => {
                   options={[
                     { value: 'public', label: 'Public - Anyone' },
                     { value: 'institution-only', label: 'Institution Members Only' },
-                    { value: 'private', label: 'Private - My Students Only' },
+                    { value: 'private', label: 'Private - My Learners Only' },
                   ]}
                 />
               </SettingsSection>

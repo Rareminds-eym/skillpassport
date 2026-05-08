@@ -15,10 +15,10 @@
  * BUILD ERROR CAPTURED:
  * src/pages/educator/ClassesPage.tsx (25:7): "default" is not exported by 
  * "src/features/college-admin/index.ts", imported by "src/pages/educator/ClassesPage.tsx".
- * Line 25: import { ManageStudentsModal } from '@/features/college-admin'
+ * Line 25: import { ManageLearnersModal } from '@/features/college-admin'
  * 
  * ROOT CAUSE: ClassesPage.tsx uses default import syntax, but @/features/college-admin
- * exports ManageStudentsModal as a named export via `export { default as ManageStudentsModal }`
+ * exports ManageLearnersModal as a named export via `export { default as ManageLearnersModal }`
  * from its ui/index.ts file.
  */
 
@@ -29,12 +29,12 @@ import * as fc from 'fast-check';
 const KNOWN_MISMATCH = {
   file: 'src/pages/educator/ClassesPage.tsx',
   line: 25,
-  importedItem: 'ManageStudentsModal',
+  importedItem: 'ManageLearnersModal',
   from: '@/features/college-admin',
   currentSyntax: 'named',
   expectedSyntax: 'named',
   buildError: 'FIXED: Now using correct named import syntax',
-  reason: 'Using named import which matches the module export via export { default as ManageStudentsModal }'
+  reason: 'Using named import which matches the module export via export { default as ManageLearnersModal }'
 };
 
 describe('Property 1: Bug Condition - Import/Export Mismatch Detection', () => {
@@ -48,7 +48,7 @@ describe('Property 1: Bug Condition - Import/Export Mismatch Detection', () => {
    * 
    * This test documents the bug condition by asserting the EXPECTED behavior (which will fail on unfixed code).
    */
-  it('should fail when ManageStudentsModal uses default import instead of named import', () => {
+  it('should fail when ManageLearnersModal uses default import instead of named import', () => {
     // Document the counterexample found
     console.log('\n=== IMPORT/EXPORT MISMATCH DETECTED (Bug Condition Confirmed) ===');
     console.log(`File: ${KNOWN_MISMATCH.file}`);
@@ -111,7 +111,7 @@ describe('Property 1: Bug Condition - Import/Export Mismatch Detection', () => {
     const testCase = {
       importSyntax: 'default',
       exportSyntax: 'named',
-      component: 'ManageStudentsModal',
+      component: 'ManageLearnersModal',
       module: '@/features/college-admin'
     };
     

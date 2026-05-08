@@ -12,7 +12,7 @@ export interface PipelineCandidate {
   ai_score_overall: number;
   last_updated: string;
   created_at?: string;
-  student_id: string; // UUID
+  learner_id: string; // UUID
   stage: string;
   source: string;
   next_action?: string;
@@ -31,7 +31,7 @@ export interface PipelineData {
 
 export interface AIRecommendation {
   applicantId: string; // UUID
-  studentName: string;
+  learnerName: string;
   positionTitle: string;
   matchScore: number;
   confidence: 'high' | 'medium' | 'low';

@@ -16,7 +16,7 @@ import type {
 // ============================================================================
 
 const VALID_USER_TYPES: UserType[] = [
-  'student',
+  'learner',
   'recruiter',
   'educator',
   'college_educator',
@@ -34,12 +34,12 @@ export function isValidUserType(type: string): type is UserType {
 // ============================================================================
 
 const VALID_CONVERSATION_TYPES: ConversationType[] = [
-  'student_recruiter',
-  'student_educator',
+  'learner_recruiter',
+  'learner_educator',
   'educator_recruiter',
-  'student_admin',
-  'student_college_admin',
-  'student_college_educator',
+  'learner_admin',
+  'learner_college_admin',
+  'learner_college_educator',
   'educator_admin',
   'college_educator_admin'
 ];

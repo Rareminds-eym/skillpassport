@@ -10,7 +10,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { SearchBar } from '@/shared/ui';
 
-interface Student {
+interface Learner {
   id: number;
   name: string;
   rollNo: string;
@@ -25,7 +25,7 @@ interface Student {
 
 interface Transcript {
   id: number;
-  studentId: number;
+  learnerId: number;
   type: "provisional" | "final";
   generatedDate: string;
   status: "pending" | "approved" | "published";
@@ -33,7 +33,7 @@ interface Transcript {
 }
 
 const TranscriptGeneration: React.FC = () => {
-  const [students] = useState<Student[]>([
+  const [learners] = useState<Learner[]>([
     {
       id: 1,
       name: "Rahul Sharma",
@@ -63,14 +63,14 @@ const TranscriptGeneration: React.FC = () => {
   const [transcripts, setTranscripts] = useState<Transcript[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<"provisional" | "final">("provisional");
-  const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
+  const [selectedlearners, setSelectedlearners] = useState<number[]>([]);
   const [showPreview, setShowPreview] = useState(false);
-  const [previewStudent, setPreviewStudent] = useState<Student | null>(null);
+  const [previewLearner, setPreviewLearner] = useState<Learner | null>(null);
 
-  const handleGenerateTranscript = (studentId: number) => {
+  const handleGenerateTranscript = (learnerId: number) => {
     const newTranscript: Transcript = {
       id: Date.now(),
-      studentId,
+      learnerId,
       type: selectedType,
       generatedDate: new Date().toISOString().split("T")[0],
       status: "pending",
@@ -80,19 +80,19 @@ const TranscriptGeneration: React.FC = () => {
   };
 
   const handleBatchGenerate = () => {
-    const newTranscripts = selectedStudents.map((studentId) => ({
-      id: Date.now() + studentId,
-      studentId,
+    const newTranscripts = selectedlearners.map((learnerId) => ({
+      id: Date.now() + learnerId,
+      learnerId,
       type: selectedType,
       generatedDate: new Date().toISOString().split("T")[0],
       status: "pending" as const,
-      verificationId: `VER${Date.now() + studentId}`,
+      verificationId: `VER${Date.now() + learnerId}`,
     }));
     setTranscripts([...transcripts, ...newTranscripts]);
-    setSelectedStudents([]);
+    setSelectedlearners([]);
   };
 
-  const filteredStudents = students.filter(
+  const filteredlearners = learners.filter(
     (s) =>
       s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.rollNo.toLowerCase().includes(searchQuery.toLowerCase())
@@ -106,7 +106,7 @@ const TranscriptGeneration: React.FC = () => {
           Transcript Generation
         </h1>
         <p className="text-gray-600 text-sm sm:text-base">
-          Generate official transcripts for students
+          Generate official transcripts for learners
         </p>
       </div>
 
@@ -115,9 +115,9 @@ const TranscriptGeneration: React.FC = () => {
         <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 text-sm mb-1">Eligible Students</p>
+              <p className="text-gray-600 text-sm mb-1">Eligible Learners</p>
               <p className="text-2xl font-bold text-gray-900">
-                {students.filter((s) => s.eligible).length}
+                {learners.filter((s) => s.eligible).length}
               </p>
             </div>
             <CheckCircleIcon className="h-8 w-8 text-green-600" />
@@ -166,7 +166,7 @@ const TranscriptGeneration: React.FC = () => {
             <SearchBar
               value={searchQuery}
               onChange={setSearchQuery}
-              placeholder="Search students..."
+              placeholder="Search learners..."
             />
           </div>
           <select
@@ -179,10 +179,10 @@ const TranscriptGeneration: React.FC = () => {
           </select>
         </div>
 
-        {selectedStudents.length > 0 && (
+        {selectedlearners.length > 0 && (
           <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-900">
-              {selectedStudents.length} student(s) selected
+              {selectedlearners.length} learner(s) selected
             </p>
             <button
               onClick={handleBatchGenerate}
@@ -194,7 +194,7 @@ const TranscriptGeneration: React.FC = () => {
         )}
       </div>
 
-      {/* Students List */}
+      {/* Learners List */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -205,16 +205,16 @@ const TranscriptGeneration: React.FC = () => {
                     type="checkbox"
                     onChange={(e) => {
                       if (e.target.checked) {
-                        setSelectedStudents(students.map((s) => s.id));
+                        setSelectedlearners(learners.map((s) => s.id));
                       } else {
-                        setSelectedStudents([]);
+                        setSelectedlearners([]);
                       }
                     }}
                     className="h-4 w-4 text-blue-600 rounded"
                   />
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                  Student
+                  Learner
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
                   Roll No
@@ -237,18 +237,18 @@ const TranscriptGeneration: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {filteredStudents.map((student) => (
-                <tr key={student.id} className="hover:bg-gray-50">
+              {filteredlearners.map((learner) => (
+                <tr key={learner.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <input
                       type="checkbox"
-                      checked={selectedStudents.includes(student.id)}
+                      checked={selectedlearners.includes(learner.id)}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setSelectedStudents([...selectedStudents, student.id]);
+                          setSelectedlearners([...selectedlearners, learner.id]);
                         } else {
-                          setSelectedStudents(
-                            selectedStudents.filter((id) => id !== student.id)
+                          setSelectedlearners(
+                            selectedlearners.filter((id) => id !== learner.id)
                           );
                         }
                       }}
@@ -256,22 +256,22 @@ const TranscriptGeneration: React.FC = () => {
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <p className="font-medium text-gray-900">{student.name}</p>
+                    <p className="font-medium text-gray-900">{learner.name}</p>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {student.rollNo}
+                    {learner.rollNo}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {student.department}
+                    {learner.department}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900 font-medium">
-                    {student.cgpa}
+                    {learner.cgpa}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {student.creditsEarned}/{student.creditsRequired}
+                    {learner.creditsEarned}/{learner.creditsRequired}
                   </td>
                   <td className="px-4 py-3">
-                    {student.eligible ? (
+                    {learner.eligible ? (
                       <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
                         Eligible
                       </span>
@@ -285,7 +285,7 @@ const TranscriptGeneration: React.FC = () => {
                     <div className="flex gap-2">
                       <button
                         onClick={() => {
-                          setPreviewStudent(student);
+                          setPreviewLearner(learner);
                           setShowPreview(true);
                         }}
                         className="p-1 text-blue-600 hover:bg-blue-50 rounded"
@@ -294,8 +294,8 @@ const TranscriptGeneration: React.FC = () => {
                         <EyeIcon className="h-5 w-5" />
                       </button>
                       <button
-                        onClick={() => handleGenerateTranscript(student.id)}
-                        disabled={!student.eligible}
+                        onClick={() => handleGenerateTranscript(learner.id)}
+                        disabled={!learner.eligible}
                         className="p-1 text-green-600 hover:bg-green-50 rounded disabled:opacity-50"
                         title="Generate"
                       >
@@ -311,7 +311,7 @@ const TranscriptGeneration: React.FC = () => {
       </div>
 
       {/* Preview Modal */}
-      {showPreview && previewStudent && (
+      {showPreview && previewLearner && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6">
             <div className="flex items-center justify-between mb-4">
@@ -337,40 +337,40 @@ const TranscriptGeneration: React.FC = () => {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-gray-600">Student Name</p>
+                    <p className="text-sm text-gray-600">Learner Name</p>
                     <p className="font-medium text-gray-900">
-                      {previewStudent.name}
+                      {previewLearner.name}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Roll Number</p>
                     <p className="font-medium text-gray-900">
-                      {previewStudent.rollNo}
+                      {previewLearner.rollNo}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Department</p>
                     <p className="font-medium text-gray-900">
-                      {previewStudent.department}
+                      {previewLearner.department}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Program</p>
                     <p className="font-medium text-gray-900">
-                      {previewStudent.program}
+                      {previewLearner.program}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">CGPA</p>
                     <p className="font-medium text-gray-900">
-                      {previewStudent.cgpa}
+                      {previewLearner.cgpa}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Credits</p>
                     <p className="font-medium text-gray-900">
-                      {previewStudent.creditsEarned}/
-                      {previewStudent.creditsRequired}
+                      {previewLearner.creditsEarned}/
+                      {previewLearner.creditsRequired}
                     </p>
                   </div>
                 </div>
@@ -386,7 +386,7 @@ const TranscriptGeneration: React.FC = () => {
               </button>
               <button
                 onClick={() => {
-                  handleGenerateTranscript(previewStudent.id);
+                  handleGenerateTranscript(previewLearner.id);
                   setShowPreview(false);
                 }}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"

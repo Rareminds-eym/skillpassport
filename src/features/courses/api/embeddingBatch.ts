@@ -109,7 +109,7 @@ export const generateSkillEmbeddingsBatch = async (skillNames) => {
  * Generate embeddings for profile and multiple skills in one call
  * Most efficient approach for recommendation generation
  * 
- * @param {string} profileText - Student profile text
+ * @param {string} profileText - Learner profile text
  * @param {Array<string>} skillNames - Array of skill names
  * @returns {Promise<{profile: number[], skills: Array<{skill: string, embedding: number[]}>}>}
  */

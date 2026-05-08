@@ -1,4 +1,4 @@
-import { Faculty, CollegeClass, Break, ScheduleSlot } from '@/features/student-profile/model';
+import { Faculty, CollegeClass, Break, ScheduleSlot } from '@/features/learner-profile/model';
 import { FACULTY_COLORS } from "./constants";
 
 // Get faculty color based on index

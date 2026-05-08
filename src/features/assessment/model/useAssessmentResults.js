@@ -9,7 +9,7 @@ import { validateAptitudeScores } from '@/features/assessment';
 import { validateRiasecScores } from '@/features/assessment';
 import { normalizeAssessmentResults } from '@/features/assessment';
 import { transformAssessmentResults } from '@/features/assessment';
-import { isCollegeStudent as checkIsCollegeStudent, isSchoolStudent as checkIsSchoolStudent } from '@/entities/student/lib/studentType';
+import { isCollegeLearner as checkIsCollegeLearner, isSchoolLearner as checkIsSchoolLearner } from '@/entities/learner/lib/learnerType';
 import {
     riasecQuestions,
     bigFiveQuestions,
@@ -19,37 +19,37 @@ import {
 } from '@/features/assessment';
 
 /**
- * Get the student record ID from auth user ID
- * Questions are saved with students.id, not auth.user.id
+ * Get the learner record ID from auth user ID
+ * Questions are saved with learners.id, not auth.user.id
  */
-const getStudentRecordId = async (authUserId) => {
+const getlearnerRecordId = async (authUserId) => {
     try {
-        const { data: student, error } = await supabase
-            .from('students')
+        const { data: learner, error } = await supabase
+            .from('learners')
             .select('id')
             .eq('user_id', authUserId)
             .maybeSingle();
 
-        if (error || !student) {
-            console.log(`⚠️ No student record found for auth user: ${authUserId}`);
+        if (error || !learner) {
+            console.log(`⚠️ No learner record found for auth user: ${authUserId}`);
             return null;
         }
 
-        console.log(`✅ Found student record: ${student.id} for auth user: ${authUserId}`);
-        return student.id;
+        console.log(`✅ Found learner record: ${learner.id} for auth user: ${authUserId}`);
+        return learner.id;
     } catch (err) {
-        console.error('Error looking up student record:', err);
+        console.error('Error looking up learner record:', err);
         return null;
     }
 };
 
 /**
  * Fetch AI-generated aptitude questions from database for scoring
- * @param {string} authUserId - Auth user ID (will be converted to student record ID)
+ * @param {string} authUserId - Auth user ID (will be converted to learner record ID)
  * @param {string[]} answerKeys - Answer keys to match question IDs
  * 
- * NOTE: Questions are saved with students.id (from students table), not auth.user.id
- * So we need to look up the student record first
+ * NOTE: Questions are saved with learners.id (from learners table), not auth.user.id
+ * So we need to look up the learner record first
  */
 const fetchAIAptitudeQuestions = async (authUserId, answerKeys = []) => {
     try {
@@ -57,15 +57,15 @@ const fetchAIAptitudeQuestions = async (authUserId, answerKeys = []) => {
             .filter(k => k.startsWith('aptitude_'))
             .map(k => k.replace('aptitude_', ''));
 
-        // First, look up the student record ID from the auth user ID
-        const studentRecordId = await getStudentRecordId(authUserId);
+        // First, look up the learner record ID from the auth user ID
+        const learnerRecordId = await getlearnerRecordId(authUserId);
 
-        // Try with student record ID first (this is how questions are saved)
-        if (studentRecordId) {
+        // Try with learner record ID first (this is how questions are saved)
+        if (learnerRecordId) {
             const { data: allQuestionSets, error } = await supabase
                 .from('career_assessment_ai_questions')
                 .select('id, questions, created_at')
-                .eq('student_id', studentRecordId)
+                .eq('learner_id', learnerRecordId)
                 .eq('question_type', 'aptitude')
                 .order('created_at', { ascending: false });
 
@@ -97,7 +97,7 @@ const fetchAIAptitudeQuestions = async (authUserId, answerKeys = []) => {
         const { data: fallbackQuestionSets, error: fallbackError } = await supabase
             .from('career_assessment_ai_questions')
             .select('id, questions, created_at')
-            .eq('student_id', authUserId)
+            .eq('learner_id', authUserId)
             .eq('question_type', 'aptitude')
             .order('created_at', { ascending: false });
 
@@ -134,8 +134,8 @@ const fetchAIAptitudeQuestions = async (authUserId, answerKeys = []) => {
 /**
  * Fetch AI-generated knowledge questions from database for scoring
  * 
- * NOTE: Questions are saved with students.id (from students table), not auth.user.id
- * So we need to look up the student record first
+ * NOTE: Questions are saved with learners.id (from learners table), not auth.user.id
+ * So we need to look up the learner record first
  */
 const fetchAIKnowledgeQuestions = async (authUserId, answerKeys = []) => {
     try {
@@ -143,15 +143,15 @@ const fetchAIKnowledgeQuestions = async (authUserId, answerKeys = []) => {
             .filter(k => k.startsWith('knowledge_'))
             .map(k => k.replace('knowledge_', ''));
 
-        // First, look up the student record ID from the auth user ID
-        const studentRecordId = await getStudentRecordId(authUserId);
+        // First, look up the learner record ID from the auth user ID
+        const learnerRecordId = await getlearnerRecordId(authUserId);
 
-        // Try with student record ID first (this is how questions are saved)
-        if (studentRecordId) {
+        // Try with learner record ID first (this is how questions are saved)
+        if (learnerRecordId) {
             const { data: allQuestionSets, error } = await supabase
                 .from('career_assessment_ai_questions')
                 .select('id, questions, created_at')
-                .eq('student_id', studentRecordId)
+                .eq('learner_id', learnerRecordId)
                 .eq('question_type', 'knowledge')
                 .order('created_at', { ascending: false });
 
@@ -181,7 +181,7 @@ const fetchAIKnowledgeQuestions = async (authUserId, answerKeys = []) => {
         const { data: fallbackQuestionSets, error: fallbackError } = await supabase
             .from('career_assessment_ai_questions')
             .select('id, questions, created_at')
-            .eq('student_id', authUserId)
+            .eq('learner_id', authUserId)
             .eq('question_type', 'knowledge')
             .order('created_at', { ascending: false });
 
@@ -237,9 +237,9 @@ export const useAssessmentResults = () => {
     // Use ref to track grade level from attempt synchronously (avoids race condition with async state updates)
     const gradeLevelFromAttemptRef = useRef(false);
     const loadedAttemptIdRef = useRef(null); // Track loaded attempt to prevent loop
-    const streamFromAssessmentRef = useRef(null); // Track stream_id from assessment to prevent fetchStudentInfo from overwriting
+    const streamFromAssessmentRef = useRef(null); // Track stream_id from assessment to prevent fetchlearnerInfo from overwriting
     const autoRetryInProgressRef = useRef(false); // Prevent multiple concurrent auto-retry attempts
-    const [studentInfo, setStudentInfo] = useState({
+    const [learnerInfo, setlearnerInfo] = useState({
         name: '—',
         regNo: '—',
         rollNumberType: 'school',
@@ -250,7 +250,7 @@ export const useAssessmentResults = () => {
         branchField: '—',
         courseName: '—'
     });
-    const [studentAcademicData, setStudentAcademicData] = useState({
+    const [learnerAcademicData, setlearnerAcademicData] = useState({
         subjectMarks: [],
         projects: [],
         experiences: [],
@@ -369,14 +369,14 @@ export const useAssessmentResults = () => {
 
         // Validate and correct aptitude scores if we have the necessary data
         // 🔧 CRITICAL FIX: Skip aptitude validation if adaptive results exist
-        // For college students with adaptive aptitude, scores come from adaptive test, not MCQ questions
+        // For college learners with adaptive aptitude, scores come from adaptive test, not MCQ questions
         const hasAdaptiveResults = validatedResults.adaptiveAptitudeResults ||
             validatedResults.adaptive_aptitude_results ||
             rawAnswers?.adaptive_aptitude_session_id;
 
         if (validatedResults.aptitude && rawAnswers && Object.keys(rawAnswers).length > 0 && !hasAdaptiveResults) {
             try {
-                // Fetch aptitude questions for this student
+                // Fetch aptitude questions for this learner
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) {
                     const aptitudeQuestions = await fetchAIAptitudeQuestions(user.id, Object.keys(rawAnswers));
@@ -425,9 +425,9 @@ export const useAssessmentResults = () => {
             .join(' ');
     };
 
-    // Fetch student profile data from Supabase
-    const fetchStudentInfo = async () => {
-        console.log('🔍 ========== FETCH STUDENT INFO START ==========');
+    // Fetch learner profile data from Supabase
+    const fetchlearnerInfo = async () => {
+        console.log('🔍 ========== FETCH LEARNER INFO START ==========');
         try {
             const { data: { user } } = await supabase.auth.getUser();
 
@@ -438,12 +438,12 @@ export const useAssessmentResults = () => {
             });
 
             if (user) {
-                console.log('📊 Querying students table with user_id:', user.id);
+                console.log('📊 Querying learners table with user_id:', user.id);
 
-                // First, try to fetch student data with relationships
-                // Query students table - using actual database column names (mix of camelCase and snake_case)
-                let { data: studentData, error: fetchError } = await supabase
-                    .from('students')
+                // First, try to fetch learner data with relationships
+                // Query learners table - using actual database column names (mix of camelCase and snake_case)
+                let { data: learnerData, error: fetchError } = await supabase
+                    .from('learners')
                     .select(`
                         id, 
                         name,
@@ -471,15 +471,15 @@ export const useAssessmentResults = () => {
                     .maybeSingle();
 
 
-                console.log('📦 Student Data Query Result:', {
-                    hasData: !!studentData,
+                console.log('📦 Learner Data Query Result:', {
+                    hasData: !!learnerData,
                     hasError: !!fetchError,
-                    studentData: studentData,
+                    learnerData: learnerData,
                     error: fetchError
                 });
 
                 if (fetchError) {
-                    console.error('❌ Error fetching student data:', fetchError);
+                    console.error('❌ Error fetching learner data:', fetchError);
                     console.error('❌ Error details:', {
                         message: fetchError.message,
                         details: fetchError.details,
@@ -488,146 +488,146 @@ export const useAssessmentResults = () => {
                     });
                 }
 
-                if (!studentData) {
-                    console.warn('⚠️ No student data found for user_id:', user.id);
+                if (!learnerData) {
+                    console.warn('⚠️ No learner data found for user_id:', user.id);
                     console.warn('⚠️ This could mean:');
-                    console.warn('   1. No student record exists with this user_id');
+                    console.warn('   1. No learner record exists with this user_id');
                     console.warn('   2. RLS policy is blocking access');
-                    console.warn('   3. The user_id in students table doesn\'t match auth user');
+                    console.warn('   3. The user_id in learners table doesn\'t match auth user');
                 }
 
-                // If we got student data, fetch related college/school names separately
-                if (studentData && !fetchError) {
-                    console.log('✅ Student data found! Fetching related organization data...');
+                // If we got learner data, fetch related college/school names separately
+                if (learnerData && !fetchError) {
+                    console.log('✅ Learner data found! Fetching related organization data...');
 
-                    if (studentData.college_id) {
-                        console.log('🏛️ Fetching college organization:', studentData.college_id);
+                    if (learnerData.college_id) {
+                        console.log('🏛️ Fetching college organization:', learnerData.college_id);
                         const { data: orgData, error: orgError } = await supabase
                             .from('organizations')
                             .select('name')
-                            .eq('id', studentData.college_id)
+                            .eq('id', learnerData.college_id)
                             .maybeSingle();
                         console.log('🏛️ College org result:', { orgData, orgError });
                         if (orgData) {
-                            studentData.colleges = { name: orgData.name };
+                            learnerData.colleges = { name: orgData.name };
                         }
-                        console.log('📊 fetchStudentInfo - Fetched college name:', orgData?.name);
+                        console.log('📊 fetchlearnerInfo - Fetched college name:', orgData?.name);
                     }
 
-                    if (studentData.school_id) {
-                        console.log('🏫 Fetching school organization:', studentData.school_id);
+                    if (learnerData.school_id) {
+                        console.log('🏫 Fetching school organization:', learnerData.school_id);
                         const { data: orgData, error: orgError } = await supabase
                             .from('organizations')
                             .select('name')
-                            .eq('id', studentData.school_id)
+                            .eq('id', learnerData.school_id)
                             .maybeSingle();
                         console.log('🏫 School org result:', { orgData, orgError });
                         if (orgData) {
-                            studentData.schools = { name: orgData.name };
+                            learnerData.schools = { name: orgData.name };
                         }
                     }
 
-                    if (studentData.schoolClassId) {
-                        console.log('📚 Fetching school class:', studentData.schoolClassId);
+                    if (learnerData.schoolClassId) {
+                        console.log('📚 Fetching school class:', learnerData.schoolClassId);
                         const { data: classData, error: classError } = await supabase
                             .from('school_classes')
                             .select('grade')
-                            .eq('id', studentData.schoolClassId)
+                            .eq('id', learnerData.schoolClassId)
                             .maybeSingle();
                         console.log('📚 School class result:', { classData, classError });
                         if (classData) {
-                            studentData.school_classes = { grade: classData.grade };
+                            learnerData.school_classes = { grade: classData.grade };
                         }
                     }
                 }
 
-                console.log('Fetched student data:', studentData);
-                console.log('Student data keys:', studentData ? Object.keys(studentData) : 'null');
+                console.log('Fetched learner data:', learnerData);
+                console.log('Learner data keys:', learnerData ? Object.keys(learnerData) : 'null');
 
-                if (studentData) {
-                    const rawName = studentData.name ||
+                if (learnerData) {
+                    const rawName = learnerData.name ||
                         user.user_metadata?.full_name ||
                         user.email?.split('@')[0] || '—';
 
                     const fullName = toTitleCase(rawName);
 
-                    // Get grade - prioritize students.grade, then school_classes.grade as fallback
-                    let studentGrade = studentData.grade || studentData.school_classes?.grade;
+                    // Get grade - prioritize learners.grade, then school_classes.grade as fallback
+                    let learnerGrade = learnerData.grade || learnerData.school_classes?.grade;
 
                     // Format grade value
-                    if (studentGrade && studentGrade !== '—') {
+                    if (learnerGrade && learnerGrade !== '—') {
                         // Convert to string for consistent display
-                        studentGrade = studentGrade.toString();
+                        learnerGrade = learnerGrade.toString();
                     }
-                    // If no grade and student is in college, try year or semester
-                    else if (studentData.college_id) {
-                        if (studentData.year) {
-                            studentGrade = `Year ${studentData.year}`;
-                        } else if (studentData.semester) {
-                            studentGrade = `Semester ${studentData.semester}`;
+                    // If no grade and learner is in college, try year or semester
+                    else if (learnerData.college_id) {
+                        if (learnerData.year) {
+                            learnerGrade = `Year ${learnerData.year}`;
+                        } else if (learnerData.semester) {
+                            learnerGrade = `Semester ${learnerData.semester}`;
                         } else {
-                            studentGrade = '—';
+                            learnerGrade = '—';
                         }
                     } else {
-                        studentGrade = '—';
+                        learnerGrade = '—';
                     }
 
-                    console.log('Student grade:', studentGrade, 'from students.grade:', studentData.grade, 'from school_classes:', studentData.school_classes?.grade, 'year:', studentData.year, 'semester:', studentData.semester);
+                    console.log('Learner grade:', learnerGrade, 'from learners.grade:', learnerData.grade, 'from school_classes:', learnerData.school_classes?.grade, 'year:', learnerData.year, 'semester:', learnerData.semester);
 
                     // Get institution name - show school OR college, not both
                     let institutionName = '—';
                     let schoolName = '—';
                     let collegeName = '—';
 
-                    // Determine if this is a school student or college student
+                    // Determine if this is a school learner or college learner
                     // Priority 1: Check if they have school_id or schoolClassId
-                    const hasSchoolId = studentData.school_id || studentData.schoolClassId;
-                    const hasCollegeId = studentData.college_id;
+                    const hasSchoolId = learnerData.school_id || learnerData.schoolClassId;
+                    const hasCollegeId = learnerData.college_id;
 
                     // Priority 2: Check grade level (Grades 1-12 are school, Year/Semester are college)
                     // Extract numeric grade from strings like "Grade 10", "10", "Year 2", "Semester 4"
-                    let gradeNum = parseInt(studentGrade);
+                    let gradeNum = parseInt(learnerGrade);
 
                     // If direct parsing fails, try to extract number from "Grade X" format
-                    if (isNaN(gradeNum) && studentGrade.includes('Grade')) {
-                        const match = studentGrade.match(/Grade\s*(\d+)/i);
+                    if (isNaN(gradeNum) && learnerGrade.includes('Grade')) {
+                        const match = learnerGrade.match(/Grade\s*(\d+)/i);
                         if (match) {
                             gradeNum = parseInt(match[1]);
                         }
                     }
 
                     const isSchoolGrade = !isNaN(gradeNum) && gradeNum >= 1 && gradeNum <= 12;
-                    const isCollegeGrade = studentGrade.includes('Year') || studentGrade.includes('Semester');
+                    const isCollegeGrade = learnerGrade.includes('Year') || learnerGrade.includes('Semester');
 
-                    // Determine student type using centralized utility
-                    const isSchoolStudent = checkIsSchoolStudent(studentData);
-                    const isCollegeStudent = checkIsCollegeStudent(studentData);
+                    // Determine learner type using centralized utility
+                    const isSchoolLearner = checkIsSchoolLearner(learnerData);
+                    const isCollegeLearner = checkIsCollegeLearner(learnerData);
 
-                    if (isSchoolStudent) {
-                        // School student - show only school name
-                        if (studentData.college_school_name && studentData.college_school_name !== '—') {
-                            schoolName = toTitleCase(studentData.college_school_name);
+                    if (isSchoolLearner) {
+                        // School learner - show only school name
+                        if (learnerData.college_school_name && learnerData.college_school_name !== '—') {
+                            schoolName = toTitleCase(learnerData.college_school_name);
                             institutionName = schoolName;
-                        } else if (studentData.schools?.name) {
-                            schoolName = toTitleCase(studentData.schools.name);
+                        } else if (learnerData.schools?.name) {
+                            schoolName = toTitleCase(learnerData.schools.name);
                             institutionName = schoolName;
                         }
-                        collegeName = '—'; // Don't show college for school students
-                    } else if (isCollegeStudent) {
-                        // College student - show only college name
-                        if (studentData.college_school_name && studentData.college_school_name !== '—') {
-                            collegeName = toTitleCase(studentData.college_school_name);
+                        collegeName = '—'; // Don't show college for school learners
+                    } else if (isCollegeLearner) {
+                        // College learner - show only college name
+                        if (learnerData.college_school_name && learnerData.college_school_name !== '—') {
+                            collegeName = toTitleCase(learnerData.college_school_name);
                             institutionName = collegeName;
-                        } else if (studentData.colleges?.name) {
-                            collegeName = toTitleCase(studentData.colleges.name);
+                        } else if (learnerData.colleges?.name) {
+                            collegeName = toTitleCase(learnerData.colleges.name);
                             institutionName = collegeName;
                         }
-                        schoolName = '—'; // Don't show school for college students
+                        schoolName = '—'; // Don't show school for college learners
                     } else {
                         // Fallback: use college_school_name if available
-                        if (studentData.college_school_name && studentData.college_school_name !== '—') {
-                            institutionName = toTitleCase(studentData.college_school_name);
-                            // For grade 12 students, treat as school student
+                        if (learnerData.college_school_name && learnerData.college_school_name !== '—') {
+                            institutionName = toTitleCase(learnerData.college_school_name);
+                            // For grade 12 learners, treat as school learner
                             if (!isNaN(gradeNum) && gradeNum >= 1 && gradeNum <= 12) {
                                 schoolName = institutionName;
                                 collegeName = '—';
@@ -639,9 +639,9 @@ export const useAssessmentResults = () => {
                         }
                     }
 
-                    console.log('Institution detection - hasSchoolId:', hasSchoolId, 'hasCollegeId:', hasCollegeId, 'isSchoolGrade:', isSchoolGrade, 'isCollegeGrade:', isCollegeGrade, 'isSchoolStudent:', isSchoolStudent, 'isCollegeStudent:', isCollegeStudent, 'final school:', schoolName, 'final college:', collegeName);
-                    console.log('Roll numbers - enrollmentNumber:', studentData.enrollmentNumber, 'admission_number:', studentData.admission_number, 'roll_number:', studentData.roll_number);
-                    console.log('IDs - school_id:', studentData.school_id, 'college_id:', studentData.college_id, 'schoolClassId:', studentData.schoolClassId);
+                    console.log('Institution detection - hasSchoolId:', hasSchoolId, 'hasCollegeId:', hasCollegeId, 'isSchoolGrade:', isSchoolGrade, 'isCollegeGrade:', isCollegeGrade, 'isSchoolLearner:', isSchoolLearner, 'isCollegeLearner:', isCollegeLearner, 'final school:', schoolName, 'final college:', collegeName);
+                    console.log('Roll numbers - enrollmentNumber:', learnerData.enrollmentNumber, 'admission_number:', learnerData.admission_number, 'roll_number:', learnerData.roll_number);
+                    console.log('IDs - school_id:', learnerData.school_id, 'college_id:', learnerData.college_id, 'schoolClassId:', learnerData.schoolClassId);
 
                     // Determine which roll number to use and roll number type
                     let rollNumber = '—';
@@ -649,10 +649,10 @@ export const useAssessmentResults = () => {
                     // gradeNum already declared above, reuse it
 
                     // Priority 1: Use enrollmentNumber if available
-                    if (studentData.enrollmentNumber && studentData.enrollmentNumber !== '—') {
-                        rollNumber = studentData.enrollmentNumber;
-                        // Determine type based on student context
-                        if (studentData.college_id) {
+                    if (learnerData.enrollmentNumber && learnerData.enrollmentNumber !== '—') {
+                        rollNumber = learnerData.enrollmentNumber;
+                        // Determine type based on learner context
+                        if (learnerData.college_id) {
                             rollNumberType = 'university';
                         } else if (!isNaN(gradeNum) && gradeNum >= 11) {
                             rollNumberType = 'institute';
@@ -661,53 +661,53 @@ export const useAssessmentResults = () => {
                         }
                     }
                     // Priority 2: Fallback to admission_number
-                    else if (studentData.admission_number && studentData.admission_number !== '—') {
-                        rollNumber = studentData.admission_number;
-                        rollNumberType = studentData.college_id ? 'university' : 'school';
+                    else if (learnerData.admission_number && learnerData.admission_number !== '—') {
+                        rollNumber = learnerData.admission_number;
+                        rollNumberType = learnerData.college_id ? 'university' : 'school';
                     }
                     // Priority 3: Fallback to roll_number
-                    else if (studentData.roll_number && studentData.roll_number !== '—') {
-                        rollNumber = studentData.roll_number;
+                    else if (learnerData.roll_number && learnerData.roll_number !== '—') {
+                        rollNumber = learnerData.roll_number;
                         rollNumberType = 'school';
                     }
 
-                    // Determine grade level based on student data
+                    // Determine grade level based on learner data
                     // NOTE: This is only used as a fallback. The assessment attempt's grade_level
                     // takes priority and is set in loadResults() after this runs.
                     let derivedGradeLevel = 'after12'; // default
                     
-                    // Check if student is in college based on multiple indicators
-                    const hasCollegeProgram = studentData.programs?.degree_level && 
-                        ['undergraduate', 'postgraduate', 'diploma'].includes(studentData.programs.degree_level.toLowerCase());
+                    // Check if learner is in college based on multiple indicators
+                    const hasCollegeProgram = learnerData.programs?.degree_level && 
+                        ['undergraduate', 'postgraduate', 'diploma'].includes(learnerData.programs.degree_level.toLowerCase());
                     
                     // Check if grade indicates postgraduate/college level
-                    const gradeStr = (studentData.grade || '').toLowerCase();
+                    const gradeStr = (learnerData.grade || '').toLowerCase();
                     const isCollegeGradeLevel = ['ug', 'pg', 'diploma', 'undergraduate', 'postgraduate'].some(term => 
                         gradeStr.includes(term)
                     );
                     
                     // Check if has college name but no college_id (data inconsistency)
-                    const hasCollegeName = studentData.college_school_name && 
-                        studentData.college_school_name !== '—' && 
-                        !studentData.school_id;
+                    const hasCollegeName = learnerData.college_school_name && 
+                        learnerData.college_school_name !== '—' && 
+                        !learnerData.school_id;
                     
-                    if (studentData.school_id || studentData.schoolClassId) {
-                        // School student - determine if middle or high school based on grade
+                    if (learnerData.school_id || learnerData.schoolClassId) {
+                        // School learner - determine if middle or high school based on grade
                         if (!isNaN(gradeNum)) {
                             if (gradeNum >= 6 && gradeNum <= 8) {
                                 derivedGradeLevel = 'middle';
                             } else if (gradeNum >= 9 && gradeNum <= 10) {
                                 derivedGradeLevel = 'highschool';
                             } else if (gradeNum >= 11 && gradeNum <= 12) {
-                                // 11th and 12th grade students - use higher_secondary for stream-based assessments
+                                // 11th and 12th grade learners - use higher_secondary for stream-based assessments
                                 derivedGradeLevel = 'higher_secondary';
                             }
                         } else {
-                            // If grade is not a number, default to after12 for school students
+                            // If grade is not a number, default to after12 for school learners
                             derivedGradeLevel = 'after12';
                         }
-                    } else if (studentData.college_id || hasCollegeProgram || isCollegeGradeLevel || hasCollegeName) {
-                        // College student - has college_id OR has a college-level program OR grade indicates college
+                    } else if (learnerData.college_id || hasCollegeProgram || isCollegeGradeLevel || hasCollegeName) {
+                        // College learner - has college_id OR has a college-level program OR grade indicates college
                         derivedGradeLevel = 'college';
                     }
 
@@ -717,7 +717,7 @@ export const useAssessmentResults = () => {
                     if (!gradeLevelFromAttemptRef.current) {
                         setGradeLevel(derivedGradeLevel);
                     }
-                    console.log('Derived gradeLevel from student data:', derivedGradeLevel, 'grade:', studentGrade, 'school_id:', studentData.school_id, 'college_id:', studentData.college_id, 'schoolClassId:', studentData.schoolClassId);
+                    console.log('Derived gradeLevel from learner data:', derivedGradeLevel, 'grade:', learnerGrade, 'school_id:', learnerData.school_id, 'college_id:', learnerData.college_id, 'schoolClassId:', learnerData.schoolClassId);
 
                     // Derive stream from program, branch_field or course_name (database only)
                     let derivedStream = '—';
@@ -731,14 +731,14 @@ export const useAssessmentResults = () => {
                     } else if (derivedGradeLevel === 'higher_secondary') {
                         derivedStream = 'Higher Secondary (Grades 11-12)';
                     }
-                    // For college students, show degree level instead of stream
+                    // For college learners, show degree level instead of stream
                     else if (derivedGradeLevel === 'college') {
                         // Priority: program.name > program.code > course_name > branch_field
-                        programName = studentData.programs?.name || studentData.programs?.code || studentData.course_name || studentData.branch_field || '—';
+                        programName = learnerData.programs?.name || learnerData.programs?.code || learnerData.course_name || learnerData.branch_field || '—';
                         
                         // Determine degree level from program or grade
-                        const degreeLevel = studentData.programs?.degree_level || null;
-                        const gradeStr = (studentData.grade || '').toLowerCase();
+                        const degreeLevel = learnerData.programs?.degree_level || null;
+                        const gradeStr = (learnerData.grade || '').toLowerCase();
                         
                         if (degreeLevel === 'postgraduate' || gradeStr.includes('pg') || gradeStr.includes('postgraduate') || 
                             gradeStr.includes('m.tech') || gradeStr.includes('mtech') || gradeStr.includes('mca') || 
@@ -754,12 +754,12 @@ export const useAssessmentResults = () => {
                             derivedStream = 'College';
                         }
                         
-                        console.log('📚 College student - Level:', derivedStream, 'Program:', programName);
-                        // Skip further stream derivation for college students - we already have the degree level
+                        console.log('📚 College learner - Level:', derivedStream, 'Program:', programName);
+                        // Skip further stream derivation for college learners - we already have the degree level
                     }
-                    // Check if student has a program (from programs table) - for non-college students ONLY
-                    else if (studentData.programs && derivedGradeLevel !== 'college') {
-                        programName = studentData.programs.name || studentData.programs.code || '—';
+                    // Check if learner has a program (from programs table) - for non-college learners ONLY
+                    else if (learnerData.programs && derivedGradeLevel !== 'college') {
+                        programName = learnerData.programs.name || learnerData.programs.code || '—';
                         const fieldText = programName.toLowerCase();
 
                         // Science stream indicators
@@ -795,9 +795,9 @@ export const useAssessmentResults = () => {
                         console.log('📚 Derived stream from program:', derivedStream, 'from program:', programName);
                     }
                     // Fallback: If we have course_name or branch_field, derive the stream
-                    else if (studentData.course_name || studentData.branch_field) {
+                    else if (learnerData.course_name || learnerData.branch_field) {
                         // Priority: course_name > branch_field (course_name is the primary field for custom programs)
-                        programName = studentData.course_name || studentData.branch_field || '—';
+                        programName = learnerData.course_name || learnerData.branch_field || '—';
                         const fieldText = programName.toLowerCase();
 
                         // Science stream indicators
@@ -832,44 +832,44 @@ export const useAssessmentResults = () => {
                         console.log('📚 Derived stream from database:', derivedStream, 'from field:', fieldText);
                     }
 
-                    setStudentInfo({
+                    setlearnerInfo({
                         name: fullName,
                         regNo: rollNumber,
                         rollNumberType: rollNumberType,
-                        college: collegeName,  // Only show college for college students
-                        school: schoolName,    // Only show school for school students
+                        college: collegeName,  // Only show college for college learners
+                        school: schoolName,    // Only show school for school learners
                         stream: streamFromAssessmentRef.current || derivedStream, // Use assessment stream if available, otherwise derived
-                        grade: studentGrade,
+                        grade: learnerGrade,
                         branchField: programName, // Use program name instead of branch_field
                         courseName: programName   // Use program name for course name too
                     });
 
                     // Calculate months in grade from grade_start_date
-                    if (studentData.grade_start_date) {
-                        const months = calculateMonthsInGrade(studentData.grade_start_date);
+                    if (learnerData.grade_start_date) {
+                        const months = calculateMonthsInGrade(learnerData.grade_start_date);
                         setMonthsInGrade(months);
-                        console.log('Months in grade:', months, 'from grade_start_date:', studentData.grade_start_date);
-                    } else if (studentData.school_classes?.academic_year) {
+                        console.log('Months in grade:', months, 'from grade_start_date:', learnerData.grade_start_date);
+                    } else if (learnerData.school_classes?.academic_year) {
                         // Fallback: estimate from academic year (e.g., "2024-2025")
-                        const yearMatch = studentData.school_classes.academic_year.match(/^(\d{4})/);
+                        const yearMatch = learnerData.school_classes.academic_year.match(/^(\d{4})/);
                         if (yearMatch) {
                             const startYear = parseInt(yearMatch[1]);
                             const estimatedStartDate = `${startYear}-06-01`; // Assume June start
                             const months = calculateMonthsInGrade(estimatedStartDate);
                             setMonthsInGrade(months);
-                            console.log('Months in grade (estimated):', months, 'from academic_year:', studentData.school_classes.academic_year);
+                            console.log('Months in grade (estimated):', months, 'from academic_year:', learnerData.school_classes.academic_year);
                         }
                     }
 
-                    // ✅ REMOVED: localStorage caching for student info (use database as source of truth)
+                    // ✅ REMOVED: localStorage caching for learner info (use database as source of truth)
 
                     // Fetch academic data (marks, projects, experiences)
-                    await fetchStudentAcademicData(studentData.id);
+                    await fetchlearnerAcademicData(learnerData.id);
                 } else {
                     const rawName = user.user_metadata?.full_name || user.email?.split('@')[0] || '—';
                     const name = toTitleCase(rawName);
 
-                    setStudentInfo(prev => ({
+                    setlearnerInfo(prev => ({
                         ...prev,
                         name: name,
                         stream: '—'
@@ -877,8 +877,8 @@ export const useAssessmentResults = () => {
                 }
             }
         } catch (err) {
-            console.error('Error fetching student info:', err);
-            setStudentInfo({
+            console.error('Error fetching learner info:', err);
+            setlearnerInfo({
                 name: '—',
                 regNo: '—',
                 rollNumberType: 'school',
@@ -892,10 +892,10 @@ export const useAssessmentResults = () => {
         }
     };
 
-    // Fetch student's academic data: marks, projects, experiences
-    const fetchStudentAcademicData = async (studentId) => {
+    // Fetch learner's academic data: marks, projects, experiences
+    const fetchlearnerAcademicData = async (learnerId) => {
         try {
-            // Fetch subject marks with subject names (optional - may not exist for all students)
+            // Fetch subject marks with subject names (optional - may not exist for all learners)
             let marksData = [];
             try {
                 const { data, error } = await supabase
@@ -908,7 +908,7 @@ export const useAssessmentResults = () => {
                         percentage,
                         grade
                     `)
-                    .eq('student_id', studentId)
+                    .eq('learner_id', learnerId)
                     .order('created_at', { ascending: false });
 
                 if (error) {
@@ -927,7 +927,7 @@ export const useAssessmentResults = () => {
             const { data: projectsData } = await supabase
                 .from('projects')
                 .select('id, title, description, tech_stack, status, organization')
-                .eq('student_id', studentId)
+                .eq('learner_id', learnerId)
                 .eq('enabled', true)
                 .order('created_at', { ascending: false });
 
@@ -935,18 +935,18 @@ export const useAssessmentResults = () => {
             const { data: experiencesData } = await supabase
                 .from('experience')
                 .select('id, organization, role, duration, verified')
-                .eq('student_id', studentId)
+                .eq('learner_id', learnerId)
                 .order('created_at', { ascending: false });
 
             // Fetch education
             const { data: educationData } = await supabase
                 .from('education')
                 .select('id, degree, department, university, cgpa, level, status')
-                .eq('student_id', studentId)
+                .eq('learner_id', learnerId)
                 .eq('enabled', true)
                 .order('year_of_passing', { ascending: false });
 
-            setStudentAcademicData({
+            setlearnerAcademicData({
                 subjectMarks: marksData || [],
                 projects: projectsData || [],
                 experiences: experiencesData || [],
@@ -962,7 +962,7 @@ export const useAssessmentResults = () => {
         } catch (err) {
             console.error('Error fetching academic data:', err);
             // Set empty data to prevent undefined errors
-            setStudentAcademicData({
+            setlearnerAcademicData({
                 subjectMarks: [],
                 projects: [],
                 experiences: [],
@@ -977,8 +977,8 @@ export const useAssessmentResults = () => {
         // Reset the ref at the start of loading to ensure clean state
         gradeLevelFromAttemptRef.current = false;
 
-        // Don't await fetchStudentInfo - it runs in parallel but won't override attempt grade_level
-        fetchStudentInfo();
+        // Don't await fetchlearnerInfo - it runs in parallel but won't override attempt grade_level
+        fetchlearnerInfo();
 
         // Check if we have an attemptId in URL params (database mode)
         const attemptId = searchParams.get('attemptId');
@@ -1116,7 +1116,7 @@ export const useAssessmentResults = () => {
                             profileSnapshot: directResult.profile_snapshot || '',
                             finalNote: directResult.final_note || '',
                             overallSummary: directResult.overall_summary || '',
-                            // Add recommended stream for after10 students
+                            // Add recommended stream for after10 learners
                             recommendedStream: directResult.recommended_stream || undefined,
                             // Add adaptive aptitude results if they exist
                             adaptiveAptitudeResults: adaptiveAptitudeResults || undefined
@@ -1186,7 +1186,7 @@ export const useAssessmentResults = () => {
                             normalizedResults._rawDatabaseFields = {
                                 id: directResult.id,
                                 attempt_id: directResult.attempt_id,
-                                student_id: directResult.student_id,
+                                learner_id: directResult.learner_id,
                                 stream_id: directResult.stream_id,
                                 grade_level: directResult.grade_level,
                                 riasec_scores: directResult.riasec_scores,
@@ -1342,19 +1342,19 @@ export const useAssessmentResults = () => {
                                 console.log('   Attempt ID:', attemptId);
                                 try {
                                     const { data: { user } } = await supabase.auth.getUser();
-                                    let studentId = null;
+                                    let learnerId = null;
                                     if (user) {
-                                        const { data: student } = await supabase
-                                            .from('students')
+                                        const { data: learner } = await supabase
+                                            .from('learners')
                                             .select('id')
                                             .eq('user_id', user.id)
                                             .single();
-                                        studentId = student?.id;
-                                        console.log('   Student ID:', studentId);
+                                        learnerId = learner?.id;
+                                        console.log('   Learner ID:', learnerId);
                                     }
                                     
                                     console.log('   Calling addCourseRecommendations...');
-                                    const resultsWithCourses = await addCourseRecommendations(validatedResults, studentId);
+                                    const resultsWithCourses = await addCourseRecommendations(validatedResults, learnerId);
                                     console.log('   ✅ Courses generated:', {
                                         platformCourses: resultsWithCourses.platformCourses?.length || 0,
                                         technical: resultsWithCourses.coursesByType?.technical?.length || 0,
@@ -1405,7 +1405,7 @@ export const useAssessmentResults = () => {
                             normalizedResults._rawDatabaseFields = {
                                 id: result.id,
                                 attempt_id: result.attempt_id,
-                                student_id: result.student_id,
+                                learner_id: result.learner_id,
                                 stream_id: result.stream_id,
                                 grade_level: result.grade_level,
                                 riasec_scores: result.riasec_scores,
@@ -1440,12 +1440,12 @@ export const useAssessmentResults = () => {
                                 gradeLevelFromAttemptRef.current = true; // Set ref synchronously to prevent race condition
                             }
 
-                            // Update studentInfo with actual stream_id from assessment result
+                            // Update learnerInfo with actual stream_id from assessment result
                             if (attempt.stream_id || result.stream_id) {
                                 const actualStreamId = attempt.stream_id || result.stream_id;
-                                console.log('📚 Updating studentInfo.stream with actual stream_id:', actualStreamId);
-                                streamFromAssessmentRef.current = actualStreamId; // Set ref to prevent fetchStudentInfo from overwriting
-                                setStudentInfo(prev => ({
+                                console.log('📚 Updating learnerInfo.stream with actual stream_id:', actualStreamId);
+                                streamFromAssessmentRef.current = actualStreamId; // Set ref to prevent fetchlearnerInfo from overwriting
+                                setlearnerInfo(prev => ({
                                     ...prev,
                                     stream: actualStreamId
                                 }));
@@ -1596,7 +1596,7 @@ export const useAssessmentResults = () => {
                         console.log('   Available gemini_results keys:', Object.keys(geminiResults));
                         console.log('   Redirecting to assessment test...');
 
-                        navigate('/student/assessment/test');
+                        navigate('/learner/assessment/test');
                         return;
                     } else {
                         console.log('Loaded results from database');
@@ -1611,7 +1611,7 @@ export const useAssessmentResults = () => {
                         normalizedResults._rawDatabaseFields = {
                             id: latestResult.id,
                             attempt_id: latestResult.attempt_id,
-                            student_id: latestResult.student_id,
+                            learner_id: latestResult.learner_id,
                             stream_id: latestResult.stream_id,
                             grade_level: latestResult.grade_level,
                             riasec_scores: latestResult.riasec_scores,
@@ -1646,11 +1646,11 @@ export const useAssessmentResults = () => {
                             gradeLevelFromAttemptRef.current = true; // Set ref synchronously to prevent race condition
                         }
 
-                        // Update studentInfo with actual stream_id from assessment result
+                        // Update learnerInfo with actual stream_id from assessment result
                         if (latestResult.stream_id) {
-                            console.log('📚 Updating studentInfo.stream with actual stream_id:', latestResult.stream_id);
-                            streamFromAssessmentRef.current = latestResult.stream_id; // Set ref to prevent fetchStudentInfo from overwriting
-                            setStudentInfo(prev => ({
+                            console.log('📚 Updating learnerInfo.stream with actual stream_id:', latestResult.stream_id);
+                            streamFromAssessmentRef.current = latestResult.stream_id; // Set ref to prevent fetchlearnerInfo from overwriting
+                            setlearnerInfo(prev => ({
                                 ...prev,
                                 stream: latestResult.stream_id
                             }));
@@ -1724,7 +1724,7 @@ export const useAssessmentResults = () => {
 
         if (!answersJson) {
             console.error('❌ No answers found in localStorage or database');
-            navigate('/student/assessment/test');
+            navigate('/learner/assessment/test');
             return;
         }
     }; // End of loadResults function
@@ -1902,56 +1902,56 @@ export const useAssessmentResults = () => {
                 return null;
             };
 
-            // Build student context for enhanced AI recommendations
-            // CRITICAL FIX: Use studentContext from attempt if available (stored during submission)
-            // This ensures career clusters are aligned with the student's program/course
-            let studentContext = {};
+            // Build learner context for enhanced AI recommendations
+            // CRITICAL FIX: Use learnerContext from attempt if available (stored during submission)
+            // This ensures career clusters are aligned with the learner's program/course
+            let learnerContext = {};
 
-            if (attempt.student_context && Object.keys(attempt.student_context).length > 0) {
-                console.log('✅ Using student context from attempt (stored during submission)');
-                studentContext = attempt.student_context;
+            if (attempt.learner_context && Object.keys(attempt.learner_context).length > 0) {
+                console.log('✅ Using learner context from attempt (stored during submission)');
+                learnerContext = attempt.learner_context;
             } else {
-                console.log('⚠️ No student context in attempt, building from studentInfo...');
-                // Fallback: Build from studentInfo that was fetched earlier
+                console.log('⚠️ No learner context in attempt, building from learnerInfo...');
+                // Fallback: Build from learnerInfo that was fetched earlier
                 // Try multiple sources for program name with correct priority
-                // Priority: courseName (from studentInfo) > branchField > fetch from DB
-                let programName = studentInfo.courseName || studentInfo.branchField || null;
+                // Priority: courseName (from learnerInfo) > branchField > fetch from DB
+                let programName = learnerInfo.courseName || learnerInfo.branchField || null;
                 
-                // If still no program name, try to fetch from student record
-                if (!programName && attempt.student_id) {
+                // If still no program name, try to fetch from learner record
+                if (!programName && attempt.learner_id) {
                     try {
-                        const { data: studentData } = await supabase
-                            .from('students')
+                        const { data: learnerData } = await supabase
+                            .from('learners')
                             .select('course_name, branch_field, program:program_id(name, code)')
-                            .eq('id', attempt.student_id)
+                            .eq('id', attempt.learner_id)
                             .maybeSingle();
                         
-                        if (studentData) {
+                        if (learnerData) {
                             // Priority: program.name > program.code > course_name > branch_field
-                            programName = studentData.program?.name || 
-                                         studentData.program?.code || 
-                                         studentData.course_name ||
-                                         studentData.branch_field;
-                            console.log('📚 Fetched program name from student record:', programName);
+                            programName = learnerData.program?.name || 
+                                         learnerData.program?.code || 
+                                         learnerData.course_name ||
+                                         learnerData.branch_field;
+                            console.log('📚 Fetched program name from learner record:', programName);
                         }
                     } catch (err) {
                         console.warn('Could not fetch program name:', err);
                     }
                 }
                 
-                studentContext = {
-                    rawGrade: studentInfo.grade || storedGradeLevel,
+                learnerContext = {
+                    rawGrade: learnerInfo.grade || storedGradeLevel,
                     programName: programName,
                     programCode: null,
-                    degreeLevel: extractDegreeLevel(studentInfo.grade || storedGradeLevel)
+                    degreeLevel: extractDegreeLevel(learnerInfo.grade || storedGradeLevel)
                 };
             }
 
-            console.log('📚 Retry Student Context:', studentContext);
-            console.log('🎓 Degree level:', studentContext.degreeLevel);
+            console.log('📚 Retry Learner Context:', learnerContext);
+            console.log('🎓 Degree level:', learnerContext.degreeLevel);
 
             // 🔧 CRITICAL FIX: Fetch adaptive aptitude results if session ID exists
-            // This ensures high school students get their adaptive test data included in AI analysis
+            // This ensures high school learners get their adaptive test data included in AI analysis
             // Check both answers object and attempt object for session ID
             const sessionId = answers.adaptive_aptitude_session_id || attempt.adaptive_aptitude_session_id;
             
@@ -1986,7 +1986,7 @@ export const useAssessmentResults = () => {
                 console.log('ℹ️ No adaptive aptitude session ID found - skipping adaptive results fetch');
             }
 
-            // Force regenerate with AI - pass gradeLevel and student context
+            // Force regenerate with AI - pass gradeLevel and learner context
             // 🔧 CRITICAL FIX: Pass pre-calculated aptitude scores from attempt
             const preCalculatedScores = attempt.aptitude_scores ? {
                 aptitude: attempt.aptitude_scores
@@ -2005,7 +2005,7 @@ export const useAssessmentResults = () => {
                 {}, // Empty timings in retry
                 storedGradeLevel, // Pass grade level for proper scoring
                 preCalculatedScores, // Pass pre-calculated scores from attempt
-                studentContext, // Pass student context for enhanced recommendations
+                learnerContext, // Pass learner context for enhanced recommendations
                 adaptiveResultsForAI // Pass adaptive results for aptitude scoring
             );
 
@@ -2125,11 +2125,11 @@ export const useAssessmentResults = () => {
                         // No result record exists — create one via completeAttempt
                         // This handles cases where the initial save failed (e.g. FK violation)
                         console.log('⚠️ No existing result for attemptId:', attemptId, '— creating new record');
-                        const studentRecordId = await getStudentRecordId(user.id);
-                        if (studentRecordId) {
+                        const learnerRecordId = await getlearnerRecordId(user.id);
+                        if (learnerRecordId) {
                             const newResult = await assessmentService.completeAttempt(
                                 attemptId,
-                                studentRecordId,
+                                learnerRecordId,
                                 stream,
                                 storedGradeLevel,
                                 validatedResults,
@@ -2137,7 +2137,7 @@ export const useAssessmentResults = () => {
                             );
                             console.log('✅ New result record created:', newResult?.id);
                         } else {
-                            console.error('❌ Cannot create result — student record not found for auth user:', user.id);
+                            console.error('❌ Cannot create result — learner record not found for auth user:', user.id);
                         }
                     }
                 }
@@ -2172,11 +2172,11 @@ export const useAssessmentResults = () => {
             setRetryCompleted(true); // Mark retry as completed to prevent re-triggering
             console.log('✅ AI analysis regenerated successfully');
 
-            // Update studentInfo with actual stream_id from attempt
+            // Update learnerInfo with actual stream_id from attempt
             if (stream) {
-                console.log('📚 Updating studentInfo.stream with actual stream_id:', stream);
-                streamFromAssessmentRef.current = stream; // Set ref to prevent fetchStudentInfo from overwriting
-                setStudentInfo(prev => ({
+                console.log('📚 Updating learnerInfo.stream with actual stream_id:', stream);
+                streamFromAssessmentRef.current = stream; // Set ref to prevent fetchlearnerInfo from overwriting
+                setlearnerInfo(prev => ({
                     ...prev,
                     stream: stream
                 }));
@@ -2209,7 +2209,7 @@ export const useAssessmentResults = () => {
             setRetrying(false);
             setLoading(false); // Ensure loading screen is dismissed
         }
-    }, [searchParams, gradeLevel, studentInfo.grade, studentInfo.courseName]); // searchParams object itself is stable
+    }, [searchParams, gradeLevel, learnerInfo.grade, learnerInfo.courseName]); // searchParams object itself is stable
 
     useEffect(() => {
         loadResults();
@@ -2280,7 +2280,7 @@ export const useAssessmentResults = () => {
     // Update roll number type when grade level changes to after12/after10
     useEffect(() => {
         if (gradeLevel === 'after12' || gradeLevel === 'after10') {
-            setStudentInfo(prev => {
+            setlearnerInfo(prev => {
                 // Only update if currently showing 'school' type
                 if (prev.rollNumberType === 'school' && prev.regNo === '—') {
                     return {
@@ -2349,8 +2349,8 @@ export const useAssessmentResults = () => {
         retryAttemptCount, // Export retry attempt count for UI display
         gradeLevel, // Export grade level
         monthsInGrade, // Export months in grade for conditional display
-        studentInfo,
-        studentAcademicData, // Export academic data for course matching
+        learnerInfo,
+        learnerAcademicData, // Export academic data for course matching
         validationWarnings, // Export validation warnings for display
         handleRetry,
         validateResults,
@@ -2358,5 +2358,5 @@ export const useAssessmentResults = () => {
         // Debug data - full database records
         attemptData: results?.attempt_data || null,
         resultData: results // The full result record
-    }), [results, loading, error, retrying, retryAttemptCount, gradeLevel, monthsInGrade, studentInfo, studentAcademicData, validationWarnings, handleRetry, validateResults, navigate]);
+    }), [results, loading, error, retrying, retryAttemptCount, gradeLevel, monthsInGrade, learnerInfo, learnerAcademicData, validationWarnings, handleRetry, validateResults, navigate]);
 };

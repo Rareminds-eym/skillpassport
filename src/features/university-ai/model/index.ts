@@ -15,7 +15,7 @@ export interface Message {
   topic?: CounsellingTopic;
 }
 
-export interface StudentContext {
+export interface LearnerContext {
   id?: string;
   name?: string;
   email?: string;

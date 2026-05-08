@@ -62,7 +62,7 @@ function validateEmbeddingVector(embedding: number[]): void {
  * Update embedding in database
  * 
  * @param supabase - Supabase client (with service role key)
- * @param table - Table name (students, skills, opportunities, courses)
+ * @param table - Table name (learners, skills, opportunities, courses)
  * @param id - Record ID
  * @param embedding - Embedding vector
  * @returns Success status and affected rows

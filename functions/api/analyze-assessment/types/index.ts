@@ -2,30 +2,30 @@
  * Type definitions for the Assessment Analysis API
  */
 
-export interface StudentContext {
+export interface LearnerContext {
   rawGrade?: string;
   programName?: string;
   programCode?: string;
   degreeLevel?: 'postgraduate' | 'undergraduate' | 'diploma' | null;
 }
 
-export interface StudentProfileData {
-  skills?: StudentSkill[];
-  projects?: StudentProject[];
-  certificates?: StudentCertificate[];
-  internships?: StudentInternship[];
-  education?: StudentEducation[];
+export interface LearnerProfileData {
+  skills?: LearnerSkill[];
+  projects?: LearnerProject[];
+  certificates?: LearnerCertificate[];
+  internships?: LearnerInternship[];
+  education?: LearnerEducation[];
   academicMarks?: AcademicMarks;
 }
 
-export interface StudentSkill {
+export interface LearnerSkill {
   skill_name: string;
   proficiency_level?: string;
   years_of_experience?: number;
   category?: string;
 }
 
-export interface StudentProject {
+export interface LearnerProject {
   title: string;
   description?: string;
   technologies_used?: string[];
@@ -35,7 +35,7 @@ export interface StudentProject {
   is_verified?: boolean;
 }
 
-export interface StudentCertificate {
+export interface LearnerCertificate {
   certificate_name: string;
   issuing_organization?: string;
   issue_date?: string;
@@ -44,7 +44,7 @@ export interface StudentCertificate {
   is_verified?: boolean;
 }
 
-export interface StudentInternship {
+export interface LearnerInternship {
   company_name: string;
   role: string;
   description?: string;
@@ -54,7 +54,7 @@ export interface StudentInternship {
   is_verified?: boolean;
 }
 
-export interface StudentEducation {
+export interface LearnerEducation {
   institution_name: string;
   degree?: string;
   field_of_study?: string;
@@ -84,8 +84,8 @@ export interface AssessmentData {
   totalAptitudeQuestions: number;
   sectionTimings: SectionTimings;
   adaptiveAptitudeResults?: AdaptiveAptitudeResults;
-  studentContext?: StudentContext;
-  studentProfile?: StudentProfileData;
+  learnerContext?: LearnerContext;
+  learnerProfile?: LearnerProfileData;
 }
 
 export interface RiasecAnswer {
@@ -106,7 +106,7 @@ export interface AptitudeAnswers {
 export interface AptitudeAnswer {
   questionId: string;
   question: string;
-  studentAnswer?: string;
+  learnerAnswer?: string;
   correctAnswer?: string;
   isCorrect?: boolean;
   subtype?: string;
@@ -154,8 +154,8 @@ export interface SelfRatingAnswer {
 export interface SJTAnswer {
   scenario: string;
   question: string;
-  studentBestChoice: string;
-  studentWorstChoice: string | null;
+  learnerBestChoice: string;
+  learnerWorstChoice: string | null;
   correctBest: string;
   correctWorst: string;
   bestCorrect: boolean;
@@ -165,7 +165,7 @@ export interface SJTAnswer {
 
 export interface KnowledgeAnswer {
   question: string;
-  studentAnswer: string;
+  learnerAnswer: string;
   correctAnswer: string;
   isCorrect: boolean;
   options?: string[];

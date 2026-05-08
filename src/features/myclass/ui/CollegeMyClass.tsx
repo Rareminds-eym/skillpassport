@@ -2,19 +2,19 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import React, { useState, useEffect } from 'react';
 import { Users, Target, FileText, Loader2, AlertCircle, X, Upload, Paperclip } from 'lucide-react';
 
-import { useStudentDataByEmail } from '@/entities/student/model/useStudentDataByEmail';
+import { useLearnerDataByEmail } from '@/entities/learner/model/useLearnerDataByEmail';
 
 // Import shared components
 import { CollegeClassHeader } from '@/features/myclass';
 import OverviewTab, { AssignmentStats, AdditionalInfo } from '@/features/myclass/ui/tabs/OverviewTab';
 import ClassmatesTab, { Classmate } from '@/features/myclass/ui/tabs/ClassmatesTab';
 import { AssignmentsTab } from '@/features/myclass';
-import StudentAssignmentFileUpload from '@/entities/student/ui/StudentAssignmentFileUpload';
+import LearnerAssignmentFileUpload from '@/entities/learner/ui/LearnerAssignmentFileUpload';
 import NotificationModal from '@/shared/ui/NotificationModal';
 
 // Import college-specific services
 import {
-  getCollegeStudentClassInfo,
+  getCollegeLearnerClassInfo,
   getCollegeClassmates,
   CollegeClassInfo,
   CollegeClassmate
@@ -22,11 +22,11 @@ import {
 
 // Import college assignment services
 import {
-  fetchCollegeStudentAssignments,
-  getCollegeStudentAssignmentStats,
-  updateCollegeStudentAssignmentStatus,
+  fetchCollegeLearnerAssignments,
+  getCollegeLearnerAssignmentStats,
+  updateCollegeLearnerAssignmentStatus,
   submitCollegeAssignment,
-  CollegeStudentAssignment,
+  CollegeLearnerAssignment,
   CollegeAssignmentStats
 } from '@/features/college-admin';
 
@@ -38,9 +38,9 @@ import { useUser } from '@/shared/model/authStore';
 type CollegeTabType = 'overview' | 'classmates' | 'assignments';
 
 /**
- * CollegeMyClass - College Student Class Interface
+ * CollegeMyClass - College Learner Class Interface
  * 
- * This component handles the college student class experience including:
+ * This component handles the college learner class experience including:
  * - Program overview and information
  * - Classmates interaction
  * - Assignments management with full functionality
@@ -48,8 +48,8 @@ type CollegeTabType = 'overview' | 'classmates' | 'assignments';
 const CollegeMyClass: React.FC = () => {
   const user = useUser();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
-  const { studentData, loading: authLoading } = useStudentDataByEmail(userEmail);
-  const studentId = studentData?.id;
+  const { learnerData, loading: authLoading } = useLearnerDataByEmail(userEmail);
+  const learnerId = learnerData?.id;
 
   // State management
   const [activeTab, setActiveTab] = useState<CollegeTabType>('overview');
@@ -58,7 +58,7 @@ const CollegeMyClass: React.FC = () => {
   // Data state
   const [classInfo, setClassInfo] = useState<CollegeClassInfo | null>(null);
   const [classmates, setClassmates] = useState<CollegeClassmate[]>([]);
-  const [assignments, setAssignments] = useState<CollegeStudentAssignment[]>([]);
+  const [assignments, setAssignments] = useState<CollegeLearnerAssignment[]>([]);
   const [assignmentStats, setAssignmentStats] = useState<CollegeAssignmentStats>({
     total: 0,
     todo: 0,
@@ -92,7 +92,7 @@ const CollegeMyClass: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       if (authLoading) return;
-      if (!studentId) {
+      if (!learnerId) {
         setLoading(false);
         return;
       }
@@ -101,13 +101,13 @@ const CollegeMyClass: React.FC = () => {
         setLoading(true);
 
         // Fetch class info first
-        const classData = await getCollegeStudentClassInfo(studentId);
+        const classData = await getCollegeLearnerClassInfo(learnerId);
         setClassInfo(classData);
 
         // Fetch assignments and stats
         const [assignmentsResult, statsResult] = await Promise.all([
-          fetchCollegeStudentAssignments(studentId),
-          getCollegeStudentAssignmentStats(studentId)
+          fetchCollegeLearnerAssignments(learnerId),
+          getCollegeLearnerAssignmentStats(learnerId)
         ]);
 
         if (assignmentsResult.data) {
@@ -124,7 +124,7 @@ const CollegeMyClass: React.FC = () => {
             classData.program_id,
             classData.semester,
             classData.program_section_id,
-            studentId
+            learnerId
           );
           setClassmates(classmatesData);
         }
@@ -136,23 +136,23 @@ const CollegeMyClass: React.FC = () => {
     };
 
     fetchData();
-  }, [studentId, authLoading]);
+  }, [learnerId, authLoading]);
 
   // Handle assignment status change
-  const handleStatusChange = async (assignmentId: string, studentAssignmentId: string, newStatus: string) => {
+  const handleStatusChange = async (assignmentId: string, learnerAssignmentId: string, newStatus: string) => {
     try {
-      const result = await updateCollegeStudentAssignmentStatus(studentAssignmentId, newStatus);
+      const result = await updateCollegeLearnerAssignmentStatus(learnerAssignmentId, newStatus);
 
       if (result.data) {
         // Update local state
         setAssignments(prev => prev.map(assignment =>
-          assignment.student_assignment_id === studentAssignmentId
+          assignment.learner_assignment_id === learnerAssignmentId
             ? { ...assignment, status: newStatus }
             : assignment
         ));
 
         // Refresh stats
-        const statsResult = await getCollegeStudentAssignmentStats(studentId!);
+        const statsResult = await getCollegeLearnerAssignmentStats(learnerId!);
         if (statsResult.data) {
           setAssignmentStats(statsResult.data);
         }
@@ -202,7 +202,7 @@ const CollegeMyClass: React.FC = () => {
   };
 
   const handleUploadSubmit = async () => {
-    if (!selectedAssignment || !studentId || !fileUploadRef.current) return;
+    if (!selectedAssignment || !learnerId || !fileUploadRef.current) return;
 
     const stagedFiles = fileUploadRef.current.getStagedFiles();
 
@@ -223,7 +223,7 @@ const CollegeMyClass: React.FC = () => {
 
       // Submit assignment with files using college service
       await submitCollegeAssignment(
-        selectedAssignment.student_assignment_id,
+        selectedAssignment.learner_assignment_id,
         { submission_content: 'File submission' },
         stagedFiles
       );
@@ -238,8 +238,8 @@ const CollegeMyClass: React.FC = () => {
       ));
 
       // Refresh stats
-      if (studentId) {
-        const statsResult = await getCollegeStudentAssignmentStats(studentId);
+      if (learnerId) {
+        const statsResult = await getCollegeLearnerAssignmentStats(learnerId);
         if (statsResult.data) {
           setAssignmentStats(statsResult.data);
         }
@@ -397,7 +397,7 @@ const CollegeMyClass: React.FC = () => {
     .sort((a, b) => new Date(b.due_date).getTime() - new Date(a.due_date).getTime()) // Latest due date first
     .map(assignment => ({
       assignment_id: assignment.assignment_id,
-      student_assignment_id: assignment.student_assignment_id,
+      learner_assignment_id: assignment.learner_assignment_id,
       title: assignment.title,
       description: assignment.description,
       course_name: assignment.course_name,
@@ -428,7 +428,7 @@ const CollegeMyClass: React.FC = () => {
       { label: "Department", value: classInfo?.department_name || 'N/A' },
       { label: "Current Semester", value: `Semester ${classInfo?.semester || 'N/A'}` },
       ...(classInfo?.section ? [{ label: "Section", value: classInfo.section }] : []),
-      { label: "Classmates", value: `${classmates.length} students` }
+      { label: "Classmates", value: `${classmates.length} learners` }
     ]
   };
 
@@ -559,7 +559,7 @@ const CollegeMyClass: React.FC = () => {
             {/* Modal Body */}
             <div className="p-6">
               {/* File Upload Component */}
-              <StudentAssignmentFileUpload
+              <LearnerAssignmentFileUpload
                 ref={fileUploadRef}
                 maxFiles={3}
                 acceptedTypes={['.pdf', '.doc', '.docx', '.txt', '.jpg', '.png']}

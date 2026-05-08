@@ -7,7 +7,7 @@ export { default as AddLessonModal } from './AddLessonModal';
 export { default as AssignEducatorModal } from './AssignEducatorModal';
 export { default as ResourceUploadComponent } from './ResourceUploadComponent';
 
-// Student course components
+// Learner course components
 export { default as CourseDetailModal } from './CourseDetailModal';
 export { default as QuizProgressTracker } from './QuizProgressTracker';
 export { default as RestoreProgressModal } from './RestoreProgressModal';

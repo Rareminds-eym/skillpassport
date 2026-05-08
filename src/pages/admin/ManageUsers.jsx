@@ -3,9 +3,9 @@ import { Button } from '@/shared/ui';
 
 const ManageUsers = () => {
   const users = [
-    { id: 1, name: 'Alice Johnson', email: 'alice@example.com', role: 'student', status: 'active' },
+    { id: 1, name: 'Alice Johnson', email: 'alice@example.com', role: 'learner', status: 'active' },
     { id: 2, name: 'Bob Smith', email: 'bob@company.com', role: 'recruiter', status: 'active' },
-    { id: 3, name: 'Carol White', email: 'carol@example.com', role: 'student', status: 'inactive' },
+    { id: 3, name: 'Carol White', email: 'carol@example.com', role: 'learner', status: 'inactive' },
     { id: 4, name: 'David Brown', email: 'david@company.com', role: 'recruiter', status: 'active' },
   ];
 

@@ -181,10 +181,10 @@ export default function LoginEducator() {
         <div className="hidden lg:flex relative p-10  pb-0 text-white flex-col justify-between rounded-3xl shadow-lg bg-gradient-to-br from-[#f1c744] to-[#b8860b] overflow-visible">
           <div className="relative z-10">
             <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-              Empower Learning. Guide Students to Success.
+              Empower Learning. Guide Learners to Success.
             </h2>
             <p className="mt-4 max-w-xl text-indigo-100">
-              Manage student skills, progress, and verified achievements in one place.
+              Manage learner skills, progress, and verified achievements in one place.
             </p>
           </div>
 
@@ -217,7 +217,7 @@ export default function LoginEducator() {
                 ease: "easeInOut",
               }}
             >
-              <FeatureCard title="Manage Students" Icon={Users} />
+              <FeatureCard title="Manage Learners" Icon={Users} />
             </motion.div>
 
             <motion.div
@@ -256,7 +256,7 @@ export default function LoginEducator() {
             <div className="text-center mb-6">
               <h3 className="text-3xl font-bold text-white">Educator Login</h3>
               <p className="text-sm text-white/80 mt-2">
-                Access your educator dashboard to manage student skills and progress.
+                Access your educator dashboard to manage learner skills and progress.
               </p>
             </div>
             <div className="rounded-2xl p-5 sm:p-6 bg-transparent">
@@ -277,7 +277,7 @@ export default function LoginEducator() {
                 Educator Login
               </h3>
               <p className="text-sm text-gray-700/90 lg:text-gray-500 mt-2">
-                Access your educator dashboard with verified student data.
+                Access your educator dashboard with verified learner data.
               </p>
             </div>
             <div className="rounded-2xl bg-white/95 shadow-xl lg:shadow-none lg:bg-white ring-1 lg:ring-0 ring-black/5 p-6 sm:p-8">

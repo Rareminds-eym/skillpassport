@@ -27,7 +27,7 @@ import { ssoClient } from '@/shared/api/ssoClient';
 import { useAuthStore } from '@/shared/model/authStore';
 import { AuthFetchError } from '@rareminds-eym/auth-client';
 
-type UserRole = 'school_student' | 'college_student' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
+type UserRole = 'learner' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
 
 interface SignupState {
   firstName: string;
@@ -245,7 +245,7 @@ const UnifiedSignup = () => {
 
   // Get plan context from location.state (if user selected a plan before signing up)
   const planFromState = (location.state as any)?.plan;
-  const studentTypeFromState = (location.state as any)?.studentType;
+  const learnerTypeFromState = (location.state as any)?.learnerType;
   const returnToFromState = (location.state as any)?.returnTo;
 
   // Get return URL from query params or session storage (for invitation flow)
@@ -279,11 +279,11 @@ const UnifiedSignup = () => {
 
   const selectedCountry = COUNTRY_CODES.find(cc => cc.dialCode === state.countryCode) || COUNTRY_CODES[0];
 
-  const allRoles: UserRole[] = ['school_student', 'college_student', 'school_educator', 'college_educator', 'recruiter', 'school_admin', 'college_admin', 'university_admin'];
+  const allRoles: UserRole[] = ['learner', 'school_educator', 'college_educator', 'recruiter', 'school_admin', 'college_admin', 'university_admin'];
 
   const getRoleDisplayName = (role: UserRole): string => {
     const names: Record<UserRole, string> = {
-      school_student: 'School Student', college_student: 'College Student',
+      learner: 'Learner',
       school_educator: 'School Educator', college_educator: 'College Educator',
       recruiter: 'Recruiter',
       school_admin: 'School Administrator', college_admin: 'College Administrator', university_admin: 'University Administrator'
@@ -405,7 +405,7 @@ const UnifiedSignup = () => {
         });
         ssoUserId = ssoResult.user.id;
       } else {
-        // Member signup (student, educator, recruiter) — no org creation
+        // Member signup (learner, educator, recruiter) — no org creation
         const ssoResult = await ssoClient.signupMember({
           email: state.email,
           password: state.password,
@@ -462,8 +462,7 @@ const UnifiedSignup = () => {
 
       // Step 3: Redirect based on role
       const entityTypeMap: Record<UserRole, string> = {
-        school_student: 'student',
-        college_student: 'college-student',
+        learner: 'learner',
         school_educator: 'educator',
         college_educator: 'college-educator',
         recruiter: 'recruitment-recruiter',
@@ -471,7 +470,7 @@ const UnifiedSignup = () => {
         college_admin: 'college',
         university_admin: 'university-admin'
       };
-      const entityType = state.selectedRole ? entityTypeMap[state.selectedRole] : 'student';
+      const entityType = state.selectedRole ? entityTypeMap[state.selectedRole] : 'learner';
 
       if (returnUrl) {
         sessionStorage.removeItem('invitation_return_url');
@@ -480,7 +479,7 @@ const UnifiedSignup = () => {
         navigate('/subscription/payment', {
           state: {
             plan: planFromState,
-            studentType: studentTypeFromState || entityType,
+            learnerType: learnerTypeFromState || entityType,
             isUpgrade: false
           }
         });
@@ -557,10 +556,10 @@ const UnifiedSignup = () => {
           <div className="relative z-10 max-w-lg mx-auto space-y-16">
             <div className="space-y-4">
               <h1 className="text-4xl md:text-5xl font-bold leading-tight">
-                Empower Students. Verify Real Skills.
+                Empower Learners. Verify Real Skills.
               </h1>
               <p className="text-lg text-slate-300 leading-relaxed">
-                Guide students and verify their skills for better opportunities.
+                Guide learners and verify their skills for better opportunities.
               </p>
             </div>
 
@@ -684,10 +683,10 @@ const UnifiedSignup = () => {
           {/* Hero Text */}
           <div className="space-y-4">
             <h1 className="text-4xl md:text-5xl font-bold leading-tight">
-              Empower Students. Verify Real Skills.
+              Empower Learners. Verify Real Skills.
             </h1>
             <p className="text-lg text-slate-300 leading-relaxed">
-              Guide students and verify their skills for better opportunities.
+              Guide learners and verify their skills for better opportunities.
             </p>
           </div>
 

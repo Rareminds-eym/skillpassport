@@ -59,8 +59,8 @@ if (typeof document !== 'undefined') {
 
 interface Activity {
   id: string;
-  student_id: string;
-  student: string;
+  learner_id: string;
+  learner: string;
   title: string;
   type: 'Project' | 'Training' | 'Certificate';
   status: 'pending' | 'sent_to_admin' | 'approved' | 'rejected';
@@ -202,7 +202,7 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject, on
                 </div>
                 <div>
                   <h1 className="text-lg font-medium text-gray-900">{activity.type} Details</h1>
-                  <p className="text-sm text-gray-500">{activity.student}</p>
+                  <p className="text-sm text-gray-500">{activity.learner}</p>
                 </div>
               </div>
               <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -526,7 +526,7 @@ const ActivityCard = ({ activity, onViewDetails, isSelected, onSelect }: {
                 {getStatusLabel()}
               </span>
             </div>
-            <p className="font-medium text-gray-900 mb-2">{activity.student}</p>
+            <p className="font-medium text-gray-900 mb-2">{activity.learner}</p>
             <label className="font-semibold text-gray-900 mb-1">{activity.title}</label>
             {activity.description && (
               <p className="text-xs text-gray-600 line-clamp-2">{activity.description}</p>
@@ -591,65 +591,65 @@ const Activities = () => {
         return [];
       }
 
-      let students;
+      let learners;
 
       if (educatorType === 'school' && educatorSchool) {
         if (educatorRole === 'admin' || educatorRole === 'school_admin') {
           const { data } = await supabase
-            .from('students')
+            .from('learners')
             .select('id, name, user_id')
             .eq('school_id', educatorSchool.id)
             .eq('is_deleted', false);
-          students = data;
+          learners = data;
         } else if (assignedClassIds.length > 0) {
           const { data } = await supabase
-            .from('students')
+            .from('learners')
             .select('id, name, user_id')
             .eq('school_id', educatorSchool.id)
             .in('school_class_id', assignedClassIds)
             .eq('is_deleted', false);
-          students = data;
+          learners = data;
         } else {
-          students = [];
+          learners = [];
         }
       } else if (educatorType === 'college' && educatorCollege) {
         const { data } = await supabase
-          .from('students')
+          .from('learners')
           .select('id, name, user_id')
           .eq('college_id', educatorCollege.id)
           .eq('is_deleted', false);
-        students = data;
+        learners = data;
       } else {
-        students = [];
+        learners = [];
       }
 
-      const studentMap: Record<string, string> = {};
-      const studentIds = new Set<string>();
-      students?.forEach((student: any) => {
-        studentMap[student.user_id] = student.name || `Student ${student.id.substring(0, 8)}`;
-        studentIds.add(student.user_id);
+      const learnerMap: Record<string, string> = {};
+      const learnerIds = new Set<string>();
+      learners?.forEach((learner: any) => {
+        learnerMap[learner.user_id] = learner.name || `Learner ${learner.id.substring(0, 8)}`;
+        learnerIds.add(learner.user_id);
       });
 
       const { data: projects } = await supabase
         .from('projects')
         .select('*')
-        .in('student_id', Array.from(studentIds));
+        .in('learner_id', Array.from(learnerIds));
 
       const { data: trainings } = await supabase
         .from('trainings')
         .select('*')
-        .in('student_id', Array.from(studentIds));
+        .in('learner_id', Array.from(learnerIds));
 
       const { data: certificates } = await supabase
         .from('certificates')
         .select('*')
-        .in('student_id', Array.from(studentIds));
+        .in('learner_id', Array.from(learnerIds));
 
       const allActivities: Activity[] = [
         ...(projects || []).map((p: any) => ({
           id: p.id,
-          student_id: p.student_id,
-          student: studentMap[p.student_id] || `Student ${p.student_id?.substring(0, 8) || 'Unknown'}`,
+          learner_id: p.learner_id,
+          learner: learnerMap[p.learner_id] || `Learner ${p.learner_id?.substring(0, 8) || 'Unknown'}`,
           title: p.title,
           type: 'Project' as const,
           status: p.approval_status || 'pending',
@@ -669,8 +669,8 @@ const Activities = () => {
         })),
         ...(trainings || []).map((t: any) => ({
           id: t.id,
-          student_id: t.student_id,
-          student: studentMap[t.student_id] || `Student ${t.student_id?.substring(0, 8) || 'Unknown'}`,
+          learner_id: t.learner_id,
+          learner: learnerMap[t.learner_id] || `Learner ${t.learner_id?.substring(0, 8) || 'Unknown'}`,
           title: t.title,
           type: 'Training' as const,
           status: t.approval_status || 'pending',
@@ -684,8 +684,8 @@ const Activities = () => {
         })),
         ...(certificates || []).map((c: any) => ({
           id: c.id,
-          student_id: c.student_id,
-          student: studentMap[c.student_id] || `Student ${c.student_id?.substring(0, 8) || 'Unknown'}`,
+          learner_id: c.learner_id,
+          learner: learnerMap[c.learner_id] || `Learner ${c.learner_id?.substring(0, 8) || 'Unknown'}`,
           title: c.title,
           type: 'Certificate' as const,
           status: c.approval_status || 'pending',
@@ -712,72 +712,72 @@ const Activities = () => {
 
     setLoading(true);
     try {
-      let students;
+      let learners;
 
       if (educatorType === 'school' && educatorSchool) {
         // For school educators, check role and class assignments
         if (educatorRole === 'admin' || educatorRole === 'school_admin') {
-          // School admins can see all students in their school
+          // School admins can see all learners in their school
           const { data } = await supabase
-            .from('students')
+            .from('learners')
             .select('id, name, user_id')
             .eq('school_id', educatorSchool.id)
             .eq('is_deleted', false);
-          students = data;
+          learners = data;
         } else if (assignedClassIds.length > 0) {
-          // Regular educators can only see students in their assigned classes
+          // Regular educators can only see learners in their assigned classes
           const { data } = await supabase
-            .from('students')
+            .from('learners')
             .select('id, name, user_id')
             .eq('school_id', educatorSchool.id)
             .in('school_class_id', assignedClassIds)
             .eq('is_deleted', false);
-          students = data;
+          learners = data;
         } else {
-          // Educators with no class assignments should see no students
-          students = [];
+          // Educators with no class assignments should see no learners
+          learners = [];
         }
       } else if (educatorType === 'college' && educatorCollege) {
         // For college educators, filter by college
         const { data } = await supabase
-          .from('students')
+          .from('learners')
           .select('id, name, user_id')
           .eq('college_id', educatorCollege.id)
           .eq('is_deleted', false);
-        students = data;
+        learners = data;
       } else {
-        students = [];
+        learners = [];
       }
 
-      // Create a mapping of user_id to student name
-      const studentMap: Record<string, string> = {};
-      const studentIds = new Set<string>();
-      students?.forEach((student: any) => {
-        studentMap[student.user_id] = student.name || `Student ${student.id.substring(0, 8)}`;
-        studentIds.add(student.user_id);
+      // Create a mapping of user_id to learner name
+      const learnerMap: Record<string, string> = {};
+      const learnerIds = new Set<string>();
+      learners?.forEach((learner: any) => {
+        learnerMap[learner.user_id] = learner.name || `Learner ${learner.id.substring(0, 8)}`;
+        learnerIds.add(learner.user_id);
       });
 
-      // Fetch activities only for students in this school
+      // Fetch activities only for learners in this school
       const { data: projects } = await supabase
         .from('projects')
         .select('*')
-        .in('student_id', Array.from(studentIds));
+        .in('learner_id', Array.from(learnerIds));
 
       const { data: trainings } = await supabase
         .from('trainings')
         .select('*')
-        .in('student_id', Array.from(studentIds));
+        .in('learner_id', Array.from(learnerIds));
 
       const { data: certificates } = await supabase
         .from('certificates')
         .select('*')
-        .in('student_id', Array.from(studentIds));
+        .in('learner_id', Array.from(learnerIds));
 
       const allActivities: Activity[] = [
         ...(projects || []).map((p: any) => ({
           id: p.id,
-          student_id: p.student_id,
-          student: studentMap[p.student_id] || `Student ${p.student_id?.substring(0, 8) || 'Unknown'}`,
+          learner_id: p.learner_id,
+          learner: learnerMap[p.learner_id] || `Learner ${p.learner_id?.substring(0, 8) || 'Unknown'}`,
           title: p.title,
           type: 'Project' as const,
           status: p.approval_status || 'pending',
@@ -797,8 +797,8 @@ const Activities = () => {
         })),
         ...(trainings || []).map((t: any) => ({
           id: t.id,
-          student_id: t.student_id,
-          student: studentMap[t.student_id] || `Student ${t.student_id?.substring(0, 8) || 'Unknown'}`,
+          learner_id: t.learner_id,
+          learner: learnerMap[t.learner_id] || `Learner ${t.learner_id?.substring(0, 8) || 'Unknown'}`,
           title: t.title,
           type: 'Training' as const,
           status: t.approval_status || 'pending',
@@ -812,8 +812,8 @@ const Activities = () => {
         })),
         ...(certificates || []).map((c: any) => ({
           id: c.id,
-          student_id: c.student_id,
-          student: studentMap[c.student_id] || `Student ${c.student_id?.substring(0, 8) || 'Unknown'}`,
+          learner_id: c.learner_id,
+          learner: learnerMap[c.learner_id] || `Learner ${c.learner_id?.substring(0, 8) || 'Unknown'}`,
           title: c.title,
           type: 'Certificate' as const,
           status: c.approval_status || 'pending',
@@ -855,7 +855,7 @@ const Activities = () => {
     if (searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase();
       result = result.filter(activity =>
-        activity.student.toLowerCase().includes(query) ||
+        activity.learner.toLowerCase().includes(query) ||
         activity.title.toLowerCase().includes(query) ||
         activity.description?.toLowerCase().includes(query)
       );
@@ -1191,7 +1191,7 @@ const Activities = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by student, title, or description..."
+              placeholder="Search by learner, title, or description..."
               className="w-full border border-gray-300 rounded-md px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
@@ -1439,7 +1439,7 @@ const Activities = () => {
                       {activities.length === 0 && !searchQuery && filters.types.length === 0
                         ? educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
                           ? 'You have not been assigned to any classes yet'
-                          : 'No student activities found'
+                          : 'No learner activities found'
                         : `No ${getTabLabel(activeTab).toLowerCase()} activities found`}
                     </p>
                     {activities.length === 0 && !searchQuery && filters.types.length === 0 &&
@@ -1487,7 +1487,7 @@ const Activities = () => {
                         </th>
                       )}
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Student
+                        Learner
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Type
@@ -1512,7 +1512,7 @@ const Activities = () => {
                               {activities.length === 0 && !searchQuery && filters.types.length === 0
                                 ? educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
                                   ? 'You have not been assigned to any classes yet'
-                                  : 'No student activities found'
+                                  : 'No learner activities found'
                                 : `No ${getTabLabel(activeTab).toLowerCase()} activities found`}
                             </p>
                             {activities.length === 0 && !searchQuery && filters.types.length === 0 &&
@@ -1538,7 +1538,7 @@ const Activities = () => {
                             </td>
                           )}
                           <td className="px-6 py-4">
-                            <div className="text-sm font-medium text-gray-900">{activity.student}</div>
+                            <div className="text-sm font-medium text-gray-900">{activity.learner}</div>
                           </td>
                           <td className="px-6 py-4">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${activity.type === 'Project' ? 'bg-blue-100 text-blue-800' :

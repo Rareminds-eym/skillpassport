@@ -185,27 +185,27 @@ export const getOrganizationMembers = async (
 export const getMemberCounts = async (
   organizationId: string,
   organizationType: OrganizationType
-): Promise<{ students: number; educators: number; total: number }> => {
-  let studentCount = 0;
+): Promise<{ learners: number; educators: number; total: number }> => {
+  let learnerCount = 0;
   let educatorCount = 0;
 
-  // Count students
-  let studentQuery = supabase
-    .from('students')
+  // Count learners
+  let learnerQuery = supabase
+    .from('learners')
     .select('id', { count: 'exact', head: true });
 
   if (organizationType === 'school') {
-    studentQuery = studentQuery.eq('school_id', organizationId);
+    learnerQuery = learnerQuery.eq('school_id', organizationId);
   } else if (organizationType === 'college') {
-    studentQuery = studentQuery.eq('college_id', organizationId);
+    learnerQuery = learnerQuery.eq('college_id', organizationId);
   } else {
-    studentQuery = studentQuery.eq('universityId', organizationId);
+    learnerQuery = learnerQuery.eq('universityId', organizationId);
   }
 
-  studentQuery = studentQuery.or('is_deleted.is.null,is_deleted.eq.false');
+  learnerQuery = learnerQuery.or('is_deleted.is.null,is_deleted.eq.false');
 
-  const { count: sCount } = await studentQuery;
-  studentCount = sCount || 0;
+  const { count: sCount } = await learnerQuery;
+  learnerCount = sCount || 0;
 
   // Count educators
   if (organizationType === 'school') {
@@ -223,8 +223,8 @@ export const getMemberCounts = async (
   }
 
   return {
-    students: studentCount,
+    learners: learnerCount,
     educators: educatorCount,
-    total: studentCount + educatorCount,
+    total: learnerCount + educatorCount,
   };
 };

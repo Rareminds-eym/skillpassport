@@ -278,10 +278,10 @@ const UserManagementModal = ({
   ];
 
   const availablePermissions = [
-    { id: "student_view", label: "View Students", module: "Student Management" },
-    { id: "student_create", label: "Create Students", module: "Student Management" },
-    { id: "student_edit", label: "Edit Students", module: "Student Management" },
-    { id: "student_delete", label: "Delete Students", module: "Student Management" },
+    { id: "learner_view", label: "View Learners", module: "Learner Management" },
+    { id: "learner_create", label: "Create Learners", module: "Learner Management" },
+    { id: "learner_edit", label: "Edit Learners", module: "Learner Management" },
+    { id: "learner_delete", label: "Delete Learners", module: "Learner Management" },
     { id: "attendance_mark", label: "Mark Attendance", module: "Attendance" },
     { id: "attendance_edit", label: "Edit Attendance", module: "Attendance" },
     { id: "exam_create", label: "Create Exams", module: "Exams" },
@@ -1056,10 +1056,10 @@ const RolePermissionsModal = ({
   }, [isOpen, currentPermissions]);
 
   const availablePermissions = [
-    { id: "student_view", label: "View Students", module: "Student Management" },
-    { id: "student_create", label: "Create Students", module: "Student Management" },
-    { id: "student_edit", label: "Edit Students", module: "Student Management" },
-    { id: "student_delete", label: "Delete Students", module: "Student Management" },
+    { id: "learner_view", label: "View Learners", module: "Learner Management" },
+    { id: "learner_create", label: "Create Learners", module: "Learner Management" },
+    { id: "learner_edit", label: "Edit Learners", module: "Learner Management" },
+    { id: "learner_delete", label: "Delete Learners", module: "Learner Management" },
     { id: "attendance_mark", label: "Mark Attendance", module: "Attendance" },
     { id: "attendance_edit", label: "Edit Attendance", module: "Attendance" },
     { id: "exam_create", label: "Create Exams", module: "Exams" },
@@ -1882,7 +1882,7 @@ const Settings = () => {
         id: cls.id,
         name: `${cls.name || cls.grade}${cls.section ? ` - ${cls.section}` : ""}`,
         sections: cls.section ? [cls.section] : [],
-        capacity: cls.max_students || 40,
+        capacity: cls.max_learners || 40,
       }));
 
       setClasses(mappedClasses);
@@ -2098,14 +2098,14 @@ const Settings = () => {
       } else {
         // Set default permissions if none exist
         const defaultPermissions = {
-          Principal: ["student_view", "student_create", "student_edit", "student_delete", "attendance_mark", "attendance_edit", "exam_create", "exam_marks", "exam_publish", "fee_view", "fee_collect", "library_issue", "career_view", "career_counsel", "settings_manage"],
-          "Vice Principal": ["student_view", "student_create", "student_edit", "attendance_mark", "attendance_edit", "exam_create", "exam_marks", "exam_publish", "career_view", "career_counsel", "settings_manage"],
-          "Class Teacher": ["student_view", "attendance_mark", "exam_marks", "career_view", "career_counsel"],
-          "Subject Teacher": ["student_view", "exam_marks", "career_view"],
+          Principal: ["learner_view", "learner_create", "learner_edit", "learner_delete", "attendance_mark", "attendance_edit", "exam_create", "exam_marks", "exam_publish", "fee_view", "fee_collect", "library_issue", "career_view", "career_counsel", "settings_manage"],
+          "Vice Principal": ["learner_view", "learner_create", "learner_edit", "attendance_mark", "attendance_edit", "exam_create", "exam_marks", "exam_publish", "career_view", "career_counsel", "settings_manage"],
+          "Class Teacher": ["learner_view", "attendance_mark", "exam_marks", "career_view", "career_counsel"],
+          "Subject Teacher": ["learner_view", "exam_marks", "career_view"],
           Accountant: ["fee_view", "fee_collect"],
           Librarian: ["library_issue"],
-          "IT Admin": ["student_view", "settings_manage"],
-          "Career Counselor": ["student_view", "career_view", "career_counsel"],
+          "IT Admin": ["learner_view", "settings_manage"],
+          "Career Counselor": ["learner_view", "career_view", "career_counsel"],
         };
         setRolePermissions(defaultPermissions);
         // Save defaults to database
@@ -2202,7 +2202,7 @@ const Settings = () => {
           {
             id: "1",
             label: "Attendance Alerts",
-            description: "Notify parents when student is absent",
+            description: "Notify parents when learner is absent",
             enabled: true,
           },
           {
@@ -2214,7 +2214,7 @@ const Settings = () => {
           {
             id: "3",
             label: "Exam Notifications",
-            description: "Alert students and parents about upcoming exams",
+            description: "Alert learners and parents about upcoming exams",
             enabled: true,
           },
           {
@@ -2302,7 +2302,7 @@ const Settings = () => {
     // Common table name mappings
     const tableNameMap: Record<string, string> = {
       courses: "Course Management",
-      students: "Student Management",
+      learners: "Learner Management",
       school_educators: "Educator Management",
       school_classes: "Class Management",
       curriculum_subjects: "Subject Management",
@@ -2348,11 +2348,11 @@ const Settings = () => {
 
   const getRolePermissions = (role: string): string[] => {
     const permissionsMap: Record<string, string[]> = {
-      principal: ["student_view", "student_create", "student_edit", "student_delete", "attendance_mark", "exam_publish", "settings_manage"],
-      vice_principal: ["student_view", "student_create", "attendance_mark", "exam_marks"],
-      class_teacher: ["student_view", "attendance_mark", "exam_marks"],
-      subject_teacher: ["student_view", "exam_marks"],
-      school_admin: ["student_view", "student_create", "settings_manage"],
+      principal: ["learner_view", "learner_create", "learner_edit", "learner_delete", "attendance_mark", "exam_publish", "settings_manage"],
+      vice_principal: ["learner_view", "learner_create", "attendance_mark", "exam_marks"],
+      class_teacher: ["learner_view", "attendance_mark", "exam_marks"],
+      subject_teacher: ["learner_view", "exam_marks"],
+      school_admin: ["learner_view", "learner_create", "settings_manage"],
       it_admin: ["settings_manage"],
     };
     return permissionsMap[role] || [];
@@ -2647,7 +2647,7 @@ const Settings = () => {
           .from("school_classes")
           .update({
             name: cls.name,
-            max_students: cls.capacity,
+            max_learners: cls.capacity,
             updated_at: new Date().toISOString(),
           })
           .eq("id", cls.id);
@@ -2667,7 +2667,7 @@ const Settings = () => {
           name: cls.name,
           grade: cls.name,
           section: section,
-          max_students: cls.capacity,
+          max_learners: cls.capacity,
           account_status: "active",
         }));
 
@@ -3214,7 +3214,7 @@ const Settings = () => {
                 },
                 {
                   role: "Career Counselor",
-                  description: "Career module and student guidance access",
+                  description: "Career module and learner guidance access",
                   permissions: 5,
                   color: "pink",
                 },

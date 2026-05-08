@@ -16,7 +16,7 @@ export type Timestamp = string
 export type Status = 'active' | 'inactive' | 'pending' | 'archived'
 
 // User role types
-export type Role = 'student' | 'educator' | 'recruiter' | 'admin'
+export type Role = 'learner' | 'educator' | 'recruiter' | 'admin'
 
 /**
  * Base entity interface with common fields

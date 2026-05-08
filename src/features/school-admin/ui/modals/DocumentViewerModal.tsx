@@ -19,7 +19,7 @@ interface DocumentViewerModalProps {
     experienceUrls?: string[] | null;
   };
   personName: string;
-  personType: 'student' | 'teacher';
+  personType: 'learner' | 'teacher';
 }
 
 const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
@@ -121,7 +121,7 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
                 {personName} - Documents
               </h3>
               <p className="text-sm text-gray-500 mt-1">
-                {personType === 'teacher' ? 'Teacher' : 'Student'} document viewer
+                {personType === 'teacher' ? 'Teacher' : 'Learner'} document viewer
               </p>
             </div>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -296,7 +296,7 @@ export default DocumentViewerModal;
 //     experienceUrls?: string[] | null;
 //   };
 //   personName: string;
-//   personType: 'student' | 'teacher';
+//   personType: 'learner' | 'teacher';
 // }
 
 // const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
@@ -491,7 +491,7 @@ export default DocumentViewerModal;
 //                 {personName} - Documents
 //               </h3>
 //               <p className="text-sm text-gray-500 mt-1">
-//                 {personType === 'teacher' ? 'Teacher' : 'Student'} document viewer
+//                 {personType === 'teacher' ? 'Teacher' : 'Learner'} document viewer
 //               </p>
 //             </div>
 //             <button onClick={onClose} className="text-gray-400 hover:text-gray-600">

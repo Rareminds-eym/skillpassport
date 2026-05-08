@@ -11,8 +11,8 @@ export { default as PerformanceTrends } from './ui/PerformanceTrends';
 export { default as WorkflowStepper } from './ui/WorkflowStepper';
 export { EXAM_STATUSES } from './ui/types';
 
-export { getStudentResults } from './api/studentExamService';
+export { getlearnerResults } from './api/learnerExamService';
 
-export { getGroupedStudentExams } from './api/studentExamService';
+export { getGroupedlearnerExams } from './api/learnerExamService';
 
-export { getStudentResultStats } from './api/studentExamService';
+export { getlearnerResultStats } from './api/learnerExamService';

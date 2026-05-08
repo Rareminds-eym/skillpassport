@@ -1,6 +1,6 @@
 import React from "react";
 import { Coffee, Filter, Plus, Pencil, X, Building2 } from "lucide-react";
-import { Department, Faculty, CollegeClass, Break } from '@/features/student-profile/model';
+import { Department, Faculty, CollegeClass, Break } from '@/features/learner-profile/model';
 import { BREAK_CARD_COLORS, BREAK_TYPE_LABELS } from "../constants";
 
 interface SidebarProps {

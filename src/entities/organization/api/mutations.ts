@@ -159,12 +159,12 @@ export const upgradeSubscription = async (
 
 export const removeMember = async (
   memberId: string,
-  memberType: 'educator' | 'student',
+  memberType: 'educator' | 'learner',
   organizationType: 'school' | 'college' | 'university',
   organizationId: string
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    if (memberType === 'student') {
+    if (memberType === 'learner') {
       const updateData: Record<string, any> = {};
       
       if (organizationType === 'school') {
@@ -174,12 +174,12 @@ export const removeMember = async (
       }
 
       const { error } = await supabase
-        .from('students')
+        .from('learners')
         .update(updateData)
         .eq('id', memberId);
 
       if (error) throw error;
-      return { success: true, message: 'Student removed from organization' };
+      return { success: true, message: 'Learner removed from organization' };
     } else {
       if (organizationType === 'school') {
         const { error } = await supabase

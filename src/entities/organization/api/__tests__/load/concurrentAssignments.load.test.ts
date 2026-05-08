@@ -26,7 +26,7 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
       organization_id: 'org-load-test',
       allocated_seats: 2000,
       assigned_seats: 0,
-      member_type: 'student'
+      member_type: 'learner'
     };
     assignments = new Map();
     metrics = {

@@ -258,76 +258,76 @@ export const removeAssignmentAttachment = async (attachmentId) => {
 };
 
 /**
- * Assign assignment to students
+ * Assign assignment to learners
  * @param {string} assignmentId - The UUID of the assignment
- * @param {Array<string>} studentIds - Array of student UUIDs
- * @param {Object} defaults - Default values for student assignments
- * @returns {Promise<Array>} Created student assignments
+ * @param {Array<string>} learnerIds - Array of learner UUIDs
+ * @param {Object} defaults - Default values for learner assignments
+ * @returns {Promise<Array>} Created learner assignments
  */
-export const assignToStudents = async (assignmentId, studentIds, defaults = {}) => {
+export const assignTolearners = async (assignmentId, learnerIds, defaults = {}) => {
   try {
-    // Get already assigned students
+    // Get already assigned learners
     const { data: existingAssignments, error: checkError } = await supabase
-      .from('student_assignments')
-      .select('student_id')
+      .from('learner_assignments')
+      .select('learner_id')
       .eq('assignment_id', assignmentId)
-      .in('student_id', studentIds);
+      .in('learner_id', learnerIds);
 
     if (checkError) throw checkError;
 
-    const existingStudentIds = existingAssignments?.map(a => a.student_id) || [];
-    const newStudentIds = studentIds.filter(id => !existingStudentIds.includes(id));
+    const existingLearnerIds = existingAssignments?.map(a => a.learner_id) || [];
+    const newLearnerIds = learnerIds.filter(id => !existingLearnerIds.includes(id));
 
-    if (newStudentIds.length === 0) {
+    if (newLearnerIds.length === 0) {
       return [];
     }
 
-    // STEP 1: Convert students.id → students.user_id
+    // STEP 1: Convert learners.id → learners.user_id
     const { data: userIdMappings, error: mapError } = await supabase
-      .from('students')
+      .from('learners')
       .select('id, user_id')
-      .in('id', newStudentIds);
+      .in('id', newLearnerIds);
 
     if (mapError) throw mapError;
 
-    const mappedStudentIds = userIdMappings.map(s => s.user_id);
+    const mappedLearnerIds = userIdMappings.map(s => s.user_id);
 
     // STEP 2: Create assignment objects
-    const studentAssignments = mappedStudentIds.map(uid => ({
+    const learnerAssignments = mappedLearnerIds.map(uid => ({
       assignment_id: assignmentId,
-      student_id: uid,                       // FIXED
+      learner_id: uid,                       // FIXED
       status: defaults.status || 'todo',
       priority: defaults.priority || 'medium'
     }));
 
     // STEP 3: Insert new rows
     const { data, error } = await supabase
-      .from('student_assignments')
-      .insert(studentAssignments)
+      .from('learner_assignments')
+      .insert(learnerAssignments)
       .select();
 
     if (error) throw error;
 
     return data || [];
   } catch (error) {
-    console.error('Error assigning to students:', error);
+    console.error('Error assigning to learners:', error);
     throw error;
   }
 };
 
 
 /**
- * Get all students assigned to a specific assignment with their submission status and files
+ * Get all learners assigned to a specific assignment with their submission status and files
  * @param {string} assignmentId - The UUID of the assignment
- * @returns {Promise<Array>} Array of students with their assignment status and submission files
+ * @returns {Promise<Array>} Array of learners with their assignment status and submission files
  */
-export const getAssignmentStudents = async (assignmentId) => {
+export const getAssignmentLearners = async (assignmentId) => {
   try {
     const { data, error } = await supabase
-      .from('student_assignments')
+      .from('learner_assignments')
       .select(`
         *,
-        students (
+        learners (
           id,
           name,
           email,
@@ -344,45 +344,45 @@ export const getAssignmentStudents = async (assignmentId) => {
     if (error) throw error;
 
     // Get all submission files for this assignment
-    const submissionFiles = await getStudentSubmissionFiles(assignmentId);
+    const submissionFiles = await getlearnerSubmissionFiles(assignmentId);
 
     // Flatten the response using actual column names and add submission files
     const flattenedData = data?.map(item => {
-      const student = item.students;
-      const studentSubmissionFiles = submissionFiles[item.student_assignment_id] || [];
+      const learner = item.learners;
+      const learnerSubmissionFiles = submissionFiles[item.learner_assignment_id] || [];
 
       return {
         ...item,
-        student: {
-          id: student?.id,
-          name: student?.name || 'Unknown',
-          email: student?.email || '',
-          university: student?.university || '',
-          branch_field: student?.branch_field || '',
-          college_school_name: student?.college_school_name || '',
-          registration_number: student?.registration_number || ''
+        learner: {
+          id: learner?.id,
+          name: learner?.name || 'Unknown',
+          email: learner?.email || '',
+          university: learner?.university || '',
+          branch_field: learner?.branch_field || '',
+          college_school_name: learner?.college_school_name || '',
+          registration_number: learner?.registration_number || ''
         },
-        submission_files: studentSubmissionFiles
+        submission_files: learnerSubmissionFiles
       };
     }) || [];
 
     return flattenedData;
   } catch (error) {
-    console.error('Error fetching assignment students:', error);
+    console.error('Error fetching assignment learners:', error);
     throw error;
   }
 };
 
 /**
- * Grade a student's assignment submission
- * @param {string} studentAssignmentId - The UUID of the student_assignment
+ * Grade a learner's assignment submission
+ * @param {string} learnerAssignmentId - The UUID of the learner_assignment
  * @param {Object} gradingData - Grading details
- * @returns {Promise<Object>} Updated student assignment
+ * @returns {Promise<Object>} Updated learner assignment
  */
-export const gradeAssignment = async (studentAssignmentId, gradingData) => {
+export const gradeAssignment = async (learnerAssignmentId, gradingData) => {
   try {
     const { data, error } = await supabase
-      .from('student_assignments')
+      .from('learner_assignments')
       .update({
         grade_received: gradingData.grade_received,
         instructor_feedback: gradingData.instructor_feedback,
@@ -392,7 +392,7 @@ export const gradeAssignment = async (studentAssignmentId, gradingData) => {
         status: 'graded',
         updated_date: new Date().toISOString()
       })
-      .eq('student_assignment_id', studentAssignmentId)
+      .eq('learner_assignment_id', learnerAssignmentId)
       .select()
       .single();
 
@@ -412,7 +412,7 @@ export const gradeAssignment = async (studentAssignmentId, gradingData) => {
 export const getAssignmentStatistics = async (assignmentId) => {
   try {
     const { data, error } = await supabase
-      .from('student_assignments')
+      .from('learner_assignments')
       .select('status, grade_percentage, is_late')
       .eq('assignment_id', assignmentId)
       .eq('is_deleted', false);
@@ -596,7 +596,7 @@ export const getInstructionFiles = async (assignmentId) => {
       .from('assignment_attachments')
       .select('*')
       .eq('assignment_id', assignmentId)
-      .not('file_name', 'like', 'STUDENT:%') // ✅ Only educator files (no STUDENT: prefix)
+      .not('file_name', 'like', 'LEARNER:%') // ✅ Only educator files (no LEARNER: prefix)
       .order('uploaded_date', { ascending: false });
       
     if (error) {
@@ -611,35 +611,35 @@ export const getInstructionFiles = async (assignmentId) => {
 };
 
 /**
- * Get all student submission files for an assignment
+ * Get all learner submission files for an assignment
  * @param {string} assignmentId - Assignment UUID
- * @returns {Promise<Array>} List of student submission files grouped by student
+ * @returns {Promise<Array>} List of learner submission files grouped by learner
  */
-export const getStudentSubmissionFiles = async (assignmentId) => {
+export const getlearnerSubmissionFiles = async (assignmentId) => {
   try {
     const { data, error } = await supabase
       .from('assignment_attachments')
       .select('*')
       .eq('assignment_id', assignmentId)
-      .like('file_name', 'STUDENT:%') // ✅ Only student files (with STUDENT: prefix)
+      .like('file_name', 'LEARNER:%') // ✅ Only learner files (with LEARNER: prefix)
       .order('uploaded_date', { ascending: false });
       
     if (error) throw error;
     
-    // Group files by student_assignment_id
+    // Group files by learner_assignment_id
     const groupedFiles = {};
     data?.forEach(file => {
-      // Extract student_assignment_id from file_name: "STUDENT:sa-uuid-001:filename.pdf"
-      const match = file.file_name.match(/^STUDENT:([^:]+):/);
+      // Extract learner_assignment_id from file_name: "LEARNER:sa-uuid-001:filename.pdf"
+      const match = file.file_name.match(/^LEARNER:([^:]+):/);
       if (match) {
-        const studentAssignmentId = match[1];
-        if (!groupedFiles[studentAssignmentId]) {
-          groupedFiles[studentAssignmentId] = [];
+        const learnerAssignmentId = match[1];
+        if (!groupedFiles[learnerAssignmentId]) {
+          groupedFiles[learnerAssignmentId] = [];
         }
         
         // Add original filename without prefix
-        const originalFilename = file.file_name.replace(/^STUDENT:[^:]+:/, '');
-        groupedFiles[studentAssignmentId].push({
+        const originalFilename = file.file_name.replace(/^LEARNER:[^:]+:/, '');
+        groupedFiles[learnerAssignmentId].push({
           ...file,
           original_filename: originalFilename
         });
@@ -648,24 +648,24 @@ export const getStudentSubmissionFiles = async (assignmentId) => {
     
     return groupedFiles;
   } catch (error) {
-    console.error('Error fetching student submission files:', error);
+    console.error('Error fetching learner submission files:', error);
     throw error;
   }
 };
 
 /**
- * Get specific student's submission files for an assignment
+ * Get specific learner's submission files for an assignment
  * @param {string} assignmentId - Assignment UUID
- * @param {string} studentAssignmentId - Student assignment UUID
- * @returns {Promise<Array>} List of student's submission files
+ * @param {string} learnerAssignmentId - Learner assignment UUID
+ * @returns {Promise<Array>} List of learner's submission files
  */
-export const getStudentSubmissionFilesByStudentId = async (assignmentId, studentAssignmentId) => {
+export const getlearnerSubmissionFilesByLearnerId = async (assignmentId, learnerAssignmentId) => {
   try {
     const { data, error } = await supabase
       .from('assignment_attachments')
       .select('*')
       .eq('assignment_id', assignmentId)
-      .like('file_name', `STUDENT:${studentAssignmentId}:%`) // ✅ Specific student's files
+      .like('file_name', `LEARNER:${learnerAssignmentId}:%`) // ✅ Specific learner's files
       .order('uploaded_date', { ascending: false });
       
     if (error) throw error;
@@ -673,12 +673,12 @@ export const getStudentSubmissionFilesByStudentId = async (assignmentId, student
     // Add original filename without prefix
     const filesWithOriginalNames = data?.map(file => ({
       ...file,
-      original_filename: file.file_name.replace(/^STUDENT:[^:]+:/, '')
+      original_filename: file.file_name.replace(/^LEARNER:[^:]+:/, '')
     })) || [];
     
     return filesWithOriginalNames;
   } catch (error) {
-    console.error('Error fetching student submission files by student ID:', error);
+    console.error('Error fetching learner submission files by learner ID:', error);
     throw error;
   }
 };
@@ -699,12 +699,12 @@ export const getEducatorAssignmentsWithStats = async (educatorId) => {
         
         // Count instruction files (educator files)
         const instructionFiles = assignment.assignment_attachments?.filter(
-          att => !att.file_name.startsWith('STUDENT:')
+          att => !att.file_name.startsWith('LEARNER:')
         ) || [];
         
-        // Count submission files (student files)
+        // Count submission files (learner files)
         const submissionFiles = assignment.assignment_attachments?.filter(
-          att => att.file_name.startsWith('STUDENT:')
+          att => att.file_name.startsWith('LEARNER:')
         ) || [];
         
         return {
@@ -731,20 +731,20 @@ export const getEducatorAssignmentsWithStats = async (educatorId) => {
 /**
  * Get assignment submissions with files for educator review
  * @param {string} assignmentId - Assignment UUID
- * @returns {Promise<Array>} List of submissions with student info and files
+ * @returns {Promise<Array>} List of submissions with learner info and files
  */
 export const getAssignmentSubmissionsWithFiles = async (assignmentId) => {
   try {
-    // Get student assignments
-    const studentAssignments = await getAssignmentStudents(assignmentId);
+    // Get learner assignments
+    const learnerAssignments = await getAssignmentLearners(assignmentId);
     
-    // Get all submission files grouped by student
-    const submissionFiles = await getStudentSubmissionFiles(assignmentId);
+    // Get all submission files grouped by learner
+    const submissionFiles = await getlearnerSubmissionFiles(assignmentId);
     
-    // Combine student assignments with their files
-    const submissionsWithFiles = studentAssignments.map(submission => ({
+    // Combine learner assignments with their files
+    const submissionsWithFiles = learnerAssignments.map(submission => ({
       ...submission,
-      submission_files: submissionFiles[submission.student_assignment_id] || []
+      submission_files: submissionFiles[submission.learner_assignment_id] || []
     }));
     
     return submissionsWithFiles;

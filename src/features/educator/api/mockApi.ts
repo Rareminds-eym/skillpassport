@@ -1,4 +1,4 @@
-import { mockStudents, Student } from '@/features/educator/model/mockStudents';
+import { mocklearners, Learner } from '@/features/educator/model/mocklearners';
 import { mockActivities, Activity } from '@/features/educator/model/mockActivities';
 import { mockMediaAssets, MediaAsset } from '@/features/educator/model/mockMedia';
 import { mockClasses, Class } from '@/features/educator/model/mockClasses';
@@ -10,17 +10,17 @@ import { mockApiCall } from '@/features/hooks/educator/useMockApi';
  * Can be easily replaced with real API calls later
  */
 
-// Student APIs
+// Learner APIs
 export const educatorApi = {
-  // Students
-  students: {
+  // Learners
+  learners: {
     getAll: async (filters?: {
       class?: string;
       section?: string;
       status?: string;
       search?: string;
-    }): Promise<Student[]> => {
-      let filtered = [...mockStudents];
+    }): Promise<Learner[]> => {
+      let filtered = [...mocklearners];
 
       if (filters) {
         if (filters.class) {
@@ -45,19 +45,19 @@ export const educatorApi = {
       return mockApiCall(filtered);
     },
 
-    getById: async (id: string): Promise<Student | null> => {
-      const student = mockStudents.find((s) => s.id === id);
-      return mockApiCall(student || null);
+    getById: async (id: string): Promise<Learner | null> => {
+      const learner = mocklearners.find((s) => s.id === id);
+      return mockApiCall(learner || null);
     },
 
-    create: async (studentData: Partial<Student>): Promise<Student> => {
-      const newStudent: Student = {
+    create: async (learnerData: Partial<Learner>): Promise<Learner> => {
+      const newLearner: Learner = {
         id: `std-${Date.now()}`,
-        name: studentData.name || '',
-        email: studentData.email || '',
-        class: studentData.class || '',
-        section: studentData.section || '',
-        skills: studentData.skills || [],
+        name: learnerData.name || '',
+        email: learnerData.email || '',
+        class: learnerData.class || '',
+        section: learnerData.section || '',
+        skills: learnerData.skills || [],
         progress: 0,
         status: 'active',
         joinedDate: new Date().toISOString(),
@@ -65,13 +65,13 @@ export const educatorApi = {
         verifiedActivitiesCount: 0,
         portfolioComplete: false,
       };
-      return mockApiCall(newStudent);
+      return mockApiCall(newLearner);
     },
 
-    update: async (id: string, updates: Partial<Student>): Promise<Student> => {
-      const student = mockStudents.find((s) => s.id === id);
-      if (!student) throw new Error('Student not found');
-      const updated = { ...student, ...updates };
+    update: async (id: string, updates: Partial<Learner>): Promise<Learner> => {
+      const learner = mocklearners.find((s) => s.id === id);
+      if (!learner) throw new Error('Learner not found');
+      const updated = { ...learner, ...updates };
       return mockApiCall(updated);
     },
 
@@ -85,7 +85,7 @@ export const educatorApi = {
     getAll: async (filters?: {
       status?: string;
       category?: string;
-      studentId?: string;
+      learnerId?: string;
     }): Promise<Activity[]> => {
       let filtered = [...mockActivities];
 
@@ -96,8 +96,8 @@ export const educatorApi = {
         if (filters.category) {
           filtered = filtered.filter((a) => a.category === filters.category);
         }
-        if (filters.studentId) {
-          filtered = filtered.filter((a) => a.studentId === filters.studentId);
+        if (filters.learnerId) {
+          filtered = filtered.filter((a) => a.learnerId === filters.learnerId);
         }
       }
 
@@ -135,8 +135,8 @@ export const educatorApi = {
     create: async (activityData: Partial<Activity>): Promise<Activity> => {
       const newActivity: Activity = {
         id: `act-${Date.now()}`,
-        studentId: activityData.studentId || '',
-        studentName: activityData.studentName || '',
+        learnerId: activityData.learnerId || '',
+        learnerName: activityData.learnerName || '',
         title: activityData.title || '',
         description: activityData.description || '',
         category: activityData.category || 'project',
@@ -217,7 +217,7 @@ export const educatorApi = {
         section: classData.section || '',
         grade: classData.grade || '',
         teacher: classData.teacher || '',
-        studentCount: classData.studentCount || 0,
+        learnerCount: classData.learnerCount || 0,
         schedule: classData.schedule || '',
         room: classData.room || '',
         subject: classData.subject,
@@ -240,16 +240,16 @@ export const educatorApi = {
   // Dashboard KPIs
   dashboard: {
     getKPIs: async () => {
-      const totalStudents = mockStudents.length;
-      const activeStudents = mockStudents.filter((s) => s.status === 'active').length;
+      const totallearners = mocklearners.length;
+      const activelearners = mocklearners.filter((s) => s.status === 'active').length;
       const pendingActivities = mockActivities.filter((a) => a.status === 'pending').length;
       const verifiedActivities = mockActivities.filter((a) => a.status === 'verified').length;
       const totalActivities = mockActivities.length;
       const verificationRate = totalActivities > 0 ? (verifiedActivities / totalActivities) * 100 : 0;
 
       return mockApiCall({
-        totalStudents,
-        activeStudents,
+        totallearners,
+        activelearners,
         pendingActivities,
         verifiedActivities,
         totalActivities,

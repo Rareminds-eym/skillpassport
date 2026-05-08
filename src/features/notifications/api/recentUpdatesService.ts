@@ -8,30 +8,30 @@ const logger = getLogger('recent-updates-service');
  */
 export const recentUpdatesService = {
   /**
-   * Get recent updates for a student by email
+   * Get recent updates for a learner by email
    */
   async getRecentUpdatesByEmail(email) {
     try {
-      // First get the student ID from email
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
+      // First get the learner ID from email
+      const { data: learnerData, error: learnerError } = await supabase
+        .from('learners')
         .select('id')
         .eq('email', email)
         .maybeSingle();
 
-      if (studentError) {
-        throw new Error(`Failed to find student: ${studentError.message}`);
+      if (learnerError) {
+        throw new Error(`Failed to find learner: ${learnerError.message}`);
       }
 
-      if (!studentData) {
+      if (!learnerData) {
         return { updates: [] };
       }
 
-      // Get recent updates for this student
+      // Get recent updates for this learner
       const { data: updatesData, error: updatesError } = await supabase
         .from('recent_updates')
         .select('*')
-        .eq('student_id', studentData.id)
+        .eq('learner_id', learnerData.id)
         .maybeSingle();
 
       if (updatesError && updatesError.code !== 'PGRST116') { // PGRST116 = no rows found
@@ -50,30 +50,30 @@ export const recentUpdatesService = {
   },
 
   /**
-   * Add a new update for a student
+   * Add a new update for a learner
    */
   async addRecentUpdate(email, newUpdate) {
     try {
-      // First get the student ID from email
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
+      // First get the learner ID from email
+      const { data: learnerData, error: learnerError } = await supabase
+        .from('learners')
         .select('id')
         .eq('email', email)
         .maybeSingle();
 
-      if (studentError) {
-        throw new Error(`Failed to find student: ${studentError.message}`);
+      if (learnerError) {
+        throw new Error(`Failed to find learner: ${learnerError.message}`);
       }
 
-      if (!studentData) {
-        throw new Error('Student not found');
+      if (!learnerData) {
+        throw new Error('Learner not found');
       }
 
       // Get existing updates
       const { data: existingData, error: fetchError } = await supabase
         .from('recent_updates')
         .select('updates')
-        .eq('student_id', studentData.id)
+        .eq('learner_id', learnerData.id)
         .maybeSingle();
 
       let currentUpdates = [];
@@ -91,10 +91,10 @@ export const recentUpdatesService = {
       const { data, error } = await supabase
         .from('recent_updates')
         .upsert({
-          student_id: studentData.id,
+          learner_id: learnerData.id,
           updates: { updates: trimmedUpdates }
         }, {
-          onConflict: 'student_id'
+          onConflict: 'learner_id'
         });
 
       if (error) {
@@ -109,33 +109,33 @@ export const recentUpdatesService = {
   },
 
   /**
-   * Clear all updates for a student
+   * Clear all updates for a learner
    */
   async clearRecentUpdates(email) {
     try {
-      // First get the student ID from email
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
+      // First get the learner ID from email
+      const { data: learnerData, error: learnerError } = await supabase
+        .from('learners')
         .select('id')
         .eq('email', email)
         .maybeSingle();
 
-      if (studentError) {
-        throw new Error(`Failed to find student: ${studentError.message}`);
+      if (learnerError) {
+        throw new Error(`Failed to find learner: ${learnerError.message}`);
       }
 
-      if (!studentData) {
-        throw new Error('Student not found');
+      if (!learnerData) {
+        throw new Error('Learner not found');
       }
 
       // Clear updates
       const { error } = await supabase
         .from('recent_updates')
         .upsert({
-          student_id: studentData.id,
+          learner_id: learnerData.id,
           updates: { updates: [] }
         }, {
-          onConflict: 'student_id'
+          onConflict: 'learner_id'
         });
 
       if (error) {

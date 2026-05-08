@@ -186,7 +186,7 @@ export default function LoginRecruiter() {
               Hire Smarter. Trust Skills, Not Just Resumes.
             </h2>
             <p className="mt-4 max-w-xl text-[#edf2f9]">
-Access Verified Skill Passports Of Students Across India & Beyond.
+Access Verified Skill Passports Of Learners Across India & Beyond.
             </p>
           </div>
 
@@ -253,7 +253,7 @@ Access Verified Skill Passports Of Students Across India & Beyond.
             <div className="text-center mb-6">
               <h3 className="text-3xl font-bold text-white">Recruiter Login</h3>
               <p className="text-sm text-white/80 mt-2">
-                Access your recruiter dashboard with verified student profiles.
+                Access your recruiter dashboard with verified learner profiles.
               </p>
             </div>
             <div className="rounded-2xl p-5 sm:p-6 bg-transparent">
@@ -274,7 +274,7 @@ Access Verified Skill Passports Of Students Across India & Beyond.
                 Recruiter Login
               </h3>
               <p className="text-sm text-gray-700/90 lg:text-gray-500 mt-2">
-                Access your recruiter dashboard with verified student profiles.
+                Access your recruiter dashboard with verified learner profiles.
               </p>
             </div>
             <div className="rounded-2xl bg-white/95 shadow-xl lg:shadow-none lg:bg-white ring-1 lg:ring-0 ring-black/5 p-6 sm:p-8">

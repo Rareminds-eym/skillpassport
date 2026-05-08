@@ -9,42 +9,42 @@
         "suggestedFix": "Extract functionality to entities/shared or use dependency injection"
       },
       {
-        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\entities\\student\\model\\useStudentData.ts",
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\entities\\learner\\model\\useStudentData.ts",
         "line": 11,
-        "importStatement": "import {\r\n  getCompleteStudentData,\r\n  updateStudentProfile,\r\n  addEducation,\r\n  updateEducation,\r\n  deleteEducation,\r\n  addTraining,\r\n  updateTraining,\r\n  deleteTraining,\r\n  addExperience,\r\n  updateExperience,\r\n  deleteExperience,\r\n  addTechnicalSkill,\r\n  updateTechnicalSkill,\r\n  deleteTechnicalSkill,\r\n  addSoftSkill,\r\n  updateSoftSkill\r\n} from '@/features/student-profile/api';",
+        "importStatement": "import {\r\n  getCompleteStudentData,\r\n  updateStudentProfile,\r\n  addEducation,\r\n  updateEducation,\r\n  deleteEducation,\r\n  addTraining,\r\n  updateTraining,\r\n  deleteTraining,\r\n  addExperience,\r\n  updateExperience,\r\n  deleteExperience,\r\n  addTechnicalSkill,\r\n  updateTechnicalSkill,\r\n  deleteTechnicalSkill,\r\n  addSoftSkill,\r\n  updateSoftSkill\r\n} from '@/features/learner-profile/api';",
         "violationType": "entities-to-features",
         "suggestedFix": "Extract functionality to entities/shared or use dependency injection"
       },
       {
-        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\entities\\student\\model\\useStudentDataAdapted.ts",
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\entities\\learner\\model\\useStudentDataAdapted.ts",
         "line": 11,
-        "importStatement": "import {\r\n  getCompleteStudentData,\r\n  updateStudentProfile,\r\n  addEducation,\r\n  updateEducation,\r\n  deleteEducation,\r\n  addTraining,\r\n  updateTraining,\r\n  deleteTraining,\r\n  addExperience,\r\n  updateExperience,\r\n  deleteExperience,\r\n  addTechnicalSkill,\r\n  updateTechnicalSkill,\r\n  deleteTechnicalSkill,\r\n  addSoftSkill,\r\n  updateSoftSkill\r\n} from '@/features/student-profile/api';",
+        "importStatement": "import {\r\n  getCompleteStudentData,\r\n  updateStudentProfile,\r\n  addEducation,\r\n  updateEducation,\r\n  deleteEducation,\r\n  addTraining,\r\n  updateTraining,\r\n  deleteTraining,\r\n  addExperience,\r\n  updateExperience,\r\n  deleteExperience,\r\n  addTechnicalSkill,\r\n  updateTechnicalSkill,\r\n  deleteTechnicalSkill,\r\n  addSoftSkill,\r\n  updateSoftSkill\r\n} from '@/features/learner-profile/api';",
         "violationType": "entities-to-features",
         "suggestedFix": "Extract functionality to entities/shared or use dependency injection"
       },
       {
-        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\entities\\student\\model\\useStudentDataByEmail.backup.ts",
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\entities\\learner\\model\\useStudentDataByEmail.backup.ts",
         "line": 17,
-        "importStatement": "import { getStudentByEmail } from '@/features/student-profile/api';",
+        "importStatement": "import { getStudentByEmail } from '@/features/learner-profile/api';",
         "violationType": "entities-to-features",
         "suggestedFix": "Extract functionality to entities/shared or use dependency injection"
       },
       {
-        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\entities\\student\\model\\useStudentDataByEmail.ts",
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\entities\\learner\\model\\useStudentDataByEmail.ts",
         "line": 17,
-        "importStatement": "import {\r\n    getStudentByEmail,\r\n    updateCertificatesByEmail,\r\n    updateEducationByEmail,\r\n    updateExperienceByEmail,\r\n    updateProjectsByEmail,\r\n    updateSingleTrainingById,\r\n    updateSoftSkillsByEmail,\r\n    updateStudentByEmail,\r\n    updateTechnicalSkillsByEmail,\r\n    updateTrainingByEmail\r\n} from '@/features/student-profile/api';",
+        "importStatement": "import {\r\n    getStudentByEmail,\r\n    updateCertificatesByEmail,\r\n    updateEducationByEmail,\r\n    updateExperienceByEmail,\r\n    updateProjectsByEmail,\r\n    updateSingleTrainingById,\r\n    updateSoftSkillsByEmail,\r\n    updateStudentByEmail,\r\n    updateTechnicalSkillsByEmail,\r\n    updateTrainingByEmail\r\n} from '@/features/learner-profile/api';",
         "violationType": "entities-to-features",
         "suggestedFix": "Extract functionality to entities/shared or use dependency injection"
       },
       {
-        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\entities\\student\\model\\useStudentDataById.ts",
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\entities\\learner\\model\\useStudentDataById.ts",
         "line": 17,
-        "importStatement": "import { getStudentById } from '@/features/student-profile/api';",
+        "importStatement": "import { getStudentById } from '@/features/learner-profile/api';",
         "violationType": "entities-to-features",
         "suggestedFix": "Extract functionality to entities/shared or use dependency injection"
       },
       {
-        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\entities\\student\\ui\\WeeklyLearningTracker.jsx",
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\entities\\learner\\ui\\WeeklyLearningTracker.jsx",
         "line": 7,
         "importStatement": "import { downloadCertificate, getCertificateProxyUrl } from '@/features/digital-portfolio';",
         "violationType": "entities-to-features",
@@ -76,7 +76,7 @@
       {
         "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\shared\\lib\\hooks\\useMentorAllocation.ts",
         "line": 13,
-        "importStatement": "import {\n  getMentors,\n  getStudents,\n  getMentorPeriods,\n  getMentorAllocations,\n  getMentorNotes,\n  getCourseMappingDepartments,\n  getCourseMappingPrograms,\n  createMentorPeriod,\n  createMentorAllocations,\n  createMentorNote,\n  updateMentorAllocation,\n  updateMentorPeriod,\n  findAllocationId,\n  updateMentorNoteResponse,\n  updateMentorNoteFeedback,\n  resolveNote,\n  escalateNote,\n  type Mentor,\n  type Student,\n  type MentorPeriod,\n  type MentorAllocation,\n  type MentorNote,\n} from '@/features/college-admin';",
+        "importStatement": "import {\n  getMentors,\n  getStudents,\n  getMentorPeriods,\n  getMentorAllocations,\n  getMentorNotes,\n  getCourseMappingDepartments,\n  getCourseMappingPrograms,\n  createMentorPeriod,\n  createMentorAllocations,\n  createMentorNote,\n  updateMentorAllocation,\n  updateMentorPeriod,\n  findAllocationId,\n  updateMentorNoteResponse,\n  updateMentorNoteFeedback,\n  resolveNote,\n  escalateNote,\n  type Mentor,\n  type learner,\n  type MentorPeriod,\n  type MentorAllocation,\n  type MentorNote,\n} from '@/features/college-admin';",
         "violationType": "shared-to-features",
         "suggestedFix": "Move types to @/shared/types/ or refactor to accept as parameters"
       },
@@ -118,7 +118,7 @@
       {
         "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\shared\\lib\\hooks\\useStudentRealtimeActivities.ts",
         "line": 9,
-        "importStatement": "import { getStudentRecentActivity } from '@/features/student-profile/api';",
+        "importStatement": "import { getStudentRecentActivity } from '@/features/learner-profile/api';",
         "violationType": "shared-to-features",
         "suggestedFix": "Move types to @/shared/types/ or refactor to accept as parameters"
       },
@@ -436,49 +436,49 @@
         "suggestedFix": "Import from feature index: @/features/recruiter-copilot"
       },
       {
-        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\student\\AssessmentStart.jsx",
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\learner\\AssessmentStart.jsx",
         "line": 6,
         "importStatement": "import { checkAssessmentStatus } from '@/features/assessment/api/externalAssessmentService';",
         "violationType": "internal-api-bypass",
         "suggestedFix": "Import from feature index: @/features/assessment"
       },
       {
-        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\student\\AssessmentTest.jsx",
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\learner\\AssessmentTest.jsx",
         "line": 51,
         "importStatement": "import { analyzeAssessmentWithGemini } from '@/features/assessment/api/geminiAssessmentService';",
         "violationType": "internal-api-bypass",
         "suggestedFix": "Import from feature index: @/features/assessment"
       },
       {
-        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\student\\CareerAI.tsx",
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\learner\\CareerAI.tsx",
         "line": 2,
         "importStatement": "import CareerAssistant from '@/features/career-assistant/ui/CareerAssistant';",
         "violationType": "internal-api-bypass",
         "suggestedFix": "Import from feature index: @/features/career-assistant"
       },
       {
-        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\student\\DynamicAssessment.jsx",
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\learner\\DynamicAssessment.jsx",
         "line": 27,
         "importStatement": "import { generateAssessment, getCachedAssessment, cacheAssessment } from '@/features/assessment/api/assessmentGenerationService';",
         "violationType": "internal-api-bypass",
         "suggestedFix": "Import from feature index: @/features/assessment"
       },
       {
-        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\student\\DynamicAssessment.jsx",
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\learner\\DynamicAssessment.jsx",
         "line": 28,
         "importStatement": "import {\r\n  createAssessmentAttempt,\r\n  updateAssessmentProgress,\r\n  completeAssessment,\r\n  checkAssessmentStatus\r\n} from '@/features/assessment/api/externalAssessmentService';",
         "violationType": "internal-api-bypass",
         "suggestedFix": "Import from feature index: @/features/assessment"
       },
       {
-        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\student\\MyClass.tsx",
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\learner\\MyClass.tsx",
         "line": 5,
-        "importStatement": "import { useStudentProfile } from '@/features/student-profile/model/useStudentProfile';",
+        "importStatement": "import { useStudentProfile } from '@/features/learner-profile/model/useStudentProfile';",
         "violationType": "internal-api-bypass",
-        "suggestedFix": "Import from feature index: @/features/student-profile"
+        "suggestedFix": "Import from feature index: @/features/learner-profile"
       },
       {
-        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\widgets\\student-dashboard\\ui\\ModernLearningCard.jsx",
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\widgets\\learner-dashboard\\ui\\ModernLearningCard.jsx",
         "line": 26,
         "importStatement": "import { checkAssessmentStatus } from \"@/features/assessment/api/externalAssessmentService\";",
         "violationType": "internal-api-bypass",
@@ -580,9 +580,9 @@
         "suggestedFix": "Move to appropriate feature or entity"
       },
       {
-        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\shared\\types\\student.ts",
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\shared\\types\\learner.ts",
         "violationType": "domain-specific-in-shared",
-        "description": "'student.ts' appears to be domain-specific",
+        "description": "'learner.ts' appears to be domain-specific",
         "suggestedFix": "Move to appropriate feature or entity"
       },
       {

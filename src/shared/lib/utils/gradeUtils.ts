@@ -7,7 +7,7 @@ import type { GradeLevel } from '@/shared/lib/config/gradeConfig';
 import { GRADE_LEVELS, GRADE_RANGES, PROGRAM_GRADE_MAPPINGS } from '@/shared/lib/config/gradeConfig';
 
 /**
- * Determine grade level from student's grade string
+ * Determine grade level from learner's grade string
  * Handles numeric grades (6, 7, 8...) and string grades ("12th", "UG", etc.)
  */
 export const getGradeLevelFromGrade = (grade: string | number | null | undefined): GradeLevel | null => {

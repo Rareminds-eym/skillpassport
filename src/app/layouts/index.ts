@@ -10,4 +10,4 @@ export { default as Header } from '../../shared/ui/Header';
 export { default as PortfolioLayout } from './PortfolioLayout';
 export { default as PublicLayout } from './PublicLayout';
 export { default as RecruiterLayout } from './RecruiterLayout';
-export { default as StudentLayout } from './StudentLayout';
+export { default as LearnerLayout } from './LearnerLayout';

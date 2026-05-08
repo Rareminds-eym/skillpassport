@@ -28,7 +28,7 @@ const APTITUDE_CATEGORIES = [
     { id: 'clerical', name: 'Clerical Speed & Accuracy', description: 'String comparison, attention to detail - mark Same or Different', count: 20 }
 ];
 
-// School Subject Categories for After 10th students (total: 50 questions)
+// School Subject Categories for After 10th learners (total: 50 questions)
 const SCHOOL_SUBJECT_CATEGORIES = [
     { id: 'mathematics', name: 'Mathematics', description: 'Algebra, geometry, arithmetic, problem-solving - tests analytical and numerical skills', count: 10 },
     { id: 'science', name: 'Science (Physics, Chemistry, Biology)', description: 'Scientific concepts, experiments, formulas, natural phenomena', count: 10 },
@@ -57,7 +57,7 @@ export async function handleStreamingAptitude(
         return jsonResponse({ error: 'Invalid JSON' }, 400);
     }
 
-    const { streamId, studentId, attemptId, gradeLevel } = body;
+    const { streamId, learnerId, attemptId, gradeLevel } = body;
 
     if (!streamId) {
         return jsonResponse({ error: 'Stream ID is required' }, 400);
@@ -136,7 +136,7 @@ export async function handleStreamingAptitude(
                         prompt = SCHOOL_SUBJECT_PROMPT
                             .replace(/{{QUESTION_COUNT}}/g, batchTotal.toString())
                             .replace(/{{CATEGORIES}}/g, JSON.stringify(batchCategories, null, 2));
-                        systemPrompt = `You are an expert educational assessment creator for 10th grade students. Generate EXACTLY ${batchTotal} questions total covering school subjects. Generate ONLY valid JSON.`;
+                        systemPrompt = `You are an expert educational assessment creator for 10th grade learners. Generate EXACTLY ${batchTotal} questions total covering school subjects. Generate ONLY valid JSON.`;
                     } else {
                         // Determine stream context
                         let contextKey = streamId;
@@ -262,8 +262,8 @@ export async function handleStreamingAptitude(
                     console.log(`✅ Batch ${batchNum}/2 complete: ${batchQuestions.length} questions streamed`);
                 }
 
-                // Save to database if studentId and attemptId provided
-                if (studentId && attemptId) {
+                // Save to database if learnerId and attemptId provided
+                if (learnerId && attemptId) {
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                         type: 'progress',
                         message: 'Saving questions to database...',
@@ -274,13 +274,13 @@ export async function handleStreamingAptitude(
                     const { error } = await supabase
                         .from('career_assessment_ai_questions')
                         .upsert({
-                            student_id: studentId,
+                            learner_id: learnerId,
                             question_type: 'aptitude',
                             questions: allGeneratedQuestions,
                             stream_id: streamId,
                             created_at: new Date().toISOString()
                         }, {
-                            onConflict: 'student_id, stream_id, question_type',
+                            onConflict: 'learner_id, stream_id, question_type',
                             ignoreDuplicates: false
                         });
 

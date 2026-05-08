@@ -1,16 +1,16 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Folder, Github, ExternalLink, Calendar } from 'lucide-react';
-import { Student } from '@/shared/types/student';
+import { Learner } from '@/shared/types/learner';
 import PassportPage from '../PassportPage';
 
 interface ProjectsPageProps {
-  student: Student;
+  learner: Learner;
   isActive: boolean;
 }
 
-const ProjectsPage: React.FC<ProjectsPageProps> = ({ student, isActive }) => {
-  const projects = student.profile.projects || [];
+const ProjectsPage: React.FC<ProjectsPageProps> = ({ learner, isActive }) => {
+  const projects = learner.profile.projects || [];
 
   return (
     <PassportPage pageNumber={5} isActive={isActive}>

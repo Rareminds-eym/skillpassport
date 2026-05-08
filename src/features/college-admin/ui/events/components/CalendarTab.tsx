@@ -1,6 +1,6 @@
 import React from "react";
 import { ChevronLeftIcon, ChevronRightIcon, Squares2X2Icon, ListBulletIcon, CalendarDaysIcon, XMarkIcon, MapPinIcon, ClockIcon, UsersIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
-import { CollegeEvent, CalendarDay, CalendarView, WeekEvent } from '@/features/student-profile/model';
+import { CollegeEvent, CalendarDay, CalendarView, WeekEvent } from '@/features/learner-profile/model';
 import { monthNames, dayNamesShort, getEventBarBg, getStatusStyle, getEventTypeColor, getEventTypeIcon, formatDate, formatTime, toDateStr } from "../helpers";
 
 interface Props {

@@ -4,12 +4,12 @@
  */
 
 import { formatStreamId } from '@/shared/lib/utils/formatters';
-import { isCollegeStudent as checkIsCollegeStudent } from '@/entities/student/lib/studentType';
+import { isCollegeLearner as checkIsCollegeLearner } from '@/entities/learner/lib/learnerType';
 
-const ReportHeader = ({ studentInfo, gradeLevel }) => {
+const ReportHeader = ({ learnerInfo, gradeLevel }) => {
     // Debug
     console.log('ReportHeader gradeLevel:', gradeLevel);
-    console.log('ReportHeader studentInfo:', studentInfo);
+    console.log('ReportHeader learnerInfo:', learnerInfo);
 
     // Format stream display name
     const formatStreamDisplay = (stream) => {
@@ -46,40 +46,40 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
     const getGradeCourseField = () => {
         const level = gradeLevel?.toLowerCase();
 
-        // For college/university students, show "Program" instead of "Course"
+        // For college/university learners, show "Program" instead of "Course"
         if (level === 'college' || level === 'university') {
-            return { label: 'Program', value: studentInfo.courseName || '—' };
+            return { label: 'Program', value: learnerInfo.courseName || '—' };
         }
 
-        // For after12 students, check if they have a course name (college) or grade (12th)
+        // For after12 learners, check if they have a course name (college) or grade (12th)
         if (level === 'after12' || level === 'after12th' || level === '12th') {
             // If they have a course name, they're in college - show course
-            if (studentInfo.courseName && studentInfo.courseName !== '—') {
-                return { label: 'Course', value: studentInfo.courseName };
+            if (learnerInfo.courseName && learnerInfo.courseName !== '—') {
+                return { label: 'Course', value: learnerInfo.courseName };
             }
             // Otherwise show grade (12th or whatever is in the field)
-            return { label: 'Grade', value: studentInfo.grade || '12th' };
+            return { label: 'Grade', value: learnerInfo.grade || '12th' };
         }
 
-        // For school students (middle, high school), show grade
+        // For school learners (middle, high school), show grade
         if (level === 'middle' || level === 'high' || level === 'middleschool' || level === 'highschool' || level === 'higher_secondary') {
-            return { label: 'Grade', value: studentInfo.grade || '—' };
+            return { label: 'Grade', value: learnerInfo.grade || '—' };
         }
 
         // Default fallback - check if course name exists
-        if (studentInfo.courseName && studentInfo.courseName !== '—') {
-            return { label: 'Course', value: studentInfo.courseName };
+        if (learnerInfo.courseName && learnerInfo.courseName !== '—') {
+            return { label: 'Course', value: learnerInfo.courseName };
         }
-        return { label: 'Grade', value: studentInfo.grade || '—' };
+        return { label: 'Grade', value: learnerInfo.grade || '—' };
     };
 
-    // Determine the institution label based on grade level and student data
+    // Determine the institution label based on grade level and learner data
     const getInstitutionLabel = () => {
         const level = gradeLevel?.toLowerCase();
 
-        // Check if student has actual school vs college data
-        const hasSchoolData = studentInfo.school && studentInfo.school !== '—';
-        const hasCollegeData = studentInfo.college && studentInfo.college !== '—';
+        // Check if learner has actual school vs college data
+        const hasSchoolData = learnerInfo.school && learnerInfo.school !== '—';
+        const hasCollegeData = learnerInfo.college && learnerInfo.college !== '—';
 
         // If we have actual data, use that to determine the label
         if (hasSchoolData && !hasCollegeData) {
@@ -92,8 +92,8 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
         if (level === 'middle' || level === 'high' || level === 'middleschool' || level === 'highschool' || level === 'higher_secondary') {
             return 'School';
         } else if (level === 'after12' || level === 'after12th' || level === '12th' || level === 'college' || level === 'university') {
-            // For after12, check if student has course name (college) or is still in grade 12 (school)
-            if (studentInfo.grade && (studentInfo.grade === '12' || studentInfo.grade === 'Grade 12')) {
+            // For after12, check if learner has course name (college) or is still in grade 12 (school)
+            if (learnerInfo.grade && (learnerInfo.grade === '12' || learnerInfo.grade === 'Grade 12')) {
                 return 'School';
             }
             return 'College';
@@ -101,29 +101,29 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
         return 'School'; // Default to School
     };
 
-    // Determine the roll number label based on student type
+    // Determine the roll number label based on learner type
     const getRollNumberLabel = () => {
         const level = gradeLevel?.toLowerCase();
 
-        // Check if student is in college/university using centralized utility
-        const isCollege = checkIsCollegeStudent({
-            university_college_id: studentInfo.college && studentInfo.college !== '—' ? studentInfo.college : null,
-            school_id: studentInfo.school && studentInfo.school !== '—' ? studentInfo.school : null,
-            grade: studentInfo.grade
+        // Check if learner is in college/university using centralized utility
+        const isCollege = checkIsCollegeLearner({
+            university_college_id: learnerInfo.college && learnerInfo.college !== '—' ? learnerInfo.college : null,
+            school_id: learnerInfo.school && learnerInfo.school !== '—' ? learnerInfo.school : null,
+            grade: learnerInfo.grade
         }) || level === 'college' || level === 'university' || level === 'after12';
 
-        // For college/university students
+        // For college/university learners
         if (isCollege) {
-            if (studentInfo.rollNumberType === 'university') {
+            if (learnerInfo.rollNumberType === 'university') {
                 return 'University Roll No';
-            } else if (studentInfo.rollNumberType === 'institute') {
+            } else if (learnerInfo.rollNumberType === 'institute') {
                 return 'Institute Roll No';
             } else {
                 return 'Enrollment Number';
             }
         }
 
-        // For school students
+        // For school learners
         return 'School Roll No';
     };
 
@@ -134,7 +134,7 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
     // Determine the stream/level label based on grade level
     const getStreamLabel = () => {
         const level = gradeLevel?.toLowerCase();
-        // For college students, show "Level" instead of "Programme/Stream"
+        // For college learners, show "Level" instead of "Programme/Stream"
         if (level === 'college' || level === 'university') {
             return 'Level';
         }
@@ -142,11 +142,11 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
     };
 
     const infoItems = [
-        { label: 'Student Name', value: studentInfo.name },
-        { label: rollNumberLabel, value: studentInfo.regNo },
-        { label: getStreamLabel(), value: formatStreamId(studentInfo.stream || studentInfo.branchField) || '—' },
+        { label: 'Learner Name', value: learnerInfo.name },
+        { label: rollNumberLabel, value: learnerInfo.regNo },
+        { label: getStreamLabel(), value: formatStreamId(learnerInfo.stream || learnerInfo.branchField) || '—' },
         { label: gradeCourseField.label, value: gradeCourseField.value },
-        { label: institutionLabel, value: (studentInfo.college && studentInfo.college !== '—') ? studentInfo.college : studentInfo.school, truncate: true },
+        { label: institutionLabel, value: (learnerInfo.college && learnerInfo.college !== '—') ? learnerInfo.college : learnerInfo.school, truncate: true },
         { label: 'Assessment Date', value: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) },
     ];
 

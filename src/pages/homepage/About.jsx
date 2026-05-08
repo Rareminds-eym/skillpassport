@@ -7,26 +7,26 @@ const About = () => {
       <SEOHead
         title="Skill Ecosystem - Educational Management & Career Development Platform"
         description="Learn about Skill Ecosystem's mission to revolutionize education through AI-powered career guidance and comprehensive management solutions for educational institutions."
-        keywords="about skill ecosystem, educational technology, AI career guidance, student management platform, educational innovation, rareminds"
+        keywords="about skill ecosystem, educational technology, AI career guidance, learner management platform, educational innovation, rareminds"
         url="https://skillpassport.rareminds.in/about"
       />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">About SkillPassport</h1>
           <p className="text-xl text-gray-600">
-            Empowering students and connecting them with career opportunities
+            Empowering learners and connecting them with career opportunities
           </p>
         </div>
 
         <div className="bg-white rounded-xl shadow-md p-8 mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Our Story</h2>
           <p className="text-gray-600 leading-relaxed mb-4">
-            SkillPassport was founded with a simple mission: to bridge the gap between talented students
+            SkillPassport was founded with a simple mission: to bridge the gap between talented learners
             and forward-thinking recruiters. We understand that finding the right career opportunity can
             be challenging, and hiring the right talent is equally difficult.
           </p>
           <p className="text-gray-600 leading-relaxed">
-            Our platform provides a comprehensive solution that helps students showcase their skills,
+            Our platform provides a comprehensive solution that helps learners showcase their skills,
             track their applications, and connect with recruiters who are actively looking for talent
             like them.
           </p>
@@ -39,7 +39,7 @@ const About = () => {
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">Our Mission</h3>
             <p className="text-gray-600">
-              To create meaningful connections between students and recruiters, making career
+              To create meaningful connections between learners and recruiters, making career
               opportunities accessible to everyone.
             </p>
           </div>
@@ -50,7 +50,7 @@ const About = () => {
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">Our Values</h3>
             <p className="text-gray-600">
-              We believe in transparency, integrity, and equal opportunity for all students,
+              We believe in transparency, integrity, and equal opportunity for all learners,
               regardless of their background.
             </p>
           </div>
@@ -61,7 +61,7 @@ const About = () => {
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">Our Vision</h3>
             <p className="text-gray-600">
-              To become the leading platform that transforms how students and recruiters connect
+              To become the leading platform that transforms how learners and recruiters connect
               in the digital age.
             </p>
           </div>

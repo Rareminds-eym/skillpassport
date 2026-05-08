@@ -245,7 +245,7 @@ const UserManagement: React.FC = () => {
           User & Profile Management
         </h1>
         <p className="text-gray-600 text-sm sm:text-base">
-          Manage staff and student profiles with role permissions
+          Manage staff and learner profiles with role permissions
         </p>
       </div>
 
@@ -437,7 +437,7 @@ const UserManagement: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        {user.employee_id || user.student_id || '-'}
+                        {user.employee_id || user.learner_id || '-'}
                       </td>
                       <td className="px-4 py-3">
                         <span

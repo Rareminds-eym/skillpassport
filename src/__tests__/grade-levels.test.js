@@ -50,4 +50,4 @@ Recommended: Science stream`
 2. Data Science & AI - Strong problem-solving capabilities
 3. Cybersecurity - Technical aptitude and attention to detail`,
 
-    invalid: `Student should pursue Compu
+    invalid: `Learner should pursue Compu

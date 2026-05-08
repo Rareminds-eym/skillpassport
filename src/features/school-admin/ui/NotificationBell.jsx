@@ -146,7 +146,7 @@ const NotificationBell = ({ schoolId, onNotificationClick }) => {
                         New Training Submission
                       </p>
                       <p className="text-sm text-gray-600 mt-1">
-                        {notification.student_name} submitted "{notification.training_title}"
+                        {notification.learner_name} submitted "{notification.training_title}"
                       </p>
                       <p className="text-xs text-gray-400 mt-2">
                         {formatTimeAgo(notification.created_at)}

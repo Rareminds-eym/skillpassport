@@ -3,7 +3,7 @@
  * 
  * Features:
  * - Embedding-based similarity matching with V2/V1 fallback
- * - Auto-generation of student embeddings if missing
+ * - Auto-generation of learner embeddings if missing
  * - Entity-level embeddings for certificates, projects, skills
  * - Caching via database RPCs
  * - Dismissal filtering
@@ -16,7 +16,7 @@ import { isValidUUID } from '../../shared/auth';
 import { checkRateLimit } from '../utils/rate-limit';
 import { getOpenRouterKey } from '../[[path]]';
 import { API_CONFIG, AI_MODELS } from '../../shared/ai-config';
-import { buildStudentTextFromDatabase } from '../../embedding/services/textBuilder';
+import { buildlearnerTextFromDatabase } from '../../embedding/services/textBuilder';
 import { callEmbeddingWorker } from '../../embedding/services/embeddingWorkerClient';
 import { updateEmbedding } from '../../embedding/services/databaseUpdater';
 
@@ -30,14 +30,14 @@ const RECOMMEND_CONFIG = {
 
 async function getPopularFallback(
   supabase: SupabaseClient,
-  studentId: string,
+  learnerId: string,
   limit: number,
   startTime: number,
   reason: string
 ): Promise<Response> {
   try {
     const { data: popular, error } = await supabase.rpc('get_popular_opportunities', {
-      student_id_param: studentId,
+      learner_id_param: learnerId,
       limit_count: limit
     });
 
@@ -73,24 +73,24 @@ export async function handleRecommendOpportunities(request: Request, env: Record
 
   const startTime = Date.now();
 
-  let body: { studentId?: string; forceRefresh?: boolean; limit?: number };
+  let body: { learnerId?: string; forceRefresh?: boolean; limit?: number };
   try {
-    body = await request.json() as { studentId?: string; forceRefresh?: boolean; limit?: number };
+    body = await request.json() as { learnerId?: string; forceRefresh?: boolean; limit?: number };
   } catch {
     return jsonResponse({ error: 'Invalid JSON', recommendations: [] }, 400);
   }
 
-  const { studentId, forceRefresh = false, limit = RECOMMEND_CONFIG.DEFAULT_LIMIT } = body;
+  const { learnerId, forceRefresh = false, limit = RECOMMEND_CONFIG.DEFAULT_LIMIT } = body;
   
-  if (!studentId) {
-    return jsonResponse({ error: 'studentId is required', recommendations: [] }, 400);
+  if (!learnerId) {
+    return jsonResponse({ error: 'learnerId is required', recommendations: [] }, 400);
   }
 
-  if (!isValidUUID(studentId)) {
-    return jsonResponse({ error: 'Invalid studentId format', recommendations: [] }, 400);
+  if (!isValidUUID(learnerId)) {
+    return jsonResponse({ error: 'Invalid learnerId format', recommendations: [] }, 400);
   }
 
-  if (!await checkRateLimit(studentId, env as any)) {
+  if (!await checkRateLimit(learnerId, env as any)) {
     return jsonResponse({ error: 'Rate limit exceeded', recommendations: [] }, 429);
   }
 
@@ -101,12 +101,12 @@ export async function handleRecommendOpportunities(request: Request, env: Record
   if (!forceRefresh) {
     try {
       const { data: cacheResult, error: cacheError } = await supabase
-        .rpc('get_cached_job_matches', { p_student_id: studentId });
+        .rpc('get_cached_job_matches', { p_learner_id: learnerId });
       
       if (!cacheError && cacheResult && cacheResult.length > 0 && cacheResult[0].is_cached) {
         const cached = cacheResult[0];
         const executionTime = Date.now() - startTime;
-        console.log(`[CACHE HIT] Student ${studentId} - ${cached.match_count} matches from cache`);
+        console.log(`[CACHE HIT] Learner ${learnerId} - ${cached.match_count} matches from cache`);
         
         const cachedMatches = (cached.matches || []).slice(0, safeLimit);
         return jsonResponse({
@@ -119,64 +119,64 @@ export async function handleRecommendOpportunities(request: Request, env: Record
           message: 'Recommendations retrieved from cache'
         });
       }
-      console.log(`[CACHE MISS] Student ${studentId} - computing fresh matches`);
+      console.log(`[CACHE MISS] Learner ${learnerId} - computing fresh matches`);
     } catch (cacheCheckError) {
       console.error('[CACHE CHECK ERROR]', cacheCheckError);
     }
   } else {
-    console.log(`[FORCE REFRESH] Student ${studentId} - bypassing cache`);
+    console.log(`[FORCE REFRESH] Learner ${learnerId} - bypassing cache`);
   }
 
-  // ==================== GET STUDENT PROFILE ====================
-  const { data: student, error: studentError } = await supabase
-    .from('students')
+  // ==================== GET LEARNER PROFILE ====================
+  const { data: learner, error: learnerError } = await supabase
+    .from('learners')
     .select('embedding, id, name')
-    .eq('id', studentId)
+    .eq('id', learnerId)
     .maybeSingle();
 
-  console.log('Student query result:', { 
-    student: student ? { id: student.id, name: student.name, hasEmbedding: !!student.embedding } : null, 
-    error: studentError 
+  console.log('Learner query result:', { 
+    learner: learner ? { id: learner.id, name: learner.name, hasEmbedding: !!learner.embedding } : null, 
+    error: learnerError 
   });
 
-  if (studentError || !student) {
-    console.error('Student not found:', { studentId, error: studentError });
-    return await getPopularFallback(supabase, studentId, safeLimit, startTime, 'no_profile');
+  if (learnerError || !learner) {
+    console.error('Learner not found:', { learnerId, error: learnerError });
+    return await getPopularFallback(supabase, learnerId, safeLimit, startTime, 'no_profile');
   }
 
-  // Check if student has embedding - auto-generate if missing
-  let studentEmbedding = student.embedding;
-  if (!studentEmbedding) {
+  // Check if learner has embedding - auto-generate if missing
+  let learnerEmbedding = learner.embedding;
+  if (!learnerEmbedding) {
     try {
-      console.log(`[AUTO-EMBED] Generating embedding for student ${studentId}...`);
+      console.log(`[AUTO-EMBED] Generating embedding for learner ${learnerId}...`);
       
-      // Build enriched text from student profile
-      const text = await buildStudentTextFromDatabase(supabase, studentId);
-      console.log(`[AUTO-EMBED] Built text of length ${text.length} for student ${studentId}`);
+      // Build enriched text from learner profile
+      const text = await buildlearnerTextFromDatabase(supabase, learnerId);
+      console.log(`[AUTO-EMBED] Built text of length ${text.length} for learner ${learnerId}`);
       
       // Generate embedding vector
       const embedding = await callEmbeddingWorker(text, env);
-      console.log(`[AUTO-EMBED] Generated embedding with ${embedding.length} dimensions for student ${studentId}`);
+      console.log(`[AUTO-EMBED] Generated embedding with ${embedding.length} dimensions for learner ${learnerId}`);
       
       // Persist to database for future requests
-      await updateEmbedding(supabase, 'students', studentId, embedding);
-      console.log(`[AUTO-EMBED] Successfully saved embedding for student ${studentId}`);
+      await updateEmbedding(supabase, 'learners', learnerId, embedding);
+      console.log(`[AUTO-EMBED] Successfully saved embedding for learner ${learnerId}`);
       
       // Use the newly generated embedding
-      studentEmbedding = embedding;
+      learnerEmbedding = embedding;
     } catch (error) {
-      console.error(`[AUTO-EMBED] Failed for student ${studentId}:`, error);
-      return await getPopularFallback(supabase, studentId, safeLimit, startTime, 'embedding_generation_failed');
+      console.error(`[AUTO-EMBED] Failed for learner ${learnerId}:`, error);
+      return await getPopularFallback(supabase, learnerId, safeLimit, startTime, 'embedding_generation_failed');
     }
   } else {
-    console.log(`[RECOMMEND] Student ${studentId} - using existing embedding`);
+    console.log(`[RECOMMEND] Learner ${learnerId} - using existing embedding`);
   }
 
   // ==================== GET DISMISSED OPPORTUNITIES ====================
   const { data: dismissed } = await supabase
     .from('opportunity_interactions')
     .select('opportunity_id')
-    .eq('student_id', studentId)
+    .eq('learner_id', learnerId)
     .eq('action', 'dismiss');
 
   const dismissedIds = dismissed?.map(d => d.opportunity_id) || [];
@@ -188,8 +188,8 @@ export async function handleRecommendOpportunities(request: Request, env: Record
 
   // Try V2 matching first (with entity-level scoring)
   const { data: v2Recommendations, error: v2MatchError } = await supabase.rpc('match_opportunities_enhanced_v2', {
-    query_embedding: studentEmbedding,
-    student_id_param: studentId,
+    query_embedding: learnerEmbedding,
+    learner_id_param: learnerId,
     dismissed_ids: dismissedIds,
     match_threshold: RECOMMEND_CONFIG.MATCH_THRESHOLD,
     match_count: RECOMMEND_CONFIG.MAX_RECOMMENDATIONS
@@ -197,15 +197,15 @@ export async function handleRecommendOpportunities(request: Request, env: Record
 
   if (!v2MatchError && v2Recommendations && v2Recommendations.length > 0) {
     recommendations = v2Recommendations;
-    console.log(`[MATCH V2] Student ${studentId} - using entity-level scoring`);
+    console.log(`[MATCH V2] Learner ${learnerId} - using entity-level scoring`);
   } else {
     // Fallback to V1 matching
-    console.log(`[MATCH V1 FALLBACK] V2 error or no results, trying V1 for student ${studentId}`);
+    console.log(`[MATCH V1 FALLBACK] V2 error or no results, trying V1 for learner ${learnerId}`);
     algorithmVersion = 'v1.0';
     
     const { data: v1Recommendations, error: v1MatchError } = await supabase.rpc('match_opportunities_enhanced', {
-      query_embedding: studentEmbedding,
-      student_id_param: studentId,
+      query_embedding: learnerEmbedding,
+      learner_id_param: learnerId,
       dismissed_ids: dismissedIds,
       match_threshold: RECOMMEND_CONFIG.MATCH_THRESHOLD,
       match_count: RECOMMEND_CONFIG.MAX_RECOMMENDATIONS
@@ -217,11 +217,11 @@ export async function handleRecommendOpportunities(request: Request, env: Record
 
   if (matchError) {
     console.error('Match error:', matchError);
-    return await getPopularFallback(supabase, studentId, safeLimit, startTime, 'match_error');
+    return await getPopularFallback(supabase, learnerId, safeLimit, startTime, 'match_error');
   }
 
   if (!recommendations || recommendations.length === 0) {
-    return await getPopularFallback(supabase, studentId, safeLimit, startTime, 'no_matches');
+    return await getPopularFallback(supabase, learnerId, safeLimit, startTime, 'no_matches');
   }
 
   // ==================== RESPONSE ENRICHMENT ====================
@@ -241,11 +241,11 @@ export async function handleRecommendOpportunities(request: Request, env: Record
   // ==================== SAVE TO CACHE ====================
   try {
     await supabase.rpc('save_job_matches_cache', {
-      p_student_id: studentId,
+      p_learner_id: learnerId,
       p_matches: enrichedRecommendations,
       p_algorithm_version: algorithmVersion
     });
-    console.log(`[CACHE SAVE] Student ${studentId} - saved ${recommendations.length} matches to cache (${algorithmVersion})`);
+    console.log(`[CACHE SAVE] Learner ${learnerId} - saved ${recommendations.length} matches to cache (${algorithmVersion})`);
   } catch (cacheSaveError) {
     console.error('[CACHE SAVE ERROR]', cacheSaveError);
   }

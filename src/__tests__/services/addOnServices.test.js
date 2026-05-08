@@ -69,7 +69,7 @@ describe('AddOnCatalogService', () => {
 
     it('should filter add-ons by role', async () => {
       const mockAddOns = [
-        { id: '1', feature_key: 'career_ai', name: 'Career AI', target_roles: ['student'] },
+        { id: '1', feature_key: 'career_ai', name: 'Career AI', target_roles: ['learner'] },
         { id: '2', feature_key: 'educator_ai', name: 'Educator AI', target_roles: ['educator'] }
       ];
 
@@ -77,10 +77,10 @@ describe('AddOnCatalogService', () => {
       chain.order.mockResolvedValue({ data: mockAddOns, error: null });
       supabase.from.mockReturnValue(chain);
 
-      const result = await addOnCatalogService.getAddOns({ role: 'student' });
+      const result = await addOnCatalogService.getAddOns({ role: 'learner' });
       
       expect(result.success).toBe(true);
-      // Should filter to only student role
+      // Should filter to only learner role
       expect(result.data).toHaveLength(1);
       expect(result.data[0].feature_key).toBe('career_ai');
     });

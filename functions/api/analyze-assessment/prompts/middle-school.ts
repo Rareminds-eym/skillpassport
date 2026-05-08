@@ -211,7 +211,7 @@ ${sortedSubtags.map(s => `- ${s.name}: ${Math.round(s.accuracy)}%`).join('\n')}
 **GROWTH AREAS**: ${weakAreas.map(s => `${s.name} (${Math.round(s.accuracy)}%)`).join(', ') || 'None below 50%'}
 
 ${isHighAptitude ? `
-**⭐ HIGH-APTITUDE STUDENT** (Level ${level}, ${Math.round(accuracy)}% accuracy) - Include ambitious, competitive career pathways.
+**⭐ HIGH-APTITUDE LEARNER** (Level ${level}, ${Math.round(accuracy)}% accuracy) - Include ambitious, competitive career pathways.
 ` : ''}`;
 
   return { 
@@ -232,11 +232,11 @@ export function buildMiddleSchoolPrompt(assessmentData: AssessmentData, answersH
   
   const adaptiveSection = adaptiveData?.section || '';
 
-  return `You are a career counselor for middle school students (grades 6-8, ages 12-14). 
+  return `You are a career counselor for middle school learners (grades 6-8, ages 12-14). 
 
-**CRITICAL CONTEXT**: This student is 12-14 years old and CANNOT be employed. Your role is to help them EXPLORE future career possibilities and plan their learning journey. All career recommendations are for FUTURE consideration (8-10 years from now), NOT immediate employment.
+**CRITICAL CONTEXT**: This learner is 12-14 years old and CANNOT be employed. Your role is to help them EXPLORE future career possibilities and plan their learning journey. All career recommendations are for FUTURE consideration (8-10 years from now), NOT immediate employment.
 
-Analyze this student's complete assessment data and generate career EXPLORATION recommendations that are DERIVED ENTIRELY from the intersection of their interests, cognitive strengths, and personality traits.
+Analyze this learner's complete assessment data and generate career EXPLORATION recommendations that are DERIVED ENTIRELY from the intersection of their interests, cognitive strengths, and personality traits.
 
 ## DETERMINISTIC REQUIREMENT
 Session ID: ${answersHash} — Same input must produce same output.
@@ -250,29 +250,29 @@ Before writing ANY career recommendation, you MUST complete this internal reason
 ### THINK STEP 1: Score their RIASEC precisely
 - Go through every question, apply the categoryMapping, compute exact scores
 - Identify top 3 RIASEC types with exact scores and percentages
-- Ask yourself: "What SPECIFIC activities and topics did this student choose?" (not just the RIASEC letter)
+- Ask yourself: "What SPECIFIC activities and topics did this learner choose?" (not just the RIASEC letter)
 
 ### THINK STEP 2: Map their cognitive fingerprint
 - Look at their adaptive aptitude results — which cognitive skills are strong (>65%) vs weak (<45%)?
-- Ask yourself: "What kinds of THINKING does this student excel at?" (e.g., spatial thinking ≠ verbal thinking — they lead to very different careers)
+- Ask yourself: "What kinds of THINKING does this learner excel at?" (e.g., spatial thinking ≠ verbal thinking — they lead to very different careers)
 - Note the performance trend — are they improving, stable, or declining? This affects confidence in the scores.
 
 ### THINK STEP 3: Understand their personality DNA
 - Which character strengths scored 3-4? Which scored 1-2?
-- Ask yourself: "Is this student a leader or supporter? Creative or systematic? People-oriented or task-oriented? Risk-taker or security-seeker?"
+- Ask yourself: "Is this learner a leader or supporter? Creative or systematic? People-oriented or task-oriented? Risk-taker or security-seeker?"
 - Look at their learning preferences — do they prefer hands-on, visual, discussion, or reading?
 
 ### THINK STEP 4: Find the INTERSECTIONS (this is the critical step)
 - Don't match careers to just ONE dimension. The best career fits sit at the intersection of 2-3 dimensions.
 - Ask yourself for each potential career:
-  * "Does this student's RIASEC profile show interest in what this career DOES day-to-day?"
-  * "Does this student's cognitive profile show ability in what this career REQUIRES mentally?"  
-  * "Does this student's personality profile show alignment with HOW this career WORKS?"
+  * "Does this learner's RIASEC profile show interest in what this career DOES day-to-day?"
+  * "Does this learner's cognitive profile show ability in what this career REQUIRES mentally?"  
+  * "Does this learner's personality profile show alignment with HOW this career WORKS?"
 - If a career only matches 1 dimension, REJECT it and find a better fit.
-- Example reasoning: "Student has high A (Artistic) + high I (Investigative) + strong spatial reasoning + high Curiosity → careers that combine creative expression WITH analytical/research thinking AND visual-spatial skills → Scientific Illustrator, UX Researcher, Architectural Designer, Medical Animator — NOT just 'Artist' or just 'Scientist'"
+- Example reasoning: "Learner has high A (Artistic) + high I (Investigative) + strong spatial reasoning + high Curiosity → careers that combine creative expression WITH analytical/research thinking AND visual-spatial skills → Scientific Illustrator, UX Researcher, Architectural Designer, Medical Animator — NOT just 'Artist' or just 'Scientist'"
 
-### THINK STEP 5: Consider this student's FUTURE (2030-2040 workforce - they're only 12-14 now!)
-- This student is 12-14 years old. They will enter the workforce around 2030-2035 (8-10 years from now).
+### THINK STEP 5: Consider this learner's FUTURE (2030-2040 workforce - they're only 12-14 now!)
+- This learner is 12-14 years old. They will enter the workforce around 2030-2035 (8-10 years from now).
 - They CANNOT work now - all recommendations are for FUTURE career exploration and planning.
 - Ask yourself: "Will this career still exist and be relevant in 10-15 years? Is it growing or shrinking? How will AI/automation affect it?"
 - For EACH career you recommend, you must be able to explain why it will be relevant when they complete their education and are legally able to work.
@@ -334,18 +334,18 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
 
 ---
 
-## CAREER DERIVATION RULES (CRITICAL - REMEMBER: STUDENT IS 12-14 YEARS OLD!)
+## CAREER DERIVATION RULES (CRITICAL - REMEMBER: LEARNER IS 12-14 YEARS OLD!)
 
 ### Rule 0: AGE-APPROPRIATE FRAMING (MOST IMPORTANT)
-**This student is 12-14 years old and CANNOT work.** Every career recommendation must be framed as:
+**This learner is 12-14 years old and CANNOT work.** Every career recommendation must be framed as:
 - "When you complete your education, you could become..."
 - "In the future, this career might suit you..."
 - "After finishing school and college, you could work as..."
 
-NEVER frame careers as if the student can work NOW. They are exploring FUTURE possibilities only.
+NEVER frame careers as if the learner can work NOW. They are exploring FUTURE possibilities only.
 
 ### Rule 1: DERIVE, don't select
-You must NOT pick careers from any pre-memorized list. Instead, derive them through the analytical thinking process above. Each career must emerge from the INTERSECTION of this student's specific data points.
+You must NOT pick careers from any pre-memorized list. Instead, derive them through the analytical thinking process above. Each career must emerge from the INTERSECTION of this learner's specific data points.
 
 ### Rule 2: Three-Check Filter (MANDATORY for every career)
 Every single career you suggest MUST pass ALL THREE checks:
@@ -356,7 +356,7 @@ Every single career you suggest MUST pass ALL THREE checks:
 If a career fails ANY check → replace it with one that passes all three.
 
 ### Rule 3: Career Progression Must Be Realistic (EXPLORATION FOCUS - NOT EMPLOYMENT)
-**CRITICAL**: This student is 12-14 years old and CANNOT be employed. All recommendations are for FUTURE career exploration and planning.
+**CRITICAL**: This learner is 12-14 years old and CANNOT be employed. All recommendations are for FUTURE career exploration and planning.
 
 For each career cluster, include roles at these levels:
 - **NOW (Age 12-14)**: What they can EXPLORE today (NOT jobs) — clubs, hobbies, free online courses, school projects, YouTube tutorials, books to read
@@ -381,17 +381,17 @@ Every description, activity, and explanation must be understandable to a 12-14 y
 At least one career cluster should emphasize careers that are GROWING and will be highly relevant in 2030-2040. Explain WHY in the futureOutlook field.
 
 ### Rule 7: Engineering & Technical Pathways (when applicable)
-If the student shows R (Realistic) or I (Investigative) interest + strong numerical/logical/spatial aptitude, include realistic engineering career progressions:
+If the learner shows R (Realistic) or I (Investigative) interest + strong numerical/logical/spatial aptitude, include realistic engineering career progressions:
 - Diploma Engineering → Junior Engineer → Site Engineer → Project Manager
 - B.Tech/B.E. → Graduate Engineer Trainee (GET) → Associate Engineer → Senior Engineer → Lead Engineer
 - Polytechnic → Junior Technician → Senior Technician → Technical Specialist
 - ITI → Apprentice → Junior Technician → Supervisor → Workshop Manager
 
-Do NOT suggest engineering paths if the student lacks both the interest AND aptitude for it.
+Do NOT suggest engineering paths if the learner lacks both the interest AND aptitude for it.
 
 ### Rule 8: Government & Competitive Exam Pathways (when applicable)
-If the student is HIGH-APTITUDE (level 4-5) AND shows relevant interests:
-- Include competitive exam pathways ONLY when the student's cognitive profile supports it
+If the learner is HIGH-APTITUDE (level 4-5) AND shows relevant interests:
+- Include competitive exam pathways ONLY when the learner's cognitive profile supports it
 - Don't add UPSC/JEE/NEET/CLAT as default recommendations — only when their specific aptitude pattern (verbal for law/civil services, numerical+logical for engineering, biology-interest for medical) genuinely supports it
 
 ---
@@ -425,7 +425,7 @@ Return ONLY a JSON object (no markdown, no code fences). Use this exact structur
       }
     },
     "topStrengths": ["<Strength with accuracy — e.g. 'Strong spatial reasoning (82%)'>"],
-    "cognitiveProfile": "<2-3 sentences describing HOW this student thinks and solves problems, based on their adaptive test pattern>",
+    "cognitiveProfile": "<2-3 sentences describing HOW this learner thinks and solves problems, based on their adaptive test pattern>",
     "adaptiveLevel": 0,
     "adaptiveConfidence": "<high/medium/low>"
   },
@@ -466,10 +466,10 @@ Return ONLY a JSON object (no markdown, no code fences). Use this exact structur
     "clusters": [
       {
         "title": "<Specific career domain derived from THEIR profile intersection — NOT a generic category>",
-        "matchScore": "<REQUIRED: Calculate as INTEGER between 80-95 using FINE-GRAINED formula. Base score = 80 + (RIASEC_match_percentage * 0.15). Example: If top 2 RIASEC types match at 70% and 65%, score = 80 + ((70+65)/2 * 0.15) = 80 + 10.125 = 90. Then adjust ±1-3 based on aptitude and personality fit. Result must be unique per student (e.g., 82, 83, 87, 91, 93) - NEVER use round numbers like 85, 90>",
+        "matchScore": "<REQUIRED: Calculate as INTEGER between 80-95 using FINE-GRAINED formula. Base score = 80 + (RIASEC_match_percentage * 0.15). Example: If top 2 RIASEC types match at 70% and 65%, score = 80 + ((70+65)/2 * 0.15) = 80 + 10.125 = 90. Then adjust ±1-3 based on aptitude and personality fit. Result must be unique per learner (e.g., 82, 83, 87, 91, 93) - NEVER use round numbers like 85, 90>",
         "fit": "High",
         "derivation": "<REQUIRED: Show your analytical reasoning — 'Your combination of [specific RIASEC types with scores] + [specific cognitive strengths with accuracy %] + [specific character traits with ratings] points toward careers where you [specific activities]. This cluster sits at the intersection of your [dimension 1] and [dimension 2].'>",
-        "description": "<2-3 sentences on what this career domain involves and why it matches THIS student specifically. Use future-oriented language: 'When you're older, you could...', 'After completing your education, you might...''>",
+        "description": "<2-3 sentences on what this career domain involves and why it matches THIS learner specifically. Use future-oriented language: 'When you're older, you could...', 'After completing your education, you might...''>",
         "examples": ["<4-5 SPECIFIC FUTURE job titles — each must have passed the 3-check filter. These are careers they could pursue AFTER education, NOT now>"],
         "whatYoullDo": "<Day-to-day activities in this FUTURE career domain, written so a 12-14 year old can picture themselves doing it when they grow up>",
         "whyItFits": "<Connect their SPECIFIC scores, strengths, and traits to explain why this FUTURE career path fits them>",
@@ -490,7 +490,7 @@ Return ONLY a JSON object (no markdown, no code fences). Use this exact structur
         "matchScore": "<REQUIRED: Calculate as INTEGER between 70-85 using FINE-GRAINED formula. Base score = 70 + (secondary_RIASEC_match_percentage * 0.15). Example: If 1-2 RIASEC types match at 55% and 50%, score = 70 + ((55+50)/2 * 0.15) = 70 + 7.875 = 78. Adjust ±1-2 based on partial aptitude/personality fit. Result must be unique (e.g., 72, 76, 78, 81, 84) - NEVER use 75, 80>",
         "fit": "Medium",
         "derivation": "<Analytical reasoning showing how their data led to this cluster>",
-        "description": "<Personalized description for THIS student>",
+        "description": "<Personalized description for THIS learner>",
         "examples": ["<3-4 specific job titles that passed 3-check filter>"],
         "whatYoullDo": "<Day-to-day description a middle schooler can relate to>",
         "whyItFits": "<Evidence-based fit explanation citing their scores>",
@@ -569,7 +569,7 @@ Return ONLY a JSON object (no markdown, no code fences). Use this exact structur
     "priorityA": [
       {
         "skill": "<A foundational skill they need for their top career cluster — derived from the gap between their current abilities and what the career requires>",
-        "reason": "<Why THIS student needs this skill — connect to their career interests AND their current cognitive profile>",
+        "reason": "<Why THIS learner needs this skill — connect to their career interests AND their current cognitive profile>",
         "targetLevel": "Beginner",
         "currentLevel": "Starting",
         "connectedCareers": ["<Which of their recommended careers use this skill>"]
@@ -675,7 +675,7 @@ Return ONLY a JSON object (no markdown, no code fences). Use this exact structur
     }
   },
   "finalNote": {
-    "advantage": "<Their UNIQUE combination of strengths — what makes THIS student's profile special compared to others. Reference the specific intersection of their RIASEC + aptitude + personality>",
+    "advantage": "<Their UNIQUE combination of strengths — what makes THIS learner's profile special compared to others. Reference the specific intersection of their RIASEC + aptitude + personality>",
     "growthFocus": "<One clear, encouraging, ACTIONABLE next step they can take THIS WEEK that connects their strongest interest to a specific activity>"
   },
   "profileSnapshot": {
@@ -709,11 +709,11 @@ Before returning your response, verify EVERY item:
 
 1. **No placeholders anywhere**: Every field has real, personalized content. Search your response for generic text like "Career name", "Brief description", "Example text", "Job 1" — if found, replace immediately.
 
-2. **Three-check filter verified**: For each career in examples/roles, confirm it passes Interest + Aptitude + Personality checks. The evidence fields must cite ACTUAL scores/percentages/ratings from this student's data.
+2. **Three-check filter verified**: For each career in examples/roles, confirm it passes Interest + Aptitude + Personality checks. The evidence fields must cite ACTUAL scores/percentages/ratings from this learner's data.
 
 3. **Cross-cluster diversity confirmed**: Verify clusters 1, 2, and 3 are in genuinely different industries.
 
-4. **Profile-derived, not list-picked**: Career suggestions emerged from analyzing THIS student's data intersection, not from recalling a memorized list of "good careers."
+4. **Profile-derived, not list-picked**: Career suggestions emerged from analyzing THIS learner's data intersection, not from recalling a memorized list of "good careers."
 
 5. **Age-appropriate confirmed**: Re-read every description imagining you're speaking to a 13-year-old. Remove jargon, simplify complex concepts.
 
@@ -737,10 +737,10 @@ Before returning your response, verify EVERY item:
 
 15. **SALARY VALUES MUST BE REALISTIC**: Entry-level salaries should be 3-8 LPA (Lakhs Per Annum), mid-career 8-20 LPA. The "min" and "max" values are ALREADY in LAKHS - do NOT multiply by 100000. Example: { "min": 4, "max": 8 } means ₹4 Lakhs to ₹8 Lakhs per year, NOT ₹400000 Lakhs. NEVER return values above 50 for entry-level roles or above 100 for any role.
 
-16. **MATCH SCORES MUST BE CALCULATED DYNAMICALLY WITH FINE GRANULARITY**: Do NOT use round numbers like 85, 75, 65, 90, 80, 70. Calculate match scores with 1% precision based on actual student data:
+16. **MATCH SCORES MUST BE CALCULATED DYNAMICALLY WITH FINE GRANULARITY**: Do NOT use round numbers like 85, 75, 65, 90, 80, 70. Calculate match scores with 1% precision based on actual learner data:
    - Use the RIASEC percentage scores directly in calculations (e.g., if A=70%, I=65%, calculate: 80 + ((70+65)/2 * 0.15) = 90)
    - Adjust ±1-3 points based on aptitude accuracy percentages and personality trait ratings
-   - Each student should get unique scores like 82, 83, 87, 91, 93 (High fit), 72, 76, 78, 81, 84 (Medium fit), 62, 66, 68, 71, 73 (Explore fit)
+   - Each learner should get unique scores like 82, 83, 87, 91, 93 (High fit), 72, 76, 78, 81, 84 (Medium fit), 62, 66, 68, 71, 73 (Explore fit)
    - FORBIDDEN: Any multiple of 5 (85, 75, 65, 90, 80, 70) - these indicate you're not calculating from actual data
-   - Different students with different profiles MUST get different match scores reflecting their unique data.`;
+   - Different learners with different profiles MUST get different match scores reflecting their unique data.`;
 }

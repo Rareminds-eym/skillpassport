@@ -28,9 +28,9 @@ const ResultsPublishing: React.FC = () => {
       college: "ABC Engineering College",
       department: "Computer Science",
       semester: "5th Semester",
-      totalStudents: 120,
-      passedStudents: 108,
-      failedStudents: 12,
+      totallearners: 120,
+      passedlearners: 108,
+      failedlearners: 12,
       passPercentage: 90,
       averageGrade: 7.8,
       status: "Ready to Publish",
@@ -39,7 +39,7 @@ const ResultsPublishing: React.FC = () => {
       approvedBy: null,
       subjects: ["Data Structures", "DBMS", "Computer Networks", "Software Engineering"],
       notifications: {
-        students: false,
+        learners: false,
         parents: false,
         faculty: false
       }
@@ -50,9 +50,9 @@ const ResultsPublishing: React.FC = () => {
       college: "XYZ Arts & Science College",
       department: "Mathematics",
       semester: "3rd Semester",
-      totalStudents: 85,
-      passedStudents: 82,
-      failedStudents: 3,
+      totallearners: 85,
+      passedlearners: 82,
+      failedlearners: 3,
       passPercentage: 96.5,
       averageGrade: 8.2,
       status: "Published",
@@ -61,7 +61,7 @@ const ResultsPublishing: React.FC = () => {
       approvedBy: "Dr. John Smith",
       subjects: ["Calculus", "Linear Algebra", "Statistics", "Discrete Mathematics"],
       notifications: {
-        students: true,
+        learners: true,
         parents: true,
         faculty: true
       }
@@ -72,9 +72,9 @@ const ResultsPublishing: React.FC = () => {
       college: "PQR Medical College",
       department: "Biochemistry",
       semester: "4th Semester",
-      totalStudents: 60,
-      passedStudents: 55,
-      failedStudents: 5,
+      totallearners: 60,
+      passedlearners: 55,
+      failedlearners: 5,
       passPercentage: 91.7,
       averageGrade: 7.9,
       status: "Under Review",
@@ -83,7 +83,7 @@ const ResultsPublishing: React.FC = () => {
       approvedBy: null,
       subjects: ["Clinical Biochemistry", "Molecular Biology", "Enzymology"],
       notifications: {
-        students: false,
+        learners: false,
         parents: false,
         faculty: false
       }
@@ -97,7 +97,7 @@ const ResultsPublishing: React.FC = () => {
     gracePeriodsEnabled: true,
     gracePeriodDays: 7,
     notificationTemplates: {
-      students: "Your examination results are now available.",
+      learners: "Your examination results are now available.",
       parents: "Your ward's examination results have been published.",
       faculty: "Results for your subject have been published."
     }
@@ -135,14 +135,14 @@ const ResultsPublishing: React.FC = () => {
   const handlePublishResults = (id: number) => {
     const result = resultsData.find(r => r.id === id);
     if (result) {
-      alert(`Publishing results for: ${result.examination}\nCollege: ${result.college}\nStudents will be notified automatically.`);
+      alert(`Publishing results for: ${result.examination}\nCollege: ${result.college}\nlearners will be notified automatically.`);
     }
   };
 
   const handleBulkPublish = () => {
     const readyResults = filteredResults.filter(result => result.status === "Ready to Publish");
     if (readyResults.length > 0) {
-      alert(`Publishing ${readyResults.length} result sets. All students and parents will be notified.`);
+      alert(`Publishing ${readyResults.length} result sets. All learners and parents will be notified.`);
     } else {
       alert("No results ready for publishing");
     }
@@ -270,7 +270,7 @@ const ResultsPublishing: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <label className="text-sm font-medium text-gray-700">Auto Notification</label>
-                    <p className="text-sm text-gray-500">Automatically notify students when results are published</p>
+                    <p className="text-sm text-gray-500">Automatically notify learners when results are published</p>
                   </div>
                   <button className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                     publishingSettings.autoNotification ? 'bg-green-600' : 'bg-gray-200'
@@ -344,11 +344,11 @@ const ResultsPublishing: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Student Notification
+                    Learner Notification
                   </label>
                   <textarea
                     rows={3}
-                    defaultValue={publishingSettings.notificationTemplates.students}
+                    defaultValue={publishingSettings.notificationTemplates.learners}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                   />
                 </div>
@@ -490,8 +490,8 @@ const ResultsPublishing: React.FC = () => {
                       </td>
                       <td className="px-4 py-3">
                         <div className="text-sm">
-                          <p className="text-gray-900">Students: {result.totalStudents}</p>
-                          <p className="text-green-600">Passed: {result.passedStudents} ({result.passPercentage}%)</p>
+                          <p className="text-gray-900">Learners: {result.totallearners}</p>
+                          <p className="text-green-600">Passed: {result.passedlearners} ({result.passPercentage}%)</p>
                           <p className={`font-medium ${getGradeColor(result.averageGrade)}`}>
                             Avg Grade: {result.averageGrade}
                           </p>
@@ -513,9 +513,9 @@ const ResultsPublishing: React.FC = () => {
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
                           <button 
-                            onClick={() => handleSendNotification(result.id, 'student')}
-                            className={`p-1 rounded ${result.notifications.students ? 'text-green-600 bg-green-50' : 'text-gray-400 hover:bg-gray-50'}`}
-                            title="Student Notifications"
+                            onClick={() => handleSendNotification(result.id, 'learner')}
+                            className={`p-1 rounded ${result.notifications.learners ? 'text-green-600 bg-green-50' : 'text-gray-400 hover:bg-gray-50'}`}
+                            title="Learner Notifications"
                           >
                             <Users className="h-4 w-4" />
                           </button>

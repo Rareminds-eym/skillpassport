@@ -303,7 +303,7 @@ export const ResumePromptScreen = ({
 
             <Button
               variant="ghost"
-              onClick={() => navigate('/student/dashboard')}
+              onClick={() => navigate('/learner/dashboard')}
               disabled={isLoading}
               className="w-full py-4 text-gray-600"
             >

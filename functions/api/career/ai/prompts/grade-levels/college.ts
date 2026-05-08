@@ -7,7 +7,7 @@ export const collegeConfig: GradePromptConfig = {
   displayName: 'College/University',
   ageRange: '18+ years',
   
-  role: 'Career Readiness Coach and Industry Skills Advisor for College Students',
+  role: 'Career Readiness Coach and Industry Skills Advisor for College Learners',
   
   constraints: [
     '🚨 ABSOLUTE RULE: NEVER recommend academic subjects (Math, Physics, Chemistry, Biology)',
@@ -17,7 +17,7 @@ export const collegeConfig: GradePromptConfig = {
     'Connect learning directly to job opportunities and career outcomes',
     'Be specific about platforms (Coursera, Udemy, freeCodeCamp, YouTube channels)',
     'Include timelines, difficulty levels, and expected outcomes',
-    'Student is ALREADY in college - they don\'t need entrance exam prep or subject advice'
+    'Learner is ALREADY in college - they don\'t need entrance exam prep or subject advice'
   ],
   
   vocabulary: 'professional, industry-focused, outcome-driven, practical',
@@ -50,7 +50,7 @@ export const collegeConfig: GradePromptConfig = {
       userQuery: 'Which subjects align with my career goals?',
       chainOfThought: `
 <thinking>
-Step 1: Student is in COLLEGE → Recommend COURSES/CERTIFICATIONS, not academic subjects
+Step 1: Learner is in COLLEGE → Recommend COURSES/CERTIFICATIONS, not academic subjects
 Step 2: Check their existing skills and field from profile
 Step 3: Identify career interests from query or profile
 Step 4: Map to industry-relevant skills and courses
@@ -104,10 +104,10 @@ Step 7: Verify → Comprehensive prep plan? Specific resources?
     {
       rule: '🚨 CRITICAL: NEVER mention: Calculus, Algebra, Organic Chemistry, Mechanics, Thermodynamics, or any academic topics',
       severity: 'critical',
-      explanation: 'These are college curriculum subjects. Student needs industry skills instead.'
+      explanation: 'These are college curriculum subjects. Learner needs industry skills instead.'
     },
     {
-      rule: 'CRITICAL: Distinguish between SKILLS (what student HAS) and COURSES (what to LEARN). NEVER list existing skills as "subjects to study"',
+      rule: 'CRITICAL: Distinguish between SKILLS (what learner HAS) and COURSES (what to LEARN). NEVER list existing skills as "subjects to study"',
       severity: 'critical',
       explanation: 'Programming is a skill they have. "Advanced React Patterns" is a course to take.'
     },
@@ -124,7 +124,7 @@ Step 7: Verify → Comprehensive prep plan? Specific resources?
     {
       rule: 'Connect learning to job opportunities: "After learning X, you can apply for Y roles"',
       severity: 'warning',
-      explanation: 'Students need to see career outcomes of their learning'
+      explanation: 'Learners need to see career outcomes of their learning'
     },
     {
       rule: 'Include practical application: projects to build, portfolio development',

@@ -19,7 +19,7 @@ const logger = getLogger('university-admin-assessment-results');
 // Types
 interface AssessmentResult {
   id: string;
-  student_id: string;
+  learner_id: string;
   stream_id: string | null;
   riasec_code: string | null;
   riasec_scores: any;
@@ -33,8 +33,8 @@ interface AssessmentResult {
   knowledge_details: any;
   status: string;
   created_at: string;
-  student_name: string | null;
-  student_email: string | null;
+  learner_name: string | null;
+  learner_email: string | null;
   college_id: string | null;
   college_name: string | null;
   career_fit: any;
@@ -47,7 +47,7 @@ interface AssessmentResult {
   timing_analysis: any;
   final_note: any;
   enrollmentNumber: string | null;
-  student_grade: string | null;
+  learner_grade: string | null;
   program_id: string | null;
   program_name: string | null;
   stream_name: string | null;
@@ -152,14 +152,14 @@ const AssessmentCard = ({ result, onView }: { result: AssessmentResult; onView: 
         <div className="flex items-center space-x-3 flex-1 min-w-0">
           <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
             <span className="text-white font-semibold text-lg">
-              {result.student_name?.charAt(0)?.toUpperCase() || '?'}
+              {result.learner_name?.charAt(0)?.toUpperCase() || '?'}
             </span>
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
-              {result.student_name || 'Unknown Student'}
+              {result.learner_name || 'Unknown Learner'}
             </h3>
-            <p className="text-sm text-gray-600 truncate">{result.student_email}</p>
+            <p className="text-sm text-gray-600 truncate">{result.learner_email}</p>
             <p className="text-xs text-gray-500 truncate">{result.college_name || 'No College'}</p>
           </div>
         </div>
@@ -263,7 +263,7 @@ const UniversityAdminAssessmentResults: React.FC = () => {
         .from('personal_assessment_results')
         .select(`
           id,
-          student_id,
+          learner_id,
           stream_id,
           riasec_code,
           riasec_scores,
@@ -294,12 +294,12 @@ const UniversityAdminAssessmentResults: React.FC = () => {
 
       if (fetchError) throw fetchError;
 
-      // Fetch student info for each result
+      // Fetch learner info for each result
       if (data && data.length > 0) {
-        const studentIds = [...new Set(data.map(r => r.student_id))];
+        const learnerIds = [...new Set(data.map(r => r.learner_id))];
         
-        const { data: studentsData } = await supabase
-          .from('students')
+        const { data: learnersData } = await supabase
+          .from('learners')
           .select(`
             user_id, 
             name, 
@@ -313,7 +313,7 @@ const UniversityAdminAssessmentResults: React.FC = () => {
               name
             )
           `)
-          .in('user_id', studentIds);
+          .in('user_id', learnerIds);
 
         // Fetch colleges from organizations table
         const { data: collegesData } = await supabase
@@ -321,27 +321,27 @@ const UniversityAdminAssessmentResults: React.FC = () => {
           .select('id, name')
           .eq('organization_type', 'college');
 
-        const studentMap = new Map(studentsData?.map(s => [s.user_id, s]) || []);
+        const learnerMap = new Map(learnersData?.map(s => [s.user_id, s]) || []);
         const collegeMap = new Map(collegesData?.map(c => [c.id, c.name]) || []);
 
         const enrichedResults = data.map(r => {
-          const student = studentMap.get(r.student_id);
+          const learner = learnerMap.get(r.learner_id);
           return {
             ...r,
-            student_name: student?.name || null,
-            student_email: student?.email || null,
-            college_id: student?.college_id || null,
-            college_name: student?.college_id ? collegeMap.get(student.college_id) || null : null,
-            enrollmentNumber: student?.enrollmentNumber || null,
-            student_grade: student?.grade || null,
-            program_id: student?.program_id || null,
+            learner_name: learner?.name || null,
+            learner_email: learner?.email || null,
+            college_id: learner?.college_id || null,
+            college_name: learner?.college_id ? collegeMap.get(learner.college_id) || null : null,
+            enrollmentNumber: learner?.enrollmentNumber || null,
+            learner_grade: learner?.grade || null,
+            program_id: learner?.program_id || null,
             program_name: (() => {
-              if (!student?.programs) return null;
+              if (!learner?.programs) return null;
               // Handle both single object and array cases
-              if (Array.isArray(student.programs)) {
-                return student.programs.length > 0 ? student.programs[0].name : null;
+              if (Array.isArray(learner.programs)) {
+                return learner.programs.length > 0 ? learner.programs[0].name : null;
               }
-              return (student.programs as any).name || null;
+              return (learner.programs as any).name || null;
             })(),
             stream_name: (() => {
               if (!r.personal_assessment_streams) return null;
@@ -354,7 +354,7 @@ const UniversityAdminAssessmentResults: React.FC = () => {
           };
         });
 
-        // Filter to only show students from affiliated colleges (exclude students without college)
+        // Filter to only show learners from affiliated colleges (exclude learners without college)
         const filteredResults = enrichedResults.filter(r => r.college_id !== null && r.college_name !== null);
 
         setResults(filteredResults as AssessmentResult[]);
@@ -467,8 +467,8 @@ const UniversityAdminAssessmentResults: React.FC = () => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(r =>
-        r.student_name?.toLowerCase().includes(query) ||
-        r.student_email?.toLowerCase().includes(query) ||
+        r.learner_name?.toLowerCase().includes(query) ||
+        r.learner_email?.toLowerCase().includes(query) ||
         r.college_name?.toLowerCase().includes(query) ||
         r.stream_id?.toLowerCase().includes(query) ||
         r.riasec_code?.toLowerCase().includes(query)
@@ -510,7 +510,7 @@ const UniversityAdminAssessmentResults: React.FC = () => {
         sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         break;
       case 'name':
-        sorted.sort((a, b) => (a.student_name || '').localeCompare(b.student_name || ''));
+        sorted.sort((a, b) => (a.learner_name || '').localeCompare(b.learner_name || ''));
         break;
       case 'aptitude':
         sorted.sort((a, b) => (b.aptitude_overall || 0) - (a.aptitude_overall || 0));
@@ -577,7 +577,7 @@ const UniversityAdminAssessmentResults: React.FC = () => {
       <div className="p-6 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Student Assessment Results</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Learner Assessment Results</h1>
             <p className="text-sm text-gray-600 mt-1">
               View personal assessment results across all affiliated colleges
             </p>
@@ -727,7 +727,7 @@ const UniversityAdminAssessmentResults: React.FC = () => {
               <p className="text-sm text-gray-500 mb-4">
                 {searchQuery || activeFilterCount > 0
                   ? 'Try adjusting your search or filters'
-                  : 'No student assessments available yet'}
+                  : 'No learner assessments available yet'}
               </p>
               {activeFilterCount > 0 && (
                 <button
@@ -759,7 +759,7 @@ const UniversityAdminAssessmentResults: React.FC = () => {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Learner</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">College</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stream</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">RIASEC</th>
@@ -777,12 +777,12 @@ const UniversityAdminAssessmentResults: React.FC = () => {
                             <div className="flex items-center">
                               <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
                                 <span className="text-white font-semibold text-sm">
-                                  {result.student_name?.charAt(0)?.toUpperCase() || '?'}
+                                  {result.learner_name?.charAt(0)?.toUpperCase() || '?'}
                                 </span>
                               </div>
                               <div className="ml-4">
-                                <div className="text-sm font-medium text-gray-900">{result.student_name || 'Unknown'}</div>
-                                <div className="text-sm text-gray-500">{result.student_email}</div>
+                                <div className="text-sm font-medium text-gray-900">{result.learner_name || 'Unknown'}</div>
+                                <div className="text-sm text-gray-500">{result.learner_email}</div>
                               </div>
                             </div>
                           </td>
@@ -853,24 +853,24 @@ const UniversityAdminAssessmentResults: React.FC = () => {
 
       {/* Assessment Report Drawer - Uses the same design as college admin and school admin */}
       <AssessmentReportDrawer
-        student={selectedResult ? {
-          id: selectedResult.student_id,
-          user_id: selectedResult.student_id,
-          name: selectedResult.student_name || undefined,
-          email: selectedResult.student_email || undefined,
+        learner={selectedResult ? {
+          id: selectedResult.learner_id,
+          user_id: selectedResult.learner_id,
+          name: selectedResult.learner_name || undefined,
+          email: selectedResult.learner_email || undefined,
           college: selectedResult.college_name || undefined,
           college_name: selectedResult.college_name || undefined,
           grade: selectedResult.stream_id || undefined,
           school_name: selectedResult.college_name || undefined,
           roll_number: selectedResult.enrollmentNumber || 'N/A',
-          student_grade: selectedResult.student_grade || undefined,
+          learner_grade: selectedResult.learner_grade || undefined,
           program_id: selectedResult.program_id || undefined,
           program_name: selectedResult.program_name || undefined,
           stream_name: selectedResult.stream_name || undefined
         } : undefined}
         assessmentResult={selectedResult ? {
           id: selectedResult.id,
-          student_id: selectedResult.student_id,
+          learner_id: selectedResult.learner_id,
           stream_id: selectedResult.stream_id,
           riasec_code: selectedResult.riasec_code,
           riasec_scores: selectedResult.riasec_scores,
@@ -884,8 +884,8 @@ const UniversityAdminAssessmentResults: React.FC = () => {
           knowledge_details: selectedResult.knowledge_details,
           status: selectedResult.status,
           created_at: selectedResult.created_at,
-          student_name: selectedResult.student_name,
-          student_email: selectedResult.student_email,
+          learner_name: selectedResult.learner_name,
+          learner_email: selectedResult.learner_email,
           college_name: selectedResult.college_name,
           grade_level: selectedResult.stream_id,
           career_fit: selectedResult.career_fit,

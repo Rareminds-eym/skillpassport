@@ -77,13 +77,13 @@ const GRADE_ACTIONS: Record<GradeLevel, CareerAction[]> = {
   ],
 };
 
-async function getStudentGradeLevel(supabase: SupabaseClient, studentId: string): Promise<GradeLevel> {
+async function getlearnerGradeLevel(supabase: SupabaseClient, learnerId: string): Promise<GradeLevel> {
   try {
     // Try to get from personal_assessment_attempts first (most recent)
     const { data: attemptData } = await supabase
       .from('personal_assessment_attempts')
       .select('grade_level')
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -92,22 +92,22 @@ async function getStudentGradeLevel(supabase: SupabaseClient, studentId: string)
       return attemptData.grade_level as GradeLevel;
     }
 
-    // Fallback: Check students table
-    const { data: studentData } = await supabase
-      .from('students')
+    // Fallback: Check learners table
+    const { data: learnerData } = await supabase
+      .from('learners')
       .select('grade')
-      .or(`user_id.eq.${studentId},id.eq.${studentId}`)
+      .or(`user_id.eq.${learnerId},id.eq.${learnerId}`)
       .maybeSingle();
 
-    if (studentData?.grade) {
+    if (learnerData?.grade) {
       // Map grade to grade_level
-      const grade = studentData.grade.toLowerCase();
+      const grade = learnerData.grade.toLowerCase();
       if (grade.includes('6') || grade.includes('7') || grade.includes('8')) return 'middle';
       if (grade.includes('9') || grade.includes('10')) return 'highschool';
       if (grade.includes('11') || grade.includes('12')) return 'higher_secondary';
     }
 
-    // Default to college for degree students
+    // Default to college for degree learners
     return 'college';
   } catch (error) {
     console.error('Error fetching grade level:', error);
@@ -124,8 +124,8 @@ export async function handleGetActions(request: Request, env: any): Promise<Resp
     }
     const { user, supabase } = authResult;
 
-    // Get student's grade level
-    const gradeLevel = await getStudentGradeLevel(supabase, user.id);
+    // Get learner's grade level
+    const gradeLevel = await getlearnerGradeLevel(supabase, user.id);
     
     // Get appropriate actions
     const actions = GRADE_ACTIONS[gradeLevel] || GRADE_ACTIONS.college;

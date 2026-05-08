@@ -45,9 +45,9 @@ const devError = (...args: readonly unknown[]): void => {
 interface AssessmentReportDrawerProps {
     isOpen: boolean;
     onClose: () => void;
-    studentId?: string;
+    learnerId?: string;
     onViewFullReport?: () => void;
-    student?: {
+    learner?: {
         id?: string;
         user_id?: string;
         name?: string;
@@ -57,16 +57,16 @@ interface AssessmentReportDrawerProps {
         grade?: string;
         school_name?: string;
         roll_number?: string;
-        student_grade?: string;
+        learner_grade?: string;
         program_id?: string;
         program_name?: string;
         stream_name?: string;
     };
     assessmentResult?: {
         id?: string;
-        student_id?: string;
-        student_name?: string | null;
-        student_email?: string | null;
+        learner_id?: string;
+        learner_name?: string | null;
+        learner_email?: string | null;
         college_name?: string | null;
         grade_level?: string | null;
         stream_id?: string | null;
@@ -93,7 +93,7 @@ interface AssessmentReportDrawerProps {
         status?: string;
         stream_name?: string | null;
     };
-    studentInfo?: {
+    learnerInfo?: {
         name?: string;
         grade?: string;
         school?: string;
@@ -209,22 +209,22 @@ const generateSalaryRange = (roleName: string, trackTitle: string, roleLevel: st
 const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo(({
     isOpen,
     onClose,
-    studentId,
-    student,
+    learnerId,
+    learner,
     assessmentResult,
-    studentInfo: providedStudentInfo
+    learnerInfo: providedlearnerInfo
 }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [careerTracks, setCareerTracks] = useState<CareerTrack[]>([]);
-    const [studentInfo, setStudentInfo] = useState<any>(null);
+    const [learnerInfo, setlearnerInfo] = useState<any>(null);
     const [assessmentData, setAssessmentData] = useState<any>(null);
     const [selectedTrack, setSelectedTrack] = useState<any>(null);
 
     // Use the assessment recommendations hook (for compatibility)
     const {
         loading: recommendationsLoading
-    } = useAssessmentRecommendations(studentId, !!studentId);
+    } = useAssessmentRecommendations(learnerId, !!learnerId);
 
     // Process passed data instead of fetching from database
     useEffect(() => {
@@ -245,28 +245,28 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
         
         // Process assessment data when drawer opens
         
-        devLog("studentInfo: ", studentInfo);
+        devLog("learnerInfo: ", learnerInfo);
         devLog("assessmentResult: ", assessmentResult);
         devLog("assessment data", assessmentData);
         devLog('[AssessmentReportDrawer] Processing passed data...');
-        devLog('Student:', student);
+        devLog('Learner:', learner);
         devLog('Assessment Result:', assessmentResult);
-        devLog('Provided Student Info:', providedStudentInfo);
+        devLog('Provided Learner Info:', providedlearnerInfo);
 
-        // Process student information from passed props
-        if (student || providedStudentInfo || assessmentResult) {
-            const processedStudentInfo = {
-                name: assessmentResult?.student_name || student?.name || providedStudentInfo?.name || 'Student',
-                grade: student?.student_grade || student?.grade || assessmentResult?.grade_level || providedStudentInfo?.grade || 'Not Specified',
-                school: assessmentResult?.college_name || student?.college_name || student?.college || student?.school_name || providedStudentInfo?.school || 'School',
-                rollNumber: student?.roll_number || providedStudentInfo?.rollNumber || 'N/A',
+        // Process learner information from passed props
+        if (learner || providedlearnerInfo || assessmentResult) {
+            const processedlearnerInfo = {
+                name: assessmentResult?.learner_name || learner?.name || providedlearnerInfo?.name || 'Learner',
+                grade: learner?.learner_grade || learner?.grade || assessmentResult?.grade_level || providedlearnerInfo?.grade || 'Not Specified',
+                school: assessmentResult?.college_name || learner?.college_name || learner?.college || learner?.school_name || providedlearnerInfo?.school || 'School',
+                rollNumber: learner?.roll_number || providedlearnerInfo?.rollNumber || 'N/A',
                 assessmentDate: assessmentResult?.created_at ? 
                     new Date(assessmentResult.created_at).toLocaleDateString('en-GB') : 
-                    providedStudentInfo?.assessmentDate || new Date().toLocaleDateString('en-GB')
+                    providedlearnerInfo?.assessmentDate || new Date().toLocaleDateString('en-GB')
             };
             
-            setStudentInfo(processedStudentInfo);
-            devLog('[AssessmentReportDrawer] Processed student info:', processedStudentInfo);
+            setlearnerInfo(processedlearnerInfo);
+            devLog('[AssessmentReportDrawer] Processed learner info:', processedlearnerInfo);
         }
 
         // Process assessment data from passed props
@@ -468,10 +468,10 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
             loading: false,
             error,
             careerTracksCount: careerTracks.length,
-            hasStudentInfo: !!studentInfo,
+            haslearnerInfo: !!learnerInfo,
             hasAssessmentData: !!assessmentData
         });
-    }, [isOpen, assessmentResult?.id, student?.id, student?.user_id]); // Only depend on essential IDs
+    }, [isOpen, assessmentResult?.id, learner?.id, learner?.user_id]); // Only depend on essential IDs
 
     // Handle opening career track modal
     const handleViewTrack = useCallback((track: CareerTrack) => {
@@ -927,7 +927,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                 </div>
                                 <h3 className="text-xl font-semibold text-gray-900 mb-3">No Assessment Data Available</h3>
                                 <p className="text-gray-600 text-center mb-6 max-w-md leading-relaxed">
-                                    This student hasn't completed their career assessment yet, or the assessment data is not available in the system.
+                                    This learner hasn't completed their career assessment yet, or the assessment data is not available in the system.
                                 </p>
                                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-lg">
                                     <div className="flex items-start">
@@ -939,7 +939,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                         <div className="ml-3">
                                             <h4 className="text-sm font-medium text-blue-800 mb-1">What you can do:</h4>
                                             <ul className="text-sm text-blue-700 space-y-1">
-                                                <li>• Ask the student to complete their career assessment</li>
+                                                <li>• Ask the learner to complete their career assessment</li>
                                                 <li>• Check if the assessment was submitted successfully</li>
                                                 <li>• Contact support if the issue persists</li>
                                             </ul>
@@ -949,56 +949,56 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                             </div>
                         ) : (
                             <>
-                                {/* Student Information Grid - Dynamic Data from Props */}
+                                {/* Learner Information Grid - Dynamic Data from Props */}
                                 <div className="bg-white p-8 border-b border-gray-200">
                                     <div className="grid grid-cols-3 gap-4">
                                         {/* Row 1 */}
                                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                            <p className="text-xs text-blue-600 font-semibold mb-1">Student Name</p>
-                                            <p className="font-bold text-gray-900 text-sm">{studentInfo?.name || 'Student'}</p>
+                                            <p className="text-xs text-blue-600 font-semibold mb-1">Learner Name</p>
+                                            <p className="font-bold text-gray-900 text-sm">{learnerInfo?.name || 'Learner'}</p>
                                         </div>
                                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                                             <p className="text-xs text-blue-600 font-semibold mb-1">
                                                 {(() => {
-                                                    // Use student_grade from students table to determine roll number type
-                                                    const studentGrade = student?.student_grade || student?.grade;
-                                                    // College students: UG, PG, or variations like "UG Year 1", "PG Year 2", etc.
-                                                    const isCollegeStudent = studentGrade && (
-                                                        studentGrade.toUpperCase().includes('UG') || 
-                                                        studentGrade.toUpperCase().includes('PG')
+                                                    // Use learner_grade from learners table to determine roll number type
+                                                    const learnerGrade = learner?.learner_grade || learner?.grade;
+                                                    // College learners: UG, PG, or variations like "UG Year 1", "PG Year 2", etc.
+                                                    const isCollegeLearner = learnerGrade && (
+                                                        learnerGrade.toUpperCase().includes('UG') || 
+                                                        learnerGrade.toUpperCase().includes('PG')
                                                     );
-                                                    return isCollegeStudent ? 'College Roll No.' : 'School Roll No.';
+                                                    return isCollegeLearner ? 'College Roll No.' : 'School Roll No.';
                                                 })()}
                                             </p>
-                                            <p className="font-bold text-gray-900 text-sm">{studentInfo?.rollNumber || 'N/A'}</p>
+                                            <p className="font-bold text-gray-900 text-sm">{learnerInfo?.rollNumber || 'N/A'}</p>
                                         </div>
                                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                                             <p className="text-xs text-blue-600 font-semibold mb-1">Programme Stream</p>
                                             <p className="font-bold text-gray-900 text-sm">
                                                 {(() => {
-                                                    // Determine if student is college or school student
-                                                    const studentGrade = student?.student_grade || student?.grade;
-                                                    const isCollegeStudent = studentGrade && (
-                                                        studentGrade.toUpperCase().includes('UG') || 
-                                                        studentGrade.toUpperCase().includes('PG')
+                                                    // Determine if learner is college or school learner
+                                                    const learnerGrade = learner?.learner_grade || learner?.grade;
+                                                    const isCollegeLearner = learnerGrade && (
+                                                        learnerGrade.toUpperCase().includes('UG') || 
+                                                        learnerGrade.toUpperCase().includes('PG')
                                                     );
                                                     
-                                                    if (isCollegeStudent) {
-                                                        // For college students, use program_name from programs table
-                                                        const programName = student?.program_name;
+                                                    if (isCollegeLearner) {
+                                                        // For college learners, use program_name from programs table
+                                                        const programName = learner?.program_name;
                                                         if (programName) {
                                                             return programName;
                                                         }
-                                                        // Fallback for college students - if program_id is null, show empty string
-                                                        const programId = student?.program_id;
+                                                        // Fallback for college learners - if program_id is null, show empty string
+                                                        const programId = learner?.program_id;
                                                         if (!programId) {
                                                             return '';  // Leave blank in UI if no program assigned
                                                         }
                                                         // If program_id exists but program_name is missing, show generic fallback
-                                                        return studentGrade.toUpperCase().includes('UG') ? 'Undergraduate Program' : 'Postgraduate Program';
+                                                        return learnerGrade.toUpperCase().includes('UG') ? 'Undergraduate Program' : 'Postgraduate Program';
                                                     } else {
-                                                        // For school students, use stream_name from personal_assessment_stream table
-                                                        const streamName = assessmentData?.stream_name || student?.stream_name;
+                                                        // For school learners, use stream_name from personal_assessment_stream table
+                                                        const streamName = assessmentData?.stream_name || learner?.stream_name;
                                                         if (streamName) {
                                                             return streamName;
                                                         }
@@ -1029,16 +1029,16 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                         {/* Row 2 */}
                                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                                             <p className="text-xs text-blue-600 font-semibold mb-1">Grade</p>
-                                            <p className="font-bold text-gray-900 text-sm">{studentInfo?.grade || 'Grade 6'}</p>
+                                            <p className="font-bold text-gray-900 text-sm">{learnerInfo?.grade || 'Grade 6'}</p>
                                         </div>
                                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                                             <p className="text-xs text-blue-600 font-semibold mb-1">School</p>
-                                            <p className="font-bold text-gray-900 text-sm">{studentInfo?.school || 'School'}</p>
+                                            <p className="font-bold text-gray-900 text-sm">{learnerInfo?.school || 'School'}</p>
                                         </div>
                                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                                             <p className="text-xs text-blue-600 font-semibold mb-1">Assessment Date</p>
                                             <p className="font-bold text-gray-900 text-sm">
-                                                {studentInfo?.assessmentDate || new Date().toLocaleDateString('en-GB')}
+                                                {learnerInfo?.assessmentDate || new Date().toLocaleDateString('en-GB')}
                                             </p>
                                         </div>
                                     </div>
@@ -1069,7 +1069,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                     </div>
                                 </div>
 
-                                {/* Career Tracks - Grid Layout with Student Assessment Result Design */}
+                                {/* Career Tracks - Grid Layout with Learner Assessment Result Design */}
                                 {careerTracks.length > 0 ? (
                                     <div className="p-8 bg-gray-50">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
@@ -1081,7 +1081,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                                     transition={{ delay: index * 0.2 }}
                                                     className={`${index === 2 ? 'md:col-start-1' : ''}`}
                                                 >
-                                                    {/* Outer Container with Gradient Border - Matching Student Assessment Result Design */}
+                                                    {/* Outer Container with Gradient Border - Matching Learner Assessment Result Design */}
                                                     <div
                                                         className="relative rounded-[10px] p-[1px] cursor-pointer transition-all duration-300 hover:scale-105"
                                                         style={{
@@ -1258,7 +1258,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                         {printViewResults && (
                             <PrintView
                                 results={printViewResults}
-                                studentInfo={studentInfo}
+                                learnerInfo={learnerInfo}
                                 gradeLevel={assessmentData?.grade_level}
                                 riasecNames={RIASEC_NAMES}
                                 traitNames={TRAIT_NAMES}
@@ -1266,7 +1266,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                 // Type-safe streamRecommendation: Use null instead of empty object
                                 // PrintView component should handle null values gracefully
                                 streamRecommendation={assessmentData?.gemini_results?.streamRecommendation || null}
-                                studentAcademicData={{
+                                learnerAcademicData={{
                                     subjectMarks: [],
                                     projects: [],
                                     experiences: [],

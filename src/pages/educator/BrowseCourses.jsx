@@ -52,7 +52,7 @@ const BrowseCourses = () => {
     try {
       setLoading(true);
 
-      // Fetch courses with status Active or Upcoming (students shouldn't see Drafts)
+      // Fetch courses with status Active or Upcoming (learners shouldn't see Drafts)
       // Also exclude deleted courses
       const { data, error } = await supabase
         .from('courses')
@@ -87,7 +87,7 @@ const BrowseCourses = () => {
         educator_name: course.educator_id ? educatorMap[course.educator_id] || null : null
       }));
 
-      logger.info('Fetched courses for students', { count: coursesWithEducatorName?.length || 0 });
+      logger.info('Fetched courses for learners', { count: coursesWithEducatorName?.length || 0 });
       setCourses(coursesWithEducatorName);
 
       // Ensure loader displays for at least 1 second
@@ -521,7 +521,7 @@ const BrowseCourses = () => {
                           </div>
                           <div className="flex items-center gap-2">
                             <Users className="w-4 h-4" />
-                            <span>{course.enrollment_count || 0} students</span>
+                            <span>{course.enrollment_count || 0} learners</span>
                           </div>
                           {course.educator_name && (
                             <div className="flex items-center gap-2">

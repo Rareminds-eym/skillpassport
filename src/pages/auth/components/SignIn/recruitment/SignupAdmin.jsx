@@ -86,7 +86,7 @@ const SignupAdmin = () => {
   const totalSteps = 5;
 
   // Get plan data from navigation state (if coming from subscription page)
-  const { plan, studentType, returnToPayment } = location.state || {};
+  const { plan, learnerType, returnToPayment } = location.state || {};
 
   const [formData, setFormData] = useState({
     // Company Details (Step 1)
@@ -436,7 +436,7 @@ const SignupAdmin = () => {
         navigate('/subscription/payment', {
           state: {
             plan,
-            studentType: studentType || 'recruitment-admin',
+            learnerType: learnerType || 'recruitment-admin',
             isUpgrade: false
           }
         });

@@ -1,7 +1,7 @@
 /**
  * SSO Login Helper
  *
- * Shared login flow for role-specific login pages (LoginAdmin, LoginStudent, etc.).
+ * Shared login flow for role-specific login pages (LoginAdmin, LoginLearner, etc.).
  * Performs SSO authentication via auth-client, verifies the user has the expected role,
  * and returns a typed result. UI components handle errors and redirects.
  */

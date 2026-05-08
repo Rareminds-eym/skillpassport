@@ -30,18 +30,18 @@ export const testRecentUpdates = {
   /**
    * Create sample data for testing
    */
-  async createSampleData(studentEmail = 'student@test.com') {
+  async createSampleData(learnerEmail = 'learner@test.com') {
     try {
       
-      // First check if student exists
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
+      // First check if learner exists
+      const { data: learnerData, error: learnerError } = await supabase
+        .from('learners')
         .select('id')
-        .eq('email', studentEmail)
+        .eq('email', learnerEmail)
         .single();
 
-      if (studentError) {
-        console.error('❌ Student not found:', studentError);
+      if (learnerError) {
+        console.error('❌ Learner not found:', learnerError);
         return false;
       }
 
@@ -77,10 +77,10 @@ export const testRecentUpdates = {
       const { data, error } = await supabase
         .from('recent_updates')
         .upsert({
-          student_id: studentData.id,
+          learner_id: learnerData.id,
           updates: sampleUpdates
         }, {
-          onConflict: 'student_id'
+          onConflict: 'learner_id'
         });
 
       if (error) {
@@ -98,14 +98,14 @@ export const testRecentUpdates = {
   /**
    * Run all tests
    */
-  async runAllTests(studentEmail) {
+  async runAllTests(learnerEmail) {
     
     const connectionTest = await this.testConnection();
     if (!connectionTest) {
       return false;
     }
 
-    const sampleDataTest = await this.createSampleData(studentEmail);
+    const sampleDataTest = await this.createSampleData(learnerEmail);
     if (!sampleDataTest) {
       return false;
     }

@@ -17,7 +17,7 @@ interface Subscription {
   startDate: string;
   endDate: string;
   autoRenew: boolean;
-  targetMemberType: 'educator' | 'student' | 'both';
+  targetMemberType: 'educator' | 'learner' | 'both';
 }
 
 interface OrganizationDetails {
@@ -340,7 +340,7 @@ function SubscriptionOverview({
                               ? 'All Members'
                               : subscription.targetMemberType === 'educator'
                               ? 'Educators'
-                              : 'Students'}
+                              : 'Learners'}
                           </span>
                         </div>
                       </div>

@@ -10,7 +10,7 @@
  * - Big Five personality assessment
  * - Work values analysis
  * - Employability skills diagnostic
- * - Stream recommendation for after-10th students
+ * - Stream recommendation for after-10th learners
  * - Career cluster matching with salary ranges
  * - Skill gap analysis and learning tracks
  * 
@@ -32,9 +32,9 @@ export async function handleAnalyzeAssessment(request: Request, env: Record<stri
   }
 
   const { user } = auth;
-  const studentId = user.id;
+  const learnerId = user.id;
 
-  if (!await checkRateLimit(studentId, env)) {
+  if (!await checkRateLimit(learnerId, env)) {
     return jsonResponse({ error: 'Rate limit exceeded' }, 429);
   }
 
@@ -76,7 +76,7 @@ export async function handleAnalyzeAssessment(request: Request, env: Record<stri
       return jsonResponse(data, response.status);
     }
 
-    console.log(`[CAREER API] Successfully analyzed assessment for student ${studentId}`);
+    console.log(`[CAREER API] Successfully analyzed assessment for learner ${learnerId}`);
     return jsonResponse(data);
 
   } catch (error) {

@@ -32,7 +32,7 @@ export const RestrictionScreen = ({
     if (onViewLastReport) {
       onViewLastReport();
     } else {
-      navigate('/student/assessment/result');
+      navigate('/learner/assessment/result');
     }
   };
 
@@ -40,7 +40,7 @@ export const RestrictionScreen = ({
     if (onBackToDashboard) {
       onBackToDashboard();
     } else {
-      navigate('/student/dashboard');
+      navigate('/learner/dashboard');
     }
   };
 

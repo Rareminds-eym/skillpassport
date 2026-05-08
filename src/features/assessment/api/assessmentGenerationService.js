@@ -16,7 +16,7 @@ Course Details:
 - Course Name: {{COURSE_NAME}}
 - Assessment Level: {{LEVEL}}
 - Number of Questions: {{QUESTION_COUNT}}
-- Purpose: Evaluate student's understanding of {{COURSE_NAME}}
+- Purpose: Evaluate learner's understanding of {{COURSE_NAME}}
 
 Difficulty Guidelines for {{LEVEL}}:
 - Beginner: Basic concepts, syntax, fundamental features of {{COURSE_NAME}}

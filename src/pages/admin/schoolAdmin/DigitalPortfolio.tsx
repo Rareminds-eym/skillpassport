@@ -9,7 +9,7 @@ import {
   ChevronDownIcon,
   TableCellsIcon,
 } from '@heroicons/react/24/outline';
-import { useStudents } from '@/entities/student/model/useAdminStudents';
+import { useLearners } from '@/entities/learner/model/useAdminLearners';
 import { SearchBar } from '@/shared/ui';
 import { Pagination } from '@/shared/ui';
 
@@ -81,34 +81,34 @@ const BadgeComponent = ({ badges }: { badges: any[] }) => {
   );
 };
 
-const PortfolioCard = ({ student, onViewPortfolio }: any) => {
+const PortfolioCard = ({ learner, onViewPortfolio }: any) => {
   return (
     <div
       className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-all duration-200 cursor-pointer group"
-      onClick={() => onViewPortfolio(student)}
+      onClick={() => onViewPortfolio(learner)}
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center space-x-3 flex-1 min-w-0">
           <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
             <span className="text-white font-semibold text-lg">
-              {student.name?.charAt(0)?.toUpperCase()}
+              {learner.name?.charAt(0)?.toUpperCase()}
             </span>
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="font-semibold text-gray-900 truncate group-hover:text-primary-600 transition-colors">
-              {student.name}
+              {learner.name}
             </h3>
-            <p className="text-sm text-gray-600 truncate">{student.dept || student.class}</p>
-            <p className="text-xs text-gray-500 truncate">{student.college || student.school}</p>
+            <p className="text-sm text-gray-600 truncate">{learner.dept || learner.class}</p>
+            <p className="text-xs text-gray-500 truncate">{learner.college || learner.school}</p>
           </div>
         </div>
         <div className="flex flex-col items-end space-y-1 ml-3">
           <div className="flex items-center bg-yellow-50 px-2 py-1 rounded-full">
             <StarIcon className="h-3.5 w-3.5 text-yellow-400 fill-current mr-1" />
-            <span className="text-xs font-medium text-yellow-700">{student.ai_score_overall || student.score || 'N/A'}</span>
+            <span className="text-xs font-medium text-yellow-700">{learner.ai_score_overall || learner.score || 'N/A'}</span>
           </div>
-          <BadgeComponent badges={student.badges || []} />
+          <BadgeComponent badges={learner.badges || []} />
         </div>
       </div>
 
@@ -119,9 +119,9 @@ const PortfolioCard = ({ student, onViewPortfolio }: any) => {
           <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Portfolio Highlights</span>
         </div>
         <div className="space-y-2">
-          {student.skills && student.skills.length > 0 && (
+          {learner.skills && learner.skills.length > 0 && (
             <div className="flex flex-wrap gap-1">
-              {student.skills.slice(0, 4).map((skill: any, index: number) => (
+              {learner.skills.slice(0, 4).map((skill: any, index: number) => (
                 <span
                   key={index}
                   className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
@@ -129,28 +129,28 @@ const PortfolioCard = ({ student, onViewPortfolio }: any) => {
                   {typeof skill === 'string' ? skill : skill?.name}
                 </span>
               ))}
-              {student.skills.length > 4 && (
-                <span className="text-xs text-gray-500 self-center">+{student.skills.length - 4} more</span>
+              {learner.skills.length > 4 && (
+                <span className="text-xs text-gray-500 self-center">+{learner.skills.length - 4} more</span>
               )}
             </div>
           )}
           <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
-            {student.projects && student.projects.length > 0 && (
+            {learner.projects && learner.projects.length > 0 && (
               <div className="flex items-center space-x-1">
                 <span className="font-medium">📁 Projects:</span>
-                <span>{student.projects.length}</span>
+                <span>{learner.projects.length}</span>
               </div>
             )}
-            {student.hackathon && (
+            {learner.hackathon && (
               <div className="flex items-center space-x-1">
                 <span className="font-medium">🏆 Hackathons:</span>
-                <span>{student.hackathon.rank ? `#${student.hackathon.rank}` : '✓'}</span>
+                <span>{learner.hackathon.rank ? `#${learner.hackathon.rank}` : '✓'}</span>
               </div>
             )}
-            {student.internship && (
+            {learner.internship && (
               <div className="flex items-center space-x-1 col-span-2 truncate">
                 <span className="font-medium">💼 Internship:</span>
-                <span className="truncate">{student.internship.org}</span>
+                <span className="truncate">{learner.internship.org}</span>
               </div>
             )}
           </div>
@@ -160,12 +160,12 @@ const PortfolioCard = ({ student, onViewPortfolio }: any) => {
       {/* Footer with View Button */}
       <div className="flex items-center justify-between">
         <span className="text-xs text-gray-500">
-          Updated {new Date(student.last_updated || Date.now()).toLocaleDateString()}
+          Updated {new Date(learner.last_updated || Date.now()).toLocaleDateString()}
         </span>
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onViewPortfolio(student);
+            onViewPortfolio(learner);
           }}
           className="inline-flex items-center px-3 py-1.5 bg-primary-50 text-primary-700 border border-primary-200 rounded-md hover:bg-primary-100 transition-colors text-xs font-medium"
         >
@@ -195,18 +195,18 @@ const DigitalPortfolioPage = () => {
     maxScore: 100
   });
 
-  // Fetch students from school admin hook with search and pagination
-  const { students, loading, error, totalCount } = useStudents({
+  // Fetch learners from school admin hook with search and pagination
+  const { learners, loading, error, totalCount } = useLearners({
     searchTerm: debouncedSearch,
     page: currentPage,
     pageSize: itemsPerPage
   });
 
-  // Fetch all students for filter options (lightweight query - only needed fields)
-  const { students: allStudentsForFilters } = useStudents({
+  // Fetch all learners for filter options (lightweight query - only needed fields)
+  const { learners: alllearnersForFilters } = useLearners({
     searchTerm: '', // No search filter for getting all filter options
     page: 1,
-    pageSize: 1000 // Get more students for accurate filter counts
+    pageSize: 1000 // Get more learners for accurate filter counts
   });
 
   // Reset to page 1 when filters or search change
@@ -214,12 +214,12 @@ const DigitalPortfolioPage = () => {
     setCurrentPage(1);
   }, [debouncedSearch, filters, sortBy]);
 
-  // Generate filter options from ALL students data
+  // Generate filter options from ALL learners data
   const skillOptions = useMemo(() => {
     const skillCounts: any = {};
-    allStudentsForFilters.forEach(student => {
-      if (student.skills && Array.isArray(student.skills)) {
-        student.skills.forEach((skill: any) => {
+    alllearnersForFilters.forEach(learner => {
+      if (learner.skills && Array.isArray(learner.skills)) {
+        learner.skills.forEach((skill: any) => {
           const skillName = typeof skill === 'string' ? skill : skill?.name;
           if (skillName) {
             const normalized = skillName.toLowerCase();
@@ -236,13 +236,13 @@ const DigitalPortfolioPage = () => {
       }))
       .sort((a: any, b: any) => b.count - a.count)
       .slice(0, 15);
-  }, [allStudentsForFilters]);
+  }, [alllearnersForFilters]);
 
   const classOptions = useMemo(() => {
     const classCounts: any = {};
-    allStudentsForFilters.forEach(student => {
-      if (student.class) {
-        const normalized = student.class.toLowerCase();
+    alllearnersForFilters.forEach(learner => {
+      if (learner.class) {
+        const normalized = learner.class.toLowerCase();
         classCounts[normalized] = (classCounts[normalized] || 0) + 1;
       }
     });
@@ -253,13 +253,13 @@ const DigitalPortfolioPage = () => {
         count
       }))
       .sort((a: any, b: any) => b.count - a.count);
-  }, [allStudentsForFilters]);
+  }, [alllearnersForFilters]);
 
   const badgeOptions = useMemo(() => {
     const badgeCounts: any = {};
-    allStudentsForFilters.forEach(student => {
-      if (student.badges && Array.isArray(student.badges)) {
-        student.badges.forEach((badge: any) => {
+    alllearnersForFilters.forEach(learner => {
+      if (learner.badges && Array.isArray(learner.badges)) {
+        learner.badges.forEach((badge: any) => {
           badgeCounts[badge] = (badgeCounts[badge] || 0) + 1;
         });
       }
@@ -271,13 +271,13 @@ const DigitalPortfolioPage = () => {
         count
       }))
       .sort((a: any, b: any) => b.count - a.count);
-  }, [allStudentsForFilters]);
+  }, [alllearnersForFilters]);
 
   const locationOptions = useMemo(() => {
     const locationCounts: any = {};
-    allStudentsForFilters.forEach(student => {
-      if (student.location) {
-        const normalized = student.location.toLowerCase();
+    alllearnersForFilters.forEach(learner => {
+      if (learner.location) {
+        const normalized = learner.location.toLowerCase();
         locationCounts[normalized] = (locationCounts[normalized] || 0) + 1;
       }
     });
@@ -288,7 +288,7 @@ const DigitalPortfolioPage = () => {
         count
       }))
       .sort((a: any, b: any) => b.count - a.count);
-  }, [allStudentsForFilters]);
+  }, [alllearnersForFilters]);
 
   // Check if any filters are active
   const hasActiveFilters = filters.classes.length > 0 ||
@@ -299,19 +299,19 @@ const DigitalPortfolioPage = () => {
     filters.maxScore < 100;
 
   // Apply filters and sorting
-  const filteredStudents = useMemo(() => {
-    // When filters are active, use ALL students; otherwise use paginated students
-    const sourceData = hasActiveFilters ? allStudentsForFilters : students;
+  const filteredlearners = useMemo(() => {
+    // When filters are active, use ALL learners; otherwise use paginated learners
+    const sourceData = hasActiveFilters ? alllearnersForFilters : learners;
     let result = sourceData;
 
     // Apply search filter if not already applied at DB level
     if (hasActiveFilters && debouncedSearch) {
       const searchLower = debouncedSearch.toLowerCase();
-      result = result.filter(student =>
-        student.name?.toLowerCase().includes(searchLower) ||
-        student.email?.toLowerCase().includes(searchLower) ||
-        student.class?.toLowerCase().includes(searchLower) ||
-        student.skills?.some((skill: any) => {
+      result = result.filter(learner =>
+        learner.name?.toLowerCase().includes(searchLower) ||
+        learner.email?.toLowerCase().includes(searchLower) ||
+        learner.class?.toLowerCase().includes(searchLower) ||
+        learner.skills?.some((skill: any) => {
           const skillName = typeof skill === 'string' ? skill : skill?.name;
           return skillName?.toLowerCase().includes(searchLower);
         })
@@ -320,8 +320,8 @@ const DigitalPortfolioPage = () => {
 
     // Apply filters
     if (filters.skills.length > 0) {
-      result = result.filter(student =>
-        student.skills?.some((skill: any) => {
+      result = result.filter(learner =>
+        learner.skills?.some((skill: any) => {
           const skillName = typeof skill === 'string' ? skill : skill?.name;
           return skillName && (filters.skills as any).includes(skillName.toLowerCase());
         })
@@ -329,26 +329,26 @@ const DigitalPortfolioPage = () => {
     }
 
     if (filters.classes.length > 0) {
-      result = result.filter(student =>
-        student.class && (filters.classes as any).includes(student.class.toLowerCase())
+      result = result.filter(learner =>
+        learner.class && (filters.classes as any).includes(learner.class.toLowerCase())
       );
     }
 
     if (filters.badges.length > 0) {
-      result = result.filter(student =>
-        student.badges?.some((badge: any) => (filters.badges as any).includes(badge))
+      result = result.filter(learner =>
+        learner.badges?.some((badge: any) => (filters.badges as any).includes(badge))
       );
     }
 
     if (filters.locations.length > 0) {
-      result = result.filter(student =>
-        student.location && (filters.locations as any).includes(student.location.toLowerCase())
+      result = result.filter(learner =>
+        learner.location && (filters.locations as any).includes(learner.location.toLowerCase())
       );
     }
 
     // Apply AI score filter
-    result = result.filter(student => {
-      const score = student.ai_score_overall || student.score || 0;
+    result = result.filter(learner => {
+      const score = learner.ai_score_overall || learner.score || 0;
       return score >= filters.minScore && score <= filters.maxScore;
     });
 
@@ -371,20 +371,20 @@ const DigitalPortfolioPage = () => {
     }
 
     return sorted;
-  }, [students, allStudentsForFilters, filters, sortBy, hasActiveFilters, debouncedSearch]);
+  }, [learners, alllearnersForFilters, filters, sortBy, hasActiveFilters, debouncedSearch]);
 
-  const totalItems = hasActiveFilters ? filteredStudents.length : (totalCount || 0);
+  const totalItems = hasActiveFilters ? filteredlearners.length : (totalCount || 0);
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
 
   // If filters are active, paginate client-side; otherwise use DB-paginated data
-  const paginatedStudents = hasActiveFilters
-    ? filteredStudents.slice(startIndex, endIndex)
-    : filteredStudents;
+  const paginatedlearners = hasActiveFilters
+    ? filteredlearners.slice(startIndex, endIndex)
+    : filteredlearners;
 
-  const handleViewPortfolio = (student: any) => {
-    navigate('/digital-pp/homepage', { state: { candidate: student } });
+  const handleViewPortfolio = (learner: any) => {
+    navigate('/digital-pp/homepage', { state: { candidate: learner } });
   };
 
   const handlePageChange = (page: number) => {
@@ -412,7 +412,7 @@ const DigitalPortfolioPage = () => {
       <div className="p-4 sm:p-6 lg:p-8 mb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl md:text-3xl font-bold text-gray-900">Digital Portfolio</h1>
-          <p className="text-base md:text-lg mt-2 text-gray-600">Explore student portfolios and achievements</p>
+          <p className="text-base md:text-lg mt-2 text-gray-600">Explore learner portfolios and achievements</p>
         </div>
       </div>
 
@@ -421,7 +421,7 @@ const DigitalPortfolioPage = () => {
           <div className="inline-flex items-baseline">
             <h1 className="text-xl font-semibold text-gray-900">Digital Portfolios</h1>
             <span className="ml-2 text-sm text-gray-500">
-              ({filteredStudents.length} {searchQuery || activeFilterCount > 0 ? 'matching' : ''} portfolios)
+              ({filteredlearners.length} {searchQuery || activeFilterCount > 0 ? 'matching' : ''} portfolios)
             </span>
           </div>
         </div>
@@ -480,7 +480,7 @@ const DigitalPortfolioPage = () => {
         <div className="text-left">
           <h1 className="text-xl font-semibold text-gray-900">Digital Portfolios</h1>
           <span className="text-sm text-gray-500">
-            {filteredStudents.length} {searchQuery || activeFilterCount > 0 ? 'matching' : ''} portfolios
+            {filteredlearners.length} {searchQuery || activeFilterCount > 0 ? 'matching' : ''} portfolios
           </span>
         </div>
 
@@ -641,14 +641,14 @@ const DigitalPortfolioPage = () => {
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <p className="text-red-800">Error loading portfolios: {error}</p>
               </div>
-            ) : paginatedStudents.length === 0 ? (
+            ) : paginatedlearners.length === 0 ? (
               <div className="text-center py-12">
                 <FolderIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No portfolios found</h3>
                 <p className="text-sm text-gray-500 mb-4">
                   {searchQuery || activeFilterCount > 0
                     ? 'No portfolios match your current filters'
-                    : 'No student portfolios available'}
+                    : 'No learner portfolios available'}
                 </p>
                 {activeFilterCount > 0 && (
                   <button
@@ -691,10 +691,10 @@ const DigitalPortfolioPage = () => {
                       </>
                     )}
 
-                    {!loading && paginatedStudents.map((student) => (
+                    {!loading && paginatedlearners.map((learner) => (
                       <PortfolioCard
-                        key={student.id}
-                        student={student}
+                        key={learner.id}
+                        learner={learner}
                         onViewPortfolio={handleViewPortfolio}
                       />
                     ))}
@@ -705,7 +705,7 @@ const DigitalPortfolioPage = () => {
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Student
+                            Learner
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Skills
@@ -722,29 +722,29 @@ const DigitalPortfolioPage = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {paginatedStudents.map((student) => (
-                          <tr key={student.id} className="hover:bg-gray-50">
+                        {paginatedlearners.map((learner) => (
+                          <tr key={learner.id} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center">
                                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
                                   <span className="text-white font-semibold text-sm">
-                                    {student.name?.charAt(0)?.toUpperCase()}
+                                    {learner.name?.charAt(0)?.toUpperCase()}
                                   </span>
                                 </div>
                                 <div className="ml-4">
                                   <div className="text-sm font-medium text-gray-900">
-                                    {student.name}
+                                    {learner.name}
                                   </div>
                                   <div className="text-sm text-gray-500">
-                                    {student.class || student.dept}
+                                    {learner.class || learner.dept}
                                   </div>
-                                  <BadgeComponent badges={student.badges || []} />
+                                  <BadgeComponent badges={learner.badges || []} />
                                 </div>
                               </div>
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex flex-wrap gap-1">
-                                {student.skills?.slice(0, 3).map((skill, index) => (
+                                {learner.skills?.slice(0, 3).map((skill, index) => (
                                   <span
                                     key={index}
                                     className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"
@@ -752,8 +752,8 @@ const DigitalPortfolioPage = () => {
                                     {typeof skill === 'string' ? skill : skill?.name}
                                   </span>
                                 ))}
-                                {student.skills && student.skills.length > 3 && (
-                                  <span className="text-xs text-gray-500">+{student.skills.length - 3}</span>
+                                {learner.skills && learner.skills.length > 3 && (
+                                  <span className="text-xs text-gray-500">+{learner.skills.length - 3}</span>
                                 )}
                               </div>
                             </td>
@@ -761,16 +761,16 @@ const DigitalPortfolioPage = () => {
                               <div className="flex items-center">
                                 <StarIcon className="h-4 w-4 text-yellow-400 fill-current mr-1" />
                                 <span className="text-sm font-medium text-gray-900">
-                                  {student.ai_score_overall || student.score || 'N/A'}
+                                  {learner.ai_score_overall || learner.score || 'N/A'}
                                 </span>
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="text-sm text-gray-900">{student.class || 'N/A'}</span>
+                              <span className="text-sm text-gray-900">{learner.class || 'N/A'}</span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                               <button
-                                onClick={() => handleViewPortfolio(student)}
+                                onClick={() => handleViewPortfolio(learner)}
                                 className="text-primary-600 hover:text-primary-900 inline-flex items-center"
                               >
                                 <EyeIcon className="h-4 w-4 mr-1" />
@@ -795,7 +795,7 @@ const DigitalPortfolioPage = () => {
                 totalPages={totalPages}
                 onPageChange={handlePageChange}
                 itemsPerPage={itemsPerPage}
-                totalItems={filteredStudents.length}
+                totalItems={filteredlearners.length}
               />
             </div>
           )}

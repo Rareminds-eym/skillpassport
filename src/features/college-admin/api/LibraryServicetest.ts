@@ -27,8 +27,8 @@ export interface LibraryBook {
 export interface LibraryBookIssue {
   id: string;
   book_id: string;
-  student_id: string;
-  student_name: string;
+  learner_id: string;
+  learner_name: string;
   roll_number: string;
   class: string;
   academic_year: string;
@@ -89,10 +89,10 @@ class LibraryService {
     const collegeId = user.user_metadata?.college_id;
     if (collegeId) return collegeId;
     
-    // For college admin, get college_id from the user's profile or students table
+    // For college admin, get college_id from the user's profile or learners table
     // Check if user is a college admin and get their college_id
     const { data: userData } = await supabase
-      .from('students')
+      .from('learners')
       .select('college_id')
       .eq('user_id', user.id)
       .limit(1)
@@ -228,8 +228,8 @@ class LibraryService {
 
   async issueBook(issue: {
     book_id: string;
-    student_id: string;
-    student_name: string;
+    learner_id: string;
+    learner_name: string;
     roll_number: string;
     class: string;
     academic_year: string;
@@ -237,18 +237,18 @@ class LibraryService {
   }) {
     const collegeId = await this.getCurrentCollegeId();
     
-    // First check if student has reached max book limit
+    // First check if learner has reached max book limit
     const settings = await this.getSettings();
-    const maxBooks = parseInt(settings.find(s => s.setting_key === 'max_books_per_student')?.setting_value || '3');
+    const maxBooks = parseInt(settings.find(s => s.setting_key === 'max_books_per_learner')?.setting_value || '3');
     
     const { count: currentIssues } = await supabase
       .from('library_book_issues')
       .select('*', { count: 'exact', head: true })
-      .eq('student_id', issue.student_id)
+      .eq('learner_id', issue.learner_id)
       .eq('status', 'issued');
 
     if (currentIssues && currentIssues >= maxBooks) {
-      throw new Error(`Student has already issued ${maxBooks} books. Maximum limit reached.`);
+      throw new Error(`Learner has already issued ${maxBooks} books. Maximum limit reached.`);
     }
 
     // Check book availability
@@ -331,7 +331,7 @@ class LibraryService {
   }
 
   async getBookIssues(filters?: {
-    student_id?: string;
+    learner_id?: string;
     book_id?: string;
     status?: string;
     search?: string;
@@ -340,15 +340,15 @@ class LibraryService {
   }) {
     const collegeId = await this.getCurrentCollegeId();
     
-    // First get student IDs from this college
-    const { data: students } = await supabase
-      .from('students')
+    // First get learner IDs from this college
+    const { data: learners } = await supabase
+      .from('learners')
       .select('id')
       .eq('college_id', collegeId);
     
-    const studentIds = students?.map(s => s.id) || [];
+    const learnerIds = learners?.map(s => s.id) || [];
     
-    if (studentIds.length === 0) {
+    if (learnerIds.length === 0) {
       return { issues: [], count: 0 };
     }
 
@@ -358,11 +358,11 @@ class LibraryService {
         *,
         book:library_books(*)
       `, { count: 'exact' })
-      .in('student_id', studentIds)
+      .in('learner_id', learnerIds)
       .order('issue_date', { ascending: false });
 
-    if (filters?.student_id) {
-      query = query.eq('student_id', filters.student_id);
+    if (filters?.learner_id) {
+      query = query.eq('learner_id', filters.learner_id);
     }
 
     if (filters?.book_id) {
@@ -374,7 +374,7 @@ class LibraryService {
     }
 
     if (filters?.search) {
-      query = query.or(`student_name.ilike.%${filters.search}%,roll_number.ilike.%${filters.search}%`);
+      query = query.or(`learner_name.ilike.%${filters.search}%,roll_number.ilike.%${filters.search}%`);
     }
 
     if (filters?.page && filters?.limit) {
@@ -389,7 +389,7 @@ class LibraryService {
     return { issues: data as LibraryBookIssue[], count };
   }
 
-  async searchIssuedBook(bookId?: string, studentId?: string) {
+  async searchIssuedBook(bookId?: string, learnerId?: string) {
     const collegeId = await this.getCurrentCollegeId();
     
     let query = supabase
@@ -400,28 +400,28 @@ class LibraryService {
       `)
       .eq('status', 'issued');
 
-    // Filter by college students only
-    if (collegeId && !studentId) {
-      // Get student IDs from the college
-      const { data: students } = await supabase
-        .from('students')
+    // Filter by college learners only
+    if (collegeId && !learnerId) {
+      // Get learner IDs from the college
+      const { data: learners } = await supabase
+        .from('learners')
         .select('id')
         .eq('college_id', collegeId);
       
-      const studentIds = students?.map(s => s.id) || [];
-      if (studentIds.length > 0) {
-        query = query.in('student_id', studentIds);
+      const learnerIds = learners?.map(s => s.id) || [];
+      if (learnerIds.length > 0) {
+        query = query.in('learner_id', learnerIds);
       }
     }
 
-    if (bookId && studentId) {
-      query = query.eq('book_id', bookId).eq('student_id', studentId);
+    if (bookId && learnerId) {
+      query = query.eq('book_id', bookId).eq('learner_id', learnerId);
     } else if (bookId) {
       query = query.eq('book_id', bookId);
-    } else if (studentId) {
-      query = query.eq('student_id', studentId);
+    } else if (learnerId) {
+      query = query.eq('learner_id', learnerId);
     } else {
-      throw new Error('Either book_id or student_id must be provided');
+      throw new Error('Either book_id or learner_id must be provided');
     }
 
     const { data, error } = await query.single();
@@ -437,22 +437,22 @@ class LibraryService {
   async getOverdueBooks() {
     const collegeId = await this.getCurrentCollegeId();
     
-    // Get overdue books for students from this college
-    const { data: students } = await supabase
-      .from('students')
+    // Get overdue books for learners from this college
+    const { data: learners } = await supabase
+      .from('learners')
       .select('id')
       .eq('college_id', collegeId);
     
-    const studentIds = students?.map(s => s.id) || [];
+    const learnerIds = learners?.map(s => s.id) || [];
     
-    if (studentIds.length === 0) {
+    if (learnerIds.length === 0) {
       return [];
     }
 
     const { data, error } = await supabase
       .from('overdue_books')
       .select('*')
-      .in('student_id', studentIds)
+      .in('learner_id', learnerIds)
       .order('days_overdue', { ascending: false });
 
     if (error) throw error;
@@ -466,13 +466,13 @@ class LibraryService {
   async getLibraryStats() {
     const collegeId = await this.getCurrentCollegeId();
     
-    // Get students from this college
-    const { data: students } = await supabase
-      .from('students')
+    // Get learners from this college
+    const { data: learners } = await supabase
+      .from('learners')
       .select('id')
       .eq('college_id', collegeId);
     
-    const studentIds = students?.map(s => s.id) || [];
+    const learnerIds = learners?.map(s => s.id) || [];
     
     // Calculate stats manually for this college
     const { data: booksData } = await supabase
@@ -487,11 +487,11 @@ class LibraryService {
     let overdueCount = 0;
     let totalPendingFines = 0;
     
-    if (studentIds.length > 0) {
+    if (learnerIds.length > 0) {
       const { count: issuedCount } = await supabase
         .from('library_book_issues')
         .select('*', { count: 'exact', head: true })
-        .in('student_id', studentIds)
+        .in('learner_id', learnerIds)
         .eq('status', 'issued');
       
       currentlyIssued = issuedCount || 0;
@@ -500,7 +500,7 @@ class LibraryService {
       const { data: overdueData } = await supabase
         .from('overdue_books')
         .select('current_fine')
-        .in('student_id', studentIds);
+        .in('learner_id', learnerIds);
       
       overdueCount = overdueData?.length || 0;
       totalPendingFines = overdueData?.reduce((sum, item) => sum + (item.current_fine || 0), 0) || 0;
@@ -606,39 +606,39 @@ class LibraryService {
     return data as number;
   }
 
-  // Get student's current issued books count
-  async getStudentIssuedBooksCount(studentId: string) {
+  // Get learner's current issued books count
+  async getlearnerIssuedBooksCount(learnerId: string) {
     const { count, error } = await supabase
       .from('library_book_issues')
       .select('*', { count: 'exact', head: true })
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .eq('status', 'issued');
 
     if (error) throw error;
     return count || 0;
   }
 
-  // Get borrow history for a student
-  async getStudentBorrowHistory(studentId: string) {
+  // Get borrow history for a learner
+  async getlearnerBorrowHistory(learnerId: string) {
     const { data, error } = await supabase
       .from('library_book_issues')
       .select(`
         *,
         book:library_books(*)
       `)
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .order('issue_date', { ascending: false });
 
     if (error) throw error;
     return data as LibraryBookIssue[];
   }
 
-  // Search students for book issuing
-  async searchStudents(searchTerm: string) {
+  // Search learners for book issuing
+  async searchlearners(searchTerm: string) {
     const collegeId = await this.getCurrentCollegeId();
     
     const { data, error } = await supabase
-      .from('students')
+      .from('learners')
       .select('id, name, roll_number, enrollment_number, admission_number, contact_number as phone, email, grade, section, course_name, semester')
       .eq('college_id', collegeId)
       .eq('is_deleted', false)
@@ -650,14 +650,14 @@ class LibraryService {
     return data;
   }
 
-  // Get student details by ID
-  async getStudentById(studentId: string) {
+  // Get learner details by ID
+  async getlearnerById(learnerId: string) {
     const collegeId = await this.getCurrentCollegeId();
     
     const { data, error } = await supabase
-      .from('students')
+      .from('learners')
       .select('id, name, roll_number, enrollment_number, admission_number, contact_number as phone, email, grade, section, course_name, semester')
-      .eq('id', studentId)
+      .eq('id', learnerId)
       .eq('college_id', collegeId)
       .eq('is_deleted', false)
       .single();

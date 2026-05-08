@@ -1,10 +1,10 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Github, Linkedin, Twitter, Mail, Phone, MapPin, Calendar, Code, Briefcase, Star, Zap } from 'lucide-react';
-import { Student, AnimationType, DisplayPreferences } from '@/shared/types/student';
+import { Learner, AnimationType, DisplayPreferences } from '@/shared/types/learner';
 
 interface CreativeLayoutProps {
-  student: Student;
+  learner: Learner;
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
@@ -13,7 +13,7 @@ interface CreativeLayoutProps {
 }
 
 const CreativeLayout: React.FC<CreativeLayoutProps> = ({ 
-  student, 
+  learner, 
   primaryColor, 
   secondaryColor, 
   accentColor,
@@ -106,7 +106,7 @@ const CreativeLayout: React.FC<CreativeLayoutProps> = ({
                 <span 
                   className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent"
                 >
-                  {student.name?.split(' ')[0] || student.profile.name?.split(' ')[0]}
+                  {learner.name?.split(' ')[0] || learner.profile.name?.split(' ')[0]}
                 </span>
               </motion.h1>
               
@@ -114,7 +114,7 @@ const CreativeLayout: React.FC<CreativeLayoutProps> = ({
                 variants={itemVariants}
                 className="text-xl text-gray-600 mb-8 leading-relaxed"
               >
-                {student.profile.bio || `${student.branch_field} student passionate about creating amazing digital experiences.`}
+                {learner.profile.bio || `${learner.branch_field} learner passionate about creating amazing digital experiences.`}
               </motion.p>
               
               <motion.div 
@@ -123,9 +123,9 @@ const CreativeLayout: React.FC<CreativeLayoutProps> = ({
               >
                 {displayPreferences.showSocialLinks && (
                   <>
-                    {student.github_link && (
+                    {learner.github_link && (
                       <motion.a 
-                        href={student.github_link}
+                        href={learner.github_link}
                         whileHover={{ scale: 1.05, rotate: 5 }}
                         whileTap={{ scale: 0.95 }}
                         className="p-4 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all"
@@ -133,9 +133,9 @@ const CreativeLayout: React.FC<CreativeLayoutProps> = ({
                         <Github className="w-6 h-6 text-gray-700" />
                       </motion.a>
                     )}
-                    {student.linkedin_link && (
+                    {learner.linkedin_link && (
                       <motion.a 
-                        href={student.linkedin_link}
+                        href={learner.linkedin_link}
                         whileHover={{ scale: 1.05, rotate: -5 }}
                         whileTap={{ scale: 0.95 }}
                         className="p-4 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all"
@@ -143,9 +143,9 @@ const CreativeLayout: React.FC<CreativeLayoutProps> = ({
                         <Linkedin className="w-6 h-6 text-blue-600" />
                       </motion.a>
                     )}
-                    {student.twitter_link && (
+                    {learner.twitter_link && (
                       <motion.a 
-                        href={student.twitter_link}
+                        href={learner.twitter_link}
                         whileHover={{ scale: 1.05, rotate: 5 }}
                         whileTap={{ scale: 0.95 }}
                         className="p-4 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all"
@@ -156,7 +156,7 @@ const CreativeLayout: React.FC<CreativeLayoutProps> = ({
                   </>
                 )}
                 <motion.a 
-                  href={`mailto:${student.email}`}
+                  href={`mailto:${learner.email}`}
                   whileHover={{ scale: 1.05, rotate: -5 }}
                   whileTap={{ scale: 0.95 }}
                   className="p-4 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all"
@@ -169,21 +169,21 @@ const CreativeLayout: React.FC<CreativeLayoutProps> = ({
                 variants={itemVariants}
                 className="flex flex-wrap gap-6 text-sm text-gray-600"
               >
-                {student.contact_number && (
+                {learner.contact_number && (
                   <div className="flex items-center space-x-2">
                     <Phone className="w-4 h-4" />
-                    <span>{student.contact_number}</span>
+                    <span>{learner.contact_number}</span>
                   </div>
                 )}
-                {(student.district_name || student.city || student.state || student.country) && (
+                {(learner.district_name || learner.city || learner.state || learner.country) && (
                   <div className="flex items-center space-x-2">
                     <MapPin className="w-4 h-4" />
                     <span>
                       {[
-                        student.city,
-                        student.district_name,
-                        student.state,
-                        student.country
+                        learner.city,
+                        learner.district_name,
+                        learner.state,
+                        learner.country
                       ].filter(Boolean).join(', ') || 'Location not specified'}
                     </span>
                   </div>
@@ -205,8 +205,8 @@ const CreativeLayout: React.FC<CreativeLayoutProps> = ({
                   transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                 />
                 <img
-                  src={student.profile.profileImage || '/api/placeholder/400/400'}
-                  alt={student.name || 'Profile'}
+                  src={learner.profile.profileImage || '/api/placeholder/400/400'}
+                  alt={learner.name || 'Profile'}
                   className="relative w-80 h-80 rounded-3xl object-cover shadow-2xl mx-auto"
                 />
                 <motion.div
@@ -223,7 +223,7 @@ const CreativeLayout: React.FC<CreativeLayoutProps> = ({
       </motion.section>
 
       {/* Skills Section - Creative Cards */}
-      {displayPreferences.showSkillBars && student.profile.technicalSkills && student.profile.technicalSkills.length > 0 && (
+      {displayPreferences.showSkillBars && learner.profile.technicalSkills && learner.profile.technicalSkills.length > 0 && (
         <motion.section 
           className="py-20 relative"
           variants={containerVariants}
@@ -239,7 +239,7 @@ const CreativeLayout: React.FC<CreativeLayoutProps> = ({
             </motion.div>
             
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {student.profile.technicalSkills.map((skill, index) => (
+              {learner.profile.technicalSkills.map((skill, index) => (
                 <motion.div
                   key={index}
                   variants={cardVariants}
@@ -290,7 +290,7 @@ const CreativeLayout: React.FC<CreativeLayoutProps> = ({
       )}
 
       {/* Projects Section - Creative Grid */}
-      {displayPreferences.showProjectImages && student.profile.projects && student.profile.projects.length > 0 && (
+      {displayPreferences.showProjectImages && learner.profile.projects && learner.profile.projects.length > 0 && (
         <motion.section 
           className="py-20 bg-white bg-opacity-50"
           variants={containerVariants}
@@ -306,7 +306,7 @@ const CreativeLayout: React.FC<CreativeLayoutProps> = ({
             </motion.div>
             
             <div className="grid md:grid-cols-2 gap-12">
-              {student.profile.projects.map((project) => (
+              {learner.profile.projects.map((project) => (
                 <motion.div
                   key={project.id}
                   variants={cardVariants}
@@ -378,7 +378,7 @@ const CreativeLayout: React.FC<CreativeLayoutProps> = ({
       )}
 
       {/* Experience Timeline - Creative */}
-      {student.profile.experience && student.profile.experience.length > 0 && (
+      {learner.profile.experience && learner.profile.experience.length > 0 && (
         <motion.section 
           className="py-20"
           variants={containerVariants}
@@ -394,7 +394,7 @@ const CreativeLayout: React.FC<CreativeLayoutProps> = ({
             </motion.div>
             
             <div className="max-w-4xl mx-auto">
-              {student.profile.experience.map((exp, index) => (
+              {learner.profile.experience.map((exp, index) => (
                 <motion.div
                   key={exp.id}
                   variants={itemVariants}
@@ -438,7 +438,7 @@ const CreativeLayout: React.FC<CreativeLayoutProps> = ({
                     </motion.div>
                   </div>
                   
-                  {index < student.profile.experience!.length - 1 && (
+                  {index < learner.profile.experience!.length - 1 && (
                     <div className="ml-8 mt-4 mb-8">
                       <div className="w-0.5 h-8 bg-gradient-to-b from-gray-300 to-transparent"></div>
                     </div>
@@ -465,7 +465,7 @@ const CreativeLayout: React.FC<CreativeLayoutProps> = ({
             <h2 className="text-3xl font-bold mb-4">Let's Create Something Amazing Together!</h2>
             <p className="text-lg mb-8 opacity-90">Ready to bring your ideas to life?</p>
             <motion.a
-              href={`mailto:${student.email}`}
+              href={`mailto:${learner.email}`}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="inline-flex items-center px-8 py-4 bg-white text-purple-600 rounded-full font-bold hover:bg-gray-100 transition-colors"

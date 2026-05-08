@@ -81,16 +81,16 @@ export const riasecDescriptions = {
 };
 
 /**
- * Get safe student info with defaults
+ * Get safe learner info with defaults
  * 
- * @param {Object} studentInfo - The student info object
- * @returns {Object} - Student info with default values for missing fields
+ * @param {Object} learnerInfo - The learner info object
+ * @returns {Object} - Learner info with default values for missing fields
  */
-export const getSafeStudentInfo = (studentInfo) => ({
-  name: studentInfo?.name || '—',
-  regNo: studentInfo?.regNo || '—',
-  college: studentInfo?.college || '—',
-  stream: studentInfo?.stream || '—',
-  grade: studentInfo?.grade || '—',
-  school: studentInfo?.school || studentInfo?.college || '—',
+export const getSafelearnerInfo = (learnerInfo) => ({
+  name: learnerInfo?.name || '—',
+  regNo: learnerInfo?.regNo || '—',
+  college: learnerInfo?.college || '—',
+  stream: learnerInfo?.stream || '—',
+  grade: learnerInfo?.grade || '—',
+  school: learnerInfo?.school || learnerInfo?.college || '—',
 });

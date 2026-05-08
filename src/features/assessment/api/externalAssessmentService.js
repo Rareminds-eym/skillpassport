@@ -6,18 +6,18 @@ import { supabase } from '@/shared/api/supabaseClient';
  */
 
 /**
- * Check if student has already completed or has in-progress assessment
- * @param {string} studentId - Student UUID
+ * Check if learner has already completed or has in-progress assessment
+ * @param {string} learnerId - Learner UUID
  * @param {string} courseName - Course name
  * @returns {Promise<{status: string, attempt: object|null}>}
  */
-export async function checkAssessmentStatus(studentId, courseName) {
+export async function checkAssessmentStatus(learnerId, courseName) {
   try {
     // Use maybeSingle() instead of single() to avoid 406 error when no rows exist
     const { data, error } = await supabase
       .from('external_assessment_attempts')
       .select('*')
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .eq('course_name', courseName)
       .maybeSingle();
 
@@ -36,7 +36,7 @@ export async function checkAssessmentStatus(studentId, courseName) {
       current_question_index: data.current_question_index,
       time_remaining: data.time_remaining,
       last_activity_at: data.last_activity_at,
-      answeredCount: data.student_answers?.filter(a => a.selected_answer !== null).length
+      answeredCount: data.learner_answers?.filter(a => a.selected_answer !== null).length
     });
 
     return {
@@ -57,7 +57,7 @@ export async function checkAssessmentStatus(studentId, courseName) {
 export async function createAssessmentAttempt(attemptData) {
   try {
     const {
-      studentId,
+      learnerId,
       courseName,
       courseId,
       assessmentLevel,
@@ -75,13 +75,13 @@ export async function createAssessmentAttempt(attemptData) {
     const { data, error } = await supabase
       .from('external_assessment_attempts')
       .insert({
-        student_id: studentId,
+        learner_id: learnerId,
         course_name: courseName,
         course_id: courseId,
         assessment_level: assessmentLevel,
         total_questions: questions.length,
         questions: questions,
-        student_answers: emptyAnswers,
+        learner_answers: emptyAnswers,
         current_question_index: 0,
         status: 'in_progress',
         time_remaining: 900, // 15 minutes
@@ -141,7 +141,7 @@ export async function updateAssessmentProgress(attemptId, questionIndex, answer,
     console.log('📡 Fetching current attempt from database...');
     const { data: currentAttempt, error: fetchError } = await supabase
       .from('external_assessment_attempts')
-      .select('student_answers, questions')
+      .select('learner_answers, questions')
       .eq('id', attemptId)
       .single();
 
@@ -151,12 +151,12 @@ export async function updateAssessmentProgress(attemptId, questionIndex, answer,
     }
 
     console.log('✅ Current attempt fetched:', {
-      answersCount: currentAttempt.student_answers?.length,
+      answersCount: currentAttempt.learner_answers?.length,
       questionsCount: currentAttempt.questions?.length
     });
 
     // Update the answer for the question at questionIndex
-    const updatedAnswers = [...currentAttempt.student_answers];
+    const updatedAnswers = [...currentAttempt.learner_answers];
     const question = currentAttempt.questions[questionIndex];
     
     // Check correct answer - handle both formats
@@ -178,7 +178,7 @@ export async function updateAssessmentProgress(attemptId, questionIndex, answer,
     const { error: updateError } = await supabase
       .from('external_assessment_attempts')
       .update({
-        student_answers: updatedAnswers,
+        learner_answers: updatedAnswers,
         current_question_index: resumeIndex, // Save where to resume from
         time_remaining: timeRemaining,
         last_activity_at: new Date().toISOString()
@@ -219,7 +219,7 @@ export async function completeAssessment(attemptId, timeTaken) {
     if (fetchError) throw fetchError;
 
     // Calculate score
-    const correctCount = attempt.student_answers.filter(a => a.is_correct).length;
+    const correctCount = attempt.learner_answers.filter(a => a.is_correct).length;
     const score = Math.round((correctCount / attempt.total_questions) * 100);
 
     // Calculate difficulty breakdown
@@ -233,7 +233,7 @@ export async function completeAssessment(attemptId, timeTaken) {
       const difficulty = q.difficulty;
       if (breakdown[difficulty]) {
         breakdown[difficulty].total++;
-        if (attempt.student_answers[idx]?.is_correct) {
+        if (attempt.learner_answers[idx]?.is_correct) {
           breakdown[difficulty].correct++;
         }
       }
@@ -278,12 +278,12 @@ export async function completeAssessment(attemptId, timeTaken) {
 export async function saveAssessmentAttempt(attemptData) {
   try {
     const {
-      studentId,
+      learnerId,
       courseName,
       courseId,
       assessmentLevel,
       questions,
-      studentAnswers,
+      learnerAnswers,
       score,
       correctAnswers,
       timeTaken,
@@ -295,13 +295,13 @@ export async function saveAssessmentAttempt(attemptData) {
     const { data, error } = await supabase
       .from('external_assessment_attempts')
       .insert({
-        student_id: studentId,
+        learner_id: learnerId,
         course_name: courseName,
         course_id: courseId,
         assessment_level: assessmentLevel,
         total_questions: questions.length,
         questions: questions,
-        student_answers: studentAnswers,
+        learner_answers: learnerAnswers,
         score: score,
         correct_answers: correctAnswers,
         time_taken: timeTaken,
@@ -340,16 +340,16 @@ export async function saveAssessmentAttempt(attemptData) {
 }
 
 /**
- * Get student's assessment history
- * @param {string} studentId - Student UUID
+ * Get learner's assessment history
+ * @param {string} learnerId - Learner UUID
  * @returns {Promise<Array>}
  */
-export async function getAssessmentHistory(studentId) {
+export async function getAssessmentHistory(learnerId) {
   try {
     const { data, error } = await supabase
       .from('external_assessment_attempts')
       .select('*')
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .order('completed_at', { ascending: false });
 
     if (error) throw error;
@@ -363,17 +363,17 @@ export async function getAssessmentHistory(studentId) {
 
 /**
  * Get assessment attempt by course
- * @param {string} studentId - Student UUID
+ * @param {string} learnerId - Learner UUID
  * @param {string} courseName - Course name
  * @returns {Promise<object|null>}
  */
-export async function getAssessmentByCourse(studentId, courseName) {
+export async function getAssessmentByCourse(learnerId, courseName) {
   try {
     // Use maybeSingle() instead of single() to avoid 406 error when no rows exist
     const { data, error } = await supabase
       .from('external_assessment_attempts')
       .select('*')
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .eq('course_name', courseName)
       .maybeSingle();
 

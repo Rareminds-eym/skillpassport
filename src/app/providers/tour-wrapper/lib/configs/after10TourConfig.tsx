@@ -114,7 +114,7 @@ export const ASSESSMENT_RESULT_TOUR_STEPS: TourStep[] = [
         borderRadius: '16px',
       },
     },
-    // This step is conditional - only shown for after 10th students
+    // This step is conditional - only shown for after 10th learners
     gradeLevel: 'after10',
   },
   // Step 4: Recommended Programs (After 12th only) - CONDITIONAL
@@ -146,7 +146,7 @@ export const ASSESSMENT_RESULT_TOUR_STEPS: TourStep[] = [
         borderRadius: '16px',
       },
     },
-    // This step is conditional - only shown for after 12th students
+    // This step is conditional - only shown for after 12th learners
     gradeLevel: 'after12',
   },
 

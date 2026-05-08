@@ -74,10 +74,10 @@ const MyMentees: React.FC = () => {
     return currentMentor.allocations || [];
   }, [currentMentor]);
 
-  const myStudents = useMemo(() => {
+  const mylearners = useMemo(() => {
     if (!currentMentor) return [];
     
-    // Get students from active and completed allocations
+    // Get learners from active and completed allocations
     const relevantAllocations = myAllocations.filter(allocation => {
       const period = allocation.period;
       if (!period) {
@@ -118,21 +118,21 @@ const MyMentees: React.FC = () => {
       totalCount: myAllocations.length 
     });
     
-    // Get students from relevant allocations with period info
-    const studentsWithPeriod = relevantAllocations.flatMap(allocation => 
-      (allocation.students || []).map(student => ({
-        ...student,
+    // Get learners from relevant allocations with period info
+    const learnersWithPeriod = relevantAllocations.flatMap(allocation => 
+      (allocation.learners || []).map(learner => ({
+        ...learner,
         _allocation: allocation, // Store allocation reference for period details
       }))
     );
     
-    // Remove duplicates (student might be in multiple periods)
-    const uniqueStudents = Array.from(
-      new Map(studentsWithPeriod.map(s => [s.id, s])).values()
+    // Remove duplicates (learner might be in multiple periods)
+    const uniquelearners = Array.from(
+      new Map(learnersWithPeriod.map(s => [s.id, s])).values()
     );
     
-    logger.info('Active/Completed students', { count: uniqueStudents.length });
-    return uniqueStudents;
+    logger.info('Active/Completed learners', { count: uniquelearners.length });
+    return uniquelearners;
   }, [myAllocations, currentMentor]);
 
   const myNotes = useMemo(() => {
@@ -141,17 +141,17 @@ const MyMentees: React.FC = () => {
   }, [notes, currentMentor]);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'students' | 'notes'>('students');
+  const [activeTab, setActiveTab] = useState<'learners' | 'notes'>('learners');
   
-  // Students tab filters
-  const [studentSearch, setStudentSearch] = useState('');
+  // Learners tab filters
+  const [learnerSearch, setlearnerSearch] = useState('');
   const [filterAtRisk, setFilterAtRisk] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
 
-  // Students pagination
-  const [studentsCurrentPage, setStudentsCurrentPage] = useState(1);
-  const [studentsPerPage] = useState(12); // 12 cards per page for good grid layout
+  // Learners pagination
+  const [learnersCurrentPage, setlearnersCurrentPage] = useState(1);
+  const [learnersPerPage] = useState(12); // 12 cards per page for good grid layout
 
   // Notes tab state
   const [noteSearch, setNoteSearch] = useState('');
@@ -163,46 +163,46 @@ const MyMentees: React.FC = () => {
   const [notesCurrentPage, setNotesCurrentPage] = useState(1);
   const [notesPerPage] = useState(9); // 9 cards per page for notes
 
-  const filteredStudents = useMemo(() => {
-    let studentsToFilter = myStudents;
+  const filteredlearners = useMemo(() => {
+    let learnersToFilter = mylearners;
     
     // Filter by selected period if one is selected
     if (selectedPeriodId) {
-      studentsToFilter = myStudents.filter(student => {
-        const allocation = (student as any)._allocation;
+      learnersToFilter = mylearners.filter(learner => {
+        const allocation = (learner as any)._allocation;
         return allocation?.period?.id === selectedPeriodId;
       });
     }
     
-    return studentsToFilter.filter(student => {
+    return learnersToFilter.filter(learner => {
       const matchesSearch = 
-        student.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
-        student.roll_number?.toLowerCase().includes(studentSearch.toLowerCase()) ||
-        student.email?.toLowerCase().includes(studentSearch.toLowerCase());
+        learner.name.toLowerCase().includes(learnerSearch.toLowerCase()) ||
+        learner.roll_number?.toLowerCase().includes(learnerSearch.toLowerCase()) ||
+        learner.email?.toLowerCase().includes(learnerSearch.toLowerCase());
       
       const matchesRisk = 
         filterAtRisk === 'all' ||
-        (filterAtRisk === 'at-risk' && student.at_risk) ||
-        (filterAtRisk === 'not-at-risk' && !student.at_risk);
+        (filterAtRisk === 'at-risk' && learner.at_risk) ||
+        (filterAtRisk === 'not-at-risk' && !learner.at_risk);
       
       return matchesSearch && matchesRisk;
     });
-  }, [myStudents, studentSearch, filterAtRisk, selectedPeriodId]);
+  }, [mylearners, learnerSearch, filterAtRisk, selectedPeriodId]);
 
-  // Paginated students
-  const paginatedStudents = useMemo(() => {
-    const startIndex = (studentsCurrentPage - 1) * studentsPerPage;
-    const endIndex = startIndex + studentsPerPage;
-    return filteredStudents.slice(startIndex, endIndex);
-  }, [filteredStudents, studentsCurrentPage, studentsPerPage]);
+  // Paginated learners
+  const paginatedlearners = useMemo(() => {
+    const startIndex = (learnersCurrentPage - 1) * learnersPerPage;
+    const endIndex = startIndex + learnersPerPage;
+    return filteredlearners.slice(startIndex, endIndex);
+  }, [filteredlearners, learnersCurrentPage, learnersPerPage]);
 
   const filteredNotes = useMemo(() => {
     return myNotes.filter(note => {
-      const student = myStudents.find(s => s.id === note.student_id);
+      const learner = mylearners.find(s => s.id === note.learner_id);
       const matchesSearch = 
         note.note_text.toLowerCase().includes(noteSearch.toLowerCase()) ||
         note.title?.toLowerCase().includes(noteSearch.toLowerCase()) ||
-        student?.name.toLowerCase().includes(noteSearch.toLowerCase());
+        learner?.name.toLowerCase().includes(noteSearch.toLowerCase());
       
       const matchesStatus = 
         filterStatus === 'all' ||
@@ -210,7 +210,7 @@ const MyMentees: React.FC = () => {
       
       return matchesSearch && matchesStatus;
     });
-  }, [myNotes, myStudents, noteSearch, filterStatus]);
+  }, [myNotes, mylearners, noteSearch, filterStatus]);
 
   // Paginated notes
   const paginatedNotes = useMemo(() => {
@@ -221,16 +221,16 @@ const MyMentees: React.FC = () => {
 
   // Reset pagination when filters change
   React.useEffect(() => {
-    setStudentsCurrentPage(1);
-  }, [studentSearch, filterAtRisk, selectedPeriodId]);
+    setlearnersCurrentPage(1);
+  }, [learnerSearch, filterAtRisk, selectedPeriodId]);
 
   React.useEffect(() => {
     setNotesCurrentPage(1);
   }, [noteSearch, filterStatus]);
 
   const statistics = useMemo(() => {
-    const totalStudents = myStudents.length;
-    const atRiskCount = myStudents.filter(s => s.at_risk).length;
+    const totallearners = mylearners.length;
+    const atRiskCount = mylearners.filter(s => s.at_risk).length;
     const totalInterventions = myNotes.length;
     const recentInterventions = myNotes.filter(note => {
       const noteDate = new Date(note.note_date);
@@ -240,19 +240,19 @@ const MyMentees: React.FC = () => {
     }).length;
 
     return {
-      totalStudents,
+      totallearners,
       atRiskCount,
       totalInterventions,
       recentInterventions,
     };
-  }, [myStudents, myNotes]);
+  }, [mylearners, myNotes]);
 
-  const getStudentNotes = (studentId: string) => {
-    return myNotes.filter(note => note.student_id === studentId);
+  const getlearnerNotes = (learnerId: string) => {
+    return myNotes.filter(note => note.learner_id === learnerId);
   };
 
-  const handleAddNote = (student: any) => {
-    navigate('/educator/mentornotes', { state: { selectedStudent: student } });
+  const handleAddNote = (learner: any) => {
+    navigate('/educator/mentornotes', { state: { selectedLearner: learner } });
   };
 
   const handleRespondToNote = (note: any) => {
@@ -351,7 +351,7 @@ const MyMentees: React.FC = () => {
             My Mentees
           </h1>
           <p className="text-gray-600 text-sm sm:text-base">
-            Track and support your assigned students
+            Track and support your assigned learners
           </p>
         </div>
 
@@ -382,12 +382,12 @@ const MyMentees: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <KPICard
                 title="Total Mentees"
-                value={statistics.totalStudents}
+                value={statistics.totallearners}
                 icon={<UserGroupIcon className="h-6 w-6" />}
                 color="blue"
               />
               <KPICard
-                title="At-Risk Students"
+                title="At-Risk Learners"
                 value={statistics.atRiskCount}
                 icon={<ExclamationTriangleIcon className="h-6 w-6" />}
                 color="red"
@@ -406,16 +406,16 @@ const MyMentees: React.FC = () => {
               <div className="border-b border-gray-200">
                 <nav className="flex -mb-px">
                   <button
-                    onClick={() => setActiveTab('students')}
+                    onClick={() => setActiveTab('learners')}
                     className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                      activeTab === 'students'
+                      activeTab === 'learners'
                         ? 'border-indigo-600 text-indigo-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     }`}
                   >
                     <div className="flex items-center gap-2">
                       <UserGroupIcon className="h-5 w-5" />
-                      <span>Students ({filteredStudents.length})</span>
+                      <span>Learners ({filteredlearners.length})</span>
                     </div>
                   </button>
                   <button
@@ -436,8 +436,8 @@ const MyMentees: React.FC = () => {
 
               {/* Tab Content */}
               <div className="p-6">
-                {/* Students Tab */}
-                {activeTab === 'students' && (
+                {/* Learners Tab */}
+                {activeTab === 'learners' && (
                   <div className="space-y-6">
                     {/* Search and Filters */}
                     <div className="flex flex-col sm:flex-row gap-4">
@@ -445,9 +445,9 @@ const MyMentees: React.FC = () => {
                         <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                         <input
                           type="text"
-                          value={studentSearch}
-                          onChange={(e) => setStudentSearch(e.target.value)}
-                          placeholder="Search students by name, roll number, or email..."
+                          value={learnerSearch}
+                          onChange={(e) => setlearnerSearch(e.target.value)}
+                          placeholder="Search learners by name, roll number, or email..."
                           className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         />
                       </div>
@@ -473,7 +473,7 @@ const MyMentees: React.FC = () => {
                               onChange={(e) => setFilterAtRisk(e.target.value)}
                               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             >
-                              <option value="all">All Students</option>
+                              <option value="all">All Learners</option>
                               <option value="at-risk">At-Risk Only</option>
                               <option value="not-at-risk">Not At-Risk</option>
                             </select>
@@ -501,7 +501,7 @@ const MyMentees: React.FC = () => {
                                 : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                             }`}
                           >
-                            All Students ({myStudents.length})
+                            All Learners ({mylearners.length})
                           </button>
                           {myAllocations
                             .filter(allocation => {
@@ -555,7 +555,7 @@ const MyMentees: React.FC = () => {
                               
                               const isCurrentPeriod = currentDate >= startDate && currentDate <= endDate;
                               const isSelected = selectedPeriodId === period.id;
-                              const studentCount = allocation.students?.length || 0;
+                              const learnerCount = allocation.learners?.length || 0;
                               
                               return (
                                 <button
@@ -586,7 +586,7 @@ const MyMentees: React.FC = () => {
                                       ? 'bg-white/20 text-white' 
                                       : 'bg-indigo-100 text-indigo-700'
                                   }`}>
-                                    {studentCount}
+                                    {learnerCount}
                                   </span>
                                 </button>
                               );
@@ -608,7 +608,7 @@ const MyMentees: React.FC = () => {
                               const endDate = new Date(period.end_date);
                               endDate.setHours(0, 0, 0, 0);
                               const isCurrentPeriod = currentDate >= startDate && currentDate <= endDate;
-                              const studentCount = selectedAllocation.students?.length || 0;
+                              const learnerCount = selectedAllocation.learners?.length || 0;
                               
                               return (
                                 <div className="space-y-3">
@@ -636,11 +636,11 @@ const MyMentees: React.FC = () => {
                                   
                                   {/* Complete Details Grid */}
                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {/* Total Students */}
+                                    {/* Total Learners */}
                                     <div className="flex items-center gap-2">
                                       <UserGroupIcon className="h-4 w-4 text-indigo-600" />
                                       <span className="text-sm font-medium text-indigo-800">
-                                        Students: <span className="font-semibold">{studentCount}</span>
+                                        Learners: <span className="font-semibold">{learnerCount}</span>
                                       </span>
                                     </div>
                                     
@@ -695,58 +695,58 @@ const MyMentees: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Students Grid */}
-                    {filteredStudents.length === 0 ? (
+                    {/* Learners Grid */}
+                    {filteredlearners.length === 0 ? (
                       <div className="text-center py-16 bg-gray-50 rounded-xl">
                         <UserGroupIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-xl font-semibold text-gray-900 mb-2">No Students Found</h3>
+                        <h3 className="text-xl font-semibold text-gray-900 mb-2">No Learners Found</h3>
                         <p className="text-gray-600">
-                          {studentSearch || filterAtRisk !== 'all'
+                          {learnerSearch || filterAtRisk !== 'all'
                             ? 'Try adjusting your search or filters'
-                            : 'No students have been assigned to you yet'}
+                            : 'No learners have been assigned to you yet'}
                         </p>
                       </div>
                     ) : (
                       <div className="space-y-6">
                         <h3 className="text-lg font-semibold text-gray-900">
                           {selectedPeriodId 
-                            ? `Students (${filteredStudents.length})`
-                            : `My Students (${filteredStudents.length})`
+                            ? `Learners (${filteredlearners.length})`
+                            : `My Learners (${filteredlearners.length})`
                           }
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                          {paginatedStudents.map((student) => {
-                            const studentNotes = getStudentNotes(student.id);
-                            const lastNote = studentNotes.sort((a, b) => 
+                          {paginatedlearners.map((learner) => {
+                            const learnerNotes = getlearnerNotes(learner.id);
+                            const lastNote = learnerNotes.sort((a, b) => 
                               new Date(b.note_date).getTime() - new Date(a.note_date).getTime()
                             )[0];
                             
-                            // Get allocation info for this student
-                            const allocation = (student as any)._allocation;
+                            // Get allocation info for this learner
+                            const allocation = (learner as any)._allocation;
                             const period = allocation?.period;
                             
                             return (
                               <div
-                                key={student.id}
+                                key={learner.id}
                                 className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg hover:border-indigo-300 transition-all duration-300 overflow-hidden group"
                               >
-                                {/* Student Header */}
+                                {/* Learner Header */}
                                 <div className="p-6 bg-white border-b border-gray-100">
                                   <div className="flex items-start gap-4">
                                     <div className="relative">
                                       <div className="w-14 h-14 bg-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-bold text-lg shadow-md">
-                                        {student.name?.charAt(0).toUpperCase() || 'S'}
+                                        {learner.name?.charAt(0).toUpperCase() || 'S'}
                                       </div>
-                                      {student.at_risk && (
+                                      {learner.at_risk && (
                                         <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
                                           <ExclamationTriangleIcon className="h-3 w-3 text-white" />
                                         </div>
                                       )}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                      <h3 className="font-bold text-lg text-gray-900 truncate mb-1">{student.name}</h3>
-                                      <p className="text-sm text-gray-600 font-medium truncate mb-2">{student.roll_number}</p>
-                                      {student.at_risk && (
+                                      <h3 className="font-bold text-lg text-gray-900 truncate mb-1">{learner.name}</h3>
+                                      <p className="text-sm text-gray-600 font-medium truncate mb-2">{learner.roll_number}</p>
+                                      {learner.at_risk && (
                                         <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-700 text-xs rounded-full font-semibold border border-red-200">
                                           <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
                                           At Risk
@@ -756,7 +756,7 @@ const MyMentees: React.FC = () => {
                                   </div>
                                 </div>
 
-                                {/* Student Info */}
+                                {/* Learner Info */}
                                 <div className="p-6 space-y-4">
                                   <div className="space-y-3">
                                     <div className="flex items-center gap-3 text-sm">
@@ -764,21 +764,21 @@ const MyMentees: React.FC = () => {
                                         <AcademicCapIcon className="h-4 w-4 text-blue-600" />
                                       </div>
                                       <span className="text-gray-700 font-medium truncate">
-                                        {student.program_name || student.department_name || 'Program Not Specified'}
+                                        {learner.program_name || learner.department_name || 'Program Not Specified'}
                                       </span>
                                     </div>
                                     <div className="flex items-center gap-3 text-sm">
                                       <div className="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center flex-shrink-0">
                                         <EnvelopeIcon className="h-4 w-4 text-green-600" />
                                       </div>
-                                      <span className="text-gray-600 truncate text-sm">{student.email}</span>
+                                      <span className="text-gray-600 truncate text-sm">{learner.email}</span>
                                     </div>
                                     <div className="flex items-center gap-3 text-sm">
                                       <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center flex-shrink-0">
                                         <CalendarIcon className="h-4 w-4 text-purple-600" />
                                       </div>
                                       <span className="text-gray-700 font-medium">
-                                        Semester {student.semester || 'N/A'} • CGPA: {student.current_cgpa?.toFixed(2) || 'N/A'}
+                                        Semester {learner.semester || 'N/A'} • CGPA: {learner.current_cgpa?.toFixed(2) || 'N/A'}
                                       </span>
                                     </div>
                                   </div>
@@ -788,7 +788,7 @@ const MyMentees: React.FC = () => {
                                     <div className="bg-gray-50 rounded-lg p-4 text-center border border-gray-100 hover:bg-gray-100 transition-colors">
                                       <div className="flex items-center justify-center gap-2 mb-1">
                                         <DocumentTextIcon className="h-4 w-4 text-gray-500" />
-                                        <p className="text-2xl font-bold text-gray-900">{studentNotes.length}</p>
+                                        <p className="text-2xl font-bold text-gray-900">{learnerNotes.length}</p>
                                       </div>
                                       <p className="text-xs text-gray-600 font-medium">Intervention Notes</p>
                                     </div>
@@ -807,7 +807,7 @@ const MyMentees: React.FC = () => {
 
                                   {/* Action Button */}
                                   <button
-                                    onClick={() => handleAddNote(student)}
+                                    onClick={() => handleAddNote(learner)}
                                     className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg group-hover:scale-[1.02] transform"
                                   >
                                     <PencilSquareIcon className="h-4 w-4" />
@@ -819,14 +819,14 @@ const MyMentees: React.FC = () => {
                           })}
                         </div>
                         
-                        {/* Students Pagination */}
-                        {filteredStudents.length > studentsPerPage && (
+                        {/* Learners Pagination */}
+                        {filteredlearners.length > learnersPerPage && (
                           <Pagination
-                            currentPage={studentsCurrentPage}
-                            totalPages={Math.ceil(filteredStudents.length / studentsPerPage)}
-                            totalItems={filteredStudents.length}
-                            itemsPerPage={studentsPerPage}
-                            onPageChange={setStudentsCurrentPage}
+                            currentPage={learnersCurrentPage}
+                            totalPages={Math.ceil(filteredlearners.length / learnersPerPage)}
+                            totalItems={filteredlearners.length}
+                            itemsPerPage={learnersPerPage}
+                            onPageChange={setlearnersCurrentPage}
                           />
                         )}
                       </div>
@@ -845,7 +845,7 @@ const MyMentees: React.FC = () => {
                           type="text"
                           value={noteSearch}
                           onChange={(e) => setNoteSearch(e.target.value)}
-                          placeholder="Search notes by content, title, or student name..."
+                          placeholder="Search notes by content, title, or learner name..."
                           className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         />
                       </div>
@@ -880,7 +880,7 @@ const MyMentees: React.FC = () => {
                           {paginatedNotes
                             .sort((a, b) => new Date(b.note_date).getTime() - new Date(a.note_date).getTime())
                             .map((note) => {
-                            const student = myStudents.find(s => s.id === note.student_id);
+                            const learner = mylearners.find(s => s.id === note.learner_id);
                             const canRespond = note.status === 'pending' && !note.educator_response;
                             
                             return (
@@ -893,13 +893,13 @@ const MyMentees: React.FC = () => {
                                 <div className="p-4 border-b border-gray-100">
                                   <div className="flex items-center gap-3 mb-3">
                                     <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-                                      {student?.name?.charAt(0).toUpperCase() || 'S'}
+                                      {learner?.name?.charAt(0).toUpperCase() || 'S'}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <h3 className="font-semibold text-gray-900 truncate text-sm">
-                                        {student?.name || 'Unknown Student'}
+                                        {learner?.name || 'Unknown Learner'}
                                       </h3>
-                                      <p className="text-xs text-gray-500 truncate">{student?.roll_number || 'N/A'}</p>
+                                      <p className="text-xs text-gray-500 truncate">{learner?.roll_number || 'N/A'}</p>
                                     </div>
                                   </div>
 
@@ -997,7 +997,7 @@ const MyMentees: React.FC = () => {
       {showNoteModal && selectedNote && (
         <MentorResponseModal
           note={selectedNote}
-          studentName={myStudents.find(s => s.id === selectedNote.student_id)?.name || 'Unknown Student'}
+          learnerName={mylearners.find(s => s.id === selectedNote.learner_id)?.name || 'Unknown Learner'}
           onClose={handleCloseModal}
           onSave={handleSaveResponse}
         />

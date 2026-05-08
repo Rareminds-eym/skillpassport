@@ -30,18 +30,18 @@ export const mockExamSlots: ExamSlot[] = [
   },
 ];
 
-// Mock Students
-export const mockStudents = [
-  { id: 'student-1', name: 'Rahul Kumar', roll_number: '2024CS001' },
-  { id: 'student-2', name: 'Priya Sharma', roll_number: '2024CS002' },
-  { id: 'student-3', name: 'Amit Patel', roll_number: '2024CS003' },
-  { id: 'student-4', name: 'Sneha Reddy', roll_number: '2024CS004' },
-  { id: 'student-5', name: 'Vikram Singh', roll_number: '2024CS005' },
-  { id: 'student-6', name: 'Anjali Gupta', roll_number: '2024CS006' },
-  { id: 'student-7', name: 'Karthik Rao', roll_number: '2024CS007' },
-  { id: 'student-8', name: 'Divya Nair', roll_number: '2024CS008' },
-  { id: 'student-9', name: 'Rohan Mehta', roll_number: '2024CS009' },
-  { id: 'student-10', name: 'Pooja Iyer', roll_number: '2024CS010' },
+// Mock Learners
+export const mocklearners = [
+  { id: 'learner-1', name: 'Rahul Kumar', roll_number: '2024CS001' },
+  { id: 'learner-2', name: 'Priya Sharma', roll_number: '2024CS002' },
+  { id: 'learner-3', name: 'Amit Patel', roll_number: '2024CS003' },
+  { id: 'learner-4', name: 'Sneha Reddy', roll_number: '2024CS004' },
+  { id: 'learner-5', name: 'Vikram Singh', roll_number: '2024CS005' },
+  { id: 'learner-6', name: 'Anjali Gupta', roll_number: '2024CS006' },
+  { id: 'learner-7', name: 'Karthik Rao', roll_number: '2024CS007' },
+  { id: 'learner-8', name: 'Divya Nair', roll_number: '2024CS008' },
+  { id: 'learner-9', name: 'Rohan Mehta', roll_number: '2024CS009' },
+  { id: 'learner-10', name: 'Pooja Iyer', roll_number: '2024CS010' },
 ];
 
 // Mock Faculty
@@ -59,7 +59,7 @@ export const mockMarkEntries: MarkEntry[] = [
   {
     id: 'mark-1',
     assessment_id: '1',
-    student_id: 'student-1',
+    learner_id: 'learner-1',
     marks_obtained: 42,
     is_absent: false,
     is_exempt: false,
@@ -74,7 +74,7 @@ export const mockMarkEntries: MarkEntry[] = [
   {
     id: 'mark-2',
     assessment_id: '1',
-    student_id: 'student-2',
+    learner_id: 'learner-2',
     marks_obtained: 38,
     is_absent: false,
     is_exempt: false,
@@ -89,7 +89,7 @@ export const mockMarkEntries: MarkEntry[] = [
   {
     id: 'mark-3',
     assessment_id: '1',
-    student_id: 'student-3',
+    learner_id: 'learner-3',
     marks_obtained: 45,
     is_absent: false,
     is_exempt: false,
@@ -104,7 +104,7 @@ export const mockMarkEntries: MarkEntry[] = [
   {
     id: 'mark-4',
     assessment_id: '1',
-    student_id: 'student-4',
+    learner_id: 'learner-4',
     marks_obtained: 0,
     is_absent: true,
     is_exempt: false,
@@ -118,7 +118,7 @@ export const mockMarkEntries: MarkEntry[] = [
   {
     id: 'mark-5',
     assessment_id: '1',
-    student_id: 'student-5',
+    learner_id: 'learner-5',
     marks_obtained: 35,
     is_absent: false,
     is_exempt: false,
@@ -133,7 +133,7 @@ export const mockMarkEntries: MarkEntry[] = [
   {
     id: 'mark-6',
     assessment_id: '1',
-    student_id: 'student-6',
+    learner_id: 'learner-6',
     marks_obtained: 48,
     is_absent: false,
     is_exempt: false,
@@ -148,7 +148,7 @@ export const mockMarkEntries: MarkEntry[] = [
   {
     id: 'mark-7',
     assessment_id: '1',
-    student_id: 'student-7',
+    learner_id: 'learner-7',
     marks_obtained: 30,
     is_absent: false,
     is_exempt: false,
@@ -163,7 +163,7 @@ export const mockMarkEntries: MarkEntry[] = [
   {
     id: 'mark-8',
     assessment_id: '1',
-    student_id: 'student-8',
+    learner_id: 'learner-8',
     marks_obtained: 40,
     is_absent: false,
     is_exempt: false,
@@ -178,7 +178,7 @@ export const mockMarkEntries: MarkEntry[] = [
   {
     id: 'mark-9',
     assessment_id: '1',
-    student_id: 'student-9',
+    learner_id: 'learner-9',
     marks_obtained: 25,
     is_absent: false,
     is_exempt: false,
@@ -193,7 +193,7 @@ export const mockMarkEntries: MarkEntry[] = [
   {
     id: 'mark-10',
     assessment_id: '1',
-    student_id: 'student-10',
+    learner_id: 'learner-10',
     marks_obtained: 0,
     is_absent: false,
     is_exempt: true,
@@ -210,7 +210,7 @@ export const mockMarkEntries: MarkEntry[] = [
 export const mockTranscripts: Transcript[] = [
   {
     id: 'transcript-1',
-    student_id: 'student-1',
+    learner_id: 'learner-1',
     type: 'provisional',
     semester_from: 1,
     semester_to: 6,
@@ -225,7 +225,7 @@ export const mockTranscripts: Transcript[] = [
   },
   {
     id: 'transcript-2',
-    student_id: 'student-2',
+    learner_id: 'learner-2',
     type: 'final',
     semester_from: 1,
     semester_to: 8,

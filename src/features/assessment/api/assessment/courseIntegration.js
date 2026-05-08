@@ -16,28 +16,28 @@ import { getLogger } from '@/shared/config/logging';
 
 /**
  * Add course recommendations to assessment results
- * Fetches platform courses that match the student's profile using RAG-based recommendations
+ * Fetches platform courses that match the learner's profile using RAG-based recommendations
  * NOW considers ALL past assessments to provide comprehensive recommendations
  * 
  * @param {Object} assessmentResults - Parsed results from current AI assessment
- * @param {string} studentId - Student ID to fetch all past assessments
+ * @param {string} learnerId - Learner ID to fetch all past assessments
  * @returns {Promise<Object>} - Results with platformCourses, coursesByType, and skillGapCourses added
  */
 const logger = getLogger('course-integration');
 
-export const addCourseRecommendations = async (assessmentResults, studentId = null) => {
+export const addCourseRecommendations = async (assessmentResults, learnerId = null) => {
   try {
     logger.info('=== Adding Course Recommendations ===');
     updateProgress('courses', 'Finding relevant courses...');
 
     let aggregatedProfile = assessmentResults;
     
-    if (studentId) {
+    if (learnerId) {
       try {
         const { data: pastAssessments, error } = await supabase
           .from('personal_assessment_results')
           .select('riasec_scores, aptitude_scores, skill_gap, career_fit, stream_id, grade_level')
-          .eq('student_id', studentId)
+          .eq('learner_id', learnerId)
           .order('created_at', { ascending: false })
           .limit(5);
 

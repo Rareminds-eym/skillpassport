@@ -42,7 +42,7 @@ export const generateEmbedding = async (text) => {
       },
       body: JSON.stringify({ 
         text, 
-        table: 'students',
+        table: 'learners',
         id: generateTempUUID(),
         returnEmbedding: true,
         skipDatabaseUpdate: true

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Search, Building2, MessageCircle } from 'lucide-react';
 import { supabase } from '@/shared/api/supabaseClient';
 
-const NewAdminConversationModal = ({ isOpen, onClose, studentId, onConversationCreated }) => {
+const NewAdminConversationModal = ({ isOpen, onClose, learnerId, onConversationCreated }) => {
   const [school, setSchool] = useState(null);
   const [loading, setLoading] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState('');
@@ -23,22 +23,22 @@ const NewAdminConversationModal = ({ isOpen, onClose, studentId, onConversationC
     'Other'
   ];
 
-  // Fetch student's school information
+  // Fetch learner's school information
   useEffect(() => {
-    if (isOpen && studentId) {
-      fetchStudentSchool();
+    if (isOpen && learnerId) {
+      fetchlearnerSchool();
     }
-  }, [isOpen, studentId]);
+  }, [isOpen, learnerId]);
 
-  const fetchStudentSchool = async () => {
+  const fetchlearnerSchool = async () => {
     setLoading(true);
     try {
-      // Get student's school information from organizations table
-      const { data: studentData, error } = await supabase
-        .from('students')
+      // Get learner's school information from organizations table
+      const { data: learnerData, error } = await supabase
+        .from('learners')
         .select(`
           school_id,
-          school:organizations!students_school_id_fkey (
+          school:organizations!learners_school_id_fkey (
             id,
             name,
             city,
@@ -46,25 +46,25 @@ const NewAdminConversationModal = ({ isOpen, onClose, studentId, onConversationC
             organization_type
           )
         `)
-        .eq('id', studentId)
+        .eq('id', learnerId)
         .single();
 
       if (error) throw error;
 
-      if (studentData?.school) {
+      if (learnerData?.school) {
         // Map the organization data to match expected school structure
         const schoolData = {
-          id: studentData.school.id,
-          name: studentData.school.name,
-          address: studentData.school.city && studentData.school.state 
-            ? `${studentData.school.city}, ${studentData.school.state}` 
+          id: learnerData.school.id,
+          name: learnerData.school.name,
+          address: learnerData.school.city && learnerData.school.state 
+            ? `${learnerData.school.city}, ${learnerData.school.state}` 
             : null,
           phone: null, // Organizations table doesn't have phone
           email: null  // Organizations table doesn't have email
         };
         setSchool(schoolData);
       } else {
-        console.error('Student has no associated school');
+        console.error('Learner has no associated school');
       }
     } catch (error) {
       console.error('Error fetching school:', error);

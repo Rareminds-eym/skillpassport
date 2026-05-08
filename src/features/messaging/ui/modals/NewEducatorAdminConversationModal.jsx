@@ -13,7 +13,7 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
   const adminSubjects = [
     'General Inquiry',
     'Resource Request',
-    'Student Issue',
+    'Learner Issue',
     'Curriculum Support',
     'Technical Support',
     'Policy Question',

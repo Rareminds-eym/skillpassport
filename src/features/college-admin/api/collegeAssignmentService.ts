@@ -6,7 +6,7 @@ import type {
   Program,
   ProgramSection,
   Course,
-  CollegeStudent,
+  CollegeLearner,
   CollegeAssignment,
   CreateAssignmentData,
   ServiceResponse,
@@ -102,7 +102,7 @@ export const fetchEducatorProgramSections = async (educatorUserId: string): Prom
       .from('program_sections')
       .select(`
         id, department_id, program_id, semester, section, academic_year,
-        max_students, current_students, faculty_id, status,
+        max_learners, current_learners, faculty_id, status,
         programs!inner(id, name, code),
         departments!inner(id, name, code)
       `)
@@ -121,8 +121,8 @@ export const fetchEducatorProgramSections = async (educatorUserId: string): Prom
       semester: section.semester,
       section: section.section,
       academic_year: section.academic_year,
-      max_students: section.max_students,
-      current_students: section.current_students,
+      max_learners: section.max_learners,
+      current_learners: section.current_learners,
       faculty_id: section.faculty_id,
       status: section.status,
       program: {
@@ -177,9 +177,9 @@ export const fetchEducatorCoursesByProgram = async (
 };
 
 /**
- * Fetch students for a program section
+ * Fetch learners for a program section
  */
-export const fetchProgramSectionStudents = async (sectionId: string): Promise<ServiceResponse<CollegeStudent[]>> => {
+export const fetchProgramSectionlearners = async (sectionId: string): Promise<ServiceResponse<CollegeLearner[]>> => {
   try {
     const { data: section, error: sectionError } = await supabase
       .from('program_sections')
@@ -190,7 +190,7 @@ export const fetchProgramSectionStudents = async (sectionId: string): Promise<Se
     if (sectionError) throw sectionError;
 
     const { data, error } = await supabase
-      .from('students')
+      .from('learners')
       .select('id, user_id, name, email, program_id, section, semester, roll_number')
       .eq('program_id', section.program_id)
       .eq('section', section.section)
@@ -201,7 +201,7 @@ export const fetchProgramSectionStudents = async (sectionId: string): Promise<Se
     if (error) throw error;
     return { data: data || [], error: null };
   } catch (err: any) {
-    return { data: null, error: err.message || 'Failed to fetch students' };
+    return { data: null, error: err.message || 'Failed to fetch learners' };
   }
 };
 
@@ -369,7 +369,7 @@ export const fetchEducatorAssignments = async (educatorUserId: string): Promise<
           semester: sections?.semester as number | undefined,
           section: sections?.section as string | undefined,
           academic_year: sections?.academic_year as string | undefined,
-          student_count: 0
+          learner_count: 0
         };
       });
 
@@ -382,12 +382,12 @@ export const fetchEducatorAssignments = async (educatorUserId: string): Promise<
 };
 
 /**
- * Ensure user accounts exist for students (batched version)
+ * Ensure user accounts exist for learners (batched version)
  */
-const ensureUserAccountsExist = async (students: CollegeStudent[]): Promise<string[]> => {
-  if (students.length === 0) return [];
+const ensureUserAccountsExist = async (learners: CollegeLearner[]): Promise<string[]> => {
+  if (learners.length === 0) return [];
 
-  const emails = students.map(s => s.email);
+  const emails = learners.map(s => s.email);
 
   // Batch lookup all users by email
   const { data: existingUsers, error } = await supabase
@@ -397,7 +397,7 @@ const ensureUserAccountsExist = async (students: CollegeStudent[]): Promise<stri
 
   if (error) {
     logger.error('Failed to fetch users', error instanceof Error ? error : new Error(String(error)), {
-      studentCount: students.length
+      learnerCount: learners.length
     });
     return [];
   }
@@ -407,39 +407,39 @@ const ensureUserAccountsExist = async (students: CollegeStudent[]): Promise<stri
   // Create a map of email -> user_id
   const emailToUserId = new Map(existingUsers.map(u => [u.email, u.id]));
 
-  // Find students that need user_id updates
-  const studentsToUpdate = students.filter(s => !s.user_id && emailToUserId.has(s.email));
+  // Find learners that need user_id updates
+  const learnersToUpdate = learners.filter(s => !s.user_id && emailToUserId.has(s.email));
 
-  // Batch update students with their user_ids using upsert
-  if (studentsToUpdate.length > 0) {
-    const updates = studentsToUpdate.map(s => ({
+  // Batch update learners with their user_ids using upsert
+  if (learnersToUpdate.length > 0) {
+    const updates = learnersToUpdate.map(s => ({
       id: s.id,
       user_id: emailToUserId.get(s.email)
     }));
 
     // Use upsert to batch all updates in one round-trip
     const { error: upsertError } = await supabase
-      .from('students')
+      .from('learners')
       .upsert(updates, { onConflict: 'id' });
 
     if (upsertError) {
-      logger.error('Failed to batch update students with user IDs', upsertError instanceof Error ? upsertError : new Error(String(upsertError)), {
+      logger.error('Failed to batch update learners with user IDs', upsertError instanceof Error ? upsertError : new Error(String(upsertError)), {
         updateCount: updates.length
       });
     }
   }
 
   // Return all found user IDs
-  return students
+  return learners
     .map(s => s.user_id || emailToUserId.get(s.email))
     .filter((id): id is string => !!id);
 };
 
-export const ensureStudentUserAccounts = async (students: CollegeStudent[]): Promise<ServiceResponse<string[]>> => {
+export const ensurelearnerUserAccounts = async (learners: CollegeLearner[]): Promise<ServiceResponse<string[]>> => {
   try {
-    const userIds = await ensureUserAccountsExist(students);
+    const userIds = await ensureUserAccountsExist(learners);
     if (userIds.length === 0) {
-      return { data: null, error: 'No valid user accounts found for selected students.' };
+      return { data: null, error: 'No valid user accounts found for selected learners.' };
     }
     return { data: userIds, error: null };
   } catch (err: any) {
@@ -448,22 +448,22 @@ export const ensureStudentUserAccounts = async (students: CollegeStudent[]): Pro
 };
 
 /**
- * Assign task to students
+ * Assign task to learners
  */
-export const assignTaskToStudents = async (
+export const assignTaskTolearners = async (
   assignmentId: string,
-  studentUserIds: string[]
+  learnerUserIds: string[]
 ): Promise<ServiceResponse<boolean>> => {
   try {
-    const studentAssignments = studentUserIds.map(studentUserId => ({
-      assignment_id: assignmentId, student_id: studentUserId, status: 'todo', priority: 'medium'
+    const learnerAssignments = learnerUserIds.map(learnerUserId => ({
+      assignment_id: assignmentId, learner_id: learnerUserId, status: 'todo', priority: 'medium'
     }));
 
-    const { error } = await supabase.from('college_student_assignments').insert(studentAssignments);
+    const { error } = await supabase.from('college_learner_assignments').insert(learnerAssignments);
     if (error) throw error;
     return { data: true, error: null };
   } catch (err: any) {
-    return { data: null, error: err.message || 'Failed to assign task to students' };
+    return { data: null, error: err.message || 'Failed to assign task to learners' };
   }
 };
 
@@ -496,7 +496,7 @@ export const getAssignmentStatistics = async (educatorUserId: string): Promise<S
 
     if (assignmentIds.length > 0) {
       const { data: submissions, error: submissionsError } = await supabase
-        .from('college_student_assignments')
+        .from('college_learner_assignments')
         .select('status, grade_percentage')
         .in('assignment_id', assignmentIds)
         .eq('is_deleted', false);

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Student } from '@/features/college-admin';
+import { Learner } from '@/features/college-admin';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { BookOpenIcon, CalendarIcon, ClockIcon } from 'lucide-react';
 
@@ -17,7 +17,7 @@ const AddAttendanceSessionModal = ({
   sections,
   subjects,
   faculty,
-  students,
+  learners,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -31,7 +31,7 @@ const AddAttendanceSessionModal = ({
   sections: any[];
   subjects: any[];
   faculty: any[];
-  students: Student[];
+  learners: Learner[];
 }) => {
   // Get current date and time for validation
   const getCurrentDateTime = () => {
@@ -99,14 +99,14 @@ const AddAttendanceSessionModal = ({
     return "";
   };
 
-  const getClassStudentCount = () => {
+  const getClasslearnerCount = () => {
     if (formData.department && formData.course && formData.semester && formData.section) {
-      return students.filter(
-        (student) =>
-          student.department === formData.department &&
-          student.course === formData.course &&
-          student.semester === parseInt(formData.semester) &&
-          student.section === formData.section
+      return learners.filter(
+        (learner) =>
+          learner.department === formData.department &&
+          learner.course === formData.course &&
+          learner.semester === parseInt(formData.semester) &&
+          learner.section === formData.section
       ).length;
     }
     return 0;
@@ -399,18 +399,18 @@ const AddAttendanceSessionModal = ({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Total Students
+                      Total Learners
                     </label>
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
-                        value={formData.totalStudents || getClassStudentCount()}
-                        onChange={(e) => onFormChange("totalStudents", parseInt(e.target.value) || 0)}
+                        value={formData.totallearners || getClasslearnerCount()}
+                        onChange={(e) => onFormChange("totallearners", parseInt(e.target.value) || 0)}
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         min="0"
                       />
                       <span className="text-sm text-gray-500">
-                        Auto: {getClassStudentCount()}
+                        Auto: {getClasslearnerCount()}
                       </span>
                     </div>
                   </div>

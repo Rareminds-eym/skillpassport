@@ -626,12 +626,12 @@ const UniversityAdmin = () => {
 
             <section>
               <h3 className="font-semibold text-lg mb-2">4. Data Privacy</h3>
-              <p>We collect and process universityal and student data in accordance with our Privacy Policy and educational data protection regulations.</p>
+              <p>We collect and process universityal and learner data in accordance with our Privacy Policy and educational data protection regulations.</p>
             </section>
 
             <section>
               <h3 className="font-semibold text-lg mb-2">5. Universityal Data</h3>
-              <p>You agree to handle student and universityal data responsibly and in compliance with applicable educational data protection laws.</p>
+              <p>You agree to handle learner and universityal data responsibly and in compliance with applicable educational data protection laws.</p>
             </section>
 
             <section>

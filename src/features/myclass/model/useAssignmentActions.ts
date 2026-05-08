@@ -6,14 +6,14 @@ import { getAuthSession, validateStorageConfig } from '@/features/myclass';
 import { getUploadErrorMessage } from '@/features/myclass';
 
 interface UseAssignmentActionsProps {
-  studentId: string | undefined;
+  learnerId: string | undefined;
   onAssignmentsUpdate: (updater: (prev: Assignment[]) => Assignment[]) => void;
   onStatsRefresh: () => Promise<void>;
   onNotification: (type: 'success' | 'error' | 'info' | 'warning', title: string, message: string) => void;
 }
 
 export const useAssignmentActions = ({
-  studentId,
+  learnerId,
   onAssignmentsUpdate,
   onStatsRefresh,
   onNotification
@@ -33,7 +33,7 @@ export const useAssignmentActions = ({
 
   const handleStatusChange = useCallback(async (
     assignmentId: string,
-    studentAssignmentId: string,
+    learnerAssignmentId: string,
     newStatus: string,
     assignment: Assignment
   ) => {
@@ -44,7 +44,7 @@ export const useAssignmentActions = ({
         return;
       }
 
-      await updateAssignmentStatus(studentAssignmentId, newStatus);
+      await updateAssignmentStatus(learnerAssignmentId, newStatus);
 
       onAssignmentsUpdate(prev => prev.map(a =>
         a.assignment_id === assignmentId
@@ -79,7 +79,7 @@ export const useAssignmentActions = ({
     stagedFiles: File[],
     onSuccess: () => void
   ) => {
-    if (!studentId) return;
+    if (!learnerId) return;
 
     setIsUploading(true);
     setUploadProgress(0);
@@ -91,9 +91,9 @@ export const useAssignmentActions = ({
       setUploadProgress(10);
 
       await submitAssignmentWithStagedFiles(
-        assignment.student_assignment_id,
+        assignment.learner_assignment_id,
         stagedFiles,
-        studentId,
+        learnerId,
         assignment.assignment_id,
         session.access_token
       );
@@ -119,17 +119,17 @@ export const useAssignmentActions = ({
       setIsUploading(false);
       setUploadProgress(0);
     }
-  }, [studentId, onAssignmentsUpdate, onStatsRefresh, onNotification]);
+  }, [learnerId, onAssignmentsUpdate, onStatsRefresh, onNotification]);
 
   const loadAssignmentDetails = useCallback(async (assignmentId: string) => {
-    if (!studentId) return null;
+    if (!learnerId) return null;
 
     try {
-      return await getAssignmentWithFiles(studentId, assignmentId);
+      return await getAssignmentWithFiles(learnerId, assignmentId);
     } catch (error) {
       throw error;
     }
-  }, [studentId]);
+  }, [learnerId]);
 
   return {
     isUploading,

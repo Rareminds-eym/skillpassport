@@ -106,8 +106,8 @@ const UniversityAdmin = lazy(() =>
   import("@/pages/auth/components/SignIn/university/UniversityAdmin")
 );
 
-const StudentPublicViewer = lazy(() =>
-  import("@/features/student-profile/ui/StudentPublicViewer")
+const LearnerPublicViewer = lazy(() =>
+  import("@/features/learner-profile/ui/LearnerPublicViewer")
 );
 
 const OrganizationSetupPage = lazy(() =>
@@ -119,7 +119,7 @@ export const publicRoutes = [
   <Route key="organization-setup" path="/organization-setup" element={<OrganizationSetupPage />} />,
 
   // Skill Passport Pre-Registration
-  <Route key="register-student" path="/register/student" element={<SkillPassportPreRegistration />} />,
+  <Route key="register-learner" path="/register/learner" element={<SkillPassportPreRegistration />} />,
   <Route key="register-corporate" path="/register/corporate" element={<SkillPassportPreRegistration />} />,
 
   // Internal Testing Registration
@@ -159,7 +159,7 @@ export const publicRoutes = [
     <Route path="/invite/accept" element={<AcceptInvite />} />
 
     {/* Deprecated login routes */}
-    <Route path="/login/student" element={<Navigate to="/login" replace />} />
+    <Route path="/login/learner" element={<Navigate to="/login" replace />} />
     <Route path="/login/recruiter" element={<Navigate to="/login" replace />} />
     <Route path="/login/admin" element={<Navigate to="/login" replace />} />
     <Route path="/login/educator" element={<Navigate to="/login" replace />} />
@@ -182,7 +182,7 @@ export const publicRoutes = [
     <Route path="/subscription/payment/failure" element={<PaymentFailure />} />
     <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
     <Route path="/network-error" element={<NetworkError />} />
-    <Route path="/student/profile/:studentId" element={<StudentPublicViewer />} />
+    <Route path="/learner/profile/:learnerId" element={<LearnerPublicViewer />} />
   </Route>,
 
   // Digital Portfolio routes with PortfolioLayout

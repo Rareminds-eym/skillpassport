@@ -1,4 +1,4 @@
-import { EducatorContext } from '@/features/student-profile/model';
+import { EducatorContext } from '@/features/learner-profile/model';
 import { EducatorWithSchool } from '@/shared/types/database';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
@@ -71,14 +71,14 @@ export const buildEducatorContext = async (educatorId: string): Promise<Educator
     // Get subjects taught (from subjects_handled array)
     const subjects_taught = educatorData.subjects_handled || [];
 
-    // Count students taught by this educator (from students table)
-    const { count: studentCount, error: countError } = await supabase
-      .from('students')
+    // Count learners taught by this educator (from learners table)
+    const { count: learnerCount, error: countError } = await supabase
+      .from('learners')
       .select('id', { count: 'exact', head: true })
       .eq('universityId', educatorData.school_id);
 
     if (countError) {
-      logger.error('Failed to count students', countError as Error);
+      logger.error('Failed to count learners', countError as Error);
     }
 
     // Build rich context for AI
@@ -86,7 +86,7 @@ export const buildEducatorContext = async (educatorId: string): Promise<Educator
       name: fullName,
       institution: institutionDetails ? `${institution} (${institutionDetails})` : institution,
       department: educatorData.department || undefined,
-      total_students: studentCount || 0,
+      total_learners: learnerCount || 0,
       active_classes: 1, // Can be enhanced if class data is tracked
       subjects_taught: subjects_taught,
       recent_activities: [
@@ -114,7 +114,7 @@ function buildFallbackContext(): EducatorContext {
   return {
     name: 'Educator',
     institution: 'Your Institution',
-    total_students: 0,
+    total_learners: 0,
     active_classes: 0,
     subjects_taught: [],
     recent_activities: []
@@ -129,21 +129,21 @@ export const buildClassContext = (classId: string): Promise<any> => {
   return Promise.resolve({
     id: classId,
     name: 'Class',
-    total_students: 0,
-    active_students: 0,
+    total_learners: 0,
+    active_learners: 0,
     skill_distribution: [],
     career_interests: []
   });
 };
 
 /**
- * Extract student summary for AI context
+ * Extract learner summary for AI context
  */
-export const buildStudentContext = (studentId: string): Promise<any> => {
-  // TODO: Implement student data fetching
+export const buildlearnerContext = (learnerId: string): Promise<any> => {
+  // TODO: Implement learner data fetching
   return Promise.resolve({
-    id: studentId,
-    name: 'Student',
+    id: learnerId,
+    name: 'Learner',
     skills: [],
     projects: [],
     career_interests: [],

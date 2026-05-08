@@ -253,8 +253,8 @@ const CareerAssistantContainer: React.FC = () => {
     let tempMessageId: string | null = null;
     
     try {
-      const studentId = user?.id;
-      if (!studentId) {
+      const learnerId = user?.id;
+      if (!learnerId) {
         throw new Error('Please log in to use Career AI');
       }
 

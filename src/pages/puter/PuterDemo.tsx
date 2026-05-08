@@ -443,7 +443,7 @@ const PuterDemo = () => {
       setLoadingTables(true);
       try {
         const tablesToFetch = [
-          { name: 'students', query: supabase.from('students').select('id, name, email, college_school_name, grade').limit(5) },
+          { name: 'learners', query: supabase.from('learners').select('id, name, email, college_school_name, grade').limit(5) },
           { name: 'courses', query: supabase.from('courses').select('course_id, title, code, status, duration').limit(5) },
           { name: 'opportunities', query: supabase.from('opportunities').select('id, title, company_name, employment_type, location').limit(5) },
         ];
