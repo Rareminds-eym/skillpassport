@@ -104,7 +104,7 @@ export async function handleSubscriptionPlans(context: AuthenticatedContext): Pr
     // Filter by entity type if provided (school, college, university)
     // 'all' means no entity filter — return plans applicable to all entities
     if (entityType && entityType !== 'all') {
-      query = query.contains('applicable_entities', [entityType]);
+      query = query.overlaps('applicable_entities', [entityType, 'all']);
     }
 
     const { data, error } = await query;
