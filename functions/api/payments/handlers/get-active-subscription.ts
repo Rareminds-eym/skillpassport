@@ -14,12 +14,14 @@
 import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
+import { apiSuccess, apiError, apiDbError } from '../../../lib/response';
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   return handleGetActiveSubscription(context);
 });
 
 export async function handleGetActiveSubscription(context: AuthenticatedContext): Promise<Response> {
+  const startTime = Date.now();
   const user = context.data.user;
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
 
@@ -86,10 +88,7 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
               subscription_plans: orgSub.subscription_plans,
             };
 
-            return new Response(
-              JSON.stringify({ success: true, data: orgSubscriptionData, error: null }),
-              { status: 200, headers: { 'Content-Type': 'application/json' } }
-            );
+            return apiSuccess(orgSubscriptionData, context.request, { startTime });
           }
         }
       }
@@ -138,34 +137,23 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
       .maybeSingle();
 
     if (error) {
-      console.error('[GetActiveSubscription] Supabase error:', error);
-      return new Response(
-        JSON.stringify({ success: false, data: null, error: error.message }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiDbError(error, context.request, { startTime });
     }
 
     if (!data) {
       // If user had a revoked org license, show as expired
       if (revokedLicense) {
         const revokedOrgSub = (revokedLicense as any).organization_subscriptions;
-        return new Response(
-          JSON.stringify({
-            success: true,
-            data: {
-              id: revokedLicense.id,
-              user_id: userId,
-              status: 'expired',
-              plan_type: revokedOrgSub?.subscription_plans?.name || 'Organization License',
-              plan_code: revokedOrgSub?.subscription_plans?.plan_code,
-              is_organization_license: true,
-              was_revoked: true,
-              revoked_at: revokedLicense.revoked_at,
-            },
-            error: null,
-          }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
-        );
+        return apiSuccess({
+          id: revokedLicense.id,
+          user_id: userId,
+          status: 'expired',
+          plan_type: revokedOrgSub?.subscription_plans?.name || 'Organization License',
+          plan_code: revokedOrgSub?.subscription_plans?.plan_code,
+          is_organization_license: true,
+          was_revoked: true,
+          revoked_at: revokedLicense.revoked_at,
+        }, context.request, { startTime });
       }
 
       // Get most recent subscription for display purposes
@@ -184,25 +172,12 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
         .limit(1)
         .maybeSingle();
 
-      return new Response(
-        JSON.stringify({ success: true, data: recentSub || null, error: null }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiSuccess(recentSub || null, context.request, { startTime });
     }
 
-    return new Response(
-      JSON.stringify({ success: true, data, error: null }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiSuccess(data, context.request, { startTime });
   } catch (error) {
     console.error('[GetActiveSubscription] Error:', error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        data: null,
-        error: error instanceof Error ? error.message : 'Failed to get subscription',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'An internal error occurred', context.request, { startTime });
   }
 }

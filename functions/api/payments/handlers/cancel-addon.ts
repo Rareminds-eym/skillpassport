@@ -1,32 +1,42 @@
 /**
- * Cancel Addon Handler
+ * Cancel Addon Handler — Industrial Grade
  *
  * POST /api/payments/cancel-addon
  *
- * Cancels a user entitlement. Bypasses RLS. Requires SSO authentication.
+ * - Zod input validation
+ * - Proper HTTP status codes (400/404/500)
+ * - Safe error mapping (no DB internals leaked)
+ * - CORS + Request ID headers
+ * - Ownership check via JWT user_id
  */
 
 import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
+import { apiSuccess, apiError, apiDbError } from '../../../lib/response';
+import { CancelAddonSchema, validateBody } from '../../../lib/validation';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   return handleCancelAddon(context);
 });
 
 export async function handleCancelAddon(context: AuthenticatedContext): Promise<Response> {
+  const startTime = Date.now();
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
 
   try {
-    const { entitlementId } = await context.request.json() as { entitlementId: string };
-
-    if (!entitlementId) {
-      return new Response(
-        JSON.stringify({ success: false, data: null, error: 'entitlementId is required' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+    // --- Input validation ---
+    let body: unknown;
+    try {
+      body = await context.request.json();
+    } catch {
+      return apiError(400, 'INVALID_JSON', 'Request body must be valid JSON', context.request, { startTime });
     }
 
+    const validation = validateBody(CancelAddonSchema, body, context.request);
+    if (!validation.success) return validation.response;
+
+    const { entitlementId } = validation.data;
     const supabase = getServiceClient(env);
 
     const { data, error } = await supabase
@@ -35,41 +45,23 @@ export async function handleCancelAddon(context: AuthenticatedContext): Promise<
         status: 'cancelled',
         auto_renew: false,
         cancelled_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', entitlementId)
-      // Ensure the user actually owns this entitlement
-      .eq('user_id', context.data.user.sub)
+      .eq('user_id', context.data.user.sub)  // Ownership check
       .select()
       .single();
 
     if (error) {
-      console.error('[CancelAddon] Supabase error:', error);
       if (error.code === 'PGRST116') {
-        return new Response(
-          JSON.stringify({ success: false, data: null, error: 'ENTITLEMENT_NOT_FOUND' }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
-        );
+        return apiError(404, 'ENTITLEMENT_NOT_FOUND', 'Entitlement not found or not owned by you', context.request, { startTime });
       }
-      return new Response(
-        JSON.stringify({ success: false, data: null, error: error.message }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiDbError(error, context.request, { startTime });
     }
 
-    return new Response(
-      JSON.stringify({ success: true, data, error: null }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiSuccess(data, context.request, { startTime });
   } catch (error) {
-    console.error('[CancelAddon] Error:', error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        data: null,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    console.error('[CancelAddon] Unhandled error:', error);
+    return apiError(500, 'INTERNAL_ERROR', 'An internal error occurred', context.request, { startTime });
   }
 }

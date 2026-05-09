@@ -55,7 +55,7 @@ import { handleHasFeatureAccess } from './handlers/has-feature-access';
 import { handleGetAvailableAddons } from './handlers/get-available-addons';
 import { handleGetAddonByFeatureKey } from './handlers/get-addon-by-feature-key';
 import { handleCancelAddon } from './handlers/cancel-addon';
-import { handleToggleAddonAutorenew } from './handlers/toggle-addon-autorenew';
+import { handleToggleAddonAutoRenew } from './handlers/toggle-addon-autorenew';
 import { handleSubscriptionPlans } from './handlers/subscription-plans';
 import { handleSubscriptionPlan } from './handlers/subscription-plan';
 import { handleSubscriptionFeatures } from './handlers/subscription-features';
@@ -167,7 +167,7 @@ const handleAuthenticatedRequest = withAuth(async (context: AuthenticatedContext
 
   if (path === '/toggle-addon-autorenew') {
     if (method !== 'POST') return methodNotAllowed();
-    return handleToggleAddonAutorenew(context);
+    return handleToggleAddonAutoRenew(context);
   }
 
   if (path === '/verify-addon-payment') {

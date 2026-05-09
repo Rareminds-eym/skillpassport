@@ -184,6 +184,7 @@
     "uuid": "13.0.0",
     "worker-mailer": "1.2.1",
     "xlsx": "0.18.5",
+    "zod": "^4.4.3",
     "zustand": "5.0.8"
   },
   "devDependencies": {

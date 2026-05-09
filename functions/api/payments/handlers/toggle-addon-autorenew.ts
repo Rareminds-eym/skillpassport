@@ -1,72 +1,53 @@
 /**
- * Toggle Addon Auto Renew Handler
+ * Toggle Addon Auto Renew Handler — Industrial Grade
  *
  * POST /api/payments/toggle-addon-autorenew
- *
- * Toggles auto renew for an addon. Bypasses RLS. Requires SSO authentication.
  */
 
 import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
+import { apiSuccess, apiError, apiDbError } from '../../../lib/response';
+import { ToggleAutoRenewSchema, validateBody } from '../../../lib/validation';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleToggleAddonAutorenew(context);
+  return handleToggleAddonAutoRenew(context);
 });
 
-export async function handleToggleAddonAutorenew(context: AuthenticatedContext): Promise<Response> {
+export async function handleToggleAddonAutoRenew(context: AuthenticatedContext): Promise<Response> {
+  const startTime = Date.now();
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
 
   try {
-    const { entitlementId, autoRenew } = await context.request.json() as { entitlementId: string, autoRenew: boolean };
-
-    if (!entitlementId || typeof autoRenew !== 'boolean') {
-      return new Response(
-        JSON.stringify({ success: false, data: null, error: 'entitlementId and autoRenew are required' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+    let body: unknown;
+    try { body = await context.request.json(); } catch {
+      return apiError(400, 'INVALID_JSON', 'Request body must be valid JSON', context.request, { startTime });
     }
 
+    const validation = validateBody(ToggleAutoRenewSchema, body, context.request);
+    if (!validation.success) return validation.response;
+
+    const { entitlementId, autoRenew } = validation.data;
     const supabase = getServiceClient(env);
 
     const { data, error } = await supabase
       .from('user_entitlements')
-      .update({
-        auto_renew: autoRenew,
-        updated_at: new Date().toISOString()
-      })
+      .update({ auto_renew: autoRenew, updated_at: new Date().toISOString() })
       .eq('id', entitlementId)
-      .eq('user_id', context.data.user.sub) // Secure check
+      .eq('user_id', context.data.user.sub)
       .select()
       .single();
 
     if (error) {
-      console.error('[ToggleAddonAutorenew] Supabase error:', error);
       if (error.code === 'PGRST116') {
-        return new Response(
-          JSON.stringify({ success: false, data: null, error: 'ENTITLEMENT_NOT_FOUND' }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
-        );
+        return apiError(404, 'ENTITLEMENT_NOT_FOUND', 'Entitlement not found or not owned by you', context.request, { startTime });
       }
-      return new Response(
-        JSON.stringify({ success: false, data: null, error: error.message }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiDbError(error, context.request, { startTime });
     }
 
-    return new Response(
-      JSON.stringify({ success: true, data, error: null }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiSuccess(data, context.request, { startTime });
   } catch (error) {
-    console.error('[ToggleAddonAutorenew] Error:', error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        data: null,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    console.error('[ToggleAutoRenew] Unhandled error:', error);
+    return apiError(500, 'INTERNAL_ERROR', 'An internal error occurred', context.request, { startTime });
   }
 }

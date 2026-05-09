@@ -9,12 +9,14 @@
 import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
+import { apiSuccess, apiDbError, apiError } from '../../../lib/response';
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   return handleGetUserSubscriptions(context);
 });
 
 export async function handleGetUserSubscriptions(context: AuthenticatedContext): Promise<Response> {
+  const startTime = Date.now();
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
   const userId = context.data.user.sub;
   const url = new URL(context.request.url);
@@ -34,26 +36,12 @@ export async function handleGetUserSubscriptions(context: AuthenticatedContext):
       .limit(20);
 
     if (error) {
-      console.error('[GetUserSubscriptions] Supabase error:', error);
-      return new Response(
-        JSON.stringify({ success: false, data: null, error: error.message }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiDbError(error, context.request, { startTime });
     }
 
-    return new Response(
-      JSON.stringify({ success: true, data: data || [], error: null }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiSuccess(data || [], context.request, { startTime });
   } catch (error) {
     console.error('[GetUserSubscriptions] Error:', error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        data: null,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'An internal error occurred', context.request, { startTime });
   }
 }
