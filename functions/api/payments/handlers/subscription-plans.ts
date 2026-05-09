@@ -19,13 +19,29 @@ export async function handleSubscriptionPlans(context: AuthenticatedContext): Pr
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
 
   try {
+    const url = new URL(context.request.url);
+    const businessType = url.searchParams.get('businessType');
+    const entityType = url.searchParams.get('entityType');
+
     const supabase = getServiceClient(env);
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('subscription_plans')
       .select('*')
       .eq('is_active', true)
-      .order('sort_order', { ascending: true });
+      .order('display_order', { ascending: true });
+
+    // Filter by business type if provided (b2b or b2c)
+    if (businessType) {
+      query = query.eq('business_type', businessType);
+    }
+
+    // Filter by entity type if provided (school, college, university)
+    if (entityType) {
+      query = query.contains('applicable_entities', [entityType]);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('[SubscriptionPlans] Supabase error:', error);
