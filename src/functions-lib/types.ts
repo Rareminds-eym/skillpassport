@@ -6,21 +6,47 @@
  * Standard environment variables available to all Pages Functions
  */
 export interface PagesEnv {
+  // SSO / Auth configuration
+  SSO_DOMAIN?: string;
+  VITE_SSO_URL?: string;
+
   // Supabase configuration
   SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
   VITE_SUPABASE_URL: string;
   VITE_SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
+  SUPABASE_JWT_SECRET?: string;
+
+  // Payment Worker configuration
+  PAYMENTS_API_URL?: string;
+  VITE_PAYMENTS_API_URL?: string;
+  RAZORPAY_SERVICE_SECRET?: string;
+  RAZORPAY_KEY_ID?: string;
+  RAZORPAY_KEY_SECRET?: string; // Only used by payment-worker, not Pages Functions
+
+  // Embedding Worker configuration
+  EMBEDDING_API_URL?: string;
+  EMBEDDING_API_KEY?: string;
+
+  // Email Worker configuration
+  EMAIL_WORKER_URL?: string;
+  INTERNAL_API_KEY?: string;
+  ADMIN_EMAIL?: string;
+
+  // App configuration
+  APP_URL?: string;
+
+  // Storage / Media configuration
+  SIGNING_SECRET?: string;
 
   // AI API keys
   CLAUDE_API_KEY?: string;
   VITE_CLAUDE_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
+  GEMINI_API_KEY?: string;
 
-  // Other service keys
-  RAZORPAY_KEY_ID?: string;
-  RAZORPAY_KEY_SECRET?: string;
+  // @deprecated — email-worker uses INTERNAL_API_KEY instead
   RESEND_API_KEY?: string;
 
   // AWS credentials (for SNS, S3, etc.)
@@ -39,16 +65,6 @@ export interface PagesEnv {
   CLOUDFLARE_R2_SECRET_ACCESS_KEY?: string;
   CLOUDFLARE_R2_BUCKET_NAME?: string;
   CLOUDFLARE_R2_PUBLIC_URL?: string;
-
-  /**
-   * Email Worker configuration
-   * EMAIL_WORKER_URL: URL of the email worker service endpoint (e.g., https://email-worker.example.com)
-   * INTERNAL_API_KEY: API key for authenticating requests to the email worker
-   * ADMIN_EMAIL: Email address for admin notifications and system alerts
-   */
-  EMAIL_WORKER_URL?: string;
-  INTERNAL_API_KEY?: string;
-  ADMIN_EMAIL?: string;
 }
 
 /**
