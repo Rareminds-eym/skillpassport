@@ -5,8 +5,7 @@
  * including assessments, profile views, reports, and other metrics.
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
-import { getCurrentUser } from '@/shared/api/authUtils';
+import { apiGet } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('usage-statistics');
@@ -17,171 +16,23 @@ const logger = getLogger('usage-statistics');
  */
 export const getUserUsageStatistics = async () => {
   try {
-    const { data: { user } } = getCurrentUser();
+    const result = await apiGet<{ success: boolean; data: any; error: string | null }>('/payments/usage-statistics');
     
-    if (!user) {
-      return {
-        success: false,
-        data: null,
-        error: 'User not authenticated'
-      };
+    if (!result.success) {
+      return { success: false, data: null, error: result.error || 'Failed to fetch usage statistics' };
     }
-
-    // Fetch all usage metrics in parallel
-    const [
-      assessmentsResult,
-      profileViewsResult,
-      reportsResult
-    ] = await Promise.all([
-      getAssessmentsUsage(user.id),
-      getProfileViewsUsage(user.id),
-      getReportsUsage(user.id)
-    ]);
-
-    // Combine results
-    const usageData = {
-      assessments: assessmentsResult.data,
-      profileViews: profileViewsResult.data,
-      reports: reportsResult.data
-    };
 
     return {
       success: true,
-      data: usageData,
+      data: result.data,
       error: null
     };
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Error fetching usage statistics', error);
     return {
       success: false,
       data: null,
-      error: error.message
-    };
-  }
-};
-
-/**
- * Get assessments usage count
- * @param {string} userId - User ID
- * @returns {Promise<{success: boolean, data: Object}>}
- */
-const getAssessmentsUsage = async (userId) => {
-  try {
-    // Count completed personal assessments
-    const { count, error } = await supabase
-      .from('personal_assessment_results')
-      .select('*', { count: 'exact', head: true })
-      .eq('learner_id', userId);
-
-    if (error) throw error;
-
-    return {
-      success: true,
-      data: {
-        used: count || 0,
-        label: 'Skill Assessments'
-      }
-    };
-  } catch (error) {
-    logger.error('Error fetching assessments usage', error);
-    return {
-      success: false,
-      data: {
-        used: 0,
-        label: 'Skill Assessments'
-      }
-    };
-  }
-};
-
-/**
- * Get profile views usage count
- * @param {string} userId - User ID
- * @returns {Promise<{success: boolean, data: Object}>}
- */
-const getProfileViewsUsage = async (userId) => {
-  try {
-    // Count profile views from analytics or tracking table
-    const { count, error } = await supabase
-      .from('profile_views')
-      .select('*', { count: 'exact', head: true })
-      .eq('learner_id', userId);
-
-    if (error) {
-      // If table doesn't exist, return 0
-      if (error.code === '42P01') {
-        return {
-          success: true,
-          data: {
-            used: 0,
-            label: 'Profile Views'
-          }
-        };
-      }
-      throw error;
-    }
-
-    return {
-      success: true,
-      data: {
-        used: count || 0,
-        label: 'Profile Views'
-      }
-    };
-  } catch (error) {
-    logger.error('Error fetching profile views', error);
-    return {
-      success: false,
-      data: {
-        used: 0,
-        label: 'Profile Views'
-      }
-    };
-  }
-};
-
-/**
- * Get reports usage count
- * @param {string} userId - User ID
- * @returns {Promise<{success: boolean, data: Object}>}
- */
-const getReportsUsage = async (userId) => {
-  try {
-    // Count generated reports from learner_reports table
-    const { count, error } = await supabase
-      .from('learner_reports')
-      .select('*', { count: 'exact', head: true })
-      .eq('learner_id', userId);
-
-    if (error) {
-      // If table doesn't exist, return 0
-      if (error.code === '42P01') {
-        return {
-          success: true,
-          data: {
-            used: 0,
-            label: 'Reports Generated'
-          }
-        };
-      }
-      throw error;
-    }
-
-    return {
-      success: true,
-      data: {
-        used: count || 0,
-        label: 'Reports Generated'
-      }
-    };
-  } catch (error) {
-    logger.error('Error fetching reports usage', error);
-    return {
-      success: false,
-      data: {
-        used: 0,
-        label: 'Reports Generated'
-      }
+      error: error.message || 'Unknown error'
     };
   }
 };
@@ -191,7 +42,7 @@ const getReportsUsage = async (userId) => {
  * @param {Object} planData - Current plan data
  * @returns {Object} - Limits object with totals for each metric
  */
-export const getSubscriptionLimits = (planData) => {
+export const getSubscriptionLimits = (planData: any) => {
   // Default limits for free/basic plan
   const defaultLimits = {
     assessments: 50,
@@ -202,16 +53,15 @@ export const getSubscriptionLimits = (planData) => {
   if (!planData) return defaultLimits;
 
   // Extract limits from plan data
-  // This structure depends on your plan data format
-  const limits = {
+  const limits: any = {
     assessments: planData.limits?.assessments || 
-                 planData.features?.find(f => f.includes('assessment'))?.match(/\d+/)?.[0] || 
+                 planData.features?.find((f: any) => f.includes('assessment'))?.match(/\d+/)?.[0] || 
                  defaultLimits.assessments,
     profileViews: planData.limits?.profileViews || 
-                  planData.features?.find(f => f.includes('view'))?.match(/\d+/)?.[0] || 
+                  planData.features?.find((f: any) => f.includes('view'))?.match(/\d+/)?.[0] || 
                   defaultLimits.profileViews,
     reports: planData.limits?.reports || 
-             planData.features?.find(f => f.includes('report'))?.match(/\d+/)?.[0] || 
+             planData.features?.find((f: any) => f.includes('report'))?.match(/\d+/)?.[0] || 
              defaultLimits.reports
   };
 
@@ -231,22 +81,22 @@ export const getSubscriptionLimits = (planData) => {
  * @param {Object} limits - Subscription limits
  * @returns {Object} - Combined usage statistics
  */
-export const combineUsageWithLimits = (usageData, limits) => {
+export const combineUsageWithLimits = (usageData: any, limits: any) => {
   return {
     assessments: {
-      used: usageData.assessments?.used || 0,
+      used: usageData?.assessments?.used || 0,
       total: limits.assessments || 50,
-      label: usageData.assessments?.label || 'Skill Assessments'
+      label: usageData?.assessments?.label || 'Skill Assessments'
     },
     profileViews: {
-      used: usageData.profileViews?.used || 0,
+      used: usageData?.profileViews?.used || 0,
       total: limits.profileViews || 1000,
-      label: usageData.profileViews?.label || 'Profile Views'
+      label: usageData?.profileViews?.label || 'Profile Views'
     },
     reports: {
-      used: usageData.reports?.used || 0,
+      used: usageData?.reports?.used || 0,
       total: limits.reports || 20,
-      label: usageData.reports?.label || 'Reports Generated'
+      label: usageData?.reports?.label || 'Reports Generated'
     }
   };
 };

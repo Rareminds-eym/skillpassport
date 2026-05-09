@@ -1,5 +1,5 @@
 import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet } from '@/shared/api/apiClient';
 import { extractErrorMessage } from './paymentsApiService';
 
 // Use Pages Functions for payments (not direct worker access)
@@ -331,17 +331,12 @@ export const addOnPaymentService = {
    * @param {string} userId - User ID
    * @returns {Promise<Array>} - List of add-on purchases
    */
-  async getAddonPurchaseHistory(userId) {
+  async getAddonPurchaseHistory(userId: string) {
     try {
-      const { data, error } = await supabase
-        .from('addon_pending_orders')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      return data || [];
+      const result = await apiGet<{ success: boolean; data: any; error: string | null }>(
+        `/payments/addon-orders?action=getAddonPurchaseHistory`
+      );
+      return result.success ? result.data || [] : [];
     } catch (error) {
       return [];
     }
@@ -353,19 +348,12 @@ export const addOnPaymentService = {
    * @param {string} featureKey - Feature key
    * @returns {Promise<Object|null>} - Pending order if exists
    */
-  async getPendingAddonOrder(userId, featureKey) {
+  async getPendingAddonOrder(userId: string, featureKey: string) {
     try {
-      const { data, error } = await supabase
-        .from('addon_pending_orders')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('addon_feature_key', featureKey)
-        .eq('status', 'pending')
-        .maybeSingle();
-
-      if (error) throw error;
-
-      return data;
+      const result = await apiGet<{ success: boolean; data: any; error: string | null }>(
+        `/payments/addon-orders?action=getPendingAddonOrder&featureKey=${featureKey}`
+      );
+      return result.success ? result.data : null;
     } catch (error) {
       return null;
     }

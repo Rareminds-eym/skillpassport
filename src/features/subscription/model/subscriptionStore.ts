@@ -3,7 +3,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { immer } from 'zustand/middleware/immer';
 import { getActiveSubscription } from '@/features/subscription/api';
 import { addOnPaymentService } from '@/features/subscription';
-import { supabase } from '@/shared/api/supabaseClient';
+
 import { entitlementService } from '@/features/subscription';
 import { clearFeatureAccessCache } from '@/features/subscription/';
 

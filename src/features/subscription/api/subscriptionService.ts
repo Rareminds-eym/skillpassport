@@ -1,12 +1,8 @@
 /**
  * Subscription Service (READ-ONLY)
  * 
- * IMPORTANT: getActiveSubscription() now routes through the authenticated
- * Cloudflare Pages Function API (/api/payments/get-active-subscription)
- * instead of direct Supabase calls. This is required because:
- * 1. The frontend supabase client uses anon key with auth disabled
- * 2. RLS policies block anonymous reads → subscription always appears missing
- * 3. The server-side handler uses service_role key, bypassing RLS
+ * IMPORTANT: All functions now route through the authenticated
+ * Cloudflare Pages Function API (/api/payments/*) instead of direct Supabase calls.
  * 
  * READ OPERATIONS (this file):
  * - getActiveSubscription()     - Get user's active subscription via API
@@ -22,7 +18,6 @@
  * - paymentsApiService.resumeSubscription()    - Resume subscription
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
 import { checkAuthentication } from '@/features/auth';
 import { getLogger } from '@/shared/config/logging';
 import { apiGet } from '@/shared/api/apiClient';
@@ -79,83 +74,67 @@ export const getUserSubscriptions = async (includeAll = false) => {
       };
     }
 
-    const userId = authResult.user.id;
-
-    // Optimize query - select only needed fields for billing history
-    const selectFields = includeAll
-      ? '*'
-      : 'id,created_at,subscription_start_date,subscription_end_date,plan_amount,status,plan_type,billing_cycle,razorpay_payment_id';
-
-    const { data, error } = await supabase
-      .from('subscriptions')
-      .select(selectFields)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(20); // Limit to recent 20 for performance
-
-    if (error) {
-      logger.error('Error fetching subscriptions', error);
-      return {
-        success: false,
-        data: null,
-        error: error.message
-      };
-    }
+    const result = await apiGet<{ success: boolean; data: any; error: string | null }>(
+      `/payments/get-user-subscriptions?includeAll=${includeAll}`
+    );
 
     return {
-      success: true,
-      data: data || [],
-      error: null
+      success: result.success ?? true,
+      data: result.data ?? [],
+      error: result.error ?? null,
     };
-  } catch (error) {
-    logger.error('Unexpected error fetching subscriptions', error as Error);
+  } catch (error: any) {
+    logger.error('Error fetching subscriptions via API', error);
     return {
       success: false,
       data: null,
-      error: error.message
+      error: error.message || 'Failed to fetch subscriptions'
     };
   }
 };
 
 /**
- * Get payment transactions for a specific subscription
- * @param {string} subscriptionId - Subscription ID
+ * Get payment history for a specific subscription
+ * @param {string} subscriptionId - The ID of the subscription
  * @returns {Promise<{ success: boolean, data: Array | null, error: string | null }>}
  */
-export const getSubscriptionPayments = async (subscriptionId) => {
+export const getSubscriptionPayments = async (subscriptionId: string) => {
   try {
-    const { data, error } = await supabase
-      .from('payment_transactions')
-      .select('*')
-      .eq('subscription_id', subscriptionId)
-      .order('created_at', { ascending: false });
+    if (!subscriptionId) {
+      return { success: false, data: null, error: 'Subscription ID is required' };
+    }
 
-    if (error) {
-      logger.error('Error fetching payments', error);
+    const authResult = await checkAuthentication();
+
+    if (!authResult.isAuthenticated) {
       return {
         success: false,
         data: null,
-        error: error.message
+        error: 'User must be authenticated to view payments'
       };
     }
 
+    const result = await apiGet<{ success: boolean; data: any; error: string | null }>(
+      `/payments/get-subscription-payments?subscriptionId=${subscriptionId}`
+    );
+
     return {
-      success: true,
-      data: data || [],
-      error: null
+      success: result.success ?? true,
+      data: result.data ?? [],
+      error: result.error ?? null,
     };
-  } catch (error) {
-    logger.error('Unexpected error fetching payments', error as Error);
+  } catch (error: any) {
+    logger.error('Error fetching subscription payments via API', error);
     return {
       success: false,
       data: null,
-      error: error.message
+      error: error.message || 'Failed to fetch payments'
     };
   }
 };
 
 /**
- * Get all payment transactions for authenticated user
+ * Get all payment history for a user across all subscriptions
  * @returns {Promise<{ success: boolean, data: Array | null, error: string | null }>}
  */
 export const getUserPayments = async () => {
@@ -166,73 +145,40 @@ export const getUserPayments = async () => {
       return {
         success: false,
         data: null,
-        error: 'User must be authenticated'
+        error: 'User must be authenticated to view payments'
       };
     }
 
-    const userId = authResult.user.id;
-
-    const { data, error } = await supabase
-      .from('payment_transactions')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      logger.error('Error fetching user payments', error);
-      return {
-        success: false,
-        data: null,
-        error: error.message
-      };
-    }
+    const result = await apiGet<{ success: boolean; data: any; error: string | null }>(
+      '/payments/get-user-payments'
+    );
 
     return {
-      success: true,
-      data: data || [],
-      error: null
+      success: result.success ?? true,
+      data: result.data ?? [],
+      error: result.error ?? null,
     };
-  } catch (error) {
-    logger.error('Unexpected error fetching user payments', error as Error);
+  } catch (error: any) {
+    logger.error('Error fetching user payments via API', error);
     return {
       success: false,
       data: null,
-      error: error.message
+      error: error.message || 'Failed to fetch payments'
     };
   }
 };
 
 /**
- * Check if user has active subscription
- * Includes cancelled subscriptions that haven't expired (user retains access until end date)
- * @returns {Promise<{ hasSubscription: boolean, subscription: Object | null }>}
+ * Check if the user has an active subscription directly
+ * Similar to getActiveSubscription but returns a simple boolean result
+ * @returns {Promise<boolean>}
  */
 export const checkActiveSubscription = async () => {
   try {
-    const result = await getActiveSubscription();
-
-    if (!result.success) {
-      return {
-        hasSubscription: false,
-        subscription: null
-      };
-    }
-
-    // Check if subscription is active, paused, or cancelled but not expired
-    const isValid = result.data && (
-      ['active', 'paused'].includes(result.data.status) ||
-      (result.data.status === 'cancelled' && new Date(result.data.subscription_end_date) >= new Date())
-    );
-
-    return {
-      hasSubscription: isValid,
-      subscription: result.data
-    };
+    const response = await getActiveSubscription();
+    return response.success && response.data !== null && response.data.status !== 'expired';
   } catch (error) {
-    logger.error('Error checking subscription', error as Error);
-    return {
-      hasSubscription: false,
-      subscription: null
-    };
+    logger.error('Error checking subscription', error);
+    return false;
   }
 };

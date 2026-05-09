@@ -12,7 +12,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
  * - clearVerificationCache() - Clear cache (for testing)
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
+
 import paymentsApiService from './paymentsApiService';
 import { getLogger } from '@/shared/config/logging';
 

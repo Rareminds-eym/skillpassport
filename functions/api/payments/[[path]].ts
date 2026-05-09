@@ -39,7 +39,23 @@ import { handleGetPayment } from './handlers/get-payment';
 import { handleCancelSubscription } from './handlers/cancel-subscription';
 import { handleGetSubscription } from './handlers/get-subscription';
 import { handleGetActiveSubscription } from './handlers/get-active-subscription';
+import { handleGetUserSubscriptions } from './handlers/get-user-subscriptions';
+import { handleGetSubscriptionPayments } from './handlers/get-subscription-payments';
+import { handleGetUserPayments } from './handlers/get-user-payments';
 import { handleCheckSubscriptionAccess } from './handlers/check-subscription-access';
+import { handleGetUsageStatistics } from './handlers/usage-statistics';
+import { handleOrganizationQueries } from './handlers/organization-queries';
+import { handleLicensePoolQueries } from './handlers/license-pool-queries';
+import { handleMigrationOperations } from './handlers/migration-operations';
+import { handleAddonCatalog } from './handlers/addon-catalog';
+import { handleAddonAnalytics } from './handlers/addon-analytics';
+import { handleAddonOrders } from './handlers/addon-orders';
+import { handleGetUserEntitlements } from './handlers/get-user-entitlements';
+import { handleHasFeatureAccess } from './handlers/has-feature-access';
+import { handleGetAvailableAddons } from './handlers/get-available-addons';
+import { handleGetAddonByFeatureKey } from './handlers/get-addon-by-feature-key';
+import { handleCancelAddon } from './handlers/cancel-addon';
+import { handleToggleAddonAutorenew } from './handlers/toggle-addon-autorenew';
 import { handleSubscriptionPlans } from './handlers/subscription-plans';
 import { handleSubscriptionPlan } from './handlers/subscription-plan';
 import { handleSubscriptionFeatures } from './handlers/subscription-features';
@@ -144,6 +160,16 @@ const handleAuthenticatedRequest = withAuth(async (context: AuthenticatedContext
     return handleCreateAddonOrder(context);
   }
 
+  if (path === '/cancel-addon') {
+    if (method !== 'POST') return methodNotAllowed();
+    return handleCancelAddon(context);
+  }
+
+  if (path === '/toggle-addon-autorenew') {
+    if (method !== 'POST') return methodNotAllowed();
+    return handleToggleAddonAutorenew(context);
+  }
+
   if (path === '/verify-addon-payment') {
     if (method !== 'POST') return methodNotAllowed();
     return handleVerifyAddonPayment(context);
@@ -162,6 +188,16 @@ const handleAuthenticatedRequest = withAuth(async (context: AuthenticatedContext
   if (path === '/create-event-order') {
     if (method !== 'POST') return methodNotAllowed();
     return handleCreateEventOrder(context);
+  }
+
+  if (path === '/migration-operations') {
+    if (method !== 'POST') return methodNotAllowed();
+    return handleMigrationOperations(context);
+  }
+
+  if (path === '/addon-analytics') {
+    if (method !== 'POST') return methodNotAllowed();
+    return handleAddonAnalytics(context);
   }
 
   if (path === '/create-org-order') {
@@ -194,6 +230,66 @@ const handleAuthenticatedRequest = withAuth(async (context: AuthenticatedContext
   if (path === '/check-subscription-access') {
     if (method !== 'GET') return methodNotAllowed();
     return handleCheckSubscriptionAccess(context);
+  }
+
+  if (path === '/get-user-subscriptions') {
+    if (method !== 'GET') return methodNotAllowed();
+    return handleGetUserSubscriptions(context);
+  }
+
+  if (path === '/get-subscription-payments') {
+    if (method !== 'GET') return methodNotAllowed();
+    return handleGetSubscriptionPayments(context);
+  }
+
+  if (path === '/get-user-payments') {
+    if (method !== 'GET') return methodNotAllowed();
+    return handleGetUserPayments(context);
+  }
+
+  if (path === '/usage-statistics') {
+    if (method !== 'GET') return methodNotAllowed();
+    return handleGetUsageStatistics(context);
+  }
+
+  if (path === '/organization-queries') {
+    if (method !== 'GET') return methodNotAllowed();
+    return handleOrganizationQueries(context);
+  }
+
+  if (path === '/license-pool-queries') {
+    if (method !== 'GET') return methodNotAllowed();
+    return handleLicensePoolQueries(context);
+  }
+
+  if (path === '/addon-catalog') {
+    if (method !== 'GET') return methodNotAllowed();
+    return handleAddonCatalog(context);
+  }
+
+  if (path === '/addon-orders') {
+    if (method !== 'GET') return methodNotAllowed();
+    return handleAddonOrders(context);
+  }
+
+  if (path === '/get-user-entitlements') {
+    if (method !== 'GET') return methodNotAllowed();
+    return handleGetUserEntitlements(context);
+  }
+
+  if (path === '/has-feature-access') {
+    if (method !== 'GET') return methodNotAllowed();
+    return handleHasFeatureAccess(context);
+  }
+
+  if (path === '/get-available-addons') {
+    if (method !== 'GET') return methodNotAllowed();
+    return handleGetAvailableAddons(context);
+  }
+
+  if (path === '/get-addon-by-feature-key') {
+    if (method !== 'GET') return methodNotAllowed();
+    return handleGetAddonByFeatureKey(context);
   }
 
   if (path === '/subscription-plans') {
