@@ -224,7 +224,7 @@ export const useLearnerEducatorConversations = (learnerId, enabled = true) => {
 /**
  * Hook for creating or getting a learner-educator conversation
  */
-export const useCreatelearnerEducatorConversation = () => {
+export const useCreateLearnerEducatorConversation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
