@@ -787,20 +787,29 @@ function MySubscription() {
 
                     {/* Features List with smooth CSS transitions */}
                     <ul className="space-y-3">
-                      {displayFeatures.map((feature, index) => (
-                        <li
-                          key={`feature-${feature.slice(0, 20)}-${index}`}
-                          className="flex items-start gap-3 opacity-100 transform translate-y-0 transition-all duration-300 ease-out group"
-                          style={{
-                            transitionDelay: `${index * 30}ms`
-                          }}
-                        >
-                          <div className="w-5 h-5 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-lg group-hover:scale-110 transition-transform">
-                            <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                          </div>
-                          <span className="text-sm text-slate-700 font-medium leading-relaxed">{feature}</span>
-                        </li>
-                      ))}
+                      {displayFeatures.map((feature, index) => {
+                        // Features may be strings or objects with {name, feature_key}
+                        const featureName = typeof feature === 'string'
+                          ? feature
+                          : (feature?.name || feature?.feature_key || '');
+                        const featureKeyStr = typeof feature === 'string'
+                          ? feature.slice(0, 20)
+                          : (feature?.feature_key || feature?.name || String(index));
+                        return (
+                          <li
+                            key={`feature-${featureKeyStr}-${index}`}
+                            className="flex items-start gap-3 opacity-100 transform translate-y-0 transition-all duration-300 ease-out group"
+                            style={{
+                              transitionDelay: `${index * 30}ms`
+                            }}
+                          >
+                            <div className="w-5 h-5 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-lg group-hover:scale-110 transition-transform">
+                              <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                            </div>
+                            <span className="text-sm text-slate-700 font-medium leading-relaxed">{featureName}</span>
+                          </li>
+                        );
+                      })}
                     </ul>
 
                     {/* Show More/Less Toggle */}

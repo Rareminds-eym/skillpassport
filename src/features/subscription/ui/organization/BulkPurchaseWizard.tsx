@@ -547,12 +547,15 @@ function Step1PlanSelection({
                 <p className="text-sm text-gray-500 mb-3">{plan.description}</p>
               )}
               <ul className="space-y-1">
-                {plan.features.slice(0, 3).map((feature, idx) => (
-                  <li key={idx} className="flex items-center gap-2 text-sm text-gray-600">
-                    <Check className="w-3.5 h-3.5 text-green-500" />
-                    {feature}
-                  </li>
-                ))}
+                {plan.features.slice(0, 3).map((feature, idx) => {
+                  const featureName = typeof feature === 'string' ? feature : (feature?.name || feature?.feature_key || '');
+                  return (
+                    <li key={idx} className="flex items-center gap-2 text-sm text-gray-600">
+                      <Check className="w-3.5 h-3.5 text-green-500" />
+                      {featureName}
+                    </li>
+                  );
+                })}
               </ul>
             </button>
           );

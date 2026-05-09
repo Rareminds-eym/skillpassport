@@ -80,12 +80,15 @@ const LearnerPlanCard = memo(({ plan, isSelected, onSelect, isPromoActive }) => 
         
         {/* Features List */}
         <ul className="space-y-3 mt-4 flex-1">
-          {(plan.features || []).map((feature, idx) => (
-            <li key={idx} className="flex items-start gap-2.5">
-              <Check className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" strokeWidth={2.5} />
-              <span className="text-gray-600 text-sm">{feature}</span>
-            </li>
-          ))}
+          {(plan.features || []).map((feature, idx) => {
+            const featureName = typeof feature === 'string' ? feature : (feature?.name || feature?.feature_key || '');
+            return (
+              <li key={idx} className="flex items-start gap-2.5">
+                <Check className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" strokeWidth={2.5} />
+                <span className="text-gray-600 text-sm">{featureName}</span>
+              </li>
+            );
+          })}
         </ul>
         
         {/* Select Button */}

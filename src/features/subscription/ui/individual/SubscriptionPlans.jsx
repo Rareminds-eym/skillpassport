@@ -211,7 +211,11 @@ const FeatureComparisonTable = memo(({ plans }) => {
     if (value === '~') return (
       <span className="text-amber-500 font-bold text-lg">~</span>
     );
-    return <span className="text-sm text-slate-900 font-semibold">{value}</span>;
+    // Safety check for objects to prevent React error #31
+    const safeValue = typeof value === 'object' && value !== null 
+      ? (value.name || value.feature_key || String(value))
+      : value;
+    return <span className="text-sm text-slate-900 font-semibold">{safeValue}</span>;
   }, []);
 
   const featureComparison = useMemo(() => getFeatureComparison(plans), [plans]);
@@ -379,7 +383,11 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
   // Render feature item
   const renderFeature = (feature, idx) => {
     const featureName = typeof feature === 'string' ? feature : (feature.name || feature.feature_key || '');
-    const featureValue = typeof feature === 'object' ? (feature.value || feature.feature_value) : null;
+    let featureValue = typeof feature === 'object' ? (feature.value || feature.feature_value) : null;
+    // Safety check for objects to prevent React error #31
+    if (typeof featureValue === 'object' && featureValue !== null) {
+      featureValue = featureValue.name || featureValue.feature_key || String(featureValue);
+    }
 
     return (
       <li key={idx} className="flex items-start gap-3 py-2 group">
@@ -1072,7 +1080,11 @@ function SubscriptionPlans() {
                   <div className="grid sm:grid-cols-2 gap-4">
                     {(currentPlanData?.features || []).slice(0, 8).map((feature, index) => {
                       const featureName = typeof feature === 'string' ? feature : (feature.name || feature.feature_key || '');
-                      const featureValue = typeof feature === 'object' ? (feature.value || feature.feature_value) : null;
+                      let featureValue = typeof feature === 'object' ? (feature.value || feature.feature_value) : null;
+                      // Safety check for objects to prevent React error #31
+                      if (typeof featureValue === 'object' && featureValue !== null) {
+                        featureValue = featureValue.name || featureValue.feature_key || String(featureValue);
+                      }
 
                       return (
                         <div

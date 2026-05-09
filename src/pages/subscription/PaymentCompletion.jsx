@@ -143,12 +143,18 @@ const PlanCard = memo(({ plan }) => (
       </div>
 
       <div className="border-t border-white/20 pt-4 space-y-2.5">
-        {plan.features?.slice(0, 4).map((feature, index) => (
-          <div key={index} className="flex items-center gap-2.5">
-            <Check className="w-4 h-4 text-blue-200" strokeWidth={2.5} />
-            <span className="text-sm text-blue-100">{feature}</span>
-          </div>
-        ))}
+        {plan.features?.slice(0, 4).map((feature, index) => {
+          // Features may be strings or objects with {name, feature_key}
+          const featureName = typeof feature === 'string'
+            ? feature
+            : (feature?.name || feature?.feature_key || '');
+          return (
+            <div key={index} className="flex items-center gap-2.5">
+              <Check className="w-4 h-4 text-blue-200" strokeWidth={2.5} />
+              <span className="text-sm text-blue-100">{featureName}</span>
+            </div>
+          );
+        })}
         {plan.features?.length > 4 && (
           <p className="text-xs text-blue-200 pl-6">+{plan.features.length - 4} more features</p>
         )}

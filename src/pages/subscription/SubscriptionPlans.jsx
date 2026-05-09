@@ -1088,7 +1088,11 @@ function SubscriptionPlans() {
                   <div className="grid sm:grid-cols-2 gap-4">
                     {(currentPlanData?.features || []).slice(0, 8).map((feature, index) => {
                       const featureName = typeof feature === 'string' ? feature : (feature.name || feature.feature_key || '');
-                      const featureValue = typeof feature === 'object' ? (feature.value || feature.feature_value) : null;
+                      let featureValue = typeof feature === 'object' ? (feature.value || feature.feature_value) : null;
+                      // Safety check for objects to prevent React error #31
+                      if (typeof featureValue === 'object' && featureValue !== null) {
+                        featureValue = featureValue.name || featureValue.feature_key || String(featureValue);
+                      }
 
                       return (
                         <div
