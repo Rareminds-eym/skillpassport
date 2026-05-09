@@ -415,16 +415,56 @@ function PaymentCompletion() {
           plan,
           userDetails: { ...userDetails, learnerType },
           isUpgrade,
-          onSuccess: (verificationResult) => {
-            const routes = { school: '/signin/school', university: '/signin/university', default: '/signup' };
-            navigate(routes[learnerType] || routes.default, {
-              state: { paymentDetails: verificationResult },
+          onSuccess: (result) => {
+            setLoading(false);
+            // Navigate to success page via React Router — no page reload
+            navigate('/subscription/payment/success', {
+              state: {
+                razorpay_payment_id: result.razorpay_payment_id,
+                razorpay_order_id: result.razorpay_order_id,
+                razorpay_signature: result.razorpay_signature,
+                plan: result.plan,
+                verificationResult: result.verificationResult,
+                learnerType,
+              },
               replace: true,
             });
           },
-          onFailure: (err) => {
+          onFailure: (result) => {
             setLoading(false);
-            setError(err.message || 'Payment failed. Please try again.');
+
+            // SUBSCRIPTION_EXISTS → navigate to manage page
+            if (result.error_code === 'SUBSCRIPTION_EXISTS') {
+              const targetPath = managePath || `/subscription/plans?type=${learnerType || 'learner'}`;
+              navigate(targetPath, {
+                state: { message: result.error_description },
+                replace: true,
+              });
+              return;
+            }
+
+            // PAYMENT_CANCELLED → silently reset (user chose to cancel)
+            if (result.error_code === 'PAYMENT_CANCELLED') {
+              setError('');
+              return;
+            }
+
+            // All other failures → show inline error with option to navigate to failure page
+            navigate('/subscription/payment/failure', {
+              state: {
+                error_code: result.error_code,
+                error_description: result.error_description,
+                error_reason: result.error_reason,
+                razorpay_order_id: result.razorpay_order_id,
+                razorpay_payment_id: result.razorpay_payment_id,
+                plan,
+                learnerType,
+              },
+            });
+          },
+          onCancel: () => {
+            // User dismissed modal — no error, just reset loading state
+            setLoading(false);
           },
         });
       } catch {

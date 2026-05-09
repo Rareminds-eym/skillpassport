@@ -27,9 +27,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-
-import { usePaymentVerificationFromURL } from '@/features/subscription/model';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { downloadReceipt, generateReceiptBase64 } from '@/features/subscription/lib';
 import { getPaymentReceiptUrl, uploadPaymentReceipt } from '@/shared/api';
 
@@ -438,10 +436,20 @@ const ErrorScreen = ({ message, onRetry }) => (
 
 function PaymentSuccess() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const user = useUser();
   const { role } = useUserRole();
   const { refreshSubscription, refreshAccess } = useSubscription();
+
+  // ── Read exclusively from location.state (set by initiateRazorpayPayment callbacks) ──
+  const stateData = location.state || {};
+  const verificationStatus = stateData.verificationResult ? 'success' : 'error';
+  const transactionDetails = stateData.verificationResult || null;
+  const paymentParams = {
+    razorpay_payment_id: stateData.razorpay_payment_id || '',
+    razorpay_order_id: stateData.razorpay_order_id || '',
+    razorpay_signature: stateData.razorpay_signature || '',
+  };
 
   // State
   const [activationStatus, setActivationStatus] = useState(ACTIVATION_STATES.PENDING);
@@ -450,6 +458,7 @@ function PaymentSuccess() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [receiptUrl, setReceiptUrl] = useState(null);
   const [receiptUploading, setReceiptUploading] = useState(false);
+  const verificationError = null;
 
   // Refs for cleanup
   const mountedRef = useRef(true);
@@ -457,14 +466,11 @@ function PaymentSuccess() {
   const emailTimeoutRef = useRef(null);
   const sessionTimeoutRef = useRef(null);
 
-  // Payment verification
-  const {
-    status: verificationStatus,
-    transactionDetails,
-    error: verificationError,
-    paymentParams,
-    retry,
-  } = usePaymentVerificationFromURL(searchParams, true);
+  const retry = useCallback(() => {
+    // Re-navigate to plans page for a fresh attempt
+    const userType = stateData.learnerType || role || 'learner';
+    navigate(`/subscription/plans?type=${userType}`, { replace: true });
+  }, [navigate, stateData.learnerType, role]);
 
   // Memoized values
   const managePath = useMemo(() => {
@@ -478,13 +484,8 @@ function PaymentSuccess() {
   }, [user, role]);
 
   const planDetails = useMemo(() => {
-    try {
-      const stored = localStorage.getItem('payment_plan_details');
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  }, []);
+    return stateData.plan || null;
+  }, [stateData.plan]);
 
   const displayAmount = useMemo(() => {
     if (transactionDetails?.amount) return transactionDetails.amount / 100;

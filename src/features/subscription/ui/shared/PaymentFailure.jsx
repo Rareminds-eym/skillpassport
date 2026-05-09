@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   XCircle, 
   RefreshCw, 
@@ -13,7 +13,7 @@ import {
   Building2,
   ShieldAlert
 } from 'lucide-react';
-import { extractPaymentParams, logFailedTransaction } from '@/features/subscription/api';
+import { logFailedTransaction } from '@/features/subscription/api';
 import { useUserRole } from '@/shared/model/authStore';
 
 
@@ -32,55 +32,49 @@ const IssueCard = ({ icon: Icon, title, description, index }) => (
 
 function PaymentFailure() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { role } = useUserRole();
   const [retryAttempts, setRetryAttempts] = useState(0);
   const [showSupportModal, setShowSupportModal] = useState(false);
 
-  const paymentParams = useMemo(() => extractPaymentParams(searchParams), [searchParams]);
+  // ── Read exclusively from location.state (set by PaymentCompletion callbacks) ──
+  const stateData = location.state || {};
   
   const failureReason = useMemo(() => {
-    return paymentParams.error_description || 
-           paymentParams.error_reason || 
-           searchParams.get('reason') ||
-           'Payment could not be completed';
-  }, [paymentParams, searchParams]);
+    return stateData.error_description || 'Payment could not be completed';
+  }, [stateData]);
 
   const errorCode = useMemo(() => {
-    return paymentParams.error_code || searchParams.get('error_code') || 'PAYMENT_FAILED';
-  }, [paymentParams, searchParams]);
+    return stateData.error_code || 'PAYMENT_FAILED';
+  }, [stateData]);
 
   const transactionReference = useMemo(() => {
-    return paymentParams.razorpay_order_id || 
-           paymentParams.razorpay_payment_id || 
-           searchParams.get('reference') ||
+    return stateData.razorpay_order_id ||
+           stateData.razorpay_payment_id ||
            `REF-${Date.now()}`;
-  }, [paymentParams, searchParams]);
+  }, [stateData]);
 
   const planDetails = useMemo(() => {
-    try {
-      const stored = localStorage.getItem('payment_plan_details');
-      return stored ? JSON.parse(stored) : null;
-    } catch (error) {
-      return null;
-    }
-  }, []);
+    return stateData.plan || null;
+  }, [stateData.plan]);
 
   useEffect(() => {
     const logFailure = async () => {
-      if (paymentParams.razorpay_payment_id || paymentParams.razorpay_order_id) {
+      const paymentId = stateData.razorpay_payment_id;
+      const orderId = stateData.razorpay_order_id;
+      if (paymentId || orderId) {
         await logFailedTransaction({
-          razorpay_payment_id: paymentParams.razorpay_payment_id,
-          razorpay_order_id: paymentParams.razorpay_order_id,
+          razorpay_payment_id: paymentId,
+          razorpay_order_id: orderId,
           amount: planDetails?.price || 0,
           currency: 'INR',
           error: failureReason,
-          error_description: paymentParams.error_description
+          error_description: stateData.error_description
         });
       }
     };
     logFailure();
-  }, [paymentParams, planDetails, failureReason]);
+  }, [stateData, planDetails, failureReason]);
 
   const getUserFriendlyMessage = (code) => {
     const messages = {
