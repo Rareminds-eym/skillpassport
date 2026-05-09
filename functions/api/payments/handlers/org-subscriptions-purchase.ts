@@ -1,9 +1,10 @@
 /**
- * Create Order Handler
+ * Org Subscriptions Purchase Handler
  *
- * POST /api/payments/create-order
+ * POST /api/payments/org-subscriptions/purchase
  *
- * Creates a Razorpay order via the payment-worker RPC binding.
+ * Creates a Razorpay order for an organization subscription purchase
+ * via the payment-worker RPC binding.
  * Requires SSO authentication.
  */
 
@@ -12,10 +13,10 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleCreateOrder(context);
+  return handleOrgSubscriptionsPurchase(context);
 });
 
-export async function handleCreateOrder(context: AuthenticatedContext): Promise<Response> {
+export async function handleOrgSubscriptionsPurchase(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
   const env = context.env as unknown as PaymentWorkerEnv;
 
@@ -39,6 +40,20 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
       );
     }
 
+    if (!body.org_id || typeof body.org_id !== 'string') {
+      return new Response(
+        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'org_id is required' } }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!body.seat_count || typeof body.seat_count !== 'number') {
+      return new Response(
+        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'seat_count is required and must be a number' } }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Ensure RAZORPAY_KEY_ID is available for frontend checkout
     if (!env.RAZORPAY_KEY_ID) {
       return new Response(
@@ -52,22 +67,23 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
     const order = await worker.createOrder({
       amount: body.amount as number,
       currency: (body.currency as string) || undefined,
-      receipt: (body.receipt as string) || undefined,
       notes: {
-        ...(body.notes as Record<string, string> || {}),
+        org_id: body.org_id as string,
+        plan_name: (body.plan_name as string) || '',
+        plan_id: (body.plan_id as string) || '',
+        seat_count: String(body.seat_count),
         user_id: user.sub,
-        user_email: user.email || '',
-        org_id: user.org_id || '',
+        type: 'org_subscription',
       },
     });
 
-    // Return flattened order with Razorpay key for frontend checkout initialization
+    // Return order with Razorpay key for frontend checkout initialization
     return new Response(JSON.stringify({ ...order, key: env.RAZORPAY_KEY_ID }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('[CreateOrder] Error:', error);
+    console.error('[OrgSubscriptionsPurchase] Error:', error);
     return rpcErrorResponse(error);
   }
 }

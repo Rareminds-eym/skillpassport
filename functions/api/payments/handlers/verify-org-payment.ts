@@ -1,15 +1,15 @@
 /**
- * Verify Payment Handler
+ * Verify Org Payment Handler
  *
- * POST /api/payments/verify-payment
+ * POST /api/payments/verify-org-payment
  *
  * Verifies a Razorpay payment signature via the payment-worker RPC binding,
- * then creates a subscription and payment transaction in Supabase.
+ * then creates an organization subscription record in Supabase.
  * Requires SSO authentication.
  *
  * Flow:
  * 1. Worker verifies HMAC signature via RPC (cryptographic guarantee)
- * 2. Pages Function creates subscription in DB (worker has no DB access)
+ * 2. Pages Function creates org subscription record in DB (worker has no DB access)
  * 3. Pages Function logs payment transaction
  */
 
@@ -19,10 +19,10 @@ import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../li
 import { getServiceClient } from '../../../lib/supabase';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleVerifyPayment(context);
+  return handleVerifyOrgPayment(context);
 });
 
-export async function handleVerifyPayment(context: AuthenticatedContext): Promise<Response> {
+export async function handleVerifyOrgPayment(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
   const env = context.env as unknown as PaymentWorkerEnv;
 
@@ -51,6 +51,25 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       );
     }
 
+    // Validate org subscription details
+    if (!body.org_id || typeof body.org_id !== 'string') {
+      return new Response(
+        JSON.stringify({
+          error: { code: 'INVALID_INPUT', message: 'org_id is required' },
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!body.plan_name || typeof body.plan_name !== 'string') {
+      return new Response(
+        JSON.stringify({
+          error: { code: 'INVALID_INPUT', message: 'plan_name is required' },
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Step 1: Call payment-worker via RPC to verify HMAC signature
     const worker = getPaymentWorker(env);
     const verifyResult = await worker.verifyPaymentSignature(
@@ -59,27 +78,19 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       body.razorpay_signature as string
     );
 
-    // Step 2: Signature is valid — create subscription in Supabase
-    // The worker only verifies the signature; it has no database access.
-    const plan = body.plan as Record<string, unknown> | undefined;
-    if (!plan || !plan.id || !plan.name || !plan.price || !plan.duration) {
-      // Signature verified but no plan data — return verification result without subscription
-      console.warn('[VerifyPayment] Signature verified but no plan data provided — subscription not created');
-      return new Response(JSON.stringify({ success: true, ...verifyResult }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
+    // Step 2: Signature is valid — create org subscription record in Supabase
     const supabase = getServiceClient(env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
+
+    const seatCount = typeof body.seat_count === 'number' ? body.seat_count : 1;
+    const planAmount = typeof body.amount === 'number' ? body.amount : 0;
+    const billingCycle = (body.billing_cycle as string) || 'monthly';
 
     // Calculate subscription dates
     const now = new Date();
     const endDate = new Date(now);
-    const durationMonths = parseDurationMonths(plan.duration as string);
+    const durationMonths = parseDurationMonths(billingCycle);
     endDate.setMonth(endDate.getMonth() + durationMonths);
 
-    // Create subscription record
     const { data: subscription, error: subError } = await supabase
       .from('subscriptions')
       .insert({
@@ -87,24 +98,24 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         full_name: (user as unknown as Record<string, unknown>).name as string || user.email || '',
         email: user.email || '',
         phone: (user as unknown as Record<string, unknown>).phone as string || null,
-        plan_type: plan.name,
-        plan_amount: parseFloat(String(plan.price)),
-        billing_cycle: plan.duration,
+        plan_type: body.plan_name,
+        plan_amount: planAmount / 100, // Convert paise to rupees
+        billing_cycle: billingCycle,
         razorpay_order_id: body.razorpay_order_id,
         razorpay_payment_id: body.razorpay_payment_id,
         status: 'active',
         auto_renew: true,
         subscription_start_date: now.toISOString(),
         subscription_end_date: endDate.toISOString(),
-        plan_id: plan.id,
-        is_organization_subscription: false,
-        seat_count: 1,
+        is_organization_subscription: true,
+        org_id: body.org_id,
+        seat_count: seatCount,
       })
       .select()
       .single();
 
     if (subError) {
-      console.error('[VerifyPayment] Failed to create subscription:', subError);
+      console.error('[VerifyOrgPayment] Failed to create org subscription:', subError);
       // Signature is verified but subscription creation failed — return partial success (207)
       return new Response(JSON.stringify({
         success: true,
@@ -112,11 +123,11 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         subscription_created: false,
         error: {
           code: 'SUBSCRIPTION_CREATE_FAILED',
-          message: 'Payment verified but subscription creation failed. Please contact support.',
+          message: 'Payment verified but org subscription creation failed. Please contact support.',
           details: subError.message,
         },
       }), {
-        status: 207, // Multi-Status: partial success
+        status: 207,
         headers: { 'Content-Type': 'application/json' },
       });
     }
@@ -129,12 +140,12 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         user_id: user.sub,
         razorpay_payment_id: body.razorpay_payment_id,
         razorpay_order_id: body.razorpay_order_id,
-        amount: parseFloat(String(plan.price)),
-        currency: 'INR',
+        amount: planAmount / 100,
+        currency: (body.currency as string) || 'INR',
         status: 'completed',
         transaction_type: 'subscription',
-        is_bulk_purchase: false,
-        seat_count: 1,
+        is_bulk_purchase: true,
+        seat_count: seatCount,
       });
 
     // Return combined result
@@ -146,6 +157,8 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         id: subscription.id,
         status: subscription.status,
         plan_name: subscription.plan_type,
+        org_id: subscription.org_id,
+        seat_count: subscription.seat_count,
         start_date: subscription.subscription_start_date,
         end_date: subscription.subscription_end_date,
       },
@@ -154,7 +167,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('[VerifyPayment] Error:', error);
+    console.error('[VerifyOrgPayment] Error:', error);
     return rpcErrorResponse(error);
   }
 }

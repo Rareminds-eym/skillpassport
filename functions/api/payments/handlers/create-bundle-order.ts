@@ -1,9 +1,9 @@
 /**
- * Create Order Handler
+ * Create Bundle Order Handler
  *
- * POST /api/payments/create-order
+ * POST /api/payments/create-bundle-order
  *
- * Creates a Razorpay order via the payment-worker RPC binding.
+ * Creates a Razorpay order for a bundle purchase via the payment-worker RPC binding.
  * Requires SSO authentication.
  */
 
@@ -12,10 +12,10 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleCreateOrder(context);
+  return handleCreateBundleOrder(context);
 });
 
-export async function handleCreateOrder(context: AuthenticatedContext): Promise<Response> {
+export async function handleCreateBundleOrder(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
   const env = context.env as unknown as PaymentWorkerEnv;
 
@@ -39,6 +39,20 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
       );
     }
 
+    if (!body.bundle_id || typeof body.bundle_id !== 'string') {
+      return new Response(
+        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'bundle_id is required' } }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!body.bundle_name || typeof body.bundle_name !== 'string') {
+      return new Response(
+        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'bundle_name is required' } }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Ensure RAZORPAY_KEY_ID is available for frontend checkout
     if (!env.RAZORPAY_KEY_ID) {
       return new Response(
@@ -52,22 +66,21 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
     const order = await worker.createOrder({
       amount: body.amount as number,
       currency: (body.currency as string) || undefined,
-      receipt: (body.receipt as string) || undefined,
       notes: {
-        ...(body.notes as Record<string, string> || {}),
+        bundle_id: body.bundle_id as string,
+        bundle_name: body.bundle_name as string,
         user_id: user.sub,
-        user_email: user.email || '',
-        org_id: user.org_id || '',
+        type: 'bundle',
       },
     });
 
-    // Return flattened order with Razorpay key for frontend checkout initialization
+    // Return order with Razorpay key for frontend checkout initialization
     return new Response(JSON.stringify({ ...order, key: env.RAZORPAY_KEY_ID }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('[CreateOrder] Error:', error);
+    console.error('[CreateBundleOrder] Error:', error);
     return rpcErrorResponse(error);
   }
 }

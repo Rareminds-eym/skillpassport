@@ -2,8 +2,19 @@
 # This is used for local development with `wrangler pages dev`
 
 name = "skill-passport-portal"
-compatibility_date = "2024-01-01"
+compatibility_date = "2025-05-09"
 compatibility_flags = ["nodejs_compat"]
+
+# ============================================================================
+# SERVICE BINDINGS
+# ============================================================================
+# Payment worker — called via RPC (WorkerEntrypoint), zero-latency, no JWT needed.
+# Local dev: npx wrangler pages dev ./dist --service PAYMENT_WORKER=razorpay-api
+
+[[services]]
+binding = "PAYMENT_WORKER"
+service = "razorpay-api"
+entrypoint = "PaymentService"
 
 # Environment variables for local development
 # These will be loaded from .dev.vars file

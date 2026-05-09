@@ -1,9 +1,9 @@
 /**
- * Create Order Handler
+ * Create Event Order Handler
  *
- * POST /api/payments/create-order
+ * POST /api/payments/create-event-order
  *
- * Creates a Razorpay order via the payment-worker RPC binding.
+ * Creates a Razorpay order for an event registration via the payment-worker RPC binding.
  * Requires SSO authentication.
  */
 
@@ -12,10 +12,10 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleCreateOrder(context);
+  return handleCreateEventOrder(context);
 });
 
-export async function handleCreateOrder(context: AuthenticatedContext): Promise<Response> {
+export async function handleCreateEventOrder(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
   const env = context.env as unknown as PaymentWorkerEnv;
 
@@ -39,6 +39,13 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
       );
     }
 
+    if (!body.registrationId || typeof body.registrationId !== 'string') {
+      return new Response(
+        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'registrationId is required' } }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Ensure RAZORPAY_KEY_ID is available for frontend checkout
     if (!env.RAZORPAY_KEY_ID) {
       return new Response(
@@ -52,22 +59,26 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
     const order = await worker.createOrder({
       amount: body.amount as number,
       currency: (body.currency as string) || undefined,
-      receipt: (body.receipt as string) || undefined,
       notes: {
-        ...(body.notes as Record<string, string> || {}),
+        registration_id: body.registrationId as string,
+        plan_name: (body.planName as string) || '',
+        user_email: (body.userEmail as string) || user.email || '',
+        user_name: (body.userName as string) || '',
+        user_phone: (body.userPhone as string) || '',
+        campaign: (body.campaign as string) || '',
+        origin: (body.origin as string) || '',
         user_id: user.sub,
-        user_email: user.email || '',
-        org_id: user.org_id || '',
+        type: 'event',
       },
     });
 
-    // Return flattened order with Razorpay key for frontend checkout initialization
-    return new Response(JSON.stringify({ ...order, key: env.RAZORPAY_KEY_ID }), {
+    // Return order with Razorpay key and registrationId for frontend checkout initialization
+    return new Response(JSON.stringify({ ...order, key: env.RAZORPAY_KEY_ID, registrationId: body.registrationId }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('[CreateOrder] Error:', error);
+    console.error('[CreateEventOrder] Error:', error);
     return rpcErrorResponse(error);
   }
 }

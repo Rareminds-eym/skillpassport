@@ -1,9 +1,9 @@
 /**
- * Get Subscription Handler
+ * Subscription Features Handler
  *
- * GET /api/payments/get-subscription
+ * GET /api/payments/subscription-features
  *
- * Queries Supabase directly for the user's active or paused subscription.
+ * Queries Supabase directly for subscription features.
  * Requires SSO authentication.
  */
 
@@ -12,32 +12,26 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-  return handleGetSubscription(context);
+  return handleSubscriptionFeatures(context);
 });
 
-export async function handleGetSubscription(context: AuthenticatedContext): Promise<Response> {
-  const user = context.data.user;
+export async function handleSubscriptionFeatures(context: AuthenticatedContext): Promise<Response> {
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
 
   try {
     const supabase = getServiceClient(env);
 
     const { data, error } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .eq('user_id', user.sub)
-      .in('status', ['active', 'paused'])
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .from('subscription_features')
+      .select('*');
 
     if (error) {
-      console.error('[GetSubscription] Supabase error:', error);
+      console.error('[SubscriptionFeatures] Supabase error:', error);
       return new Response(
         JSON.stringify({
           error: {
             code: 'INTERNAL_ERROR',
-            message: 'Failed to fetch subscription',
+            message: 'Failed to fetch subscription features',
           },
         }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
@@ -45,16 +39,16 @@ export async function handleGetSubscription(context: AuthenticatedContext): Prom
     }
 
     return new Response(
-      JSON.stringify({ success: true, subscription: data }),
+      JSON.stringify({ success: true, features: data }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('[GetSubscription] Error:', error);
+    console.error('[SubscriptionFeatures] Error:', error);
     return new Response(
       JSON.stringify({
         error: {
           code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Failed to get subscription',
+          message: error instanceof Error ? error.message : 'Failed to fetch subscription features',
         },
       }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
