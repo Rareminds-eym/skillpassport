@@ -324,7 +324,8 @@ export const getlearnerByEmail = async (email: string): Promise<ServiceResponse>
     const result = await response.json();
 
     if (!result.success || !result.data) {
-      const errorMsg = result.error || 'No data found for this email.';
+      const errObj = result.error;
+      const errorMsg = typeof errObj === 'object' && errObj !== null ? errObj.message : (errObj || 'No data found for this email.');
       logger.error('API error fetching learner by email', new Error(errorMsg), { email });
       return { success: false, data: null, error: errorMsg };
     }
