@@ -308,99 +308,29 @@ function transformProfileData(profile: ProfileInput | null, email: string, learn
  */
 export const getlearnerByEmail = async (email: string): Promise<ServiceResponse> => {
   try {
-    let { data, error } = await supabase
-      .from('learners')
-      .select(`
-        *,
-        users!fk_learners_user (
-          role
-        ),
-        school:organizations!learners_school_id_fkey (
-          id,
-          name,
-          code,
-          city,
-          state,
-          organization_type
-        ),
-        college:organizations!learners_college_id_fkey (
-          id,
-          name,
-          code,
-          city,
-          state,
-          organization_type
-        ),
-        university:organizations!learners_universityid_fkey (
-          id,
-          name,
-          code,
-          city,
-          state,
-          organization_type
-        ),
-        university_colleges:university_college_id (
-          id,
-          name,
-          code,
-          university:organizations!university_colleges_university_id_fkey (
-            id,
-            name,
-            city,
-            state,
-            organization_type
-          )
-        ),
-        skill_passports (
-          id,
-          projects,
-          certificates,
-          assessments,
-          status,
-          aiVerification,
-          nsqfLevel,
-          skills,
-          createdAt,
-          updatedAt
-        ),
-        projects (
-          id,
-          title,
-          description,
-          role,
-          status,
-          start_date,
-          end_date,
-          duration,
-          organization,
-          tech_stack,
-          demo_link,
-          github_link,
-          enabled,
-          approval_status,
-          created_at,
-          updated_at,
-          certificate_url,
-          video_url,
-          ppt_url
-        ),
-        certificates (*),
-        experience (*),
-        skills(*),
-        trainings (*),
-        education (*) 
-      `)
-      .eq('email', email)
-      .maybeSingle();
+    // Route through the secure backend endpoint to bypass RLS
+    const { getCurrentSession } = await import('@/shared/api/authUtils');
+    const { data: { session } } = await getCurrentSession();
 
-    if (error) {
-      logger.error('Supabase error fetching learner by email', error, { email });
-      return { success: false, data: null, error: error.message };
+    const origin = window.location.origin;
+    const response = await fetch(`${origin}/api/learners/by-email?email=${encodeURIComponent(email)}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+      },
+    });
+
+    const result = await response.json();
+
+    if (!result.success || !result.data) {
+      const errorMsg = result.error || 'No data found for this email.';
+      logger.error('API error fetching learner by email', new Error(errorMsg), { email });
+      return { success: false, data: null, error: errorMsg };
     }
 
-    if (!data) {
-      return { success: false, data: null, error: 'No data found for this email.' };
-    }
+    const data = result.data;
+    const error = null;
 
     // Create profile data from individual columns
     const profileData = {
