@@ -21,7 +21,7 @@ info:
     name: API Support
     email: support@skillpassport.com
 servers:
-  - url: https://payments-api.dark-mode-d021.workers.dev
+  - url: https://razorpay-api.dark-mode-d021.workers.dev
     description: Production server
   - url: http://localhost:8787
     description: Local development

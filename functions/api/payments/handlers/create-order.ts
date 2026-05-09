@@ -61,11 +61,15 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
     // The worker returns { success, order: { id, amount, currency, ... } }
     // but the frontend expects flat access: orderData.key, orderData.amount, orderData.id
     // Flatten the response for frontend compatibility
+    if (!env.RAZORPAY_KEY_ID) {
+      throw new Error('RAZORPAY_KEY_ID environment variable is not configured');
+    }
+
     const data = await response.json();
     const order = data.order || data; // Handle both { success, order } and flat formats
     const flattenedData = {
       ...order,
-      key: env.RAZORPAY_KEY_ID || '',
+      key: env.RAZORPAY_KEY_ID,
     };
     return new Response(JSON.stringify(flattenedData), {
       status: response.status,

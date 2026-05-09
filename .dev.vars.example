@@ -2,10 +2,22 @@
 # Copy this file to .dev.vars and fill in your actual values
 # DO NOT commit .dev.vars to git!
 
+# ==================== SSO / AUTH CONFIGURATION ====================
+# Must match the SSO worker that issued the user's session token
+SSO_DOMAIN=http://localhost:8787
+
 # ==================== SUPABASE CONFIGURATION ====================
 SUPABASE_URL=https://dpooleduinyyzxgrcwko.supabase.co
 SUPABASE_ANON_KEY=your_supabase_anon_key_here
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
+
+# ==================== PAYMENT WORKER CONFIGURATION ====================
+# URL of the deployed payment-worker (NOT the Pages Functions path)
+PAYMENTS_API_URL=https://razorpay-api.dark-mode-d021.workers.dev
+# Shared secret for Service JWT signing (must match payment-worker's RAZORPAY_SERVICE_SECRET)
+RAZORPAY_SERVICE_SECRET=your_service_secret_here
+# Razorpay key ID injected into create-order responses
+RAZORPAY_KEY_ID=rzp_test_YourKeyIdHere
 
 # ==================== AI SERVICE API KEYS ====================
 OPENROUTER_API_KEY=your_openrouter_api_key_here

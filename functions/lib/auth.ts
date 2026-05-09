@@ -1,23 +1,35 @@
-import { initAuth, withAuth, requireRole, requireProduct } from '@rareminds-eym/auth-core';
+import { initAuth, withAuth as withAuthCore, requireRole, requireProduct } from '@rareminds-eym/auth-core';
+import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from './supabase';
 
 /**
- * Auth-core is initialized lazily on first request.
- * In Cloudflare Pages Functions, env vars are only available per-request,
- * but auth-core only needs to be initialized once.
+ * Initialize auth-core with the SSO domain from the request environment.
+ * This MUST be called per-request because env vars are only available at
+ * request time in Cloudflare Pages Functions, and different deployments
+ * (preview, staging, production) use different SSO worker URLs.
  */
-let initialized = false;
-
-function ensureInit(ssoDomain?: string) {
-  if (!initialized) {
-    initAuth({ ssoDomain: ssoDomain || 'https://sso-api.rareminds.workers.dev' });
-    initialized = true;
+function initAuthFromEnv(env: Record<string, string>) {
+  const ssoDomain = env.SSO_DOMAIN || env.VITE_SSO_URL;
+  if (!ssoDomain) {
+    throw new Error(
+      'SSO_DOMAIN environment variable is not configured. ' +
+      'Set SSO_DOMAIN (or VITE_SSO_URL) to your SSO worker URL (e.g., https://sso-api.example.workers.dev)'
+    );
   }
+  initAuth({ ssoDomain });
 }
 
-// Initialize with default SSO domain (production).
-// Pages Functions will call ensureInit() on first request if SSO_DOMAIN env is set.
-ensureInit();
+/**
+ * Wrapped withAuth that initializes auth-core with the correct SSO domain
+ * from the request environment before running the auth-core middleware.
+ */
+export function withAuth(handler: (context: AuthenticatedContext) => Promise<Response>) {
+  return async (context: AuthenticatedContext) => {
+    const env = context.env as Record<string, string>;
+    initAuthFromEnv(env);
+    return withAuthCore(handler)(context);
+  };
+}
 
-export { withAuth, requireRole, requireProduct, ensureInit, getServiceClient };
+export { requireRole, requireProduct, getServiceClient };
 
