@@ -38,6 +38,7 @@ import { handleVerifyPayment } from './handlers/verify-payment';
 import { handleGetPayment } from './handlers/get-payment';
 import { handleCancelSubscription } from './handlers/cancel-subscription';
 import { handleGetSubscription } from './handlers/get-subscription';
+import { handleGetActiveSubscription } from './handlers/get-active-subscription';
 import { handleCheckSubscriptionAccess } from './handlers/check-subscription-access';
 import { handleSubscriptionPlans } from './handlers/subscription-plans';
 import { handleSubscriptionPlan } from './handlers/subscription-plan';
@@ -183,6 +184,11 @@ const handleAuthenticatedRequest = withAuth(async (context: AuthenticatedContext
   if (path === '/get-subscription') {
     if (method !== 'GET') return methodNotAllowed();
     return handleGetSubscription(context);
+  }
+
+  if (path === '/get-active-subscription') {
+    if (method !== 'GET') return methodNotAllowed();
+    return handleGetActiveSubscription(context);
   }
 
   if (path === '/check-subscription-access') {
