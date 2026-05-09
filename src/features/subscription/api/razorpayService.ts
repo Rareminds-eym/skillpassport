@@ -158,9 +158,16 @@ export const initiateRazorpayPayment = async ({
       throw new Error('Failed to load Razorpay SDK');
     }
 
+    const parsedPrice = parseFloat(String(plan.price));
+    if (isNaN(parsedPrice) || parsedPrice <= 0) {
+      throw new Error(`Invalid plan price: ${plan.price}`);
+    }
+
+    const amountInPaise = Math.round(parsedPrice * 100);
+
     // Create order via Worker
     const orderData = await createRazorpayOrder({
-      amount: parseFloat(String(plan.price)) * 100, // Convert to paise
+      amount: amountInPaise,
       currency: 'INR',
       planId: plan.id,
       planName: plan.name,

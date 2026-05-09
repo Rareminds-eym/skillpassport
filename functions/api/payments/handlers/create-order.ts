@@ -62,7 +62,8 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
     });
 
     // Return flattened order with Razorpay key for frontend checkout initialization
-    return new Response(JSON.stringify({ ...order, key: env.RAZORPAY_KEY_ID }), {
+    // The key is returned by the payment-worker to ensure it perfectly matches the key used to create the order.
+    return new Response(JSON.stringify({ ...order, key: (order as any).key_id || env.RAZORPAY_KEY_ID }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
