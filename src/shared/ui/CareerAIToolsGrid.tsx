@@ -80,7 +80,7 @@ const CareerAIToolsGrid: React.FC<CareerAIToolsGridProps> = ({
 
   const fetchGradeAppropriateActions = async () => {
     try {
-      const { data: { session } } = getCurrentSession();
+      const { data: { session } } = await getCurrentSession();
       if (!session) {
         setLoading(false);
         return;

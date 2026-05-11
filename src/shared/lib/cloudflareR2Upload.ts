@@ -30,7 +30,7 @@ export async function uploadToCloudflareR2(
 ): Promise<R2UploadResponse> {
   try {
     // Get authentication token
-    const { data: { session }, error: sessionError } = getCurrentSession();
+    const { data: { session }, error: sessionError } = await getCurrentSession();
     
     if (sessionError || !session) {
       return {
@@ -125,7 +125,7 @@ export async function uploadToCloudflareR2(
 export async function deleteFromCloudflareR2(url: string): Promise<boolean> {
   try {
     // Get authentication token
-    const { data: { session }, error: sessionError } = getCurrentSession();
+    const { data: { session }, error: sessionError } = await getCurrentSession();
     
     if (sessionError || !session) {
       return false;

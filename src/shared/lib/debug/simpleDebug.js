@@ -9,7 +9,7 @@ import { getCurrentUser } from '@/shared/api/authUtils';
 export const simpleDebug = async () => {
   
   // 1. Check auth
-  const { data: { user }, error: authError } = getCurrentUser();
+  const { data: { user }, error: authError } = await getCurrentUser();
   
   // 2. Check table access
   try {

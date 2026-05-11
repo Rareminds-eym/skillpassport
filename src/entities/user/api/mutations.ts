@@ -99,7 +99,7 @@ export const changeUserRole = async (
   newRole: string,
   reason?: string
 ): Promise<void> => {
-  const { data: currentUser } = getCurrentUser();
+  const { data: currentUser } = await getCurrentUser();
   if (!currentUser.user) throw new Error('Not authenticated');
 
   const { error } = await supabase.rpc('change_user_role', {
@@ -179,7 +179,7 @@ export const verifyDocument = async (
   status: 'verified' | 'rejected',
   reason?: string
 ): Promise<void> => {
-  const { data: currentUser } = getCurrentUser();
+  const { data: currentUser } = await getCurrentUser();
   if (!currentUser.user) throw new Error('Not authenticated');
 
   const updateData: any = {
@@ -260,7 +260,7 @@ export const updatePassword = async (newPassword: string, currentPassword?: stri
 // ============================================================================
 
 export const bulkImportUsers = async (file: File): Promise<BulkImportResult> => {
-  const { data: currentUser } = getCurrentUser();
+  const { data: currentUser } = await getCurrentUser();
   if (!currentUser.user) throw new Error('Not authenticated');
 
   // Upload CSV file

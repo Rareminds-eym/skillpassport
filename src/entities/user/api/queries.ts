@@ -54,7 +54,7 @@ export const getUsers = async (filters?: {
 
 
 export const getCurrentUser = async (): Promise<User | null> => {
-  const { data: { user }, error } = getCurrentUser();
+  const { data: { user }, error } = await getCurrentUser();
   
   if (error || !user) return null;
   

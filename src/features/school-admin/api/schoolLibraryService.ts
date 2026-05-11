@@ -97,7 +97,7 @@ class SchoolLibraryService {
     }
     
     // If not found in localStorage, try Supabase Auth
-    const { data: { user } } = getCurrentUser();
+    const { data: { user } } = await getCurrentUser();
     if (!user) throw new Error('User not authenticated');
     
     // Check school_educators table

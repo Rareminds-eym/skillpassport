@@ -20,7 +20,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //       const trimmedTerm = searchTerm.trim();
 
 //       // Get user session
-//       const { data: { session } } = getCurrentSession();
+//       const { data: { session } } = await getCurrentSession();
 //       if (!session) {
 //         return { success: false, message: 'User not authenticated' };
 //       }
@@ -115,7 +115,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //   static async getSearchHistory(learnerId) {
 //     try {
 //       // Get user session
-//       const { data: { session } } = getCurrentSession();
+//       const { data: { session } } = await getCurrentSession();
 //       if (!session) {
 //         return [];
 //       }
@@ -145,7 +145,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //   static async deleteSearchTerm(learnerId, searchHistoryId) {
 //     try {
 //       // Get user session
-//       const { data: { session } } = getCurrentSession();
+//       const { data: { session } } = await getCurrentSession();
 //       if (!session) {
 //         return { success: false, message: 'User not authenticated' };
 //       }
@@ -180,7 +180,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //   static async clearSearchHistory(learnerId) {
 //     try {
 //       // Get user session
-//       const { data: { session } } = getCurrentSession();
+//       const { data: { session } } = await getCurrentSession();
 //       if (!session) {
 //         return { success: false, message: 'User not authenticated' };
 //       }
@@ -215,7 +215,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //   static async getMostSearchedTerms(learnerId, limit = 5) {
 //     try {
 //       // Get user session
-//       const { data: { session } } = getCurrentSession();
+//       const { data: { session } } = await getCurrentSession();
 //       if (!session) {
 //         return [];
 //       }

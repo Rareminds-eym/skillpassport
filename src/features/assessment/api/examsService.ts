@@ -3,7 +3,7 @@ import { supabase } from '@/shared/api/supabaseClient';
 
 // Helper function to get current user ID
 const getCurrentUserId = async (): Promise<string> => {
-  const { data: { user } } = getCurrentUser();
+  const { data: { user } } = await getCurrentUser();
   return user?.id || 'system';
 };
 

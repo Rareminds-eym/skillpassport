@@ -206,7 +206,7 @@ export function transformlearnerData(learnerRecord) {
 export async function getCurrentlearnerData() {
   try {
     // Get current user (via SSO, not Supabase auth)
-    const { data: { user }, error: userError } = getCurrentUser();
+    const { data: { user }, error: userError } = await getCurrentUser();
 
     if (userError || !user) {
       return {

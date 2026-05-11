@@ -28,7 +28,7 @@ export const useFeeTracking = () => {
       }
 
       // If not found in localStorage, try Supabase Auth
-      const { data: { user } } = getCurrentUser();
+      const { data: { user } } = await getCurrentUser();
       if (user) {
         // Get user role from users table
         const { data: userRecord } = await supabase
@@ -221,7 +221,7 @@ export const useFeeTracking = () => {
     paymentData: Partial<FeePayment>
   ): Promise<boolean> => {
     try {
-      const { data: { user } } = getCurrentUser();
+      const { data: { user } } = await getCurrentUser();
       if (!user) {
         toast.error("User not authenticated");
         return false;
@@ -288,7 +288,7 @@ export const useFeeTracking = () => {
 
   const verifyPayment = async (paymentId: string): Promise<boolean> => {
     try {
-      const { data: { user } } = getCurrentUser();
+      const { data: { user } } = await getCurrentUser();
       const { error } = await supabase
         .from("fee_payments")
         .update({

@@ -53,7 +53,7 @@ class StorageService {
    */
   private async getAuthToken(): Promise<string | null> {
     try {
-      const { data: { session } } = getCurrentSession(); const error = null;
+      const { data: { session } } = await getCurrentSession(); const error = null;
       if (error || !session) {
         return null;
       }

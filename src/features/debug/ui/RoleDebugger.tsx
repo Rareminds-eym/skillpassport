@@ -23,9 +23,9 @@ const RoleDebugger: React.FC = () => {
   const fetchDebugInfo = async () => {
     try {
       // Check session first
-      const { data: { session } } = getCurrentSession();
+      const { data: { session } } = await getCurrentSession();
 
-      const { data: { user }, error } = getCurrentUser();
+      const { data: { user }, error } = await getCurrentUser();
 
       setUserInfo(user || { error: error?.message || 'No user found' });
 

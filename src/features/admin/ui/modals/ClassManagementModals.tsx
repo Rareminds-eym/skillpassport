@@ -374,7 +374,7 @@ export const AssignEducatorModal = ({
 
     setSubmitting(true)
     try {
-      const { data: { user } } = getCurrentUser()
+      const { data: { user } } = await getCurrentUser()
       
       const { error } = await supabase
         .from("school_educator_class_assignments")

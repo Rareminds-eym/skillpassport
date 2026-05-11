@@ -497,7 +497,7 @@ class OpportunitiesService {
   }> {
     try {
       // Get current user's college_id
-      const { data: { user } } = getCurrentUser();
+      const { data: { user } } = await getCurrentUser();
       let currentCollegeId = null;
       
       if (user) {

@@ -69,7 +69,7 @@ async function getCurrentUserSchoolId(): Promise<string | null> {
         const userEmail = localStorage.getItem('userEmail');
 
         // Get current Supabase user
-        const { data: { user } } = getCurrentUser();
+        const { data: { user } } = await getCurrentUser();
 
         // Try school_educators first
         if (user) {

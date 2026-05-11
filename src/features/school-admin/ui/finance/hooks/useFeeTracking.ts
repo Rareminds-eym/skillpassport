@@ -204,7 +204,7 @@ export const useFeeTracking = (schoolId: string | null) => {
     paymentData: Partial<FeePayment>
   ): Promise<boolean> => {
     try {
-      const { data: { user } } = getCurrentUser();
+      const { data: { user } } = await getCurrentUser();
       if (!user) {
         toast.error("User not authenticated");
         return false;

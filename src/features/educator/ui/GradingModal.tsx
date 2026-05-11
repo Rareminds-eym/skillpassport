@@ -157,7 +157,7 @@ const GradingModal = ({ isOpen, onClose, assignment, onGradeSubmitted }: Grading
         try {
             setSubmitting(true);
 
-            const { data: { user } } = getCurrentUser();
+            const { data: { user } } = await getCurrentUser();
             const educatorId = user?.id || localStorage.getItem('dev_educator_id');
 
             const gradePercentage = (gradeValue / assignment.totalPoints) * 100;

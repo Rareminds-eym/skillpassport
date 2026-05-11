@@ -154,7 +154,7 @@ export async function processVideo(
   logger.info('Starting enhanced video processing', { videoUrl: request.videoUrl });
   onProgress?.('Connecting to AI service...', 5);
 
-  const { data: { session } } = getCurrentSession();
+  const { data: { session } } = await getCurrentSession();
 
   try {
     onProgress?.('Starting video analysis...', 10);

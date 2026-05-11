@@ -35,7 +35,7 @@ export async function matchJobsWithAI(learnerProfile, topN = 3, forceRefresh = f
   const API_URL = getApiUrl('career');
 
   // Get auth token from existing supabase client
-  const { data: { session } } = getCurrentSession();
+  const { data: { session } } = await getCurrentSession();
   const token = session?.access_token;
 
   const learnerId = learnerProfile?.id || learnerProfile?.learner_id;

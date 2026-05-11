@@ -96,7 +96,7 @@ export const createUniversity = async (universityData, userId = null) => {
         let uid = userId;
 
         if (!uid) {
-            const { data: { user } } = getCurrentUser();
+            const { data: { user } } = await getCurrentUser();
             if (user) {
                 uid = user.id;
             }
@@ -176,7 +176,7 @@ export const createUniversityCollege = async (collegeData, userId = null) => {
         let uid = userId;
 
         if (!uid) {
-            const { data: { user } } = getCurrentUser();
+            const { data: { user } } = await getCurrentUser();
             if (user) {
                 uid = user.id;
             }

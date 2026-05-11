@@ -28,7 +28,7 @@ const RoleDebugger: React.FC = () => {
 
   const fetchDebugInfo = useCallback(async () => {
     try {
-      const { data: { user }, error } = getCurrentUser();
+      const { data: { user }, error } = await getCurrentUser();
 
       if (error) {
         setUserInfo({ error: error.message });

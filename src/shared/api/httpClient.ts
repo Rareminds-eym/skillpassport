@@ -40,7 +40,7 @@ export const defaultHeaders = {
  * Create authenticated headers with token
  */
 export async function createAuthHeaders(customHeaders: Record<string, string> = {}): Promise<Record<string, string>> {
-  const { data: { session } } = getCurrentSession();
+  const { data: { session } } = await getCurrentSession();
   
   const headers = {
     ...defaultHeaders,

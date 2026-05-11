@@ -87,7 +87,7 @@ const getCollegeIdForCurrentUser = async (): Promise<string | null> => {
     // Fallback to Supabase auth (same as useLearners)
     const {
       data: { user },
-    } = getCurrentUser();
+    } = await getCurrentUser();
 
     if (user) {
       // Get user role from users table (same as useLearners)

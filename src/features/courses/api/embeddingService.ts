@@ -25,7 +25,7 @@ export const generateEmbedding = async (text) => {
   }
 
   // Get auth token
-  const { data: { session } } = getCurrentSession();
+  const { data: { session } } = await getCurrentSession();
   const token = session?.access_token;
   
   if (!token) {

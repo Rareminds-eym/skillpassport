@@ -279,7 +279,7 @@ class UserManagementService {
     newRole: string,
     reason?: string
   ): Promise<void> {
-    const { data: currentUser } = getCurrentUser();
+    const { data: currentUser } = await getCurrentUser();
     if (!currentUser.user) throw new Error('Not authenticated');
 
     const { error } = await supabase.rpc('change_user_role', {
@@ -388,7 +388,7 @@ class UserManagementService {
     status: 'verified' | 'rejected',
     reason?: string
   ): Promise<void> {
-    const { data: currentUser } = getCurrentUser();
+    const { data: currentUser } = await getCurrentUser();
     if (!currentUser.user) throw new Error('Not authenticated');
 
     const updateData: {
@@ -455,7 +455,7 @@ class UserManagementService {
    * Bulk import users from CSV
    */
   async bulkImportUsers(file: File): Promise<BulkImportResult> {
-    const { data: currentUser } = getCurrentUser();
+    const { data: currentUser } = await getCurrentUser();
     if (!currentUser.user) throw new Error('Not authenticated');
 
     // Upload CSV file

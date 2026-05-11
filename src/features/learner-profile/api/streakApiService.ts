@@ -11,7 +11,7 @@ const API_URL = getApiUrl('streak');
 async function getAuthToken(): Promise<string> {
   try {
     const { supabase } = await import('./supabaseClient');
-    const { data: { session } } = getCurrentSession();
+    const { data: { session } } = await getCurrentSession();
     return session?.access_token || '';
   } catch {
     return '';

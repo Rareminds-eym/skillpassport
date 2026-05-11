@@ -10,7 +10,7 @@ export const debugRecentUpdates = async (userEmail = null) => {
   
   try {
     // Test 1: Check authentication status (via SSO, not Supabase auth)
-    const { data: { user }, error: authError } = getCurrentUser();
+    const { data: { user }, error: authError } = await getCurrentUser();
     
     if (authError) {
     }
@@ -19,7 +19,7 @@ export const debugRecentUpdates = async (userEmail = null) => {
     
     // Test 1.5: Check current session more thoroughly
     if (isAuthenticated) {
-      const { data: { session }, error: sessionError } = getCurrentSession();
+      const { data: { session }, error: sessionError } = await getCurrentSession();
       console.log('Session check:', {
         hasSession: !!session, 
         sessionError: sessionError?.message,
@@ -196,7 +196,7 @@ const createSampleRecentUpdates = async (userId) => {
 export const clearRecentUpdatesDebugData = async () => {
   try {
     
-    const { data: { user }, error: authError } = getCurrentUser();
+    const { data: { user }, error: authError } = await getCurrentUser();
     if (authError || !user) {
       return false;
     }
@@ -223,7 +223,7 @@ export const clearRecentUpdatesDebugData = async () => {
  * Get comprehensive debug info
  */
 export const getRecentUpdatesDebugInfo = async () => {
-  const { data: { user }, error: authError } = getCurrentUser();
+  const { data: { user }, error: authError } = await getCurrentUser();
   
   return {
     timestamp: new Date().toISOString(),
@@ -273,8 +273,8 @@ const getSampleDataCount = async () => {
  * Quick auth check function for browser console
  */
 export const checkAuth = async () => {
-  const { data: { user }, error } = getCurrentUser();
-  const { data: { session } } = getCurrentSession();
+  const { data: { user }, error } = await getCurrentUser();
+  const { data: { session } } = await getCurrentSession();
   
   
   return { user, session, error };

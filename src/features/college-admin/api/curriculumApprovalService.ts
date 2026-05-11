@@ -75,7 +75,7 @@ class CurriculumApprovalService {
     try {
       
       // Get current user
-      const { data: { user }, error: userError } = getCurrentUser();
+      const { data: { user }, error: userError } = await getCurrentUser();
       if (userError || !user) {
         logger.error('Failed to get authenticated user', userError instanceof Error ? userError : new Error(String(userError)));
         return {

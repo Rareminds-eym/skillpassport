@@ -914,7 +914,7 @@ export const learnerReportService = {
 
   // Create report record
   async createReport(reportData: Partial<LearnerReport>) {
-    const { data: user } = getCurrentUser();
+    const { data: user } = await getCurrentUser();
     
     return await supabase
       .from('learner_reports')

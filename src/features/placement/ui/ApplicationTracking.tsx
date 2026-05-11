@@ -115,7 +115,7 @@ const ApplicationTracking: React.FC = () => {
       setApplicationError(null);
 
       // Get current user's college ID
-      const { data: { user } } = getCurrentUser();
+      const { data: { user } } = await getCurrentUser();
       if (!user) {
         throw new Error('Not authenticated');
       }

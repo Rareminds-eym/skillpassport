@@ -15,7 +15,7 @@ const STORAGE_API_URL = 'https://storage-api.dark-mode-d021.workers.dev';
  */
 async function getAuthToken(): Promise<string | null> {
   try {
-    const { data: { session } } = getCurrentSession(); const error = null;
+    const { data: { session } } = await getCurrentSession(); const error = null;
 
     if (error) {
       logger.error('Failed to get session', error instanceof Error ? error : new Error(String(error)));

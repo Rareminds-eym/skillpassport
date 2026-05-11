@@ -23,7 +23,7 @@ export class CurriculumChangeFallbackService {
   ): Promise<{ success: boolean; data?: string; error?: string }> {
     try {
       // Check authentication
-      const { data: { user }, error: authError } = getCurrentUser();
+      const { data: { user }, error: authError } = await getCurrentUser();
       
       if (authError || !user) {
         return { 
@@ -239,7 +239,7 @@ export class CurriculumChangeFallbackService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Check authentication
-      const { data: { user }, error: authError } = getCurrentUser();
+      const { data: { user }, error: authError } = await getCurrentUser();
 
       if (authError || !user) {
         logger.error('Authentication failed in approvePendingChange', authError as Error, { curriculumId, changeId });
@@ -379,7 +379,7 @@ export class CurriculumChangeFallbackService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Check authentication
-      const { data: { user }, error: authError } = getCurrentUser();
+      const { data: { user }, error: authError } = await getCurrentUser();
 
       if (authError || !user) {
         logger.error('Authentication failed in cancelPendingChange', authError as Error, { curriculumId, changeId });
@@ -460,7 +460,7 @@ export class CurriculumChangeFallbackService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Check authentication
-      const { data: { user }, error: authError } = getCurrentUser();
+      const { data: { user }, error: authError } = await getCurrentUser();
 
       if (authError || !user) {
         logger.error('Authentication failed in rejectPendingChange', authError as Error, { curriculumId, changeId });

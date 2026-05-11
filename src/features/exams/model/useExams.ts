@@ -392,7 +392,7 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
       // Use provided userId or fallback to supabase auth
       let currentUserId = userId;
       if (!currentUserId) {
-        const { data: { user } } = getCurrentUser();
+        const { data: { user } } = await getCurrentUser();
         if (!user?.id) {
           throw new Error('User not authenticated');
         }
@@ -650,7 +650,7 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
       // Use provided userId or fallback to supabase auth
       let currentUserId = userId;
       if (!currentUserId) {
-        const { data: { user } } = getCurrentUser();
+        const { data: { user } } = await getCurrentUser();
         if (!user?.id) {
           throw new Error('User not authenticated');
         }
@@ -748,7 +748,7 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
       // Use provided userId or fallback to supabase auth
       let currentUserId = userId;
       if (!currentUserId) {
-        const { data: { user } } = getCurrentUser();
+        const { data: { user } } = await getCurrentUser();
         if (!user?.id) {
           throw new Error('User not authenticated');
         }
@@ -853,7 +853,7 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
       // Use provided userId or fallback to supabase auth
       let currentUserId = userId;
       if (!currentUserId) {
-        const { data: { user } } = getCurrentUser();
+        const { data: { user } } = await getCurrentUser();
         if (!user?.id) {
           throw new Error('User not authenticated');
         }

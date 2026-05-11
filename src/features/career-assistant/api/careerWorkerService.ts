@@ -38,7 +38,7 @@ export async function streamCareerChat(
   abortSignal?: AbortSignal
 ): Promise<CareerChatResult> {
   try {
-    const { data: { session }, error: sessionError } = getCurrentSession();
+    const { data: { session }, error: sessionError } = await getCurrentSession();
 
     if (sessionError || !session) {
       logger.error('Authentication failed for career AI service', sessionError as Error);

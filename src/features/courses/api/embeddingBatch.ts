@@ -31,7 +31,7 @@ export const generateEmbeddingsBatch = async (texts, maxConcurrent = 5) => {
   }
 
   // Get auth token once for all requests
-  const { data: { session } } = getCurrentSession();
+  const { data: { session } } = await getCurrentSession();
   const token = session?.access_token;
   
   if (!token) {

@@ -6,7 +6,7 @@ const logger = getLogger('dashboard-api');
 
 // Shared function to get authenticated educator data with class assignments
 async function getAuthenticatedEducator() {
-  const { data: { session } } = getCurrentSession();
+  const { data: { session } } = await getCurrentSession();
   if (!session?.user) {
     logger.error('Authentication failed: no authenticated user found');
     throw new Error('No authenticated user');

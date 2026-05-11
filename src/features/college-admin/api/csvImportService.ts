@@ -551,7 +551,7 @@ export async function importlearners(
   let failed = 0
   const errors: string[] = []
 
-  const { data: { session } } = getCurrentSession()
+  const { data: { session } } = await getCurrentSession()
   const token = session?.access_token
 
   if (!token) {

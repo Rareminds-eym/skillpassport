@@ -27,7 +27,7 @@ export async function getCurrentUserOrganizationId(
   organizationType: OrganizationType
 ): Promise<OrganizationResult> {
   try {
-    const { data: { user } } = getCurrentUser();
+    const { data: { user } } = await getCurrentUser();
     if (!user) {
       return { id: null, name: null, error: 'User not authenticated' };
     }

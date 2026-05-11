@@ -61,7 +61,7 @@ export const userManagementService = {
       }
 
       // Get auth token for worker API
-      const { data: { session } } = getCurrentSession();
+      const { data: { session } } = await getCurrentSession();
       if (!session?.access_token) {
         return {
           success: false,
@@ -73,7 +73,7 @@ export const userManagementService = {
       }
 
       // Get college ID from current user context
-      const { data: { user: currentUser } } = getCurrentUser();
+      const { data: { user: currentUser } } = await getCurrentUser();
       let collegeId = null;
 
       if (currentUser?.id || currentUser?.email) {
@@ -437,7 +437,7 @@ export const userManagementService = {
       const users: User[] = [];
 
       // Get current user's college ID
-      const { data: { user: currentUser } } = getCurrentUser();
+      const { data: { user: currentUser } } = await getCurrentUser();
       if (!currentUser) {
         throw new Error('Not authenticated');
       }

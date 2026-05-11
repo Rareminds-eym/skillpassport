@@ -33,7 +33,7 @@ export async function getAuthenticatedMediaUrl(
 ): Promise<string | null> {
   try {
     // Get current session token
-    const { data: { session } } = getCurrentSession();
+    const { data: { session } } = await getCurrentSession();
     
     if (!session?.access_token) {
       logger.error('No active session');

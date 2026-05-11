@@ -73,7 +73,7 @@ async function getCurrentUserSchoolId(): Promise<string | null> {
 
         // If not found in localStorage, try Supabase Auth (for educators/teachers)
         if (!schoolId) {
-            const { data: { user } } = getCurrentUser();
+            const { data: { user } } = await getCurrentUser();
             if (user) {
                 // Check school_educators table
                 const { data: educator } = await supabase

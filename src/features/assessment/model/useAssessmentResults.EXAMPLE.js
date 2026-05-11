@@ -39,7 +39,7 @@ export const useAssessmentResults = () => {
       setError(null);
 
       // Get current user
-      const { data: { user } } = getCurrentUser();
+      const { data: { user } } = await getCurrentUser();
       if (!user) {
         throw new Error('User not authenticated');
       }

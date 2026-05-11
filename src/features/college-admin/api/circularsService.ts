@@ -138,7 +138,7 @@ class CircularsService {
   // Get user's college ID
   private async getUserCollegeId(): Promise<string | null> {
     try {
-      const { data: { user } } = getCurrentUser();
+      const { data: { user } } = await getCurrentUser();
       if (!user) {
         logger.warn('No authenticated user found for college lookup');
         return null;
@@ -190,7 +190,7 @@ class CircularsService {
   async createCircular(circularData: CreateCircularData): Promise<{ data: Circular | null; error: any }> {
     try {
       // Get current user
-      const { data: { user } } = getCurrentUser();
+      const { data: { user } } = await getCurrentUser();
       
       // Get user's college ID
       const collegeId = await this.getUserCollegeId();

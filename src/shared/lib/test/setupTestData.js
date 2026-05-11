@@ -29,7 +29,7 @@ export async function setupTestData() {
   try {
 
     // 1. Get current user (via SSO, not Supabase auth)
-    const { data: { user }, error: userError } = getCurrentUser();
+    const { data: { user }, error: userError } = await getCurrentUser();
     
     if (userError || !user) {
       console.error('❌ No Supabase user logged in!', userError);
@@ -217,7 +217,7 @@ export async function setupTestData() {
 // Also export a function to check current data
 export async function checkCurrentData() {
   try {
-    const { data: { user } } = getCurrentUser();
+    const { data: { user } } = await getCurrentUser();
     
     if (!user) {
       return null;

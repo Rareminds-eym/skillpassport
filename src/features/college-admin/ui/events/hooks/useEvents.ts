@@ -96,7 +96,7 @@ export const useEvents = (collegeId: string | null) => {
         }
       }
 
-      const { data: { user } } = getCurrentUser();
+      const { data: { user } } = await getCurrentUser();
       
       // Get college_id from organizations table if not already set
       let eventCollegeId = collegeId;

@@ -21,7 +21,7 @@ export const createCollege = async (collegeData, userId = null) => {
 
         // If userId not provided, try to get from current session
         if (!uid) {
-            const { data: { user } } = getCurrentUser();
+            const { data: { user } } = await getCurrentUser();
             if (user) {
                 uid = user.id;
             }

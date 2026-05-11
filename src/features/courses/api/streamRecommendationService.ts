@@ -510,7 +510,7 @@ Respond ONLY with valid JSON. No markdown, no explanations outside JSON.`;
  */
 const callAIForStreamRecommendation = async (learnerData) => {
   // Get auth token
-  const { data: { session } } = getCurrentSession();
+  const { data: { session } } = await getCurrentSession();
   const token = session?.access_token;
 
   if (!token) {

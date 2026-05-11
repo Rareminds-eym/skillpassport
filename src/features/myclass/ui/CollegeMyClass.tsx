@@ -211,7 +211,7 @@ const CollegeMyClass: React.FC = () => {
 
     try {
       // Get user token from Supabase session
-      const { data: { session }, error: sessionError } = getCurrentSession();
+      const { data: { session }, error: sessionError } = await getCurrentSession();
 
       if (!session?.access_token) {
         showNotificationModal('error', 'Authentication Required', 'Authentication required. Please log in again.');

@@ -11,7 +11,7 @@ const logger = getLogger('educator-service');
 export const getCurrentEducator = async () => {
   try {
     // Get current authenticated user
-    const { data: { user }, error: authError } = getCurrentUser();
+    const { data: { user }, error: authError } = await getCurrentUser();
     
     if (authError) throw authError;
     if (!user) {

@@ -86,7 +86,7 @@ let userIdCache: string | null = null;
 async function getCurrentUserCollegeId(): Promise<string | null> {
   if (userCollegeIdCache) return userCollegeIdCache;
 
-  const { data: { user } } = getCurrentUser();
+  const { data: { user } } = await getCurrentUser();
   if (!user) return null;
 
   // Try college_lecturers first
@@ -119,7 +119,7 @@ async function getCurrentUserCollegeId(): Promise<string | null> {
 async function getCurrentUserId(): Promise<string | null> {
   if (userIdCache) return userIdCache;
 
-  const { data: { user } } = getCurrentUser();
+  const { data: { user } } = await getCurrentUser();
   userIdCache = user?.id || null;
   return userIdCache;
 }

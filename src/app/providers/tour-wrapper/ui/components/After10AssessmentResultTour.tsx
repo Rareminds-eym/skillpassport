@@ -44,7 +44,7 @@ const After10AssessmentResultTour: React.FC = () => {
     const startTourWhenReady = async () => {
       
       try {
-        const { data: { user } } = getCurrentUser();
+        const { data: { user } } = await getCurrentUser();
         if (!user) {
           return;
         }

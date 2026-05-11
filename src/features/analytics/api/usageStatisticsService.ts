@@ -17,7 +17,7 @@ const logger = getLogger('usage-statistics');
  */
 export const getUserUsageStatistics = async () => {
   try {
-    const { data: { user } } = getCurrentUser();
+    const { data: { user } } = await getCurrentUser();
     
     if (!user) {
       return {

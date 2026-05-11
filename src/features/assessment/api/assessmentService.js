@@ -362,7 +362,7 @@ export const updateAttemptAdaptiveSession = async (attemptId, adaptiveSessionId)
     });
 
     // Get auth token
-    const { data: { session } } = getCurrentSession();
+    const { data: { session } } = await getCurrentSession();
     const token = session?.access_token;
 
     if (!token) {

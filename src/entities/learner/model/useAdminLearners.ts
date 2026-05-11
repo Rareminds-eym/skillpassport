@@ -388,7 +388,7 @@ export function useAdminLearners(options: UseLearnersOptions = {}) {
         
         // If not found in localStorage, try Supabase Auth
         if (!schoolId && !collegeId) {
-          const { data: { user } } = getCurrentUser();
+          const { data: { user } } = await getCurrentUser();
           
           if (user) {
             userId = user.id;

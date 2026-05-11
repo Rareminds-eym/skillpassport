@@ -197,7 +197,7 @@ export const useLearnerActions = (learner: Learner | null) => {
         : `${new Date().getFullYear()}-${(new Date().getFullYear() + 1).toString().slice(-2)}`; // Fallback
 
       // Get current user ID and find the appropriate admin record
-      const { data: { user } } = getCurrentUser();
+      const { data: { user } } = await getCurrentUser();
       let promotedByAdminId = null;
 
       if (user?.id) {

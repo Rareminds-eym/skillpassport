@@ -28,7 +28,7 @@ async function generateEmbedding(text) {
   }
 
   // Get auth token
-  const { data: { session } } = getCurrentSession();
+  const { data: { session } } = await getCurrentSession();
   const token = session?.access_token;
   
   if (!token) {
@@ -162,7 +162,7 @@ const fetchCourseWithSkills = async (courseId) => {
  */
 export const embedCourse = async (courseId) => {
   try {
-    const { data: { session } } = getCurrentSession();
+    const { data: { session } } = await getCurrentSession();
     const token = session?.access_token;
 
     if (!token) {

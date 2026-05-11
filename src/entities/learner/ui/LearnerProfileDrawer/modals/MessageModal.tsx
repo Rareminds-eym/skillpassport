@@ -90,7 +90,7 @@ const MessageModal: React.FC<MessageModalProps> = ({
     try {
       const {
         data: { user },
-      } = getCurrentUser();
+      } = await getCurrentUser();
       if (!user) {
         throw new Error('Not authenticated');
       }

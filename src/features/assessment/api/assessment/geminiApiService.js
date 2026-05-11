@@ -55,7 +55,7 @@ export const callOpenRouterAssessment = async (assessmentData) => {
 
   // Get auth token (via SSO, not Supabase auth which is disabled)
   updateProgress('sending', 'Authenticating...');
-  const { data: { session } } = getCurrentSession();
+  const { data: { session } } = await getCurrentSession();
   const token = session?.access_token;
 
   if (!token) {

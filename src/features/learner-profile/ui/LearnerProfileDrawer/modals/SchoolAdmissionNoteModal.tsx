@@ -61,7 +61,7 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
       // Get current user (school admin)
       const {
         data: { user },
-      } = getCurrentUser();
+      } = await getCurrentUser();
       if (!user) {
         throw new Error('Not authenticated');
       }

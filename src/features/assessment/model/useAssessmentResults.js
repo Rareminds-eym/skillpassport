@@ -378,7 +378,7 @@ export const useAssessmentResults = () => {
         if (validatedResults.aptitude && rawAnswers && Object.keys(rawAnswers).length > 0 && !hasAdaptiveResults) {
             try {
                 // Fetch aptitude questions for this learner
-                const { data: { user } } = getCurrentUser();
+                const { data: { user } } = await getCurrentUser();
                 if (user) {
                     const aptitudeQuestions = await fetchAIAptitudeQuestions(user.id, Object.keys(rawAnswers));
 
@@ -430,7 +430,7 @@ export const useAssessmentResults = () => {
     const fetchlearnerInfo = async () => {
         console.log('🔍 ========== FETCH LEARNER INFO START ==========');
         try {
-            const { data: { user } } = getCurrentUser();
+            const { data: { user } } = await getCurrentUser();
 
             console.log('👤 Authenticated User:', {
                 id: user?.id,
@@ -1342,7 +1342,7 @@ export const useAssessmentResults = () => {
                                 console.log('   Current result ID:', result.id);
                                 console.log('   Attempt ID:', attemptId);
                                 try {
-                                    const { data: { user } } = getCurrentUser();
+                                    const { data: { user } } = await getCurrentUser();
                                     let learnerId = null;
                                     if (user) {
                                         const { data: learner } = await supabase
@@ -1460,7 +1460,7 @@ export const useAssessmentResults = () => {
                             // Ensure recommendations are saved (in case they weren't before)
                             if (validatedResults.platformCourses && validatedResults.platformCourses.length > 0) {
                                 try {
-                                    const { data: { user } } = getCurrentUser();
+                                    const { data: { user } } = await getCurrentUser();
                                     if (user) {
                                         await saveRecommendations(
                                             user.id,
@@ -1577,7 +1577,7 @@ export const useAssessmentResults = () => {
 
         // Try to load latest result from database for current user
         try {
-            const { data: { user } } = getCurrentUser();
+            const { data: { user } } = await getCurrentUser();
             if (user) {
                 const latestResult = await assessmentService.getLatestResult(user.id);
                 if (latestResult?.gemini_results && typeof latestResult.gemini_results === 'object' && Object.keys(latestResult.gemini_results).length > 0) {
@@ -1814,7 +1814,7 @@ export const useAssessmentResults = () => {
             // For AI assessments, fetch questions from database for proper scoring
             if (isAIAssessment) {
                 try {
-                    const { data: { user } } = getCurrentUser();
+                    const { data: { user } } = await getCurrentUser();
                     if (user) {
                         const answerKeys = Object.keys(answers);
 
@@ -2045,7 +2045,7 @@ export const useAssessmentResults = () => {
 
             // ✅ Save to database - look up by attemptId, create if not exists
             try {
-                const { data: { user } } = getCurrentUser();
+                const { data: { user } } = await getCurrentUser();
                 if (user) {
                     // Look up existing result by attemptId (more reliable than getLatestResult)
                     const { data: existingResult, error: lookupError } = await supabase

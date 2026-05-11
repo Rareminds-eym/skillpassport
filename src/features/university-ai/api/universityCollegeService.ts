@@ -85,7 +85,7 @@ export const addCollegeToUniversity = async (universityId, organizationId, addit
         }
 
         // Get current user for created_by field
-        const { data: { user } } = getCurrentUser();
+        const { data: { user } } = await getCurrentUser();
         const userId = user?.id;
 
         // Prepare college data for university_colleges table

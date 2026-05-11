@@ -427,7 +427,7 @@ const CompactAchievementsRow = ({ stats, courseData }) => {
 
     const fetchAchievementData = async () => {
       try {
-        const { data: { user } } = getCurrentUser();
+        const { data: { user } } = await getCurrentUser();
         if (!user) return;
 
         const { data: streakData } = await supabase
@@ -581,7 +581,7 @@ const CompactCourseCard = ({ course, onClick }) => {
       if (!isCompleted || !course.courseId) return;
 
       try {
-        const { data: { user } } = getCurrentUser();
+        const { data: { user } } = await getCurrentUser();
         if (!user) return;
 
         const { data: enrollment } = await supabase
@@ -890,7 +890,7 @@ const WeeklyLearningTracker = () => {
       if (isInitialLoad) {
         setLoading(true);
       }
-      const { data: { user } } = getCurrentUser();
+      const { data: { user } } = await getCurrentUser();
       if (!user) {
         isFetchingRef.current = false;
         return;

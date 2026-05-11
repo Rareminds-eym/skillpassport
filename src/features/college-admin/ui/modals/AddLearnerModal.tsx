@@ -357,7 +357,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       }
 
       // Get authenticated user once for reuse
-      const { data: { user: authUser } } = getCurrentUser()
+      const { data: { user: authUser } } = await getCurrentUser()
 
       // Get schoolId or collegeId from localStorage
       let schoolId = null
@@ -417,7 +417,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       
       if (refreshError) {
         // Try to get existing session
-        const { data: { session }, error: sessionError } = getCurrentSession()
+        const { data: { session }, error: sessionError } = await getCurrentSession()
         
         if (sessionError || !session) {
           logger.error('No valid session available', new Error('No valid session available'))
@@ -425,7 +425,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         }
       } 
 
-      const finalSession = refreshData?.session || (getCurrentSession()).data.session
+      const finalSession = refreshData?.session || (await getCurrentSession()).data.session
       
       if (!finalSession) {
         throw new Error('No active session. Please login again.')
@@ -706,7 +706,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const updatelearnerDocuments = async (learnerId: string, documents: Array<{name: string, url: string, size: number, type: string}>) => {
     try {
       // Get fresh token
-      const { data: { session } } = getCurrentSession()
+      const { data: { session } } = await getCurrentSession()
       const token = session?.access_token
 
       if (!token) {
@@ -958,7 +958,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
     try {
       // Refresh session
-      const { data: { session } } = getCurrentSession()
+      const { data: { session } } = await getCurrentSession()
       if (session) {
         Promise.resolve({ data: null, error: null })
       }
@@ -1165,7 +1165,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
               const batchPromises = batch.map(async ({ row, data }) => {
                 try {
-                  const { data: { session } } = getCurrentSession()
+                  const { data: { session } } = await getCurrentSession()
                   const token = session?.access_token
 
                   if (!token) {

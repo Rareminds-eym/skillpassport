@@ -6,7 +6,7 @@ import { supabase } from '@/shared/api/supabaseClient';
  */
 
 export const getAuthSession = async () => {
-  const { data: { session }, error } = getCurrentSession();
+  const { data: { session }, error } = await getCurrentSession();
   
   if (error) {
     throw new Error(`Session error: ${error.message}`);

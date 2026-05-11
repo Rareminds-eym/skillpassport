@@ -16,7 +16,7 @@ const API_URL = getApiUrl('storage');
  */
 async function getAuthToken(): Promise<string | null> {
   try {
-    const { data: { session } } = getCurrentSession(); const error = null;
+    const { data: { session }, error } = await getCurrentSession();
 
     if (error) {
       logger.error('Failed to get session', error instanceof Error ? error : new Error(String(error)));

@@ -23,7 +23,7 @@ class PermissionService {
    */
   async getCurrentUserRole(): Promise<UserRole | null> {
     try {
-      const { data: { user } } = getCurrentUser();
+      const { data: { user } } = await getCurrentUser();
       if (!user) return null;
 
       const { data: userData, error } = await supabase
@@ -48,7 +48,7 @@ class PermissionService {
       let targetUserId = userId;
       
       if (!targetUserId) {
-        const { data: { user } } = getCurrentUser();
+        const { data: { user } } = await getCurrentUser();
         if (!user) return {};
         targetUserId = user.id;
       }
@@ -98,7 +98,7 @@ class PermissionService {
    */
   async checkPermission(feature: string, permission: Permission): Promise<PermissionCheck> {
     try {
-      const { data: { user } } = getCurrentUser();
+      const { data: { user } } = await getCurrentUser();
       if (!user) {
         return { allowed: false, reason: 'User not authenticated' };
       }
@@ -151,7 +151,7 @@ class PermissionService {
    */
   async canAccessLearner(learnerId: string): Promise<PermissionCheck> {
     try {
-      const { data: { user } } = getCurrentUser();
+      const { data: { user } } = await getCurrentUser();
       if (!user) {
         return { allowed: false, reason: 'User not authenticated' };
       }
@@ -178,7 +178,7 @@ class PermissionService {
    */
   async canEditAttendance(attendanceDate: string): Promise<PermissionCheck> {
     try {
-      const { data: { user } } = getCurrentUser();
+      const { data: { user } } = await getCurrentUser();
       if (!user) {
         return { allowed: false, reason: 'User not authenticated' };
       }

@@ -183,7 +183,7 @@ const NewLearnerConversationModalEducator = ({ isOpen, onClose, onCreateConversa
         // Only do complex lookup if schoolId not provided
         if (!schoolId) {
           // Get current user to access email
-          const { data: { user } } = getCurrentUser();
+          const { data: { user } } = await getCurrentUser();
           if (!user) {
             console.log('❌ No authenticated user found');
             setlearners([]);

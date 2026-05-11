@@ -42,7 +42,7 @@ export const useFeeStructures = (collegeId: string | null) => {
     existingStructure?: FeeStructure | null
   ): Promise<boolean> => {
     try {
-      const { data: { user } } = getCurrentUser();
+      const { data: { user } } = await getCurrentUser();
       
       // Get college_id if not set
       let feeCollegeId = collegeId;
@@ -137,7 +137,7 @@ export const useFeeStructures = (collegeId: string | null) => {
 
   const duplicateFeeStructure = async (structure: FeeStructure): Promise<boolean> => {
     try {
-      const { data: { user } } = getCurrentUser();
+      const { data: { user } } = await getCurrentUser();
       const { id, created_at, updated_at, ...rest } = structure;
       const { error } = await supabase
         .from("fee_structures")

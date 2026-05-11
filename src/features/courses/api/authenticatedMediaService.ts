@@ -33,7 +33,7 @@ export async function getAuthenticatedMediaUrl(
   lessonId?: string
 ): Promise<string | null> {
   try {
-    const { data: { session } } = getCurrentSession();
+    const { data: { session } } = await getCurrentSession();
 
     if (!session?.access_token) {
       return null;

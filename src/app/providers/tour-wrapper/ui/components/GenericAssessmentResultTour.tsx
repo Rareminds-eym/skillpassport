@@ -50,7 +50,7 @@ const GenericAssessmentResultTour: React.FC = () => {
       }
 
       try {
-        const { data: { user } } = getCurrentUser();
+        const { data: { user } } = await getCurrentUser();
         if (!user) {
           return;
         }

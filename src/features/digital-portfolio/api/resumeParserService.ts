@@ -51,7 +51,7 @@ const parseWithClaude = async (resumeText) => {
 
     // Get current session for auth token
     const { supabase } = await import('@/shared/api/supabaseClient');
-    const { data: { session } } = getCurrentSession();
+    const { data: { session } } = await getCurrentSession();
     const token = session?.access_token;
 
     if (!token) {

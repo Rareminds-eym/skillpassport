@@ -140,7 +140,7 @@ const AssignmentFileUpload = React.forwardRef<
   const confirmDeleteFile = async () => {
     if (!fileToDelete) return;
 
-    const { data: { session } } = getCurrentSession();
+    const { data: { session } } = await getCurrentSession();
     const token = session?.access_token || user?.access_token;
 
     if (!token) {
@@ -185,7 +185,7 @@ const AssignmentFileUpload = React.forwardRef<
   const uploadStagedFiles = async (newAssignmentId: string) => {
     if (stagedFiles.length === 0) return [];
 
-    const { data: { session } } = getCurrentSession();
+    const { data: { session } } = await getCurrentSession();
     const token = session?.access_token || user?.access_token;
 
     if (!token) {

@@ -110,7 +110,7 @@ export class LicenseManagementService {
   async createLicensePool(request: CreatePoolRequest): Promise<LicensePool> {
     try {
       // Get current user
-      const { data: { user } } = getCurrentUser();
+      const { data: { user } } = await getCurrentUser();
       if (!user) {
         throw new Error('User not authenticated');
       }

@@ -63,7 +63,7 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
         console.log('🔄 First attempt failed, trying by email...');
         
         // Get current user email from auth
-        const { data: { user }, error: userError } = getCurrentUser();
+        const { data: { user }, error: userError } = await getCurrentUser();
         
         if (!userError && user?.email) {
           console.log('📧 Trying with email:', user.email);

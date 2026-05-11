@@ -43,7 +43,7 @@ export const useDepartmentBudgets = () => {
       }
 
       // If not found in localStorage, try Supabase Auth
-      const { data: { user } } = getCurrentUser();
+      const { data: { user } } = await getCurrentUser();
       if (user) {
         // Get user role from users table
         const { data: userRecord } = await supabase
