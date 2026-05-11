@@ -27,14 +27,11 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-
-
-import { usePaymentVerificationFromURL, useSubscriptionQuery } from '@/features/subscription/model';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { downloadReceipt, generateReceiptBase64 } from '@/features/subscription/lib';
-import { getPaymentReceiptUrl, uploadPaymentReceipt } from '@/shared/api/storageApiService';
+import { getPaymentReceiptUrl, uploadPaymentReceipt } from '@/shared/api';
 
-import { useSubscriptionContext, useSubscriptionStore } from '@/features/subscription/model/subscriptionStore';
+import { useSubscription, useSubscriptionStore } from '@/features/subscription/model/subscriptionStore';
 import { useUser, useUserRole } from '@/shared/model/authStore';
 // ============================================================================
 // CONSTANTS & CONFIGURATION
@@ -98,6 +95,8 @@ const DASHBOARD_ROUTES = {
   recruiter: '/recruitment/overview',
   // Learner roles
   learner: '/learner/dashboard',
+  'school-learner': '/learner/dashboard',
+  'college-learner': '/learner/dashboard',
 };
 
 /** Subscription manage routes by role */
@@ -152,10 +151,10 @@ async function retryWithBackoff(fn, maxRetries, baseDelayMs, onRetry) {
 /** Format date for display */
 const formatDate = (d) => {
   try {
-    return new Date(d).toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+    return new Date(d).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
     });
   } catch {
     return 'N/A';
@@ -165,10 +164,10 @@ const formatDate = (d) => {
 /** Format amount for display */
 const formatAmount = (a) => {
   try {
-    return new Intl.NumberFormat('en-IN', { 
-      style: 'currency', 
-      currency: 'INR', 
-      minimumFractionDigits: 0 
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0
     }).format(a || 0);
   } catch {
     return '₹0';
@@ -177,10 +176,10 @@ const formatAmount = (a) => {
 
 /** Get user role from various sources */
 const getUserRole = (user, role) => {
-  return user?.user_metadata?.user_role 
-    || role 
-    || user?.user_metadata?.role 
-    || user?.raw_user_meta_data?.user_role 
+  return user?.user_metadata?.user_role
+    || role
+    || user?.user_metadata?.role
+    || user?.raw_user_meta_data?.user_role
     || user?.raw_user_meta_data?.role
     || 'learner';
 };
@@ -198,7 +197,7 @@ function useCacheRefresh(refreshAccess, refreshSubscription) {
     attempts: 0,
     error: null,
   });
-  
+
   const mountedRef = useRef(true);
   const refreshPromiseRef = useRef(null);
 
@@ -269,7 +268,7 @@ function useNavigationState(cacheRefresh, getDashboardUrl, navigate) {
     status: NAV_STATES.IDLE,
     error: null,
   });
-  
+
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -295,11 +294,11 @@ function useNavigationState(cacheRefresh, getDashboardUrl, navigate) {
       if (!mountedRef.current) return;
 
       setState({ status: NAV_STATES.NAVIGATING, error: null });
-      
+
       // Navigate with post-payment flag
       const dashboardUrl = getDashboardUrl();
       log.info('Navigating to:', dashboardUrl);
-      navigate(dashboardUrl, { 
+      navigate(dashboardUrl, {
         state: { fromPayment: true },
         replace: false,
       });
@@ -360,7 +359,7 @@ const ReceiptCard = ({ header, children }) => (
 /** Confetti animation */
 const Confetti = ({ show }) => {
   if (!show) return null;
-  
+
   return (
     <div className="fixed inset-0 pointer-events-none z-50">
       {[...Array(40)].map((_, i) => (
@@ -387,7 +386,7 @@ const EmailStatus = ({ status }) => {
     [EMAIL_STATES.SENDING]: { icon: Loader2, color: 'text-[#2663EB]', text: 'Sending confirmation...', spin: true },
     [EMAIL_STATES.SENT]: { icon: MailCheck, color: 'text-emerald-500', text: 'Confirmation email sent' },
     [EMAIL_STATES.SKIPPED]: { icon: MailCheck, color: 'text-gray-400', text: 'Email already sent previously' },
-    [EMAIL_STATES.FAILED]: { icon: AlertCircle, color: 'text-amber-500', text: 'Could not send email' },
+    [EMAIL_STATES.FAILED]: { icon: MailCheck, color: 'text-gray-600', text: 'You will receive a receipt in your email' },
   };
 
   const { icon: Icon, color, text, spin } = config[status] || config[EMAIL_STATES.PENDING];
@@ -421,8 +420,8 @@ const ErrorScreen = ({ message, onRetry }) => (
       </div>
       <h2 className="text-lg font-bold text-gray-900 mb-1">Verification Failed</h2>
       <p className="text-sm text-gray-500 mb-5">{message || 'Please try again'}</p>
-      <button 
-        onClick={onRetry} 
+      <button
+        onClick={onRetry}
         className="w-full py-2.5 bg-[#2663EB] text-white rounded-lg font-medium text-sm hover:bg-[#1D4ED8] flex items-center justify-center gap-2"
       >
         <RefreshCw className="w-4 h-4" /> Retry
@@ -437,11 +436,20 @@ const ErrorScreen = ({ message, onRetry }) => (
 
 function PaymentSuccess() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const user = useUser();
   const { role } = useUserRole();
-  const { refreshAccess } = useSubscriptionContext();
-  const { refreshSubscription } = useSubscriptionQuery();
+  const { refreshSubscription, refreshAccess } = useSubscription();
+
+  // ── Read exclusively from location.state (set by initiateRazorpayPayment callbacks) ──
+  const stateData = location.state || {};
+  const verificationStatus = stateData.verificationResult ? 'success' : 'error';
+  const transactionDetails = stateData.verificationResult || null;
+  const paymentParams = {
+    razorpay_payment_id: stateData.razorpay_payment_id || '',
+    razorpay_order_id: stateData.razorpay_order_id || '',
+    razorpay_signature: stateData.razorpay_signature || '',
+  };
 
   // State
   const [activationStatus, setActivationStatus] = useState(ACTIVATION_STATES.PENDING);
@@ -450,6 +458,7 @@ function PaymentSuccess() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [receiptUrl, setReceiptUrl] = useState(null);
   const [receiptUploading, setReceiptUploading] = useState(false);
+  const verificationError = null;
 
   // Refs for cleanup
   const mountedRef = useRef(true);
@@ -457,14 +466,11 @@ function PaymentSuccess() {
   const emailTimeoutRef = useRef(null);
   const sessionTimeoutRef = useRef(null);
 
-  // Payment verification
-  const {
-    status: verificationStatus,
-    transactionDetails,
-    error: verificationError,
-    paymentParams,
-    retry,
-  } = usePaymentVerificationFromURL(searchParams, true);
+  const retry = useCallback(() => {
+    // Re-navigate to plans page for a fresh attempt
+    const userType = stateData.learnerType || role || 'learner';
+    navigate(`/subscription/plans?type=${userType}`, { replace: true });
+  }, [navigate, stateData.learnerType, role]);
 
   // Memoized values
   const managePath = useMemo(() => {
@@ -478,13 +484,8 @@ function PaymentSuccess() {
   }, [user, role]);
 
   const planDetails = useMemo(() => {
-    try {
-      const stored = localStorage.getItem('payment_plan_details');
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  }, []);
+    return stateData.plan || null;
+  }, [stateData.plan]);
 
   const displayAmount = useMemo(() => {
     if (transactionDetails?.amount) return transactionDetails.amount / 100;
@@ -518,14 +519,14 @@ function PaymentSuccess() {
   // Upload receipt to R2
   const uploadReceiptToR2 = useCallback(async (receiptData, paymentId, userId) => {
     if (!mountedRef.current) return;
-    
+
     try {
       setReceiptUploading(true);
       const pdfBase64 = await generateReceiptBase64(receiptData);
       const filename = `Receipt-${paymentId?.slice(-8) || 'payment'}-${new Date().toISOString().split('T')[0]}.pdf`;
-      
+
       const result = await uploadPaymentReceipt(pdfBase64, paymentId, userId, filename);
-      
+
       if (result.success && result.fileKey && mountedRef.current) {
         const downloadUrl = getPaymentReceiptUrl(result.fileKey, 'download');
         setReceiptUrl(downloadUrl);
@@ -552,7 +553,6 @@ function PaymentSuccess() {
       payment_id: transactionDetails.payment_id,
       receipt_url: transactionDetails.receipt_url,
       email_sent: transactionDetails.email_sent,
-      subscription_created: transactionDetails.subscription_created,
     });
 
     const subscription = transactionDetails?.subscription;
@@ -659,7 +659,7 @@ function PaymentSuccess() {
         
         setEmailStatus(EMAIL_STATES.SKIPPED);
 
-        const storedReceiptUrl = transactionDetails.receipt_url || 
+        const storedReceiptUrl = transactionDetails.receipt_url ||
           localStorage.getItem(`receipt_url_${transactionDetails.payment_id}`);
         if (storedReceiptUrl) {
           setReceiptUrl(storedReceiptUrl);
@@ -671,7 +671,6 @@ function PaymentSuccess() {
       }
     } else if (transactionDetails.subscription_created === true) {
       // Subscription was created but details weren't in the response
-      // Still mark as activated and update the store
       setActivationStatus(ACTIVATION_STATES.ACTIVATED);
       try {
         const store = useSubscriptionStore.getState();
@@ -693,28 +692,37 @@ function PaymentSuccess() {
       setEmailStatus(EMAIL_STATES.SENT);
       toast('Payment successful! Your subscription will be activated shortly.', { duration: 5000, icon: '⏳' });
     } else {
+      // Payment verified but no subscription object — still mark as active
+      // This handles the case where verification succeeded inline in Razorpay handler
       setActivationStatus(ACTIVATION_STATES.ACTIVATED);
-      
+      try {
+        const store = useSubscriptionStore.getState();
+        store.setAccessData({
+          hasAccess: true,
+          accessReason: 'active',
+          isLoading: false,
+          _currentUserId: user?.id,
+        });
+        log.info('✅ Payment verified, set hasAccess=true (no subscription object in response)');
+      } catch (e) {
+        log.error('Failed to update store:', e);
+      }
       setEmailStatus(EMAIL_STATES.SENT);
     }
   }, [verificationStatus, transactionDetails, activationStatus, user, cacheRefresh, uploadReceiptToR2]);
 
-  // Redirect if no payment params — but only after a brief delay to avoid
-  // premature redirects when URL params are still being parsed
+  // Redirect if no payment params — but check location.state first since
+  // PaymentCompletion passes data via React Router state, not URL params
   useEffect(() => {
-    if (!paymentParams.razorpay_payment_id && verificationStatus !== 'loading') {
-      // Check if we have a recently completed payment in localStorage
-      const recentPayment = localStorage.getItem('last_payment_id');
-      if (recentPayment) {
-        log.info('No URL params but found recent payment in localStorage:', recentPayment);
-        // Don't redirect — the payment was likely just completed
-        return;
+    if (!paymentParams.razorpay_payment_id && verificationStatus !== 'success' && verificationStatus !== 'loading') {
+      // Only redirect if there's genuinely no payment data at all
+      if (!stateData.verificationResult && !stateData.razorpay_payment_id) {
+        const userType = stateData?.learnerType || planDetails?.learnerType || role || 'learner';
+        log.info('No payment data in URL or state, redirecting to plans');
+        navigate(`/subscription/plans?type=${userType}`, { replace: true });
       }
-      const userType = planDetails?.learnerType || role || 'learner';
-      log.info('No payment params found, redirecting to plans');
-      navigate(`/subscription/plans?type=${userType}`, { replace: true });
     }
-  }, [paymentParams, verificationStatus, navigate, role, planDetails]);
+  }, [paymentParams, verificationStatus, navigate, role, planDetails, stateData]);
 
   // Handle no session error
   useEffect(() => {
@@ -727,11 +735,13 @@ function PaymentSuccess() {
     }
   }, [verificationError, user, navigate]);
 
-  // Handle receipt download
+  // Handle receipt download using presigned URL
   const handleDownloadReceipt = useCallback(async () => {
     try {
       if (receiptUrl) {
-        window.open(receiptUrl, '_blank');
+        // Use presigned URL for download (no auth required)
+        const presignedUrl = await getPaymentReceiptPresignedUrl(receiptUrl, 3600);
+        window.open(presignedUrl, '_blank');
         toast.success('Receipt downloading!');
         return;
       }
@@ -757,9 +767,9 @@ function PaymentSuccess() {
           email: transactionDetails?.user_email || user?.email || '',
           phone: user?.user_metadata?.phone || null,
         },
-        company: { 
-          name: 'RareMinds', 
-          address: '231, 2nd stage, 13th Cross Road\nHoysala Nagar, Indiranagar\nBengaluru, Karnataka 560001', 
+        company: {
+          name: 'RareMinds',
+          address: '231, 2nd stage, 13th Cross Road\nHoysala Nagar, Indiranagar\nBengaluru, Karnataka 560001',
           taxId: 'GSTIN: 29ABCDE1234F1Z5',
           phone: '+91 9902326951',
           email: 'marketing@rareminds.in'
@@ -872,7 +882,7 @@ function PaymentSuccess() {
               </>
             )}
           </button>
-          
+
           <div className="grid grid-cols-2 gap-2.5">
             <button
               onClick={() => managePath && navigate(managePath)}

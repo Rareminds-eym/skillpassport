@@ -29,7 +29,7 @@ const PaymentCompletion = lazy(() =>
   import("@/pages/subscription/PaymentCompletion")
 );
 const PaymentSuccess = lazy(() =>
-  import("@/pages/subscription/PaymentSuccess")
+  import("@/features/subscription/ui/shared/PaymentSuccess")
 );
 const PaymentFailure = lazy(() =>
   import("@/features/subscription/ui/shared/PaymentFailure")

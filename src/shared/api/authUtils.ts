@@ -96,6 +96,8 @@ export const getCurrentSession = async () => {
 
     return { data: { session }, error: null };
   } catch (err: any) {
+    // CRITICAL: Always return { data: { session: null } } — never undefined.
+    // Many callers destructure `{ data: { session } }` and will crash if data is undefined.
     return { data: { session: null }, error: err };
   }
 };
