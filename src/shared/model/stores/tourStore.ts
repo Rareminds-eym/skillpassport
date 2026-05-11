@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { immer } from 'zustand/middleware/immer';
-import { supabase } from '@/shared/api/supabaseClient';
+
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('tour-store');
@@ -319,21 +319,8 @@ export const useTourStore = create<TourStore>()(
       try {
         let progress: TourProgress = {};
 
-        // Load from database
-        const { data, error } = await supabase
-          .from('learners')
-          .select('tour_progress')
-          .eq('user_id', learnerId)
-          .maybeSingle();
-
-        if (!error && data?.tour_progress) {
-          progress = data.tour_progress;
-          // Sync to localStorage
-          saveTourProgressToStorage(progress);
-        } else {
-          // Fallback to localStorage
-          progress = getTourProgressFromStorage();
-        }
+        // Disable Supabase sync - fallback to localStorage
+        progress = getTourProgressFromStorage();
 
         set((store) => {
           store.state.progress = progress;
@@ -357,19 +344,7 @@ export const useTourStore = create<TourStore>()(
     // Save tour progress
     saveTourProgress: async (progress, learnerId) => {
       try {
-        // Save to database if learner ID is available
-        if (learnerId) {
-          const { error } = await supabase
-            .from('learners')
-            .update({ tour_progress: progress })
-            .eq('user_id', learnerId);
-
-          if (error) {
-            logger.error('Failed to save tour progress to database', new Error(error.message));
-          }
-        }
-
-        // Always save to localStorage as fallback
+        // Disable Supabase sync - just use localStorage
         saveTourProgressToStorage(progress);
 
         set((store) => {

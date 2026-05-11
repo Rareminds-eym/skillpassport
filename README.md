@@ -71,6 +71,20 @@ Skill Ecosystem is an integrated platform that connects learners, educators, and
 - Cloudflare (CDN & Workers)
 - Razorpay (Payments)
 
+## Developer Setup
+
+To work with internal packages (such as those under the `@rareminds-eym` scope) and run the project locally, you must configure your NPM registry. 
+
+Ensure your `.npmrc` file at the root of the project contains the following configuration:
+
+```ini
+legacy-peer-deps=true
+@rareminds-eym:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${NPM_TOKEN}
+```
+
+**Note**: You need to export the `NPM_TOKEN` environment variable in your shell using a GitHub Personal Access Token (PAT) that has `read:packages` permissions before running `npm install`.
+
 ## Documentation
 
 - 📖 [Master Truth Page](./ai-master-truth.md) - Complete product overview
