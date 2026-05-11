@@ -24,10 +24,20 @@ import { ssoClient } from '@/shared/api/ssoClient';
  */
 export const getCurrentUser = async () => {
   try {
-    // Ensure session is initialized (idempotent if already initialized)
-    await ssoClient.initSession();
-    
-    const state = useAuthStore.getState();
+    let state = useAuthStore.getState();
+
+    // If the auth store is still initializing (on initial page load), wait for it.
+    if (state.loading) {
+      await new Promise<void>((resolve) => {
+        const unsubscribe = useAuthStore.subscribe((newState) => {
+          if (!newState.loading) {
+            unsubscribe();
+            resolve();
+          }
+        });
+      });
+      state = useAuthStore.getState();
+    }
     const user = state.user;
 
     if (!user) {
@@ -65,10 +75,20 @@ export const getCurrentUser = async () => {
  */
 export const getCurrentSession = async () => {
   try {
-    // Ensure session is initialized (idempotent if already initialized)
-    await ssoClient.initSession();
-    
-    const state = useAuthStore.getState();
+    let state = useAuthStore.getState();
+
+    // If the auth store is still initializing (on initial page load), wait for it.
+    if (state.loading) {
+      await new Promise<void>((resolve) => {
+        const unsubscribe = useAuthStore.subscribe((newState) => {
+          if (!newState.loading) {
+            unsubscribe();
+            resolve();
+          }
+        });
+      });
+      state = useAuthStore.getState();
+    }
     const user = state.user;
     const accessToken = ssoClient.getAccessToken();
 
