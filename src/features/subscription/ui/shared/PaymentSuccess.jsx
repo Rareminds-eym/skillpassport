@@ -34,7 +34,7 @@ import { usePaymentVerificationFromURL, useSubscriptionQuery } from '@/features/
 import { downloadReceipt, generateReceiptBase64 } from '@/features/subscription/lib';
 import { getPaymentReceiptUrl, uploadPaymentReceipt } from '@/shared/api/storageApiService';
 
-import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionContext, useSubscriptionStore } from '@/features/subscription/model/subscriptionStore';
 import { useUser, useUserRole } from '@/shared/model/authStore';
 // ============================================================================
 // CONSTANTS & CONFIGURATION
@@ -552,6 +552,7 @@ function PaymentSuccess() {
       payment_id: transactionDetails.payment_id,
       receipt_url: transactionDetails.receipt_url,
       email_sent: transactionDetails.email_sent,
+      subscription_created: transactionDetails.subscription_created,
     });
 
     const subscription = transactionDetails?.subscription;
@@ -560,9 +561,44 @@ function PaymentSuccess() {
       setActivationStatus(ACTIVATION_STATES.ACTIVATED);
       setSubscriptionData(subscription);
 
-      // Trigger cache refresh
+      // =====================================================================
+      // FIX: Directly update the Zustand subscription store with the new
+      // subscription data instead of relying on a round-trip API re-fetch.
+      // This prevents the post-payment redirect loop where refreshAccess()
+      // fails (e.g. _currentUserId is null, API auth fails, or DB returns
+      // no data) and the route guard redirects back to /subscription/plans.
+      // =====================================================================
+      try {
+        const store = useSubscriptionStore.getState();
+        store.setAccessData({
+          hasAccess: true,
+          accessReason: 'active',
+          isLoading: false,
+          isRefetching: false,
+          error: null,
+          _currentUserId: user?.id,
+          subscription: {
+            id: subscription.id,
+            status: subscription.status || 'active',
+            plan_type: subscription.plan_name || subscription.plan_type,
+            startDate: subscription.start_date || subscription.subscription_start_date,
+            endDate: subscription.end_date || subscription.subscription_end_date,
+            end_date: subscription.end_date || subscription.subscription_end_date,
+            plan: subscription.plan_name || subscription.plan_type,
+            planName: subscription.plan_name || subscription.plan_type,
+            planPrice: subscription.plan_amount,
+            features: [],
+            autoRenew: true,
+          },
+        });
+        log.info('✅ Directly updated Zustand store with subscription data. hasAccess=true');
+      } catch (storeErr) {
+        log.error('Failed to directly update Zustand store:', storeErr);
+      }
+
+      // Also trigger cache refresh as a secondary mechanism
       cacheRefresh.refresh().catch(err => {
-        log.error('Initial cache refresh failed:', err);
+        log.error('Initial cache refresh failed (non-critical — store already updated):', err);
       });
 
       const isExistingOrAlreadyProcessed = transactionDetails.already_processed || transactionDetails.is_existing_subscription;
@@ -633,6 +669,23 @@ function PaymentSuccess() {
           toast.success('Your subscription is already active!', { duration: 3000, icon: '✅' });
         }
       }
+    } else if (transactionDetails.subscription_created === true) {
+      // Subscription was created but details weren't in the response
+      // Still mark as activated and update the store
+      setActivationStatus(ACTIVATION_STATES.ACTIVATED);
+      try {
+        const store = useSubscriptionStore.getState();
+        store.setAccessData({
+          hasAccess: true,
+          accessReason: 'active',
+          isLoading: false,
+          _currentUserId: user?.id,
+        });
+        log.info('✅ Subscription created flag detected, set hasAccess=true');
+      } catch (e) {
+        log.error('Failed to update store for subscription_created flag:', e);
+      }
+      setEmailStatus(EMAIL_STATES.SENT);
     } else if (transactionDetails.subscription_error) {
       log.warn('Subscription creation issue:', transactionDetails.subscription_error);
       setActivationStatus(ACTIVATION_STATES.ACTIVATED);
@@ -646,10 +699,19 @@ function PaymentSuccess() {
     }
   }, [verificationStatus, transactionDetails, activationStatus, user, cacheRefresh, uploadReceiptToR2]);
 
-  // Redirect if no payment params
+  // Redirect if no payment params — but only after a brief delay to avoid
+  // premature redirects when URL params are still being parsed
   useEffect(() => {
     if (!paymentParams.razorpay_payment_id && verificationStatus !== 'loading') {
+      // Check if we have a recently completed payment in localStorage
+      const recentPayment = localStorage.getItem('last_payment_id');
+      if (recentPayment) {
+        log.info('No URL params but found recent payment in localStorage:', recentPayment);
+        // Don't redirect — the payment was likely just completed
+        return;
+      }
       const userType = planDetails?.learnerType || role || 'learner';
+      log.info('No payment params found, redirecting to plans');
       navigate(`/subscription/plans?type=${userType}`, { replace: true });
     }
   }, [paymentParams, verificationStatus, navigate, role, planDetails]);

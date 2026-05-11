@@ -398,8 +398,25 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
     // Force refresh – bypasses stale time
     refreshSubscription: async () => {
-      const userId = get()._currentUserId;
-      if (!userId) return;
+      let userId = get()._currentUserId;
+      
+      // If _currentUserId is null (e.g. right after signup), try to get it from the session
+      if (!userId) {
+        try {
+          const { data: { user } } = await getCurrentUser();
+          userId = user?.id || null;
+          if (userId) {
+            set((s) => { s._currentUserId = userId; });
+          }
+        } catch {
+          // getCurrentUser failed — can't refresh without user ID
+        }
+      }
+      
+      if (!userId) {
+        console.warn('[SubscriptionStore] refreshSubscription skipped: no userId available');
+        return;
+      }
 
       // Clear stale time to force refetch
       set((s) => { s._lastFetchTime = null; });
@@ -467,6 +484,8 @@ export const useSubscriptionStore = create<SubscriptionState>()(
     },
 
     // Manual setter (for edge cases or testing)
+    // Also stamps _lastFetchTime and optionally sets _currentUserId to prevent
+    // fetchSubscription from immediately overwriting these values.
     setAccessData: (data) => {
       set((state) => {
         if (data.hasAccess !== undefined) state.hasAccess = data.hasAccess;
@@ -479,6 +498,12 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         if (data.warningType !== undefined) state.warningType = data.warningType;
         if (data.warningMessage !== undefined) state.warningMessage = data.warningMessage;
         if (data.daysUntilExpiry !== undefined) state.daysUntilExpiry = data.daysUntilExpiry;
+        // Set _currentUserId if provided — required for the stale-time guard
+        // in fetchSubscription to recognize this data belongs to the current user
+        if ((data as any)._currentUserId) state._currentUserId = (data as any)._currentUserId;
+        // Stamp _lastFetchTime so fetchSubscription's stale-time guard
+        // won't immediately overwrite these manual updates
+        state._lastFetchTime = Date.now();
       });
     },
 

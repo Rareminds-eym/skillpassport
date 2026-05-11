@@ -304,11 +304,11 @@ function useGuardState({
       return GUARD_STATES.ACCESS_GRANTED;
     }
 
-    // Step 9: Post-payment sync failed but we should still check access
+    // Step 9: Post-payment sync failed but we should still grant access
+    // The user has already paid — blocking them here creates a redirect loop to plans.
     if (isPostPayment && postPaymentSync.syncFailed) {
-      // Even if sync failed, check if we have access now
-      console.log('🛡️ [Guard] Step 9: Post-payment sync failed, hasAccess=', hasAccess);
-      return hasAccess ? GUARD_STATES.ACCESS_GRANTED : GUARD_STATES.ACCESS_DENIED;
+      console.log('🛡️ [Guard] Step 9: Post-payment sync failed, GRANTING ACCESS to prevent redirect loop');
+      return GUARD_STATES.ACCESS_GRANTED;
     }
 
     console.log('🛡️ [Guard] Step 10: Fallback → ACCESS_DENIED. Full state:', {

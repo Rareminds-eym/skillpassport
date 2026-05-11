@@ -31,7 +31,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { downloadReceipt, generateReceiptBase64 } from '@/features/subscription/lib';
 import { getPaymentReceiptUrl, uploadPaymentReceipt } from '@/shared/api';
 
-import { useSubscription } from '@/features/subscription/model/subscriptionStore';
+import { useSubscription, useSubscriptionStore } from '@/features/subscription/model/subscriptionStore';
 import { useUser, useUserRole } from '@/shared/model/authStore';
 // ============================================================================
 // CONSTANTS & CONFIGURATION
@@ -561,9 +561,44 @@ function PaymentSuccess() {
       setActivationStatus(ACTIVATION_STATES.ACTIVATED);
       setSubscriptionData(subscription);
 
-      // Trigger cache refresh
+      // =====================================================================
+      // FIX: Directly update the Zustand subscription store with the new
+      // subscription data instead of relying on a round-trip API re-fetch.
+      // This prevents the post-payment redirect loop where refreshAccess()
+      // fails (e.g. _currentUserId is null, API auth fails, or DB returns
+      // no data) and the route guard redirects back to /subscription/plans.
+      // =====================================================================
+      try {
+        const store = useSubscriptionStore.getState();
+        store.setAccessData({
+          hasAccess: true,
+          accessReason: 'active',
+          isLoading: false,
+          isRefetching: false,
+          error: null,
+          _currentUserId: user?.id,
+          subscription: {
+            id: subscription.id,
+            status: subscription.status || 'active',
+            plan_type: subscription.plan_name || subscription.plan_type,
+            startDate: subscription.start_date || subscription.subscription_start_date,
+            endDate: subscription.end_date || subscription.subscription_end_date,
+            end_date: subscription.end_date || subscription.subscription_end_date,
+            plan: subscription.plan_name || subscription.plan_type,
+            planName: subscription.plan_name || subscription.plan_type,
+            planPrice: subscription.plan_amount,
+            features: [],
+            autoRenew: true,
+          },
+        });
+        log.info('✅ Directly updated Zustand store with subscription data. hasAccess=true');
+      } catch (storeErr) {
+        log.error('Failed to directly update Zustand store:', storeErr);
+      }
+
+      // Also trigger cache refresh as a secondary mechanism
       cacheRefresh.refresh().catch(err => {
-        log.error('Initial cache refresh failed:', err);
+        log.error('Initial cache refresh failed (non-critical — store already updated):', err);
       });
 
       const isExistingOrAlreadyProcessed = transactionDetails.already_processed || transactionDetails.is_existing_subscription;
@@ -634,6 +669,22 @@ function PaymentSuccess() {
           toast.success('Your subscription is already active!', { duration: 3000, icon: '✅' });
         }
       }
+    } else if (transactionDetails.subscription_created === true) {
+      // Subscription was created but details weren't in the response
+      setActivationStatus(ACTIVATION_STATES.ACTIVATED);
+      try {
+        const store = useSubscriptionStore.getState();
+        store.setAccessData({
+          hasAccess: true,
+          accessReason: 'active',
+          isLoading: false,
+          _currentUserId: user?.id,
+        });
+        log.info('✅ Subscription created flag detected, set hasAccess=true');
+      } catch (e) {
+        log.error('Failed to update store for subscription_created flag:', e);
+      }
+      setEmailStatus(EMAIL_STATES.SENT);
     } else if (transactionDetails.subscription_error) {
       log.warn('Subscription creation issue:', transactionDetails.subscription_error);
       setActivationStatus(ACTIVATION_STATES.ACTIVATED);
@@ -641,19 +692,37 @@ function PaymentSuccess() {
       setEmailStatus(EMAIL_STATES.SENT);
       toast('Payment successful! Your subscription will be activated shortly.', { duration: 5000, icon: '⏳' });
     } else {
+      // Payment verified but no subscription object — still mark as active
+      // This handles the case where verification succeeded inline in Razorpay handler
       setActivationStatus(ACTIVATION_STATES.ACTIVATED);
-      
+      try {
+        const store = useSubscriptionStore.getState();
+        store.setAccessData({
+          hasAccess: true,
+          accessReason: 'active',
+          isLoading: false,
+          _currentUserId: user?.id,
+        });
+        log.info('✅ Payment verified, set hasAccess=true (no subscription object in response)');
+      } catch (e) {
+        log.error('Failed to update store:', e);
+      }
       setEmailStatus(EMAIL_STATES.SENT);
     }
   }, [verificationStatus, transactionDetails, activationStatus, user, cacheRefresh, uploadReceiptToR2]);
 
-  // Redirect if no payment params
+  // Redirect if no payment params — but check location.state first since
+  // PaymentCompletion passes data via React Router state, not URL params
   useEffect(() => {
-    if (!paymentParams.razorpay_payment_id && verificationStatus !== 'loading') {
-      const userType = planDetails?.learnerType || role || 'learner';
-      navigate(`/subscription/plans?type=${userType}`, { replace: true });
+    if (!paymentParams.razorpay_payment_id && verificationStatus !== 'success' && verificationStatus !== 'loading') {
+      // Only redirect if there's genuinely no payment data at all
+      if (!stateData.verificationResult && !stateData.razorpay_payment_id) {
+        const userType = stateData?.learnerType || planDetails?.learnerType || role || 'learner';
+        log.info('No payment data in URL or state, redirecting to plans');
+        navigate(`/subscription/plans?type=${userType}`, { replace: true });
+      }
     }
-  }, [paymentParams, verificationStatus, navigate, role, planDetails]);
+  }, [paymentParams, verificationStatus, navigate, role, planDetails, stateData]);
 
   // Handle no session error
   useEffect(() => {
