@@ -23,7 +23,7 @@
     "workers:dev": "concurrently -n \"email,pay\" -c \"blue,yellow\" \"npm run workers:email\" \"npm run workers:payments\"",
     "pages:dev": "wrangler pages dev dist --compatibility-date=2024-01-01 --port=8788",
     "pages:build": "npm run build && npm run pages:dev",
-    "workers:email": "cd cloudflare-workers/email-api && wrangler dev --port=9001 --inspector-port=9229",
+    "workers:email": "cd cloudflare-workers/shared-email-api && wrangler dev --port=9001 --inspector-port=9229",
     "workers:embedding": "echo 'Embedding worker removed - using generalized worker on port 9004'",
     "workers:payments": "cd cloudflare-workers/payments-api && wrangler dev --port=9003 --inspector-port=9232",
     "workers:all": "npm run workers:dev",
