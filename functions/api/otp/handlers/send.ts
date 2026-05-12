@@ -1,41 +1,63 @@
 /**
  * Send OTP handler
+ * Forwards requests to email-worker (MessageCentral provider)
+ * 
+ * MIGRATION NOTE:
+ * - Old: Direct AWS SNS integration
+ * - New: Proxy to email-worker which uses MessageCentral
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js';
 import type { PagesEnv } from '../../../../src/functions-lib/types';
 import { jsonResponse } from '../../../../src/functions-lib';
-import { generateOtp, hashOtp } from '../utils/crypto';
-import { sendSms } from '../utils/sns';
-import { isRateLimited, logOtpRequest, storeOtp } from '../utils/supabase';
+import { getEmailWorkerConfig } from '../config/emailWorkerConfig';
+import { sendOtpSms, EmailWorkerError } from '../utils/emailWorkerClient';
+import { formatPhoneNumber } from '../utils/formatPhone';
+
+interface SendOtpBody {
+  phone: string;
+  countryCode?: string;
+}
 
 /**
- * Validate and format phone number
+ * Parse timeout value with explicit validation and fallback
+ * @param value - The timeout string from the API response
+ * @param fallback - Default value to use (default: 60)
+ * @returns Parsed timeout in seconds, or fallback if invalid
  */
-function formatPhoneNumber(phone: string, countryCode: string = '+91'): string {
-  // Remove all non-digit characters
-  let cleaned = phone.replace(/\D/g, '');
-  
-  // Remove leading zeros
-  cleaned = cleaned.replace(/^0+/, '');
-  
-  // If number starts with country code (without +), remove it
-  if (countryCode === '+91' && cleaned.startsWith('91') && cleaned.length > 10) {
-    cleaned = cleaned.slice(2);
+function parseTimeoutSeconds(value: string | undefined, fallback = 60): number {
+  // undefined is expected when field is missing - use fallback silently
+  if (value === undefined) {
+    return fallback;
   }
   
-  // Ensure it's 10 digits for Indian numbers
-  if (countryCode === '+91' && cleaned.length !== 10) {
-    throw new Error('Invalid phone number. Must be 10 digits.');
+  // Empty string should use fallback with warning
+  if (value === '') {
+    console.warn('OTP timeout is empty string, using fallback:', fallback);
+    return fallback;
   }
   
-  return `${countryCode}${cleaned}`;
+  // Try to parse the value
+  const parsed = parseInt(value, 10);
+  
+  // Check for NaN (non-numeric strings like "abc")
+  if (isNaN(parsed)) {
+    console.warn('OTP timeout is non-numeric, using fallback:', { received: value, fallback });
+    return fallback;
+  }
+  
+  // Check for zero or negative values
+  if (parsed <= 0) {
+    console.warn('OTP timeout is zero or negative, using fallback:', { received: value, fallback });
+    return fallback;
+  }
+  
+  // Valid positive number
+  return parsed;
 }
 
 export async function sendOtpHandler(
-  body: any,
-  env: PagesEnv,
-  supabase: SupabaseClient
+  body: SendOtpBody,
+  env: PagesEnv
 ): Promise<Response> {
   try {
     const { phone, countryCode = '+91' } = body;
@@ -49,70 +71,65 @@ export async function sendOtpHandler(
     let formattedPhone: string;
     try {
       formattedPhone = formatPhoneNumber(phone, countryCode);
-    } catch (error: any) {
-      return jsonResponse({ success: false, error: error.message }, 400);
+    } catch (error) {
+      if (error instanceof Error) {
+        return jsonResponse({ success: false, error: error.message }, 400);
+      }
+      return jsonResponse({ success: false, error: 'Failed to format phone number' }, 400);
+    }
+
+    // Validate phone length
+    if (formattedPhone.length < 7 || formattedPhone.length > 15) {
+      return jsonResponse({ 
+        success: false, 
+        error: 'Invalid phone number. Must be 7-15 digits.' 
+      }, 400);
     }
     
-    // Check rate limiting
-    const rateLimited = await isRateLimited(supabase, formattedPhone);
-    if (rateLimited) {
-      return jsonResponse(
-        { success: false, error: 'Too many OTP requests. Please try again later.' },
-        429
-      );
-    }
+    // Get and validate email worker configuration
+    const emailWorkerConfig = getEmailWorkerConfig(env);
     
-    // Generate OTP
-    const otpLength = parseInt(env.OTP_LENGTH || '6', 10);
-    const otp = generateOtp(otpLength);
-    const otpHash = await hashOtp(otp);
+    // Forward request to email-worker
+    const cleanCountryCode = countryCode.replace('+', '');
+    const result = await sendOtpSms(emailWorkerConfig, {
+      mobileNumber: formattedPhone,
+      countryCode: cleanCountryCode,
+      flowType: 'SMS',
+    });
     
-    // Store OTP
-    const expiryMinutes = parseInt(env.OTP_EXPIRY_MINUTES || '5', 10);
-    const storeResult = await storeOtp(supabase, formattedPhone, otpHash, expiryMinutes);
-    
-    if (!storeResult.success) {
-      return jsonResponse(
-        { success: false, error: 'Failed to generate OTP. Please try again.' },
-        500
-      );
-    }
-    
-    // Send SMS via AWS SNS
-    const message = `Your verification code is ${otp}. Valid for ${expiryMinutes} minutes. Do not share this code with anyone.`;
-    const smsResult = await sendSms(formattedPhone, message, env);
-    
-    if (!smsResult.success) {
-      console.error('[SEND OTP] SMS sending failed:', smsResult.error);
-      return jsonResponse(
-        { 
-          success: false, 
-          error: 'Failed to send OTP. Please try again.',
-          debug: {
-            smsError: smsResult.error,
-            snsDebug: smsResult.debug
-          }
-        },
-        500
-      );
-    }
-    
-    // Log request for rate limiting
-    await logOtpRequest(supabase, formattedPhone);
+    // Return response in the format expected by frontend
+    const full = `${countryCode}${formattedPhone}`;
+    const masked = full.length > 4 ? full.slice(0, -4) + '****' : '****';
     
     return jsonResponse({
       success: true,
-      message: 'OTP sent successfully',
+      message: result.message || 'OTP sent successfully',
       data: {
-        phone: formattedPhone.slice(0, -4) + '****', // Mask phone number
-        expiresIn: expiryMinutes * 60, // seconds
-        messageId: smsResult.messageId,
+        phone: masked,
+        expiresIn: parseTimeoutSeconds(result.timeout),
+        verificationId: result.verificationId,
       },
     });
-  } catch (error: any) {
-    console.error('Send OTP Error:', error);
+  } catch (error) {
+    if (error instanceof EmailWorkerError) {
+      // Downstream service error
+      return jsonResponse(
+        { success: false, error: error.message },
+        502
+      );
+    }
+    
+    if (error instanceof Error) {
+      // Unexpected error
+      return jsonResponse(
+        { success: false, error: error.message },
+        500
+      );
+    }
+    
+    // Unknown error type
     return jsonResponse(
-      { success: false, error: error.message || 'Failed to send OTP' },
+      { success: false, error: 'An unexpected error occurred' },
       500
     );
   }

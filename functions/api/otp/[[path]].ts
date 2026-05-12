@@ -9,7 +9,7 @@
  */
 
 import type { PagesFunction } from '../../../src/functions-lib/types';
-import { corsHeaders, jsonResponse, createSupabaseClient } from '../../../src/functions-lib';
+import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
 import { sendOtpHandler } from './handlers/send';
 import { verifyOtpHandler } from './handlers/verify';
 import { resendOtpHandler } from './handlers/resend';
@@ -46,7 +46,6 @@ export const onRequest: PagesFunction = async (context) => {
     }
 
     const body = await request.json().catch(() => ({}));
-    const supabase = createSupabaseClient(env);
 
     // Parse path: /api/otp/send, /api/otp/verify, /api/otp/resend
     const pathParts = path.replace('/api/otp', '').split('/').filter(Boolean);
@@ -60,13 +59,13 @@ export const onRequest: PagesFunction = async (context) => {
     // Route handlers
     switch (endpoint) {
       case 'send':
-        return await sendOtpHandler(body, env, supabase);
+        return await sendOtpHandler(body, env);
 
       case 'verify':
-        return await verifyOtpHandler(body, env, supabase);
+        return await verifyOtpHandler(body, env);
 
       case 'resend':
-        return await resendOtpHandler(body, env, supabase);
+        return await resendOtpHandler(body, env);
 
       default:
         return jsonResponse({ success: false, error: 'Not found' }, 404);
