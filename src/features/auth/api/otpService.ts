@@ -81,8 +81,10 @@ function isOtpResponse(data: unknown): data is OtpResponse {
   if (typeof data !== 'object' || data === null) {
     return false;
   }
-  const obj = data as Record<string, unknown>;
-  return typeof obj.success === 'boolean';
+  if (!('success' in data)) {
+    return false;
+  }
+  return typeof (data as Record<string, unknown>).success === 'boolean';
 }
 
 /**
