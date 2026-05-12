@@ -218,7 +218,7 @@ const OtpInput = React.memo<OtpInputProps>(({
   // Handle click - select all text
   const handleClick = useCallback((e: React.MouseEvent<HTMLInputElement>) => {
     if (!disabled) {
-      (e.target as HTMLInputElement).select();
+      e.currentTarget.select();
     }
   }, [disabled]);
 
