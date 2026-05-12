@@ -274,6 +274,9 @@ const UnifiedSignup = () => {
   const [countryCodeDropdownOpen, setCountryCodeDropdownOpen] = useState(false);
   const countryCodeRef = useRef<HTMLDivElement>(null);
   const verifyingOtpRef = useRef(false);
+  
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -333,8 +336,10 @@ const UnifiedSignup = () => {
     setState(prev => ({ ...prev, [name]: processedValue, error: '' }));
   };
 
-  const handleSendOtp = async () => {
-    if (!state.phone || state.phone.length < 7 || state.phone.length > 15) {
+  const handleSendOtp = useCallback(async () => {
+    const { phone, countryCode } = stateRef.current;
+    
+    if (!phone || phone.length < 7 || phone.length > 15) {
       setState(prev => ({ ...prev, error: 'Please enter a valid phone number (7-15 digits)' }));
       return;
     }
@@ -345,7 +350,7 @@ const UnifiedSignup = () => {
       // - functions/api/otp/handlers/send.ts:62 - accepts countryCode
       // - email-worker client:7 - SendOtpRequest includes countryCode
       // - MessageCentralService.ts:197 - sendOTP(mobileNumber, countryCode)
-      const result = await sendOtp(state.phone, state.countryCode);
+      const result = await sendOtp(phone, countryCode);
       if (result.success && result.data?.verificationId) {
         setState(prev => ({ 
           ...prev, 
@@ -359,12 +364,14 @@ const UnifiedSignup = () => {
     } catch {
       setState(prev => ({ ...prev, error: 'Failed to send OTP. Please try again.', sendingOtp: false }));
     }
-  };
+  }, []);
 
   const handleVerifyOtp = useCallback(async (otpValue?: string) => {
+    const { otp, verificationId, phone, countryCode } = stateRef.current;
+    
     // Use the passed OTP value if provided (from auto-verification), otherwise use state
     // ?? not || to handle '0' correctly; otpValue from onComplete is always authoritative
-    const otpToVerify = otpValue ?? state.otp;
+    const otpToVerify = otpValue ?? otp;
     
     // VERIFIED: Backend accepts 4-digit OTPs via MessageCentral service
     // - otpService.ts:13 - OTP_DIGIT_LENGTH = 4
@@ -375,7 +382,7 @@ const UnifiedSignup = () => {
       return;
     }
     
-    if (!state.verificationId?.trim()) {
+    if (!verificationId?.trim()) {
       setState(prev => ({ ...prev, error: 'Verification session expired. Please request a new OTP.' }));
       return;
     }
@@ -396,10 +403,10 @@ const UnifiedSignup = () => {
     setState(prev => ({ ...prev, verifyingOtp: true, error: '' }));
     try {
       const result = await verifyOtpApi({
-        phone: state.phone,
+        phone,
         otp: otpToVerify,
-        countryCode: state.countryCode,
-        verificationId: state.verificationId,
+        countryCode,
+        verificationId,
       });
       if (result.success) setState(prev => ({ ...prev, otpVerified: true, verifyingOtp: false }));
       else setState(prev => ({ ...prev, error: result.error || 'Invalid OTP', verifyingOtp: false }));
@@ -409,7 +416,7 @@ const UnifiedSignup = () => {
       // Always reset ref in finally block
       verifyingOtpRef.current = false;
     }
-  }, [state.otp, state.verificationId, state.phone, state.countryCode]);
+  }, []);
 
   // Validate Step 1 fields
   const validateStep1 = (): boolean => {
