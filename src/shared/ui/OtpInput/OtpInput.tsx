@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useMemo, KeyboardEvent, ClipboardEvent, ChangeEvent } from 'react';
+import React, { useRef, useEffect, useCallback, useMemo, KeyboardEvent, ClipboardEvent, ChangeEvent } from 'react';
 
 export interface OtpInputProps {
   length?: number;
@@ -28,6 +28,10 @@ const OtpInput = React.memo<OtpInputProps>(({
   size = 'md',
 }) => {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Holds the OTP value that should trigger verification after the
+  // parent state update has flushed. null = no pending verification.
+  const pendingVerification = useRef<string | null>(null);
 
   // Normalize value to match length
   const normalizedValue = useMemo(() => {
@@ -67,6 +71,20 @@ const OtpInput = React.memo<OtpInputProps>(({
     }
   }, [onComplete, disabled, isOtpComplete]);
 
+  // Deferred verification: fires AFTER React commits the onChange update
+  // This ensures the parent's state has caught up before onComplete is called
+  useEffect(() => {
+    // value prop here reflects the parent's committed state after onChange
+    if (pendingVerification.current !== null &&
+        value === pendingVerification.current   // confirm parent caught up
+    ) {
+      const otpToVerify = pendingVerification.current;
+      pendingVerification.current = null;     // clear before calling to prevent
+                                              // double-fire if effect re-runs
+      triggerVerification(otpToVerify);
+    }
+  }, [value, triggerVerification]);
+
   // Handle single character input
   const handleChange = useCallback((index: number, e: ChangeEvent<HTMLInputElement>) => {
     if (disabled) return;
@@ -89,12 +107,12 @@ const OtpInput = React.memo<OtpInputProps>(({
       focusInput(index + 1);
     }
 
-    // Trigger auto-verification if all digits are filled
+    // Stage verification to fire after parent state update
     // CRITICAL: Pass the exact newValue, not state
     if (isOtpComplete(newValue)) {
-      triggerVerification(newValue);
+      pendingVerification.current = newValue;
     }
-  }, [normalizedValue, length, onChange, focusInput, isValidChar, disabled, isOtpComplete, triggerVerification]);
+  }, [normalizedValue, length, onChange, focusInput, isValidChar, disabled, isOtpComplete]);
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback((index: number, e: KeyboardEvent<HTMLInputElement>) => {
@@ -180,12 +198,12 @@ const OtpInput = React.memo<OtpInputProps>(({
       const nextIndex = Math.min(validChars.length, length - 1);
       focusInput(nextIndex);
 
-      // Trigger auto-verification if all digits are filled
+      // Stage verification to fire after parent state update
       if (isOtpComplete(validChars)) {
-        triggerVerification(validChars);
+        pendingVerification.current = validChars;
       }
     }
-  }, [length, onChange, focusInput, isValidChar, disabled, isOtpComplete, triggerVerification]);
+  }, [length, onChange, focusInput, isValidChar, disabled, isOtpComplete]);
 
   // Handle focus - select all text
   const handleFocus = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
@@ -214,72 +232,57 @@ const OtpInput = React.memo<OtpInputProps>(({
     }
   }, [size]);
 
-  // Render individual inputs
-  const inputs = useMemo(() => {
-    return Array.from({ length }, (_, index) => {
-      const digit = normalizedValue[index] || '';
-      const isError = Boolean(error);
-
-      return (
-        <input
-          key={index}
-          ref={(el) => {
-            inputRefs.current[index] = el;
-          }}
-          type="text"
-          inputMode={allowOnlyNumbers ? 'numeric' : 'text'}
-          pattern={allowOnlyNumbers ? '[0-9]*' : '[a-zA-Z0-9]*'}
-          maxLength={1}
-          value={digit}
-          onChange={(e) => handleChange(index, e)}
-          onKeyDown={(e) => handleKeyDown(index, e)}
-          onPaste={handlePaste}
-          onFocus={handleFocus}
-          onClick={handleClick}
-          disabled={disabled}
-          autoFocus={autoFocus && index === 0}
-          aria-label={`Digit ${index + 1} of ${length}`}
-          aria-invalid={isError}
-          className={`
-            ${sizeClasses}
-            text-center font-semibold rounded-xl
-            border-2 transition-all duration-200 outline-none
-            ${isError 
-              ? 'border-red-300 bg-red-50 text-red-900 focus:border-red-500 focus:ring-4 focus:ring-red-100 animate-shake' 
-              : digit 
-                ? 'border-blue-500 bg-blue-50 text-blue-900 focus:border-blue-600 focus:ring-4 focus:ring-blue-100'
-                : 'border-gray-200 bg-gray-50 text-gray-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 focus:bg-white'
-            }
-            ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'cursor-text hover:border-gray-300'}
-            ${inputClassName}
-          `}
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-          spellCheck="false"
-        />
-      );
-    });
-  }, [
-    length,
-    normalizedValue,
-    error,
-    allowOnlyNumbers,
-    handleChange,
-    handleKeyDown,
-    handlePaste,
-    handleFocus,
-    handleClick,
-    disabled,
-    autoFocus,
-    inputClassName,
-    sizeClasses,
-  ]);
+  // Stable callback ref factory: handles both mount (el = HTMLInputElement)
+  // and unmount (el = null) correctly without causing re-renders
+  const setInputRef = useCallback((index: number) => (el: HTMLInputElement | null) => {
+    inputRefs.current[index] = el;
+  }, []);
 
   return (
     <div className="flex flex-col items-center gap-2">
       <div className={`flex gap-3 ${className}`} role="group" aria-label="OTP input">
-        {inputs}
+        {Array.from({ length }, (_, index) => {
+          const digit = normalizedValue[index] || '';
+          const isError = Boolean(error);
+
+          return (
+            <input
+              key={index}
+              ref={setInputRef(index)}
+              type="text"
+              inputMode={allowOnlyNumbers ? 'numeric' : 'text'}
+              pattern={allowOnlyNumbers ? '[0-9]*' : '[a-zA-Z0-9]*'}
+              maxLength={1}
+              value={digit}
+              onChange={(e) => handleChange(index, e)}
+              onKeyDown={(e) => handleKeyDown(index, e)}
+              onPaste={handlePaste}
+              onFocus={handleFocus}
+              onClick={handleClick}
+              disabled={disabled}
+              autoFocus={autoFocus && index === 0}
+              aria-label={`Digit ${index + 1} of ${length}`}
+              aria-invalid={isError}
+              className={`
+                ${sizeClasses}
+                text-center font-semibold rounded-xl
+                border-2 transition-all duration-200 outline-none
+                ${isError 
+                  ? 'border-red-300 bg-red-50 text-red-900 focus:border-red-500 focus:ring-4 focus:ring-red-100 animate-shake' 
+                  : digit 
+                    ? 'border-blue-500 bg-blue-50 text-blue-900 focus:border-blue-600 focus:ring-4 focus:ring-blue-100'
+                    : 'border-gray-200 bg-gray-50 text-gray-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 focus:bg-white'
+                }
+                ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'cursor-text hover:border-gray-300'}
+                ${inputClassName}
+              `}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck="false"
+            />
+          );
+        })}
       </div>
       {typeof error === 'string' && error && (
         <div className="text-sm text-red-600 text-center mt-1" role="alert" aria-live="polite">

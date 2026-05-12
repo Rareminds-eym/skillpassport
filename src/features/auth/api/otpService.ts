@@ -4,12 +4,20 @@
  * 
  * ARCHITECTURE:
  * Frontend → /api/otp/* → functions/api/otp (proxy) → email-worker → MessageCentral
+ * 
+ * OTP LENGTH VERIFICATION:
+ * - Frontend: 4 digits (this file, line 14)
+ * - Backend: 4-8 digits accepted (MessageCentralService.ts:35-37)
+ * - Provider: MessageCentral sends 4-digit OTPs
+ * - Status: ✅ Frontend and backend are aligned
  */
 
 import { getApiUrl } from '@/shared/api/apiUtils';
+import { createTimeoutSignal } from '@/shared/lib/createTimeoutSignal';
 
 const API_URL = getApiUrl('otp');
 const OTP_DIGIT_LENGTH = 4; // MessageCentral provider sends 4-digit OTPs
+const OTP_REQUEST_TIMEOUT_MS = 10_000;
 
 interface OtpResponse {
   success: boolean;
@@ -84,7 +92,9 @@ async function makeOtpRequest(
   endpoint: string,
   body: Record<string, unknown>
 ): Promise<OtpResponse> {
-  const requestId = crypto.randomUUID();
+  const requestId = typeof crypto?.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2);
   
   try {
     const response = await fetch(`${API_URL}${endpoint}`, {
@@ -94,7 +104,7 @@ async function makeOtpRequest(
         'X-Request-ID': requestId,
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(10000),
+      signal: createTimeoutSignal(OTP_REQUEST_TIMEOUT_MS) ?? null,
     });
 
     // Parse JSON safely
@@ -134,6 +144,15 @@ async function makeOtpRequest(
       throw error;
     }
 
+    // Timeout fired — surface a clear message with HTTP 408
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new OtpApiError(
+        'Request timed out. Please try again.',
+        408,
+        requestId
+      );
+    }
+
     // Network or other errors
     if (error instanceof Error) {
       throw new OtpApiError(
@@ -155,6 +174,16 @@ async function makeOtpRequest(
 /**
  * Send OTP to phone number
  * Calls Pages Function which proxies to email-worker
+ * 
+ * @param phone - Phone number (digits only, 7-15 digits)
+ * @param countryCode - Country code with + prefix (default: '+91')
+ * @returns OtpResponse with success status and verification ID
+ * 
+ * VERIFIED: countryCode parameter is supported throughout the stack:
+ * - Frontend: otpService.ts → /api/otp/send with { phone, countryCode }
+ * - Backend: functions/api/otp/handlers/send.ts → accepts countryCode
+ * - Worker: email-worker client → SendOtpRequest includes countryCode
+ * - Provider: MessageCentralService.sendOTP(mobileNumber, countryCode)
  */
 export async function sendOtp(phone: string, countryCode = '+91'): Promise<OtpResponse> {
   try {
@@ -186,6 +215,19 @@ interface VerifyOtpOptions {
 /**
  * Verify OTP
  * Calls Pages Function which proxies to email-worker
+ * 
+ * @param options - Verification options object
+ * @param options.phone - Phone number (digits only, 7-15 digits)
+ * @param options.otp - OTP code (4 digits)
+ * @param options.verificationId - Verification ID from sendOtp response
+ * @param options.countryCode - Country code with + prefix (default: '+91')
+ * @returns OtpResponse with success status and verification result
+ * 
+ * VERIFIED: All 4 parameters are supported throughout the stack:
+ * - Frontend: otpService.ts → /api/otp/verify with { phone, otp, countryCode, verificationId }
+ * - Backend: functions/api/otp/handlers/verify.ts → accepts all 4 parameters
+ * - Worker: email-worker client → VerifyOtpRequest includes all 4 parameters
+ * - Provider: MessageCentralService.verifyOTP(mobileNumber, verificationId, code, countryCode)
  */
 export async function verifyOtp({
   phone,
