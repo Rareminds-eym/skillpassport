@@ -8,7 +8,7 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('learner-assessment-service');
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8788';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ;
 
 export interface AssessmentRecommendations {
   recommendedTrack: string | null;

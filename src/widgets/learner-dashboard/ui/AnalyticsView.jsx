@@ -14,7 +14,6 @@ import { supabase } from '@/shared/api/supabaseClient';
 import TopSkillsInDemand from './TopSkillsInDemand';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 import { getLogger } from '@/shared/config/logging';
-import { queryKeys } from '@/shared/lib/queryKeys';
 
 const logger = getLogger('AnalyticsView');
 const IS_DEBUG_MODE = import.meta.env.DEV;
@@ -30,9 +29,20 @@ const AnalyticsView = ({ learnerId }) => {
     }
   };
 
+  // Early return if no learnerId
+  if (!learnerId) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <p className="text-gray-600">No learner data available</p>
+        </div>
+      </div>
+    );
+  }
+
   // Fetch application data with React Query
   const { data: applications = [], isLoading: loading } = useQuery({
-    queryKey: queryKeys.application.learnerApplications(learnerId),
+    queryKey: ['learner', 'applications', learnerId],
     queryFn: async () => {
       debugLog('Fetching application data...');
       const { data: appliedJobs, error: jobsError } = await supabase

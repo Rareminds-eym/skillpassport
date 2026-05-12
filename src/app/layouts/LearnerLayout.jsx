@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useParams, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
-import { useLearnerProfile } from '@/features/learner-profile';
+import { useLearnerProfile, useLearnerDashboard } from '@/features/learner-profile';
 
 import { Header, ProfileHeroEdit } from '@/widgets/learner-dashboard';
 import { FloatingAIButton } from '@/features/career-assistant';
@@ -44,6 +44,12 @@ const LearnerLayout = () => {
   const [activeTab, setActiveTab] = useState(() => getActiveTabFromPath(location.pathname));
   const [activeModal, setActiveModal] = useState(null);
   const user = useUser();
+
+  // Fetch learner data using backend API (uses JWT user_id)
+  const {
+    profile: learnerData,
+    loading: learnerLoading,
+  } = useLearnerDashboard({ enabled: true });
 
   // Sync activeTab with current route
   useEffect(() => {
@@ -98,7 +104,13 @@ const LearnerLayout = () => {
   return (
     <div className={`${isCareerAIPage || isFullScreenAssessment ? "h-screen bg-gray-50 flex flex-col" : "min-h-screen bg-gray-50 flex flex-col"}`}>
       {!isAssessmentTestPage && <Header activeTab={activeTab} setActiveTab={setActiveTab} />}
-      {!isViewingOthersProfile && isDashboardPage && <ProfileHeroEdit onEditClick={handleEditClick} />}
+      {!isViewingOthersProfile && isDashboardPage && (
+        <ProfileHeroEdit 
+          onEditClick={handleEditClick} 
+          learnerData={learnerData} 
+          loading={learnerLoading} 
+        />
+      )}
       <main className={isCareerAIPage ? "flex-1 overflow-hidden" : ""}>
         <Outlet context={{ activeTab, userData, handleSave, setActiveModal }} />
       </main>

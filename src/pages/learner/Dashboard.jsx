@@ -2297,8 +2297,8 @@ const LearnerDashboard = () => {
           </div>
         </CardHeader>
         <CardContent className="pt-4 p-8 space-y-4">
-          {/* No Assessment CTA - TOP (only show when not expanded and user role is not learner) */}
-          {!hasAssessment && !recommendationsLoading && !showAllTraining && userRole !== 'learner' && (
+          {/* No Assessment CTA - TOP (only show when not expanded) */}
+          {!hasAssessment && !recommendationsLoading && !showAllTraining && (
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 border-2 border-dashed border-blue-300 mb-4 shadow-sm">
               <div className="flex items-start gap-3">
                 <div
@@ -2761,11 +2761,6 @@ const LearnerDashboard = () => {
         {threeByThreeCards.map((cardName, index) => {
           const cardKey = cardNameMapping[cardName];
           
-          // Skip assessment card only for actual learner role
-          if (cardKey === 'assessment' && userRole === 'learner') {
-            return null;
-          }
-          
           const card = allCards[cardKey];
           if (!card) return null;
 
@@ -2851,7 +2846,16 @@ const LearnerDashboard = () => {
 
         {/* Conditional Rendering based on active view */}
         {activeView === 'analytics' && !isViewingOthersProfile ? (
-          <AnalyticsView learnerId={learnerData?.id} userEmail={userEmail} />
+          authlearnerLoading || !learnerData ? (
+            <div className="flex items-center justify-center min-h-[400px]">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading analytics...</p>
+              </div>
+            </div>
+          ) : (
+            <AnalyticsView learnerId={learnerData.id} userEmail={userEmail} />
+          )
         ) : (
           <>
             <LampContainer>
