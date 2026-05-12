@@ -2,6 +2,7 @@
 // Shared across all APIs
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { initAuth, verifyJWT } from '@rareminds-eym/auth-core';
 
 export interface AuthUser {
   id: string;
@@ -15,8 +16,11 @@ export interface AuthResult {
 }
 
 /**
- * Authenticate user from Authorization header
- * SECURITY: Uses Supabase's built-in JWT verification for production-grade security
+ * Authenticate user from Authorization header.
+ *
+ * Uses auth-core's SSO JWT verification (RS256 via JWKS from SSO worker)
+ * instead of Supabase's getUser() — because tokens are issued by the SSO
+ * worker, not Supabase Auth.
  */
 export async function authenticateUser(
   request: Request,
@@ -25,45 +29,51 @@ export async function authenticateUser(
   const authHeader = request.headers.get('Authorization');
   if (!authHeader) return null;
 
-  const token = authHeader.replace('Bearer ', '');
+  const token = authHeader.replace(/^Bearer\s+/i, '');
+  if (!token) return null;
 
-  // Get Supabase URL with fallback
+  // Resolve SSO domain — same logic as functions/lib/auth.ts
+  const ssoDomain = env.SSO_DOMAIN || env.VITE_SSO_URL;
+  if (!ssoDomain) {
+    console.error('❌ Missing SSO_DOMAIN configuration');
+    return null;
+  }
+
+  // Resolve Supabase config
   const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
   const supabaseAnonKey = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;
-  
+
   if (!supabaseUrl || !supabaseAnonKey) {
     console.error('❌ Missing Supabase configuration');
     return null;
   }
 
-  // SECURITY: Use Supabase's getUser() which validates JWT signature
-  // This prevents token forgery attacks
   try {
-    const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-    const { data: { user: authUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
-    if (authError || !authUser) {
-      console.warn('Authentication failed:', authError?.message);
-      return null;
-    }
+    // Initialize auth-core with the SSO domain (safe to call per-request)
+    initAuth({ ssoDomain });
 
-    const userId = authUser.id;
-    const userEmail = authUser.email;
-    
-    console.log(`✓ Auth: User authenticated - ${userId}`);
+    // Verify the SSO JWT via JWKS — same as withAuth in functions/lib/auth.ts
+    const authUser = await verifyJWT(token);
 
-    // Create Supabase clients
+    console.log(`✓ Auth: User authenticated via SSO JWT - ${authUser.sub}`);
+
+    // Build Supabase clients for downstream handlers that need DB access
+    const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false, autoRefreshToken: false },
     });
 
     return {
-      user: { id: userId, email: userEmail },
+      user: { id: authUser.sub, email: authUser.email },
       supabase,
       supabaseAdmin,
     };
   } catch (error) {
-    console.error('Authentication error:', error);
+    console.warn('Authentication failed:', error instanceof Error ? error.message : error);
     return null;
   }
 }

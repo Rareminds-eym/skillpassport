@@ -517,8 +517,12 @@ function PaymentSuccess() {
   }, []);
 
   // Upload receipt to R2
+  const receiptUploadedRef = useRef(false);
   const uploadReceiptToR2 = useCallback(async (receiptData, paymentId, userId) => {
     if (!mountedRef.current) return;
+    // Prevent duplicate uploads (effect can fire multiple times)
+    if (receiptUploadedRef.current) return;
+    receiptUploadedRef.current = true;
 
     try {
       setReceiptUploading(true);
@@ -625,7 +629,7 @@ function PaymentSuccess() {
         // Handle receipt
         if (transactionDetails.receipt_url) {
           setReceiptUrl(transactionDetails.receipt_url);
-          localStorage.setItem(`receipt_url_${transactionDetails.payment_id}`, transactionDetails.receipt_url);
+          localStorage.setItem(`receipt_url_${transactionDetails.razorpay_payment_id || paymentParams.razorpay_payment_id}`, transactionDetails.receipt_url);
         } else {
           // Upload from frontend as fallback
           const receiptData = {
@@ -652,7 +656,7 @@ function PaymentSuccess() {
             company: { name: 'RareMinds', address: 'Your Company Address', taxId: 'TAX123456789' },
             generatedAt: new Date().toLocaleString(),
           };
-          uploadReceiptToR2(receiptData, transactionDetails.payment_id, subscription.user_id);
+          uploadReceiptToR2(receiptData, transactionDetails.razorpay_payment_id || paymentParams.razorpay_payment_id, subscription.user_id || user?.id);
         }
       } else {
         // Existing subscription
@@ -709,7 +713,7 @@ function PaymentSuccess() {
       }
       setEmailStatus(EMAIL_STATES.SENT);
     }
-  }, [verificationStatus, transactionDetails, activationStatus, user, cacheRefresh, uploadReceiptToR2]);
+  }, [verificationStatus, transactionDetails, activationStatus, user]);
 
   // Redirect if no payment params — but check location.state first since
   // PaymentCompletion passes data via React Router state, not URL params
@@ -823,11 +827,11 @@ function PaymentSuccess() {
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-500">Reference</span>
-              <span className="font-mono font-medium text-gray-900">{paymentParams.razorpay_payment_id?.slice(-10) || 'N/A'}</span>
+              <span className="font-mono font-medium text-gray-900">{String(paymentParams.razorpay_payment_id?.slice(-10) || 'N/A')}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Method</span>
-              <span className="font-medium text-gray-900">{transactionDetails?.payment_method || 'Card'}</span>
+              <span className="font-medium text-gray-900">{String(transactionDetails?.payment_method || 'Card')}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Date</span>
@@ -846,15 +850,15 @@ function PaymentSuccess() {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Plan</span>
-                  <span className="font-semibold text-[#2663EB]">{subscriptionData.plan_type || planDetails?.name || 'Premium'}</span>
+                  <span className="font-semibold text-[#2663EB]">{String(subscriptionData.plan_type || subscriptionData.plan_name || planDetails?.name || 'Premium')}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-500 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />Cycle</span>
-                  <span className="font-medium text-gray-900">{subscriptionData.billing_cycle || planDetails?.duration || 'Monthly'}</span>
+                  <span className="font-medium text-gray-900">{String(subscriptionData.billing_cycle || planDetails?.duration || 'Monthly')}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-500 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" />Valid Until</span>
-                  <span className="font-medium text-gray-900">{formatDate(subscriptionData.subscription_end_date)}</span>
+                  <span className="font-medium text-gray-900">{formatDate(subscriptionData.subscription_end_date || subscriptionData.end_date)}</span>
                 </div>
               </div>
             </>
