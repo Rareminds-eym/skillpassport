@@ -3,16 +3,40 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { initAuth, verifyJWT } from '@rareminds-eym/auth-core';
+import type { AuthUser as SSOAuthUser } from '@rareminds-eym/auth-core';
 
-export interface AuthUser {
+/**
+ * Full SSO user with an `id` alias for `sub` so callers can use either.
+ * Extends auth-core's AuthUser — do not redefine locally.
+ */
+export interface AuthUser extends SSOAuthUser {
+  /** Alias for `sub` — the user's UUID from the SSO JWT. */
   id: string;
-  email?: string;
 }
 
 export interface AuthResult {
   user: AuthUser;
   supabase: SupabaseClient;
   supabaseAdmin: SupabaseClient;
+}
+
+// ---------------------------------------------------------------------------
+// Module-level lazy singleton for auth-core initialization.
+//
+// initAuth() resets the JWKS cache via _onReset callbacks. Calling it on
+// every request creates a race condition in concurrent Cloudflare Worker
+// isolates: Request A clears JWKS → Request B clears JWKS → Request A
+// verifies against a null cache. Since ssoDomain is static config it must
+// only be initialized once per isolate lifetime.
+// ---------------------------------------------------------------------------
+let _authInitialized = false;
+
+function ensureAuthInitialized(env: Record<string, string>): void {
+  if (_authInitialized) return;
+  const ssoDomain = env.SSO_DOMAIN || env.VITE_SSO_URL;
+  if (!ssoDomain) throw new Error('Missing SSO_DOMAIN / VITE_SSO_URL configuration');
+  initAuth({ ssoDomain });
+  _authInitialized = true;
 }
 
 /**
@@ -32,33 +56,33 @@ export async function authenticateUser(
   const token = authHeader.replace(/^Bearer\s+/i, '');
   if (!token) return null;
 
-  // Resolve SSO domain — same logic as functions/lib/auth.ts
-  const ssoDomain = env.SSO_DOMAIN || env.VITE_SSO_URL;
-  if (!ssoDomain) {
-    console.error('❌ Missing SSO_DOMAIN configuration');
-    return null;
-  }
-
   // Resolve Supabase config
   const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
   const supabaseAnonKey = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;
+  const supabaseServiceKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
     console.error('❌ Missing Supabase configuration');
     return null;
   }
 
+  if (!supabaseServiceKey) {
+    console.error('❌ Missing SUPABASE_SERVICE_ROLE_KEY configuration');
+    return null;
+  }
+
   try {
-    // Initialize auth-core with the SSO domain (safe to call per-request)
-    initAuth({ ssoDomain });
+    // Initialize auth-core once per isolate — calling initAuth on every request
+    // resets the JWKS cache and creates a race condition under concurrent load.
+    ensureAuthInitialized(env);
 
     // Verify the SSO JWT via JWKS — same as withAuth in functions/lib/auth.ts
-    const authUser = await verifyJWT(token);
+    const ssoUser = await verifyJWT(token);
 
-    console.log(`✓ Auth: User authenticated via SSO JWT - ${authUser.sub}`);
+    console.log(`✓ Auth: User authenticated via SSO JWT - ${ssoUser.sub}`);
 
     // Build Supabase clients for downstream handlers that need DB access
-    const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY, {
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
@@ -67,11 +91,12 @@ export async function authenticateUser(
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    return {
-      user: { id: authUser.sub, email: authUser.email },
-      supabase,
-      supabaseAdmin,
-    };
+    // Expose the full SSO AuthUser so callers have access to roles, products,
+    // membership_status, etc. `id` is an alias for `sub` for backwards
+    // compatibility with existing callers that use auth.user.id.
+    const user: AuthUser = { ...ssoUser, id: ssoUser.sub };
+
+    return { user, supabase, supabaseAdmin };
   } catch (error) {
     console.warn('Authentication failed:', error instanceof Error ? error.message : error);
     return null;
