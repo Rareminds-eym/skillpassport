@@ -27,6 +27,8 @@ import { sendOtp, verifyOtp as verifyOtpApi } from '@/features/auth/api';
 import { DatePicker } from '@/features/subscription';
 import { supabase } from '@/shared/api/supabaseClient';
 import { authSessionService } from '@/features/auth';
+import { OtpInput } from '@/shared/ui';
+import { isLocalhost } from '@/shared/lib';
 
 type UserRole = 'school_student' | 'college_student' | 'learner' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
 
@@ -49,6 +51,7 @@ interface SignupState {
   otp: string;
   otpSent: boolean;
   otpVerified: boolean;
+  verificationId: string;
   showPassword: boolean;
   showConfirmPassword: boolean;
   loading: boolean;
@@ -245,6 +248,9 @@ const UnifiedSignup = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
+  // Check if running on localhost using utility function
+  const isDevEnvironment = isLocalhost();
+
   // Get plan context from location.state (if user selected a plan before signing up)
   const planFromState = (location.state as any)?.plan;
   const studentTypeFromState = (location.state as any)?.studentType;
@@ -257,7 +263,7 @@ const UnifiedSignup = () => {
     firstName: '', lastName: '', dateOfBirth: '', email: '', phone: '', countryCode: '+91',
     password: '', confirmPassword: '', selectedRole: null,
     country: 'IN', state: '', city: '', preferredLanguage: 'en', referralCode: '',
-    agreeToTerms: false, otp: '', otpSent: false, otpVerified: false,
+    agreeToTerms: false, otp: '', otpSent: false, otpVerified: false, verificationId: '',
     showPassword: false, showConfirmPassword: false,
     loading: false, sendingOtp: false, verifyingOtp: false, error: '', roleDropdownOpen: false
   });
@@ -319,7 +325,7 @@ const UnifiedSignup = () => {
 
     if (type === 'checkbox') processedValue = (e.target as HTMLInputElement).checked;
     if (name === 'phone') processedValue = value.replace(/\D/g, '').slice(0, 15);
-    if (name === 'otp') processedValue = value.replace(/\D/g, '').slice(0, 6);
+    if (name === 'otp') processedValue = value.replace(/\D/g, '').slice(0, 4);
 
     setState(prev => ({ ...prev, [name]: processedValue, error: '' }));
   };
@@ -331,22 +337,44 @@ const UnifiedSignup = () => {
     }
     setState(prev => ({ ...prev, sendingOtp: true, error: '' }));
     try {
-      const result = await sendOtp(state.phone);
-      if (result.success) setState(prev => ({ ...prev, otpSent: true, sendingOtp: false }));
-      else setState(prev => ({ ...prev, error: result.error || 'Failed to send OTP', sendingOtp: false }));
+      const result = await sendOtp(state.phone, state.countryCode);
+      if (result.success && result.data?.verificationId) {
+        setState(prev => ({ 
+          ...prev, 
+          otpSent: true, 
+          sendingOtp: false,
+          verificationId: result.data.verificationId 
+        }));
+      } else {
+        setState(prev => ({ ...prev, error: result.error || 'Failed to send OTP', sendingOtp: false }));
+      }
     } catch {
       setState(prev => ({ ...prev, error: 'Failed to send OTP. Please try again.', sendingOtp: false }));
     }
   };
 
-  const handleVerifyOtp = async () => {
-    if (!state.otp || state.otp.length !== 6) {
-      setState(prev => ({ ...prev, error: 'Please enter a valid 6-digit OTP' }));
+  const handleVerifyOtp = async (otpValue?: string) => {
+    // Use the passed OTP value if provided (from auto-verification), otherwise use state
+    const otpToVerify = otpValue || state.otp;
+    
+    if (!otpToVerify || otpToVerify.length !== 4) {
+      setState(prev => ({ ...prev, error: 'Please enter a valid 4 digit OTP' }));
       return;
     }
+    
+    if (!state.verificationId) {
+      setState(prev => ({ ...prev, error: 'Verification session expired. Please request a new OTP.' }));
+      return;
+    }
+    
+    // Prevent duplicate verification calls
+    if (state.verifyingOtp) {
+      return;
+    }
+    
     setState(prev => ({ ...prev, verifyingOtp: true, error: '' }));
     try {
-      const result = await verifyOtpApi(state.phone, state.otp);
+      const result = await verifyOtpApi(state.phone, otpToVerify, state.countryCode, state.verificationId);
       if (result.success) setState(prev => ({ ...prev, otpVerified: true, verifyingOtp: false }));
       else setState(prev => ({ ...prev, error: result.error || 'Invalid OTP', verifyingOtp: false }));
     } catch {
@@ -354,22 +382,25 @@ const UnifiedSignup = () => {
     }
   };
 
-  // Check if OTP verification should be skipped (for localhost/development and production)
-  const skipOtpVerification =
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1' ||
-    window.location.origin === 'https://skillpassport.pages.dev';
-
   // Validate Step 1 fields
   const validateStep1 = (): boolean => {
     if (!state.firstName.trim()) { setState(prev => ({ ...prev, error: 'Please enter your first name' })); return false; }
     if (!state.lastName.trim()) { setState(prev => ({ ...prev, error: 'Please enter your last name' })); return false; }
     if (!state.dateOfBirth) { setState(prev => ({ ...prev, error: 'Please enter your date of birth' })); return false; }
     if (!state.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.email)) { setState(prev => ({ ...prev, error: 'Please enter a valid email' })); return false; }
-    // Phone number is optional, but if provided, validate format
-    if (state.phone && (state.phone.length < 7 || state.phone.length > 15)) { setState(prev => ({ ...prev, error: 'Please enter a valid phone number (7-15 digits)' })); return false; }
-    // OTP verification is optional - only validate if OTP was sent but not verified
-    if (state.otpSent && !state.otpVerified && !skipOtpVerification) { setState(prev => ({ ...prev, error: 'Please complete phone verification or clear the OTP field' })); return false; }
+    
+    // Phone number validation based on environment
+    if (!isDevEnvironment) {
+      // Production: Phone number is required
+      if (!state.phone) { setState(prev => ({ ...prev, error: 'Please enter your mobile number' })); return false; }
+      if (state.phone.length < 7 || state.phone.length > 15) { setState(prev => ({ ...prev, error: 'Please enter a valid phone number (7-15 digits)' })); return false; }
+      if (!state.otpVerified) { setState(prev => ({ ...prev, error: 'Please verify your phone number' })); return false; }
+    } else {
+      // Localhost: Phone number is optional, but if provided, must be verified
+      if (state.phone && (state.phone.length < 7 || state.phone.length > 15)) { setState(prev => ({ ...prev, error: 'Please enter a valid phone number (7-15 digits)' })); return false; }
+      if (state.phone && !state.otpVerified) { setState(prev => ({ ...prev, error: 'Please verify your phone number' })); return false; }
+    }
+    
     if (!state.password || state.password.length < 8) { setState(prev => ({ ...prev, error: 'Password must be at least 8 characters' })); return false; }
     if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(state.password)) { setState(prev => ({ ...prev, error: 'Password must contain uppercase, lowercase, and number' })); return false; }
     if (state.password !== state.confirmPassword) { setState(prev => ({ ...prev, error: 'Passwords do not match' })); return false; }
@@ -467,6 +498,7 @@ const UnifiedSignup = () => {
       const entityTypeMap: Record<UserRole, string> = {
         school_student: 'student',
         college_student: 'college-student',
+        learner: 'student',
         school_educator: 'educator',
         college_educator: 'college-educator',
         recruiter: 'recruitment-recruiter',
@@ -774,77 +806,118 @@ const UnifiedSignup = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Mobile Number <span className="text-gray-400 text-xs">(Optional)</span>
-                    {skipOtpVerification && <span className="ml-2 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded">(OTP skipped in dev)</span>}
+                    Mobile Number {isDevEnvironment && <span className="text-gray-400 text-xs">(Optional)</span>}
+                    {!isDevEnvironment && <span className="text-red-500">*</span>}
                   </label>
-                  <div className="flex items-center border rounded-xl bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all border-gray-200">
-                    {/* Custom Country Code Dropdown */}
-                    <div className="relative" ref={countryCodeRef}>
-                      <button
-                        type="button"
-                        onClick={() => setCountryCodeDropdownOpen(!countryCodeDropdownOpen)}
-                        className="flex items-center gap-2 h-full pl-4 pr-3 py-3 bg-transparent text-sm font-medium text-gray-700 outline-none cursor-pointer hover:bg-gray-100 rounded-l-xl transition-colors"
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 flex items-center border rounded-xl bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all border-gray-200">
+                      {/* Custom Country Code Dropdown */}
+                      <div className="relative" ref={countryCodeRef}>
+                        <button
+                          type="button"
+                          onClick={() => setCountryCodeDropdownOpen(!countryCodeDropdownOpen)}
+                          className="flex items-center gap-2 h-full pl-4 pr-3 py-3 bg-transparent text-sm font-medium text-gray-700 outline-none cursor-pointer hover:bg-gray-100 rounded-l-xl transition-colors"
+                        >
+                          <span className="text-xl">{selectedCountry.flag}</span>
+                          <span className="text-gray-700">{selectedCountry.dialCode}</span>
+                          <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${countryCodeDropdownOpen ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {/* Dropdown Menu */}
+                        {countryCodeDropdownOpen && (
+                          <div className="absolute top-full left-0 mt-1 w-64 max-h-72 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1">
+                            {COUNTRY_CODES.map(cc => (
+                              <button
+                                key={cc.code}
+                                type="button"
+                                onClick={() => {
+                                  setState(prev => ({ ...prev, countryCode: cc.dialCode }));
+                                  setCountryCodeDropdownOpen(false);
+                                }}
+                                className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-blue-50 transition-colors ${state.countryCode === cc.dialCode ? 'bg-blue-50 text-blue-700' : 'text-gray-700'}`}
+                              >
+                                <span className="text-xl">{cc.flag}</span>
+                                <span className="flex-1 font-medium">{cc.name}</span>
+                                <span className="text-gray-500 text-sm">{cc.dialCode}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Divider */}
+                      <div className="h-6 w-px bg-gray-300"></div>
+
+                      <div className="relative flex-1">
+                        <input type="tel" name="phone" value={state.phone} onChange={handleInputChange} placeholder="Phone number" className="block w-full px-3 py-3 bg-transparent border-none outline-none text-gray-900 placeholder-gray-400" />
+                      </div>
+                    </div>
+
+                    {/* Verify Button - Shows when phone is entered and not verified */}
+                    {!state.otpVerified && state.phone.length >= 7 && (
+                      <button 
+                        type="button" 
+                        onClick={handleSendOtp} 
+                        disabled={state.sendingOtp}
+                        className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md flex items-center gap-2 whitespace-nowrap"
                       >
-                        <span className="text-xl">{selectedCountry.flag}</span>
-                        <span className="text-gray-700">{selectedCountry.dialCode}</span>
-                        <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${countryCodeDropdownOpen ? 'rotate-180' : ''}`} />
+                        {state.sendingOtp ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Sending...
+                          </>
+                        ) : state.otpSent ? (
+                          'Resend'
+                        ) : (
+                          'Verify'
+                        )}
                       </button>
+                    )}
 
-                      {/* Dropdown Menu */}
-                      {countryCodeDropdownOpen && (
-                        <div className="absolute top-full left-0 mt-1 w-64 max-h-72 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1">
-                          {COUNTRY_CODES.map(cc => (
-                            <button
-                              key={cc.code}
-                              type="button"
-                              onClick={() => {
-                                setState(prev => ({ ...prev, countryCode: cc.dialCode }));
-                                setCountryCodeDropdownOpen(false);
-                              }}
-                              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-blue-50 transition-colors ${state.countryCode === cc.dialCode ? 'bg-blue-50 text-blue-700' : 'text-gray-700'}`}
-                            >
-                              <span className="text-xl">{cc.flag}</span>
-                              <span className="flex-1 font-medium">{cc.name}</span>
-                              <span className="text-gray-500 text-sm">{cc.dialCode}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Divider */}
-                    <div className="h-6 w-px bg-gray-300"></div>
-
-                    <div className="relative flex-1">
-                      <input type="tel" name="phone" value={state.phone} onChange={handleInputChange} placeholder="Phone number" className="block w-full px-3 py-3 bg-transparent border-none outline-none text-gray-900 placeholder-gray-400" />
-                    </div>
+                    {/* Verified Badge */}
+                    {state.otpVerified && (
+                      <div className="px-4 py-3 bg-green-50 text-green-700 font-semibold rounded-xl flex items-center gap-2 whitespace-nowrap border border-green-200">
+                        <CheckCircle className="w-4 h-4" />
+                        Verified
+                      </div>
+                    )}
                   </div>
-                  {/* Show OTP button only if phone is entered, not skipping verification, and not already verified */}
-                  {!skipOtpVerification && !state.otpVerified && state.phone.length >= 7 && (
-                    <button type="button" onClick={handleSendOtp} disabled={state.sendingOtp} className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50">
-                      {state.sendingOtp ? 'Sending code...' : state.otpSent ? 'Resend Verification Code' : 'Verify Phone (Optional)'}
-                    </button>
-                  )}
-                  {state.otpVerified && <p className="mt-2 text-xs font-medium text-green-600 flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5" /> Verified</p>}
                 </div>
 
-                {/* Show OTP input only if not skipping verification */}
-                {!skipOtpVerification && state.otpSent && !state.otpVerified && (
-                  <div className="animate-in fade-in slide-in-from-top-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Verification Code</label>
-                    <div className="flex gap-3">
-                      <input type="text" name="otp" value={state.otp} onChange={handleInputChange} placeholder="123456" maxLength={6} className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-center tracking-[0.5em] font-mono text-lg transition-all outline-none" />
-                      <button type="button" onClick={handleVerifyOtp} disabled={state.verifyingOtp || state.otp.length !== 6} className="px-6 py-3 bg-gray-900 text-white font-medium rounded-xl hover:bg-gray-800 disabled:opacity-50 transition-colors">
-                        {state.verifyingOtp ? '...' : 'Verify'}
+                {/* Show OTP input */}
+                {state.otpSent && !state.otpVerified && (
+                  <div className="animate-in fade-in slide-in-from-top-2 space-y-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Verification Code (4 digits)</label>
+                    
+                    {/* Reusable OTP Input Component */}
+                    <OtpInput
+                      length={4}
+                      value={state.otp}
+                      onChange={(value) => setState(prev => ({ ...prev, otp: value }))}
+                      onComplete={handleVerifyOtp}
+                      disabled={state.verifyingOtp}
+                      autoFocus={true}
+                      error={state.error && state.error.toLowerCase().includes('otp')}
+                    />
+
+                    {/* Verify Button */}
+                    <div className="flex justify-center">
+                      <button 
+                        type="button" 
+                        onClick={handleVerifyOtp} 
+                        disabled={state.verifyingOtp || state.otp.length !== 4} 
+                        className="px-8 py-3 bg-gray-900 text-white font-semibold rounded-xl hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md flex items-center gap-2"
+                      >
+                        {state.verifyingOtp ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Verifying...
+                          </>
+                        ) : (
+                          'Verify'
+                        )}
                       </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setState(prev => ({ ...prev, otpSent: false, otp: '' }))}
-                      className="mt-2 text-sm text-gray-500 hover:text-gray-700"
-                    >
-                      Skip verification
-                    </button>
                   </div>
                 )}
 
