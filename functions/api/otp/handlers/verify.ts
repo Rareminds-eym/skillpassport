@@ -1,36 +1,37 @@
 /**
  * Verify OTP handler
+ * Forwards requests to email-worker (MessageCentral provider)
+ * 
+ * MIGRATION NOTE:
+ * - Old: Supabase-based OTP storage and verification
+ * - New: Proxy to email-worker which uses MessageCentral
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js';
 import type { PagesEnv } from '../../../../src/functions-lib/types';
 import { jsonResponse } from '../../../../src/functions-lib';
-import { verifyOtpHash } from '../utils/crypto';
-import { deleteOtp, getOtpRecord, incrementAttempts, markOtpVerified } from '../utils/supabase';
+import { getEmailWorkerConfig } from '../config/emailWorkerConfig';
 
 /**
- * Format phone number for lookup
+ * Format phone number for email-worker API
  */
 function formatPhoneNumber(phone: string, countryCode: string = '+91'): string {
   let cleaned = phone.replace(/\D/g, '');
   cleaned = cleaned.replace(/^0+/, '');
   
-  if (countryCode === '+91' && cleaned.startsWith('91') && cleaned.length > 10) {
-    cleaned = cleaned.slice(2);
+  const numericCountryCode = countryCode.replace('+', '');
+  if (cleaned.startsWith(numericCountryCode) && cleaned.length > 10) {
+    cleaned = cleaned.slice(numericCountryCode.length);
   }
   
-  return `${countryCode}${cleaned}`;
+  return cleaned;
 }
-
-const MAX_ATTEMPTS = 5;
 
 export async function verifyOtpHandler(
   body: any,
-  env: PagesEnv,
-  supabase: SupabaseClient
+  env: PagesEnv
 ): Promise<Response> {
   try {
-    const { phone, otp, countryCode = '+91' } = body;
+    const { phone, otp, countryCode = '+91', verificationId } = body;
     
     // Validate inputs
     if (!phone) {
@@ -40,79 +41,68 @@ export async function verifyOtpHandler(
     if (!otp) {
       return jsonResponse({ success: false, error: 'OTP is required' }, 400);
     }
+
+    if (!verificationId) {
+      return jsonResponse({ 
+        success: false, 
+        error: 'Verification ID is required. Please request a new OTP.' 
+      }, 400);
+    }
     
     // Format phone number
     const formattedPhone = formatPhoneNumber(phone, countryCode);
-    
-    // Get OTP record
-    const otpRecord = await getOtpRecord(supabase, formattedPhone);
-    
-    if (!otpRecord) {
-      return jsonResponse(
-        { success: false, error: 'No OTP found. Please request a new OTP.' },
-        400
-      );
+
+    // Validate phone length
+    if (formattedPhone.length < 7 || formattedPhone.length > 15) {
+      return jsonResponse({ 
+        success: false, 
+        error: 'Invalid phone number. Must be 7-15 digits.' 
+      }, 400);
     }
     
-    // Check if already verified
-    if (otpRecord.verified) {
-      return jsonResponse(
-        { success: false, error: 'OTP already used. Please request a new OTP.' },
-        400
-      );
-    }
+    // Get and validate email worker configuration
+    const emailWorkerConfig = getEmailWorkerConfig(env);
     
-    // Check expiry
-    if (new Date(otpRecord.expires_at) < new Date()) {
-      await deleteOtp(supabase, formattedPhone);
-      return jsonResponse(
-        { success: false, error: 'OTP has expired. Please request a new OTP.' },
-        400
-      );
-    }
+    // Forward request to email-worker
+    const cleanCountryCode = countryCode.replace('+', '');
+    const response = await fetch(`${emailWorkerConfig.url}/otp/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': emailWorkerConfig.apiKey,
+      },
+      body: JSON.stringify({
+        mobileNumber: formattedPhone,
+        verificationId: verificationId,
+        code: otp,
+        countryCode: cleanCountryCode,
+      }),
+    });
+
+    const result = await response.json();
     
-    // Check attempts
-    if (otpRecord.attempts >= MAX_ATTEMPTS) {
-      await deleteOtp(supabase, formattedPhone);
-      return jsonResponse(
-        { success: false, error: 'Too many failed attempts. Please request a new OTP.' },
-        400
-      );
-    }
-    
-    // Verify OTP
-    const isValid = await verifyOtpHash(otp, otpRecord.otp_hash);
-    
-    if (!isValid) {
-      await incrementAttempts(supabase, formattedPhone);
-      const remainingAttempts = MAX_ATTEMPTS - otpRecord.attempts - 1;
+    if (!response.ok) {
       return jsonResponse(
         { 
           success: false, 
-          error: `Invalid OTP. ${remainingAttempts} attempts remaining.`,
-          data: { remainingAttempts }
+          error: result.error || 'Invalid OTP. Please try again.',
+          data: { verified: false }
         },
-        400
+        response.status
       );
     }
     
-    // Mark as verified
-    await markOtpVerified(supabase, formattedPhone);
-    
-    // Generate a verification token (optional - for additional security)
-    const verificationToken = crypto.randomUUID();
-    
+    // Return response in the format expected by frontend
     return jsonResponse({
       success: true,
-      message: 'Phone number verified successfully',
+      message: result.message || 'Phone number verified successfully',
       data: {
-        phone: formattedPhone,
-        verified: true,
-        verificationToken,
+        phone: `${countryCode}${formattedPhone}`,
+        verified: result.verified || false,
+        verificationToken: crypto.randomUUID(), // Generate token for frontend
       },
     });
   } catch (error: any) {
-    console.error('Verify OTP Error:', error);
     return jsonResponse(
       { success: false, error: error.message || 'Failed to verify OTP' },
       500

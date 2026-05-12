@@ -1,16 +1,20 @@
 /**
  * Send OTP handler
+ * Forwards requests to email-worker (MessageCentral provider)
+ * 
+ * MIGRATION NOTE:
+ * - Old: Direct AWS SNS integration
+ * - New: Proxy to email-worker which uses MessageCentral
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js';
 import type { PagesEnv } from '../../../../src/functions-lib/types';
 import { jsonResponse } from '../../../../src/functions-lib';
-import { generateOtp, hashOtp } from '../utils/crypto';
-import { sendSms } from '../utils/sns';
-import { isRateLimited, logOtpRequest, storeOtp } from '../utils/supabase';
+import { getEmailWorkerConfig } from '../config/emailWorkerConfig';
+
 
 /**
- * Validate and format phone number
+ * Format phone number for email-worker API
+ * Removes non-digits and country code prefix
  */
 function formatPhoneNumber(phone: string, countryCode: string = '+91'): string {
   // Remove all non-digit characters
@@ -20,22 +24,17 @@ function formatPhoneNumber(phone: string, countryCode: string = '+91'): string {
   cleaned = cleaned.replace(/^0+/, '');
   
   // If number starts with country code (without +), remove it
-  if (countryCode === '+91' && cleaned.startsWith('91') && cleaned.length > 10) {
-    cleaned = cleaned.slice(2);
+  const numericCountryCode = countryCode.replace('+', '');
+  if (cleaned.startsWith(numericCountryCode) && cleaned.length > 10) {
+    cleaned = cleaned.slice(numericCountryCode.length);
   }
   
-  // Ensure it's 10 digits for Indian numbers
-  if (countryCode === '+91' && cleaned.length !== 10) {
-    throw new Error('Invalid phone number. Must be 10 digits.');
-  }
-  
-  return `${countryCode}${cleaned}`;
+  return cleaned;
 }
 
 export async function sendOtpHandler(
   body: any,
-  env: PagesEnv,
-  supabase: SupabaseClient
+  env: PagesEnv
 ): Promise<Response> {
   try {
     const { phone, countryCode = '+91' } = body;
@@ -52,65 +51,56 @@ export async function sendOtpHandler(
     } catch (error: any) {
       return jsonResponse({ success: false, error: error.message }, 400);
     }
-    
-    // Check rate limiting
-    const rateLimited = await isRateLimited(supabase, formattedPhone);
-    if (rateLimited) {
-      return jsonResponse(
-        { success: false, error: 'Too many OTP requests. Please try again later.' },
-        429
-      );
+
+    // Validate phone length
+    if (formattedPhone.length < 7 || formattedPhone.length > 15) {
+      return jsonResponse({ 
+        success: false, 
+        error: 'Invalid phone number. Must be 7-15 digits.' 
+      }, 400);
     }
     
-    // Generate OTP
-    const otpLength = parseInt(env.OTP_LENGTH || '6', 10);
-    const otp = generateOtp(otpLength);
-    const otpHash = await hashOtp(otp);
+    // Get and validate email worker configuration
+    const emailWorkerConfig = getEmailWorkerConfig(env);
     
-    // Store OTP
-    const expiryMinutes = parseInt(env.OTP_EXPIRY_MINUTES || '5', 10);
-    const storeResult = await storeOtp(supabase, formattedPhone, otpHash, expiryMinutes);
+    // Forward request to email-worker
+    const cleanCountryCode = countryCode.replace('+', '');
+    const response = await fetch(`${emailWorkerConfig.url}/otp/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': emailWorkerConfig.apiKey,
+      },
+      body: JSON.stringify({
+        mobileNumber: formattedPhone,
+        countryCode: cleanCountryCode,
+        flowType: 'SMS',
+      }),
+    });
+
+    const result = await response.json();
     
-    if (!storeResult.success) {
-      return jsonResponse(
-        { success: false, error: 'Failed to generate OTP. Please try again.' },
-        500
-      );
-    }
-    
-    // Send SMS via AWS SNS
-    const message = `Your verification code is ${otp}. Valid for ${expiryMinutes} minutes. Do not share this code with anyone.`;
-    const smsResult = await sendSms(formattedPhone, message, env);
-    
-    if (!smsResult.success) {
-      console.error('[SEND OTP] SMS sending failed:', smsResult.error);
+    if (!response.ok) {
       return jsonResponse(
         { 
           success: false, 
-          error: 'Failed to send OTP. Please try again.',
-          debug: {
-            smsError: smsResult.error,
-            snsDebug: smsResult.debug
-          }
+          error: result.error || 'Failed to send OTP. Please try again.',
         },
-        500
+        response.status
       );
     }
     
-    // Log request for rate limiting
-    await logOtpRequest(supabase, formattedPhone);
-    
+    // Return response in the format expected by frontend
     return jsonResponse({
       success: true,
-      message: 'OTP sent successfully',
+      message: result.message || 'OTP sent successfully',
       data: {
-        phone: formattedPhone.slice(0, -4) + '****', // Mask phone number
-        expiresIn: expiryMinutes * 60, // seconds
-        messageId: smsResult.messageId,
+        phone: `${countryCode}${formattedPhone}`.slice(0, -4) + '****',
+        expiresIn: parseInt(result.timeout || '60', 10),
+        verificationId: result.verificationId,
       },
     });
   } catch (error: any) {
-    console.error('Send OTP Error:', error);
     return jsonResponse(
       { success: false, error: error.message || 'Failed to send OTP' },
       500
