@@ -1,4 +1,7 @@
-import React, { useRef, useEffect, useCallback, useMemo, KeyboardEvent, ClipboardEvent, ChangeEvent } from 'react';
+// ✅ Runtime values
+import React, { useRef, useEffect, useCallback, useMemo } from 'react';
+// ✅ Type-only — erased at compile time, safe under isolatedModules
+import type { KeyboardEvent, ClipboardEvent, ChangeEvent } from 'react';
 
 export interface OtpInputProps {
   length?: number;

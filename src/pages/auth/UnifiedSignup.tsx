@@ -916,7 +916,11 @@ const UnifiedSignup = () => {
                       length={4}
                       value={state.otp}
                       onChange={(value) => setState(prev => ({ ...prev, otp: value }))}
-                      onComplete={(completedOtp) => handleVerifyOtp(completedOtp)}
+                      onComplete={(completedOtp) => {
+                        if (!state.verifyingOtp) {
+                          handleVerifyOtp(completedOtp);
+                        }
+                      }}
                       disabled={state.verifyingOtp}
                       autoFocus={true}
                       error={state.error && state.error.toLowerCase().includes('otp')}
