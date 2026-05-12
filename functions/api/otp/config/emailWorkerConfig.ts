@@ -11,6 +11,58 @@ export interface EmailWorkerConfig {
 }
 
 /**
+ * Type guard to check if a value is a non-empty string
+ */
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+/**
+ * Validates and extracts a required environment variable
+ * 
+ * @param env - Environment object
+ * @param key - Environment variable key
+ * @param description - Human-readable description for error messages
+ * @returns The validated environment variable value
+ * @throws Error if the environment variable is missing or empty
+ */
+function getRequiredEnvVar(
+  env: PagesEnv,
+  key: keyof PagesEnv,
+  description: string
+): string {
+  const value = env[key];
+
+  if (!isNonEmptyString(value)) {
+    throw new Error(
+      `${key} environment variable is required. ` +
+      `${description}. ` +
+      'Set it in .dev.vars (local) or Cloudflare Pages settings (production)'
+    );
+  }
+
+  return value.trim();
+}
+
+/**
+ * Validates URL format
+ * 
+ * @param url - URL string to validate
+ * @param varName - Environment variable name for error messages
+ * @throws Error if URL is invalid
+ */
+function validateUrl(url: string, varName: string): void {
+  try {
+    new URL(url);
+  } catch {
+    throw new Error(
+      `${varName} is not a valid URL: "${url}". ` +
+      'Expected format: http://localhost:9001 or https://email-worker.example.com'
+    );
+  }
+}
+
+/**
  * Get and validate email worker configuration from environment
  * 
  * @param env - Pages environment variables
@@ -25,37 +77,24 @@ export interface EmailWorkerConfig {
  * ```
  */
 export function getEmailWorkerConfig(env: PagesEnv): EmailWorkerConfig {
-  const url = env.EMAIL_API_URL;
-  const apiKey = env.EMAIL_API_KEY;
+  // Type-safe extraction with validation
+  const url = getRequiredEnvVar(
+    env,
+    'EMAIL_API_URL',
+    'URL of the email worker service endpoint'
+  );
 
-  // Validate URL presence
-  if (!url || url.trim() === '') {
-    throw new Error(
-      'EMAIL_API_URL environment variable is required. ' +
-      'Set it in .dev.vars (local) or Cloudflare Pages settings (production)'
-    );
-  }
+  const apiKey = getRequiredEnvVar(
+    env,
+    'EMAIL_API_KEY',
+    'API key for authenticating requests to the email worker'
+  );
 
   // Validate URL format
-  try {
-    new URL(url);
-  } catch {
-    throw new Error(
-      `EMAIL_API_URL is not a valid URL: "${url}". ` +
-      'Expected format: http://localhost:9001 or https://email-worker.example.com'
-    );
-  }
-
-  // Validate API key presence
-  if (!apiKey || apiKey.trim() === '') {
-    throw new Error(
-      'EMAIL_API_KEY environment variable is required. ' +
-      'Set it in .dev.vars (local) or Cloudflare Pages settings (production)'
-    );
-  }
+  validateUrl(url, 'EMAIL_API_URL');
 
   return {
-    url: url.trim(),
-    apiKey: apiKey.trim(),
+    url,
+    apiKey,
   };
 }

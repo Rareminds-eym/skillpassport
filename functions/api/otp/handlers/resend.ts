@@ -18,6 +18,43 @@ interface ResendOtpBody {
   countryCode?: string;
 }
 
+/**
+ * Parse timeout value with explicit validation and fallback
+ * @param value - The timeout string from the API response
+ * @param fallback - Default value to use (default: 60)
+ * @returns Parsed timeout in seconds, or fallback if invalid
+ */
+function parseTimeoutSeconds(value: string | undefined, fallback = 60): number {
+  // undefined is expected when field is missing - use fallback silently
+  if (value === undefined) {
+    return fallback;
+  }
+  
+  // Empty string should use fallback with warning
+  if (value === '') {
+    console.warn('OTP timeout is empty string, using fallback:', fallback);
+    return fallback;
+  }
+  
+  // Try to parse the value
+  const parsed = parseInt(value, 10);
+  
+  // Check for NaN (non-numeric strings like "abc")
+  if (isNaN(parsed)) {
+    console.warn('OTP timeout is non-numeric, using fallback:', { received: value, fallback });
+    return fallback;
+  }
+  
+  // Check for zero or negative values
+  if (parsed <= 0) {
+    console.warn('OTP timeout is zero or negative, using fallback:', { received: value, fallback });
+    return fallback;
+  }
+  
+  // Valid positive number
+  return parsed;
+}
+
 export async function resendOtpHandler(
   body: ResendOtpBody,
   env: PagesEnv
@@ -69,7 +106,7 @@ export async function resendOtpHandler(
       message: result.message || 'OTP resent successfully',
       data: {
         phone: masked,
-        expiresIn: parseInt(result.timeout || '60', 10),
+        expiresIn: parseTimeoutSeconds(result.timeout),
         verificationId: result.verificationId,
       },
     });

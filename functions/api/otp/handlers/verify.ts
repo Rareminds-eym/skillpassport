@@ -20,11 +20,22 @@ interface VerifyOtpBody {
   verificationId: string;
 }
 
+interface VerifyOtpResponseData {
+  phone: string;
+  verified: boolean;
+  verificationToken?: string;
+}
+
 export async function verifyOtpHandler(
   body: VerifyOtpBody,
   env: PagesEnv
 ): Promise<Response> {
   try {
+    // Guard against null/non-object body before destructuring
+    if (!body || typeof body !== 'object') {
+      return jsonResponse({ success: false, error: 'Invalid request body' }, 400);
+    }
+    
     const { phone, otp, countryCode = '+91', verificationId } = body;
     
     // Validate inputs
@@ -36,7 +47,8 @@ export async function verifyOtpHandler(
       return jsonResponse({ success: false, error: 'OTP is required' }, 400);
     }
 
-    if (!verificationId) {
+    // Strict verificationId validation with trim
+    if (typeof verificationId !== 'string' || verificationId.trim().length === 0) {
       return jsonResponse({ 
         success: false, 
         error: 'Verification ID is required. Please request a new OTP.' 
@@ -69,20 +81,26 @@ export async function verifyOtpHandler(
     const cleanCountryCode = countryCode.replace('+', '');
     const result = await verifyOtpSms(emailWorkerConfig, {
       mobileNumber: formattedPhone,
-      verificationId: verificationId,
+      verificationId: verificationId.trim(),
       code: otp,
       countryCode: cleanCountryCode,
     });
     
+    // Build response data with explicit type
+    const data: VerifyOtpResponseData = {
+      phone: `${countryCode}${formattedPhone}`, // formatPhoneNumber strips country code, so concatenation is correct
+      verified: result.verified ?? false,
+    };
+    
+    if (result.verified === true) {
+      data.verificationToken = crypto.randomUUID();
+    }
+    
     // Return response in the format expected by frontend
     return jsonResponse({
       success: true,
-      message: result.message || 'Phone number verified successfully',
-      data: {
-        phone: `${countryCode}${formattedPhone}`,
-        verified: result.verified || false,
-        ...(result.verified === true && { verificationToken: crypto.randomUUID() }),
-      },
+      message: result.message ?? 'Phone number verified successfully',
+      data,
     });
   } catch (error) {
     if (error instanceof EmailWorkerError) {
