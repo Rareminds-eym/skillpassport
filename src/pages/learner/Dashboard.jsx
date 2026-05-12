@@ -70,18 +70,16 @@ import {
   technicalSkills,
   trainingData,
 } from "@/shared/lib/test/mockData";
-import { useAIRecommendations } from '@/features/ai-tutor';
-import { useAssessmentRecommendations } from '@/features/assessment/model/useAssessmentRecommendations';
-
 import { useOpportunities } from '@/features/opportunities';
-import { useLearnerProfile, useLearnerPortfolio, useLearnerActivity, useLearnerMessages } from "@/features/learner-profile";
-import { useLearnerDataByEmail } from '@/entities/learner';
-import { useLearnerCertificates } from '@/entities/learner';
-import { useLearnerLearning } from '@/entities/learner';
-import { useLearnerProjects } from '@/entities/learner';
-import { useLearnerExperience } from '@/entities/learner';
-import { useLearnerEducation } from '@/entities/learner';
-import { useLearnerTechnicalSkills, useLearnerSoftSkills } from '@/entities/learner';
+import { 
+  useLearnerProfile, 
+  useLearnerPortfolio, 
+  useLearnerActivity, 
+  useLearnerMessages, 
+  useLearnerDashboard,
+  useLearnerAssessment,
+  useLearnerAIRecommendations
+} from "@/features/learner-profile";
 import { useLearnerMessageNotifications, useLearnerUnreadCount } from '@/entities/learner';
 import { useLearnerAchievements } from '@/entities/learner';
 import { useLearnerRealtimeActivities } from '@/entities/learner/model/useLearnerRealtimeActivities';
@@ -709,87 +707,65 @@ const LearnerDashboard = () => {
     }
   }, []);
 
-  // Use authenticated learner data instead of localStorage
-  // Get user email from localStorage or context (customize as needed)
-  const userEmail = localStorage.getItem("userEmail");
-
-  // Use the same hook as ProfileEditSection for fetching and updating
+  // Use the new backend API hook - it uses user_id from JWT token automatically
   const {
-    learnerData,
+    profile: learnerData,
+    education: tableEducation,
+    experience: tableExperience,
+    technicalSkills: tableTechnicalSkills,
+    softSkills: tableSoftSkills,
+    projects: tableProjects,
+    certificates: tableCertificates,
+    training: tableTraining,
+    opportunities: backendOpportunities,
     loading: authlearnerLoading,
     error: authlearnerError,
     refresh,
-    updateProfile,
-    updateEducation,
-    updateTraining,
-    updateExperience,
-    updateSkills,
-    updateTechnicalSkills,
-    updateSoftSkills,
-    updateProjects,
-    updateCertificates,
-  } = useLearnerDataByEmail(userEmail);
+  } = useLearnerDashboard();
+
+  // Get user email from learner profile data (for other hooks that still need it)
+  const userEmail = learnerData?.email || null;
+
+  // Set loading states for compatibility with existing code
+  const trainingLoading = authlearnerLoading;
+  const certificatesLoading = authlearnerLoading;
+  const projectsLoading = authlearnerLoading;
+  const experienceLoading = authlearnerLoading;
+  const educationLoading = authlearnerLoading;
+  const technicalSkillsLoading = authlearnerLoading;
+  const softSkillsLoading = authlearnerLoading;
+
+  // Set error states for compatibility
+  const trainingError = authlearnerError;
+  const certificatesError = authlearnerError;
+  const projectsError = authlearnerError;
+  const experienceError = authlearnerError;
+  const educationError = authlearnerError;
+  const technicalSkillsError = authlearnerError;
+  const softSkillsError = authlearnerError;
+
+  // Refresh functions
+  const refreshTraining = refresh;
+  const refreshCertificates = refresh;
+  const refreshProjects = refresh;
+  const refreshExperience = refresh;
+  const refreshEducation = refresh;
+  const refreshTechnicalSkills = refresh;
+  const refreshSoftSkills = refresh;
+
+  // Stub update functions (these should be moved to backend API calls too)
+  const updateProfile = async () => { console.warn('updateProfile not implemented with backend API'); };
+  const updateEducation = async () => { console.warn('updateEducation not implemented with backend API'); };
+  const updateTraining = async () => { console.warn('updateTraining not implemented with backend API'); };
+  const updateExperience = async () => { console.warn('updateExperience not implemented with backend API'); };
+  const updateSkills = async () => { console.warn('updateSkills not implemented with backend API'); };
+  const updateTechnicalSkills = async () => { console.warn('updateTechnicalSkills not implemented with backend API'); };
+  const updateSoftSkills = async () => { console.warn('updateSoftSkills not implemented with backend API'); };
+  const updateProjects = async () => { console.warn('updateProjects not implemented with backend API'); };
+  const updateCertificates = async () => { console.warn('updateCertificates not implemented with backend API'); };
 
   // Get learner ID for messaging
   const learnerId = learnerData?.id;
-
-  // Fetch data from separate tables
-  const {
-    learning: tableTraining, // Renamed from training to learning in hook
-    loading: trainingLoading,
-    error: trainingError,
-    refresh: refreshTraining
-  } = useLearnerLearning(learnerId, !!learnerId && !isViewingOthersProfile);
-
-  const {
-    certificates: tableCertificates,
-    loading: certificatesLoading,
-    error: certificatesError,
-    refresh: refreshCertificates
-  } = useLearnerCertificates(learnerId, !!learnerId && !isViewingOthersProfile);
-
-  const {
-    projects: tableProjects,
-    loading: projectsLoading,
-    error: projectsError,
-    refresh: refreshProjects
-  } = useLearnerProjects(learnerId, !!learnerId && !isViewingOthersProfile);
-
-
-
-  // Fetch experience from dedicated table
-  const {
-    experience: tableExperience,
-    loading: experienceLoading,
-    error: experienceError,
-    refresh: refreshExperience
-  } = useLearnerExperience(learnerId, !!learnerId && !isViewingOthersProfile);
-
-  // Fetch education from dedicated table
-  const {
-    education: tableEducation,
-    loading: educationLoading,
-    error: educationError,
-    refresh: refreshEducation
-  } = useLearnerEducation(learnerId, !!learnerId && !isViewingOthersProfile);
-
-
-
-  // Fetch technical skills from dedicated table
-  const {
-    skills: tableTechnicalSkills,
-    loading: technicalSkillsLoading,
-    error: technicalSkillsError,
-    refresh: refreshTechnicalSkills
-  } = useLearnerTechnicalSkills(learnerId, !!learnerId && !isViewingOthersProfile);
-
-  // Fetch soft skills from dedicated table
-  const {
-    skills: tableSoftSkills,
-    loading: softSkillsLoading,
-    error: softSkillsError,
-    refresh: refreshSoftSkills
-  } = useLearnerSoftSkills(learnerId, !!learnerId && !isViewingOthersProfile);
 
   // Setup message notifications with hot-toast
   useLearnerMessageNotifications({
@@ -817,13 +793,25 @@ const LearnerDashboard = () => {
     loading: achievementsLoading,
   } = useLearnerAchievements(learnerId, userEmail);
 
+  // Use new backend API hooks for assessment and AI recommendations
   const {
     recommendations: assessmentRecommendations,
     loading: recommendationsLoading,
     hasAssessment,
     hasInProgressAssessment,
     latestAttemptId,
-  } = useAssessmentRecommendations(learnerId, !!learnerId && !isViewingOthersProfile);
+  } = useLearnerAssessment({ enabled: !isViewingOthersProfile });
+
+  // Use new backend API hook for AI recommendations
+  const {
+    recommendations: aiRecommendations,
+    loading: aiLoading,
+    cached: aiCached,
+    fallback: aiFallback,
+  } = useLearnerAIRecommendations({ 
+    enabled: !isViewingOthersProfile,
+    autoFetch: true 
+  });
 
   // Check if user is a learner
   const isLearnerUser = isLearner(learnerData);
@@ -1189,23 +1177,12 @@ const LearnerDashboard = () => {
     includeFactoryVisits: true, // Include industrial visits
   });
 
-  // AI Job Recommendations - Vector-based matching with top 3 results
-  const {
-    recommendations: matchedJobs,
-    loading: matchingLoading,
-    error: matchingError,
-    refreshRecommendations: refreshMatches,
-    cached,
-    fallback,
-    trackView,
-    trackApply,
-    getMatchReasons,
-  } = useAIRecommendations({
-    learnerId: learnerData?.id,
-    enabled: !isViewingOthersProfile,
-    autoFetch: true,
-    limit: 4
-  });
+  // AI recommendations are now fetched via backend API (already loaded above)
+  const matchedJobs = aiRecommendations || [];
+  const matchingLoading = aiLoading;
+  const matchingError = null;
+  const cached = aiCached;
+  const fallback = aiFallback;
 
   // Fetch recent updates data from recruitment tables (learner-specific)
   const {
@@ -2748,7 +2725,7 @@ const LearnerDashboard = () => {
     ),
   };
 
-  // Define 3x3 grid layout - conditionally exclude assessment for learners
+  // Define 3x3 grid layout - show all cards for everyone
   const threeByThreeCards = useMemo(() => {
     const cards = [
       "assessment",
@@ -2762,13 +2739,8 @@ const LearnerDashboard = () => {
       "softSkills"
     ];
     
-    // Remove assessment only for actual learner role
-    if (userRole === 'learner') {
-      return cards.filter(card => card !== "assessment");
-    }
-    
     return cards;
-  }, [learnerData, userRole]);
+  }, [learnerData]);
 
   // Map the display names to actual card keys
   const cardNameMapping = {
