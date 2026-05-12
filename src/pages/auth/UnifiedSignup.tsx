@@ -12,7 +12,7 @@ import {
   Share2,
   TrendingUp
 } from 'lucide-react';
-import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
+import { ChangeEvent, FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 // @ts-ignore - JS module without types
 import {
@@ -273,6 +273,7 @@ const UnifiedSignup = () => {
   const [cities, setCities] = useState<any[]>([]);
   const [countryCodeDropdownOpen, setCountryCodeDropdownOpen] = useState(false);
   const countryCodeRef = useRef<HTMLDivElement>(null);
+  const verifyingOtpRef = useRef(false);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -360,7 +361,7 @@ const UnifiedSignup = () => {
     }
   };
 
-  const handleVerifyOtp = async (otpValue?: string) => {
+  const handleVerifyOtp = useCallback(async (otpValue?: string) => {
     // Use the passed OTP value if provided (from auto-verification), otherwise use state
     // ?? not || to handle '0' correctly; otpValue from onComplete is always authoritative
     const otpToVerify = otpValue ?? state.otp;
@@ -374,15 +375,18 @@ const UnifiedSignup = () => {
       return;
     }
     
-    if (!state.verificationId) {
+    if (!state.verificationId?.trim()) {
       setState(prev => ({ ...prev, error: 'Verification session expired. Please request a new OTP.' }));
       return;
     }
     
-    // Prevent duplicate verification calls
-    if (state.verifyingOtp) {
+    // Prevent duplicate verification calls using ref (not state)
+    if (verifyingOtpRef.current) {
       return;
     }
+    
+    // Set ref immediately to prevent race condition
+    verifyingOtpRef.current = true;
     
     // VERIFIED: All 4 parameters (phone, otp, countryCode, verificationId) are supported
     // - otpService.ts:217 - VerifyOtpOptions interface with all 4 params
@@ -401,8 +405,11 @@ const UnifiedSignup = () => {
       else setState(prev => ({ ...prev, error: result.error || 'Invalid OTP', verifyingOtp: false }));
     } catch {
       setState(prev => ({ ...prev, error: 'Failed to verify OTP. Please try again.', verifyingOtp: false }));
+    } finally {
+      // Always reset ref in finally block
+      verifyingOtpRef.current = false;
     }
-  };
+  }, [state.otp, state.verificationId, state.phone, state.countryCode]);
 
   // Validate Step 1 fields
   const validateStep1 = (): boolean => {
@@ -917,9 +924,7 @@ const UnifiedSignup = () => {
                       value={state.otp}
                       onChange={(value) => setState(prev => ({ ...prev, otp: value }))}
                       onComplete={(completedOtp) => {
-                        if (!state.verifyingOtp) {
-                          handleVerifyOtp(completedOtp);
-                        }
+                        handleVerifyOtp(completedOtp);
                       }}
                       disabled={state.verifyingOtp}
                       autoFocus={true}
