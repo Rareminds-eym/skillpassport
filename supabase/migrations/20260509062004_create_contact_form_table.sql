@@ -60,6 +60,20 @@ FOR INSERT
 TO anon
 WITH CHECK (true);
 
+-- Policy: Allow service_role to INSERT (for backend API)
+CREATE POLICY "Allow service role contact form submissions"
+ON public.contact_form
+FOR INSERT
+TO service_role
+WITH CHECK (true);
+
+-- Policy: Allow authenticated users to INSERT (optional - for logged-in users)
+CREATE POLICY "Allow authenticated contact form submissions"
+ON public.contact_form
+FOR INSERT
+TO authenticated
+WITH CHECK (true);
+
 -- =====================================================
 -- Grant Permissions
 -- =====================================================

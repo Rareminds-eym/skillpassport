@@ -19,7 +19,8 @@ import type {
 } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib';
 import { validateContactForm } from '../utils/validation';
-import { generateEmailHTML } from '../utils/email-template';
+import { generateContactFormEmail, ContactFormData } from '../utils/contact-form-template';
+import { SKILLPASSPORT_CONFIG } from '../utils/brand-config';
 import { apiLogger } from '../../../lib/logger';
 
 export async function handleContactSubmit(
@@ -136,14 +137,24 @@ async function sendEmailNotification(
   const { name, email, organization, user_type, message } = formData;
 
   // Prepare email payload
-  const emailPayload: SharedEmailRequest = {
-    to: 'marketing@rareminds.in',
-    subject: `New Contact Form Submission - ${user_type}`,
-    html: generateEmailHTML(formData),
-    replyTo: email,
-    from: 'no-reply@rareminds.in',
-    fromName: 'Rareminds Skill Passport'
-  };
+  // Create email data object matching the new template
+const emailData: ContactFormData = {
+  name,
+  email,
+  organization,
+  user_type,
+  message
+};
+
+const emailPayload: SharedEmailRequest = {
+  to: 'anandhageethan333@gmail.com',
+  subject: `New Contact Form Submission - ${user_type}`,
+  html: generateContactFormEmail(emailData, SKILLPASSPORT_CONFIG),  // ← NEW FUNCTION
+  replyTo: email,
+  from: 'no-reply@rareminds.in',
+  fromName: 'Rareminds Skill Passport'
+};
+
 
   // Call shared-email-api
   const response = await fetch(`${env.SHARED_EMAIL_API_URL}/send`, {

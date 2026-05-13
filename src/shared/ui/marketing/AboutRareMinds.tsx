@@ -139,6 +139,7 @@ function AboutRareMinds() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [imageRotation, setImageRotation] = useState({ rotateX: 0, rotateY: 0 });
 
   // Scroll animation refs
@@ -380,11 +381,36 @@ function AboutRareMinds() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsSubmitting(false);
-    setSubmitSuccess(true);
-    setFormData({ name: '', email: '', organization: '', user_type: 'learner', message: '' });
-    setTimeout(() => setSubmitSuccess(false), 5000);
+    setSubmitError('');
+    
+    try {
+      // Call the backend API
+      const response = await fetch('/api/contact/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Success - show success message and reset form
+        setSubmitSuccess(true);
+        setFormData({ name: '', email: '', organization: '', user_type: 'learner', message: '' });
+        setTimeout(() => setSubmitSuccess(false), 5000);
+      } else {
+        // Backend returned an error
+        setSubmitError(data.error || 'Failed to submit form. Please try again.');
+      }
+    } catch (error) {
+      // Network error or server unreachable
+      console.error('Contact form submission error:', error);
+      setSubmitError('Network error. Please check your connection and try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleImageMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -1166,6 +1192,11 @@ function AboutRareMinds() {
             {submitSuccess && (
               <div className="text-center p-4 bg-green-50 text-green-800 rounded-lg" data-testid="contact-success-message">
                 Thank you for your message! We'll get back to you soon.
+              </div>
+            )}
+            {submitError && (
+              <div className="text-center p-4 bg-red-50 text-red-800 rounded-lg" data-testid="contact-error-message">
+                {submitError}
               </div>
             )}
           </form>

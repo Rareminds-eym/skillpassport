@@ -8,7 +8,7 @@
  */
 
 import type { PagesFunction } from '../../../src/functions-lib/types';
-import { corsHeaders, jsonResponse, createSupabaseClient } from '../../../src/functions-lib';
+import { corsHeaders, jsonResponse, createSupabaseAdminClient } from '../../../src/functions-lib';
 import { handleContactSubmit } from './handlers/submit';
 import { apiLogger } from '../../lib/logger';
 
@@ -26,7 +26,7 @@ export const onRequest: PagesFunction = async (context) => {
   const path = url.pathname.replace('/api/contact', '');
 
   try {
-    const supabase = createSupabaseClient(env);
+    const supabase = createSupabaseAdminClient(env);
 
     // GET route - Health check
     if (request.method === 'GET') {
