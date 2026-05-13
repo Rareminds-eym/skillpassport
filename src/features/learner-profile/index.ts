@@ -44,7 +44,10 @@ export {
   useLearnerActivity,
   useLearnerMessages,
   useLearnerSettings,
-  useProfileCompletion
+  useProfileCompletion,
+  useLearnerDashboard,
+  useLearnerAssessment,
+  useLearnerAIRecommendations
 } from './model';
 
 // ============================================================================

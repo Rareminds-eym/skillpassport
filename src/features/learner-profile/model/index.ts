@@ -12,6 +12,9 @@ export { useLearnerActivity } from './useLearnerActivity';
 export { useLearnerMessages } from './useLearnerMessages';
 export { useLearnerSettings } from './useLearnerSettings';
 export { default as useProfileCompletion } from './useProfileCompletion';
+export { useLearnerDashboard } from './useLearnerDashboard';
+export { useLearnerAssessment } from './useLearnerAssessment';
+export { useLearnerAIRecommendations } from './useLearnerAIRecommendations';
 
 // Types
 export type {

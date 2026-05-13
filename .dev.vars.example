@@ -82,6 +82,10 @@ CLOUDFLARE_R2_BUCKET_NAME=skill-echosystem
 #   - email-worker    (port 9001) — cron jobs
 #   - embedding-worker (port 9002) — cron jobs
 #
+# Service Bindings (configured in wrangler.toml):
+#   - PAYMENT_WORKER → razorpay-api (RPC-style binding)
+#   - SSO_SERVICE → sso-api (HTTP-style binding for JWKS and token refresh)
+#
 # The following environment variables are NO LONGER NEEDED:
 #   ❌ VITE_ASSESSMENT_API_URL (removed)
 #   ❌ VITE_CAREER_API_URL (removed)
@@ -94,3 +98,5 @@ CLOUDFLARE_R2_BUCKET_NAME=skill-echosystem
 #   ❌ VITE_ANALYZE_ASSESSMENT_API_URL (removed)
 #   ❌ VITE_PAGES_URL (removed — uses window.location.origin)
 #   ❌ RESEND_API_KEY (removed — email-worker uses INTERNAL_API_KEY)
+#   ❌ PAYMENTS_API_URL (Pages Functions use PAYMENT_WORKER service binding)
+#   ❌ RAZORPAY_KEY_SECRET (should only be in payment-worker, not here)
