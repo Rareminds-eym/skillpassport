@@ -16,5 +16,12 @@ binding = "PAYMENT_WORKER"
 service = "razorpay-api"
 entrypoint = "PaymentService"
 
+# SSO worker — authentication service, zero-latency internal routing
+# HTTP-style binding (no entrypoint) for JWKS fetching and token refresh
+[[services]]
+binding = "SSO_SERVICE"
+service = "sso-api"
+# No entrypoint needed - sso-api uses default fetch handler
+
 # Environment variables for local development
 # These will be loaded from .dev.vars file
