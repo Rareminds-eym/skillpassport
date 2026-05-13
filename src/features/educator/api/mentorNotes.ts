@@ -29,7 +29,7 @@ import { supabase } from "@/shared/api/supabaseClient"
 
 // ⭐ Save a new mentor note
 export const saveMentorNote = async ({
-  student_id,
+  learner_id,
   mentor_type,
   school_educator_id,
   college_lecturer_id,
@@ -41,7 +41,7 @@ export const saveMentorNote = async ({
     .from("mentor_notes")
     .insert([
       {
-        student_id,
+        learner_id,
         mentor_type,
         school_educator_id,
         college_lecturer_id,
@@ -56,10 +56,10 @@ export const saveMentorNote = async ({
   return data;
 };
 
-// ⭐ Fetch students list
-export const getStudents = async () => {
+// ⭐ Fetch learners list
+export const getLearners = async () => {
   const { data, error } = await supabase
-    .from("students")
+    .from("learners")
     .select("id, name")
     .order("name", { ascending: true });
 
@@ -67,18 +67,18 @@ export const getStudents = async () => {
   return data;
 };
 
-// ⭐ Fetch previous mentor notes with student names
+// ⭐ Fetch previous mentor notes with learner names
 export const getMentorNotes = async () => {
   const { data, error } = await supabase
     .from("mentor_notes")
     .select(`
       id,
-      student_id,
+      learner_id,
       feedback,
       action_points,
       quick_notes,
       note_date,
-      students(name)
+      learners(name)
     `)
     .order("note_date", { ascending: false });
 

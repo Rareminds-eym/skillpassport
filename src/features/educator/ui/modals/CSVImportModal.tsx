@@ -10,7 +10,7 @@ import { getLogger } from '@/shared/config/logging'
 import {
   autoMapHeaders,
   processCSVData,
-  importStudents,
+  importlearners,
   ValidatedRow,
   ImportSummary,
   MANDATORY_FIELDS
@@ -55,7 +55,7 @@ const CSVImportModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const downloadSampleCSV = () => {
     const headers = [
       // Category 1 - Core
-      'student_name', 'email', 'contact_number', 'alternate_number', 'date_of_birth', 'gender', 'enrollment_number', 'roll_number',
+      'learner_name', 'email', 'contact_number', 'alternate_number', 'date_of_birth', 'gender', 'enrollment_number', 'roll_number',
       // Category 2 - Address
       'address', 'city', 'state', 'country', 'pincode', 'blood_group',
       // Category 3 - Guardian
@@ -90,7 +90,7 @@ const CSVImportModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'student_import_template.csv'
+    a.download = 'learner_import_template.csv'
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -163,7 +163,7 @@ const CSVImportModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       }
       
       const validRows = validatedRows.filter(r => r.isValid)
-      const result = await importStudents(validRows, userEmail)
+      const result = await importlearners(validRows, userEmail)
       
       setImportResult(result)
       setStep('complete')
@@ -172,7 +172,7 @@ const CSVImportModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         onSuccess?.()
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to import students')
+      setError(err.message || 'Failed to import learners')
       setStep('preview')
     } finally {
       setLoading(false)
@@ -189,11 +189,11 @@ const CSVImportModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-xl font-semibold text-gray-900">Import Students from CSV</h3>
+              <h3 className="text-xl font-semibold text-gray-900">Import Learners from CSV</h3>
               <p className="text-sm text-gray-500 mt-1">
-                {step === 'upload' && 'Upload a CSV file with student data'}
-                {step === 'preview' && 'Review and confirm student data before importing'}
-                {step === 'importing' && 'Importing students...'}
+                {step === 'upload' && 'Upload a CSV file with learner data'}
+                {step === 'preview' && 'Review and confirm learner data before importing'}
+                {step === 'importing' && 'Importing learners...'}
                 {step === 'complete' && 'Import complete'}
               </p>
             </div>
@@ -227,7 +227,7 @@ const CSVImportModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 
                 <div className="space-y-3 text-sm text-blue-800">
                   <div>
-                    <div className="font-semibold mb-1">Category 1 - Student Core Information (Required)</div>
+                    <div className="font-semibold mb-1">Category 1 - Learner Core Information (Required)</div>
                     <div className="pl-4 text-xs space-y-0.5">
                       {MANDATORY_FIELDS.CATEGORY_1.map(field => (
                         <div key={field}>• {field}</div>
@@ -323,8 +323,8 @@ const CSVImportModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              <p className="mt-4 text-lg font-medium text-gray-900">Importing students...</p>
-              <p className="mt-2 text-sm text-gray-500">Please wait while we create student accounts</p>
+              <p className="mt-4 text-lg font-medium text-gray-900">Importing learners...</p>
+              <p className="mt-2 text-sm text-gray-500">Please wait while we create learner accounts</p>
             </div>
           )}
           
@@ -341,7 +341,7 @@ const CSVImportModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                     </div>
                     <h3 className="mt-4 text-lg font-medium text-gray-900">Import Successful!</h3>
                     <p className="mt-2 text-sm text-gray-500">
-                      Successfully imported {importResult.success} student{importResult.success > 1 ? 's' : ''}
+                      Successfully imported {importResult.success} learner{importResult.success > 1 ? 's' : ''}
                       {importResult.failed > 0 && `, ${importResult.failed} failed`}
                     </p>
                   </>
@@ -354,7 +354,7 @@ const CSVImportModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                     </div>
                     <h3 className="mt-4 text-lg font-medium text-gray-900">Import Failed</h3>
                     <p className="mt-2 text-sm text-gray-500">
-                      All {importResult.failed} student{importResult.failed > 1 ? 's' : ''} failed to import
+                      All {importResult.failed} learner{importResult.failed > 1 ? 's' : ''} failed to import
                     </p>
                   </>
                 )}

@@ -28,7 +28,7 @@ import { useSubscription } from '@/features/subscription/model/subscriptionStore
  * Get the base path for subscription routes based on current location
  */
 function getSubscriptionBasePath(pathname) {
-  if (pathname.startsWith('/student')) return '/student';
+  if (pathname.startsWith('/learner')) return '/learner';
   if (pathname.startsWith('/recruitment')) return '/recruitment';
   if (pathname.startsWith('/educator')) return '/educator';
   if (pathname.startsWith('/college-admin')) return '/college-admin';
@@ -226,14 +226,14 @@ export function SubscriptionSettingsSection({ className = '' }) {
               onClick={() => {
                 // Get user type from basePath for proper plan display
                 const typeMap = {
-                  '/student': 'student',
+                  '/learner': 'learner',
                   '/recruitment': 'recruiter',
                   '/educator': 'educator',
                   '/college-admin': 'college_admin',
                   '/school-admin': 'school_admin',
                   '/university-admin': 'university_admin'
                 };
-                const userType = typeMap[basePath] || 'student';
+                const userType = typeMap[basePath] || 'learner';
                 navigate(`/subscription/plans?type=${userType}`);
               }}
               className="w-full flex items-center justify-between px-4 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors group"

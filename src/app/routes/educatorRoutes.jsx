@@ -6,7 +6,7 @@ import EducatorLayout from "../layouts/EducatorLayout";
 const EDUCATOR_ROLES = ["educator", "school_educator", "college_educator"];
 
 const EducatorDashboard = lazy(() => import("@/pages/educator/Dashboard"));
-const EducatorStudents = lazy(() => import("@/pages/educator/StudentsPage"));
+const EducatorLearners = lazy(() => import("@/pages/educator/LearnersPage"));
 const EducatorClasses = lazy(() => import("@/pages/educator/ClassesPage"));
 const EducatorPrograms = lazy(() => import("@/pages/educator/ProgramSectionsPage"));
 const EducatorAssessmentResults = lazy(() => import("@/pages/educator/AssessmentResults"));
@@ -36,7 +36,7 @@ const EducatorDigitalPortfolio = lazy(() =>
 const EducatorAI = lazy(() => import("@/pages/educator/EducatorAI"));
 const CourseAnalytics = lazy(() => import("@/pages/educator/CourseAnalytics"));
 const MarkAttendance = lazy(() => import("@/pages/educator/MarkAttendance"));
-const CoursePlayer = lazy(() => import("@/pages/student/CoursePlayer"));
+const CoursePlayer = lazy(() => import("@/pages/learner/CoursePlayer"));
 const LessonPlansList = lazy(() => import("@/pages/teacher/LessonPlansList"));
 const LessonPlanCreate = lazy(() => import("@/pages/teacher/LessonPlanCreate"));
 const MyTimetable = lazy(() => import("@/pages/teacher/MyTimetable"));
@@ -63,7 +63,7 @@ export const educatorRoutes = (
   >
     <Route path="dashboard" element={<EducatorDashboard />} />
     <Route path="ai-copilot" element={<EducatorAI />} />
-    <Route path="students" element={<EducatorStudents />} />
+    <Route path="learners" element={<EducatorLearners />} />
     <Route path="classes" element={<EducatorClasses />} />
     <Route path="programs" element={<EducatorPrograms />} />
     <Route path="courses" element={<EducatorCourses />} />

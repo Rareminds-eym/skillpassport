@@ -2,11 +2,11 @@ import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, UserCircle } from 'lucid
 import { ChangeEvent, FormEvent, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
-import { getUserRole } from '@/features/auth/api';
-import { signIn, UserRole } from '@/features/auth/api';
+import type { UserRole } from '@/features/auth/api';
 import { redirectToRoleDashboard } from '@/features/auth/lib';
-
 import { useAuthActions } from '@/shared/model/authStore';
+import { AuthFetchError } from '@rareminds-eym/auth-client';
+
 interface LoginState {
   email: string;
   password: string;
@@ -16,170 +16,124 @@ interface LoginState {
   selectedRole: UserRole | null;
 }
 
+const ALL_ROLES: UserRole[] = [
+  'learner',
+  'recruiter',
+  'educator',
+  'school_admin',
+  'college_admin',
+  'university_admin',
+];
+
+const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
+  learner: 'Learners',
+  recruiter: 'Recruiter',
+  educator: 'Educator',
+  school_admin: 'School Administrator',
+  college_admin: 'College Administrator',
+  university_admin: 'University Administrator',
+};
+
 const UnifiedLogin = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { login } = useAuthActions();
-  
-  // Get return URL from query params or session storage (for invitation flow)
-  const returnUrl = searchParams.get('returnUrl') || sessionStorage.getItem('invitation_return_url');
-  
+
+  const returnUrl =
+    searchParams.get('returnUrl') || sessionStorage.getItem('invitation_return_url');
+
   const [state, setState] = useState<LoginState>({
     email: '',
     password: '',
     showPassword: false,
     loading: false,
     error: '',
-    selectedRole: null
+    selectedRole: null,
   });
-
-  const allRoles: UserRole[] = [
-    'student',
-    'recruiter',
-    'educator',
-    'school_admin',
-    'college_admin',
-    'university_admin'
-  ];
-
-  const getRoleDisplayName = (role: UserRole): string => {
-    const roleNames: Record<UserRole, string> = {
-      student: 'Learners',
-      recruiter: 'Recruiter',
-      educator: 'Educator',
-      school_admin: 'School Administrator',
-      college_admin: 'College Administrator',
-      university_admin: 'University Administrator'
-    };
-    return roleNames[role];
-  };
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setState(prev => ({
-      ...prev,
-      [name]: value,
-      error: ''
-    }));
+    setState((prev) => ({ ...prev, [name]: value, error: '' }));
   };
 
   const handleRoleChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
-      selectedRole: e.target.value as UserRole,
-      error: ''
+      selectedRole: (e.target.value || null) as UserRole | null,
+      error: '',
     }));
   };
 
   const togglePasswordVisibility = () => {
-    setState(prev => ({
-      ...prev,
-      showPassword: !prev.showPassword
-    }));
+    setState((prev) => ({ ...prev, showPassword: !prev.showPassword }));
+  };
+
+  const mapAuthError = (err: unknown): string => {
+    if (err instanceof AuthFetchError) {
+      if (err.status === 401) return 'Invalid email or password';
+      if (err.status === 403) return 'Your account is not active. Contact support.';
+      if (err.status === 429) return 'Too many attempts. Please try again in a few minutes.';
+      if (err.status >= 500) return 'The authentication service is unavailable. Please try again.';
+      return err.message || 'Authentication failed';
+    }
+    return 'An unexpected error occurred. Please try again.';
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Validate inputs
     if (!state.email || !state.password) {
-      setState(prev => ({
-        ...prev,
-        error: 'Please enter both email and password'
-      }));
+      setState((prev) => ({ ...prev, error: 'Please enter both email and password' }));
       return;
     }
 
-    // Validate role selection
+    if (state.password.length < 8) {
+      setState((prev) => ({ ...prev, error: 'Password must be at least 8 characters' }));
+      return;
+    }
+
     if (!state.selectedRole) {
-      setState(prev => ({
-        ...prev,
-        error: 'Please select a role'
-      }));
+      setState((prev) => ({ ...prev, error: 'Please select a role' }));
       return;
     }
 
-    setState(prev => ({ ...prev, loading: true, error: '' }));
+    setState((prev) => ({ ...prev, loading: true, error: '' }));
 
     try {
-      // Step 1: Authenticate user
-      const authResult = await signIn(state.email, state.password);
+      // Login via SSO — the store reads roles from the JWT
+      await login(state.email, state.password);
 
-      if (!authResult.success || !authResult.user) {
-        setState(prev => ({
+      // Verify the user actually has the selected role
+      // (Reading directly from the store after login() completes)
+      const { useAuthStore } = await import('@/shared/model/authStore');
+      const currentRoles = useAuthStore.getState().user?.roles ?? [];
+
+      if (!currentRoles.includes(state.selectedRole)) {
+        // User doesn't have this role — log them out and show error
+        await useAuthStore.getState().logout();
+        setState((prev) => ({
           ...prev,
           loading: false,
-          error: authResult.error || 'Authentication failed'
+          error: `You do not have access to the ${ROLE_DISPLAY_NAMES[state.selectedRole!]} role.`,
         }));
         return;
       }
 
-      // Step 2: Determine user roles
-      const roleLookup = await getUserRole(authResult.user.id, authResult.user.email);
+      // Update the primary role to match what the user selected
+      useAuthStore.setState({ role: state.selectedRole });
 
-      console.log('🔍 Role lookup result:', roleLookup);
-
-      // Handle error - no roles found
-      if (roleLookup.error || (!roleLookup.role && (!roleLookup.roles || roleLookup.roles.length === 0))) {
-        console.error('❌ Role lookup error:', roleLookup.error);
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: roleLookup.error || 'Account not properly configured. Contact support'
-        }));
-        return;
-      }
-
-      // Step 3: Check if user has the selected role
-      let userHasSelectedRole = false;
-      let userDataForRole = null;
-
-      if (roleLookup.roles && roleLookup.roles.length > 0 && roleLookup.allUserData) {
-        // Multiple roles
-        const roleIndex = roleLookup.roles.indexOf(state.selectedRole);
-        if (roleIndex !== -1) {
-          userHasSelectedRole = true;
-          userDataForRole = roleLookup.allUserData[roleIndex];
-        }
-      } else if (roleLookup.role === state.selectedRole && roleLookup.userData) {
-        // Single role matches
-        userHasSelectedRole = true;
-        userDataForRole = roleLookup.userData;
-      }
-
-      if (!userHasSelectedRole || !state.selectedRole) {
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: `Not authorized. You do not have access to the ${state.selectedRole ? getRoleDisplayName(state.selectedRole) : 'selected'} role.`
-        }));
-        return;
-      }
-
-      // Step 4: Store user data in auth context
-      const userData = {
-        ...userDataForRole,
-        role: state.selectedRole,
-        user_id: authResult.user.id
-      };
-
-      login(userData);
-
-      // Step 5: Check for return URL (invitation flow) or redirect to role-specific dashboard
+      // Redirect to the intended destination
       if (returnUrl) {
-        // Clear the stored return URL
         sessionStorage.removeItem('invitation_return_url');
         navigate(returnUrl);
       } else {
         redirectToRoleDashboard(state.selectedRole, navigate);
       }
-
     } catch (error) {
-      console.error('Login error:', error);
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         loading: false,
-        error: 'An unexpected error occurred. Please try again'
+        error: mapAuthError(error),
       }));
     }
   };
@@ -193,13 +147,8 @@ const UnifiedLogin = () => {
       <div className="w-full lg:mx-4 lg:my-8 xl:mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 h-screen lg:h-[700px] overflow-hidden">
         {/* LEFT SIDE - Illustration */}
         <div className="hidden lg:flex relative p-10 text-white flex-col justify-between rounded-3xl shadow-lg bg-gradient-to-br from-[#0a6aba] to-[#09277f] overflow-hidden">
-          {/* Background Image */}
           <div className="absolute inset-0 z-0">
-            <img 
-              src="/login/login.jpg" 
-              alt="Login background" 
-              className="w-full h-full object-cover"
-            />
+            <img src="/login/login.jpg" alt="Login background" className="w-full h-full object-cover" />
             <div className="absolute inset-0 "></div>
           </div>
 
@@ -212,41 +161,26 @@ const UnifiedLogin = () => {
             </p>
           </div>
 
-          <div className="relative z-10 flex justify-center items-center h-full">
-            {/* <div className="text-center">
-              <div className="inline-flex items-center justify-center w-32 h-32 rounded-full bg-white/10 backdrop-blur-sm mb-6">
-                <UserCircle className="w-20 h-20 text-white" />
-              </div>
-              <h3 className="text-2xl font-semibold mb-2">Secure Login</h3>
-              <p className="text-white/80">Access your personalized dashboard</p>
-            </div> */}
-          </div>
+          <div className="relative z-10 flex justify-center items-center h-full" />
         </div>
 
         {/* RIGHT SIDE - Login Form */}
         <div className="relative flex items-center justify-center px-4 sm:px-8 md:px-12 py-8 lg:py-8">
-          {/* Gradient bg for mobile/tablet */}
           <div
             className="absolute inset-0 lg:hidden bg-gradient-to-br from-[#0a6aba] to-[#09277f]"
             aria-hidden
           />
-
-          {/* White bg for lg */}
           <div className="hidden lg:block absolute inset-0 bg-white" />
 
-          {/* Form Container */}
           <div className="relative w-full max-w-md">
             <div className="text-center mb-8">
-              <h3 className="text-3xl font-bold text-white lg:text-gray-900">
-                Sign In
-              </h3>
+              <h3 className="text-3xl font-bold text-white lg:text-gray-900">Sign In</h3>
               <p className="text-sm text-white/80 lg:text-gray-600 mt-2">
                 Enter your credentials to continue
               </p>
             </div>
 
             <div className="rounded-2xl bg-transparent lg:bg-white/95 lg:shadow-xl lg:ring-1 lg:ring-black/5 p-5 sm:p-6 lg:p-8">
-              {/* Error Message */}
               {state.error && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -254,11 +188,13 @@ const UnifiedLogin = () => {
                 </div>
               )}
 
-              {/* Login Form */}
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Email Input */}
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-white lg:text-gray-700 mb-2">
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-medium text-white lg:text-gray-700 mb-2"
+                  >
                     Email Address
                   </label>
                   <div className="relative">
@@ -282,7 +218,10 @@ const UnifiedLogin = () => {
 
                 {/* Password Input */}
                 <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-white lg:text-gray-700 mb-2">
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-medium text-white lg:text-gray-700 mb-2"
+                  >
                     Password
                   </label>
                   <div className="relative">
@@ -295,6 +234,7 @@ const UnifiedLogin = () => {
                       type={state.showPassword ? 'text' : 'password'}
                       autoComplete="current-password"
                       required
+                      minLength={8}
                       value={state.password}
                       onChange={handleInputChange}
                       disabled={state.loading}
@@ -319,7 +259,10 @@ const UnifiedLogin = () => {
 
                 {/* Role Selection */}
                 <div>
-                  <label htmlFor="role" className="block text-sm font-medium text-white lg:text-gray-700 mb-2">
+                  <label
+                    htmlFor="role"
+                    className="block text-sm font-medium text-white lg:text-gray-700 mb-2"
+                  >
                     Select Role
                   </label>
                   <div className="relative">
@@ -336,15 +279,25 @@ const UnifiedLogin = () => {
                       className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500 transition-colors appearance-none bg-white"
                     >
                       <option value="">Choose your role...</option>
-                      {allRoles.map((role) => (
+                      {ALL_ROLES.map((role) => (
                         <option key={role} value={role}>
-                          {getRoleDisplayName(role)}
+                          {ROLE_DISPLAY_NAMES[role]}
                         </option>
                       ))}
                     </select>
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      <svg
+                        className="h-5 w-5 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
                       </svg>
                     </div>
                   </div>
@@ -353,7 +306,6 @@ const UnifiedLogin = () => {
                   </p>
                 </div>
 
-                {/* Forgot Password Link */}
                 <div className="flex items-center justify-end">
                   <button
                     type="button"
@@ -365,7 +317,6 @@ const UnifiedLogin = () => {
                   </button>
                 </div>
 
-                {/* Submit Button */}
                 <button
                   type="submit"
                   disabled={state.loading}
@@ -382,11 +333,13 @@ const UnifiedLogin = () => {
                 </button>
               </form>
 
-              {/* Additional Links */}
               <div className="mt-6 text-center">
                 <p className="text-sm text-white lg:text-gray-600">
                   Don't have an account?{' '}
-                  <Link to="/signup" className="font-medium text-white lg:text-blue-600 hover:text-white/80 lg:hover:text-blue-500">
+                  <Link
+                    to="/signup"
+                    className="font-medium text-white lg:text-blue-600 hover:text-white/80 lg:hover:text-blue-500"
+                  >
                     Sign up
                   </Link>
                 </p>

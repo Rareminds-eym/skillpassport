@@ -30,7 +30,7 @@ interface MentorResponseModalProps {
     follow_up_required?: boolean;
     follow_up_date?: string;
   };
-  studentName: string;
+  learnerName: string;
   onClose: () => void;
   onSave: (response: {
     educator_response: string;
@@ -41,7 +41,7 @@ interface MentorResponseModalProps {
 
 const MentorResponseModal: React.FC<MentorResponseModalProps> = ({
   note,
-  studentName,
+  learnerName,
   onClose,
   onSave,
 }) => {
@@ -109,13 +109,13 @@ const MentorResponseModal: React.FC<MentorResponseModalProps> = ({
         <div className="bg-white border-b-2 border-gray-200 px-6 py-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
-              {/* Student Name */}
+              {/* Learner Name */}
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-12 h-12 rounded-full bg-indigo-600 flex items-center justify-center text-white font-semibold text-lg flex-shrink-0">
-                  {studentName.charAt(0).toUpperCase()}
+                  {learnerName.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">{studentName}</h2>
+                  <h2 className="text-xl font-bold text-gray-900">{learnerName}</h2>
                   <p className="text-sm text-gray-600">Intervention Note</p>
                 </div>
               </div>
@@ -313,7 +313,7 @@ const MentorResponseModal: React.FC<MentorResponseModalProps> = ({
                       onChange={(e) => setActionTaken(e.target.value)}
                       rows={4}
                       className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none text-sm bg-white"
-                      placeholder="What specific actions have you taken with this student?"
+                      placeholder="What specific actions have you taken with this learner?"
                       disabled={saving}
                     />
                   </div>

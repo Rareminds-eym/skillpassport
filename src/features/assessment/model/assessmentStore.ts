@@ -44,7 +44,7 @@ export interface AssessmentFlowState {
   status: AssessmentFlowStatus;
   gradeLevel: GradeLevel | null;
   selectedCategory: StreamCategory | null;
-  studentStream: string | null;
+  learnerStream: string | null;
   currentSectionIndex: number;
   currentQuestionIndex: number;
   answers: Answers;
@@ -119,7 +119,7 @@ const initialState: AssessmentFlowState = {
   status: 'idle',
   gradeLevel: null,
   selectedCategory: null,
-  studentStream: null,
+  learnerStream: null,
   currentSectionIndex: 0,
   currentQuestionIndex: 0,
   answers: {},
@@ -204,7 +204,7 @@ export const useAssessmentStore = create<AssessmentStore>()(
 
         setStream: (stream) => {
           set((state) => {
-            state.studentStream = stream;
+            state.learnerStream = stream;
             state.status = 'sectionIntro';
             state.currentSectionIndex = 0;
             state.currentQuestionIndex = 0;
@@ -376,7 +376,7 @@ export const useAssessmentStore = create<AssessmentStore>()(
             state.pendingAttempt = attempt;
             state.status = 'resumePrompt';
             state.gradeLevel = attempt.grade_level;
-            state.studentStream = attempt.stream_id;
+            state.learnerStream = attempt.stream_id;
             state.currentSectionIndex = attempt.current_section_index;
             state.currentQuestionIndex = attempt.current_question_index;
             state.answers = answers;
@@ -425,7 +425,7 @@ export const useAssessmentStore = create<AssessmentStore>()(
           answers: state.answers,
           sectionTimings: state.sectionTimings,
           gradeLevel: state.gradeLevel,
-          studentStream: state.studentStream,
+          learnerStream: state.learnerStream,
           currentSectionIndex: state.currentSectionIndex,
           currentQuestionIndex: state.currentQuestionIndex,
         }),

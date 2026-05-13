@@ -30,7 +30,7 @@ const formatTimeDiff = (date: Date): string => {
 };
 
 /**
- * Get alerts from Talent Pool (Students table)
+ * Get alerts from Talent Pool (Learners table)
  * - Unverified candidates
  * - Incomplete profiles
  * - Recent signups needing review
@@ -39,10 +39,10 @@ export const getTalentPoolAlerts = async (): Promise<Alert[]> => {
   const alerts: Alert[] = [];
 
   try {
-    // Check for unverified students
+    // Check for unverified learners
     // Note: Using .or() to handle null or false values
     const { count: unverifiedCount, error } = await supabase
-      .from('students')
+      .from('learners')
       .select('id', { count: 'exact', head: true })
       .or('verified.is.null,verified.eq.false');
 
@@ -64,15 +64,15 @@ export const getTalentPoolAlerts = async (): Promise<Alert[]> => {
 
     // Check for incomplete profiles (missing key fields)
     const { data: incompleteProfiles } = await supabase
-      .from('students')
+      .from('learners')
       .select('id, profile')
       .limit(1000);
 
     if (incompleteProfiles) {
-      const incomplete = incompleteProfiles.filter(student => {
-        const profile = typeof student.profile === 'string' 
-          ? JSON.parse(student.profile) 
-          : student.profile;
+      const incomplete = incompleteProfiles.filter(learner => {
+        const profile = typeof learner.profile === 'string' 
+          ? JSON.parse(learner.profile) 
+          : learner.profile;
         return !profile?.email || !profile?.contact_number || !profile?.education?.length;
       });
 

@@ -8,7 +8,7 @@ const logger = getLogger('realtime-progress');
  * Hook for real-time progress synchronization across devices
  * Uses Supabase Realtime for instant updates
  */
-export const useRealtimeProgress = (studentId, courseId, options = {}) => {
+export const useRealtimeProgress = (learnerId, courseId, options = {}) => {
   const {
     enabled = true,
     onProgressUpdate = null,
@@ -22,18 +22,18 @@ export const useRealtimeProgress = (studentId, courseId, options = {}) => {
 
   // Subscribe to progress changes
   useEffect(() => {
-    if (!enabled || !studentId || !courseId) return;
+    if (!enabled || !learnerId || !courseId) return;
 
-    // Subscribe to student_course_progress changes
+    // Subscribe to learner_course_progress changes
     const progressChannel = supabase
-      .channel(`progress:${studentId}:${courseId}`)
+      .channel(`progress:${learnerId}:${courseId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'student_course_progress',
-          filter: `student_id=eq.${studentId}`
+          table: 'learner_course_progress',
+          filter: `learner_id=eq.${learnerId}`
         },
         (payload) => {
           setLastUpdate({
@@ -56,14 +56,14 @@ export const useRealtimeProgress = (studentId, courseId, options = {}) => {
 
     // Subscribe to enrollment changes
     const enrollmentChannel = supabase
-      .channel(`enrollment:${studentId}:${courseId}`)
+      .channel(`enrollment:${learnerId}:${courseId}`)
       .on(
         'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
           table: 'course_enrollments',
-          filter: `student_id=eq.${studentId}`
+          filter: `learner_id=eq.${learnerId}`
         },
         (payload) => {
           setLastUpdate({
@@ -91,7 +91,7 @@ export const useRealtimeProgress = (studentId, courseId, options = {}) => {
         supabase.removeChannel(enrollmentChannelRef.current);
       }
     };
-  }, [enabled, studentId, courseId, onProgressUpdate, onEnrollmentUpdate]);
+  }, [enabled, learnerId, courseId, onProgressUpdate, onEnrollmentUpdate]);
 
   // Broadcast progress to other devices
   const broadcastProgress = useCallback(async (progressData) => {

@@ -5,7 +5,7 @@ import type { CourseContext, CourseEnrollment, AvailableCourse } from '../types'
 
 export async function buildCourseContext(
   supabase: SupabaseClient,
-  studentId: string
+  learnerId: string
 ): Promise<CourseContext> {
   const defaultResult: CourseContext = {
     enrolledCourses: [],
@@ -16,11 +16,11 @@ export async function buildCourseContext(
   };
 
   try {
-    // Fetch student's enrolled courses
+    // Fetch learner's enrolled courses
     const { data: enrollments, error: enrollError } = await supabase
       .from('course_enrollments')
       .select('id, course_id, course_title, progress, status, enrolled_at, last_accessed, completed_at, total_lessons, completed_lessons, skills_acquired, grade, certificate_url')
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .order('enrolled_at', { ascending: false });
 
     if (enrollError) {

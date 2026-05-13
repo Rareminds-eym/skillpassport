@@ -2419,7 +2419,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                       className={`w-full px-4 py-2.5 rounded-lg border ${
                         errors.sessionObjectives ? "border-red-300" : "border-gray-300"
                       } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none`}
-                      placeholder="What should students achieve by the end of this session?"
+                      placeholder="What should learners achieve by the end of this session?"
                     />
                     {errors.sessionObjectives && (
                       <p className="mt-1 text-xs text-red-600">{errors.sessionObjectives}</p>
@@ -2680,7 +2680,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                       className={`w-full px-4 py-2.5 rounded-lg border ${
                         errors.evaluationCriteria ? "border-red-300" : "border-gray-300"
                       } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none`}
-                      placeholder="How will you assess student understanding and participation?"
+                      placeholder="How will you assess learner understanding and participation?"
                     />
                     {errors.evaluationCriteria && (
                       <p className="mt-1 text-xs text-red-600">{errors.evaluationCriteria}</p>
@@ -2707,7 +2707,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                       }
                       rows={3}
                       className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none"
-                      placeholder="Any assignments, readings, or activities for students to complete after this session"
+                      placeholder="Any assignments, readings, or activities for learners to complete after this session"
                     />
                   </div>
 

@@ -7,8 +7,8 @@ export interface SchoolClassInfo {
   grade: string;
   section: string;
   academic_year: string;
-  max_students: number;
-  current_students: number;
+  max_learners: number;
+  current_learners: number;
   school_id: string;
   school_name?: string;
   educator_name?: string;
@@ -41,7 +41,7 @@ const SchoolClassHeader: React.FC<SchoolClassHeaderProps> = ({ classInfo }) => {
             </span>
             <span className="flex items-center gap-1">
               <Users className="w-4 h-4 flex-shrink-0" />
-              <span>{classInfo.current_students} students</span>
+              <span>{classInfo.current_learners} learners</span>
             </span>
           </div>
         </div>

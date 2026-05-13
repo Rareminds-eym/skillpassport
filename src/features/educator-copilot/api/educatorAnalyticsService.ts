@@ -1,4 +1,4 @@
-import type { StudentWithAssignments } from './dataFetcherService';
+import type { LearnerWithAssignments } from './dataFetcherService';
 import type { Opportunity } from './educatorDataService';
 
 export interface AtRiskFlag {
@@ -7,29 +7,29 @@ export interface AtRiskFlag {
   severity: 'low' | 'medium' | 'high';
 }
 
-export interface StudentInsightSummary {
-  studentId: string;
+export interface LearnerInsightSummary {
+  learnerId: string;
   name: string;
   email?: string;
   skillsCount: number;
   topSkills: { name: string; level: number }[];
   projectsCount: number;
   trainingProgressAvg: number;
-  assignmentStats?: StudentWithAssignments['assignmentStats'];
+  assignmentStats?: LearnerWithAssignments['assignmentStats'];
   flags: AtRiskFlag[];
 }
 
 export interface ClassAnalyticsSummary {
-  totalStudents: number;
-  avgSkillsPerStudent: number;
+  totallearners: number;
+  avgSkillsPerLearner: number;
   topSkills: { name: string; count: number }[];
   projectsDistribution: { none: number; oneToTwo: number; threePlus: number };
   trainingCompletionRate: number;
 }
 
 export interface MatchResult {
-  studentId: string;
-  studentName: string;
+  learnerId: string;
+  learnerName: string;
   opportunityId: number;
   opportunityTitle: string;
   matchedSkills: string[];
@@ -44,10 +44,10 @@ class EducatorAnalyticsService {
     return name.trim().toLowerCase().replace(/[^a-z0-9+#.]/g, ' ');
   }
 
-  buildStudentInsights(students: StudentWithAssignments[]): StudentInsightSummary[] {
+  buildlearnerInsights(learners: LearnerWithAssignments[]): LearnerInsightSummary[] {
     const now = new Date();
 
-    return students.map((s) => {
+    return learners.map((s) => {
       const profile = s.profile || ({} as any);
       const tech = toArray<{ name: string; level: number }>(profile.technicalSkills).filter(Boolean);
       const projects = toArray<any>(profile.projects).filter((p) => p?.enabled !== false);
@@ -110,7 +110,7 @@ class EducatorAnalyticsService {
       }
 
       return {
-        studentId: s.id,
+        learnerId: s.id,
         name: profile?.name || 'Unknown',
         email: profile?.email,
         skillsCount,
@@ -123,14 +123,14 @@ class EducatorAnalyticsService {
     });
   }
 
-  buildClassAnalytics(students: StudentWithAssignments[]): ClassAnalyticsSummary {
-    const totalStudents = students.length || 0;
+  buildClassAnalytics(learners: LearnerWithAssignments[]): ClassAnalyticsSummary {
+    const totallearners = learners.length || 0;
     const skillCounts: Record<string, number> = {};
     let totalSkills = 0;
     let trainingCompleted = 0;
     const projectsDist = { none: 0, oneToTwo: 0, threePlus: 0 };
 
-    students.forEach((s) => {
+    learners.forEach((s) => {
       const tech = toArray<any>(s.profile?.technicalSkills);
       totalSkills += tech.length;
       tech.forEach((t) => {
@@ -155,18 +155,18 @@ class EducatorAnalyticsService {
       .map(([name, count]) => ({ name, count }));
 
     return {
-      totalStudents,
-      avgSkillsPerStudent: totalStudents ? Math.round((totalSkills / totalStudents) * 10) / 10 : 0,
+      totallearners,
+      avgSkillsPerLearner: totallearners ? Math.round((totalSkills / totallearners) * 10) / 10 : 0,
       topSkills,
       projectsDistribution: projectsDist,
-      trainingCompletionRate: totalStudents ? Math.round((trainingCompleted / totalStudents) * 100) : 0,
+      trainingCompletionRate: totallearners ? Math.round((trainingCompleted / totallearners) * 100) : 0,
     };
   }
 
-  matchStudentsToOpportunities(students: StudentWithAssignments[], opportunities: Opportunity[]): MatchResult[] {
+  matchlearnersToOpportunities(learners: LearnerWithAssignments[], opportunities: Opportunity[]): MatchResult[] {
     const results: MatchResult[] = [];
 
-    students.forEach((s) => {
+    learners.forEach((s) => {
       const profile = s.profile || ({} as any);
       const skillNames = toArray<any>(profile.technicalSkills).map((t) => this.normalizeSkillName(String(t?.name || '')));
 
@@ -183,8 +183,8 @@ class EducatorAnalyticsService {
 
         if (readinessScore >= 40) {
           results.push({
-            studentId: s.id,
-            studentName: profile?.name || 'Unknown',
+            learnerId: s.id,
+            learnerName: profile?.name || 'Unknown',
             opportunityId: op.id,
             opportunityTitle: op.job_title || op.title,
             matchedSkills: matched,
@@ -199,11 +199,11 @@ class EducatorAnalyticsService {
     return results.sort((a, b) => b.readinessScore - a.readinessScore);
   }
 
-  identifyAtRiskStudents(studentInsights: StudentInsightSummary[]): StudentInsightSummary[] {
+  identifyAtRisklearners(learnerInsights: LearnerInsightSummary[]): LearnerInsightSummary[] {
     // Rank by severity and number of flags
     const severityScore = (f: AtRiskFlag) => (f.severity === 'high' ? 3 : f.severity === 'medium' ? 2 : 1);
 
-    return [...studentInsights]
+    return [...learnerInsights]
       .map((insight) => ({
         ...insight,
         riskScore: insight.flags.reduce((sum, f) => sum + severityScore(f), 0) + (insight.skillsCount < 3 ? 2 : 0) + (insight.projectsCount === 0 ? 1 : 0) + (insight.assignmentStats?.avgGrade && insight.assignmentStats.avgGrade < 60 ? 2 : 0),

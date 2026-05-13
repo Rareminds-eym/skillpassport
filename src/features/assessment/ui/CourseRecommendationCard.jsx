@@ -54,8 +54,8 @@ const CourseRecommendationCard = ({ course, onClick }) => {
                 // Navigate to university admin browse courses marketplace with search
                 navigate(`/university-admin/browse-courses?search=${encodeURIComponent(title)}`);
             } else {
-                // Default: student - navigate to course player (free enrollment)
-                navigate(`/student/courses/${course_id}/learn`);
+                // Default: learner - navigate to course player (free enrollment)
+                navigate(`/learner/courses/${course_id}/learn`);
             }
         }
     };

@@ -149,20 +149,20 @@ export const updatePrivacySettings = async (userId, settings) => {
  */
 export const getNotificationPreferencesByEmail = async (email) => {
   try {
-    // Get user_id from students table
-    const { data: student, error: studentError } = await supabase
-      .from('students')
+    // Get user_id from learners table
+    const { data: learner, error: learnerError } = await supabase
+      .from('learners')
       .select('user_id')
       .eq('email', email)
       .maybeSingle();
 
-    if (studentError || !student?.user_id) {
-      logger.warn('Student not found for email', { email });
-      return { success: false, error: 'Student not found' };
+    if (learnerError || !learner?.user_id) {
+      logger.warn('Learner not found for email', { email });
+      return { success: false, error: 'Learner not found' };
     }
 
     // Get settings
-    const result = await getUserSettings(student.user_id);
+    const result = await getUserSettings(learner.user_id);
     
     if (!result.success) {
       return result;
@@ -185,20 +185,20 @@ export const getNotificationPreferencesByEmail = async (email) => {
  */
 export const getPrivacySettingsByEmail = async (email) => {
   try {
-    // Get user_id from students table
-    const { data: student, error: studentError } = await supabase
-      .from('students')
+    // Get user_id from learners table
+    const { data: learner, error: learnerError } = await supabase
+      .from('learners')
       .select('user_id')
       .eq('email', email)
       .maybeSingle();
 
-    if (studentError || !student?.user_id) {
-      logger.warn('Student not found for email', { email });
-      return { success: false, error: 'Student not found' };
+    if (learnerError || !learner?.user_id) {
+      logger.warn('Learner not found for email', { email });
+      return { success: false, error: 'Learner not found' };
     }
 
     // Get settings
-    const result = await getUserSettings(student.user_id);
+    const result = await getUserSettings(learner.user_id);
     
     if (!result.success) {
       return result;

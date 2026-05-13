@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { X, Upload, Loader2 } from 'lucide-react';
 import { Assignment } from '@/features/myclass';
-import StudentAssignmentFileUpload from '@/entities/student/ui/StudentAssignmentFileUpload';
+import LearnerAssignmentFileUpload from '@/entities/learner/ui/LearnerAssignmentFileUpload';
 
 interface AssignmentUploadModalProps {
   isOpen: boolean;
@@ -59,7 +59,7 @@ const AssignmentUploadModal: React.FC<AssignmentUploadModalProps> = ({
 
         {/* Body */}
         <div className="p-6">
-          <StudentAssignmentFileUpload
+          <LearnerAssignmentFileUpload
             ref={fileUploadRef}
             maxFiles={3}
             acceptedTypes={['.pdf', '.doc', '.docx', '.txt', '.jpg', '.png']}

@@ -82,7 +82,6 @@ export { default as UpgradePromptRoot } from './ui/UpgradePrompt';
 
 // State Management (Hooks)
 export {
-  useSubscription,
   useOrganizationSubscription,
   usePaymentVerification,
   useSubscriptionPlansData,

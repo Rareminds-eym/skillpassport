@@ -1,7 +1,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
 import type { 
   FeeStructure, 
-  StudentLedger, 
+  LearnerLedger, 
   Payment, 
   DefaulterReport, 
   ApiResponse 
@@ -9,7 +9,7 @@ import type {
 
 /**
  * Fee Management Service
- * Handles fee structures, payments, and student ledgers
+ * Handles fee structures, payments, and learner ledgers
  */
 
 export const feeManagementService = {
@@ -64,16 +64,16 @@ export const feeManagementService = {
    * Property 31: Overpayment prevention
    */
   async recordPayment(
-    studentId: string,
+    learnerId: string,
     feeHeadId: string,
     payment: Partial<Payment>
   ): Promise<ApiResponse<Payment>> {
     try {
-      // Get student ledger
+      // Get learner ledger
       const { data: ledger, error: ledgerError } = await supabase
-        .from('student_ledgers')
+        .from('learner_ledgers')
         .select('*')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('fee_head_id', feeHeadId)
         .single();
 
@@ -109,7 +109,7 @@ export const feeManagementService = {
 
       // Update ledger (Property 27)
       const { error: updateError } = await supabase
-        .from('student_ledgers')
+        .from('learner_ledgers')
         .update({
           paid_amount: ledger.paid_amount + (payment.amount || 0),
         })
@@ -167,18 +167,18 @@ export const feeManagementService = {
   },
 
   /**
-   * Get student ledger
+   * Get learner ledger
    * Property 28: Ledger balance calculation
    */
-  async getStudentLedger(studentId: string): Promise<ApiResponse<StudentLedger[]>> {
+  async getlearnerLedger(learnerId: string): Promise<ApiResponse<LearnerLedger[]>> {
     try {
       const { data, error } = await supabase
-        .from('student_ledgers')
+        .from('learner_ledgers')
         .select(`
           *,
           payments:payments(*)
         `)
-        .eq('student_id', studentId);
+        .eq('learner_id', learnerId);
 
       if (error) throw error;
 
@@ -200,7 +200,7 @@ export const feeManagementService = {
    * Property 29: Scholarship adjustment audit
    */
   async applyScholarship(
-    studentId: string,
+    learnerId: string,
     feeHeadId: string,
     amount: number,
     reason: string,
@@ -220,9 +220,9 @@ export const feeManagementService = {
 
       // Get ledger
       const { data: ledger, error: ledgerError } = await supabase
-        .from('student_ledgers')
+        .from('learner_ledgers')
         .select('*')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('fee_head_id', feeHeadId)
         .single();
 
@@ -230,7 +230,7 @@ export const feeManagementService = {
 
       // Update due amount
       const { error: updateError } = await supabase
-        .from('student_ledgers')
+        .from('learner_ledgers')
         .update({
           due_amount: ledger.due_amount - amount,
         })
@@ -263,13 +263,13 @@ export const feeManagementService = {
     semester?: number;
   }): Promise<ApiResponse<DefaulterReport>> {
     try {
-      // Get students with pending fees
+      // Get learners with pending fees
       let query = supabase
-        .from('student_ledgers')
+        .from('learner_ledgers')
         .select(`
           *,
-          student:users!student_id(*),
-          admission:student_admissions!student_id(roll_number, program_id)
+          learner:users!learner_id(*),
+          admission:learner_admissions!learner_id(roll_number, program_id)
         `)
         .gt('balance', 0);
 
@@ -285,8 +285,8 @@ export const feeManagementService = {
         })
         .sort((a: any, b: any) => b.balance - a.balance)
         .map((ledger: any) => ({
-          student_id: ledger.student_id,
-          name: ledger.student?.name || '',
+          learner_id: ledger.learner_id,
+          name: ledger.learner?.name || '',
           roll_number: ledger.admission?.roll_number || '',
           program: '', // Would need to join with programs table
           balance: ledger.balance,
@@ -298,7 +298,7 @@ export const feeManagementService = {
       return {
         success: true,
         data: {
-          students: defaulters,
+          learners: defaulters,
           total_pending: totalPending,
         },
       };
@@ -326,10 +326,10 @@ export const feeManagementService = {
   ): Promise<ApiResponse<Blob>> {
     try {
       // Get fee data
-      let query = supabase.from('student_ledgers').select('*');
+      let query = supabase.from('learner_ledgers').select('*');
 
       if (filters.program_id) {
-        // Would need to join with student_admissions
+        // Would need to join with learner_admissions
       }
 
       const { data, error } = await query;

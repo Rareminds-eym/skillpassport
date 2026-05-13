@@ -10,7 +10,7 @@ import { memo, useCallback, useState } from 'react';
 interface LicensePool {
   id: string;
   poolName: string;
-  memberType: 'educator' | 'student';
+  memberType: 'educator' | 'learner';
   allocatedSeats: number;
   assignedSeats: number;
   availableSeats: number;
@@ -21,7 +21,7 @@ interface Member {
   id: string;
   name: string;
   email: string;
-  memberType: 'educator' | 'student';
+  memberType: 'educator' | 'learner';
 }
 
 interface AssignToPoolModalProps {
@@ -48,7 +48,7 @@ function AssignToPoolModal({
   const memberTypes = new Set(membersToAssign.map(m => m.memberType));
   const availablePools = pools.filter(p => {
     if (!p.isActive || p.availableSeats < membersToAssign.length) return false;
-    // If assigning students, pool must be for students
+    // If assigning learners, pool must be for learners
     // If assigning educators, pool must be for educators
     // If mixed, show all pools with enough seats
     if (memberTypes.size === 1) {
@@ -182,7 +182,7 @@ function AssignToPoolModal({
                         <div>
                           <h5 className="font-medium text-gray-900">{pool.poolName}</h5>
                           <p className="text-xs text-gray-500">
-                            {pool.memberType === 'educator' ? 'Educators' : 'Students'} • 
+                            {pool.memberType === 'educator' ? 'Educators' : 'Learners'} • 
                             {pool.availableSeats} seats available
                           </p>
                         </div>

@@ -2,4 +2,4 @@
  * Admin Navigation Model - Public API
  */
 
-export type { AdminNavigationProps } from '@/features/student-profile/model'
+export type { AdminNavigationProps } from '@/features/learner-profile/model'

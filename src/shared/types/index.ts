@@ -8,10 +8,10 @@ export type { Question } from './adaptiveAptitude';
 export type { Course } from './educator/course';
 export type { FileUpload } from './educator/course';
 
-// Student-related types (used across entities and features)
+// Learner-related types (used across entities and features)
 export type {
-    Student,
-    StudentProfile,
+    Learner,
+    LearnerProfile,
     SocialLink,
     Skill,
     TechnicalSkill,
@@ -32,10 +32,10 @@ export type {
     CurriculumData,
     LessonPlan,
     AdmissionNote,
-    StudentProfileDrawerProps,
+    LearnerProfileDrawerProps,
     TabConfig,
     ActionConfig
-} from './student';
+} from './learner';
 
 export * from './analytics';
 

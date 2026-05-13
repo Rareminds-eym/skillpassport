@@ -42,14 +42,14 @@ export const getInterviewById = async (interviewId: string) => {
 };
 
 /**
- * Get interviews for a specific student
+ * Get interviews for a specific learner
  */
-export const getInterviewsForStudent = async (studentId: string) => {
+export const getInterviewsForLearner = async (learnerId: string) => {
   try {
     const { data, error } = await supabase
       .from('interviews')
       .select('*')
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .order('date', { ascending: false });
 
     if (error) throw error;
@@ -96,7 +96,7 @@ export const getPendingScorecards = async () => {
  */
 export const createInterview = async (interviewData: {
   id: string;
-  student_id?: string;
+  learner_id?: string;
   candidate_name: string;
   candidate_email?: string;
   candidate_phone?: string;

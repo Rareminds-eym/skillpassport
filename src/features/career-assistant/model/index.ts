@@ -2,7 +2,7 @@
  * Shared TypeScript types for Career Assistant feature
  */
 
-export interface StudentProfile {
+export interface LearnerProfile {
   id: string;
   name: string;
   email: string;
@@ -107,7 +107,7 @@ export interface ConversationMessage {
   content: string;
 }
 
-export interface StudentContext {
+export interface LearnerContext {
   name: string;
   department: string;
   university: string;

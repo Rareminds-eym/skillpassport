@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { 
   getExpenditureSummary, 
@@ -8,9 +9,9 @@ import {
   ProgramExpenditure
 } from '@/features/college-admin';
 
-export interface StudentFeeLedgerDetailed {
+export interface LearnerFeeLedgerDetailed {
   id: string;
-  student_id: string;
+  learner_id: string;
   fee_structure_id: string;
   fee_head_name: string;
   due_amount: number;
@@ -21,11 +22,11 @@ export interface StudentFeeLedgerDetailed {
   is_overdue: boolean;
   created_at: string;
   updated_at: string;
-  // Student details
+  // Learner details
   roll_number?: string;
   admission_number?: string;
-  student_name: string;
-  student_email?: string;
+  learner_name: string;
+  learner_email?: string;
   college_id: string;
   category?: string;
   quota?: string;
@@ -76,7 +77,7 @@ export interface ExpenditureFilters {
 class ExpenditureService {
   // Get current user's college ID
   private async getCurrentCollegeId(): Promise<string> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getCurrentUser();
     if (!user) throw new Error('User not authenticated');
     
     // Try to get college_id from user metadata
@@ -98,13 +99,13 @@ class ExpenditureService {
     throw new Error('No college found for user');
   }
 
-  // Get detailed student fee ledger data
-  async getStudentFeeLedger(filters?: ExpenditureFilters & { page?: number; limit?: number }) {
+  // Get detailed learner fee ledger data
+  async getlearnerFeeLedger(filters?: ExpenditureFilters & { page?: number; limit?: number }) {
     try {
       const collegeId = await this.getCurrentCollegeId();
       
       let query = supabase
-        .from('v_student_fee_ledger_detailed')
+        .from('v_learner_fee_ledger_detailed')
         .select('*', { count: 'exact' })
         .eq('college_id', collegeId)
         .order('due_date', { ascending: false });
@@ -143,7 +144,7 @@ class ExpenditureService {
       }
 
       if (filters?.search) {
-        query = query.or(`student_name.ilike.%${filters.search}%,roll_number.ilike.%${filters.search}%,admission_number.ilike.%${filters.search}%,fee_head_name.ilike.%${filters.search}%`);
+        query = query.or(`learner_name.ilike.%${filters.search}%,roll_number.ilike.%${filters.search}%,admission_number.ilike.%${filters.search}%,fee_head_name.ilike.%${filters.search}%`);
       }
 
       // Apply pagination
@@ -156,13 +157,13 @@ class ExpenditureService {
       const { data, error, count } = await query;
       
       if (error) throw error;
-      return { data: data as StudentFeeLedgerDetailed[], count };
+      return { data: data as LearnerFeeLedgerDetailed[], count };
     } catch (error) {
       // Return mock data if view doesn't exist
-      const mockData: StudentFeeLedgerDetailed[] = [
+      const mockData: LearnerFeeLedgerDetailed[] = [
         {
           id: 'mock-1',
-          student_id: 'student-1',
+          learner_id: 'learner-1',
           fee_structure_id: 'fee-1',
           fee_head_name: 'Tuition Fee',
           due_amount: 50000,
@@ -173,7 +174,7 @@ class ExpenditureService {
           is_overdue: false,
           created_at: '2024-01-01',
           updated_at: '2024-01-15',
-          student_name: 'John Doe',
+          learner_name: 'John Doe',
           roll_number: 'CS001',
           college_id: 'college-1',
           college_name: 'Sample College',
@@ -203,10 +204,10 @@ class ExpenditureService {
         total_due_amount: 2150000,
         total_paid_amount: 1420000,
         total_balance: 730000,
-        total_students: 43,
-        overdue_students: 8,
-        paid_students: 25,
-        pending_students: 10,
+        total_learners: 43,
+        overdue_learners: 8,
+        paid_learners: 25,
+        pending_learners: 10,
         collection_percentage: 66.0
       };
     }
@@ -227,7 +228,7 @@ class ExpenditureService {
           total_due_amount: 950000,
           total_paid_amount: 650000,
           total_balance: 300000,
-          student_count: 19,
+          learner_count: 19,
           collection_percentage: 68.4
         },
         {
@@ -237,7 +238,7 @@ class ExpenditureService {
           total_due_amount: 720000,
           total_paid_amount: 480000,
           total_balance: 240000,
-          student_count: 14,
+          learner_count: 14,
           collection_percentage: 66.7
         },
         {
@@ -247,7 +248,7 @@ class ExpenditureService {
           total_due_amount: 480000,
           total_paid_amount: 290000,
           total_balance: 190000,
-          student_count: 10,
+          learner_count: 10,
           collection_percentage: 60.4
         }
       ];
@@ -270,7 +271,7 @@ class ExpenditureService {
           total_due_amount: 600000,
           total_paid_amount: 420000,
           total_balance: 180000,
-          student_count: 12,
+          learner_count: 12,
           collection_percentage: 70.0
         },
         {
@@ -281,7 +282,7 @@ class ExpenditureService {
           total_due_amount: 350000,
           total_paid_amount: 230000,
           total_balance: 120000,
-          student_count: 7,
+          learner_count: 7,
           collection_percentage: 65.7
         },
         {
@@ -292,7 +293,7 @@ class ExpenditureService {
           total_due_amount: 720000,
           total_paid_amount: 480000,
           total_balance: 240000,
-          student_count: 14,
+          learner_count: 14,
           collection_percentage: 66.7
         },
         {
@@ -303,7 +304,7 @@ class ExpenditureService {
           total_due_amount: 480000,
           total_paid_amount: 290000,
           total_balance: 190000,
-          student_count: 10,
+          learner_count: 10,
           collection_percentage: 60.4
         }
       ];
@@ -312,7 +313,7 @@ class ExpenditureService {
 
   // Export data to CSV
   async exportToCSV(filters?: ExpenditureFilters): Promise<string> {
-    const { data } = await this.getStudentFeeLedger({ ...filters, limit: 10000 });
+    const { data } = await this.getlearnerFeeLedger({ ...filters, limit: 10000 });
     
     if (!data || data.length === 0) {
       throw new Error('No data to export');
@@ -320,7 +321,7 @@ class ExpenditureService {
 
     // Create CSV headers
     const headers = [
-      'Student Name',
+      'Learner Name',
       'Roll Number',
       'Admission Number',
       'Department',
@@ -342,7 +343,7 @@ class ExpenditureService {
 
     // Create CSV rows
     const rows = data.map(row => [
-      row.student_name,
+      row.learner_name,
       row.roll_number || '',
       row.admission_number || '',
       row.department_name || '',
@@ -376,7 +377,7 @@ class ExpenditureService {
       const collegeId = await this.getCurrentCollegeId();
       
       const { data, error } = await supabase
-        .from('v_student_fee_ledger_detailed')
+        .from('v_learner_fee_ledger_detailed')
         .select('academic_year, semester, payment_status, department_name, program_name_full')
         .eq('college_id', collegeId);
       

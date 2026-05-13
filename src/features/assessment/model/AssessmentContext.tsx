@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAssessment } from '@/features/assessment';
 import { useAdaptiveAptitude } from '@/features/assessment/model/useAdaptiveAptitude';
 import { useAssessmentFlow, type FlowScreen } from '../model/useAssessmentFlow';
-import { useStudentGrade } from '../model/useStudentGrade';
+import { useLearnerGrade } from '../model/useLearnerGrade';
 import { useAIQuestions } from '../model/useAIQuestions';
 import { getSectionsForGrade } from '../lib/config/sections';
 import type { GradeLevel } from '../model/types';
@@ -37,19 +37,19 @@ interface Section {
 }
 
 interface AssessmentContextValue {
-  // User & Student Info
+  // User & Learner Info
   user: any;
-  studentId: string | null;
-  studentGrade: string | null;
-  isCollegeStudent: boolean;
-  studentProgram: string | null;
+  learnerId: string | null;
+  learnerGrade: string | null;
+  isCollegeLearner: boolean;
+  learnerProgram: string | null;
   monthsInGrade: number | null;
-  loadingStudentGrade: boolean;
+  loadinglearnerGrade: boolean;
   
   // Flow State
   currentScreen: FlowScreen;
   gradeLevel: GradeLevel | null;
-  studentStream: string | null;
+  learnerStream: string | null;
   selectedCategory: string | null;
   
   // Sections & Questions
@@ -96,7 +96,7 @@ interface AssessmentContextValue {
   // Actions
   setCurrentScreen: (screen: FlowScreen) => void;
   setGradeLevel: (level: GradeLevel) => void;
-  setStudentStream: (stream: string) => void;
+  setlearnerStream: (stream: string) => void;
   setSelectedCategory: (category: string) => void;
   setAnswer: (questionId: string, value: any) => void;
   goToNextQuestion: () => void;
@@ -138,15 +138,15 @@ export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children
   const navigate = useNavigate();
   const user = useUser();
   
-  // Student grade info
+  // Learner grade info
   const {
-    studentId,
-    studentGrade,
-    isCollegeStudent,
-    studentProgram,
+    learnerId,
+    learnerGrade,
+    isCollegeLearner,
+    learnerProgram,
     monthsInGrade,
-    loading: loadingStudentGrade
-  } = useStudentGrade();
+    loading: loadinglearnerGrade
+  } = useLearnerGrade();
   
   // Database integration
   const {
@@ -156,7 +156,7 @@ export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children
     saveResponse: dbSaveResponse,
     updateProgress: dbUpdateProgress,
     checkInProgressAttempt,
-    studentRecordId
+    learnerRecordId
   } = useAssessment();
   
   // Build sections based on grade level (will be populated after grade selection)
@@ -189,7 +189,7 @@ export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children
   
   // Adaptive Aptitude Hook
   const adaptiveAptitude = useAdaptiveAptitude({
-    studentId: studentId || '',
+    learnerId: learnerId || '',
     gradeLevel: getAdaptiveGradeLevel(flow.gradeLevel || 'after12'),
     onTestComplete: (testResults) => {
       console.log('✅ Adaptive aptitude test completed:', testResults);
@@ -264,19 +264,19 @@ export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children
   }, [dbUpdateProgress]);
   
   const value: AssessmentContextValue = {
-    // User & Student Info
+    // User & Learner Info
     user,
-    studentId,
-    studentGrade,
-    isCollegeStudent,
-    studentProgram,
+    learnerId,
+    learnerGrade,
+    isCollegeLearner,
+    learnerProgram,
     monthsInGrade,
-    loadingStudentGrade,
+    loadinglearnerGrade,
     
     // Flow State
     currentScreen: flow.currentScreen,
     gradeLevel: flow.gradeLevel,
-    studentStream: flow.studentStream,
+    learnerStream: flow.learnerStream,
     selectedCategory: flow.selectedCategory,
     
     // Sections & Questions
@@ -323,7 +323,7 @@ export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children
     // Actions
     setCurrentScreen: flow.setCurrentScreen,
     setGradeLevel: flow.setGradeLevel,
-    setStudentStream: flow.setStudentStream,
+    setlearnerStream: flow.setlearnerStream,
     setSelectedCategory: flow.setSelectedCategory,
     setAnswer: flow.setAnswer,
     goToNextQuestion: flow.goToNextQuestion,

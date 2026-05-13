@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * User Entity - API Mutations
  * Data modification functions for user data
@@ -98,7 +99,7 @@ export const changeUserRole = async (
   newRole: string,
   reason?: string
 ): Promise<void> => {
-  const { data: currentUser } = await supabase.auth.getUser();
+  const { data: currentUser } = await getCurrentUser();
   if (!currentUser.user) throw new Error('Not authenticated');
 
   const { error } = await supabase.rpc('change_user_role', {
@@ -178,7 +179,7 @@ export const verifyDocument = async (
   status: 'verified' | 'rejected',
   reason?: string
 ): Promise<void> => {
-  const { data: currentUser } = await supabase.auth.getUser();
+  const { data: currentUser } = await getCurrentUser();
   if (!currentUser.user) throw new Error('Not authenticated');
 
   const updateData: any = {
@@ -224,22 +225,34 @@ export const logActivity = async (
 // ============================================================================
 
 export const resetUserPassword = async (userId: string, newPassword: string): Promise<void> => {
-  const { error } = await supabase.auth.admin.updateUserById(userId, {
-    password: newPassword,
+  const { ssoClient } = await import('@/shared/api/ssoClient');
+  const ssoUrl = import.meta.env.VITE_SSO_URL;
+  const res = await ssoClient.fetch(`${ssoUrl}/auth/admin-reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: userId, new_password: newPassword }),
   });
-
-  if (error) throw error;
-
-  // Log activity
-  await logActivity(userId, 'password_reset', 'Password reset by admin');
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as any).error || 'Failed to reset password');
+  }
 };
 
-export const updatePassword = async (newPassword: string): Promise<void> => {
-  const { error } = await supabase.auth.updateUser({
-    password: newPassword,
+export const updatePassword = async (newPassword: string, currentPassword?: string): Promise<void> => {
+  if (!currentPassword) {
+    throw new Error('Current password is required to change password');
+  }
+  const { ssoClient } = await import('@/shared/api/ssoClient');
+  const ssoUrl = import.meta.env.VITE_SSO_URL;
+  const res = await ssoClient.fetch(`${ssoUrl}/auth/change-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
   });
-
-  if (error) throw error;
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as any).error || 'Failed to change password');
+  }
 };
 
 // ============================================================================
@@ -247,7 +260,7 @@ export const updatePassword = async (newPassword: string): Promise<void> => {
 // ============================================================================
 
 export const bulkImportUsers = async (file: File): Promise<BulkImportResult> => {
-  const { data: currentUser } = await supabase.auth.getUser();
+  const { data: currentUser } = await getCurrentUser();
   if (!currentUser.user) throw new Error('Not authenticated');
 
   // Upload CSV file

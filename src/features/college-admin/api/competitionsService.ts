@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -28,7 +29,7 @@ export interface Competition {
 export interface CompetitionRegistration {
     registration_id: string;
     comp_id: string;
-    student_email: string;
+    learner_email: string;
     team_name?: string;
     team_members?: any;
     registration_date: string;
@@ -40,7 +41,7 @@ export interface CompetitionRegistration {
 export interface CompetitionResult {
     result_id: string;
     comp_id: string;
-    student_email: string;
+    learner_email: string;
     rank?: number;
     score?: number;
     award?: string;
@@ -68,7 +69,7 @@ async function getCurrentUserSchoolId(): Promise<string | null> {
         const userEmail = localStorage.getItem('userEmail');
 
         // Get current Supabase user
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await getCurrentUser();
 
         // Try school_educators first
         if (user) {
@@ -266,13 +267,13 @@ export async function createCompetition(competitionData: {
     }
 }
 
-// Register student for competition
+// Register learner for competition
 export async function registerForCompetition(
     compId: string,
-    studentEmail: string,
+    learnerEmail: string,
     registrationData: {
-        studentName: string;
-        studentId: string;
+        learnerName: string;
+        learnerId: string;
         grade: string;
         teamMembers?: string;
         notes?: string;
@@ -286,7 +287,7 @@ export async function registerForCompetition(
 
         const registration = {
             comp_id: compId,
-            student_email: studentEmail,
+            learner_email: learnerEmail,
             team_members: registrationData.teamMembers 
                 ? JSON.parse(JSON.stringify({ members: registrationData.teamMembers.split(',').map(m => m.trim()) }))
                 : null,
@@ -311,7 +312,7 @@ export async function registerForCompetition(
     } catch (error) {
         logger.error('Failed to register for competition', error instanceof Error ? error : new Error(String(error)), {
             competitionId: compId,
-            studentEmail
+            learnerEmail
         });
         throw error;
     }
@@ -345,7 +346,7 @@ export async function getCompetitionRegistrations(compId: string): Promise<Compe
 // Add competition result
 export async function addCompetitionResult(
     compId: string,
-    studentEmail: string,
+    learnerEmail: string,
     resultData: {
         rank?: number;
         score?: number;
@@ -362,7 +363,7 @@ export async function addCompetitionResult(
 
         const result = {
             comp_id: compId,
-            student_email: studentEmail,
+            learner_email: learnerEmail,
             rank: resultData.rank,
             score: resultData.score,
             award: resultData.award,
@@ -388,7 +389,7 @@ export async function addCompetitionResult(
     } catch (error) {
         logger.error('Failed to add competition result', error instanceof Error ? error : new Error(String(error)), {
             competitionId: compId,
-            studentEmail
+            learnerEmail
         });
         throw error;
     }

@@ -1,24 +1,24 @@
 // College Admin UI Components
 export { default as AddDepartmentModal } from './AddDepartmentModal';
-export { default as AddStudentModal } from './modals/AddStudentModal';
+export { default as AddLearnerModal } from './modals/AddLearnerModal';
 export { default as AllocationConfigurationModal } from './AllocationConfigurationModal';
 export { default as AssignmentFileUpload } from './AssignmentFileUpload';
-export { default as BulkDeleteStudentsModal } from './modals/BulkDeleteStudentsModal';
+export { default as BulkDeleteLearnersModal } from './modals/BulkDeleteLearnersModal';
 export { default as CollegeCurriculumBuilderUI } from './CollegeCurriculumBuilderUI';
 export { default as CollegeLessonPlanUI } from './CollegeLessonPlanUI';
 export { default as CourseMappingModal } from './CourseMappingModal';
 export { default as CreateCircularModal } from './CreateCircularModal';
-export { default as DeleteStudentModal } from './modals/DeleteStudentModal';
+export { default as DeleteLearnerModal } from './modals/DeleteLearnerModal';
 export { default as DepartmentDetailsDrawer } from './DepartmentDetailsDrawer';
 export { default as EditDepartmentModal } from './EditDepartmentModal';
-export { default as EditStudentModal } from './modals/EditStudentModal';
-// EnrollStudentModal was deleted (empty file)
+export { default as EditLearnerModal } from './modals/EditLearnerModal';
+// EnrolllearnerModal was deleted (empty file)
 export { default as FacultyAssignmentModal } from './FacultyAssignmentModal';
 export { default as HODAssignmentModal } from './HODAssignmentModal';
 export { default as InterventionFeedbackModal } from './InterventionFeedbackModal';
 export { default as InterventionModal } from './InterventionModal';
-export { default as ManageProgramStudentsModal } from './modals/ManageProgramStudentsModal';
-export { ManageStudentsModal, AssignEducatorModal } from './modals/ClassManagementModals';
+export { default as ManageProgramLearnersModal } from './modals/ManageProgramLearnersModal';
+export { ManageLearnersModal, AssignEducatorModal } from './modals/ClassManagementModals';
 export { default as MentorCapacityModal } from './MentorCapacityModal';
 export { default as MentorDetailsModal } from './MentorDetailsModal';
 export { default as MentorResponseModal } from './modals/MentorResponseModal';
@@ -26,7 +26,7 @@ export { default as MentorSelectionModal } from './MentorSelectionModal';
 export { default as NewCollegeAdminConversationModal } from '@/features/messaging/ui/modals/NewCollegeAdminConversationModal';
 export { default as NewCollegeAdminEducatorConversationModal } from '@/features/messaging/ui/modals/NewCollegeAdminEducatorConversationModal';
 export { default as ReassignModal } from './ReassignModal';
-export { default as StudentSelectionModal } from './StudentSelectionModal';
+export { default as LearnerSelectionModal } from './LearnerSelectionModal';
 export { default as SwapRequestCard } from './SwapRequestCard';
 export { default as SwapRequestModal } from './modals/SwapRequestModal';
 export { default as FacultyDocumentViewerModal } from './modals/FacultyDocumentViewerModal';

@@ -18,8 +18,8 @@ export const educatorKeys = {
             status
                 ? ['educator', 'conversations', educatorId, status] as const
                 : ['educator', 'conversations', educatorId] as const,
-        students: (conversationId: string): QueryKey =>
-            ['educator', 'conversations', 'students', conversationId] as const,
+        learners: (conversationId: string): QueryKey =>
+            ['educator', 'conversations', 'learners', conversationId] as const,
     },
 
     // Admin conversations

@@ -23,8 +23,8 @@ export interface SkillGrowthData {
 
 export interface LeaderboardEntry {
   rank: number;
-  studentName: string;
-  studentId: string;
+  learnerName: string;
+  learnerId: string;
   totalActivities: number;
   verifiedActivities: number;
   awards: number;
@@ -111,8 +111,8 @@ export const mockSkillGrowthData: SkillGrowthData[] = [
 export const mockLeaderboard: LeaderboardEntry[] = [
   {
     rank: 1,
-    studentName: 'Priya Sharma',
-    studentId: 'STD001',
+    learnerName: 'Priya Sharma',
+    learnerId: 'STD001',
     totalActivities: 45,
     verifiedActivities: 43,
     awards: 12,
@@ -120,8 +120,8 @@ export const mockLeaderboard: LeaderboardEntry[] = [
   },
   {
     rank: 2,
-    studentName: 'Rahul Kumar',
-    studentId: 'STD002',
+    learnerName: 'Rahul Kumar',
+    learnerId: 'STD002',
     totalActivities: 42,
     verifiedActivities: 40,
     awards: 10,
@@ -129,8 +129,8 @@ export const mockLeaderboard: LeaderboardEntry[] = [
   },
   {
     rank: 3,
-    studentName: 'Ananya Singh',
-    studentId: 'STD003',
+    learnerName: 'Ananya Singh',
+    learnerId: 'STD003',
     totalActivities: 40,
     verifiedActivities: 38,
     awards: 9,
@@ -138,8 +138,8 @@ export const mockLeaderboard: LeaderboardEntry[] = [
   },
   {
     rank: 4,
-    studentName: 'Arjun Patel',
-    studentId: 'STD004',
+    learnerName: 'Arjun Patel',
+    learnerId: 'STD004',
     totalActivities: 38,
     verifiedActivities: 36,
     awards: 8,
@@ -147,8 +147,8 @@ export const mockLeaderboard: LeaderboardEntry[] = [
   },
   {
     rank: 5,
-    studentName: 'Diya Mehta',
-    studentId: 'STD005',
+    learnerName: 'Diya Mehta',
+    learnerId: 'STD005',
     totalActivities: 36,
     verifiedActivities: 35,
     awards: 7,
@@ -156,8 +156,8 @@ export const mockLeaderboard: LeaderboardEntry[] = [
   },
   {
     rank: 6,
-    studentName: 'Rohan Verma',
-    studentId: 'STD006',
+    learnerName: 'Rohan Verma',
+    learnerId: 'STD006',
     totalActivities: 34,
     verifiedActivities: 32,
     awards: 6,
@@ -165,8 +165,8 @@ export const mockLeaderboard: LeaderboardEntry[] = [
   },
   {
     rank: 7,
-    studentName: 'Kavya Reddy',
-    studentId: 'STD007',
+    learnerName: 'Kavya Reddy',
+    learnerId: 'STD007',
     totalActivities: 32,
     verifiedActivities: 30,
     awards: 6,
@@ -174,8 +174,8 @@ export const mockLeaderboard: LeaderboardEntry[] = [
   },
   {
     rank: 8,
-    studentName: 'Aditya Joshi',
-    studentId: 'STD008',
+    learnerName: 'Aditya Joshi',
+    learnerId: 'STD008',
     totalActivities: 30,
     verifiedActivities: 28,
     awards: 5,
@@ -183,8 +183,8 @@ export const mockLeaderboard: LeaderboardEntry[] = [
   },
   {
     rank: 9,
-    studentName: 'Ishita Gupta',
-    studentId: 'STD009',
+    learnerName: 'Ishita Gupta',
+    learnerId: 'STD009',
     totalActivities: 28,
     verifiedActivities: 27,
     awards: 5,
@@ -192,8 +192,8 @@ export const mockLeaderboard: LeaderboardEntry[] = [
   },
   {
     rank: 10,
-    studentName: 'Vivek Rao',
-    studentId: 'STD010',
+    learnerName: 'Vivek Rao',
+    learnerId: 'STD010',
     totalActivities: 26,
     verifiedActivities: 25,
     awards: 4,
@@ -220,19 +220,19 @@ export const generateActivityHeatmap = (): ActivityHeatmapData[] => {
 export const mockActivityHeatmap = generateActivityHeatmap();
 
 export interface AnalyticsKPIs {
-  activeStudents: number;
+  activelearners: number;
   totalVerifiedActivities: number;
   pendingVerifications: number;
-  avgSkillsPerStudent: number;
+  avgSkillsPerLearner: number;
   attendanceRate: number;
   engagementRate: number;
 }
 
 export const mockAnalyticsKPIs: AnalyticsKPIs = {
-  activeStudents: 156,
+  activelearners: 156,
   totalVerifiedActivities: 634,
   pendingVerifications: 42,
-  avgSkillsPerStudent: 4.1,
+  avgSkillsPerLearner: 4.1,
   attendanceRate: 93.2,
   engagementRate: 87.5,
 };

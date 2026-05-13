@@ -16,8 +16,8 @@ export const coursesKeys = {
         all: ['courses', 'enrollment'] as const,
         byCourse: (courseId: string): QueryKey =>
             ['courses', 'enrollment', courseId] as const,
-        byStudent: (studentId: string): QueryKey =>
-            ['courses', 'enrollment', 'student', studentId] as const,
+        byLearner: (learnerId: string): QueryKey =>
+            ['courses', 'enrollment', 'learner', learnerId] as const,
     },
 
     // Course performance
@@ -25,15 +25,15 @@ export const coursesKeys = {
         all: ['courses', 'performance'] as const,
         byCourse: (courseId: string): QueryKey =>
             ['courses', 'performance', courseId] as const,
-        byStudent: (studentId: string, courseId: string): QueryKey =>
-            ['courses', 'performance', studentId, courseId] as const,
+        byLearner: (learnerId: string, courseId: string): QueryKey =>
+            ['courses', 'performance', learnerId, courseId] as const,
     },
 
     // Course progress
     progress: {
         all: ['courses', 'progress'] as const,
-        byStudent: (studentId: string, courseId: string): QueryKey =>
-            ['courses', 'progress', studentId, courseId] as const,
+        byLearner: (learnerId: string, courseId: string): QueryKey =>
+            ['courses', 'progress', learnerId, courseId] as const,
     },
 
     // Curriculum courses (legacy naming for backward compatibility)

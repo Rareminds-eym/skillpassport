@@ -6,13 +6,13 @@
  * - POST /signup - Unified signup
  * - POST /signup/school-admin - School admin signup
  * - POST /signup/educator - Educator signup
- * - POST /signup/student - Student signup
+ * - POST /signup/learner - Learner signup
  * - POST /signup/college-admin - College admin signup
  * - POST /signup/college-educator - College educator signup
- * - POST /signup/college-student - College student signup
+ * - POST /signup/college-learner - College learner signup
  * - POST /signup/university-admin - University admin signup
  * - POST /signup/university-educator - University educator signup
- * - POST /signup/university-student - University student signup
+ * - POST /signup/university-learner - University learner signup
  * - POST /signup/recruiter-admin - Recruiter admin signup
  * - POST /signup/recruiter - Recruiter signup
  * - GET /schools - Get schools list
@@ -24,10 +24,10 @@
  * - POST /check-university-code - Validate university code
  * - POST /check-company-code - Validate company code
  * - POST /check-email - Check email availability
- * - POST /create-student - Create student (authenticated)
+ * - POST /create-learner - Create learner (authenticated)
  * - POST /create-teacher - Create teacher (authenticated)
  * - POST /create-college-staff - Create college staff (authenticated)
- * - POST /update-student-documents - Update student documents (authenticated)
+ * - POST /update-learner-documents - Update learner documents (authenticated)
  * - POST /create-event-user - Create event user (authenticated)
  * - POST /send-interview-reminder - Send interview reminder (authenticated)
  * - POST /reset-password - Reset password
@@ -49,17 +49,17 @@ import {
 import {
   handleSchoolAdminSignup,
   handleEducatorSignup,
-  handleStudentSignup,
+  handleLearnerSignup,
 } from './handlers/school';
 import {
   handleCollegeAdminSignup,
   handleCollegeEducatorSignup,
-  handleCollegeStudentSignup,
+  handleCollegeLearnerSignup,
 } from './handlers/college';
 import {
   handleUniversityAdminSignup,
   handleUniversityEducatorSignup,
-  handleUniversityStudentSignup,
+  handleUniversityLearnerSignup,
 } from './handlers/university';
 import {
   handleRecruiterAdminSignup,
@@ -67,10 +67,10 @@ import {
 } from './handlers/recruiter';
 import { handleUnifiedSignup } from './handlers/unified';
 import {
-  handleCreateStudent,
+  handleCreateLearner,
   handleCreateTeacher,
   handleCreateCollegeStaff,
-  handleUpdateStudentDocuments,
+  handleUpdateLearnerDocuments,
 } from './handlers/authenticated';
 import {
   handleCreateEventUser,
@@ -102,9 +102,9 @@ export const onRequest: PagesFunction = async (context) => {
         endpoints: {
           signup: {
             unified: ['/signup'],
-            school: ['/signup/school-admin', '/signup/educator', '/signup/student'],
-            college: ['/signup/college-admin', '/signup/college-educator', '/signup/college-student'],
-            university: ['/signup/university-admin', '/signup/university-educator', '/signup/university-student'],
+            school: ['/signup/school-admin', '/signup/educator', '/signup/learner'],
+            college: ['/signup/college-admin', '/signup/college-educator', '/signup/college-learner'],
+            university: ['/signup/university-admin', '/signup/university-educator', '/signup/university-learner'],
             recruiter: ['/signup/recruiter-admin', '/signup/recruiter'],
           },
           utility: [
@@ -113,7 +113,7 @@ export const onRequest: PagesFunction = async (context) => {
             '/check-company-code', '/check-email',
           ],
           authenticated: [
-            '/create-student', '/create-teacher', '/create-college-staff',
+            '/create-learner', '/create-teacher', '/create-college-staff',
             '/create-event-user', '/send-interview-reminder', '/reset-password',
           ],
         },
@@ -135,8 +135,8 @@ export const onRequest: PagesFunction = async (context) => {
     if (path === '/signup/educator' && request.method === 'POST') {
       return await handleEducatorSignup(request, env);
     }
-    if (path === '/signup/student' && request.method === 'POST') {
-      return await handleStudentSignup(request, env);
+    if (path === '/signup/learner' && request.method === 'POST') {
+      return await handleLearnerSignup(request, env);
     }
     
     // College signup endpoints
@@ -146,8 +146,8 @@ export const onRequest: PagesFunction = async (context) => {
     if (path === '/signup/college-educator' && request.method === 'POST') {
       return await handleCollegeEducatorSignup(request, env);
     }
-    if (path === '/signup/college-student' && request.method === 'POST') {
-      return await handleCollegeStudentSignup(request, env);
+    if (path === '/signup/college-learner' && request.method === 'POST') {
+      return await handleCollegeLearnerSignup(request, env);
     }
 
     // University signup endpoints
@@ -157,8 +157,8 @@ export const onRequest: PagesFunction = async (context) => {
     if (path === '/signup/university-educator' && request.method === 'POST') {
       return await handleUniversityEducatorSignup(request, env);
     }
-    if (path === '/signup/university-student' && request.method === 'POST') {
-      return await handleUniversityStudentSignup(request, env);
+    if (path === '/signup/university-learner' && request.method === 'POST') {
+      return await handleUniversityLearnerSignup(request, env);
     }
 
     // Recruiter signup endpoints
@@ -201,8 +201,8 @@ export const onRequest: PagesFunction = async (context) => {
     }
 
     // Authenticated endpoints
-    if (path === '/create-student' && request.method === 'POST') {
-      return await handleCreateStudent(request, env);
+    if (path === '/create-learner' && request.method === 'POST') {
+      return await handleCreateLearner(request, env);
     }
     if (path === '/create-teacher' && request.method === 'POST') {
       return await handleCreateTeacher(request, env);
@@ -210,8 +210,8 @@ export const onRequest: PagesFunction = async (context) => {
     if (path === '/create-college-staff' && request.method === 'POST') {
       return await handleCreateCollegeStaff(request, env);
     }
-    if (path === '/update-student-documents' && request.method === 'POST') {
-      return await handleUpdateStudentDocuments(request, env);
+    if (path === '/update-learner-documents' && request.method === 'POST') {
+      return await handleUpdateLearnerDocuments(request, env);
     }
     if (path === '/create-event-user' && request.method === 'POST') {
       return await handleCreateEventUser(request, env);

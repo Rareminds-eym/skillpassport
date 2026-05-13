@@ -1,7 +1,7 @@
 /**
  * Stream Debug Panel
  * Shows what stream data is being used for AI analysis
- * Helps verify that recommendations match the student's actual stream
+ * Helps verify that recommendations match the learner's actual stream
  */
 
 import React from 'react';
@@ -20,7 +20,7 @@ export const StreamDebugPanel: React.FC<StreamDebugPanelProps> = ({
   riasecScores,
   recommendedCareers
 }) => {
-  // Only show for after12 students
+  // Only show for after12 learners
   if (gradeLevel !== 'after12') return null;
 
   // Determine if careers match the stream

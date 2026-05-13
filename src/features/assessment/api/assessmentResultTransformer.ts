@@ -505,7 +505,7 @@ export const transformAssessmentResults = (dbResults) => {
     // ===== CORE IDENTIFICATION =====
     id: dbResults.id,
     attemptId: dbResults.attempt_id,
-    studentId: dbResults.student_id,
+    learnerId: dbResults.learner_id,
     streamId: dbResults.stream_id,
     gradeLevel: dbResults.grade_level,
     status: dbResults.status,
@@ -633,10 +633,10 @@ export const validateTransformedResults = (transformed) => {
   // Check grade-specific fields
   if (transformed.gradeLevel === 'after12' || transformed.gradeLevel === 'college') {
     if (!transformed.bigFive) {
-      warnings.push('Missing Big Five personality scores for college/after12 student');
+      warnings.push('Missing Big Five personality scores for college/after12 learner');
     }
     if (!transformed.knowledge) {
-      warnings.push('Missing knowledge test scores for college/after12 student');
+      warnings.push('Missing knowledge test scores for college/after12 learner');
     }
   }
 

@@ -30,14 +30,14 @@ Authorization: Bearer <jwt_token>
 ### Public Endpoints (No Auth Required)
 - `GET /next-question/:sessionId`
 - `GET /resume/:sessionId`
-- `GET /find-in-progress/:studentId`
+- `GET /find-in-progress/:learnerId`
 
 ### Authenticated Endpoints
 - `POST /initialize`
 - `POST /submit-answer`
 - `POST /complete/:sessionId`
 - `GET /results/:sessionId`
-- `GET /results/student/:studentId`
+- `GET /results/learner/:learnerId`
 - `POST /abandon/:sessionId`
 
 ---
@@ -55,7 +55,7 @@ Creates a new adaptive aptitude test session and generates the first question.
 **Request Body**:
 ```json
 {
-  "studentId": "uuid-string",
+  "learnerId": "uuid-string",
   "gradeLevel": "middle_school" | "high_school" | "higher_secondary"
 }
 ```
@@ -65,7 +65,7 @@ Creates a new adaptive aptitude test session and generates the first question.
 {
   "session": {
     "id": "session-uuid",
-    "studentId": "student-uuid",
+    "learnerId": "learner-uuid",
     "gradeLevel": "high_school",
     "currentPhase": "diagnostic_screener",
     "currentDifficulty": 3,
@@ -101,7 +101,7 @@ Creates a new adaptive aptitude test session and generates the first question.
 
 **Errors**:
 - `401` - Unauthorized (missing or invalid token)
-- `400` - Bad request (invalid studentId or gradeLevel)
+- `400` - Bad request (invalid learnerId or gradeLevel)
 - `500` - Internal server error
 
 ---
@@ -191,7 +191,7 @@ Submits an answer for the current question and updates session state.
   "stopCondition": null,
   "updatedSession": {
     "id": "session-uuid",
-    "studentId": "student-uuid",
+    "learnerId": "learner-uuid",
     "currentPhase": "adaptive_core",
     "currentDifficulty": 4,
     "questionsAnswered": 16,
@@ -226,7 +226,7 @@ Completes the test and calculates final results with analytics.
 {
   "id": "results-uuid",
   "sessionId": "session-uuid",
-  "studentId": "student-uuid",
+  "learnerId": "learner-uuid",
   "aptitudeLevel": 4,
   "confidenceTag": "high",
   "tier": "H",
@@ -278,7 +278,7 @@ Retrieves test results for a completed session.
 {
   "id": "results-uuid",
   "sessionId": "session-uuid",
-  "studentId": "student-uuid",
+  "learnerId": "learner-uuid",
   "aptitudeLevel": 4,
   "confidenceTag": "high",
   ...
@@ -300,16 +300,16 @@ Retrieves test results for a completed session.
 
 ---
 
-### 6. Get Student Results
+### 6. Get learner Results
 
-**GET** `/api/adaptive-session/results/student/:studentId`
+**GET** `/api/adaptive-session/results/learner/:learnerId`
 
-Retrieves all test results for a student (most recent first).
+Retrieves all test results for a learner (most recent first).
 
-**Authentication**: Required (must be the student or admin)
+**Authentication**: Required (must be the learner or admin)
 
 **URL Parameters**:
-- `studentId` (string, required) - The student UUID
+- `learnerId` (string, required) - The learner UUID
 
 **Response** (200):
 ```json
@@ -317,7 +317,7 @@ Retrieves all test results for a student (most recent first).
   {
     "id": "results-uuid-1",
     "sessionId": "session-uuid-1",
-    "studentId": "student-uuid",
+    "learnerId": "learner-uuid",
     "aptitudeLevel": 4,
     "completedAt": "2024-01-02T00:00:00Z",
     ...
@@ -325,7 +325,7 @@ Retrieves all test results for a student (most recent first).
   {
     "id": "results-uuid-2",
     "sessionId": "session-uuid-2",
-    "studentId": "student-uuid",
+    "learnerId": "learner-uuid",
     "aptitudeLevel": 3,
     "completedAt": "2024-01-01T00:00:00Z",
     ...
@@ -335,7 +335,7 @@ Retrieves all test results for a student (most recent first).
 
 **Errors**:
 - `401` - Unauthorized
-- `403` - Forbidden (not the student)
+- `403` - Forbidden (not the learner)
 - `500` - Internal server error
 
 ---
@@ -356,7 +356,7 @@ Resumes an in-progress test session.
 {
   "session": {
     "id": "session-uuid",
-    "studentId": "student-uuid",
+    "learnerId": "learner-uuid",
     "currentPhase": "adaptive_core",
     "questionsAnswered": 20,
     ...
@@ -379,14 +379,14 @@ Resumes an in-progress test session.
 
 ### 8. Find In-Progress Session
 
-**GET** `/api/adaptive-session/find-in-progress/:studentId`
+**GET** `/api/adaptive-session/find-in-progress/:learnerId`
 
-Finds the most recent in-progress session for a student.
+Finds the most recent in-progress session for a learner.
 
 **Authentication**: Not required (for anonymous users)
 
 **URL Parameters**:
-- `studentId` (string, required) - The student UUID
+- `learnerId` (string, required) - The learner UUID
 
 **Query Parameters**:
 - `gradeLevel` (string, optional) - Filter by grade level
@@ -395,7 +395,7 @@ Finds the most recent in-progress session for a student.
 ```json
 {
   "id": "session-uuid",
-  "studentId": "student-uuid",
+  "learnerId": "learner-uuid",
   "gradeLevel": "high_school",
   "currentPhase": "adaptive_core",
   "questionsAnswered": 15,
@@ -486,7 +486,7 @@ Test endpoints with curl:
 curl -X POST http://localhost:8788/api/adaptive-session/initialize \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -d '{"studentId":"uuid","gradeLevel":"high_school"}'
+  -d '{"learnerId":"uuid","gradeLevel":"high_school"}'
 
 # Get next question
 curl http://localhost:8788/api/adaptive-session/next-question/SESSION_ID

@@ -2,7 +2,7 @@ import { BarChart3, Bot, FileText, Layout, Map, Palette, Save, Sparkles, Zap } f
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import type { DisplayPreferences, PortfolioLayout } from '@/shared/types/student';
+import type { DisplayPreferences, PortfolioLayout } from '@/shared/types/learner';
 
 import { usePortfolio } from '@/features/digital-portfolio/model/portfolioStore';
 const LayoutSettings: React.FC = () => {
@@ -24,7 +24,7 @@ const LayoutSettings: React.FC = () => {
   // Role-based default layouts
   const getRoleBasedDefault = (role: string | null): PortfolioLayout => {
     switch (role) {
-      case 'student':
+      case 'learner':
         return 'infographic';
       case 'university_admin':
       case 'college_admin':

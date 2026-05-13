@@ -11,7 +11,7 @@ export const ZERO_SHOT_COT_TRIGGERS = {
   methodical: "Let's work through this methodically, one step at a time."
 } as const;
 
-export function buildChainOfThoughtFramework(intent: CareerIntent, studentName: string): string {
+export function buildChainOfThoughtFramework(intent: CareerIntent, learnerName: string): string {
   const zeroShotCoT = buildZeroShotCoTPrompt(intent);
   
   return `
@@ -27,13 +27,13 @@ Think through these steps silently, then provide ONLY the final conversational r
 
 **${ZERO_SHOT_COT_TRIGGERS.standard}**
 
-**Step 1 - UNDERSTAND**: What is ${studentName} actually asking?
+**Step 1 - UNDERSTAND**: What is ${learnerName} actually asking?
 - Surface question: [What they literally asked]
 - Underlying need: [What they really want to achieve]
 - Emotional state: [Excited? Frustrated? Confused? Neutral?]
 
 **Step 2 - GATHER**: What relevant data do I have?
-- From <student_profile>: [List specific data points]
+- From <learner_profile>: [List specific data points]
 - From <assessment_results>: [If available]
 - From <available_opportunities>: [If job-related]
 - From <courses>: [If learning-related]
@@ -72,7 +72,7 @@ DO NOT show the step-by-step reasoning process to the user.
 
 If you catch yourself about to:
 ❌ Mention a job not in <opportunities> → STOP, use only listed jobs
-❌ Attribute a skill not in <student_skills> → STOP, use only listed skills
+❌ Attribute a skill not in <learner_skills> → STOP, use only listed skills
 ❌ Give generic advice → STOP, personalize with their data
 ❌ Fabricate statistics → STOP, acknowledge uncertainty
 ❌ Exceed word limit for phase → STOP, be more concise
@@ -87,7 +87,7 @@ function buildZeroShotCoTPrompt(intent: CareerIntent): string {
 **Zero-shot CoT for Job Matching:**
 ${ZERO_SHOT_COT_TRIGGERS.breakdown}
 
-Subtask 1: Extract student's skills from <student_skills>
+Subtask 1: Extract learner's skills from <learner_skills>
 Subtask 2: List all jobs from <opportunities>
 Subtask 3: For each job, calculate skill overlap percentage
 Subtask 4: Rank jobs by match score
@@ -98,7 +98,7 @@ Subtask 6: Format response with honest match percentages`,
 **Zero-shot CoT for Skill Gap Analysis:**
 ${ZERO_SHOT_COT_TRIGGERS.systematic}
 
-Step 1: List current skills from <student_skills> (ONLY these)
+Step 1: List current skills from <learner_skills> (ONLY these)
 Step 2: Identify target role requirements for their field
 Step 3: Compare current vs required skills
 Step 4: Categorize gaps by priority (High/Medium/Low)

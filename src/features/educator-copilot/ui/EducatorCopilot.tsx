@@ -5,7 +5,7 @@ import { getLogger } from '@/shared/config/logging';
 import { educatorIntelligenceEngine } from '@/features/educator-copilot';
 import { educatorWelcomeConfig, educatorChatConfig } from '@/features/educator-copilot';
 
-import { StudentInsightCard } from './EducatorCards';
+import { LearnerInsightCard } from './EducatorCards';
 
 import { useUser } from '@/shared/model/authStore';
 
@@ -346,14 +346,14 @@ const EducatorCopilot: React.FC = () => {
                   >
                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
 
-                    {/* Student Insight Cards */}
+                    {/* Learner Insight Cards */}
                     {message.interactive?.cards && message.interactive.cards.length > 0 && (
                       <div className="mt-4 space-y-3">
                         {message.interactive.cards.map((card: any, idx: number) => (
-                          <StudentInsightCard
-                            key={card.data.studentId || idx}
-                            studentId={card.data.studentId}
-                            studentName={card.data.studentName}
+                          <LearnerInsightCard
+                            key={card.data.learnerId || idx}
+                            learnerId={card.data.learnerId}
+                            learnerName={card.data.learnerName}
                             insightType={card.data.insightType}
                             title={card.data.title}
                             description={card.data.description}
@@ -361,7 +361,7 @@ const EducatorCopilot: React.FC = () => {
                             priority={card.data.priority}
                             actionItems={card.data.actionItems}
                             onViewProfile={() => {
-                              // TODO: Navigate to student profile
+                              // TODO: Navigate to learner profile
                             }}
                           />
                         ))}

@@ -25,7 +25,7 @@ import { useSubscription } from '@/features/subscription/model/subscriptionStore
  * Get the base path for subscription routes based on current location
  */
 function getSubscriptionBasePath(pathname) {
-  if (pathname.startsWith('/student')) return '/student';
+  if (pathname.startsWith('/learner')) return '/learner';
   if (pathname.startsWith('/recruitment')) return '/recruitment';
   if (pathname.startsWith('/educator')) return '/educator';
   if (pathname.startsWith('/college-admin')) return '/college-admin';

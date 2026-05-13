@@ -4,7 +4,7 @@
  */
 
 import { getOpenAIClient, DEFAULT_MODEL } from './openAIClient';
-import { StudentProfile } from '@/features/student-profile/model';
+import { LearnerProfile } from '@/features/learner-profile/model';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('intent-detection-service');
@@ -130,7 +130,7 @@ class IntentDetectionService {
    */
   async detectIntents(
     message: string,
-    profile?: StudentProfile,
+    profile?: LearnerProfile,
     conversationHistory?: string[]
   ): Promise<DetectedIntent> {
     // NEW: For meaningful queries (>2 words), use AI-first approach
@@ -281,7 +281,7 @@ class IntentDetectionService {
    */
   private async aiFirstDetection(
     message: string,
-    profile?: StudentProfile,
+    profile?: LearnerProfile,
     conversationHistory?: string[]
   ): Promise<DetectedIntent> {
     try {
@@ -406,14 +406,14 @@ Analyze the query deeply and determine:
    */
   private async aiEnhancedDetection(
     message: string,
-    profile?: StudentProfile,
+    profile?: LearnerProfile,
     conversationHistory?: string[]
   ): Promise<DetectedIntent> {
     try {
       const context = conversationHistory ? conversationHistory.slice(-3).join('\n') : '';
-      const profileContext = profile ? `Student: ${profile.department}, ${profile.profile?.technicalSkills?.length || 0} skills` : '';
+      const profileContext = profile ? `Learner: ${profile.department}, ${profile.profile?.technicalSkills?.length || 0} skills` : '';
 
-      const prompt = `You are an advanced intent classifier for a career assistant AI. You excel at understanding student queries even when English is imperfect or phrasing is unclear.
+      const prompt = `You are an advanced intent classifier for a career assistant AI. You excel at understanding learner queries even when English is imperfect or phrasing is unclear.
 
 **Context:**
 ${profileContext}
@@ -425,7 +425,7 @@ ${context ? `Recent conversation:\n${context}` : ''}
 **Important Guidelines:**
 - Understand the CORE INTENT even if grammar is poor
 - Look for keywords about learning, jobs, skills, career, courses
-- Consider context from student profile and conversation history
+- Consider context from learner profile and conversation history
 - If asking about technologies (Node.js, Django, React, etc.) → technology-comparison
 - If asking "what to learn" or "suggest courses" → learning-path
 - If asking "what skills needed" or "skill gaps" → skill-gap-analysis

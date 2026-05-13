@@ -52,9 +52,9 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initialState: Record<string, boolean> = {};
     const allGroups = [
-      "students", "teachers", "academics", "communication", "finance", "skills", // school_admin
+      "learners", "teachers", "academics", "communication", "finance", "skills", // school_admin
       "colleges", "courses", "faculty", "placements", "analytics", "library", "hr-payroll", // university_admin
-      "department", "student", "examinations", "operations", "administration" // college_admin
+      "department", "learner", "examinations", "operations", "administration" // college_admin
     ];
     allGroups.forEach(group => {
       initialState[group] = true;
@@ -77,17 +77,17 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
     if (role === "school_admin") {
       return [
         {
-          title: "Student Management",
-          key: "students",
+          title: "Learner Management",
+          key: "learners",
           items: [
             {
               name: "Admissions",
-              path: "/school-admin/students/admissions",
+              path: "/school-admin/learners/admissions",
               icon: UserGroupIcon,
             },
             {
               name: "Digital Portfolio",
-              path: "/school-admin/students/digital-portfolio",
+              path: "/school-admin/learners/digital-portfolio",
               icon: FolderIcon,
             },
             {
@@ -97,17 +97,17 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
             },
             {
               name: "Attendance & Reports",
-              path: "/school-admin/students/attendance-reports",
+              path: "/school-admin/learners/attendance-reports",
               icon: ChartBarIcon,
             },
             {
               name: "Assessment Results",
-              path: "/school-admin/students/assessment-results",
+              path: "/school-admin/learners/assessment-results",
               icon: ChartPieIcon,
             },
             {
               name: "Verifications",
-              path: "/school-admin/students/verifications",
+              path: "/school-admin/learners/verifications",
               icon: ChartBarIcon,
             }
           ],
@@ -179,8 +179,8 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
               icon: ClipboardDocumentListIcon,
             },
             {
-              name: "Student Communication",
-              path: "/school-admin/communication/messages-student",
+              name: "Learner Communication",
+              path: "/school-admin/communication/messages-learner",
               icon: BellIcon,
             },
           ],
@@ -301,37 +301,37 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
           ],
         },
         {
-          title: "Student Records",
-          key: "students",
+          title: "Learner Records",
+          key: "learners",
           items: [
             {
               name: "Enrollment & Profiles",
-              path: "/university-admin/students/enrollments",
+              path: "/university-admin/learners/enrollments",
               icon: UserGroupIcon,
             },
             {
               name: "Digital Portfolios",
-              path: "/university-admin/students/digital-portfolios",
+              path: "/university-admin/learners/digital-portfolios",
               icon: FolderOpenIcon,
             },
             {
               name: "Assessment Results",
-              path: "/university-admin/students/assessment-results",
+              path: "/university-admin/learners/assessment-results",
               icon: ChartPieIcon,
             },
             {
               name: "Continuous Assessment",
-              path: "/university-admin/students/continuous-assessment",
+              path: "/university-admin/learners/continuous-assessment",
               icon: ClipboardDocumentListIcon,
             },
             {
               name: "Centralized Results",
-              path: "/university-admin/students/results",
+              path: "/university-admin/learners/results",
               icon: AcademicCapIcon,
             },
             {
               name: "Certificate Generation",
-              path: "/university-admin/students/certificates",
+              path: "/university-admin/learners/certificates",
               icon: DocumentChartBarIcon,
             },
           ],
@@ -426,7 +426,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
           ],
         },
         {
-          title: "Library & Student Services",
+          title: "Library & Learner Services",
           key: "library",
           items: [
             {
@@ -440,7 +440,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
               icon: ShieldCheckIcon,
             },
             {
-              name: "Student Service Requests",
+              name: "Learner Service Requests",
               path: "/university-admin/library/service-requests",
               icon: ClipboardIcon,
             },
@@ -509,61 +509,61 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
     // Default: College Admin
     return [
       {
-        title: "Students",
-        key: "student",
+        title: "Learners",
+        key: "learner",
         items: [
           {
             name: "Admissions & Data",
-            path: "/college-admin/students/data-management",
+            path: "/college-admin/learners/data-management",
             icon: UserGroupIcon,
           },
           {
-            name: "Enrolled Students",
-            path: "/college-admin/students/enrolled",
+            name: "Enrolled Learners",
+            path: "/college-admin/learners/enrolled",
             icon: AcademicCapIcon,
           },
           {
             name: "Attendance",
-            path: "/college-admin/students/attendance",
+            path: "/college-admin/learners/attendance",
             icon: ClipboardDocumentListIcon,
           },
           {
             name: "Attendance Policies",
-            path: "/college-admin/students/attendance-policies",
+            path: "/college-admin/learners/attendance-policies",
             icon: ClipboardDocumentListIcon,
             disabled: true,
           },
           
           {
             name: "Performance",
-            path: "/college-admin/students/performance",
+            path: "/college-admin/learners/performance",
             icon: ChartBarIcon,
             disabled: true,
           },
           {
             name: "Assessment Results",
-            path: "/college-admin/students/assessment-results",
+            path: "/college-admin/learners/assessment-results",
             icon: ChartPieIcon,
           },
           {
             name: "Digital Portfolio",
-            path: "/college-admin/students/digital-portfolio",
+            path: "/college-admin/learners/digital-portfolio",
             icon: FolderIcon,
           },
           {
             name: "Graduation & Alumni",
-            path: "/college-admin/students/graduation",
+            path: "/college-admin/learners/graduation",
             icon: AcademicCapIcon,
             disabled: true,
           },
           {
              name: "Verifications",
-            path: "/college-admin/students/verifications",
+            path: "/college-admin/learners/verifications",
             icon: ChartPieIcon,
           },
           {
              name: "Communication",
-            path: "/college-admin/students/communication",
+            path: "/college-admin/learners/communication",
             icon: BellIcon,
           }
         ],

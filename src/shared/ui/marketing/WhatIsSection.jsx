@@ -35,7 +35,7 @@ export default function WhatIsSection() {
               </div>
               <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">The Problem</h3>
               <p className="text-gray-600 text-base sm:text-lg leading-relaxed">
-                Most students have skills—but no credible way to prove them.
+                Most learners have skills—but no credible way to prove them.
               </p>
             </div>
           </motion.div>

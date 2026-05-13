@@ -6,33 +6,33 @@ const logger = getLogger('assignments-service');
 
 /**
  * Assignments Service
- * Handles all database operations for student assignments
- * Uses the student_assignments junction table to link students with assignments
- * Enhanced with file upload support for student submissions
+ * Handles all database operations for learner assignments
+ * Uses the learner_assignments junction table to link learners with assignments
+ * Enhanced with file upload support for learner submissions
  */
 
 /**
- * Fetch all assignments for a specific student
- * @param {string} studentId - The UUID of the student
- * @returns {Promise<Array>} Array of assignments with student-specific data
+ * Fetch all assignments for a specific learner
+ * @param {string} learnerId - The UUID of the learner
+ * @returns {Promise<Array>} Array of assignments with learner-specific data
  */
-export const getAssignmentsByStudentId = async (studentId) => {
+export const getAssignmentsByLearnerId = async (learnerId) => {
   try {
-    // STEP 1: Convert students.id → students.user_id
-    const { data: studentRow, error: mapError } = await supabase
-      .from('students')
+    // STEP 1: Convert learners.id → learners.user_id
+    const { data: learnerRow, error: mapError } = await supabase
+      .from('learners')
       .select('id, user_id')
-      .eq('id', studentId)
+      .eq('id', learnerId)
       .maybeSingle();
 
     if (mapError) throw mapError;
 
-    const uid = studentRow?.user_id;
-    if (!uid) throw new Error('Student user_id not found');
+    const uid = learnerRow?.user_id;
+    if (!uid) throw new Error('Learner user_id not found');
 
-    // STEP 2: Fetch student assignments using user_id
+    // STEP 2: Fetch learner assignments using user_id
     const { data, error } = await supabase
-      .from('student_assignments')
+      .from('learner_assignments')
       .select(`
         *,
         assignments (
@@ -55,7 +55,7 @@ export const getAssignmentsByStudentId = async (studentId) => {
           allow_late_submission
         )
       `)
-      .eq('student_id', uid)               // <-- FIXED
+      .eq('learner_id', uid)               // <-- FIXED
       .eq('is_deleted', false)
       .order('assignments(created_date)', { ascending: false }); // Show newest assignments first
 
@@ -64,7 +64,7 @@ export const getAssignmentsByStudentId = async (studentId) => {
     // STEP 3: Flatten the output
     const flattenedData = data?.map(item => ({
       ...item.assignments,
-      student_assignment_id: item.student_assignment_id,
+      learner_assignment_id: item.learner_assignment_id,
       status: item.status,
       priority: item.priority,
       grade_received: item.grade_received,
@@ -88,22 +88,22 @@ export const getAssignmentsByStudentId = async (studentId) => {
 
   } catch (error) {
     logger.error('Fetch assignments failed', error instanceof Error ? error : new Error(String(error)), {
-      studentId
+      learnerId
     });
     throw error;
   }
 };
 
 /**
- * Fetch assignments by status for a student
- * @param {string} studentId - The UUID of the student
+ * Fetch assignments by status for a learner
+ * @param {string} learnerId - The UUID of the learner
  * @param {string} status - The status filter (todo, in-progress, submitted, graded)
  * @returns {Promise<Array>} Array of filtered assignments
  */
-export const getAssignmentsByStatus = async (studentId, status) => {
+export const getAssignmentsByStatus = async (learnerId, status) => {
   try {
     const { data, error } = await supabase
-      .from('student_assignments')
+      .from('learner_assignments')
       .select(`
         *,
         assignments (
@@ -120,7 +120,7 @@ export const getAssignmentsByStatus = async (studentId, status) => {
           document_pdf
         )
       `)
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .eq('status', status)
       .eq('is_deleted', false)
       .order('assignments(due_date)', { ascending: true });
@@ -129,7 +129,7 @@ export const getAssignmentsByStatus = async (studentId, status) => {
     
     const flattenedData = data?.map(item => ({
       ...item.assignments,
-      student_assignment_id: item.student_assignment_id,
+      learner_assignment_id: item.learner_assignment_id,
       status: item.status,
       priority: item.priority,
       grade_received: item.grade_received,
@@ -141,7 +141,7 @@ export const getAssignmentsByStatus = async (studentId, status) => {
     return flattenedData;
   } catch (error) {
     logger.error('Fetch assignments by status failed', error instanceof Error ? error : new Error(String(error)), {
-      studentId,
+      learnerId,
       status
     });
     throw error;
@@ -150,12 +150,12 @@ export const getAssignmentsByStatus = async (studentId, status) => {
 
 /**
  * Fetch assignments in a date range (for calendar view)
- * @param {string} studentId - The UUID of the student
+ * @param {string} learnerId - The UUID of the learner
  * @param {string} startDate - Start date (ISO format)
  * @param {string} endDate - End date (ISO format)
  * @returns {Promise<Array>} Array of assignments in date range
  */
-export const getAssignmentsByDateRange = async (studentId, startDate, endDate) => {
+export const getAssignmentsByDateRange = async (learnerId, startDate, endDate) => {
   try {
     // First get assignment IDs in the date range
     const { data: assignmentIds, error: assignmentError } = await supabase
@@ -173,9 +173,9 @@ export const getAssignmentsByDateRange = async (studentId, startDate, endDate) =
     
     const ids = assignmentIds.map(a => a.assignment_id);
     
-    // Then get student assignments for those IDs
+    // Then get learner assignments for those IDs
     const { data, error } = await supabase
-      .from('student_assignments')
+      .from('learner_assignments')
       .select(`
         *,
         assignments (
@@ -189,7 +189,7 @@ export const getAssignmentsByDateRange = async (studentId, startDate, endDate) =
           due_date
         )
       `)
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .in('assignment_id', ids)
       .eq('is_deleted', false)
       .order('assignments(due_date)', { ascending: true });
@@ -198,7 +198,7 @@ export const getAssignmentsByDateRange = async (studentId, startDate, endDate) =
     
     const flattenedData = data?.map(item => ({
       ...item.assignments,
-      student_assignment_id: item.student_assignment_id,
+      learner_assignment_id: item.learner_assignment_id,
       status: item.status,
       priority: item.priority,
       grade_received: item.grade_received,
@@ -208,7 +208,7 @@ export const getAssignmentsByDateRange = async (studentId, startDate, endDate) =
     return flattenedData;
   } catch (error) {
     logger.error('Fetch assignments by date range failed', error instanceof Error ? error : new Error(String(error)), {
-      studentId,
+      learnerId,
       startDate,
       endDate
     });
@@ -217,29 +217,29 @@ export const getAssignmentsByDateRange = async (studentId, startDate, endDate) =
 };
 
 /**
- * Get assignment statistics for a student
- * @param {string} studentId - The UUID of the student
+ * Get assignment statistics for a learner
+ * @param {string} learnerId - The UUID of the learner
  * @returns {Promise<Object>} Statistics object
  */
-export const getAssignmentStats = async (studentId) => {
+export const getAssignmentStats = async (learnerId) => {
   try {
-    // STEP 1: Convert students.id → students.user_id
-    const { data: studentRow, error: mapError } = await supabase
-      .from('students')
+    // STEP 1: Convert learners.id → learners.user_id
+    const { data: learnerRow, error: mapError } = await supabase
+      .from('learners')
       .select('user_id')
-      .eq('id', studentId)
+      .eq('id', learnerId)
       .maybeSingle();
 
     if (mapError) throw mapError;
 
-    const uid = studentRow?.user_id;
-    if (!uid) throw new Error('Student user_id not found');
+    const uid = learnerRow?.user_id;
+    if (!uid) throw new Error('Learner user_id not found');
 
-    // STEP 2: Fetch stats using correct student_id
+    // STEP 2: Fetch stats using correct learner_id
     const { data, error } = await supabase
-      .from('student_assignments')
+      .from('learner_assignments')
       .select('status, grade_percentage')
-      .eq('student_id', uid)
+      .eq('learner_id', uid)
       .eq('is_deleted', false);
 
     if (error) throw error;
@@ -267,7 +267,7 @@ export const getAssignmentStats = async (studentId) => {
     return stats;
   } catch (error) {
     logger.error('Fetch assignment stats failed', error instanceof Error ? error : new Error(String(error)), {
-      studentId
+      learnerId
     });
     throw error;
   }
@@ -276,11 +276,11 @@ export const getAssignmentStats = async (studentId) => {
 
 /**
  * Update assignment status
- * @param {string} studentAssignmentId - The UUID of the student_assignment record
+ * @param {string} learnerAssignmentId - The UUID of the learner_assignment record
  * @param {string} newStatus - New status (todo, in-progress, submitted, graded)
- * @returns {Promise<Object>} Updated student assignment
+ * @returns {Promise<Object>} Updated learner assignment
  */
-export const updateAssignmentStatus = async (studentAssignmentId, newStatus) => {
+export const updateAssignmentStatus = async (learnerAssignmentId, newStatus) => {
   try {
     const updateData = {
       status: newStatus,
@@ -290,9 +290,9 @@ export const updateAssignmentStatus = async (studentAssignmentId, newStatus) => 
     // If submitting, add submission date if not present
     if (newStatus === 'submitted') {
       const { data: current } = await supabase
-        .from('student_assignments')
+        .from('learner_assignments')
         .select('submission_date')
-        .eq('student_assignment_id', studentAssignmentId)
+        .eq('learner_assignment_id', learnerAssignmentId)
         .single();
 
       if (!current?.submission_date) {
@@ -301,9 +301,9 @@ export const updateAssignmentStatus = async (studentAssignmentId, newStatus) => 
     }
 
     const { data, error } = await supabase
-      .from('student_assignments')
+      .from('learner_assignments')
       .update(updateData)
-      .eq('student_assignment_id', studentAssignmentId)
+      .eq('learner_assignment_id', learnerAssignmentId)
       .select()
       .single();
 
@@ -311,7 +311,7 @@ export const updateAssignmentStatus = async (studentAssignmentId, newStatus) => 
     return data;
   } catch (error) {
     logger.error('Update assignment status failed', error instanceof Error ? error : new Error(String(error)), {
-      studentAssignmentId,
+      learnerAssignmentId,
       newStatus
     });
     throw error;
@@ -319,15 +319,15 @@ export const updateAssignmentStatus = async (studentAssignmentId, newStatus) => 
 };
 
 /**
- * Get assignment with attachments and student-specific data
- * @param {string} studentId - The UUID of the student
+ * Get assignment with attachments and learner-specific data
+ * @param {string} learnerId - The UUID of the learner
  * @param {string} assignmentId - The UUID of the assignment
- * @returns {Promise<Object>} Assignment with attachments and student data
+ * @returns {Promise<Object>} Assignment with attachments and learner data
  */
-export const getAssignmentWithAttachments = async (studentId, assignmentId) => {
+export const getAssignmentWithAttachments = async (learnerId, assignmentId) => {
   try {
     const { data, error } = await supabase
-      .from('student_assignments')
+      .from('learner_assignments')
       .select(`
         *,
         assignments (
@@ -335,7 +335,7 @@ export const getAssignmentWithAttachments = async (studentId, assignmentId) => {
           assignment_attachments (*)
         )
       `)
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .eq('assignment_id', assignmentId)
       .single();
 
@@ -344,7 +344,7 @@ export const getAssignmentWithAttachments = async (studentId, assignmentId) => {
     // Flatten the response
     const flattened = {
       ...data.assignments,
-      student_assignment_id: data.student_assignment_id,
+      learner_assignment_id: data.learner_assignment_id,
       status: data.status,
       priority: data.priority,
       grade_received: data.grade_received,
@@ -369,20 +369,20 @@ export const getAssignmentWithAttachments = async (studentId, assignmentId) => {
 };
 
 /**
- * Get single student assignment by ID
- * @param {string} studentId - The UUID of the student
+ * Get single learner assignment by ID
+ * @param {string} learnerId - The UUID of the learner
  * @param {string} assignmentId - The UUID of the assignment
- * @returns {Promise<Object>} Student assignment with full assignment details
+ * @returns {Promise<Object>} Learner assignment with full assignment details
  */
-export const getStudentAssignment = async (studentId, assignmentId) => {
+export const getlearnerAssignment = async (learnerId, assignmentId) => {
   try {
     const { data, error } = await supabase
-      .from('student_assignments')
+      .from('learner_assignments')
       .select(`
         *,
         assignments (*)
       `)
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .eq('assignment_id', assignmentId)
       .single();
 
@@ -390,7 +390,7 @@ export const getStudentAssignment = async (studentId, assignmentId) => {
     
     const flattened = {
       ...data.assignments,
-      student_assignment_id: data.student_assignment_id,
+      learner_assignment_id: data.learner_assignment_id,
       status: data.status,
       priority: data.priority,
       grade_received: data.grade_received,
@@ -412,38 +412,38 @@ export const getStudentAssignment = async (studentId, assignmentId) => {
     
     return flattened;
   } catch (error) {
-    logger.error('Fetch student assignment failed', error instanceof Error ? error : new Error(String(error)));
+    logger.error('Fetch learner assignment failed', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 };
 
 /**
- * Soft delete a student assignment
- * @param {string} studentAssignmentId - The UUID of the student_assignment
+ * Soft delete a learner assignment
+ * @param {string} learnerAssignmentId - The UUID of the learner_assignment
  * @returns {Promise<boolean>} Success status
  */
-export const deleteStudentAssignment = async (studentAssignmentId) => {
+export const deletelearnerAssignment = async (learnerAssignmentId) => {
   try {
     const { error } = await supabase
-      .from('student_assignments')
+      .from('learner_assignments')
       .update({ is_deleted: true, updated_date: new Date().toISOString() })
-      .eq('student_assignment_id', studentAssignmentId);
+      .eq('learner_assignment_id', learnerAssignmentId);
 
     if (error) throw error;
     return true;
   } catch (error) {
-    logger.error('Delete student assignment failed', error instanceof Error ? error : new Error(String(error)));
+    logger.error('Delete learner assignment failed', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 };
 
 /**
  * Submit assignment with file upload
- * @param {string} studentAssignmentId - The UUID of the student_assignment
+ * @param {string} learnerAssignmentId - The UUID of the learner_assignment
  * @param {Object} submissionData - Submission details including file info
- * @returns {Promise<Object>} Updated student assignment
+ * @returns {Promise<Object>} Updated learner assignment
  */
-export const submitAssignmentWithFile = async (studentAssignmentId, submissionData) => {
+export const submitAssignmentWithFile = async (learnerAssignmentId, submissionData) => {
   try {
     const updateData = {
       ...submissionData,
@@ -454,9 +454,9 @@ export const submitAssignmentWithFile = async (studentAssignmentId, submissionDa
     };
     
     const { data, error } = await supabase
-      .from('student_assignments')
+      .from('learner_assignments')
       .update(updateData)
-      .eq('student_assignment_id', studentAssignmentId)
+      .eq('learner_assignment_id', learnerAssignmentId)
       .select()
       .single();
 
@@ -464,7 +464,7 @@ export const submitAssignmentWithFile = async (studentAssignmentId, submissionDa
     return data;
   } catch (error) {
     logger.error('Submit assignment with file failed', error instanceof Error ? error : new Error(String(error)), {
-      studentAssignmentId
+      learnerAssignmentId
     });
     throw error;
   }
@@ -472,11 +472,11 @@ export const submitAssignmentWithFile = async (studentAssignmentId, submissionDa
 
 /**
  * Submit assignment (update submission details)
- * @param {string} studentAssignmentId - The UUID of the student_assignment
+ * @param {string} learnerAssignmentId - The UUID of the learner_assignment
  * @param {Object} submissionData - Submission details
- * @returns {Promise<Object>} Updated student assignment
+ * @returns {Promise<Object>} Updated learner assignment
  */
-export const submitAssignment = async (studentAssignmentId, submissionData) => {
+export const submitAssignment = async (learnerAssignmentId, submissionData) => {
   try {
     const updateData = {
       ...submissionData,
@@ -487,9 +487,9 @@ export const submitAssignment = async (studentAssignmentId, submissionData) => {
     };
     
     const { data, error } = await supabase
-      .from('student_assignments')
+      .from('learner_assignments')
       .update(updateData)
-      .eq('student_assignment_id', studentAssignmentId)
+      .eq('learner_assignment_id', learnerAssignmentId)
       .select()
       .single();
 
@@ -497,56 +497,56 @@ export const submitAssignment = async (studentAssignmentId, submissionData) => {
     return data;
   } catch (error) {
     logger.error('Submit assignment failed', error instanceof Error ? error : new Error(String(error)), {
-      studentAssignmentId
+      learnerAssignmentId
     });
     throw error;
   }
 };
 
 /**
- * Update student assignment details (priority, notes, etc.)
- * @param {string} studentAssignmentId - The UUID of the student_assignment
+ * Update learner assignment details (priority, notes, etc.)
+ * @param {string} learnerAssignmentId - The UUID of the learner_assignment
  * @param {Object} updateData - Fields to update
- * @returns {Promise<Object>} Updated student assignment
+ * @returns {Promise<Object>} Updated learner assignment
  */
-export const updateStudentAssignment = async (studentAssignmentId, updateData) => {
+export const updatelearnerAssignment = async (learnerAssignmentId, updateData) => {
   try {
     const { data, error } = await supabase
-      .from('student_assignments')
+      .from('learner_assignments')
       .update({ ...updateData, updated_date: new Date().toISOString() })
-      .eq('student_assignment_id', studentAssignmentId)
+      .eq('learner_assignment_id', learnerAssignmentId)
       .select()
       .single();
 
     if (error) throw error;
     return data;
   } catch (error) {
-    logger.error('Update student assignment failed', error instanceof Error ? error : new Error(String(error)), {
-      studentAssignmentId
+    logger.error('Update learner assignment failed', error instanceof Error ? error : new Error(String(error)), {
+      learnerAssignmentId
     });
     throw error;
   }
 };
 
 // =====================================================
-// NEW FILE SUBMISSION FUNCTIONS FOR STUDENTS
+// NEW FILE SUBMISSION FUNCTIONS FOR LEARNERS
 // =====================================================
 
 /**
  * Submit assignment with staged files (files uploaded only when submitting)
- * @param {string} studentAssignmentId - Student assignment UUID
+ * @param {string} learnerAssignmentId - Learner assignment UUID
  * @param {Array<File>} files - Array of files to upload
- * @param {string} studentId - Student UUID (from students table)
+ * @param {string} learnerId - Learner UUID (from learners table)
  * @param {string} assignmentId - Assignment UUID
  * @param {string} token - Auth token
  * @returns {Promise<Object>} Submission result
  */
-export const submitAssignmentWithStagedFiles = async (studentAssignmentId, files, studentId, assignmentId, token) => {
+export const submitAssignmentWithStagedFiles = async (learnerAssignmentId, files, learnerId, assignmentId, token) => {
   try {
     if (files.length === 0) {
       // No files to upload, just update status
       const { data, error } = await supabase
-        .from('student_assignments')
+        .from('learner_assignments')
         .update({
           status: 'submitted',
           submission_type: 'text',
@@ -554,7 +554,7 @@ export const submitAssignmentWithStagedFiles = async (studentAssignmentId, files
           completed_date: new Date().toISOString(),
           updated_date: new Date().toISOString()
         })
-        .eq('student_assignment_id', studentAssignmentId)
+        .eq('learner_assignment_id', learnerAssignmentId)
         .select()
         .single();
         
@@ -565,13 +565,13 @@ export const submitAssignmentWithStagedFiles = async (studentAssignmentId, files
     // Upload files to R2 storage
     const uploadPromises = files.map(async (file) => {
       const timestamp = Date.now();
-      const filename = `assignments/${assignmentId}/submissions/${studentAssignmentId}/${timestamp}_${file.name}`;
+      const filename = `assignments/${assignmentId}/submissions/${learnerAssignmentId}/${timestamp}_${file.name}`;
       return await storageApiService.uploadFile(file, { filename }, token);
     });
     
     const uploadResults = await Promise.all(uploadPromises);
     
-    // Save files to assignment_attachments with STUDENT: prefix
+    // Save files to assignment_attachments with LEARNER: prefix
     const attachmentPromises = files.map(async (file, index) => {
       const uploadResult = uploadResults[index];
       
@@ -579,7 +579,7 @@ export const submitAssignmentWithStagedFiles = async (studentAssignmentId, files
         .from('assignment_attachments')
         .insert({
           assignment_id: assignmentId,
-          file_name: `STUDENT:${studentAssignmentId}:${file.name}`, // ✅ STUDENT FILE (with prefix)
+          file_name: `LEARNER:${learnerAssignmentId}:${file.name}`, // ✅ LEARNER FILE (with prefix)
           file_type: file.type,
           file_size: file.size,
           file_url: uploadResult.url // Store original R2 URL
@@ -590,10 +590,10 @@ export const submitAssignmentWithStagedFiles = async (studentAssignmentId, files
     
     await Promise.all(attachmentPromises);
     
-    // Update student assignment status
+    // Update learner assignment status
     const fileNames = files.map(file => file.name).join(',');
     const { data, error } = await supabase
-      .from('student_assignments')
+      .from('learner_assignments')
       .update({
         status: 'submitted',
         submission_type: 'file', // ✅ Fixed: use 'file' not 'files'
@@ -603,7 +603,7 @@ export const submitAssignmentWithStagedFiles = async (studentAssignmentId, files
         completed_date: new Date().toISOString(),
         updated_date: new Date().toISOString()
       })
-      .eq('student_assignment_id', studentAssignmentId)
+      .eq('learner_assignment_id', learnerAssignmentId)
       .select()
       .single();
       
@@ -616,18 +616,18 @@ export const submitAssignmentWithStagedFiles = async (studentAssignmentId, files
 };
 
 /**
- * Get student's own submission files
+ * Get learner's own submission files
  * @param {string} assignmentId - Assignment UUID
- * @param {string} studentAssignmentId - Student assignment UUID
- * @returns {Promise<Array>} List of student's submission files
+ * @param {string} learnerAssignmentId - Learner assignment UUID
+ * @returns {Promise<Array>} List of learner's submission files
  */
-export const getStudentSubmissionFiles = async (assignmentId, studentAssignmentId) => {
+export const getlearnerSubmissionFiles = async (assignmentId, learnerAssignmentId) => {
   try {
     const { data, error } = await supabase
       .from('assignment_attachments')
       .select('*')
       .eq('assignment_id', assignmentId)
-      .like('file_name', `STUDENT:${studentAssignmentId}:%`) // ✅ Only this student's files
+      .like('file_name', `LEARNER:${learnerAssignmentId}:%`) // ✅ Only this learner's files
       .order('uploaded_date', { ascending: false });
       
     if (error) throw error;
@@ -635,42 +635,42 @@ export const getStudentSubmissionFiles = async (assignmentId, studentAssignmentI
     // Add original filename without prefix
     const filesWithOriginalNames = data?.map(file => ({
       ...file,
-      original_filename: file.file_name.replace(/^STUDENT:[^:]+:/, '')
+      original_filename: file.file_name.replace(/^LEARNER:[^:]+:/, '')
     })) || [];
     
     return filesWithOriginalNames;
   } catch (error) {
-    logger.error('Fetch student submission files failed', error instanceof Error ? error : new Error(String(error)), {
+    logger.error('Fetch learner submission files failed', error instanceof Error ? error : new Error(String(error)), {
       assignmentId,
-      studentAssignmentId
+      learnerAssignmentId
     });
     throw error;
   }
 };
 
 /**
- * Get assignment with instruction files and student's submission files
- * @param {string} studentId - Student UUID (from students table)
+ * Get assignment with instruction files and learner's submission files
+ * @param {string} learnerId - Learner UUID (from learners table)
  * @param {string} assignmentId - Assignment UUID
- * @returns {Promise<Object>} Assignment with instruction files and student's submission files
+ * @returns {Promise<Object>} Assignment with instruction files and learner's submission files
  */
-export const getAssignmentWithFiles = async (studentId, assignmentId) => {
+export const getAssignmentWithFiles = async (learnerId, assignmentId) => {
   try {
     // Get basic assignment data
-    const assignment = await getAssignmentWithAttachments(studentId, assignmentId);
+    const assignment = await getAssignmentWithAttachments(learnerId, assignmentId);
     
     // Get instruction files (educator files - no prefix)
     const { data: instructionFiles, error: instructionError } = await supabase
       .from('assignment_attachments')
       .select('*')
       .eq('assignment_id', assignmentId)
-      .not('file_name', 'like', 'STUDENT:%') // ✅ Only educator files
+      .not('file_name', 'like', 'LEARNER:%') // ✅ Only educator files
       .order('uploaded_date', { ascending: false });
       
     if (instructionError) throw instructionError;
     
-    // Get student's submission files
-    const submissionFiles = await getStudentSubmissionFiles(assignmentId, assignment.student_assignment_id);
+    // Get learner's submission files
+    const submissionFiles = await getlearnerSubmissionFiles(assignmentId, assignment.learner_assignment_id);
     
     return {
       ...assignment,
@@ -679,7 +679,7 @@ export const getAssignmentWithFiles = async (studentId, assignmentId) => {
     };
   } catch (error) {
     logger.error('Fetch assignment with files failed', error instanceof Error ? error : new Error(String(error)), {
-      studentId,
+      learnerId,
       assignmentId
     });
     throw error;
@@ -687,20 +687,20 @@ export const getAssignmentWithFiles = async (studentId, assignmentId) => {
 };
 
 /**
- * Delete student's submission file
+ * Delete learner's submission file
  * @param {string} attachmentId - Attachment UUID
- * @param {string} studentAssignmentId - Student assignment UUID (for verification)
+ * @param {string} learnerAssignmentId - Learner assignment UUID (for verification)
  * @param {string} token - Auth token
  * @returns {Promise<boolean>} Success status
  */
-export const deleteStudentSubmissionFile = async (attachmentId, studentAssignmentId, token) => {
+export const deletelearnerSubmissionFile = async (attachmentId, learnerAssignmentId, token) => {
   try {
-    // Get file info and verify it belongs to this student
+    // Get file info and verify it belongs to this learner
     const { data: attachment, error: fetchError } = await supabase
       .from('assignment_attachments')
       .select('file_url, file_name')
       .eq('attachment_id', attachmentId)
-      .like('file_name', `STUDENT:${studentAssignmentId}:%`) // ✅ Verify ownership
+      .like('file_name', `LEARNER:${learnerAssignmentId}:%`) // ✅ Verify ownership
       .single();
       
     if (fetchError) throw fetchError;
@@ -728,9 +728,9 @@ export const deleteStudentSubmissionFile = async (attachmentId, studentAssignmen
     if (error) throw error;
     return true;
   } catch (error) {
-    logger.error('Delete student submission file failed', error instanceof Error ? error : new Error(String(error)), {
+    logger.error('Delete learner submission file failed', error instanceof Error ? error : new Error(String(error)), {
       attachmentId,
-      studentAssignmentId
+      learnerAssignmentId
     });
     throw error;
   }
@@ -795,7 +795,7 @@ export const deleteInstructionFile = async (attachmentId, token) => {
       .from('assignment_attachments')
       .select('file_url, file_name')
       .eq('attachment_id', attachmentId)
-      .not('file_name', 'like', 'STUDENT:%') // ✅ Only educator files
+      .not('file_name', 'like', 'LEARNER:%') // ✅ Only educator files
       .single();
       
     if (fetchError) throw fetchError;

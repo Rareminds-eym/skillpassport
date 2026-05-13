@@ -7,7 +7,7 @@ interface TranscriptFormProps {
   isOpen: boolean;
   onClose: () => void;
   onGenerate: (data: Partial<Transcript>) => Promise<{ success: boolean; error?: string; data?: Transcript }>;
-  students: Array<{ id: string; name: string; roll_number: string }>;
+  learners: Array<{ id: string; name: string; roll_number: string }>;
   departments: Array<{ id: string; name: string }>;
 }
 
@@ -15,11 +15,11 @@ const TranscriptForm: React.FC<TranscriptFormProps> = ({
   isOpen,
   onClose,
   onGenerate,
-  students,
+  learners,
   departments,
 }) => {
   const [formData, setFormData] = useState<Partial<Transcript>>({
-    student_id: '',
+    learner_id: '',
     type: 'provisional',
     semester_from: 1,
     semester_to: 8,
@@ -35,8 +35,8 @@ const TranscriptForm: React.FC<TranscriptFormProps> = ({
     setLoading(true);
     setError(null);
 
-    if (!formData.student_id) {
-      setError('Please select a student');
+    if (!formData.learner_id) {
+      setError('Please select a learner');
       setLoading(false);
       return;
     }
@@ -59,7 +59,7 @@ const TranscriptForm: React.FC<TranscriptFormProps> = ({
   const handleReset = () => {
     setGeneratedTranscript(null);
     setFormData({
-      student_id: '',
+      learner_id: '',
       type: 'provisional',
       semester_from: 1,
       semester_to: 8,
@@ -152,18 +152,18 @@ const TranscriptForm: React.FC<TranscriptFormProps> = ({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Select Student <span className="text-red-500">*</span>
+                Select Learner <span className="text-red-500">*</span>
               </label>
               <select
                 required
-                value={formData.student_id}
-                onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
+                value={formData.learner_id}
+                onChange={(e) => setFormData({ ...formData, learner_id: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Choose a student...</option>
-                {Array.isArray(students) && students.map((student) => (
-                  <option key={student.id} value={student.id}>
-                    {student.roll_number} - {student.name}
+                <option value="">Choose a learner...</option>
+                {Array.isArray(learners) && learners.map((learner) => (
+                  <option key={learner.id} value={learner.id}>
+                    {learner.roll_number} - {learner.name}
                   </option>
                 ))}
               </select>
@@ -185,7 +185,7 @@ const TranscriptForm: React.FC<TranscriptFormProps> = ({
                   />
                   <div>
                     <p className="font-medium text-gray-900">Provisional</p>
-                    <p className="text-xs text-gray-600">For current students</p>
+                    <p className="text-xs text-gray-600">For current learners</p>
                   </div>
                 </label>
                 <label className="flex items-center gap-3 p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 transition">

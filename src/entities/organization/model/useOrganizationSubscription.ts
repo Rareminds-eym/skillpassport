@@ -45,14 +45,14 @@ interface UseOrganizationSubscriptionReturn {
   subscriptions: OrganizationSubscription[];
   licensePools: LicensePool[];
   members: OrganizationMember[];
-  memberCounts: { students: number; educators: number; total: number };
+  memberCounts: { learners: number; educators: number; total: number };
   billingData: BillingDashboard | null;
   pendingInvitations: OrganizationInvitation[];
   isLoading: boolean;
   isMembersLoading: boolean;
   error: string | null;
   fetchSubscriptions: () => Promise<void>;
-  fetchMembers: (memberType?: 'educator' | 'student' | 'all', searchQuery?: string) => Promise<void>;
+  fetchMembers: (memberType?: 'educator' | 'learner' | 'all', searchQuery?: string) => Promise<void>;
   calculatePricing: (basePricePerSeat: number, seatCount: number) => PricingBreakdown;
   refresh: () => Promise<void>;
   refreshMembers: () => Promise<void>;
@@ -67,8 +67,8 @@ export function useOrganizationSubscription(
   const [subscriptions, setSubscriptions] = useState<OrganizationSubscription[]>([]);
   const [licensePools, setLicensePools] = useState<LicensePool[]>([]);
   const [members, setMembers] = useState<OrganizationMember[]>([]);
-  const [memberCounts, setMemberCounts] = useState<{ students: number; educators: number; total: number }>({
-    students: 0,
+  const [memberCounts, setMemberCounts] = useState<{ learners: number; educators: number; total: number }>({
+    learners: 0,
     educators: 0,
     total: 0,
   });
@@ -105,7 +105,7 @@ export function useOrganizationSubscription(
   }, [organizationId]);
   
   const fetchMembers = useCallback(async (
-    memberType: 'educator' | 'student' | 'all' = 'all',
+    memberType: 'educator' | 'learner' | 'all' = 'all',
     searchQuery?: string
   ) => {
     if (!organizationId) return;

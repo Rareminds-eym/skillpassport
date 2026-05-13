@@ -51,7 +51,7 @@ export const handleAiTutorChat: PagesFunction<PagesEnv> = async (context) => {
   }
   
   const { user, supabase } = auth;
-  const studentId = user.id;
+  const learnerId = user.id;
   
   // Use admin client for database writes
   const supabaseAdmin = createSupabaseAdminClient(env);
@@ -86,7 +86,7 @@ export const handleAiTutorChat: PagesFunction<PagesEnv> = async (context) => {
         .from('tutor_conversations')
         .select('messages')
         .eq('id', conversationId)
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .maybeSingle();
 
       if (conversation) {
@@ -102,7 +102,7 @@ export const handleAiTutorChat: PagesFunction<PagesEnv> = async (context) => {
     console.log(`💬 AI Tutor Chat: phase=${conversationPhase}, messageCount=${messageCount}`);
 
     // Build course context and system prompt
-    const courseContext = await buildCourseContext(supabase, courseId, lessonId || null, studentId);
+    const courseContext = await buildCourseContext(supabase, courseId, lessonId || null, learnerId);
     const systemPrompt = buildSystemPrompt(courseContext, conversationPhase);
 
     // Get model and endpoint from shared config
@@ -226,7 +226,7 @@ export const handleAiTutorChat: PagesFunction<PagesEnv> = async (context) => {
                 updated_at: new Date().toISOString()
               })
               .eq('id', currentConversationId)
-              .eq('student_id', studentId);
+              .eq('learner_id', learnerId);
             
             console.log(`✅ Updated conversation: ${currentConversationId}`);
           } else {
@@ -267,7 +267,7 @@ export const handleAiTutorChat: PagesFunction<PagesEnv> = async (context) => {
             const { data: newConv } = await supabaseAdmin
               .from('tutor_conversations')
               .insert({
-                student_id: studentId,
+                learner_id: learnerId,
                 course_id: courseId,
                 lesson_id: lessonId || null,
                 title: title.slice(0, 255),

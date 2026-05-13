@@ -5,7 +5,7 @@ export * from './api';
 export { useAnalytics } from './model/useAnalytics';
 export { useAnalyticsKPIs } from './model/useAnalyticsKPIs';
 export { useSpeedAnalytics } from './model/useSpeedAnalytics';
-export { useStudentAnalytics } from './model';
+export { useLearnerAnalytics } from './model';
 
 // UI exports
 export { default as KPICard } from './ui/KPICard';

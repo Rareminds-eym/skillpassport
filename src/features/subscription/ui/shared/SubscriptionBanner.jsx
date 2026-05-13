@@ -16,12 +16,13 @@ import {
   ExclamationCircleIcon,
 } from '@heroicons/react/24/outline';
 
+import { WARNING_TYPES } from '@/features/subscription/model/subscriptionStore';
 
 /**
  * Get the base path for subscription routes based on current location
  */
 function getSubscriptionBasePath(pathname) {
-  if (pathname.startsWith('/student')) return '/student';
+  if (pathname.startsWith('/learner')) return '/learner';
   if (pathname.startsWith('/recruitment')) return '/recruitment';
   if (pathname.startsWith('/educator')) return '/educator';
   if (pathname.startsWith('/college-admin')) return '/college-admin';
@@ -34,13 +35,13 @@ function getSubscriptionBasePath(pathname) {
  * Get the user type for subscription plans based on current path
  */
 function getUserTypeFromPath(pathname) {
-  if (pathname.startsWith('/student')) return 'student';
+  if (pathname.startsWith('/learner')) return 'learner';
   if (pathname.startsWith('/recruitment')) return 'recruiter';
   if (pathname.startsWith('/educator')) return 'educator';
   if (pathname.startsWith('/college-admin')) return 'college_admin';
   if (pathname.startsWith('/school-admin')) return 'school_admin';
   if (pathname.startsWith('/university-admin')) return 'university_admin';
-  return 'student'; // fallback
+  return 'learner'; // fallback
 }
 
 const bannerStyles = {

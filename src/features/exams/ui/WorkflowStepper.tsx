@@ -22,7 +22,7 @@ const WorkflowStepper: React.FC<WorkflowStepperProps> = ({ exam, onStepClick }) 
     { key: "creation" as WorkflowStage, label: "Exam Setup", icon: DocumentCheckIcon, description: "Basic details & subjects" },
     { key: "timetable" as WorkflowStage, label: "Timetable", icon: CalendarIcon, description: "Schedule exam sessions" },
     { key: "invigilation" as WorkflowStage, label: "Invigilation", icon: UserGroupIcon, description: "Assign teachers" },
-    { key: "marks" as WorkflowStage, label: "Marks Entry", icon: ClipboardDocumentListIcon, description: "Enter student marks" },
+    { key: "marks" as WorkflowStage, label: "Marks Entry", icon: ClipboardDocumentListIcon, description: "Enter learner marks" },
     { key: "moderation" as WorkflowStage, label: "Moderation", icon: ShieldCheckIcon, description: "Review & approve" },
     { key: "publishing" as WorkflowStage, label: "Publish", icon: BellAlertIcon, description: "Release results" },
     { key: "results" as WorkflowStage, label: "View Results", icon: EyeIcon, description: "View published results" },

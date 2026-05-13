@@ -5,7 +5,7 @@ import ScrollToTop from "@/shared/ui/ScrollToTop";
 
 // Import domain-scoped routes
 import { publicRoutes } from "./publicRoutes";
-import { studentRoutes } from "./studentRoutes";
+import { learnerRoutes } from "./learnerRoutes";
 import { educatorRoutes } from "./educatorRoutes";
 import { recruiterRoutes } from "./recruiterRoutes";
 import { collegeAdminRoutes, schoolAdminRoutes, universityAdminRoutes } from "./adminRoutes";
@@ -20,7 +20,7 @@ const AppRoutes = () => {
         {schoolAdminRoutes}
         {universityAdminRoutes}
         {recruiterRoutes}
-        {studentRoutes}
+        {learnerRoutes}
         {educatorRoutes}
       </Routes>
     </Suspense>

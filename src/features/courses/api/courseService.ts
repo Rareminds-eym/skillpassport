@@ -159,7 +159,7 @@ export async function submitAiTutorFeedback(
 }
 
 /**
- * Get student progress for a course (AI tutor specific)
+ * Get learner progress for a course (AI tutor specific)
  */
 export async function getAiTutorProgress(courseId: string, token?: string): Promise<any> {
   const response = await fetch(`${API_URL}/ai-tutor-progress?courseId=${encodeURIComponent(courseId)}`, {
@@ -182,7 +182,7 @@ interface UpdateProgressParams {
 }
 
 /**
- * Update student progress (AI tutor specific)
+ * Update learner progress (AI tutor specific)
  */
 export async function updateAiTutorProgress(
   params: UpdateProgressParams,

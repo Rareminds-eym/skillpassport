@@ -7,7 +7,7 @@ import {
 } from "@/features/college-admin";
 
 // Types
-import { CollegeClass, ScheduleSlot, Break, TimePeriod, SlotFormData, BreakFormData, SelectedCell } from '@/features/student-profile/model';
+import { CollegeClass, ScheduleSlot, Break, TimePeriod, SlotFormData, BreakFormData, SelectedCell } from '@/features/learner-profile/model';
 
 // Constants
 import { DAYS } from "./constants";

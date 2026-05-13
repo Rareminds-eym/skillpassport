@@ -14,7 +14,7 @@ export {
 // Course enrollment
 export {
   useCourseEnrollment,
-  useStudentEnrollments,
+  useLearnerEnrollments,
   useCourseEnrollments,
   useEducatorEnrollmentStats
 } from './useCourseEnrollment';

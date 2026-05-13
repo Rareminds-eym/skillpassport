@@ -22,7 +22,7 @@ interface Educator {
   department: string;
   phone: string;
   status: "Active" | "Inactive";
-  assignedStudents: number;
+  assignedlearners: number;
   createdAt: string;
   employeeId?: string;
   metadata?: {
@@ -107,8 +107,8 @@ const EducatorCard = ({
           </div>
         </div>
         <div className="text-right">
-          <p className="text-xs text-gray-500 mb-0.5">Assigned Students</p>
-          <p className="text-2xl font-bold text-gray-900">{educator.assignedStudents}</p>
+          <p className="text-xs text-gray-500 mb-0.5">Assigned Learners</p>
+          <p className="text-2xl font-bold text-gray-900">{educator.assignedlearners}</p>
         </div>
       </div>
 
@@ -183,7 +183,7 @@ const EducatorManagement: React.FC = () => {
       department: "Computer Science & Engineering",
       phone: "9123456789",
       status: "Active",
-      assignedStudents: 12,
+      assignedlearners: 12,
       createdAt: "2024-01-15T10:00:00Z",
       employeeId: "FAC001",
       metadata: {
@@ -202,7 +202,7 @@ const EducatorManagement: React.FC = () => {
       department: "Electronics & Communication Engineering",
       phone: "9123456790",
       status: "Active",
-      assignedStudents: 8,
+      assignedlearners: 8,
       createdAt: "2024-01-20T10:00:00Z",
       employeeId: "FAC002",
       metadata: {
@@ -256,7 +256,7 @@ const EducatorManagement: React.FC = () => {
             id: `EDU${Date.now()}`,
             ...formData,
             status: "Active",
-            assignedStudents: 0,
+            assignedlearners: 0,
             createdAt: new Date().toISOString(),
           },
         ]);
@@ -307,8 +307,8 @@ const EducatorManagement: React.FC = () => {
   );
 
   const activeEducators = educators.filter((edu) => edu.status === "Active").length;
-  const totalAssignedStudents = educators.reduce(
-    (sum, edu) => sum + edu.assignedStudents,
+  const totalAssignedlearners = educators.reduce(
+    (sum, edu) => sum + edu.assignedlearners,
     0
   );
 
@@ -324,7 +324,7 @@ const EducatorManagement: React.FC = () => {
                 Educator Management
               </h1>
               <p className="mt-2 text-gray-600">
-                Manage educators and their student assignments
+                Manage educators and their learner assignments
               </p>
             </div>
             <button
@@ -366,8 +366,8 @@ const EducatorManagement: React.FC = () => {
               subtext={`${Math.round((activeEducators / educators.length) * 100)}% of total`}
             />
             <StatsCard
-              label="Students Assigned"
-              value={totalAssignedStudents}
+              label="Learners Assigned"
+              value={totalAssignedlearners}
               icon={UserGroupIcon}
               color="purple"
               subtext="Across all educators"

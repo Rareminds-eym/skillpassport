@@ -50,7 +50,7 @@ interface CollegeRevenueData {
   total_revenue: number;
   pending_amount: number;
   collection_rate: number;
-  student_count: number;
+  learner_count: number;
 }
 
 interface MonthlyRevenueData {
@@ -87,7 +87,7 @@ const mockReports: ReportData[] = [
   {
     id: '3',
     name: 'Overdue Payments Report',
-    description: 'Students with overdue payments and late fees analysis',
+    description: 'Learners with overdue payments and late fees analysis',
     type: 'overdue',
     icon: AlertTriangle,
     color: 'bg-red-500',
@@ -145,35 +145,35 @@ const mockCollegeData: CollegeRevenueData[] = [
     total_revenue: 4500000,
     pending_amount: 320000,
     collection_rate: 93.2,
-    student_count: 2800
+    learner_count: 2800
   },
   {
     college_name: 'PSG College of Technology',
     total_revenue: 3200000,
     pending_amount: 180000,
     collection_rate: 89.7,
-    student_count: 2100
+    learner_count: 2100
   },
   {
     college_name: 'Coimbatore Institute of Technology',
     total_revenue: 2800000,
     pending_amount: 240000,
     collection_rate: 85.4,
-    student_count: 1900
+    learner_count: 1900
   },
   {
     college_name: 'Thiagarajar College of Engineering',
     total_revenue: 2600000,
     pending_amount: 150000,
     collection_rate: 91.8,
-    student_count: 1700
+    learner_count: 1700
   },
   {
     college_name: 'Madras Institute of Technology',
     total_revenue: 2650000,
     pending_amount: 200000,
     collection_rate: 88.1,
-    student_count: 1800
+    learner_count: 1800
   }
 ];
 
@@ -350,7 +350,7 @@ const FinancialReports: React.FC = () => {
                     <span className="text-sm font-bold text-green-600">{formatCurrency(college.total_revenue)}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>{college.student_count} students</span>
+                    <span>{college.learner_count} learners</span>
                     <span>Collection: {college.collection_rate}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
@@ -534,7 +534,7 @@ const FinancialReports: React.FC = () => {
               <option value="payments">Payment Records</option>
               <option value="fees">Fee Structures</option>
               <option value="colleges">College Data</option>
-              <option value="students">Student Data</option>
+              <option value="learners">Learner Data</option>
             </select>
           </div>
           <div>
@@ -557,7 +557,7 @@ const FinancialReports: React.FC = () => {
           <h4 className="text-sm font-medium text-gray-900 mb-2">Available Fields</h4>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {[
-              'Student Name', 'College Name', 'Fee Type', 'Amount Due', 'Amount Paid',
+              'Learner Name', 'College Name', 'Fee Type', 'Amount Due', 'Amount Paid',
               'Payment Date', 'Status', 'Transaction ID', 'Late Fee', 'Discount'
             ].map((field, index) => (
               <label key={index} className="flex items-center gap-2 text-sm">

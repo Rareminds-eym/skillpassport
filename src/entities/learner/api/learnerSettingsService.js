@@ -1,0 +1,641 @@
+/**
+ * Learner Settings Service
+ * Handles fetching and updating learner data from the learners table
+ * Uses direct column access instead of profile JSONB for better performance
+ * Notification and privacy settings are stored in user_settings table
+ */
+
+import { supabase } from '@/shared/api/supabaseClient';
+
+/**
+ * Fetch learner data by email for settings page
+ * @param {string} email - Learner email
+ * @returns {Promise<Object>} Learner data
+ */
+export const getlearnerSettingsByEmail = async (email) => {
+  try {
+    const { data, error } = await supabase
+      .from('learners')
+      .select(`
+        id,
+        email,
+        name,
+        age,
+        date_of_birth,
+        dateOfBirth,
+        contact_number,
+        contactNumber,
+        alternate_number,
+        district_name,
+        city,
+        state,
+        country,
+        pincode,
+        address,
+        university,
+        branch_field,
+        college_school_name,
+        registration_number,
+        enrollmentNumber,
+        github_link,
+        linkedin_link,
+        twitter_link,
+        facebook_link,
+        instagram_link,
+        portfolio_link,
+        other_social_links,
+        resumeUrl,
+        profilePicture,
+        bio,
+        gender,
+        bloodGroup,
+        guardianName,
+        guardianPhone,
+        guardianEmail,
+        guardianRelation,
+        currentCgpa,
+        grade,
+        grade_start_date,
+        universityId,
+        university_college_id,
+        school_id,
+        school_class_id,
+        college_id,
+        program_id,
+        program_section_id,
+        semester,
+        section,
+        expectedGraduationDate,
+        enrollmentDate,
+        user_id,
+        approval_status,
+        created_at,
+        updated_at,
+        gap_in_studies,
+        gap_years,
+        gap_reason,
+        work_experience,
+        aadhar_number,
+        backlogs_history,
+        current_backlogs,
+        interests,
+        languages,
+        hobbies,
+        school:organizations!learners_school_id_fkey (
+          id,
+          name,
+          code,
+          city,
+          state,
+          organization_type
+        ),
+        college:organizations!learners_college_id_fkey (
+          id,
+          name,
+          code,
+          city,
+          state,
+          organization_type
+        ),
+        universityOrganization:organizations!learners_universityid_fkey (
+          id,
+          name,
+          code,
+          city,
+          state,
+          organization_type
+        ),
+        users!inner(role)
+      `)
+      .eq('email', email)
+      .maybeSingle();
+
+    if (error) {
+      console.error('❌ Error fetching learner settings:', error);
+      return { success: false, error: error.message };
+    }
+
+    if (!data) {
+      return { success: false, error: 'Learner not found' };
+    }
+
+    console.log('📊 Raw data from database:', {
+      university: data.university,
+      universityId: data.universityId,
+      college_school_name: data.college_school_name,
+      branch_field: data.branch_field
+    });
+
+    // Extract role from the joined users table
+    const userRole = Array.isArray(data.users) && data.users.length > 0
+      ? data.users[0]?.role
+      : data.users?.role;
+
+    // Get settings from user_settings table
+    let userSettings = null;
+    if (data.user_id) {
+      const { data: settingsData, error: settingsError } = await supabase
+        .from('user_settings')
+        .select('notification_preferences, privacy_settings')
+        .eq('user_id', data.user_id)
+        .maybeSingle();
+
+      if (!settingsError && settingsData) {
+        userSettings = settingsData;
+      }
+    }
+
+    // Map college_school_name based on role
+    // For school learners: it represents school name
+    // For college learners: it represents college name
+    const collegeSchoolName = data.college_school_name || '';
+
+    // Transform data for settings form
+    const settingsData = {
+      id: data.id,
+      name: data.name || '',
+      email: data.email || '',
+      phone: data.contactNumber || data.contact_number || '',
+      alternatePhone: data.alternate_number || '',
+      location: data.city || data.district_name || '',
+      address: data.address || '',
+      state: data.state || '',
+      country: data.country || 'India',
+      pincode: data.pincode || '',
+      dateOfBirth: data.dateOfBirth || data.date_of_birth || '',
+      age: data.age || '',
+      gender: data.gender || '',
+      bloodGroup: data.bloodGroup || '',
+
+      // Academic info
+      university: data.university || '',
+      branch: data.branch_field || '',
+      college: userRole === 'learner' ? collegeSchoolName : '',
+      schoolName: userRole === 'learner' ? collegeSchoolName : '',
+      registrationNumber: data.registration_number || '',
+      enrollmentNumber: data.enrollmentNumber || '',
+      currentCgpa: data.currentCgpa || '',
+      grade: data.grade || '',
+      gradeStartDate: data.grade_start_date || '',
+      universityId: data.universityId || '',
+      universityCollegeId: data.university_college_id || '',
+      schoolId: data.school_id || '',
+      schoolClassId: data.school_class_id || '',
+      collegeId: data.college_id || '',
+      programId: data.program_id || '',
+      programSectionId: data.program_section_id || '',
+      semester: data.semester || '',
+      section: data.section || '',
+      enrollmentDate: data.enrollmentDate || '',
+      expectedGraduationDate: data.expectedGraduationDate || '',
+
+      // Guardian info
+      guardianName: data.guardianName || '',
+      guardianPhone: data.guardianPhone || '',
+      guardianEmail: data.guardianEmail || '',
+      guardianRelation: data.guardianRelation || '',
+
+      // Social links
+      linkedIn: data.linkedin_link || '',
+      github: data.github_link || '',
+      twitter: data.twitter_link || '',
+      facebook: data.facebook_link || '',
+      instagram: data.instagram_link || '',
+      portfolio: data.portfolio_link || '',
+      otherSocialLinks: data.other_social_links || [],
+
+      // Profile
+      resumeUrl: data.resumeUrl || '',
+      profilePicture: data.profilePicture || '',
+      bio: data.bio || '',
+
+      // New fields for gap years, work experience, and academic info
+      gapInStudies: data.gap_in_studies || false,
+      gapYears: data.gap_years || 0,
+      gapReason: data.gap_reason || '',
+      workExperience: data.work_experience || '',
+      aadharNumber: data.aadhar_number || '',
+      backlogsHistory: data.backlogs_history || '',
+      currentBacklogs: data.current_backlogs || 0,
+
+      // New JSON fields - ensure they're returned as JSON strings for the form
+      interests: typeof data.interests === 'string' ? data.interests : JSON.stringify(data.interests || []),
+      languages: typeof data.languages === 'string' ? data.languages : JSON.stringify(data.languages || []),
+      hobbies: typeof data.hobbies === 'string' ? data.hobbies : JSON.stringify(data.hobbies || []),
+
+      // Notification settings from user_settings table
+      notificationSettings: userSettings?.notification_preferences || {
+        emailNotifications: true,
+        pushNotifications: true,
+        applicationUpdates: true,
+        newOpportunities: true,
+        recruitingMessages: true,
+        weeklyDigest: false,
+        monthlyReport: false,
+      },
+
+      // Privacy settings from user_settings table
+      privacySettings: userSettings?.privacy_settings || {
+        profileVisibility: 'public',
+        showEmail: false,
+        showPhone: false,
+        showLocation: true,
+        allowRecruiterContact: true,
+        showInTalentPool: true,
+      },
+
+      // Status
+      approvalStatus: data.approval_status || 'pending',
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+
+      // Organization info (from invitation acceptance)
+      // These are populated when a learner accepts an organization invitation
+      schoolOrganization: data.school || null,
+      collegeOrganization: data.college || data.universityOrganization || null,
+      
+      // User role from users table
+      userRole: userRole || null,
+    };
+
+    return { success: true, data: settingsData };
+  } catch (err) {
+    console.error('❌ getlearnerSettingsByEmail exception:', err);
+    return { success: false, error: err.message };
+  }
+};
+
+/**
+ * Update learner profile data
+ * @param {string} email - Learner email
+ * @param {Object} updates - Data to update
+ * @returns {Promise<Object>} Updated learner data
+ */
+export const updatelearnerSettings = async (email, updates) => {
+  try {
+    // First get the learner ID and user_id
+    const { data: learner, error: findError } = await supabase
+      .from('learners')
+      .select('id, user_id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (findError || !learner) {
+      return { success: false, error: 'Learner not found' };
+    }
+
+    // Prepare updates for direct columns
+    const columnUpdates = {};
+
+    // Map form fields to database columns
+    const fieldMapping = {
+      name: 'name',
+      phone: 'contactNumber',
+      alternatePhone: 'alternate_number',
+      location: 'city',
+      address: 'address',
+      state: 'state',
+      country: 'country',
+      pincode: 'pincode',
+      dateOfBirth: 'dateOfBirth',
+      age: 'age',
+      gender: 'gender',
+      bloodGroup: 'bloodGroup',
+      university: 'university',
+      branch: 'branch_field',
+      program: 'branch_field', // Custom program name also maps to branch_field
+      college: 'college_school_name',
+      courseName: 'course_name', // Program name field
+      registrationNumber: 'registration_number',
+      enrollmentNumber: 'enrollmentNumber',
+      currentCgpa: 'currentCgpa',
+      grade: 'grade',
+      gradeStartDate: 'grade_start_date',
+      universityId: 'universityId',
+      universityCollegeId: 'university_college_id',
+      schoolId: 'school_id',
+      schoolClassId: 'school_class_id',
+      collegeId: 'college_id',
+      programId: 'program_id',
+      programSectionId: 'program_section_id',
+      semester: 'semester',
+      section: 'section',
+      rollNumber: 'roll_number',
+      enrollmentDate: 'enrollmentDate',
+      expectedGraduationDate: 'expectedGraduationDate',
+      guardianName: 'guardianName',
+      guardianPhone: 'guardianPhone',
+      guardianEmail: 'guardianEmail',
+      guardianRelation: 'guardianRelation',
+      linkedIn: 'linkedin_link',
+      github: 'github_link',
+      twitter: 'twitter_link',
+      facebook: 'facebook_link',
+      instagram: 'instagram_link',
+      portfolio: 'portfolio_link',
+      resumeUrl: 'resumeUrl',
+      profilePicture: 'profilePicture',
+      bio: 'bio',
+      // New fields for gap years, work experience, and academic info
+      gapInStudies: 'gap_in_studies',
+      gapYears: 'gap_years',
+      gapReason: 'gap_reason',
+      workExperience: 'work_experience',
+      aadharNumber: 'aadhar_number',
+      backlogsHistory: 'backlogs_history',
+      currentBacklogs: 'current_backlogs',
+      // New JSON fields
+      interests: 'interests',
+      languages: 'languages',
+      hobbies: 'hobbies',
+    };
+
+    // Define numeric fields that should be null instead of empty string
+    const numericFields = ['age', 'pincode', 'currentCgpa', 'semester', 'gapYears', 'currentBacklogs'];
+
+    // Define UUID fields that should be null instead of empty string
+    const uuidFields = ['universityCollegeId', 'schoolId', 'schoolClassId', 'collegeId', 'programId', 'universityId', 'programSectionId'];
+
+    // Define fields that might contain phone numbers (could be numeric in DB)
+    const phoneFields = ['phone', 'alternatePhone', 'guardianPhone'];
+
+    // Define date fields that should be null instead of empty string
+    const dateFields = ['dateOfBirth', 'gradeStartDate', 'enrollmentDate', 'expectedGraduationDate'];
+    
+    // Define text fields that should be null instead of empty string
+    const nullableTextFields = ['courseName', 'gapReason'];
+
+    // Process updates
+    Object.keys(updates).forEach(key => {
+      if (fieldMapping[key]) {
+        let value = updates[key];
+
+        // Handle numeric fields - convert empty strings to null
+        if (numericFields.includes(key) && (value === '' || value === null || value === undefined)) {
+          value = null;
+        }
+
+        // Handle UUID fields - convert empty strings to null
+        if (uuidFields.includes(key) && (value === '' || value === null || value === undefined)) {
+          value = null;
+        }
+
+        // Handle phone fields - convert empty strings to null (in case they're stored as numeric)
+        if (phoneFields.includes(key) && (value === '' || value === null || value === undefined)) {
+          value = null;
+        }
+
+        // Handle date fields - convert empty strings to null
+        if (dateFields.includes(key) && (value === '' || value === null || value === undefined)) {
+          value = null;
+        }
+
+        // Handle aadharNumber - convert empty strings to null to satisfy DB constraint
+        if (key === 'aadharNumber' && (value === '' || value === null || value === undefined)) {
+          value = null;
+        }
+        
+        // Handle nullable text fields - convert empty strings to null
+        if (nullableTextFields.includes(key) && (value === '' || value === null || value === undefined)) {
+          value = null;
+        }
+
+        // Handle guardianRelation - enforce 50 character limit
+        if (key === 'guardianRelation' && value && typeof value === 'string' && value.length > 50) {
+          console.warn(`⚠️ guardianRelation exceeds 50 characters (${value.length}), truncating`);
+          value = value.substring(0, 50);
+        }
+
+        // Handle category - enforce 50 character limit
+        if (key === 'category' && value && typeof value === 'string' && value.length > 50) {
+          console.warn(`⚠️ category exceeds 50 characters (${value.length}), truncating`);
+          value = value.substring(0, 50);
+        }
+
+        // Handle quota - enforce 50 character limit
+        if (key === 'quota' && value && typeof value === 'string' && value.length > 50) {
+          console.warn(`⚠️ quota exceeds 50 characters (${value.length}), truncating`);
+          value = value.substring(0, 50);
+        }
+
+        // Handle roll_number - enforce 50 character limit
+        if (key === 'rollNumber' && value && typeof value === 'string' && value.length > 50) {
+          console.warn(`⚠️ rollNumber exceeds 50 characters (${value.length}), truncating`);
+          value = value.substring(0, 50);
+        }
+
+        // Handle JSON fields - parse string to JSON if needed
+        if (['interests', 'languages', 'hobbies'].includes(key)) {
+          if (typeof value === 'string') {
+            try {
+              value = JSON.parse(value);
+            } catch (e) {
+              console.warn(`Failed to parse ${key} as JSON:`, value);
+              value = [];
+            }
+          }
+          // Ensure it's an array
+          if (!Array.isArray(value)) {
+            value = [];
+          }
+        }
+
+        columnUpdates[fieldMapping[key]] = value;
+        
+        // IMPORTANT: When branch_field is updated, also update course_name
+        // This ensures consistency between settings page and assessment test page
+        // Also clear program_id to prevent FK override
+        if ((key === 'branch' || key === 'program') && value) {
+          columnUpdates.course_name = value;
+          // If manually setting branch (not via program_id dropdown), clear program_id
+          // This prevents the FK relationship from overriding the manual entry
+          // Check if programId is empty, null, or not provided
+          const hasProgramId = updates.programId && updates.programId !== '' && updates.programId !== null;
+          if (!hasProgramId) {
+            columnUpdates.program_id = null;
+            console.log('🔓 Clearing program_id to use manual entry');
+          }
+          console.log('📚 Syncing course_name with branch_field:', value);
+        }
+        
+        // IMPORTANT: When program_id is set via dropdown, also update branch_field and course_name
+        // This ensures the program name is stored in all three places for consistency
+        if (key === 'programId' && value) {
+          // We need to fetch the program name from the programs table
+          // This will be done after the loop
+          console.log('📋 Program ID set via dropdown:', value);
+        }
+      } else if (key === 'otherSocialLinks') {
+        columnUpdates.other_social_links = updates[key];
+      }
+      // Note: notificationSettings and privacySettings are handled separately below
+    });
+
+    // If program_id was set, fetch the program name and sync to branch_field and course_name
+    if (columnUpdates.program_id && columnUpdates.program_id !== null) {
+      console.log('🔍 Fetching program name for program_id:', columnUpdates.program_id);
+      const { data: programData, error: programError } = await supabase
+        .from('programs')
+        .select('name, code')
+        .eq('id', columnUpdates.program_id)
+        .single();
+      
+      if (!programError && programData) {
+        const programName = programData.name || programData.code;
+        columnUpdates.branch_field = programName;
+        columnUpdates.course_name = programName;
+        console.log('✅ Synced program name to branch_field and course_name:', programName);
+      }
+    }
+
+    // Handle notification and privacy settings in user_settings table
+    if ((updates.notificationSettings || updates.privacySettings) && learner.user_id) {
+      console.log('💾 Saving settings to user_settings table...');
+      console.log('   Notification settings:', updates.notificationSettings);
+      console.log('   Privacy settings:', updates.privacySettings);
+      
+      // Check if user_settings record exists
+      const { data: existingSettings, error: checkError } = await supabase
+        .from('user_settings')
+        .select('id')
+        .eq('user_id', learner.user_id)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('❌ Error checking user_settings:', checkError);
+      }
+
+      const settingsUpdate = {};
+      if (updates.notificationSettings) {
+        settingsUpdate.notification_preferences = updates.notificationSettings;
+      }
+      if (updates.privacySettings) {
+        settingsUpdate.privacy_settings = updates.privacySettings;
+      }
+      settingsUpdate.updated_at = new Date().toISOString();
+
+      if (existingSettings) {
+        // Update existing record
+        console.log('📝 Updating existing user_settings record...');
+        const { error: updateError } = await supabase
+          .from('user_settings')
+          .update(settingsUpdate)
+          .eq('user_id', learner.user_id);
+        
+        if (updateError) {
+          console.error('❌ Error updating user_settings:', updateError);
+          return { success: false, error: updateError.message };
+        }
+        console.log('✅ User settings updated successfully');
+      } else {
+        // Create new record
+        console.log('➕ Creating new user_settings record...');
+        const { error: insertError } = await supabase
+          .from('user_settings')
+          .insert({
+            user_id: learner.user_id,
+            ...settingsUpdate,
+          });
+        
+        if (insertError) {
+          console.error('❌ Error inserting user_settings:', insertError);
+          return { success: false, error: insertError.message };
+        }
+        console.log('✅ User settings created successfully');
+      }
+    }
+
+    // Add updated timestamp
+    columnUpdates.updated_at = new Date().toISOString();
+
+    // Perform the update on learners table (only if there are column updates)
+    if (Object.keys(columnUpdates).length > 1) { // More than just updated_at
+      console.log('💾 Updating learners table with:', columnUpdates);
+      
+      // Log any fields that might exceed varchar limits
+      Object.keys(columnUpdates).forEach(key => {
+        const value = columnUpdates[key];
+        if (typeof value === 'string') {
+          if (key === 'guardianRelation' && value.length > 50) {
+            console.error(`❌ guardianRelation too long: ${value.length} chars - "${value}"`);
+          }
+          if (key === 'category' && value.length > 50) {
+            console.error(`❌ category too long: ${value.length} chars - "${value}"`);
+          }
+          if (key === 'quota' && value.length > 50) {
+            console.error(`❌ quota too long: ${value.length} chars - "${value}"`);
+          }
+          if (key === 'roll_number' && value.length > 50) {
+            console.error(`❌ roll_number too long: ${value.length} chars - "${value}"`);
+          }
+        }
+      });
+      
+      const { data, error } = await supabase
+        .from('learners')
+        .update(columnUpdates)
+        .eq('id', learner.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Error updating learner settings:', error);
+        console.error('❌ Failed update data:', columnUpdates);
+        return { success: false, error: error.message };
+      }
+      console.log('✅ Learners table updated successfully');
+    } else {
+      console.log('⚠️ No column updates to save (only timestamp)');
+    }
+
+    // Return fresh data
+    console.log('🔄 Fetching fresh data after save...');
+    return await getlearnerSettingsByEmail(email);
+  } catch (err) {
+    console.error('❌ updatelearnerSettings exception:', err);
+    return { success: false, error: err.message };
+  }
+};
+
+/**
+ * Update password using SSO Worker (not Supabase Auth which is disabled)
+ * Delegates to updatePassword from user mutations which calls /auth/change-password
+ * @param {string} email - Learner email (used for logging only)
+ * @param {string} currentPassword - Current password
+ * @param {string} newPassword - New password
+ * @returns {Promise<Object>} Result
+ */
+export const updatelearnerPassword = async (email, currentPassword, newPassword) => {
+  try {
+    console.log('🔐 Password update requested for:', email);
+
+    const { updatePassword } = await import('@/entities/user/api/mutations');
+    await updatePassword(newPassword, currentPassword);
+
+    console.log('✅ Password updated successfully for:', email);
+    
+    return { 
+      success: true, 
+      message: 'Password updated successfully!'
+    };
+  } catch (err) {
+    console.error('❌ updatelearnerPassword exception:', err);
+
+    // Map common SSO error messages to user-friendly messages
+    const msg = err.message || '';
+    if (msg.includes('Current password') || msg.includes('Invalid credentials') || msg.includes('incorrect')) {
+      return { success: false, error: 'Current password is incorrect. Please try again.' };
+    }
+    if (msg.includes('same password')) {
+      return { success: false, error: 'New password must be different from your current password.' };
+    }
+    if (msg.includes('too weak') || msg.includes('8 characters')) {
+      return { success: false, error: 'Password must be at least 8 characters long.' };
+    }
+    
+    return { 
+      success: false, 
+      error: msg || 'An unexpected error occurred. Please try again.' 
+    };
+  }
+};

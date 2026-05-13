@@ -87,7 +87,7 @@ export interface ConfidenceTagResult {
 }
 
 /**
- * Classifies a student into a tier (L/M/H) based on their diagnostic screener responses.
+ * Classifies a learner into a tier (L/M/H) based on their diagnostic screener responses.
  */
 export function classifyTier(screenerResponses: Response[]): TierClassificationResult {
   const diagnosticResponses = screenerResponses.filter(

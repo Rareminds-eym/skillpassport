@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import React, { useState, useCallback, useEffect } from 'react';
 import { 
   DocumentArrowUpIcon, 
@@ -155,7 +156,7 @@ const AssignmentFileUpload = React.forwardRef<
     if (!fileToDelete) return;
 
     // Get token from Supabase session
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await getCurrentSession();
     const token = session?.access_token || user?.access_token;
     
     if (!token) {
@@ -198,7 +199,7 @@ const AssignmentFileUpload = React.forwardRef<
     }
     
     // Get token from Supabase session
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await getCurrentSession();
     const token = session?.access_token || user?.access_token;
     
     if (!token) {
@@ -264,7 +265,7 @@ const AssignmentFileUpload = React.forwardRef<
     if (stagedFiles.length === 0) return [];
     
     // Get token from Supabase session
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await getCurrentSession();
     const token = session?.access_token || user?.access_token;
     
     if (!token) {

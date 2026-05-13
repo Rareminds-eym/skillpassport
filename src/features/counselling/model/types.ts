@@ -22,8 +22,8 @@ export interface CounsellingMessage {
 
 export interface CounsellingSession {
   id: string;
-  student_id: string;
-  student_name?: string;
+  learner_id: string;
+  learner_name?: string;
   topic: CounsellingTopicType;
   status: SessionStatus;
   created_at: string;
@@ -35,7 +35,7 @@ export interface CounsellingSession {
   };
 }
 
-export interface StudentContext {
+export interface LearnerContext {
   id: string;
   name: string;
   email?: string;
@@ -54,7 +54,7 @@ export interface StudentContext {
 export interface CounsellingRequest {
   session_id: string;
   message: string;
-  student_context?: StudentContext;
+  learner_context?: LearnerContext;
   topic: CounsellingTopicType;
 }
 

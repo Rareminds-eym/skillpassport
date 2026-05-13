@@ -3,8 +3,7 @@
  * Handles organization-specific subscription operations
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
-import { checkAuthentication } from '@/features/auth';
+import { apiGet } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('organization-service');
@@ -14,34 +13,21 @@ const logger = getLogger('organization-service');
  */
 export const getOrganizationSubscription = async (organizationId: string) => {
   try {
-    const { data, error } = await supabase
-      .from('organization_subscriptions')
-      .select(`
-        *,
-        subscription_plans (
-          id,
-          name,
-          plan_code,
-          features
-        )
-      `)
-      .eq('organization_id', organizationId)
-      .eq('status', 'active')
-      .maybeSingle();
-
-    if (error) throw error;
+    const result = await apiGet<{ success: boolean; data: any; error: string | null }>(
+      `/payments/organization-queries?action=getOrganizationSubscription&orgId=${organizationId}`
+    );
 
     return {
-      success: true,
-      data,
-      error: null
+      success: result.success ?? true,
+      data: result.data,
+      error: result.error
     };
   } catch (error: any) {
     logger.error('Error fetching organization subscription', error);
     return {
       success: false,
       data: null,
-      error: error.message
+      error: error.message || 'Unknown error'
     };
   }
 };
@@ -51,32 +37,21 @@ export const getOrganizationSubscription = async (organizationId: string) => {
  */
 export const getOrganizationMembers = async (organizationId: string) => {
   try {
-    const { data, error } = await supabase
-      .from('license_assignments')
-      .select(`
-        *,
-        users (
-          id,
-          email,
-          full_name
-        )
-      `)
-      .eq('organization_id', organizationId)
-      .order('assigned_at', { ascending: false });
-
-    if (error) throw error;
+    const result = await apiGet<{ success: boolean; data: any; error: string | null }>(
+      `/payments/organization-queries?action=getOrganizationMembers&orgId=${organizationId}`
+    );
 
     return {
-      success: true,
-      data: data || [],
-      error: null
+      success: result.success ?? true,
+      data: result.data || [],
+      error: result.error
     };
   } catch (error: any) {
     logger.error('Error fetching organization members', error);
     return {
       success: false,
       data: null,
-      error: error.message
+      error: error.message || 'Unknown error'
     };
   }
 };
@@ -86,38 +61,21 @@ export const getOrganizationMembers = async (organizationId: string) => {
  */
 export const getUserLicenseAssignment = async (userId: string) => {
   try {
-    const { data, error } = await supabase
-      .from('license_assignments')
-      .select(`
-        *,
-        organization_subscriptions (
-          id,
-          status,
-          start_date,
-          end_date,
-          subscription_plans (
-            name,
-            plan_code
-          )
-        )
-      `)
-      .eq('user_id', userId)
-      .eq('status', 'active')
-      .maybeSingle();
-
-    if (error) throw error;
+    const result = await apiGet<{ success: boolean; data: any; error: string | null }>(
+      `/payments/organization-queries?action=getUserLicenseAssignment`
+    );
 
     return {
-      success: true,
-      data,
-      error: null
+      success: result.success ?? true,
+      data: result.data,
+      error: result.error
     };
   } catch (error: any) {
     logger.error('Error fetching license assignment', error);
     return {
       success: false,
       data: null,
-      error: error.message
+      error: error.message || 'Unknown error'
     };
   }
 };

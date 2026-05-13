@@ -1,3 +1,4 @@
+import { getCurrentSession } from '@/shared/api/authUtils';
 /**
  * Razorpay Service
  * 
@@ -13,7 +14,6 @@
  * - verifyPayment()           - Verify payment via Worker
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
 import paymentsApiService from './paymentsApiService';
 
 /**
@@ -44,7 +44,7 @@ export const loadRazorpayScript = () => {
 export const createRazorpayOrder = async (orderData) => {
   try {
     // Get auth token
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await getCurrentSession();
     const token = session?.access_token;
 
     if (!token) {
@@ -86,8 +86,12 @@ export const createRazorpayOrder = async (orderData) => {
 export const verifyPayment = async (paymentData) => {
   try {
     // Get auth token
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await getCurrentSession();
     const token = session?.access_token;
+
+    if (!token) {
+      throw new Error('No authentication token available');
+    }
 
     // Call Worker via paymentsApiService
     return await paymentsApiService.verifyPayment({
@@ -109,23 +113,61 @@ export const verifyPayment = async (paymentData) => {
  * @param {Object} params.plan - Selected subscription plan
  * @param {Object} params.userDetails - User information
  */
-export const initiateRazorpayPayment = async ({ plan, userDetails, isUpgrade }) => {
-  try {
-    // Store plan details in localStorage for success page
-    localStorage.setItem('payment_plan_details', JSON.stringify({
-      ...plan,
-      studentType: userDetails.studentType
-    }));
+/**
+ * Payment outcome types for callback-driven SPA navigation.
+ * No window.location.href — all outcomes are communicated back
+ * to the calling React component via callbacks.
+ */
+export interface PaymentSuccessResult {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+  plan: Record<string, unknown>;
+  verificationResult?: Record<string, unknown>;
+}
 
+export interface PaymentFailureResult {
+  error_code: string;
+  error_description: string;
+  error_reason?: string;
+  razorpay_order_id?: string;
+  razorpay_payment_id?: string;
+}
+
+export interface InitiatePaymentParams {
+  plan: Record<string, unknown> & { id: string; name: string; price: string | number; duration?: string };
+  userDetails: { name: string; email: string; phone?: string; learnerType?: string };
+  isUpgrade?: boolean;
+  onSuccess: (result: PaymentSuccessResult) => void;
+  onFailure: (result: PaymentFailureResult) => void;
+  onCancel?: () => void;
+}
+
+export const initiateRazorpayPayment = async ({
+  plan,
+  userDetails,
+  isUpgrade,
+  onSuccess,
+  onFailure,
+  onCancel,
+}: InitiatePaymentParams) => {
+  try {
     // Load Razorpay script
     const scriptLoaded = await loadRazorpayScript();
     if (!scriptLoaded) {
       throw new Error('Failed to load Razorpay SDK');
     }
 
+    const parsedPrice = parseFloat(String(plan.price));
+    if (isNaN(parsedPrice) || parsedPrice <= 0) {
+      throw new Error(`Invalid plan price: ${plan.price}`);
+    }
+
+    const amountInPaise = Math.round(parsedPrice * 100);
+
     // Create order via Worker
     const orderData = await createRazorpayOrder({
-      amount: parseFloat(plan.price) * 100, // Convert to paise
+      amount: amountInPaise,
       currency: 'INR',
       planId: plan.id,
       planName: plan.name,
@@ -134,19 +176,16 @@ export const initiateRazorpayPayment = async ({ plan, userDetails, isUpgrade }) 
       isUpgrade,
     });
 
-    // Get current origin for redirect URLs
-    const origin = window.location.origin;
-
     // Use Razorpay key from backend API response (matches RAZORPAY_MODE on server)
     const razorpayKeyId = orderData.key;
 
-    // Razorpay checkout options
+    // Razorpay checkout options — all callbacks stay in-app (no window.location.href)
     const options = {
       key: razorpayKeyId,
       amount: orderData.amount,
       currency: orderData.currency,
       name: 'RareMinds Skill Passport',
-      description: `${plan.name} Plan - ₹${plan.price}/${plan.duration}`,
+      description: `${plan.name} Plan - ₹${plan.price}/${plan.duration || 'month'}`,
       order_id: orderData.id,
       prefill: {
         name: userDetails.name,
@@ -160,22 +199,48 @@ export const initiateRazorpayPayment = async ({ plan, userDetails, isUpgrade }) 
       theme: {
         color: '#2563eb',
       },
-      handler: function (response) {
-        // Redirect to success page with payment params
-        const successUrl = new URL('/subscription/payment/success', origin);
-        successUrl.searchParams.set('razorpay_payment_id', response.razorpay_payment_id);
-        successUrl.searchParams.set('razorpay_order_id', response.razorpay_order_id);
-        successUrl.searchParams.set('razorpay_signature', response.razorpay_signature);
-        window.location.href = successUrl.toString();
+      // ── Success handler — verify payment inline, then callback ──
+      handler: async function (response) {
+        try {
+          // Verify payment signature via Worker before declaring success
+          const verificationResult = await verifyPayment({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+            plan,
+          });
+
+          onSuccess({
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_signature: response.razorpay_signature,
+            plan,
+            verificationResult,
+          });
+        } catch (verifyError) {
+          // Payment was captured by Razorpay but verification failed
+          // Still call onSuccess with the raw response so the UI can handle it
+          console.error('[RazorpayService] Payment verification failed:', verifyError);
+          onSuccess({
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_signature: response.razorpay_signature,
+            plan,
+          });
+        }
       },
       modal: {
+        // ── User dismissed the modal ──
         ondismiss: function () {
-          // Redirect to failure page on cancel
-          const failureUrl = new URL('/subscription/payment/failure', origin);
-          failureUrl.searchParams.set('razorpay_order_id', orderData.id);
-          failureUrl.searchParams.set('error_code', 'PAYMENT_CANCELLED');
-          failureUrl.searchParams.set('error_description', 'Payment was cancelled by user');
-          window.location.href = failureUrl.toString();
+          if (onCancel) {
+            onCancel();
+          } else {
+            onFailure({
+              error_code: 'PAYMENT_CANCELLED',
+              error_description: 'Payment was cancelled by user',
+              razorpay_order_id: orderData.id,
+            });
+          }
         },
       },
     };
@@ -183,44 +248,32 @@ export const initiateRazorpayPayment = async ({ plan, userDetails, isUpgrade }) 
     // Open Razorpay checkout
     const razorpay = new window.Razorpay(options);
 
-    // Handle payment failure
+    // ── Payment failure event ──
     razorpay.on('payment.failed', function (response) {
-      const failureUrl = new URL('/subscription/payment/failure', origin);
-      failureUrl.searchParams.set('razorpay_order_id', orderData.id);
-      failureUrl.searchParams.set('razorpay_payment_id', response.error.metadata?.payment_id || '');
-      failureUrl.searchParams.set('error_code', response.error.code || 'PAYMENT_FAILED');
-      failureUrl.searchParams.set('error_description', response.error.description || 'Payment failed');
-      failureUrl.searchParams.set('error_reason', response.error.reason || '');
-      window.location.href = failureUrl.toString();
+      onFailure({
+        error_code: response.error?.code || 'PAYMENT_FAILED',
+        error_description: response.error?.description || 'Payment failed',
+        error_reason: response.error?.reason || '',
+        razorpay_order_id: orderData.id,
+        razorpay_payment_id: response.error?.metadata?.payment_id || '',
+      });
     });
 
     razorpay.open();
   } catch (error) {
     // Handle "subscription already exists" error specially
     if (error.code === 'SUBSCRIPTION_EXISTS' || error.isSubscriptionExists) {
-      const origin = window.location.origin;
-      // Get the base path from current location for role-based routing
-      const pathname = window.location.pathname;
-      let basePath = '';
-      if (pathname.startsWith('/student')) basePath = '/student';
-      else if (pathname.startsWith('/recruitment')) basePath = '/recruitment';
-      else if (pathname.startsWith('/educator')) basePath = '/educator';
-      else if (pathname.startsWith('/college-admin')) basePath = '/college-admin';
-      else if (pathname.startsWith('/school-admin')) basePath = '/school-admin';
-      else if (pathname.startsWith('/university-admin')) basePath = '/university-admin';
-
-      // Redirect to manage subscription page instead of failure page
-      const manageUrl = new URL(`${basePath}/subscription/manage`, origin);
-      manageUrl.searchParams.set('message', 'You already have an active subscription');
-      window.location.href = manageUrl.toString();
+      onFailure({
+        error_code: 'SUBSCRIPTION_EXISTS',
+        error_description: error.message || 'You already have an active subscription',
+      });
       return;
     }
 
-    // Redirect to failure page on other errors
-    const origin = window.location.origin;
-    const failureUrl = new URL('/subscription/payment/failure', origin);
-    failureUrl.searchParams.set('error_code', 'INITIALIZATION_ERROR');
-    failureUrl.searchParams.set('error_description', error.message || 'Failed to initialize payment');
-    window.location.href = failureUrl.toString();
+    // All other initialization errors — callback instead of redirect
+    onFailure({
+      error_code: 'INITIALIZATION_ERROR',
+      error_description: error.message || 'Failed to initialize payment',
+    });
   }
 };

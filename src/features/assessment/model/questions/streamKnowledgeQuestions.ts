@@ -31,7 +31,7 @@ export const streamKnowledgeQuestions: Record<StreamId, StreamKnowledgeQuestion[
     { id: 'cs12', text: 'In Python, len([1,2,3]) returns:', options: ['0', '1', '2', '3'], correct: '3' },
     { id: 'cs13', text: 'A stack follows which order?', options: ['FIFO', 'LIFO', 'Random', 'Priority-based'], correct: 'LIFO' },
     { id: 'cs14', text: 'Which data structure is best for BFS traversal?', options: ['Stack', 'Queue', 'Heap', 'Tree'], correct: 'Queue' },
-    { id: 'cs15', text: 'In SQL, SELECT COUNT(*) FROM Students; gives:', options: ['List of names', 'Number of rows', 'Last row', 'Duplicates only'], correct: 'Number of rows' },
+    { id: 'cs15', text: 'In SQL, SELECT COUNT(*) FROM Learners; gives:', options: ['List of names', 'Number of rows', 'Last row', 'Duplicates only'], correct: 'Number of rows' },
     { id: 'cs16', text: 'Normalization reduces:', options: ['Speed', 'Redundancy', 'Indexing', 'Constraints'], correct: 'Redundancy' },
     { id: 'cs17', text: 'In C/Java, == is used for:', options: ['Assignment', 'Comparison', 'Increment', 'Division'], correct: 'Comparison' },
     { id: 'cs18', text: 'Which is a valid IP address?', options: ['300.20.1.1', '192.168.1.10', '45.500.2.1', '12.12.12'], correct: '192.168.1.10' },

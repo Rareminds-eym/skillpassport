@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -26,7 +27,7 @@ export interface Club {
 export interface ClubMembership {
     membership_id: string;
     club_id: string;
-    student_email: string;
+    learner_email: string;
     enrolled_at: string;
     status: 'active' | 'withdrawn' | 'suspended';
     total_sessions_attended: number;
@@ -47,12 +48,12 @@ export interface ClubAttendance {
 export interface ClubAttendanceRecord {
     record_id: string;
     attendance_id: string;
-    student_email: string;
+    learner_email: string;
     status: 'present' | 'absent' | 'late' | 'excused';
     remarks?: string;
 }
 
-// Get current user's school_id using the same logic as students
+// Get current user's school_id using the same logic as learners
 async function getCurrentUserSchoolId(): Promise<string | null> {
     try {
         let schoolId: string | null = null;
@@ -72,7 +73,7 @@ async function getCurrentUserSchoolId(): Promise<string | null> {
 
         // If not found in localStorage, try Supabase Auth (for educators/teachers)
         if (!schoolId) {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await getCurrentUser();
             if (user) {
                 // Check school_educators table
                 const { data: educator } = await supabase
@@ -177,14 +178,14 @@ export async function fetchClubs(): Promise<Club[]> {
                 // Fetch member emails
                 const { data: memberships } = await supabase
                     .from('club_memberships')
-                    .select('student_email')
+                    .select('learner_email')
                     .eq('club_id', club.club_id)
                     .eq('status', 'active');
 
                 return {
                     ...club,
                     member_count: count || 0,
-                    members: memberships?.map(m => m.student_email) || []
+                    members: memberships?.map(m => m.learner_email) || []
                 };
             })
         );
@@ -302,8 +303,8 @@ export async function createClub(clubData: {
     }
 }
 
-// Enroll student in club
-export async function enrollStudent(clubId: string, studentEmail: string): Promise<ClubMembership> {
+// Enroll learner in club
+export async function enrollLearner(clubId: string, learnerEmail: string): Promise<ClubMembership> {
     try {
         const userInfo = await getCurrentUserInfo();
         if (!userInfo) {
@@ -315,21 +316,21 @@ export async function enrollStudent(clubId: string, studentEmail: string): Promi
             .from('club_memberships')
             .select('*')
             .eq('club_id', clubId)
-            .eq('student_email', studentEmail)
+            .eq('learner_email', learnerEmail)
             .maybeSingle();
 
         if (checkError && checkError.code !== 'PGRST116') {
             // PGRST116 means no rows found, which is fine
             logger.error('Failed to check existing membership', checkError instanceof Error ? checkError : new Error(String(checkError)), {
                 clubId,
-                studentEmail
+                learnerEmail
             });
             throw checkError;
         }
 
         if (existingMembership) {
             if (existingMembership.status === 'active') {
-                throw new Error('Student is already enrolled in this club');
+                throw new Error('Learner is already enrolled in this club');
             }
 
             // If status is 'withdrawn', reactivate the membership
@@ -359,7 +360,7 @@ export async function enrollStudent(clubId: string, studentEmail: string): Promi
         // No existing membership found, create a new one
         const membership = {
             club_id: clubId,
-            student_email: studentEmail,
+            learner_email: learnerEmail,
             status: 'active',
             enrolled_by_type: userInfo.type,
             ...(userInfo.type === 'educator'
@@ -378,28 +379,28 @@ export async function enrollStudent(clubId: string, studentEmail: string): Promi
 
         return data;
     } catch (error) {
-        logger.error('Failed to enroll student', error instanceof Error ? error : new Error(String(error)), {
+        logger.error('Failed to enroll learner', error instanceof Error ? error : new Error(String(error)), {
             clubId,
-            studentEmail
+            learnerEmail
         });
         throw error;
     }
 }
 
-// Remove student from club
-export async function removeStudent(clubId: string, studentEmail: string): Promise<void> {
+// Remove learner from club
+export async function removeLearner(clubId: string, learnerEmail: string): Promise<void> {
     try {
         const { error } = await supabase
             .from('club_memberships')
             .update({ status: 'withdrawn', withdrawn_at: new Date().toISOString() })
             .eq('club_id', clubId)
-            .eq('student_email', studentEmail);
+            .eq('learner_email', learnerEmail);
 
         if (error) throw error;
     } catch (error) {
-        logger.error('Failed to remove student', error instanceof Error ? error : new Error(String(error)), {
+        logger.error('Failed to remove learner', error instanceof Error ? error : new Error(String(error)), {
             clubId,
-            studentEmail
+            learnerEmail
         });
         throw error;
     }
@@ -431,7 +432,7 @@ export async function markClubAttendance(
     clubId: string,
     sessionDate: string,
     sessionTopic: string,
-    attendanceRecords: { student_email: string; status: 'present' | 'absent' | 'late' | 'excused' }[]
+    attendanceRecords: { learner_email: string; status: 'present' | 'absent' | 'late' | 'excused' }[]
 ): Promise<void> {
     try {
         const userInfo = await getCurrentUserInfo();
@@ -507,7 +508,7 @@ export async function markClubAttendance(
         // Create attendance records - use regular insert with proper error handling
         const records = attendanceRecords.map(record => ({
             attendance_id: sessionData.attendance_id,
-            student_email: record.student_email,
+            learner_email: record.learner_email,
             status: record.status,
             marked_by_type: userInfo.type,
             ...(userInfo.type === 'educator'

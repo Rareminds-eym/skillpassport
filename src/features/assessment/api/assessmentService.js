@@ -4,17 +4,18 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
+import { getCurrentSession } from '@/shared/api/authUtils';
 import { calculateStreamRecommendations } from '../lib/streamMatchingEngine';
 
 /**
- * Validate and enhance stream recommendation for After 10th students
+ * Validate and enhance stream recommendation for After 10th learners
  * Uses rule-based engine to verify AI recommendation
  */
 export const validateStreamRecommendation = (results) => {
   if (results.gradeLevel !== 'after10') return results;
 
   try {
-    console.log('🔍 Validating stream recommendation for After 10th student...');
+    console.log('🔍 Validating stream recommendation for After 10th learner...');
 
     // Calculate rule-based recommendation
     const ruleBasedStream = calculateStreamRecommendations(
@@ -162,7 +163,7 @@ export const fetchQuestionsBySection = async (sectionId, streamId = null) => {
 
 /**
  * Fetch all questions for an assessment (organized by section)
- * @param {string} streamId - Student's selected stream
+ * @param {string} streamId - Learner's selected stream
  * @param {string} gradeLevel - Grade level: 'middle', 'highschool', 'higher_secondary', or 'after12'
  */
 export const fetchAllQuestions = async (streamId, gradeLevel = null) => {
@@ -186,15 +187,15 @@ export const fetchAllQuestions = async (streamId, gradeLevel = null) => {
 
 /**
  * Create a new assessment attempt
- * @param {string} studentId - Student's user_id
+ * @param {string} learnerId - Learner's user_id
  * @param {string} streamId - Selected stream
  * @param {string} gradeLevel - Grade level: 'middle', 'highschool', 'higher_secondary', or 'after12'
  */
-export const createAttempt = async (studentId, streamId, gradeLevel) => {
+export const createAttempt = async (learnerId, streamId, gradeLevel) => {
   const { data, error } = await supabase
     .from('personal_assessment_attempts')
     .insert({
-      student_id: studentId,
+      learner_id: learnerId,
       stream_id: streamId,
       grade_level: gradeLevel,
       status: 'in_progress',
@@ -361,7 +362,7 @@ export const updateAttemptAdaptiveSession = async (attemptId, adaptiveSessionId)
     });
 
     // Get auth token
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await getCurrentSession();
     const token = session?.access_token;
 
     if (!token) {
@@ -575,16 +576,16 @@ const validateAptitudeScores = (aptitudeScores) => {
  * and can be retried, rather than being orphaned as "completed" with no results.
  * 
  * @param {string} attemptId - Attempt UUID
- * @param {string} studentId - Student's user_id
+ * @param {string} learnerId - Learner's user_id
  * @param {string} streamId - Selected stream
  * @param {string} gradeLevel - Grade level: 'middle', 'highschool', 'higher_secondary', or 'after12'
  * @param {object} geminiResults - Full Gemini AI analysis results
  * @param {object} sectionTimings - Time spent on each section
  */
-export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel, geminiResults, sectionTimings) => {
+export const completeAttempt = async (attemptId, learnerId, streamId, gradeLevel, geminiResults, sectionTimings) => {
   console.log('=== completeAttempt Debug ===');
   console.log('Grade Level:', gradeLevel);
-  console.log('Student ID:', studentId);
+  console.log('Learner ID:', learnerId);
   console.log('Stream ID:', streamId);
   console.log('Has geminiResults:', !!geminiResults);
   console.log('geminiResults keys:', geminiResults ? Object.keys(geminiResults) : []);
@@ -631,7 +632,7 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
       console.warn('⚠️ [completeAttempt] Will NOT save adaptive_aptitude_session_id to avoid foreign key constraint error');
     }
   } else {
-    console.log('ℹ️ [completeAttempt] No adaptive session ID - student did not take adaptive test');
+    console.log('ℹ️ [completeAttempt] No adaptive session ID - learner did not take adaptive test');
   }
   
   console.log('📊 [completeAttempt] Validated Adaptive Session ID:', validatedAdaptiveSessionId);
@@ -850,7 +851,7 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
 
   const dataToInsert = {
     attempt_id: attemptId,
-    student_id: studentId,
+    learner_id: learnerId,
     grade_level: gradeLevel,
     stream_id: streamId,
     status: 'completed',
@@ -906,7 +907,7 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   // This ensures if insert fails, the attempt stays "in_progress" and can be retried
   console.log('=== STEP 1: Inserting into personal_assessment_results ===');
   console.log('Attempt ID:', attemptId);
-  console.log('Student ID:', studentId);
+  console.log('Learner ID:', learnerId);
   console.log('Stream ID:', streamId);
   console.log('🔑 CRITICAL: adaptive_aptitude_session_id being saved:', adaptiveAptitudeSessionId);
 
@@ -931,7 +932,7 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
     console.error('❌ Full Error Object:', JSON.stringify(resultsError, null, 2));
     console.error('❌ Context:');
     console.error('   - Attempt ID:', attemptId);
-    console.error('   - Student ID:', studentId);
+    console.error('   - Learner ID:', learnerId);
     console.error('   - Stream ID:', streamId);
     console.error('   - Adaptive Session ID:', adaptiveAptitudeSessionId);
     console.error('   - Grade Level:', gradeLevel);
@@ -940,9 +941,9 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
     if (resultsError.code === '42501' || resultsError.message?.includes('policy')) {
       console.error('🔒 === RLS POLICY VIOLATION DETECTED ===');
       console.error('🔒 This is a Row Level Security (RLS) policy error');
-      console.error('🔒 The student_id in the upsert must match auth.uid()');
+      console.error('🔒 The learner_id in the upsert must match auth.uid()');
       console.error('🔒 RLS Details:');
-      console.error('   - Expected auth.uid() to match student_id:', studentId);
+      console.error('   - Expected auth.uid() to match learner_id:', learnerId);
       console.error('   - Check if user is authenticated correctly');
       console.error('   - Check if RLS policies on personal_assessment_results table are correct');
       console.error('🔒 === END RLS POLICY VIOLATION ===');
@@ -999,20 +1000,20 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   // STEP 3: Create notification for assessment completion
   console.log('=== STEP 3: Creating assessment completion notification ===');
   try {
-    // Fetch user_id from students table (studentId is the student record ID, not user_id)
-    const { data: studentData, error: studentError } = await supabase
-      .from('students')
+    // Fetch user_id from learners table (learnerId is the learner record ID, not user_id)
+    const { data: learnerData, error: learnerError } = await supabase
+      .from('learners')
       .select('user_id')
-      .eq('id', studentId)
+      .eq('id', learnerId)
       .single();
 
-    if (studentError || !studentData?.user_id) {
-      console.warn('⚠️ Could not fetch user_id for notification:', studentError?.message);
+    if (learnerError || !learnerData?.user_id) {
+      console.warn('⚠️ Could not fetch user_id for notification:', learnerError?.message);
     } else {
       const { error: notificationError } = await supabase
         .from('notifications')
         .insert({
-          recipient_id: studentData.user_id, // Use user_id, not student record ID
+          recipient_id: learnerData.user_id, // Use user_id, not learner record ID
           type: 'assessment_completed',
           title: 'Career Assessment Completed',
           message: `Your ${gradeLevel === 'middle' ? 'Middle School' : gradeLevel === 'highschool' ? 'High School' : gradeLevel === 'after10' ? 'After 10th' : gradeLevel === 'after12' ? 'After 12th' : 'College'} career assessment has been completed. View your personalized results and career recommendations.`,
@@ -1037,14 +1038,14 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
 };
 
 /**
- * Get student's assessment history
- * @param {string} studentId - Student's user_id
+ * Get learner's assessment history
+ * @param {string} learnerId - Learner's user_id
  */
-export const getStudentAttempts = async (studentId) => {
+export const getlearnerAttempts = async (learnerId) => {
   const { data, error } = await supabase
     .from('personal_assessment_attempts')
     .select('*')
-    .eq('student_id', studentId)
+    .eq('learner_id', learnerId)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -1071,21 +1072,21 @@ export const getAttemptWithResults = async (attemptId) => {
 };
 
 /**
- * Get the latest completed assessment result for a student
- * @param {string} studentIdOrUserId - Student's ID from students table OR user_id from auth
+ * Get the latest completed assessment result for a learner
+ * @param {string} learnerIdOrUserId - Learner's ID from learners table OR user_id from auth
  * @returns {object|null} Latest assessment result, or null if none found
  */
-export const getLatestResult = async (studentIdOrUserId) => {
-  if (!studentIdOrUserId) {
-    console.warn('getLatestResult: No student ID provided');
+export const getLatestResult = async (learnerIdOrUserId) => {
+  if (!learnerIdOrUserId) {
+    console.warn('getLatestResult: No learner ID provided');
     return null;
   }
 
-  // Try direct lookup first (assuming it's student.id)
+  // Try direct lookup first (assuming it's learner.id)
   let { data, error } = await supabase
     .from('personal_assessment_results')
     .select('*')
-    .eq('student_id', studentIdOrUserId)
+    .eq('learner_id', learnerIdOrUserId)
     .eq('status', 'completed')
     .order('created_at', { ascending: false })
     .limit(1)
@@ -1130,35 +1131,35 @@ export const getLatestResult = async (studentIdOrUserId) => {
 
   // If not found, try looking up by user_id (in case we were passed auth.uid())
   try {
-    // Get student.id from user_id
-    const { data: student, error: studentError } = await supabase
-      .from('students')
+    // Get learner.id from user_id
+    const { data: learner, error: learnerError } = await supabase
+      .from('learners')
       .select('id')
-      .eq('user_id', studentIdOrUserId)
+      .eq('user_id', learnerIdOrUserId)
       .maybeSingle();
 
-    if (studentError) {
-      console.warn('Error looking up student by user_id:', studentError);
+    if (learnerError) {
+      console.warn('Error looking up learner by user_id:', learnerError);
       return null;
     }
 
-    if (!student) {
-      console.warn('No student record found for user_id:', studentIdOrUserId);
+    if (!learner) {
+      console.warn('No learner record found for user_id:', learnerIdOrUserId);
       return null;
     }
 
-    // Now try again with the correct student.id
+    // Now try again with the correct learner.id
     const { data: resultData, error: resultError } = await supabase
       .from('personal_assessment_results')
       .select('*')
-      .eq('student_id', student.id)
+      .eq('learner_id', learner.id)
       .eq('status', 'completed')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
     if (resultError) {
-      console.error('Error fetching result by student.id:', resultError);
+      console.error('Error fetching result by learner.id:', resultError);
       return null;
     }
 
@@ -1190,7 +1191,7 @@ export const getLatestResult = async (studentIdOrUserId) => {
         }
       }
     } else {
-      console.log('❌ No completed assessment result found for this student');
+      console.log('❌ No completed assessment result found for this learner');
     }
 
     return resultData;
@@ -1201,14 +1202,14 @@ export const getLatestResult = async (studentIdOrUserId) => {
 };
 
 /**
- * Check if student can take assessment (6-month restriction)
+ * Check if learner can take assessment (6-month restriction)
  * In development mode, the restriction is bypassed for testing.
  * 
- * @param {string} studentId - Student's user_id
+ * @param {string} learnerId - Learner's user_id
  * @param {string} gradeLevel - Grade level: 'middle', 'highschool', 'higher_secondary', or 'after12'
  * @returns {object} { canTake: boolean, lastAttemptDate: Date|null, nextAvailableDate: Date|null }
  */
-export const canTakeAssessment = async (studentId, gradeLevel = null) => {
+export const canTakeAssessment = async (learnerId, gradeLevel = null) => {
   // Bypass restriction in development mode
   const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
   if (isDevelopment) {
@@ -1219,7 +1220,7 @@ export const canTakeAssessment = async (studentId, gradeLevel = null) => {
   const { data, error } = await supabase
     .from('personal_assessment_results')
     .select('created_at')
-    .eq('student_id', studentId)
+    .eq('learner_id', learnerId)
     .eq('status', 'completed')
     .order('created_at', { ascending: false })
     .limit(1)
@@ -1247,13 +1248,13 @@ export const canTakeAssessment = async (studentId, gradeLevel = null) => {
 };
 
 /**
- * Check if student has an in-progress attempt
- * @param {string} studentIdOrUserId - Student's ID from students table OR user_id from auth
+ * Check if learner has an in-progress attempt
+ * @param {string} learnerIdOrUserId - Learner's ID from learners table OR user_id from auth
  * @returns {object|null} In-progress attempt with responses, or null if none found
  */
-export const getInProgressAttempt = async (studentIdOrUserId) => {
-  if (!studentIdOrUserId) {
-    console.warn('getInProgressAttempt: No student ID provided');
+export const getInProgressAttempt = async (learnerIdOrUserId) => {
+  if (!learnerIdOrUserId) {
+    console.warn('getInProgressAttempt: No learner ID provided');
     return null;
   }
 
@@ -1269,7 +1270,7 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
     // Required fields that must exist
     const requiredFields = [
       'id',
-      'student_id',
+      'learner_id',
       'stream_id',
       'grade_level',
       'status',
@@ -1292,8 +1293,8 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
       return false;
     }
 
-    if (typeof attempt.student_id !== 'string') {
-      console.error('❌ Validation failed: student_id must be a string (UUID)');
+    if (typeof attempt.learner_id !== 'string') {
+      console.error('❌ Validation failed: learner_id must be a string (UUID)');
       return false;
     }
 
@@ -1396,12 +1397,12 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
     }
   };
 
-  // Try direct lookup first (assuming it's student.id)
+  // Try direct lookup first (assuming it's learner.id)
   // Using maybeSingle() to avoid 406 errors when no rows are found
   let { data, error } = await supabase
     .from('personal_assessment_attempts')
     .select('*')
-    .eq('student_id', studentIdOrUserId)
+    .eq('learner_id', learnerIdOrUserId)
     .eq('status', 'in_progress')
     .order('created_at', { ascending: false })
     .limit(1)
@@ -1458,29 +1459,29 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
 
   // If not found or abandoned, try looking up by user_id (in case we were passed auth.uid())
   try {
-    // Get student.id from user_id
-    const { data: student, error: studentError } = await supabase
-      .from('students')
+    // Get learner.id from user_id
+    const { data: learner, error: learnerError } = await supabase
+      .from('learners')
       .select('id')
-      .eq('user_id', studentIdOrUserId)
+      .eq('user_id', learnerIdOrUserId)
       .maybeSingle();
 
-    if (studentError) {
-      console.warn('Error looking up student by user_id:', studentError);
+    if (learnerError) {
+      console.warn('Error looking up learner by user_id:', learnerError);
       return null;
     }
 
-    if (!student) {
-      console.warn('No student record found for user_id:', studentIdOrUserId);
+    if (!learner) {
+      console.warn('No learner record found for user_id:', learnerIdOrUserId);
       return null;
     }
 
-    // Now try again with the correct student.id
+    // Now try again with the correct learner.id
     // Using maybeSingle() to avoid 406 errors when no rows are found
     const { data: attemptData, error: attemptError } = await supabase
       .from('personal_assessment_attempts')
       .select('*')
-      .eq('student_id', student.id)
+      .eq('learner_id', learner.id)
       .eq('status', 'in_progress')
       .order('created_at', { ascending: false })
       .limit(1)
@@ -1488,7 +1489,7 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
 
     // Handle errors (maybeSingle returns null for no rows, no error)
     if (attemptError) {
-      console.error('Error fetching attempt by student.id:', attemptError);
+      console.error('Error fetching attempt by learner.id:', attemptError);
       return null;
     }
 
@@ -1533,7 +1534,7 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
         return null;
       }
     } else {
-      console.log('❌ No in-progress attempt found for this student');
+      console.log('❌ No in-progress attempt found for this learner');
     }
 
     return attemptData;
@@ -1745,7 +1746,7 @@ export const calculateKnowledgeScores = (answers, questions) => {
  * Complete an assessment attempt WITHOUT AI analysis
  * This is used by Submit button - AI analysis will be generated on-demand on result page
  * @param {string} attemptId - Attempt UUID
- * @param {string} studentId - Student's user_id
+ * @param {string} learnerId - Learner's user_id
  * @param {string} streamId - Selected stream
  * @param {string} gradeLevel - Grade level: 'middle', 'highschool', 'higher_secondary', or 'after12'
  * @param {object} sectionTimings - Time spent on each section
@@ -1797,16 +1798,16 @@ const retryWithBackoff = async (fn, maxRetries = 3, baseDelay = 1000, operationN
 /**
  * Complete assessment attempt without AI analysis (industrial-grade error handling)
  * @param {string} attemptId - Assessment attempt ID
- * @param {string} studentId - Student ID
+ * @param {string} learnerId - Learner ID
  * @param {string} streamId - Stream ID
  * @param {string} gradeLevel - Grade level
  * @param {object} sectionTimings - Time spent on each section
  * @returns {Promise<object>} Result record
  */
-export const completeAttemptWithoutAI = async (attemptId, studentId, streamId, gradeLevel, sectionTimings) => {
+export const completeAttemptWithoutAI = async (attemptId, learnerId, streamId, gradeLevel, sectionTimings) => {
   console.log('=== completeAttemptWithoutAI ===');
   console.log('Grade Level:', gradeLevel);
-  console.log('Student ID:', studentId);
+  console.log('Learner ID:', learnerId);
   console.log('Stream ID:', streamId);
   console.log('Attempt ID:', attemptId);
 
@@ -1816,8 +1817,8 @@ export const completeAttemptWithoutAI = async (attemptId, studentId, streamId, g
     error.code = 'VALIDATION_ERROR';
     throw error;
   }
-  if (!studentId) {
-    const error = new Error('Student ID is required');
+  if (!learnerId) {
+    const error = new Error('Learner ID is required');
     error.code = 'VALIDATION_ERROR';
     throw error;
   }
@@ -1890,7 +1891,7 @@ export const completeAttemptWithoutAI = async (attemptId, studentId, streamId, g
   // AI analysis will be generated on-demand when viewing result page
   const dataToInsert = {
     attempt_id: attemptId,
-    student_id: studentId,
+    learner_id: learnerId,
     grade_level: gradeLevel,
     stream_id: streamId,
     status: 'completed',
@@ -2036,7 +2037,7 @@ export default {
   getAttemptResponses,
   completeAttempt,
   completeAttemptWithoutAI,
-  getStudentAttempts,
+  getlearnerAttempts,
   getAttemptWithResults,
   getLatestResult,
   getInProgressAttempt,

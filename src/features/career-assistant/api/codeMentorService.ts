@@ -69,13 +69,13 @@ class CodeMentorService {
     code: string,
     language: string,
     context?: string,
-    studentLevel?: 'beginner' | 'intermediate' | 'advanced'
+    learnerLevel?: 'beginner' | 'intermediate' | 'advanced'
   ): Promise<CodeReviewResult> {
     
     try {
-      const prompt = `You are a friendly, experienced coding mentor reviewing a student's code. Be constructive, encouraging, and educational.
+      const prompt = `You are a friendly, experienced coding mentor reviewing a learner's code. Be constructive, encouraging, and educational.
 
-**STUDENT LEVEL:** ${studentLevel || 'intermediate'}
+**LEARNER LEVEL:** ${learnerLevel || 'intermediate'}
 
 **PROGRAMMING LANGUAGE:** ${language}
 
@@ -208,7 +208,7 @@ ${code}
     } catch (error) {
       logger.error('Failed to review code', error as Error, {
         language,
-        studentLevel,
+        learnerLevel,
         codeLength: code.length
       });
       throw new Error('Failed to review code');
@@ -226,7 +226,7 @@ ${code}
   ): Promise<DebuggingHelp> {
     
     try {
-      const prompt = `You are a patient debugging mentor helping a student fix their code.
+      const prompt = `You are a patient debugging mentor helping a learner fix their code.
 
 **LANGUAGE:** ${language}
 
@@ -352,7 +352,7 @@ ${code}
         messages: [
           {
             role: 'system',
-            content: 'You are a patient debugging mentor. You help students understand errors, find the root cause methodically, and learn from mistakes. Be clear, educational, and encouraging.'
+            content: 'You are a patient debugging mentor. You help learners understand errors, find the root cause methodically, and learn from mistakes. Be clear, educational, and encouraging.'
           },
           { role: 'user', content: prompt }
         ],
@@ -380,11 +380,11 @@ ${code}
   async explainCode(
     code: string,
     language: string,
-    studentLevel?: 'beginner' | 'intermediate' | 'advanced'
+    learnerLevel?: 'beginner' | 'intermediate' | 'advanced'
   ): Promise<string> {
     
     try {
-      const prompt = `Explain this ${language} code to a ${studentLevel || 'intermediate'} level student:
+      const prompt = `Explain this ${language} code to a ${learnerLevel || 'intermediate'} level learner:
 
 \`\`\`${language}
 ${code}
@@ -397,7 +397,7 @@ ${code}
 4. Why it's written this way
 5. Real-world analogy if helpful
 
-Be clear, educational, and adjust complexity to student level.`;
+Be clear, educational, and adjust complexity to learner level.`;
 
       const client = getOpenAIClient();
       const completion = await client.chat.completions.create({
@@ -405,7 +405,7 @@ Be clear, educational, and adjust complexity to student level.`;
         messages: [
           {
             role: 'system',
-            content: 'You are a coding tutor who explains code clearly and patiently. You adapt explanations to student level.'
+            content: 'You are a coding tutor who explains code clearly and patiently. You adapt explanations to learner level.'
           },
           { role: 'user', content: prompt }
         ],
@@ -418,7 +418,7 @@ Be clear, educational, and adjust complexity to student level.`;
     } catch (error) {
       logger.error('Failed to explain code', error as Error, {
         language,
-        studentLevel,
+        learnerLevel,
         codeLength: code.length
       });
       return 'Unable to explain code at this time.';

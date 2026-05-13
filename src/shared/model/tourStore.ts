@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { immer } from 'zustand/middleware/immer';
-import { supabase } from '@/shared/api/supabaseClient';
+
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('tour-store');
@@ -15,10 +15,10 @@ export type TourKey =
   | 'assessment_result_after12'
   | 'assessment_result_generic'
   // Modern keys
-  | 'student_dashboard'
-  | 'student_assessment'
-  | 'student_learning'
-  | 'student_profile'
+  | 'learner_dashboard'
+  | 'learner_assessment'
+  | 'learner_learning'
+  | 'learner_profile'
   | 'assessment_result_12'
   | 'educator_dashboard'
   | 'admin_dashboard';
@@ -44,7 +44,7 @@ interface TourStore {
   state: TourState;
   loading: boolean;
   initialized: boolean;
-  loadedForStudentId: string | null;
+  loadedForLearnerId: string | null;
   isTourRunning: boolean;
   activeTourKey: TourKey | null;
 
@@ -66,9 +66,9 @@ interface TourStore {
   // Loading & sync
   setLoading: (loading: boolean) => void;
   setInitialized: (initialized: boolean) => void;
-  setLoadedForStudentId: (studentId: string | null) => void;
-  loadTourProgress: (studentId: string) => Promise<void>;
-  saveTourProgress: (progress: TourProgress, studentId?: string) => Promise<void>;
+  setLoadedForLearnerId: (learnerId: string | null) => void;
+  loadTourProgress: (learnerId: string) => Promise<void>;
+  saveTourProgress: (progress: TourProgress, learnerId?: string) => Promise<void>;
 
   // Reset
   reset: () => void;
@@ -128,7 +128,7 @@ export const useTourStore = create<TourStore>()(
     state: { ...initialState },
     loading: true,
     initialized: false,
-    loadedForStudentId: null,
+    loadedForLearnerId: null,
     isTourRunning: false,
     activeTourKey: null,
 
@@ -171,7 +171,7 @@ export const useTourStore = create<TourStore>()(
 
     // Complete tour
     completeTour: async (tourKey) => {
-      const { state, saveTourProgress, loadedForStudentId } = get();
+      const { state, saveTourProgress, loadedForLearnerId } = get();
 
       const tourEntry = {
         completed: true,
@@ -183,7 +183,7 @@ export const useTourStore = create<TourStore>()(
         [tourKey]: tourEntry,
       };
 
-      await saveTourProgress(updatedProgress, loadedForStudentId || undefined);
+      await saveTourProgress(updatedProgress, loadedForLearnerId || undefined);
 
       // Stop tour
       set((store) => {
@@ -199,7 +199,7 @@ export const useTourStore = create<TourStore>()(
 
     // Skip tour
     skipTour: async (tourKey) => {
-      const { state, saveTourProgress, loadedForStudentId } = get();
+      const { state, saveTourProgress, loadedForLearnerId } = get();
 
       const tourEntry = {
         completed: true,
@@ -212,7 +212,7 @@ export const useTourStore = create<TourStore>()(
         [tourKey]: tourEntry,
       };
 
-      await saveTourProgress(updatedProgress, loadedForStudentId || undefined);
+      await saveTourProgress(updatedProgress, loadedForLearnerId || undefined);
 
       // Stop tour
       set((store) => {
@@ -228,12 +228,12 @@ export const useTourStore = create<TourStore>()(
 
     // Update progress
     updateProgress: async (progressUpdate) => {
-      const { state, saveTourProgress, loadedForStudentId } = get();
+      const { state, saveTourProgress, loadedForLearnerId } = get();
       const updatedProgress: TourProgress = {
         ...state.progress,
         ...progressUpdate as TourProgress
       };
-      await saveTourProgress(updatedProgress, loadedForStudentId || undefined);
+      await saveTourProgress(updatedProgress, loadedForLearnerId || undefined);
     },
 
     // Navigation
@@ -297,18 +297,18 @@ export const useTourStore = create<TourStore>()(
       });
     },
 
-    setLoadedForStudentId: (studentId) => {
+    setLoadedForLearnerId: (learnerId) => {
       set((store) => {
-        store.loadedForStudentId = studentId;
+        store.loadedForLearnerId = learnerId;
       });
     },
 
     // Load tour progress
-    loadTourProgress: async (studentId) => {
-      const { loadedForStudentId, initialized } = get();
+    loadTourProgress: async (learnerId) => {
+      const { loadedForLearnerId, initialized } = get();
 
-      // Don't load if already loaded for this studentId
-      if (loadedForStudentId === studentId && initialized) {
+      // Don't load if already loaded for this learnerId
+      if (loadedForLearnerId === learnerId && initialized) {
         return;
       }
 
@@ -319,25 +319,12 @@ export const useTourStore = create<TourStore>()(
       try {
         let progress: TourProgress = {};
 
-        // Load from database
-        const { data, error } = await supabase
-          .from('students')
-          .select('tour_progress')
-          .eq('user_id', studentId)
-          .maybeSingle();
-
-        if (!error && data?.tour_progress) {
-          progress = data.tour_progress;
-          // Sync to localStorage
-          saveTourProgressToStorage(progress);
-        } else {
-          // Fallback to localStorage
-          progress = getTourProgressFromStorage();
-        }
+        // Disable Supabase sync - fallback to localStorage
+        progress = getTourProgressFromStorage();
 
         set((store) => {
           store.state.progress = progress;
-          store.loadedForStudentId = studentId;
+          store.loadedForLearnerId = learnerId;
         });
       } catch (error) {
         logger.error('Failed to load tour progress', error as Error);
@@ -355,21 +342,9 @@ export const useTourStore = create<TourStore>()(
     },
 
     // Save tour progress
-    saveTourProgress: async (progress, studentId) => {
+    saveTourProgress: async (progress, learnerId) => {
       try {
-        // Save to database if student ID is available
-        if (studentId) {
-          const { error } = await supabase
-            .from('students')
-            .update({ tour_progress: progress })
-            .eq('user_id', studentId);
-
-          if (error) {
-            logger.error('Failed to save tour progress to database', new Error(error.message));
-          }
-        }
-
-        // Always save to localStorage as fallback
+        // Disable Supabase sync - just use localStorage
         saveTourProgressToStorage(progress);
 
         set((store) => {
@@ -391,7 +366,7 @@ export const useTourStore = create<TourStore>()(
         store.state = { ...initialState };
         store.loading = true;
         store.initialized = false;
-        store.loadedForStudentId = null;
+        store.loadedForLearnerId = null;
         store.isTourRunning = false;
         store.activeTourKey = null;
       });
@@ -400,8 +375,8 @@ export const useTourStore = create<TourStore>()(
 
     // Clear all progress
     clearAllProgress: async () => {
-      const { loadedForStudentId, saveTourProgress } = get();
-      await saveTourProgress({}, loadedForStudentId || undefined);
+      const { loadedForLearnerId, saveTourProgress } = get();
+      await saveTourProgress({}, loadedForLearnerId || undefined);
     },
   }))
 );

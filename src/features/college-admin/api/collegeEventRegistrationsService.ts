@@ -1,12 +1,12 @@
 import { supabase } from '@/shared/api/supabaseClient';
 
 export const collegeEventRegistrationsService = {
-  async createRegistration(eventId: string, studentId: string) {
+  async createRegistration(eventId: string, learnerId: string) {
     const { error } = await supabase
       .from('college_event_registrations')
       .insert({
         event_id: eventId,
-        student_id: studentId
+        learner_id: learnerId
       });
     
     if (error) throw error;

@@ -8,7 +8,7 @@
 // ============================================================================
 
 export type UserType = 
-  | 'student' 
+  | 'learner' 
   | 'recruiter' 
   | 'educator' 
   | 'college_educator' 
@@ -17,12 +17,12 @@ export type UserType =
   | 'university_admin';
 
 export type ConversationType = 
-  | 'student_recruiter' 
-  | 'student_educator' 
+  | 'learner_recruiter' 
+  | 'learner_educator' 
   | 'educator_recruiter' 
-  | 'student_admin' 
-  | 'student_college_admin' 
-  | 'student_college_educator' 
+  | 'learner_admin' 
+  | 'learner_college_admin' 
+  | 'learner_college_educator' 
   | 'educator_admin' 
   | 'college_educator_admin';
 
@@ -52,7 +52,7 @@ export interface Message {
 
 export interface Conversation {
   id: string;
-  student_id?: string;
+  learner_id?: string;
   recruiter_id?: string;
   educator_id?: string;
   school_id?: string;
@@ -66,7 +66,7 @@ export interface Conversation {
   last_message_at?: string;
   last_message_preview?: string;
   last_message_sender?: string;
-  student_unread_count: number;
+  learner_unread_count: number;
   recruiter_unread_count: number;
   educator_unread_count: number;
   admin_unread_count?: number;
@@ -75,19 +75,19 @@ export interface Conversation {
   updated_at: string;
   
   // Soft delete fields
-  deleted_by_student?: boolean;
+  deleted_by_learner?: boolean;
   deleted_by_recruiter?: boolean;
   deleted_by_educator?: boolean;
   deleted_by_admin?: boolean;
   deleted_by_college_admin?: boolean;
-  student_deleted_at?: string;
+  learner_deleted_at?: string;
   recruiter_deleted_at?: string;
   educator_deleted_at?: string;
   admin_deleted_at?: string;
   college_admin_deleted_at?: string;
   
   // Joined data
-  student?: any;
+  learner?: any;
   recruiter?: any;
   educator?: any;
   application?: any;
@@ -114,7 +114,7 @@ export interface SendMessageRequest {
 }
 
 export interface CreateConversationRequest {
-  student_id?: string;
+  learner_id?: string;
   recruiter_id?: string;
   educator_id?: string;
   application_id?: number | string;

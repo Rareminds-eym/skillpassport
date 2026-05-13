@@ -120,9 +120,9 @@ const SessionCard: React.FC<SessionCardProps> = ({ session, isSelected, onClick 
                 )}
               </div>
 
-              {session.student_name && (
+              {session.learner_name && (
                 <p className="font-medium text-sm text-gray-900 truncate">
-                  {session.student_name}
+                  {session.learner_name}
                 </p>
               )}
 

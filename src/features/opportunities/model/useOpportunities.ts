@@ -6,7 +6,7 @@ import { opportunitiesService } from '@/features/opportunities';
  * @param {Object} options - Hook options
  * @param {boolean} options.fetchOnMount - Whether to fetch data on component mount
  * @param {Object} options.filters - Filters to apply to opportunities
- * @param {Array} options.studentSkills - Student skills for matching opportunities
+ * @param {Array} options.learnerSkills - Learner skills for matching opportunities
  * @param {boolean} options.activeOnly - Whether to fetch only active opportunities
  * @param {string} options.searchTerm - Search term for filtering opportunities at DB level
  * @param {number} options.page - Current page number (1-indexed)
@@ -20,7 +20,7 @@ export const useOpportunities = (options = {}) => {
   const {
     fetchOnMount = true,
     filters = {},
-    studentSkills = [],
+    learnerSkills = [],
     activeOnly = true,
     searchTerm = '',
     page = 1,
@@ -177,7 +177,7 @@ export const useOpportunities = (options = {}) => {
     if (fetchOnMount) {
       fetchOpportunities();
     }
-  }, [JSON.stringify(filters), JSON.stringify(studentSkills), activeOnly, searchTerm, page, pageSize, sortBy, serverSidePagination, includeFactoryVisits]);
+  }, [JSON.stringify(filters), JSON.stringify(learnerSkills), activeOnly, searchTerm, page, pageSize, sortBy, serverSidePagination, includeFactoryVisits]);
 
   return {
     opportunities,

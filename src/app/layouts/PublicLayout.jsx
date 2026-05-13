@@ -4,11 +4,10 @@ import PromotionalBanner from '@/shared/ui/marketing/PromotionalBanner';
 import AssessmentPromotionalBanner from '@/shared/ui/marketing/AssessmentPromotionalBanner';
 
 
-import { useAuth } from '@/features/auth';
-import { useSubscriptionQuery, isActiveOrPaused } from '@/features/subscription';
+import { isActiveOrPaused } from '@/features/subscription';
 
 // Import role-specific headers
-import { Header as StudentHeader } from '@/widgets/student-dashboard';
+import { Header as LearnerHeader } from '@/widgets/learner-dashboard';
 import { Header as EducatorHeader } from '@/features/educator';
 import { Header as AdminHeader } from '@/widgets/admin-navigation';
 import { Header as RecruiterHeader } from '@/features/recruiter-pipeline';
@@ -63,9 +62,9 @@ const PublicLayoutContent = () => {
 
       // If user has active subscription, show role-specific header
       if (userRole) {
-        // Student roles
-        if (userRole === 'student' || userRole === 'school_student' || userRole === 'college_student') {
-          return <StudentHeader activeTab={activeTab} setActiveTab={setActiveTab} />;
+        // Learner roles
+        if (userRole === 'learner' || userRole === 'school-learner' || userRole === 'college-learner') {
+          return <LearnerHeader activeTab={activeTab} setActiveTab={setActiveTab} />;
         }
 
         // Educator roles

@@ -1,6 +1,6 @@
-import { Proposal, StudentProfile } from '@/shared/types/project';
+import { Proposal, LearnerProfile } from '@/shared/types/project';
 
-export const mockStudents: StudentProfile[] = [
+export const mocklearners: LearnerProfile[] = [
   {
     id: 'std-001',
     name: 'Rahul Kumar',
@@ -63,8 +63,8 @@ export const mockProposals: Proposal[] = [
   {
     id: 'prop-001',
     project_id: 'proj-001',
-    student_id: 'std-001',
-    student: mockStudents[0],
+    learner_id: 'std-001',
+    learner: mocklearners[0],
     cover_letter: 'I am excited to work on your e-commerce platform. With over 2 years of experience in full-stack development, I have built similar projects using React and Node.js. I recently completed an e-commerce site for a retail client that handles 1000+ daily transactions. I can deliver a scalable, secure platform with modern UI/UX.',
     proposed_budget: 75000,
     proposed_timeline: '8 weeks',
@@ -95,8 +95,8 @@ export const mockProposals: Proposal[] = [
   {
     id: 'prop-002',
     project_id: 'proj-001',
-    student_id: 'std-002',
-    student: mockStudents[1],
+    learner_id: 'std-002',
+    learner: mocklearners[1],
     cover_letter: 'Hi! I would love to help build your e-commerce platform. I have experience with React and modern web technologies. I focus on creating responsive, user-friendly interfaces that convert visitors to customers.',
     proposed_budget: 68000,
     proposed_timeline: '7 weeks',
@@ -117,8 +117,8 @@ export const mockProposals: Proposal[] = [
   {
     id: 'prop-003',
     project_id: 'proj-003',
-    student_id: 'std-004',
-    student: mockStudents[3],
+    learner_id: 'std-004',
+    learner: mocklearners[3],
     cover_letter: 'I am a data science graduate from IIIT Hyderabad with extensive experience in Python, Pandas, and data visualization. I have created 5+ interactive dashboards using Plotly and Dash. I understand the importance of clean, maintainable code and comprehensive documentation.',
     proposed_budget: 48000,
     proposed_timeline: '6 weeks',
@@ -149,8 +149,8 @@ export const mockProposals: Proposal[] = [
   {
     id: 'prop-004',
     project_id: 'proj-005',
-    student_id: 'std-003',
-    student: mockStudents[2],
+    learner_id: 'std-003',
+    learner: mocklearners[2],
     cover_letter: 'As a technical content writer with a background in computer science, I can create engaging, SEO-optimized content that resonates with your tech-savvy audience. I have written 50+ technical articles covering AI, web development, and cloud technologies.',
     proposed_budget: 18000,
     proposed_timeline: '5 weeks',

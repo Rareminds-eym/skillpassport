@@ -13,7 +13,7 @@ export type BillingCycle = 'monthly' | 'annual';
 
 export type OrganizationType = 'school' | 'college' | 'university' | 'company';
 
-export type MemberType = 'educator' | 'student' | 'both';
+export type MemberType = 'educator' | 'learner' | 'both';
 
 export interface Subscription {
   id: string;

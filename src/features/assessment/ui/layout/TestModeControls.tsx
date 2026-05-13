@@ -19,7 +19,7 @@ interface TestModeControlsProps {
   onExitTestMode: () => void;
   // Debug info props
   gradeLevel?: string;
-  studentStream?: string;
+  learnerStream?: string;
   currentSectionIndex?: number;
   totalSections?: number;
   aiQuestionsLoading?: boolean;
@@ -37,7 +37,7 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
   onSkipToSubmit,
   onExitTestMode,
   gradeLevel,
-  studentStream,
+  learnerStream,
   currentSectionIndex = 0,
   totalSections = 0,
   aiQuestionsLoading = false,
@@ -148,9 +148,9 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
               </div>
             </div>
             <div>
-              <div className="text-gray-500 mb-1">Student Stream:</div>
+              <div className="text-gray-500 mb-1">Learner Stream:</div>
               <div className="font-mono font-semibold text-gray-800">
-                {studentStream || 'Not set'}
+                {learnerStream || 'Not set'}
               </div>
             </div>
           </div>
@@ -259,18 +259,18 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
                 {/* Stream Format Validation */}
                 <div className="mt-2 pt-2 border-t border-gray-200">
                   <div className={`flex items-center gap-2 ${
-                    studentStream && studentStream.includes('_') 
+                    learnerStream && learnerStream.includes('_') 
                       ? 'text-green-600' 
                       : 'text-red-600'
                   }`}>
-                    {studentStream && studentStream.includes('_') ? '✅' : '❌'} 
-                    Stream: {studentStream && studentStream.includes('_') 
+                    {learnerStream && learnerStream.includes('_') ? '✅' : '❌'} 
+                    Stream: {learnerStream && learnerStream.includes('_') 
                       ? 'Specific ✓' 
                       : 'Generic ✗'}
                   </div>
-                  {studentStream && !studentStream.includes('_') && (
+                  {learnerStream && !learnerStream.includes('_') && (
                     <div className="mt-2 p-2 bg-red-50 rounded text-red-700 text-xs">
-                      <strong>⚠️ ISSUE:</strong> Stream "{studentStream}" is too generic.
+                      <strong>⚠️ ISSUE:</strong> Stream "{learnerStream}" is too generic.
                       <br />
                       <strong>Expected:</strong> science_pcmb, science_pcms, etc.
                       <br />
@@ -325,12 +325,12 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
                 {/* Stream Validation for After 12th */}
                 <div className="mt-2 pt-2 border-t border-gray-200">
                   <div className={`flex items-center gap-2 ${
-                    studentStream && ['science', 'commerce', 'arts'].includes(studentStream.toLowerCase())
+                    learnerStream && ['science', 'commerce', 'arts'].includes(learnerStream.toLowerCase())
                       ? 'text-green-600' 
                       : 'text-orange-600'
                   }`}>
-                    {studentStream && ['science', 'commerce', 'arts'].includes(studentStream.toLowerCase()) ? '✅' : '⚠️'} 
-                    Stream: {studentStream || 'Not set'}
+                    {learnerStream && ['science', 'commerce', 'arts'].includes(learnerStream.toLowerCase()) ? '✅' : '⚠️'} 
+                    Stream: {learnerStream || 'Not set'}
                   </div>
                   <div className="mt-1 p-2 bg-blue-50 rounded text-blue-700 text-xs">
                     <strong>ℹ️ After 12th Streams:</strong> Science, Commerce, or Arts
@@ -378,12 +378,12 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
                 {/* Stream Validation for Middle School */}
                 <div className="mt-2 pt-2 border-t border-gray-200">
                   <div className={`flex items-center gap-2 ${
-                    studentStream === 'middle_school'
+                    learnerStream === 'middle_school'
                       ? 'text-green-600' 
                       : 'text-orange-600'
                   }`}>
-                    {studentStream === 'middle_school' ? '✅' : '⚠️'} 
-                    Stream: {studentStream || 'Not set'}
+                    {learnerStream === 'middle_school' ? '✅' : '⚠️'} 
+                    Stream: {learnerStream || 'Not set'}
                   </div>
                   <div className="mt-1 p-2 bg-blue-50 rounded text-blue-700 text-xs">
                     <strong>ℹ️ Middle School Stream:</strong> Should be "middle_school"
@@ -432,7 +432,7 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
               onClick={() => {
                 console.log('=== TEST MODE DEBUG INFO ===');
                 console.log('Grade Level:', gradeLevel);
-                console.log('Student Stream:', studentStream);
+                console.log('Learner Stream:', learnerStream);
                 console.log('Current Section:', currentSectionIndex, '/', totalSections);
                 console.log('AI Questions Loading:', aiQuestionsLoading);
                 console.log('AI Questions Loaded:', aiQuestionsLoaded);

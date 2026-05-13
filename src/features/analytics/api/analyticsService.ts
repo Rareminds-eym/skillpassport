@@ -166,7 +166,7 @@ export const getAnalyticsKPIMetrics = async (
     // 1. Total Candidates (all candidates added in the period)
     const { data: currentCandidates, error: candErr } = await supabase
       .from('pipeline_candidates')
-      .select('id, stage, status, added_at, student_id')
+      .select('id, stage, status, added_at, learner_id')
       .gte('added_at', startDate)
       .lte('added_at', endDate);
 
@@ -215,27 +215,27 @@ export const getAnalyticsKPIMetrics = async (
       }
     }
 
-    // 4. Quality Score (average AI score from students who were hired)
+    // 4. Quality Score (average AI score from learners who were hired)
     let qualityScore = 85.2; // default fallback
     if (hiredCandidateIds.length > 0) {
-      const { data: hiredStudents, error: studErr } = await supabase
+      const { data: hiredlearners, error: studErr } = await supabase
         .from('pipeline_candidates')
-        .select('student_id')
+        .select('learner_id')
         .in('id', hiredCandidateIds);
 
-      if (!studErr && hiredStudents) {
-        const studentIds = hiredStudents
-          .map((c: any) => c.student_id)
+      if (!studErr && hiredlearners) {
+        const learnerIds = hiredlearners
+          .map((c: any) => c.learner_id)
           .filter((id: string | null) => id);
 
-        if (studentIds.length > 0) {
-          const { data: students, error: scoresErr } = await supabase
-            .from('students')
+        if (learnerIds.length > 0) {
+          const { data: learners, error: scoresErr } = await supabase
+            .from('learners')
             .select('employability_score')
-            .in('id', studentIds);
+            .in('id', learnerIds);
 
-          if (!scoresErr && students && students.length > 0) {
-            const scores = students
+          if (!scoresErr && learners && learners.length > 0) {
+            const scores = learners
               .map((s: any) => s.employability_score)
               .filter((score: number) => score && score > 0);
 
@@ -297,24 +297,24 @@ export const getAnalyticsKPIMetrics = async (
     // Previous Quality Score
     let prevQualityScore = qualityScore; // fallback
     if (prevHiredCandidateIds.length > 0) {
-      const { data: prevHiredStudents } = await supabase
+      const { data: prevHiredlearners } = await supabase
         .from('pipeline_candidates')
-        .select('student_id')
+        .select('learner_id')
         .in('id', prevHiredCandidateIds);
 
-      if (prevHiredStudents) {
-        const prevStudentIds = prevHiredStudents
-          .map((c: any) => c.student_id)
+      if (prevHiredlearners) {
+        const prevLearnerIds = prevHiredlearners
+          .map((c: any) => c.learner_id)
           .filter((id: string | null) => id);
 
-        if (prevStudentIds.length > 0) {
-          const { data: prevStudents } = await supabase
-            .from('students')
+        if (prevLearnerIds.length > 0) {
+          const { data: prevlearners } = await supabase
+            .from('learners')
             .select('employability_score')
-            .in('id', prevStudentIds);
+            .in('id', prevLearnerIds);
 
-          if (prevStudents && prevStudents.length > 0) {
-            const prevScores = prevStudents
+          if (prevlearners && prevlearners.length > 0) {
+            const prevScores = prevlearners
               .map((s: any) => s.employability_score)
               .filter((score: number) => score && score > 0);
 

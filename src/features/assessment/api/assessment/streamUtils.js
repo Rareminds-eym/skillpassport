@@ -6,12 +6,12 @@
 import { STREAM_KNOWLEDGE_PROMPTS } from './streamPrompts.js';
 
 /**
- * Normalize stream ID from student's program name to match STREAM_KNOWLEDGE_PROMPTS keys
+ * Normalize stream ID from learner's program name to match STREAM_KNOWLEDGE_PROMPTS keys
  * Handles various formats like "Bachelor of Technology in Electronics", "B.Tech CSE", "BBA", etc.
  * 
  * IMPORTANT: Stream IDs must be <= 20 characters to fit in database column
  * 
- * @param {string} programName - The program name from student profile
+ * @param {string} programName - The program name from learner profile
  * @returns {string} - Normalized stream ID (max 20 chars) that matches STREAM_KNOWLEDGE_PROMPTS keys
  */
 export function normalizeStreamId(programName) {

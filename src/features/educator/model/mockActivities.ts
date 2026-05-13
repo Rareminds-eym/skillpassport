@@ -1,7 +1,7 @@
 export interface Activity {
   id: string;
-  studentId: string;
-  studentName: string;
+  learnerId: string;
+  learnerName: string;
   title: string;
   description: string;
   category: 'project' | 'certificate' | 'extracurricular' | 'achievement';
@@ -25,8 +25,8 @@ export interface MediaItem {
 export const mockActivities: Activity[] = [
   {
     id: 'act-001',
-    studentId: 'std-001',
-    studentName: 'Sarah Johnson',
+    learnerId: 'std-001',
+    learnerName: 'Sarah Johnson',
     title: 'Science Fair Project - Renewable Energy',
     description: 'Developed a working model of a solar-powered water purification system.',
     category: 'project',
@@ -45,8 +45,8 @@ export const mockActivities: Activity[] = [
   },
   {
     id: 'act-002',
-    studentId: 'std-002',
-    studentName: 'Michael Chen',
+    learnerId: 'std-002',
+    learnerName: 'Michael Chen',
     title: 'JavaScript Certification - FreeCodeCamp',
     description: 'Completed 300-hour JavaScript Algorithms and Data Structures certification.',
     category: 'certificate',
@@ -67,10 +67,10 @@ export const mockActivities: Activity[] = [
   },
   {
     id: 'act-003',
-    studentId: 'std-003',
-    studentName: 'Emma Rodriguez',
+    learnerId: 'std-003',
+    learnerName: 'Emma Rodriguez',
     title: 'Community Art Mural Project',
-    description: 'Led a team of 10 students to design and paint a mural at the local community center.',
+    description: 'Led a team of 10 learners to design and paint a mural at the local community center.',
     category: 'extracurricular',
     status: 'verified',
     submittedDate: '2025-01-08T11:45:00Z',
@@ -96,8 +96,8 @@ export const mockActivities: Activity[] = [
   },
   {
     id: 'act-004',
-    studentId: 'std-004',
-    studentName: 'James Wilson',
+    learnerId: 'std-004',
+    learnerName: 'James Wilson',
     title: 'Regional Basketball Tournament - 2nd Place',
     description: 'Team captain for school basketball team at regional tournament.',
     category: 'achievement',
@@ -116,8 +116,8 @@ export const mockActivities: Activity[] = [
   },
   {
     id: 'act-005',
-    studentId: 'std-005',
-    studentName: 'Olivia Martinez',
+    learnerId: 'std-005',
+    learnerName: 'Olivia Martinez',
     title: 'Research Paper - Climate Change Impact',
     description: 'Published research paper in youth science journal on local climate change effects.',
     category: 'project',
@@ -138,10 +138,10 @@ export const mockActivities: Activity[] = [
   },
   {
     id: 'act-006',
-    studentId: 'std-001',
-    studentName: 'Sarah Johnson',
-    title: 'Student Council Vice President',
-    description: 'Elected as Vice President of Student Council for 2024-2025.',
+    learnerId: 'std-001',
+    learnerName: 'Sarah Johnson',
+    title: 'Learner Council Vice President',
+    description: 'Elected as Vice President of Learner Council for 2024-2025.',
     category: 'achievement',
     status: 'rejected',
     submittedDate: '2025-01-03T15:20:00Z',

@@ -4,7 +4,7 @@ import { getLogger } from '@/shared/config/logging';
 const logger = getLogger('college-class-service');
 
 export interface CollegeClassInfo {
-  id: string; // This is the student ID, not program_section_id
+  id: string; // This is the learner ID, not program_section_id
   program_id: string;
   program_name: string;
   program_code: string;
@@ -13,8 +13,8 @@ export interface CollegeClassInfo {
   section?: string;
   academic_year?: string;
   college_name?: string;
-  current_students: number;
-  max_students?: number;
+  current_learners: number;
+  max_learners?: number;
   college_id?: string;
   program_section_id?: string; // Add this field
 }
@@ -30,12 +30,12 @@ export interface CollegeClassmate {
 }
 
 /**
- * Get college student's class information including program, department, and college details
+ * Get college learner's class information including program, department, and college details
  */
-export const getCollegeStudentClassInfo = async (studentId: string): Promise<CollegeClassInfo | null> => {
+export const getCollegeLearnerClassInfo = async (learnerId: string): Promise<CollegeClassInfo | null> => {
   try {
     const { data, error } = await supabase
-      .from('students')
+      .from('learners')
       .select(`
         id,
         program_id,
@@ -55,17 +55,17 @@ export const getCollegeStudentClassInfo = async (studentId: string): Promise<Col
           id,
           section,
           academic_year,
-          current_students,
-          max_students,
+          current_learners,
+          max_learners,
           semester
         )
       `)
-      .eq('id', studentId)
+      .eq('id', learnerId)
       .single();
 
     if (error) {
       logger.error('Failed to fetch college class info', error instanceof Error ? error : new Error(String(error)), {
-        studentId
+        learnerId
       });
       return null;
     }
@@ -79,7 +79,7 @@ export const getCollegeStudentClassInfo = async (studentId: string): Promise<Col
       (Array.isArray(program.departments) ? program.departments[0] : program.departments) : null;
     const programSection = Array.isArray(data.program_sections) ? data.program_sections[0] : data.program_sections;
 
-    // Determine the actual semester - use program_section semester if student semester is null
+    // Determine the actual semester - use program_section semester if learner semester is null
     const actualSemester = data.semester || programSection?.semester || 1;
 
     // Get college name if college_id exists
@@ -94,19 +94,19 @@ export const getCollegeStudentClassInfo = async (studentId: string): Promise<Col
       collegeName = collegeData?.name || '';
     }
 
-    // Calculate actual current students count for college students only
-    let actualCurrentStudents = 0;
+    // Calculate actual current learners count for college learners only
+    let actualCurrentlearners = 0;
     if (data.program_section_id) {
       const { count } = await supabase
-        .from('students')
+        .from('learners')
         .select('id', { count: 'exact' })
         .eq('program_section_id', data.program_section_id)
         .not('is_deleted', 'is', true)
         .not('is_deleted', 'eq', true);
       
-      // Filter by college students only
-      const { data: studentsData } = await supabase
-        .from('students')
+      // Filter by college learners only
+      const { data: learnersData } = await supabase
+        .from('learners')
         .select(`
           id,
           users!inner (
@@ -114,10 +114,10 @@ export const getCollegeStudentClassInfo = async (studentId: string): Promise<Col
           )
         `)
         .eq('program_section_id', data.program_section_id)
-        .eq('users.role', 'college_student')
+        .eq('users.role', 'learner')
         .not('is_deleted', 'is', true);
       
-      actualCurrentStudents = studentsData?.length || 0;
+      actualCurrentlearners = learnersData?.length || 0;
     }
 
     return {
@@ -130,14 +130,14 @@ export const getCollegeStudentClassInfo = async (studentId: string): Promise<Col
       section: programSection?.section || undefined,
       academic_year: programSection?.academic_year || undefined,
       college_name: collegeName,
-      current_students: actualCurrentStudents,
-      max_students: programSection?.max_students || 0,
+      current_learners: actualCurrentlearners,
+      max_learners: programSection?.max_learners || 0,
       college_id: data.college_id || undefined,
       program_section_id: data.program_section_id || undefined,
     };
   } catch (error) {
-    logger.error('Failed to get college student class info', error instanceof Error ? error : new Error(String(error)), {
-      studentId
+    logger.error('Failed to get college learner class info', error instanceof Error ? error : new Error(String(error)), {
+      learnerId
     });
     return null;
   }
@@ -150,11 +150,11 @@ export const getCollegeClassmates = async (
   programId: string, 
   semester: number, 
   programSectionId?: string, 
-  currentStudentId?: string
+  currentLearnerId?: string
 ): Promise<CollegeClassmate[]> => {
   try {
     let query = supabase
-      .from('students')
+      .from('learners')
       .select(`
         id,
         name,
@@ -169,11 +169,11 @@ export const getCollegeClassmates = async (
         )
       `)
       .eq('program_id', programId)
-      .eq('users.role', 'college_student');
+      .eq('users.role', 'learner');
 
-    // Exclude current student
-    if (currentStudentId) {
-      query = query.neq('id', currentStudentId);
+    // Exclude current learner
+    if (currentLearnerId) {
+      query = query.neq('id', currentLearnerId);
     }
 
     const { data, error } = await query.order('name', { ascending: true });
@@ -191,26 +191,26 @@ export const getCollegeClassmates = async (
     }
 
     // Filter classmates based on program section and semester logic
-    const filteredClassmates = data.filter(student => {
-      // If current student has a program_section_id, find others in the same section
+    const filteredClassmates = data.filter(learner => {
+      // If current learner has a program_section_id, find others in the same section
       if (programSectionId) {
-        return student.program_section_id === programSectionId;
+        return learner.program_section_id === programSectionId;
       }
       
-      // If current student has no program_section_id, find others with same semester or no section
+      // If current learner has no program_section_id, find others with same semester or no section
       // This handles cases where semester might be null but they're in the same program
-      const studentSemester = student.semester || semester; // Use provided semester as fallback
-      return studentSemester === semester && !student.program_section_id;
+      const learnerSemester = learner.semester || semester; // Use provided semester as fallback
+      return learnerSemester === semester && !learner.program_section_id;
     });
 
-    return filteredClassmates.map(student => ({
-      id: student.id,
-      name: student.name || 'Unknown',
-      email: student.email,
-      profilePicture: student.profilePicture,
-      semester: student.semester || semester,
-      roll_number: student.roll_number,
-      admission_number: student.admission_number,
+    return filteredClassmates.map(learner => ({
+      id: learner.id,
+      name: learner.name || 'Unknown',
+      email: learner.email,
+      profilePicture: learner.profilePicture,
+      semester: learner.semester || semester,
+      roll_number: learner.roll_number,
+      admission_number: learner.admission_number,
     }));
   } catch (error) {
     logger.error('Failed to get college classmates', error instanceof Error ? error : new Error(String(error)), {
@@ -222,41 +222,41 @@ export const getCollegeClassmates = async (
 };
 
 /**
- * Check if a student is a college student based on their user role
+ * Check if a learner is a college learner based on their user role
  */
-export const isCollegeStudent = async (studentId: string): Promise<boolean> => {
+export const isCollegeLearner = async (learnerId: string): Promise<boolean> => {
   try {
     const { data, error } = await supabase
-      .from('students')
+      .from('learners')
       .select(`
         users!inner (
           role
         )
       `)
-      .eq('id', studentId)
+      .eq('id', learnerId)
       .single();
 
     if (error) {
-      logger.error('Failed to check student type', error instanceof Error ? error : new Error(String(error)), {
-        studentId
+      logger.error('Failed to check learner type', error instanceof Error ? error : new Error(String(error)), {
+        learnerId
       });
       return false;
     }
 
     const user = Array.isArray(data.users) ? data.users[0] : data.users;
-    return user?.role === 'college_student';
+    return user?.role === 'learner';
   } catch (error) {
-    logger.error('Failed to check if student is college student', error instanceof Error ? error : new Error(String(error)), {
-      studentId
+    logger.error('Failed to check if learner is college learner', error instanceof Error ? error : new Error(String(error)), {
+      learnerId
     });
     return false;
   }
 };
 
 /**
- * Get college student type and basic info for routing decisions
+ * Get college learner type and basic info for routing decisions
  */
-export const getStudentTypeInfo = async (studentId: string): Promise<{
+export const getlearnerTypeInfo = async (learnerId: string): Promise<{
   isCollege: boolean;
   isSchool: boolean;
   hasProgram: boolean;
@@ -264,7 +264,7 @@ export const getStudentTypeInfo = async (studentId: string): Promise<{
 }> => {
   try {
     const { data, error } = await supabase
-      .from('students')
+      .from('learners')
       .select(`
         program_id,
         school_class_id,
@@ -272,12 +272,12 @@ export const getStudentTypeInfo = async (studentId: string): Promise<{
           role
         )
       `)
-      .eq('id', studentId)
+      .eq('id', learnerId)
       .single();
 
     if (error) {
-      logger.error('Failed to get student type info', error instanceof Error ? error : new Error(String(error)), {
-        studentId
+      logger.error('Failed to get learner type info', error instanceof Error ? error : new Error(String(error)), {
+        learnerId
       });
       return { isCollege: false, isSchool: false, hasProgram: false, hasClass: false };
     }
@@ -286,14 +286,14 @@ export const getStudentTypeInfo = async (studentId: string): Promise<{
     const role = user?.role;
 
     return {
-      isCollege: role === 'college_student',
-      isSchool: role === 'school_student',
+      isCollege: role === 'learner',
+      isSchool: role === 'learner',
       hasProgram: !!data.program_id,
       hasClass: !!data.school_class_id,
     };
   } catch (error) {
-    logger.error('Failed to get student type info', error instanceof Error ? error : new Error(String(error)), {
-      studentId
+    logger.error('Failed to get learner type info', error instanceof Error ? error : new Error(String(error)), {
+      learnerId
     });
     return { isCollege: false, isSchool: false, hasProgram: false, hasClass: false };
   }

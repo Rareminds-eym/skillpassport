@@ -6,7 +6,7 @@
  * - /api/career/chat - Career AI chat with streaming
  * - /api/career/recommend-opportunities - Get job recommendations
  * - /api/career/analyze-assessment - Analyze career assessment
- * - /api/career/generate-embedding - Generate embeddings for opportunities/students
+ * - /api/career/generate-embedding - Generate embeddings for opportunities/learners
  * - /api/career/generate-field-keywords - Generate domain keywords for fields
  * - /api/career/parse-resume - Parse resume text
  */

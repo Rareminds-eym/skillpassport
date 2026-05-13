@@ -14,10 +14,18 @@
 
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { createTimeoutSignal } from '@/shared/lib/createTimeoutSignal';
+import {
+  OTP_VALIDATION,
+  PHONE_VALIDATION,
+  VALIDATION_MESSAGES,
+} from '@/shared/config/validation';
+import {
+  validatePhone,
+  validateOtp,
+  sanitizePhone,
+} from '@/shared/lib/validation';
 
 const API_URL = getApiUrl('otp');
-const OTP_DIGIT_LENGTH = 4; // MessageCentral provider sends 4-digit OTPs
-const OTP_REQUEST_TIMEOUT_MS = 10_000;
 
 interface OtpResponse {
   success: boolean;
@@ -47,22 +55,7 @@ class OtpApiError extends Error {
   }
 }
 
-/**
- * Validate phone number
- * @param phone - Phone number (digits only)
- * @returns true if valid, error message if invalid
- */
-function validatePhone(phone: string): true | string {
-  const cleanPhone = phone.replace(/\D/g, '');
-  if (cleanPhone.length < 7 || cleanPhone.length > 15) {
-    return 'Please enter a valid phone number (7-15 digits)';
-  }
-  return true;
-}
-
-function sanitisePhone(phone: string): string {
-  return phone.replace(/\D/g, '');
-}
+// Validation functions are now imported from shared/lib/validation
 
 function handleOtpError(error: unknown): OtpResponse {
   if (error instanceof OtpApiError) {
@@ -106,7 +99,7 @@ async function makeOtpRequest(
         'X-Request-ID': requestId,
       },
       body: JSON.stringify(body),
-      signal: createTimeoutSignal(OTP_REQUEST_TIMEOUT_MS) ?? null,
+      signal: createTimeoutSignal(OTP_VALIDATION.REQUEST_TIMEOUT_MS) ?? null,
     });
 
     // Parse JSON safely
@@ -189,11 +182,11 @@ async function makeOtpRequest(
  */
 export async function sendOtp(phone: string, countryCode = '+91'): Promise<OtpResponse> {
   try {
-    // Validate phone number
-    const cleanPhone = sanitisePhone(phone);
+    // Validate phone number using centralized validation
+    const cleanPhone = sanitizePhone(phone);
     const validation = validatePhone(cleanPhone);
-    if (validation !== true) {
-      return { success: false, error: validation };
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
     }
 
     const result = await makeOtpRequest('/send', { 
@@ -238,22 +231,21 @@ export async function verifyOtp({
   countryCode = '+91',
 }: VerifyOtpOptions): Promise<OtpResponse> {
   try {
-    // Validate inputs
-    const cleanPhone = sanitisePhone(phone);
-    const cleanOtp = otp.replace(/\D/g, '');
-    
-    const validation = validatePhone(cleanPhone);
-    if (validation !== true) {
-      return { success: false, error: validation };
+    // Validate inputs using centralized validation
+    const cleanPhone = sanitizePhone(phone);
+    const phoneValidation = validatePhone(cleanPhone);
+    if (!phoneValidation.valid) {
+      return { success: false, error: phoneValidation.error };
     }
     
-    if (cleanOtp.length !== OTP_DIGIT_LENGTH) {
-      return { success: false, error: `Please enter a valid ${OTP_DIGIT_LENGTH} digit OTP code` };
+    const otpValidation = validateOtp(otp);
+    if (!otpValidation.valid) {
+      return { success: false, error: otpValidation.error };
     }
 
     const result = await makeOtpRequest('/verify', {
       phone: cleanPhone,
-      otp: cleanOtp,
+      otp: otpValidation.sanitized!,
       countryCode,
       verificationId,
     });
@@ -270,10 +262,10 @@ export async function verifyOtp({
  */
 export async function resendOtp(phone: string, countryCode = '+91'): Promise<OtpResponse> {
   try {
-    const cleanPhone = sanitisePhone(phone);
+    const cleanPhone = sanitizePhone(phone);
     const validation = validatePhone(cleanPhone);
-    if (validation !== true) {
-      return { success: false, error: validation };
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
     }
 
     const result = await makeOtpRequest('/resend', {

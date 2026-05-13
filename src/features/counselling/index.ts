@@ -9,7 +9,7 @@ export type {
   CounsellingTopicType,
   CounsellingRequest,
   CounsellingResponse,
-  StudentContext,
+  LearnerContext,
   MessageRole,
   SessionStatus,
   CounsellingStore

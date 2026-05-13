@@ -1,22 +1,22 @@
 import React, { useState, useMemo } from "react";
 import { Search, Eye, CreditCard, AlertTriangle, CheckCircle, Clock, Users, Filter, Download } from "lucide-react";
-import { StudentFeeSummary, PaymentStatus } from '@/features/student-profile/model';
+import { LearnerFeeSummary, PaymentStatus } from '@/features/learner-profile/model';
 
 interface Props {
-  studentSummaries: StudentFeeSummary[];
+  learnerSummaries: LearnerFeeSummary[];
   loading: boolean;
   stats: {
     totalDue: number;
     totalCollected: number;
     totalPending: number;
-    totalStudents: number;
+    totallearners: number;
     paidCount: number;
     partialCount: number;
     pendingCount: number;
     overdueCount: number;
   };
-  onViewLedger: (student: StudentFeeSummary) => void;
-  onRecordPayment: (student: StudentFeeSummary) => void;
+  onViewLedger: (learner: LearnerFeeSummary) => void;
+  onRecordPayment: (learner: LearnerFeeSummary) => void;
 }
 
 interface FeeTrackingFilters {
@@ -35,7 +35,7 @@ const statusConfig: Record<PaymentStatus, { label: string; color: string; bg: st
 };
 
 export const FeeTrackingTab: React.FC<Props> = ({
-  studentSummaries,
+  learnerSummaries,
   loading,
   stats,
   onViewLedger,
@@ -53,15 +53,15 @@ export const FeeTrackingTab: React.FC<Props> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
 
-  // Filter and sort students
-  const filteredAndSortedStudents = useMemo(() => {
-    let result = studentSummaries;
+  // Filter and sort learners
+  const filteredAndSortedlearners = useMemo(() => {
+    let result = learnerSummaries;
 
     // Apply search filter
     if (filters.search.trim()) {
       const searchTerm = filters.search.toLowerCase();
       result = result.filter((s) =>
-        s.student_name.toLowerCase().includes(searchTerm) ||
+        s.learner_name.toLowerCase().includes(searchTerm) ||
         s.roll_number.toLowerCase().includes(searchTerm)
       );
     }
@@ -103,8 +103,8 @@ export const FeeTrackingTab: React.FC<Props> = ({
       
       switch (sortBy) {
         case "name":
-          aValue = a.student_name.toLowerCase();
-          bValue = b.student_name.toLowerCase();
+          aValue = a.learner_name.toLowerCase();
+          bValue = b.learner_name.toLowerCase();
           break;
         case "amount":
           aValue = a.total_due;
@@ -128,14 +128,14 @@ export const FeeTrackingTab: React.FC<Props> = ({
     });
 
     return result;
-  }, [studentSummaries, filters, sortBy, sortOrder]);
+  }, [learnerSummaries, filters, sortBy, sortOrder]);
 
   // Pagination
-  const totalItems = filteredAndSortedStudents.length;
+  const totalItems = filteredAndSortedlearners.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedStudents = filteredAndSortedStudents.slice(startIndex, endIndex);
+  const paginatedlearners = filteredAndSortedlearners.slice(startIndex, endIndex);
 
   // Handle filter changes
   const handleFilterChange = (key: keyof FeeTrackingFilters, value: any) => {
@@ -166,14 +166,14 @@ export const FeeTrackingTab: React.FC<Props> = ({
 
   // Export to CSV
   const handleExportCSV = () => {
-    const csvHeaders = ["Student Name", "Roll Number", "Total Due", "Paid Amount", "Balance", "Status"];
-    const csvData = filteredAndSortedStudents.map(student => [
-      student.student_name,
-      student.roll_number,
-      student.total_due.toString(),
-      student.total_paid.toString(),
-      student.balance.toString(),
-      student.status
+    const csvHeaders = ["Learner Name", "Roll Number", "Total Due", "Paid Amount", "Balance", "Status"];
+    const csvData = filteredAndSortedlearners.map(learner => [
+      learner.learner_name,
+      learner.roll_number,
+      learner.total_due.toString(),
+      learner.total_paid.toString(),
+      learner.balance.toString(),
+      learner.status
     ]);
 
     const csvContent = [csvHeaders, ...csvData]
@@ -209,13 +209,13 @@ export const FeeTrackingTab: React.FC<Props> = ({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Fee Tracking</h2>
-          <p className="text-gray-600 text-sm">Monitor student fee payments and outstanding balances</p>
+          <p className="text-gray-600 text-sm">Monitor learner fee payments and outstanding balances</p>
         </div>
         
         <div className="flex items-center gap-2">
           <button
             onClick={handleExportCSV}
-            disabled={filteredAndSortedStudents.length === 0}
+            disabled={filteredAndSortedlearners.length === 0}
             className="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
           >
             <Download className="h-4 w-4 mr-2" />
@@ -232,8 +232,8 @@ export const FeeTrackingTab: React.FC<Props> = ({
               <Users className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm text-blue-600">Total Students</p>
-              <p className="text-xl font-bold text-blue-900">{stats.totalStudents}</p>
+              <p className="text-sm text-blue-600">Total Learners</p>
+              <p className="text-xl font-bold text-blue-900">{stats.totallearners}</p>
             </div>
           </div>
         </div>
@@ -389,7 +389,7 @@ export const FeeTrackingTab: React.FC<Props> = ({
       {/* Results Summary */}
       <div className="flex items-center justify-between mb-4">
         <div className="text-sm text-gray-600">
-          Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} students
+          Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} learners
           {activeFiltersCount > 0 && " (filtered)"}
         </div>
         <div className="flex items-center gap-2">
@@ -411,16 +411,16 @@ export const FeeTrackingTab: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Student List */}
-      {paginatedStudents.length === 0 ? (
+      {/* Learner List */}
+      {paginatedlearners.length === 0 ? (
         <div className="p-8 bg-gray-50 border border-gray-200 rounded-xl text-center">
           <Users className="h-12 w-12 text-gray-400 mx-auto mb-3" />
           <p className="text-gray-900 font-medium mb-1">
-            {totalItems === 0 ? "No student fee records found" : "No matching students"}
+            {totalItems === 0 ? "No learner fee records found" : "No matching learners"}
           </p>
           <p className="text-sm text-gray-600">
             {totalItems === 0
-              ? "Student fee ledgers will appear here once fee structures are assigned to students"
+              ? "Learner fee ledgers will appear here once fee structures are assigned to learners"
               : "Try adjusting your search or filters"}
           </p>
         </div>
@@ -435,7 +435,7 @@ export const FeeTrackingTab: React.FC<Props> = ({
                     onClick={() => handleSortChange("name")}
                   >
                     <div className="flex items-center">
-                      Student
+                      Learner
                       {sortBy === "name" && (
                         <span className="ml-1">{sortOrder === "asc" ? "↑" : "↓"}</span>
                       )}
@@ -480,22 +480,22 @@ export const FeeTrackingTab: React.FC<Props> = ({
                 </tr>
               </thead>
               <tbody>
-                {paginatedStudents.map((student) => {
-                  const config = statusConfig[student.status] || statusConfig.pending;
+                {paginatedlearners.map((learner) => {
+                  const config = statusConfig[learner.status] || statusConfig.pending;
                   return (
-                    <tr key={student.student_id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <tr key={learner.learner_id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-3 px-4">
-                        <p className="font-medium text-gray-900">{student.student_name}</p>
+                        <p className="font-medium text-gray-900">{learner.learner_name}</p>
                       </td>
-                      <td className="py-3 px-4 text-gray-600">{student.roll_number}</td>
+                      <td className="py-3 px-4 text-gray-600">{learner.roll_number}</td>
                       <td className="py-3 px-4 text-right font-medium text-gray-900">
-                        ₹{student.total_due.toLocaleString()}
+                        ₹{learner.total_due.toLocaleString()}
                       </td>
                       <td className="py-3 px-4 text-right text-green-600 font-medium">
-                        ₹{student.total_paid.toLocaleString()}
+                        ₹{learner.total_paid.toLocaleString()}
                       </td>
                       <td className="py-3 px-4 text-right font-medium text-red-600">
-                        ₹{student.balance.toLocaleString()}
+                        ₹{learner.balance.toLocaleString()}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${config.bg} ${config.color}`}>
@@ -505,15 +505,15 @@ export const FeeTrackingTab: React.FC<Props> = ({
                       <td className="py-3 px-4">
                         <div className="flex items-center justify-center gap-2">
                           <button
-                            onClick={() => onViewLedger(student)}
+                            onClick={() => onViewLedger(learner)}
                             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
                             title="View Ledger"
                           >
                             <Eye className="h-4 w-4" />
                           </button>
-                          {/* {student.balance > 0 && (
+                          {/* {learner.balance > 0 && (
                             <button
-                              onClick={() => onRecordPayment(student)}
+                              onClick={() => onRecordPayment(learner)}
                               className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
                               title="Record Payment"
                             >

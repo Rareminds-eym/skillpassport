@@ -9,11 +9,11 @@ import { supabase } from '@/shared/api/supabaseClient';
 /**
  * Save parsed resume data to separate tables
  * @param {Object} parsedData - The parsed resume data
- * @param {string} studentId - The student's ID (from students table)
- * @param {string} userEmail - The student's email
+ * @param {string} learnerId - The learner's ID (from learners table)
+ * @param {string} userEmail - The learner's email
  * @returns {Promise<Object>} Result with success status and details
  */
-export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
+export const saveResumeToTables = async (parsedData, learnerId, userEmail) => {
   try {
     const results = {
       success: true,
@@ -32,7 +32,7 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
     if (parsedData.education && Array.isArray(parsedData.education) && parsedData.education.length > 0) {
       try {
         const educationRecords = parsedData.education.map(edu => ({
-          student_id: studentId,
+          learner_id: learnerId,
           level: edu.level || "Bachelor's",
           degree: edu.degree || '',
           department: edu.department || '',
@@ -59,7 +59,7 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
     if (parsedData.experience && Array.isArray(parsedData.experience) && parsedData.experience.length > 0) {
       try {
         const experienceRecords = parsedData.experience.map(exp => ({
-          student_id: studentId,
+          learner_id: learnerId,
           organization: exp.organization || '',
           role: exp.role || '',
           duration: exp.duration || '',
@@ -86,7 +86,7 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
     if (parsedData.technicalSkills && Array.isArray(parsedData.technicalSkills)) {
       parsedData.technicalSkills.forEach(skill => {
         allSkills.push({
-          student_id: studentId,
+          learner_id: learnerId,
           name: skill.name || '',
           type: 'technical',
           level: skill.level || 3,
@@ -101,7 +101,7 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
     if (parsedData.softSkills && Array.isArray(parsedData.softSkills)) {
       parsedData.softSkills.forEach(skill => {
         allSkills.push({
-          student_id: studentId,
+          learner_id: learnerId,
           name: skill.name || '',
           type: 'soft',
           level: skill.level || 3,
@@ -130,7 +130,7 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
     if (parsedData.certificates && Array.isArray(parsedData.certificates) && parsedData.certificates.length > 0) {
       try {
         const certificateRecords = parsedData.certificates.map(cert => ({
-          student_id: studentId,
+          learner_id: learnerId,
           title: cert.title || '',
           issuer: cert.issuer || '',
           level: cert.level || 'Professional',
@@ -158,7 +158,7 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
     if (parsedData.projects && Array.isArray(parsedData.projects) && parsedData.projects.length > 0) {
       try {
         const projectRecords = parsedData.projects.map(proj => ({
-          student_id: studentId,
+          learner_id: learnerId,
           title: proj.title || '',
           organization: proj.organization || '',
           duration: proj.duration || '',
@@ -186,7 +186,7 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
     if (parsedData.training && Array.isArray(parsedData.training) && parsedData.training.length > 0) {
       try {
         const trainingRecords = parsedData.training.map(train => ({
-          student_id: studentId,
+          learner_id: learnerId,
           title: train.course || train.skill || '',
           organization: train.trainer || '',
           status: train.status || 'ongoing',
@@ -206,7 +206,7 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
       }
     }
 
-    // 7. Update basic profile info in students table (non-JSONB columns)
+    // 7. Update basic profile info in learners table (non-JSONB columns)
     try {
       const updateData = {};
       
@@ -226,14 +226,14 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
 
       if (Object.keys(updateData).length > 0) {
         const { error } = await supabase
-          .from('students')
+          .from('learners')
           .update(updateData)
-          .eq('id', studentId);
+          .eq('id', learnerId);
 
         if (error) throw error;
       }
     } catch (error) {
-      results.errors.push({ table: 'students', error: error.message });
+      results.errors.push({ table: 'learners', error: error.message });
     }
 
     // Check if there were any errors
@@ -253,19 +253,19 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
 };
 
 /**
- * Get summary of student's resume data from all tables
- * @param {string} studentId - The student's ID
+ * Get summary of learner's resume data from all tables
+ * @param {string} learnerId - The learner's ID
  * @returns {Promise<Object>} Summary of all resume data
  */
-export const getResumeDataSummary = async (studentId) => {
+export const getResumeDataSummary = async (learnerId) => {
   try {
     const [education, experience, skills, certificates, projects, trainings] = await Promise.all([
-      supabase.from('education').select('*').eq('student_id', studentId),
-      supabase.from('experience').select('*').eq('student_id', studentId),
-      supabase.from('skills').select('*').eq('student_id', studentId),
-      supabase.from('certificates').select('*').eq('student_id', studentId),
-      supabase.from('projects').select('*').eq('student_id', studentId),
-      supabase.from('trainings').select('*').eq('student_id', studentId)
+      supabase.from('education').select('*').eq('learner_id', learnerId),
+      supabase.from('experience').select('*').eq('learner_id', learnerId),
+      supabase.from('skills').select('*').eq('learner_id', learnerId),
+      supabase.from('certificates').select('*').eq('learner_id', learnerId),
+      supabase.from('projects').select('*').eq('learner_id', learnerId),
+      supabase.from('trainings').select('*').eq('learner_id', learnerId)
     ]);
 
     return {

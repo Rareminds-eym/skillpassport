@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { getAssignmentsByStudentId } from '@/features/educator-copilot';
+import { getAssignmentsByLearnerId } from '@/features/educator-copilot';
 import { Assignment } from '@/features/myclass';
 
 interface UseAssignmentsDataReturn {
@@ -14,20 +14,20 @@ interface UseAssignmentsDataReturn {
  * Hook to fetch Assignments tab data
  * Lazy loads when Assignments tab is clicked
  */
-export const useAssignmentsData = (studentId: string | undefined): UseAssignmentsDataReturn => {
+export const useAssignmentsData = (learnerId: string | undefined): UseAssignmentsDataReturn => {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [hasFetched, setHasFetched] = useState(false);
 
   const fetchData = useCallback(async () => {
-    if (!studentId || hasFetched) return;
+    if (!learnerId || hasFetched) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      const assignmentsData = await getAssignmentsByStudentId(studentId);
+      const assignmentsData = await getAssignmentsByLearnerId(learnerId);
       setAssignments(assignmentsData);
       setHasFetched(true);
     } catch (err) {
@@ -35,18 +35,18 @@ export const useAssignmentsData = (studentId: string | undefined): UseAssignment
     } finally {
       setLoading(false);
     }
-  }, [studentId, hasFetched]);
+  }, [learnerId, hasFetched]);
 
   const refetchAssignments = useCallback(async () => {
-    if (!studentId) return;
+    if (!learnerId) return;
 
     try {
-      const assignmentsData = await getAssignmentsByStudentId(studentId);
+      const assignmentsData = await getAssignmentsByLearnerId(learnerId);
       setAssignments(assignmentsData);
     } catch (err) {
       // Silent fail - error state will be handled by component
     }
-  }, [studentId]);
+  }, [learnerId]);
 
   return {
     assignments,

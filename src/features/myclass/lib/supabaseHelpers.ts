@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 
 /**
@@ -5,7 +6,7 @@ import { supabase } from '@/shared/api/supabaseClient';
  */
 
 export const getAuthSession = async () => {
-  const { data: { session }, error } = await supabase.auth.getSession();
+  const { data: { session }, error } = await getCurrentSession();
   
   if (error) {
     throw new Error(`Session error: ${error.message}`);

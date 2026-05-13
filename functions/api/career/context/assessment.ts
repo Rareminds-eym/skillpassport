@@ -6,7 +6,7 @@ import type { AssessmentResults } from '../types';
 
 export async function buildAssessmentContext(
   supabase: SupabaseClient, 
-  studentId: string
+  learnerId: string
 ): Promise<AssessmentResults> {
   const defaultResult: AssessmentResults = {
     hasAssessment: false,
@@ -30,7 +30,7 @@ export async function buildAssessmentContext(
     const { data: assessment, error } = await supabase
       .from('personal_assessment_results')
       .select('*')
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .eq('status', 'completed')
       .order('created_at', { ascending: false })
       .limit(1)

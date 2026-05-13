@@ -29,7 +29,7 @@ const PaymentCompletion = lazy(() =>
   import("@/pages/subscription/PaymentCompletion")
 );
 const PaymentSuccess = lazy(() =>
-  import("@/pages/subscription/PaymentSuccess")
+  import("@/features/subscription/ui/shared/PaymentSuccess")
 );
 const PaymentFailure = lazy(() =>
   import("@/features/subscription/ui/shared/PaymentFailure")
@@ -88,6 +88,8 @@ const UnifiedForgotPassword = lazy(() => import("@/features/auth/ui/UnifiedForgo
 const PasswordReset = lazy(() => import("@/features/auth/ui/PasswordReset"));
 const TokenPasswordReset = lazy(() => import("@/pages/auth/TokenPasswordReset"));
 const ResetPassword = lazy(() => import("@/features/auth/ui/ResetPassword"));
+const VerifyEmail = lazy(() => import("@/pages/auth/VerifyEmail"));
+const AcceptInvite = lazy(() => import("@/pages/auth/AcceptInvite"));
 const SignupRecruiter = lazy(() =>
   import("@/pages/auth/components/SignIn/recruitment/SignupRecruiter")
 );
@@ -104,8 +106,8 @@ const UniversityAdmin = lazy(() =>
   import("@/pages/auth/components/SignIn/university/UniversityAdmin")
 );
 
-const StudentPublicViewer = lazy(() =>
-  import("@/features/student-profile/ui/StudentPublicViewer")
+const LearnerPublicViewer = lazy(() =>
+  import("@/features/learner-profile/ui/LearnerPublicViewer")
 );
 
 const OrganizationSetupPage = lazy(() =>
@@ -117,7 +119,7 @@ export const publicRoutes = [
   <Route key="organization-setup" path="/organization-setup" element={<OrganizationSetupPage />} />,
 
   // Skill Passport Pre-Registration
-  <Route key="register-student" path="/register/student" element={<SkillPassportPreRegistration />} />,
+  <Route key="register-learner" path="/register/learner" element={<SkillPassportPreRegistration />} />,
   <Route key="register-corporate" path="/register/corporate" element={<SkillPassportPreRegistration />} />,
 
   // Internal Testing Registration
@@ -153,9 +155,11 @@ export const publicRoutes = [
     <Route path="/forgot-password" element={<UnifiedForgotPassword />} />
     <Route path="/password-reset" element={<TokenPasswordReset />} />
     <Route path="/reset-password" element={<ResetPassword />} />
+    <Route path="/verify-email" element={<VerifyEmail />} />
+    <Route path="/invite/accept" element={<AcceptInvite />} />
 
     {/* Deprecated login routes */}
-    <Route path="/login/student" element={<Navigate to="/login" replace />} />
+    <Route path="/login/learner" element={<Navigate to="/login" replace />} />
     <Route path="/login/recruiter" element={<Navigate to="/login" replace />} />
     <Route path="/login/admin" element={<Navigate to="/login" replace />} />
     <Route path="/login/educator" element={<Navigate to="/login" replace />} />
@@ -178,7 +182,7 @@ export const publicRoutes = [
     <Route path="/subscription/payment/failure" element={<PaymentFailure />} />
     <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
     <Route path="/network-error" element={<NetworkError />} />
-    <Route path="/student/profile/:studentId" element={<StudentPublicViewer />} />
+    <Route path="/learner/profile/:learnerId" element={<LearnerPublicViewer />} />
   </Route>,
 
   // Digital Portfolio routes with PortfolioLayout

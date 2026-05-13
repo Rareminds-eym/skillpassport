@@ -1,3 +1,5 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+import { extractErrorMessage } from '@/features/subscription/api/paymentsApiService';
 /**
  * Organization Payment Service
  * 
@@ -10,7 +12,11 @@ import { getRazorpayKeyId, getRazorpayKeyMode } from '@/shared/config';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('organizationPayment');
-const WORKER_URL = import.meta.env.VITE_PAYMENTS_API_URL;
+// Use Pages Functions for payments (not direct worker access)
+const getBaseUrl = () => {
+  const origin = window.location.origin;
+  return `${origin}/api/payments`;
+};
 
 // ============================================================================
 // Types
@@ -22,7 +28,7 @@ export interface OrganizationPurchaseData {
   planId: string;
   planName: string;
   seatCount: number;
-  targetMemberType: 'educator' | 'student' | 'both';
+  targetMemberType: 'educator' | 'learner' | 'both';
   billingCycle: 'monthly' | 'annual';
   autoRenew: boolean;
   pricing: {
@@ -56,7 +62,7 @@ export interface OrganizationOrderResult {
 // ============================================================================
 
 const getAuthHeaders = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await getCurrentSession();
   const token = session?.access_token;
   
   if (!token) {
@@ -101,7 +107,7 @@ export async function createOrganizationOrder(
     const headers = await getAuthHeaders();
     
     // Create order via Worker
-    const response = await fetch(`${WORKER_URL}/create-org-order`, {
+    const response = await fetch(`${getBaseUrl()}/create-org-order`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -121,7 +127,7 @@ export async function createOrganizationOrder(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.error || 'Failed to create organization order');
+      throw new Error(extractErrorMessage(error) || 'Failed to create organization order');
     }
 
     const result = await response.json();
@@ -144,7 +150,7 @@ export async function verifyOrganizationPayment(paymentData: {
   try {
     const headers = await getAuthHeaders();
     
-    const response = await fetch(`${WORKER_URL}/verify-org-payment`, {
+    const response = await fetch(`${getBaseUrl()}/verify-org-payment`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -157,7 +163,7 @@ export async function verifyOrganizationPayment(paymentData: {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.error || 'Payment verification failed');
+      throw new Error(extractErrorMessage(error) || 'Payment verification failed');
     }
 
     return await response.json();
@@ -176,7 +182,7 @@ export async function purchaseOrganizationSubscription(
   try {
     const headers = await getAuthHeaders();
     
-    const response = await fetch(`${WORKER_URL}/org-subscriptions/purchase`, {
+    const response = await fetch(`${getBaseUrl()}/org-subscriptions/purchase`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -192,7 +198,7 @@ export async function purchaseOrganizationSubscription(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.error || 'Failed to purchase subscription');
+      throw new Error(extractErrorMessage(error) || 'Failed to purchase subscription');
     }
 
     return await response.json();

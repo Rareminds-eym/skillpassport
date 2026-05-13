@@ -45,7 +45,7 @@ interface Contact {
   time: string;
   unread: number;
   online: boolean;
-  studentId: string;
+  learnerId: string;
   applicationId: string;
   opportunityId: string;
 }
@@ -221,8 +221,8 @@ const Messages = () => {
   // Transform and filter conversations
   const filteredContacts = useMemo<Contact[]>(() => {
     const contacts: Contact[] = conversations.map(conv => {
-      const profile = parseProfile(conv.student?.profile);
-      const studentName = profile?.name || conv.student?.email || 'Student';
+      const profile = parseProfile(conv.learner?.profile);
+      const learnerName = profile?.name || conv.learner?.email || 'Learner';
       const opportunityTitle = conv.opportunity?.title || 'No job specified';
       const opportunityDetails = conv.opportunity?.company_name 
         ? `${opportunityTitle} • ${conv.opportunity.company_name}`
@@ -230,15 +230,15 @@ const Messages = () => {
       
       return {
         id: conv.id,
-        name: studentName,
+        name: learnerName,
         role: opportunityDetails,
         avatar: profile?.profilePicture || 
-          `https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=${AVATAR_BG_COLOR}&color=fff`,
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(learnerName)}&background=${AVATAR_BG_COLOR}&color=fff`,
         lastMessage: conv.last_message_preview || 'No messages yet',
-        online: isUserOnlineGlobal(conv.student_id),
+        online: isUserOnlineGlobal(conv.learner_id),
         time: safeFormatTime(conv.last_message_at),
         unread: conv.recruiter_unread_count || 0,
-        studentId: conv.student_id,
+        learnerId: conv.learner_id,
         applicationId: conv.application_id,
         opportunityId: conv.opportunity_id,
       };
@@ -280,21 +280,21 @@ const Messages = () => {
       await sendMessage({
         senderId: recruiterId,
         senderType: 'recruiter',
-        receiverId: currentChat.studentId,
-        receiverType: 'student',
+        receiverId: currentChat.learnerId,
+        receiverType: 'learner',
         messageText: trimmedInput,
         applicationId: currentChat.applicationId,
         opportunityId: currentChat.opportunityId
       });
       
       // Send notification (non-blocking)
-      sendNotification(currentChat.studentId, {
+      sendNotification(currentChat.learnerId, {
         title: 'New Message from Recruiter',
         message: trimmedInput.length > MESSAGE_PREVIEW_LENGTH 
           ? `${trimmedInput.substring(0, MESSAGE_PREVIEW_LENGTH)}...` 
           : trimmedInput,
         type: 'message',
-        link: `/student/messages?conversation=${selectedConversationId}`
+        link: `/learner/messages?conversation=${selectedConversationId}`
       }).catch(() => {/* Ignore notification errors */});
       
       setMessageInput('');

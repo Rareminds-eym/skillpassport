@@ -32,7 +32,7 @@ interface District {
   name: string;
   code: string;
   totalColleges: number;
-  totalStudents: number;
+  totallearners: number;
   totalFaculty: number;
   performanceScore: number;
   status: "excellent" | "good" | "average" | "needs-improvement";
@@ -44,7 +44,7 @@ interface College {
   code: string;
   district: string;
   type: "Government" | "Private" | "Aided";
-  totalStudents: number;
+  totallearners: number;
   totalFaculty: number;
   departments: number;
   accreditation: "A++" | "A+" | "A" | "B++" | "B+" | "B" | "Not Accredited";
@@ -71,7 +71,7 @@ const DistrictCollegeReports: React.FC = () => {
       name: "Chennai District",
       code: "CHN",
       totalColleges: 45,
-      totalStudents: 125000,
+      totallearners: 125000,
       totalFaculty: 8500,
       performanceScore: 85,
       status: "excellent",
@@ -81,7 +81,7 @@ const DistrictCollegeReports: React.FC = () => {
       name: "Coimbatore District",
       code: "CBE",
       totalColleges: 38,
-      totalStudents: 98000,
+      totallearners: 98000,
       totalFaculty: 6800,
       performanceScore: 82,
       status: "excellent",
@@ -91,7 +91,7 @@ const DistrictCollegeReports: React.FC = () => {
       name: "Madurai District",
       code: "MDU",
       totalColleges: 32,
-      totalStudents: 78000,
+      totallearners: 78000,
       totalFaculty: 5200,
       performanceScore: 78,
       status: "good",
@@ -101,7 +101,7 @@ const DistrictCollegeReports: React.FC = () => {
       name: "Salem District",
       code: "SLM",
       totalColleges: 28,
-      totalStudents: 65000,
+      totallearners: 65000,
       totalFaculty: 4500,
       performanceScore: 75,
       status: "good",
@@ -111,7 +111,7 @@ const DistrictCollegeReports: React.FC = () => {
       name: "Tirunelveli District",
       code: "TVL",
       totalColleges: 22,
-      totalStudents: 52000,
+      totallearners: 52000,
       totalFaculty: 3800,
       performanceScore: 68,
       status: "average",
@@ -121,7 +121,7 @@ const DistrictCollegeReports: React.FC = () => {
       name: "Vellore District",
       code: "VLR",
       totalColleges: 18,
-      totalStudents: 42000,
+      totallearners: 42000,
       totalFaculty: 3200,
       performanceScore: 62,
       status: "needs-improvement",
@@ -136,7 +136,7 @@ const DistrictCollegeReports: React.FC = () => {
       code: "AU001",
       district: "Chennai District",
       type: "Government",
-      totalStudents: 15000,
+      totallearners: 15000,
       totalFaculty: 850,
       departments: 18,
       accreditation: "A++",
@@ -149,7 +149,7 @@ const DistrictCollegeReports: React.FC = () => {
       code: "PSG001",
       district: "Coimbatore District",
       type: "Private",
-      totalStudents: 8500,
+      totallearners: 8500,
       totalFaculty: 520,
       departments: 12,
       accreditation: "A+",
@@ -162,7 +162,7 @@ const DistrictCollegeReports: React.FC = () => {
       code: "TCE001",
       district: "Madurai District",
       type: "Private",
-      totalStudents: 6200,
+      totallearners: 6200,
       totalFaculty: 380,
       departments: 10,
       accreditation: "A+",
@@ -175,7 +175,7 @@ const DistrictCollegeReports: React.FC = () => {
       code: "GCE001",
       district: "Salem District",
       type: "Government",
-      totalStudents: 4800,
+      totallearners: 4800,
       totalFaculty: 290,
       departments: 8,
       accreditation: "A",
@@ -188,7 +188,7 @@ const DistrictCollegeReports: React.FC = () => {
       code: "FXE001",
       district: "Tirunelveli District",
       type: "Private",
-      totalStudents: 3500,
+      totallearners: 3500,
       totalFaculty: 220,
       departments: 6,
       accreditation: "B++",
@@ -201,7 +201,7 @@ const DistrictCollegeReports: React.FC = () => {
       code: "VIT001",
       district: "Vellore District",
       type: "Private",
-      totalStudents: 12000,
+      totallearners: 12000,
       totalFaculty: 680,
       departments: 15,
       accreditation: "A++",
@@ -229,7 +229,7 @@ const DistrictCollegeReports: React.FC = () => {
       color: "green" as const,
     },
     {
-      title: "Total Students",
+      title: "Total Learners",
       value: "460K",
       change: 8.1,
       changeLabel: "enrollment growth",
@@ -379,7 +379,7 @@ const DistrictCollegeReports: React.FC = () => {
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Include Sections</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {["Performance Metrics", "College Statistics", "Student Enrollment", "Faculty Details", "Infrastructure", "Placement Data"].map(section => (
+                  {["Performance Metrics", "College Statistics", "Learner Enrollment", "Faculty Details", "Infrastructure", "Placement Data"].map(section => (
                     <label key={section} className="flex items-center">
                       <input type="checkbox" defaultChecked className="mr-2 rounded" />
                       <span className="text-sm text-gray-700">{section}</span>
@@ -466,7 +466,7 @@ const DistrictCollegeReports: React.FC = () => {
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700">Performance Metrics</label>
                   <div className="grid grid-cols-2 gap-2">
-                    {["Academic Performance", "Placement Rates", "Research Output", "Infrastructure Quality", "Faculty Ratio", "Student Satisfaction"].map(metric => (
+                    {["Academic Performance", "Placement Rates", "Research Output", "Infrastructure Quality", "Faculty Ratio", "Learner Satisfaction"].map(metric => (
                       <label key={metric} className="flex items-center">
                         <input type="checkbox" defaultChecked className="mr-2 rounded" />
                         <span className="text-sm text-gray-700">{metric}</span>
@@ -655,7 +655,7 @@ const DistrictCollegeReports: React.FC = () => {
                   <UserCheck className="h-8 w-8 text-yellow-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Faculty-Student Ratio</p>
+                  <p className="text-sm text-gray-600">Faculty-Learner Ratio</p>
                   <p className="text-xl font-bold text-gray-900">1:18</p>
                   <p className="text-sm text-blue-600">Optimal</p>
                 </div>
@@ -730,8 +730,8 @@ const DistrictCollegeReports: React.FC = () => {
                       <p className="text-lg font-bold text-blue-600">{district.totalColleges}</p>
                     </div>
                     <div className="bg-purple-50 rounded-xl p-3">
-                      <p className="text-xs text-gray-600 mb-1">Students</p>
-                      <p className="text-lg font-bold text-purple-600">{(district.totalStudents / 1000).toFixed(0)}K</p>
+                      <p className="text-xs text-gray-600 mb-1">Learners</p>
+                      <p className="text-lg font-bold text-purple-600">{(district.totallearners / 1000).toFixed(0)}K</p>
                     </div>
                     <div className="bg-green-50 rounded-xl p-3">
                       <p className="text-xs text-gray-600 mb-1">Faculty</p>
@@ -807,7 +807,7 @@ const DistrictCollegeReports: React.FC = () => {
                     <th className="text-left p-4 font-semibold text-gray-700 text-sm">College</th>
                     <th className="text-left p-4 font-semibold text-gray-700 text-sm">District</th>
                     <th className="text-center p-4 font-semibold text-gray-700 text-sm">Type</th>
-                    <th className="text-center p-4 font-semibold text-gray-700 text-sm">Students</th>
+                    <th className="text-center p-4 font-semibold text-gray-700 text-sm">Learners</th>
                     <th className="text-center p-4 font-semibold text-gray-700 text-sm">Faculty</th>
                     <th className="text-center p-4 font-semibold text-gray-700 text-sm">Accreditation</th>
                     <th className="text-center p-4 font-semibold text-gray-700 text-sm">Performance</th>
@@ -839,7 +839,7 @@ const DistrictCollegeReports: React.FC = () => {
                         </span>
                       </td>
                       <td className="p-4 text-center">
-                        <span className="font-semibold text-gray-900">{college.totalStudents.toLocaleString()}</span>
+                        <span className="font-semibold text-gray-900">{college.totallearners.toLocaleString()}</span>
                       </td>
                       <td className="p-4 text-center">
                         <span className="font-semibold text-gray-900">{college.totalFaculty}</span>
@@ -921,7 +921,7 @@ const DistrictCollegeReports: React.FC = () => {
               },
               {
                 title: "Enrollment Analytics",
-                description: "Student enrollment patterns and trends",
+                description: "Learner enrollment patterns and trends",
                 icon: Users,
                 color: "green",
                 action: () => openReportModal("performance"),
@@ -1010,7 +1010,7 @@ const DistrictCollegeReports: React.FC = () => {
               },
               {
                 title: "Enrollment Reports",
-                description: "Student enrollment and demographic data",
+                description: "Learner enrollment and demographic data",
                 icon: Users,
                 color: "yellow",
                 format: "Excel",

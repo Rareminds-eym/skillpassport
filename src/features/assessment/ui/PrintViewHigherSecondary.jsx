@@ -1,6 +1,6 @@
 /**
  * PrintViewHigherSecondary Component
- * Grade-level-specific print view for Higher Secondary and Post-12th students (Grades 11-12)
+ * Grade-level-specific print view for Higher Secondary and Post-12th learners (Grades 11-12)
  * Requirements: 1.2, 2.2 - Test-based scores with correct/total format
  */
 
@@ -8,7 +8,7 @@ import CoverPage from './CoverPage';
 import { printStyles } from '../lib/printStyles';
 import {
   safeRender,
-  getSafeStudentInfo,
+  getSafelearnerInfo,
   getScoreStyle,
   riasecDescriptions,
   defaultRiasecNames,
@@ -26,26 +26,26 @@ import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
 
 /**
  * PrintViewHigherSecondary Component
- * Renders assessment report for higher secondary and post-12th students
+ * Renders assessment report for higher secondary and post-12th learners
  * 
  * @param {Object} props - Component props
  * @param {Object} props.results - Assessment results data
- * @param {Object} props.studentInfo - Student information
+ * @param {Object} props.learnerInfo - Learner information
  * @param {Object} props.riasecNames - RIASEC code to name mapping (optional)
  * @param {Object} props.traitNames - Big Five trait names mapping (optional)
  * @param {Array} props.courseRecommendations - Course/program recommendations (optional)
- * @param {Object} props.streamRecommendation - Stream recommendation for after10 students (optional)
- * @param {Object} props.studentAcademicData - Student academic data (optional)
+ * @param {Object} props.streamRecommendation - Stream recommendation for after10 learners (optional)
+ * @param {Object} props.learnerAcademicData - Learner academic data (optional)
  * @returns {JSX.Element} - Print view component
  */
 const PrintViewHigherSecondary = ({ 
   results, 
-  studentInfo, 
+  learnerInfo, 
   riasecNames, 
   traitNames,
   courseRecommendations,
   streamRecommendation,
-  studentAcademicData
+  learnerAcademicData
 }) => {
   // Handle null results
   if (!results) {
@@ -98,8 +98,8 @@ const PrintViewHigherSecondary = ({
   const adaptiveAptitudeResults = normalizedResults.adaptiveAptitudeResults || normalizedResults.gemini_results?.adaptiveAptitudeResults;
   const dbCourseRecommendations = normalizedResults.courseRecommendations || normalizedResults.platformCourses || normalizedResults.gemini_results?.courseRecommendations || normalizedResults.gemini_results?.platformCourses;
 
-  // Safe student info with defaults
-  const safeStudentInfo = getSafeStudentInfo(studentInfo);
+  // Safe learner info with defaults
+  const safelearnerInfo = getSafelearnerInfo(learnerInfo);
 
   // Safe RIASEC names with defaults
   const safeRiasecNames = riasecNames || defaultRiasecNames;
@@ -113,7 +113,7 @@ const PrintViewHigherSecondary = ({
       <PrintStyles />
 
       {/* Cover Page */}
-      <CoverPage studentInfo={safeStudentInfo} />
+      <CoverPage learnerInfo={safelearnerInfo} />
 
       {/* Watermarks */}
       <Watermarks />
@@ -131,7 +131,7 @@ const PrintViewHigherSecondary = ({
             <StreamRecommendationSection streamRecommendation={streamRecommendation} />
           )}
           
-          <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
+          <h2 style={printStyles.sectionTitle}>1. Learner Profile Snapshot</h2>
           <InterestProfileSection riasec={riasec} safeRiasecNames={safeRiasecNames} />
           
           {/* Cognitive Abilities */}
@@ -215,7 +215,7 @@ const PrintViewHigherSecondary = ({
         )}
         
         {/* COMMENTED OUT: Already showing on page 1 in print view */}
-        {/* <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
+        {/* <h2 style={printStyles.sectionTitle}>1. Learner Profile Snapshot</h2>
         <InterestProfileSection riasec={riasec} safeRiasecNames={safeRiasecNames} /> */}
         {aptitude && (
           <CognitiveAbilitiesSection aptitude={aptitude} />
@@ -640,7 +640,7 @@ const BigFivePersonalitySection = ({ bigFive, safeTraitNames }) => {
 /**
  * WorkValuesSection Component
  * Renders work values with priority indicators
- * Requirements: 1.2 - Work values for higher secondary students
+ * Requirements: 1.2 - Work values for higher secondary learners
  */
 const WorkValuesSection = ({ workValues }) => {
   if (!workValues || !workValues.topThree || workValues.topThree.length === 0) return null;
@@ -716,7 +716,7 @@ const WorkValuesSection = ({ workValues }) => {
  * CareerFitAnalysisSection Component
  * Renders career clusters, roles with salary ranges, education paths, entrance exams,
  * evidence breakdown, and specific career options by fit level.
- * Requirements: 1.2 - Career fit analysis for higher secondary students
+ * Requirements: 1.2 - Career fit analysis for higher secondary learners
  */
 const CareerFitAnalysisSection = ({ careerFit }) => {
   const hasClusters = careerFit?.clusters && careerFit.clusters.length > 0;
@@ -1090,7 +1090,7 @@ const CareerFitAnalysisSection = ({ careerFit }) => {
 /**
  * SkillGapDevelopmentSection Component
  * Renders skill gap analysis with current vs required skills
- * Requirements: 1.2 - Skill gap analysis for higher secondary students
+ * Requirements: 1.2 - Skill gap analysis for higher secondary learners
  */
 const SkillGapDevelopmentSection = ({ skillGap }) => {
   if (!skillGap) return null;
@@ -1229,7 +1229,7 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
 /**
  * DevelopmentRoadmapSection Component
  * Renders development roadmap with grade-wise phases, entrance exams, projects, and more
- * Requirements: 1.2 - Development roadmap for higher secondary students
+ * Requirements: 1.2 - Development roadmap for higher secondary learners
  */
 const DevelopmentRoadmapSection = ({ roadmap }) => {
   if (!roadmap) return null;
@@ -1601,7 +1601,7 @@ const DevelopmentRoadmapSection = ({ roadmap }) => {
 
 /**
  * StreamRecommendationSection Component
- * Renders stream recommendation for after 10th students
+ * Renders stream recommendation for after 10th learners
  */
 const StreamRecommendationSection = ({ streamRecommendation }) => {
   if (!streamRecommendation || !streamRecommendation.recommendedStream) return null;
@@ -1862,7 +1862,7 @@ const CourseRecommendationsSection = ({ courseRecommendations }) => {
 /**
  * EmployabilitySkillsSection Component
  * Renders employability skills assessment with skill scores
- * Requirements: 1.2 - Employability skills for higher secondary students
+ * Requirements: 1.2 - Employability skills for higher secondary learners
  */
 const EmployabilitySkillsSection = ({ employability }) => {
   if (!employability) return null;
@@ -2020,7 +2020,7 @@ const OverallSummarySection = ({ overallSummary }) => {
 
 /**
  * ProfileSnapshotSection Component
- * Renders the student's profile snapshot with key patterns, strengths, and development areas
+ * Renders the learner's profile snapshot with key patterns, strengths, and development areas
  */
 const ProfileSnapshotSection = ({ profileSnapshot }) => {
   if (!profileSnapshot) return null;

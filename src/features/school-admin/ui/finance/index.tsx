@@ -5,10 +5,10 @@ import { FeeStructureFormModal } from "./components/FeeStructureFormModal";
 import { FeeStructureTab } from "./components/FeeStructureTab";
 import { FeeTrackingTab } from "./components/FeeTrackingTab";
 import { PaymentFormModal } from "./components/PaymentFormModal";
-import { StudentLedgerModal } from "./components/StudentLedgerModal";
+import { LearnerLedgerModal } from "./components/LearnerLedgerModal";
 import { useFeeStructures } from "./hooks/useFeeStructures";
 import { useFeeTracking } from "./hooks/useFeeTracking";
-import { FeeStructure, StudentFeeSummary } from '@/features/student-profile/model';
+import { FeeStructure, LearnerFeeSummary } from '@/features/learner-profile/model';
 import { authSessionService } from '@/features/auth';
 import { getLogger } from '@/shared/config/logging';
 
@@ -28,7 +28,7 @@ const SchoolFinanceModule: React.FC = () => {
   // Fee Tracking state
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isLedgerModalOpen, setIsLedgerModalOpen] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<StudentFeeSummary | null>(null);
+  const [selectedLearner, setSelectedLearner] = useState<LearnerFeeSummary | null>(null);
 
   // Fetch school ID for school admin
   useEffect(() => {
@@ -96,8 +96,8 @@ const SchoolFinanceModule: React.FC = () => {
       color: "bg-blue-500" 
     },
     { 
-      label: "Total Students", 
-      value: feeTrackingHook.stats.totalStudents.toString(), 
+      label: "Total Learners", 
+      value: feeTrackingHook.stats.totallearners.toString(), 
       icon: AlertCircle, 
       color: "bg-yellow-500" 
     },
@@ -127,21 +127,21 @@ const SchoolFinanceModule: React.FC = () => {
   };
 
   // Handlers - Fee Tracking
-  const handleViewLedger = (student: StudentFeeSummary) => {
-    setSelectedStudent(student);
+  const handleViewLedger = (learner: LearnerFeeSummary) => {
+    setSelectedLearner(learner);
     setIsLedgerModalOpen(true);
   };
   
-  const handleRecordPayment = (student: StudentFeeSummary) => {
-    setSelectedStudent(student);
+  const handleRecordPayment = (learner: LearnerFeeSummary) => {
+    setSelectedLearner(learner);
     setIsPaymentModalOpen(true);
   };
   
-  const handlePaymentSave = async (ledgerId: string, studentId: string, data: any) => {
-    const success = await feeTrackingHook.recordPayment(ledgerId, studentId, data);
+  const handlePaymentSave = async (ledgerId: string, learnerId: string, data: any) => {
+    const success = await feeTrackingHook.recordPayment(ledgerId, learnerId, data);
     if (success) {
       setIsPaymentModalOpen(false);
-      setSelectedStudent(null);
+      setSelectedLearner(null);
     }
     return success;
   };
@@ -152,7 +152,7 @@ const SchoolFinanceModule: React.FC = () => {
       <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Finance & Accounts</h1>
         <p className="text-gray-600 text-sm sm:text-base">
-          Manage fee structure and track student fee payments
+          Manage fee structure and track learner fee payments
         </p>
         <div className="mt-2 px-3 py-1 bg-green-100 text-green-800 text-xs rounded-full inline-block">
           ✅ Updated Version - {new Date().toLocaleTimeString()}
@@ -215,7 +215,7 @@ const SchoolFinanceModule: React.FC = () => {
 
         {activeTab === "tracking" && (
           <FeeTrackingTab
-            studentSummaries={feeTrackingHook.studentSummaries}
+            learnerSummaries={feeTrackingHook.learnerSummaries}
             loading={feeTrackingHook.loading}
             stats={feeTrackingHook.stats}
             onViewLedger={handleViewLedger}
@@ -238,20 +238,20 @@ const SchoolFinanceModule: React.FC = () => {
         isOpen={isPaymentModalOpen}
         onClose={() => { 
           setIsPaymentModalOpen(false); 
-          setSelectedStudent(null); 
+          setSelectedLearner(null); 
         }}
         onSave={handlePaymentSave}
-        student={selectedStudent}
+        learner={selectedLearner}
       />
 
-      {/* Student Ledger Modal */}
-      <StudentLedgerModal
+      {/* Learner Ledger Modal */}
+      <LearnerLedgerModal
         isOpen={isLedgerModalOpen}
         onClose={() => { 
           setIsLedgerModalOpen(false); 
-          setSelectedStudent(null); 
+          setSelectedLearner(null); 
         }}
-        student={selectedStudent}
+        learner={selectedLearner}
       />
     </div>
   );

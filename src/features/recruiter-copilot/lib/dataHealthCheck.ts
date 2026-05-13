@@ -11,19 +11,19 @@ export interface DataHealthReport {
   status: 'healthy' | 'warning' | 'critical';
   issues: Array<{
     severity: 'high' | 'medium' | 'low';
-    category: 'skills' | 'students' | 'opportunities' | 'pipeline';
+    category: 'skills' | 'learners' | 'opportunities' | 'pipeline';
     issue: string;
     recommendation: string;
     affectedCount?: number;
   }>;
   summary: {
-    total_students: number;
-    students_with_skills: number;
+    total_learners: number;
+    learners_with_skills: number;
     total_skills: number;
     unique_skill_names: number;
-    avg_skills_per_student: number;
-    students_with_location: number;
-    students_with_cgpa: number;
+    avg_skills_per_learner: number;
+    learners_with_location: number;
+    learners_with_cgpa: number;
   };
 }
 
@@ -35,19 +35,19 @@ class DataHealthCheckService {
   async checkDataHealth(): Promise<DataHealthReport> {
     const issues: DataHealthReport['issues'] = [];
     
-    // Check 1: Total students
-    const { count: totalStudents } = await supabase
-      .from('students')
+    // Check 1: Total learners
+    const { count: totallearners } = await supabase
+      .from('learners')
       .select('user_id', { count: 'exact', head: true })
       .not('name', 'is', null);
 
-    // Check 2: Students with skills
-    const { data: studentsWithSkills } = await supabase
+    // Check 2: Learners with skills
+    const { data: learnersWithSkills } = await supabase
       .from('skills')
-      .select('student_id')
+      .select('learner_id')
       .eq('enabled', true);
     
-    const uniqueStudentsWithSkills = new Set(studentsWithSkills?.map(s => s.student_id) || []).size;
+    const uniquelearnersWithSkills = new Set(learnersWithSkills?.map(s => s.learner_id) || []).size;
 
     // Check 3: Total skills
     const { count: totalSkills } = await supabase
@@ -63,35 +63,35 @@ class DataHealthCheckService {
     
     const uniqueSkillNames = new Set(skillNames?.map(s => s.name) || []).size;
 
-    // Check 5: Students with location data
-    const { count: studentsWithLocation } = await supabase
-      .from('students')
+    // Check 5: Learners with location data
+    const { count: learnersWithLocation } = await supabase
+      .from('learners')
       .select('user_id', { count: 'exact', head: true })
       .not('name', 'is', null)
       .not('city', 'is', null);
 
-    // Check 6: Students with CGPA
-    const { count: studentsWithCGPA } = await supabase
-      .from('students')
+    // Check 6: Learners with CGPA
+    const { count: learnersWithCGPA } = await supabase
+      .from('learners')
       .select('user_id', { count: 'exact', head: true })
       .not('name', 'is', null)
       .not('currentCgpa', 'is', null);
 
     // Calculate metrics
-    const avgSkillsPerStudent = uniqueStudentsWithSkills > 0 
-      ? (totalSkills || 0) / uniqueStudentsWithSkills 
+    const avgSkillsPerLearner = uniquelearnersWithSkills > 0 
+      ? (totalSkills || 0) / uniquelearnersWithSkills 
       : 0;
 
-    const skillCoveragePercent = totalStudents && totalStudents > 0
-      ? (uniqueStudentsWithSkills / totalStudents) * 100
+    const skillCoveragePercent = totallearners && totallearners > 0
+      ? (uniquelearnersWithSkills / totallearners) * 100
       : 0;
 
-    const locationCoveragePercent = totalStudents && totalStudents > 0
-      ? ((studentsWithLocation || 0) / totalStudents) * 100
+    const locationCoveragePercent = totallearners && totallearners > 0
+      ? ((learnersWithLocation || 0) / totallearners) * 100
       : 0;
 
-    const cgpaCoveragePercent = totalStudents && totalStudents > 0
-      ? ((studentsWithCGPA || 0) / totalStudents) * 100
+    const cgpaCoveragePercent = totallearners && totallearners > 0
+      ? ((learnersWithCGPA || 0) / totallearners) * 100
       : 0;
 
     // Identify issues
@@ -99,19 +99,19 @@ class DataHealthCheckService {
       issues.push({
         severity: 'high',
         category: 'skills',
-        issue: `Only ${skillCoveragePercent.toFixed(0)}% of students have skills listed`,
+        issue: `Only ${skillCoveragePercent.toFixed(0)}% of learners have skills listed`,
         recommendation: 'Import skills from resume parsing, LinkedIn, or manual entry',
-        affectedCount: totalStudents ? totalStudents - uniqueStudentsWithSkills : 0
+        affectedCount: totallearners ? totallearners - uniquelearnersWithSkills : 0
       });
     }
 
-    if (avgSkillsPerStudent < 3 && uniqueStudentsWithSkills > 0) {
+    if (avgSkillsPerLearner < 3 && uniquelearnersWithSkills > 0) {
       issues.push({
         severity: 'medium',
         category: 'skills',
-        issue: `Average only ${avgSkillsPerStudent.toFixed(1)} skills per student`,
-        recommendation: 'Encourage students to add more skills (target: 5-8 skills)',
-        affectedCount: uniqueStudentsWithSkills
+        issue: `Average only ${avgSkillsPerLearner.toFixed(1)} skills per learner`,
+        recommendation: 'Encourage learners to add more skills (target: 5-8 skills)',
+        affectedCount: uniquelearnersWithSkills
       });
     }
 
@@ -128,20 +128,20 @@ class DataHealthCheckService {
     if (locationCoveragePercent < 70) {
       issues.push({
         severity: 'medium',
-        category: 'students',
+        category: 'learners',
         issue: `Only ${locationCoveragePercent.toFixed(0)}% have location data`,
         recommendation: 'Add city/state information for better location-based matching',
-        affectedCount: totalStudents ? totalStudents - (studentsWithLocation || 0) : 0
+        affectedCount: totallearners ? totallearners - (learnersWithLocation || 0) : 0
       });
     }
 
     if (cgpaCoveragePercent < 60) {
       issues.push({
         severity: 'low',
-        category: 'students',
+        category: 'learners',
         issue: `Only ${cgpaCoveragePercent.toFixed(0)}% have CGPA data`,
         recommendation: 'Add academic performance data for better candidate assessment',
-        affectedCount: totalStudents ? totalStudents - (studentsWithCGPA || 0) : 0
+        affectedCount: totallearners ? totallearners - (learnersWithCGPA || 0) : 0
       });
     }
 
@@ -158,13 +158,13 @@ class DataHealthCheckService {
       status,
       issues,
       summary: {
-        total_students: totalStudents || 0,
-        students_with_skills: uniqueStudentsWithSkills,
+        total_learners: totallearners || 0,
+        learners_with_skills: uniquelearnersWithSkills,
         total_skills: totalSkills || 0,
         unique_skill_names: uniqueSkillNames,
-        avg_skills_per_student: Number(avgSkillsPerStudent.toFixed(2)),
-        students_with_location: studentsWithLocation || 0,
-        students_with_cgpa: studentsWithCGPA || 0
+        avg_skills_per_learner: Number(avgSkillsPerLearner.toFixed(2)),
+        learners_with_location: learnersWithLocation || 0,
+        learners_with_cgpa: learnersWithCGPA || 0
       }
     };
   }
@@ -235,13 +235,13 @@ class DataHealthCheckService {
     let output = `${statusEmoji} Data Health Status: ${status.toUpperCase()}\n\n`;
     
     output += `📊 Summary:\n`;
-    output += `• Total Students: ${summary.total_students}\n`;
-    output += `• Students with Skills: ${summary.students_with_skills} (${((summary.students_with_skills / summary.total_students) * 100).toFixed(0)}%)\n`;
+    output += `• Total Learners: ${summary.total_learners}\n`;
+    output += `• Learners with Skills: ${summary.learners_with_skills} (${((summary.learners_with_skills / summary.total_learners) * 100).toFixed(0)}%)\n`;
     output += `• Total Skills: ${summary.total_skills}\n`;
     output += `• Unique Skills: ${summary.unique_skill_names}\n`;
-    output += `• Avg Skills/Student: ${summary.avg_skills_per_student}\n`;
-    output += `• Students with Location: ${summary.students_with_location} (${((summary.students_with_location / summary.total_students) * 100).toFixed(0)}%)\n`;
-    output += `• Students with CGPA: ${summary.students_with_cgpa} (${((summary.students_with_cgpa / summary.total_students) * 100).toFixed(0)}%)\n\n`;
+    output += `• Avg Skills/Learner: ${summary.avg_skills_per_learner}\n`;
+    output += `• Learners with Location: ${summary.learners_with_location} (${((summary.learners_with_location / summary.total_learners) * 100).toFixed(0)}%)\n`;
+    output += `• Learners with CGPA: ${summary.learners_with_cgpa} (${((summary.learners_with_cgpa / summary.total_learners) * 100).toFixed(0)}%)\n\n`;
 
     if (issues.length > 0) {
       output += `⚠️ Issues Found (${issues.length}):\n\n`;

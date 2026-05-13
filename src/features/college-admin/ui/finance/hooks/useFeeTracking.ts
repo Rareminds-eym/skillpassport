@@ -1,20 +1,21 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { supabase } from '@/shared/api/supabaseClient';
-import { FeePayment, PaymentStatus, StudentFeeSummary, StudentLedger } from '@/features/student-profile/model';
+import { FeePayment, PaymentStatus, LearnerFeeSummary, LearnerLedger } from '@/features/learner-profile/model';
 import { getExpenditureSummary } from "@/features/college-admin";
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('fee-tracking');
 
 export const useFeeTracking = () => {
-  const [ledgers, setLedgers] = useState<StudentLedger[]>([]);
+  const [ledgers, setLedgers] = useState<LearnerLedger[]>([]);
   const [payments, setPayments] = useState<FeePayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [dbStats, setDbStats] = useState<any>(null);
   const [collegeId, setCollegeId] = useState<string | null>(null);
 
-  // Get college ID using the same pattern as useAdminStudents
+  // Get college ID using the same pattern as useAdminlearners
   const getCollegeId = useCallback(async () => {
     try {
       // First, check localStorage for college admin data
@@ -27,7 +28,7 @@ export const useFeeTracking = () => {
       }
 
       // If not found in localStorage, try Supabase Auth
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await getCurrentUser();
       if (user) {
         // Get user role from users table
         const { data: userRecord } = await supabase
@@ -67,11 +68,11 @@ export const useFeeTracking = () => {
         totalDue: Number(stats.total_due_amount) || 0,
         totalCollected: Number(stats.total_paid_amount) || 0,
         totalPending: Number(stats.total_balance) || 0,
-        totalStudents: Number(stats.total_students) || 0,
-        paidCount: Number(stats.paid_students) || 0,
+        totallearners: Number(stats.total_learners) || 0,
+        paidCount: Number(stats.paid_learners) || 0,
         partialCount: 0, // Will be calculated from ledgers
-        pendingCount: Number(stats.pending_students) || 0,
-        overdueCount: Number(stats.overdue_students) || 0,
+        pendingCount: Number(stats.pending_learners) || 0,
+        overdueCount: Number(stats.overdue_learners) || 0,
       });
     } catch (err) {
       logger.error("Failed to get fee stats", err instanceof Error ? err : new Error(String(err)));
@@ -83,58 +84,58 @@ export const useFeeTracking = () => {
     
     try {
       setLoading(true);
-      await loadStudentsAsFallback();
+      await loadlearnersAsFallback();
       
     } catch (err) {
-      toast.error("Failed to load student ledgers");
+      toast.error("Failed to load learner ledgers");
       setLedgers([]);
     } finally {
       setLoading(false);
     }
   }, [collegeId]);
 
-  const loadStudentsAsFallback = useCallback(async () => {
+  const loadlearnersAsFallback = useCallback(async () => {
     if (!collegeId) return;
     
     try {
-      // Get all students for this college
-      const { data: students, error } = await supabase
-        .from("students")
+      // Get all learners for this college
+      const { data: learners, error } = await supabase
+        .from("learners")
         .select("id, user_id, name, roll_number, email, college_id, grade, section")
         .eq("college_id", collegeId)
         .order("name", { ascending: true });
       
       if (error) {
-        logger.error("Students query failed", error instanceof Error ? error : new Error(String(error)));
+        logger.error("Learners query failed", error instanceof Error ? error : new Error(String(error)));
         return;
       }
 
-      // Get existing ledger entries for these students
-      const studentIds = students?.map(s => s.user_id || s.id).filter(Boolean) || [];
+      // Get existing ledger entries for these learners
+      const learnerIds = learners?.map(s => s.user_id || s.id).filter(Boolean) || [];
       let existingLedgers: any[] = [];
       
-      if (studentIds.length > 0) {
+      if (learnerIds.length > 0) {
         const { data: ledgerData } = await supabase
-          .from("student_ledgers")
+          .from("learner_ledgers")
           .select("*")
-          .in("student_id", studentIds);
+          .in("learner_id", learnerIds);
         
         existingLedgers = ledgerData || [];
       }
 
-      // Create ledger entries for all students (real + mock)
-      const allLedgers = students?.map((student: any) => {
-        const studentId = student.user_id || student.id;
-        const existingLedger = existingLedgers.find(l => l.student_id === studentId);
+      // Create ledger entries for all learners (real + mock)
+      const allLedgers = learners?.map((learner: any) => {
+        const learnerId = learner.user_id || learner.id;
+        const existingLedger = existingLedgers.find(l => l.learner_id === learnerId);
         
         if (existingLedger) {
           // Use real ledger data
           return {
             ...existingLedger,
-            student_name: student.name || 'Unknown',
-            roll_number: student.roll_number || 'N/A',
-            student_email: student.email || '',
-            college_id: student.college_id,
+            learner_name: learner.name || 'Unknown',
+            roll_number: learner.roll_number || 'N/A',
+            learner_email: learner.email || '',
+            college_id: learner.college_id,
           };
         } else {
           // Create mock ledger entry
@@ -142,12 +143,12 @@ export const useFeeTracking = () => {
           const paidAmount = Math.random() > 0.3 ? Math.floor(Math.random() * mockAmount * 0.8) : 0;
           
           return {
-            id: `mock-${student.id}`,
-            student_id: studentId,
-            student_name: student.name || 'Unknown',
-            roll_number: student.roll_number || 'N/A',
-            student_email: student.email || '',
-            college_id: student.college_id,
+            id: `mock-${learner.id}`,
+            learner_id: learnerId,
+            learner_name: learner.name || 'Unknown',
+            roll_number: learner.roll_number || 'N/A',
+            learner_email: learner.email || '',
+            college_id: learner.college_id,
             fee_structure_id: 'mock-fee-structure',
             fee_head_id: 'mock-fee-head',
             fee_head_name: 'Tuition Fee',
@@ -165,19 +166,19 @@ export const useFeeTracking = () => {
 
       setLedgers(allLedgers);
     } catch (err) {
-      logger.error("Failed to load students", err instanceof Error ? err : new Error(String(err)));
+      logger.error("Failed to load learners", err instanceof Error ? err : new Error(String(err)));
       setLedgers([]);
     }
   }, [collegeId]);
 
-  const loadPayments = useCallback(async (studentId?: string) => {
+  const loadPayments = useCallback(async (learnerId?: string) => {
     try {
       let query = supabase
         .from("fee_payments")
         .select("*")
         .order("payment_date", { ascending: false });
 
-      if (studentId) query = query.eq("student_id", studentId);
+      if (learnerId) query = query.eq("learner_id", learnerId);
 
       const { data, error } = await query;
       if (error) throw error;
@@ -216,11 +217,11 @@ export const useFeeTracking = () => {
 
   const recordPayment = async (
     ledgerId: string,
-    studentId: string,
+    learnerId: string,
     paymentData: Partial<FeePayment>
   ): Promise<boolean> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await getCurrentUser();
       if (!user) {
         toast.error("User not authenticated");
         return false;
@@ -229,7 +230,7 @@ export const useFeeTracking = () => {
       const receiptNumber = generateReceiptNumber();
       const payload = {
         ledger_id: ledgerId,
-        student_id: studentId,
+        learner_id: learnerId,
         amount: paymentData.amount,
         mode: paymentData.mode,
         reference_number: paymentData.reference_number || null,
@@ -262,7 +263,7 @@ export const useFeeTracking = () => {
         const newStatus: PaymentStatus = newBalance <= 0 ? "paid" : newBalance < ledger.due_amount ? "partial" : "pending";
 
         const { error: updateError } = await supabase
-          .from("student_ledgers")
+          .from("learner_ledgers")
           .update({
             paid_amount: newPaidAmount,
             balance: newBalance,
@@ -287,7 +288,7 @@ export const useFeeTracking = () => {
 
   const verifyPayment = async (paymentId: string): Promise<boolean> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await getCurrentUser();
       const { error } = await supabase
         .from("fee_payments")
         .update({
@@ -307,21 +308,21 @@ export const useFeeTracking = () => {
     }
   };
 
-  // Aggregate ledgers by student for summary view
-  const studentSummaries = useMemo((): StudentFeeSummary[] => {
-    const summaryMap = new Map<string, StudentFeeSummary>();
+  // Aggregate ledgers by learner for summary view
+  const learnerSummaries = useMemo((): LearnerFeeSummary[] => {
+    const summaryMap = new Map<string, LearnerFeeSummary>();
 
     ledgers.forEach((ledger) => {
-      const existing = summaryMap.get(ledger.student_id);
+      const existing = summaryMap.get(ledger.learner_id);
       if (existing) {
         existing.total_due += ledger.due_amount || 0;
         existing.total_paid += ledger.paid_amount || 0;
         existing.balance += ledger.balance || 0;
         existing.ledger_entries.push(ledger);
       } else {
-        summaryMap.set(ledger.student_id, {
-          student_id: ledger.student_id,
-          student_name: ledger.student_name,
+        summaryMap.set(ledger.learner_id, {
+          learner_id: ledger.learner_id,
+          learner_name: ledger.learner_name,
           roll_number: ledger.roll_number,
           total_due: ledger.due_amount || 0,
           total_paid: ledger.paid_amount || 0,
@@ -346,26 +347,26 @@ export const useFeeTracking = () => {
   // Stats - Use database function for better performance, fallback to calculated stats
   const stats = useMemo(() => {
     // If we have database stats and they show actual data, use them
-    if (dbStats && dbStats.totalStudents > 0) {
+    if (dbStats && dbStats.totallearners > 0) {
       return dbStats;
     }
 
     // Calculate from ledgers data (including mock data)
     if (ledgers.length > 0) {
-      const totalDue = studentSummaries.reduce((sum, s) => sum + s.total_due, 0);
-      const totalCollected = studentSummaries.reduce((sum, s) => sum + s.total_paid, 0);
-      const totalPending = studentSummaries.reduce((sum, s) => sum + s.balance, 0);
-      const totalStudents = studentSummaries.length;
-      const paidCount = studentSummaries.filter((s) => s.status === "paid").length;
-      const partialCount = studentSummaries.filter((s) => s.status === "partial").length;
-      const pendingCount = studentSummaries.filter((s) => s.status === "pending").length;
-      const overdueCount = studentSummaries.filter((s) => s.status === "overdue").length;
+      const totalDue = learnerSummaries.reduce((sum, s) => sum + s.total_due, 0);
+      const totalCollected = learnerSummaries.reduce((sum, s) => sum + s.total_paid, 0);
+      const totalPending = learnerSummaries.reduce((sum, s) => sum + s.balance, 0);
+      const totallearners = learnerSummaries.length;
+      const paidCount = learnerSummaries.filter((s) => s.status === "paid").length;
+      const partialCount = learnerSummaries.filter((s) => s.status === "partial").length;
+      const pendingCount = learnerSummaries.filter((s) => s.status === "pending").length;
+      const overdueCount = learnerSummaries.filter((s) => s.status === "overdue").length;
 
       return {
         totalDue,
         totalCollected,
         totalPending,
-        totalStudents,
+        totallearners,
         paidCount,
         partialCount,
         pendingCount,
@@ -378,18 +379,18 @@ export const useFeeTracking = () => {
       totalDue: 0,
       totalCollected: 0,
       totalPending: 0,
-      totalStudents: 0,
+      totallearners: 0,
       paidCount: 0,
       partialCount: 0,
       pendingCount: 0,
       overdueCount: 0,
     };
-  }, [studentSummaries, ledgers.length, dbStats]);
+  }, [learnerSummaries, ledgers.length, dbStats]);
 
   return {
     ledgers,
     payments,
-    studentSummaries,
+    learnerSummaries,
     loading,
     stats,
     loadLedgers,

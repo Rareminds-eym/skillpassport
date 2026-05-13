@@ -1,12 +1,12 @@
 /**
  * PrintViewCollege Component
- * Grade-level-specific print view for College students (Undergraduate and Graduate)
+ * Grade-level-specific print view for College learners (Undergraduate and Graduate)
  * Requirements: 1.3, 2.3 - Comprehensive assessment with employability metrics
  */
 
 import CoverPage from './CoverPage';
 import { printStyles } from '../lib/printStyles';
-import { safeRender, safeJoin, getSafeStudentInfo, getScoreStyle, riasecDescriptions, defaultRiasecNames, defaultTraitNames } from '../lib/printUtils';
+import { safeRender, safeJoin, getSafelearnerInfo, getScoreStyle, riasecDescriptions, defaultRiasecNames, defaultTraitNames } from '../lib/printUtils';
 import RiasecIcon from './shared/RiasecIcon';
 import PrintStyles from './shared/PrintStyles';
 import Watermarks, { DataPrivacyNotice, ReportDisclaimer } from './shared/Watermarks';
@@ -14,7 +14,7 @@ import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
 
 /**
  * Learning Styles Section
- * Displays student's preferred learning approaches
+ * Displays learner's preferred learning approaches
  */
 const LearningStylesSection = ({ learningStyles, learningStyle }) => {
   const hasArray = learningStyles && learningStyles.length > 0;
@@ -143,20 +143,20 @@ const WorkPreferencesSection = ({ workPreferences }) => {
 
 /**
  * PrintViewCollege Component
- * Renders comprehensive assessment report for college students
+ * Renders comprehensive assessment report for college learners
  * 
  * @param {Object} props - Component props
  * @param {Object} props.results - Assessment results data
- * @param {Object} props.studentInfo - Student information
+ * @param {Object} props.learnerInfo - Learner information
  * @param {Object} props.riasecNames - RIASEC code to name mapping (optional)
  * @param {Object} props.traitNames - Big Five trait names mapping (optional)
  * @param {Array} props.courseRecommendations - Course/program recommendations (optional)
- * @param {Object} props.studentAcademicData - Student academic data (optional)
+ * @param {Object} props.learnerAcademicData - Learner academic data (optional)
  * @returns {JSX.Element} - Print view component
  */
-const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, courseRecommendations, studentAcademicData }) => {
-  // Debug: Log studentInfo to see what data is being passed
-  console.log('PrintViewCollege - studentInfo received:', studentInfo);
+const PrintViewCollege = ({ results, learnerInfo, riasecNames, traitNames, courseRecommendations, learnerAcademicData }) => {
+  // Debug: Log learnerInfo to see what data is being passed
+  console.log('PrintViewCollege - learnerInfo received:', learnerInfo);
   
   // Handle null results
   if (!results) {
@@ -212,11 +212,11 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
   const dbCourseRecommendations = normalizedResults.courseRecommendations || normalizedResults.platformCourses || normalizedResults.gemini_results?.courseRecommendations || normalizedResults.gemini_results?.platformCourses;
 
 
-  // Safe student info with defaults
-  const safeStudentInfo = getSafeStudentInfo(studentInfo);
+  // Safe learner info with defaults
+  const safelearnerInfo = getSafelearnerInfo(learnerInfo);
   
-  // Debug: Log safeStudentInfo to see what getSafeStudentInfo returns
-  console.log('PrintViewCollege - safeStudentInfo after getSafeStudentInfo:', safeStudentInfo);
+  // Debug: Log safelearnerInfo to see what getSafelearnerInfo returns
+  console.log('PrintViewCollege - safelearnerInfo after getSafelearnerInfo:', safelearnerInfo);
 
   // Safe RIASEC names with defaults
   const safeRiasecNames = riasecNames || defaultRiasecNames;
@@ -230,7 +230,7 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
       <PrintStyles />
 
       {/* Cover Page */}
-      <CoverPage studentInfo={safeStudentInfo} generatedAt={results.generatedAt} />
+      <CoverPage learnerInfo={safelearnerInfo} generatedAt={results.generatedAt} />
 
       {/* Watermarks */}
       <Watermarks />
@@ -680,7 +680,7 @@ const CognitiveAbilitiesSection = ({ aptitude }) => {
 /**
  * BigFivePersonalitySection Component
  * Renders Big Five personality traits with detailed analysis
- * Requirements: 1.3 - Big Five personality assessment for college students
+ * Requirements: 1.3 - Big Five personality assessment for college learners
  */
 const BigFivePersonalitySection = ({ bigFive, safeTraitNames }) => {
   if (!bigFive) return null;
@@ -768,7 +768,7 @@ const BigFivePersonalitySection = ({ bigFive, safeTraitNames }) => {
 /**
  * WorkValuesSection Component
  * Renders work values and motivations
- * Requirements: 1.3 - Work values assessment for college students
+ * Requirements: 1.3 - Work values assessment for college learners
  */
 const WorkValuesSection = ({ workValues }) => {
   if (!workValues || !workValues.topThree || workValues.topThree.length === 0) return null;
@@ -980,7 +980,7 @@ const KnowledgeAssessmentSection = ({ knowledge }) => {
 /**
  * EmployabilityScoreSection Component
  * Renders employability score and breakdown
- * Requirements: 1.3, 2.3 - Employability metrics for college students
+ * Requirements: 1.3, 2.3 - Employability metrics for college learners
  */
 const EmployabilityScoreSection = ({ employability }) => {
   if (!employability) return null;
@@ -1116,7 +1116,7 @@ const EmployabilityScoreSection = ({ employability }) => {
 /**
  * CareerFitAnalysisSection Component
  * Renders detailed career recommendations with fit scores
- * Requirements: 1.3 - Career fit analysis for college students
+ * Requirements: 1.3 - Career fit analysis for college learners
  */
 const CareerFitAnalysisSection = ({ careerFit }) => {
   const hasClusters = careerFit?.clusters && careerFit.clusters.length > 0;
@@ -1449,7 +1449,7 @@ const CareerFitAnalysisSection = ({ careerFit }) => {
 /**
  * SkillGapDevelopmentSection Component
  * Renders comprehensive skill gap analysis
- * Requirements: 1.3 - Skill gap analysis for college students
+ * Requirements: 1.3 - Skill gap analysis for college learners
  */
 const SkillGapDevelopmentSection = ({ skillGap }) => {
   if (!skillGap) return null;
@@ -1584,7 +1584,7 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
 /**
  * DetailedCareerRoadmapSection Component
  * Renders roadmap phases with timeline
- * Requirements: 1.3, 2.3 - Detailed career roadmap for college students
+ * Requirements: 1.3, 2.3 - Detailed career roadmap for college learners
  */
 const DetailedCareerRoadmapSection = ({ roadmap }) => {
   if (!roadmap) return null;
@@ -1844,7 +1844,7 @@ const DetailedCareerRoadmapSection = ({ roadmap }) => {
 /**
  * CourseRecommendationsSection Component
  * Renders recommended degree programs/courses based on assessment
- * Requirements: 1.3, 2.3 - Course recommendations for college students
+ * Requirements: 1.3, 2.3 - Course recommendations for college learners
  */
 const CourseRecommendationsSection = ({ courseRecommendations }) => {
   if (!courseRecommendations || courseRecommendations.length === 0) return null;
@@ -2093,7 +2093,7 @@ const OverallSummarySection = ({ overallSummary }) => {
 
 /**
  * ProfileSnapshotSection Component
- * Renders the student's profile snapshot with key patterns and aptitude strengths
+ * Renders the learner's profile snapshot with key patterns and aptitude strengths
  */
 const ProfileSnapshotSection = ({ profileSnapshot }) => {
   if (!profileSnapshot) return null;

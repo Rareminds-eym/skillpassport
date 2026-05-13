@@ -8,9 +8,9 @@ import { supabase } from "@/shared/api/supabaseClient";
 export async function debugSupabaseData() {
   try {
     
-    // Get first few students to see structure
+    // Get first few learners to see structure
     const { data, error } = await supabase
-      .from('students')
+      .from('learners')
       .select('*')
       .limit(3);
 
@@ -21,10 +21,10 @@ export async function debugSupabaseData() {
 
     
     if (data && data.length > 0) {
-      const firstStudent = data[0];
+      const firstLearner = data[0];
       
       // Check for skills in profile
-      const profile = firstStudent.profile;
+      const profile = firstLearner.profile;
       if (profile) {
           technicalSkills: profile.technicalSkills || 'Not found',
           softSkills: profile.softSkills || 'Not found',

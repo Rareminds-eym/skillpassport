@@ -2,7 +2,7 @@
  * 🎓 ADAPTIVE LEARNING PATH SERVICE
  *
  * Features:
- * - Tracks student progress over time
+ * - Tracks learner progress over time
  * - Adjusts difficulty dynamically based on performance
  * - Creates personalized learning trajectories
  * - Identifies learning patterns and struggles
@@ -15,7 +15,7 @@ import { getLogger } from '@/shared/config/logging';
 const logger = getLogger('adaptive-learning-service');
 
 export interface LearningProgress {
-  studentId: string;
+  learnerId: string;
   skillProgression: Array<{
     skill: string;
     startDate: Date;
@@ -56,22 +56,22 @@ class AdaptiveLearningService {
    * Creates a personalized path based on current progress and learning patterns
    */
   async generateAdaptivePath(
-    studentProfile: any,
+    learnerProfile: any,
     learningProgress?: LearningProgress,
     goals?: string[]
   ): Promise<AdaptivePath> {
     
     try {
-      const skills = studentProfile.profile?.technicalSkills?.map((s: any) => s.name) || [];
+      const skills = learnerProfile.profile?.technicalSkills?.map((s: any) => s.name) || [];
       const skillCount = skills.length;
       
-      const prompt = `You are an adaptive learning AI that creates PERSONALIZED learning paths based on student progress and patterns.
+      const prompt = `You are an adaptive learning AI that creates PERSONALIZED learning paths based on learner progress and patterns.
 
-**STUDENT PROFILE:**
-Name: ${studentProfile.name}
+**LEARNER PROFILE:**
+Name: ${learnerProfile.name}
 Current Skills: ${skills.join(', ') || 'Beginner'}
 Skill Count: ${skillCount}
-Department: ${studentProfile.department}
+Department: ${learnerProfile.department}
 
 ${learningProgress ? `
 **LEARNING ANALYTICS:**
@@ -87,7 +87,7 @@ ${learningProgress.skillProgression.map(sp =>
 ).join('\n')}
 ` : 'No learning history available'}
 
-${goals ? `**STUDENT GOALS:** ${goals.join(', ')}` : ''}
+${goals ? `**LEARNER GOALS:** ${goals.join(', ')}` : ''}
 
 **YOUR TASK:**
 Create an ADAPTIVE learning path that:
@@ -122,13 +122,13 @@ Create an ADAPTIVE learning path that:
    - Build momentum
 
 5️⃣ **Adjustment Reasoning**
-   - WHY this specific path for THIS student
+   - WHY this specific path for THIS learner
    - What makes it personalized
    - How it adapts to their patterns
 
 **ADAPTIVE PRINCIPLES:**
-${learningProgress?.learningVelocity === 'fast' ? '- Student learns FAST → More challenging content, faster progression' : ''}
-${learningProgress?.learningVelocity === 'slow' ? '- Student learns SLOWLY → Break down into smaller steps, more practice' : ''}
+${learningProgress?.learningVelocity === 'fast' ? '- Learner learns FAST → More challenging content, faster progression' : ''}
+${learningProgress?.learningVelocity === 'slow' ? '- Learner learns SLOWLY → Break down into smaller steps, more practice' : ''}
 ${learningProgress?.consistencyScore && learningProgress.consistencyScore < 50 ? '- LOW consistency → Shorter, achievable goals to build habit' : ''}
 ${learningProgress?.consistencyScore && learningProgress.consistencyScore > 80 ? '- HIGH consistency → Can handle long-term ambitious goals' : ''}
 ${learningProgress?.learningStyle === 'hands-on' ? '- Hands-on learner → More projects, less theory' : ''}
@@ -181,7 +181,7 @@ ${learningProgress?.learningStyle === 'visual' ? '- Visual learner → Include d
         messages: [
           {
             role: 'system',
-            content: 'You are an adaptive learning AI that creates personalized, dynamic learning paths. You adjust difficulty and pacing based on individual student patterns. You are data-driven and educational.'
+            content: 'You are an adaptive learning AI that creates personalized, dynamic learning paths. You adjust difficulty and pacing based on individual learner patterns. You are data-driven and educational.'
           },
           { role: 'user', content: prompt }
         ],
@@ -195,7 +195,7 @@ ${learningProgress?.learningStyle === 'visual' ? '- Visual learner → Include d
 
     } catch (error) {
       logger.error('Failed to generate adaptive learning path', error as Error, {
-        studentId: studentProfile?.id,
+        learnerId: learnerProfile?.id,
         hasLearningProgress: !!learningProgress
       });
       throw new Error('Failed to generate adaptive learning path');
@@ -204,10 +204,10 @@ ${learningProgress?.learningStyle === 'visual' ? '- Visual learner → Include d
   
   /**
    * 📈 Analyze Learning Progress
-   * Tracks how student is progressing and identifies patterns
+   * Tracks how learner is progressing and identifies patterns
    */
   async analyzeLearningPatterns(
-    studentId: string,
+    learnerId: string,
     recentActivity: Array<{
       type: 'project' | 'course' | 'practice' | 'question';
       topic: string;
@@ -223,7 +223,7 @@ ${learningProgress?.learningStyle === 'visual' ? '- Visual learner → Include d
   }> {
     
     try {
-      const prompt = `Analyze student learning patterns from recent activity:
+      const prompt = `Analyze learner learning patterns from recent activity:
 
 **RECENT ACTIVITY (last 30 days):**
 ${recentActivity.map(a => 
@@ -260,7 +260,7 @@ Analyze:
 
     } catch (error) {
       logger.error('Failed to analyze learning patterns', error as Error, {
-        studentId,
+        learnerId,
         activityCount: recentActivity.length
       });
       throw new Error('Failed to analyze learning patterns');

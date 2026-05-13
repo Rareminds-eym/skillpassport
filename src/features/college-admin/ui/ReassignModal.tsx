@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { XMarkIcon, UserGroupIcon, UserIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
-interface Student {
+interface Learner {
   id: number;
   name: string;
   rollNo: string;
@@ -17,7 +17,7 @@ interface Student {
 interface MentorAllocation {
   id: number;
   mentorId: number;
-  students: Student[];
+  learners: Learner[];
   allocationPeriod: {
     startDate: string;
     endDate: string;
@@ -44,7 +44,7 @@ interface Mentor {
 }
 
 interface ReassignModalProps {
-  student: Student;
+  learner: Learner;
   mentors: Mentor[];
   onClose: () => void;
   onReassign: (mentorId: number, periodId: number) => void;
@@ -54,7 +54,7 @@ interface ReassignModalProps {
 }
 
 const ReassignModal: React.FC<ReassignModalProps> = ({ 
-  student, 
+  learner, 
   mentors, 
   onClose, 
   onReassign, 
@@ -72,12 +72,12 @@ const ReassignModal: React.FC<ReassignModalProps> = ({
   const availableMentors = mentors.filter((m: Mentor) => {
     const activeAllocations = getMentorActiveAllocations(m.id);
     
-    // Check if mentor doesn't already have this student
-    const hasStudent = activeAllocations.some(allocation => 
-      allocation.students.some(s => s.id === student.id)
+    // Check if mentor doesn't already have this learner
+    const hasLearner = activeAllocations.some(allocation => 
+      allocation.learners.some(s => s.id === learner.id)
     );
     
-    return !hasStudent && activeAllocations.length > 0;
+    return !hasLearner && activeAllocations.length > 0;
   });
 
   const selectedMentor = availableMentors.find((m: Mentor) => m.id === selectedMentorId);
@@ -87,7 +87,7 @@ const ReassignModal: React.FC<ReassignModalProps> = ({
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         {/* Fixed Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">Reassign Student</h2>
+          <h2 className="text-xl font-bold text-gray-900">Reassign Learner</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <XMarkIcon className="h-6 w-6" />
           </button>
@@ -96,30 +96,30 @@ const ReassignModal: React.FC<ReassignModalProps> = ({
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-6">
           <div className="space-y-6">
-          {/* Student Information */}
+          {/* Learner Information */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
-              Student to Reassign
+              Learner to Reassign
             </label>
             <div className="p-4 bg-gray-50 rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-gray-900">{student.name}</p>
-                  <p className="text-sm text-gray-600">{student.rollNo} • {student.batch}</p>
-                  <p className="text-sm text-gray-600">CGPA: {student.cgpa}</p>
+                  <p className="font-medium text-gray-900">{learner.name}</p>
+                  <p className="text-sm text-gray-600">{learner.rollNo} • {learner.batch}</p>
+                  <p className="text-sm text-gray-600">CGPA: {learner.cgpa}</p>
                 </div>
-                {student.atRisk && (
+                {learner.atRisk && (
                   <div className="flex items-center gap-2">
                     <ExclamationTriangleIcon className="h-5 w-5 text-red-500" />
                     <span className="text-sm font-medium text-red-600">At-Risk</span>
                   </div>
                 )}
               </div>
-              {student.riskFactors && student.riskFactors.length > 0 && (
+              {learner.riskFactors && learner.riskFactors.length > 0 && (
                 <div className="mt-3">
                   <p className="text-xs text-gray-500 mb-2">Risk Factors:</p>
                   <div className="flex flex-wrap gap-1">
-                    {student.riskFactors.map((factor: string, index: number) => (
+                    {learner.riskFactors.map((factor: string, index: number) => (
                       <span key={index} className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full">
                         {factor}
                       </span>
@@ -183,7 +183,7 @@ const ReassignModal: React.FC<ReassignModalProps> = ({
               </label>
               <div className="space-y-3">
                 {availablePeriods.map((allocation: MentorAllocation) => {
-                  const currentLoad = allocation.students.length;
+                  const currentLoad = allocation.learners.length;
                   const maxCapacity = allocation.capacity;
                   const hasCapacity = currentLoad < maxCapacity;
                   const isCurrentPeriod = new Date() >= new Date(allocation.allocationPeriod.startDate) && 
@@ -270,7 +270,7 @@ const ReassignModal: React.FC<ReassignModalProps> = ({
               disabled={!selectedMentorId || !selectedPeriodId}
               className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              Reassign Student
+              Reassign Learner
             </button>
           </div>
         </div>

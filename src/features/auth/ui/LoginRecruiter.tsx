@@ -14,10 +14,9 @@ import {
     Mail,
     Zap,
 } from "lucide-react";
-import { loginRecruiter } from "@/features/auth/api";
+import { ssoLoginWithRoleCheck } from "@/features/auth/lib";
 import { FeatureCard } from "@/shared/ui";
 
-import { useAuthActions } from '@/shared/model/authStore';
 export default function LoginRecruiter() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,7 +24,6 @@ export default function LoginRecruiter() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const { login } = useAuthActions();
   const navigate = useNavigate();
 
   const primary = "#0a6aba";
@@ -37,30 +35,13 @@ export default function LoginRecruiter() {
     setLoading(true);
 
     try {
-      // Validate inputs
-      if (!email || !password) {
-        setError("Please enter both email and password.");
+      const result = await ssoLoginWithRoleCheck(email, password, ['recruiter', 'hr']);
+
+      if (!result.success) {
+        setError(result.error || 'Login failed. Please check your credentials.');
         setLoading(false);
         return;
       }
-
-      // Authenticate with Supabase Auth
-      const { success, data, error: errMsg } = await loginRecruiter(email, password);
-
-      if (!success) {
-        setError(errMsg || "Login failed. Please check your credentials.");
-        setLoading(false);
-        return;
-      }
-
-      // Save recruiter session in context
-      login({
-        id: data.id,
-        user_id: data.user_id,
-        name: data.name,
-        email: data.email,
-        role: "recruiter",
-      });
 
       navigate("/recruitment");
     } catch (err) {
@@ -117,6 +98,7 @@ export default function LoginRecruiter() {
             type={showPassword ? "text" : "password"}
             id="password"
             required
+            minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter your password"
@@ -204,7 +186,7 @@ export default function LoginRecruiter() {
               Hire Smarter. Trust Skills, Not Just Resumes.
             </h2>
             <p className="mt-4 max-w-xl text-[#edf2f9]">
-Access Verified Skill Passports Of Students Across India & Beyond.
+Access Verified Skill Passports Of Learners Across India & Beyond.
             </p>
           </div>
 
@@ -271,7 +253,7 @@ Access Verified Skill Passports Of Students Across India & Beyond.
             <div className="text-center mb-6">
               <h3 className="text-3xl font-bold text-white">Recruiter Login</h3>
               <p className="text-sm text-white/80 mt-2">
-                Access your recruiter dashboard with verified student profiles.
+                Access your recruiter dashboard with verified learner profiles.
               </p>
             </div>
             <div className="rounded-2xl p-5 sm:p-6 bg-transparent">
@@ -292,7 +274,7 @@ Access Verified Skill Passports Of Students Across India & Beyond.
                 Recruiter Login
               </h3>
               <p className="text-sm text-gray-700/90 lg:text-gray-500 mt-2">
-                Access your recruiter dashboard with verified student profiles.
+                Access your recruiter dashboard with verified learner profiles.
               </p>
             </div>
             <div className="rounded-2xl bg-white/95 shadow-xl lg:shadow-none lg:bg-white ring-1 lg:ring-0 ring-black/5 p-6 sm:p-8">

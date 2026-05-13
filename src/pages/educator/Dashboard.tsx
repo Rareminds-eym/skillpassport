@@ -548,7 +548,7 @@ const Dashboard = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-              <p className="mt-2 text-gray-600">Monitor student progress and manage activities</p>
+              <p className="mt-2 text-gray-600">Monitor learner progress and manage activities</p>
 
 
             </div>
@@ -558,8 +558,8 @@ const Dashboard = () => {
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <KPICard
-            title="Total Students"
-            value={kpis?.totalStudents || 0}
+            title="Total Learners"
+            value={kpis?.totallearners || 0}
             icon={<UserGroupIcon className="h-6 w-6" />}
             color="blue"
             loading={loading}
@@ -601,11 +601,11 @@ const Dashboard = () => {
               <ArrowRightIcon className="h-4 w-4 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Mentor Notes</h3>
-            <p className="text-sm text-gray-600 mb-4">Record feedback and observations for students</p>
+            <p className="text-sm text-gray-600 mb-4">Record feedback and observations for learners</p>
             <div className="flex items-center gap-4 text-xs text-gray-500">
               <div className="flex items-center gap-1">
                 <UserGroupIcon className="h-3 w-3" />
-                <span>{kpis?.totalStudents || 0} Students</span>
+                <span>{kpis?.totallearners || 0} Learners</span>
               </div>
               <div className="flex items-center gap-1">
                 <DocumentChartBarIcon className="h-3 w-3" />
@@ -626,7 +626,7 @@ const Dashboard = () => {
               <ArrowRightIcon className="h-4 w-4 text-gray-400 group-hover:text-green-600 group-hover:translate-x-1 transition-all" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Activity Verification</h3>
-            <p className="text-sm text-gray-600 mb-4">Review and approve student submissions</p>
+            <p className="text-sm text-gray-600 mb-4">Review and approve learner submissions</p>
             <div className="flex items-center gap-4 text-xs text-gray-500">
               <div className="flex items-center gap-1">
                 <ClockIcon className="h-3 w-3" />
@@ -700,7 +700,7 @@ const Dashboard = () => {
                   <div className="text-center">
                     <ChartBarIcon className="h-12 w-12 text-gray-300 mx-auto mb-2" />
                     <p className="text-sm text-gray-500">No participation data available</p>
-                    <p className="text-xs text-gray-400 mt-1">Data will appear as students submit activities</p>
+                    <p className="text-xs text-gray-400 mt-1">Data will appear as learners submit activities</p>
                   </div>
                 </div>
               )}
@@ -742,7 +742,7 @@ const Dashboard = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                     <p className="text-sm text-gray-500">No distribution data available</p>
-                    <p className="text-xs text-gray-400 mt-1">Data will appear as students submit activities</p>
+                    <p className="text-xs text-gray-400 mt-1">Data will appear as learners submit activities</p>
                   </div>
                 </div>
               )}
@@ -776,7 +776,7 @@ const Dashboard = () => {
                   <DocumentChartBarIcon className="h-6 w-6 text-gray-400" />
                 </div>
                 <p className="text-sm text-gray-500 mb-1">No recent activities</p>
-                <p className="text-xs text-gray-400">Activities will appear as students submit work</p>
+                <p className="text-xs text-gray-400">Activities will appear as learners submit work</p>
               </div>
             ) : (
               <>
@@ -809,7 +809,7 @@ const Dashboard = () => {
                               </span>
                             </div>
                             <p className="text-sm text-gray-600 mb-1">
-                              {activity.studentName} • {activity.category}
+                              {activity.learnerName} • {activity.category}
                               <span className="text-xs text-gray-400 ml-2">
                                 → {getNavigationHint(activity.category)}
                               </span>
@@ -955,21 +955,21 @@ const Dashboard = () => {
               </button>
 
               <button
-                onClick={() => navigate('/educator/students')}
+                onClick={() => navigate('/educator/learners')}
                 className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-green-200 hover:bg-green-50 transition-all group"
-                data-testid="quick-action-students"
+                data-testid="quick-action-learners"
               >
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center group-hover:bg-green-100 transition-colors">
                     <UserGroupIcon className="h-5 w-5 text-green-600" />
                   </div>
-                  <span className="text-sm font-medium text-gray-900">View Students</span>
+                  <span className="text-sm font-medium text-gray-900">View Learners</span>
                 </div>
                 <ArrowRightIcon className="h-4 w-4 text-gray-400 group-hover:text-green-600 transition-colors" />
               </button>
 
               <button
-                onClick={() => navigate('/educator/students')}
+                onClick={() => navigate('/educator/learners')}
                 className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-purple-200 hover:bg-purple-50 transition-all group"
                 data-testid="quick-action-import"
               >
@@ -979,7 +979,7 @@ const Dashboard = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
                   </div>
-                  <span className="text-sm font-medium text-gray-900">Import Students</span>
+                  <span className="text-sm font-medium text-gray-900">Import Learners</span>
                 </div>
                 <ArrowRightIcon className="h-4 w-4 text-gray-400 group-hover:text-purple-600 transition-colors" />
               </button>

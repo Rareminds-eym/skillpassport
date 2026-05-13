@@ -1,7 +1,7 @@
 /**
  * AI Tutor Progress Handler
  * 
- * Handles student progress tracking for courses:
+ * Handles learner progress tracking for courses:
  * - GET: Fetch progress and calculate completion percentage
  * - POST: Update lesson progress status
  * 
@@ -21,7 +21,7 @@ interface UpdateProgressRequestBody {
 /**
  * GET /api/course/ai-tutor-progress?courseId=<id>
  * 
- * Fetch student progress for a course
+ * Fetch learner progress for a course
  * 
  * Query parameters:
  * - courseId: string (required) - ID of the course
@@ -46,7 +46,7 @@ export const onRequestGet: PagesFunction<PagesEnv> = async (context) => {
     }
 
     const { user, supabase } = auth;
-    const studentId = user.id;
+    const learnerId = user.id;
 
     // Parse query parameters
     const url = new URL(request.url);
@@ -56,11 +56,11 @@ export const onRequestGet: PagesFunction<PagesEnv> = async (context) => {
       return jsonResponse({ error: 'Missing courseId parameter' }, 400);
     }
 
-    // Fetch student progress for the course
+    // Fetch learner progress for the course
     const { data: progress, error: progressError } = await supabase
-      .from('student_course_progress')
+      .from('learner_course_progress')
       .select('lesson_id, status, last_accessed, completed_at, time_spent_seconds')
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .eq('course_id', courseId);
 
     if (progressError) {
@@ -105,7 +105,7 @@ export const onRequestGet: PagesFunction<PagesEnv> = async (context) => {
 /**
  * POST /api/course/ai-tutor-progress
  * 
- * Update student progress for a lesson
+ * Update learner progress for a lesson
  * 
  * Request body:
  * - courseId: string (required) - ID of the course
@@ -127,7 +127,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
     }
 
     const { user, supabase } = auth;
-    const studentId = user.id;
+    const learnerId = user.id;
 
     // Parse request body
     let body: UpdateProgressRequestBody;
@@ -158,7 +158,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
     // Prepare update data
     const now = new Date().toISOString();
     const updateData: any = {
-      student_id: studentId,
+      learner_id: learnerId,
       course_id: courseId,
       lesson_id: lessonId,
       status,
@@ -173,8 +173,8 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
 
     // Upsert progress record
     const { data: result, error: upsertError } = await supabase
-      .from('student_course_progress')
-      .upsert(updateData, { onConflict: 'student_id,course_id,lesson_id' })
+      .from('learner_course_progress')
+      .upsert(updateData, { onConflict: 'learner_id,course_id,lesson_id' })
       .select()
       .single();
 

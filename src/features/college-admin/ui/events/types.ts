@@ -22,13 +22,13 @@ export type EventStatus = "draft" | "published" | "cancelled" | "completed";
 export interface EventRegistration {
   id: string;
   event_id: string;
-  student_id: string;
+  learner_id: string;
   registered_at: string;
   attended: boolean;
-  student?: { name: string; email: string };
+  learner?: { name: string; email: string };
 }
 
-export interface Student {
+export interface Learner {
   id: string;
   name: string;
   email: string;

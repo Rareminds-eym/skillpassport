@@ -195,7 +195,7 @@ const CompetitionResults = () => {
         .from('club_certificates')
         .select(`
           certificate_id,
-          student_email,
+          learner_email,
           title,
           description,
           certificate_type,
@@ -203,7 +203,7 @@ const CompetitionResults = () => {
           credential_id,
           related_comp_id,
           is_verified,
-          students (
+          learners (
             name,
             grade,
             section
@@ -233,14 +233,14 @@ const CompetitionResults = () => {
     try {
       setResultsModal({ open: true, competition });
       
-      // Load registered students
+      // Load registered learners
       const { data: registrations, error: regError } = await supabase
         .from('competition_registrations')
         .select(`
           registration_id,
-          student_email,
+          learner_email,
           team_name,
-          students (
+          learners (
             name,
             email,
             grade,
@@ -265,14 +265,14 @@ const CompetitionResults = () => {
         .from('club_certificates')
         .select(`
           certificate_id,
-          student_email,
+          learner_email,
           title,
           description,
           certificate_type,
           issued_date,
           credential_id,
           metadata,
-          students (
+          learners (
             name,
             grade,
             section
@@ -291,15 +291,15 @@ const CompetitionResults = () => {
       // Merge registrations with existing results
       const resultsData = registrations.map(reg => {
         const existingResult = existingResults?.find(
-          r => r.student_email === reg.student_email
+          r => r.learner_email === reg.learner_email
         );
 
         return {
           registration_id: reg.registration_id,
-          student_email: reg.student_email,
-          student_name: reg.students?.name || 'Unknown Student',
-          grade: reg.students?.grade,
-          section: reg.students?.section,
+          learner_email: reg.learner_email,
+          learner_name: reg.learners?.name || 'Unknown Learner',
+          grade: reg.learners?.grade,
+          section: reg.learners?.section,
           team_name: reg.team_name,
           rank: existingResult?.rank || null,
           score: existingResult?.score || null,
@@ -316,10 +316,10 @@ const CompetitionResults = () => {
     }
   };
 
-  const handleResultChange = (studentEmail, field, value) => {
+  const handleResultChange = (learnerEmail, field, value) => {
     setCompetitionResults(prev =>
       prev.map(result =>
-        result.student_email === studentEmail
+        result.learner_email === learnerEmail
           ? { ...result, [field]: value }
           : result
       )
@@ -357,7 +357,7 @@ const CompetitionResults = () => {
         const payload = {
           comp_id: resultsModal.competition.comp_id,
           registration_id: result.registration_id,
-          student_email: result.student_email,
+          learner_email: result.learner_email,
           rank: result.rank,
           score: parseFloat(result.score),
           award: result.award,
@@ -425,14 +425,14 @@ const CompetitionResults = () => {
         .from('club_certificates')
         .select(`
           certificate_id,
-          student_email,
+          learner_email,
           title,
           description,
           certificate_type,
           issued_date,
           credential_id,
           metadata,
-          students (
+          learners (
             name,
             grade,
             section
@@ -466,7 +466,7 @@ const CompetitionResults = () => {
       // Auto-generate certificates for all participants
       const certificatesToCreate = resultsWithRanks.map(result => {
         const certificatePayload = {
-          student_email: result.student_email,
+          learner_email: result.learner_email,
           school_id: currentUser.school_id,
           title: `${resultsModal.competition.name} - ${result.award}`,
           description: `Awarded for achieving ${result.award} in ${resultsModal.competition.name}`,
@@ -538,8 +538,8 @@ const CompetitionResults = () => {
   // Filter certificates based on search and filters
   const filteredCertificates = certificates.filter(cert => {
     const matchesSearch = cert.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         cert.student_email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         cert.students?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+                         cert.learner_email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         cert.learners?.name?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesCertCategory = certificateCategoryFilter === 'all' || 
                                cert.competitions?.category === certificateCategoryFilter;
@@ -667,17 +667,17 @@ const CompetitionResults = () => {
       doc.setTextColor(100, 100, 100);
       doc.text('This is to certify that', pageWidth / 2, 55, { align: 'center' });
 
-      // Student Name
+      // Learner Name
       doc.setFontSize(24);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 0, 0);
-      const studentName = certificate.students?.name || certificate.student_email;
-      doc.text(studentName, pageWidth / 2, 70, { align: 'center' });
+      const learnerName = certificate.learners?.name || certificate.learner_email;
+      doc.text(learnerName, pageWidth / 2, 70, { align: 'center' });
 
       // Underline for name
       doc.setDrawColor(59, 130, 246); // Blue underline
       doc.setLineWidth(0.5);
-      const nameWidth = doc.getTextWidth(studentName);
+      const nameWidth = doc.getTextWidth(learnerName);
       doc.line(pageWidth / 2 - nameWidth / 2 - 10, 72, pageWidth / 2 + nameWidth / 2 + 10, 72);
 
       // Achievement text
@@ -751,7 +751,7 @@ const CompetitionResults = () => {
       doc.text('Authorized Signature', pageWidth / 2, sigY + 5, { align: 'center' });
 
       // Save the PDF
-      const fileName = `Certificate_${studentName.replace(/\s+/g, '_')}_${certificate.certificate_id}.pdf`;
+      const fileName = `Certificate_${learnerName.replace(/\s+/g, '_')}_${certificate.certificate_id}.pdf`;
       doc.save(fileName);
 
       setNotice({ type: 'success', text: 'Certificate downloaded successfully!' });
@@ -1182,8 +1182,8 @@ const CompetitionResults = () => {
 
                         <div className="space-y-2 mb-6">
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">Student:</span>
-                            <span className="font-semibold text-gray-900 text-xs">{cert.student_email}</span>
+                            <span className="text-gray-600">Learner:</span>
+                            <span className="font-semibold text-gray-900 text-xs">{cert.learner_email}</span>
                           </div>
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-600">Issued:</span>
@@ -1296,7 +1296,7 @@ const CompetitionResults = () => {
                 <div className="space-y-4">
                   {competitionResults.map((result, index) => (
                     <div
-                      key={result.student_email}
+                      key={result.learner_email}
                       className="bg-gray-50 rounded-lg p-4 border border-gray-200"
                     >
                       <div className="flex items-start gap-4">
@@ -1307,12 +1307,12 @@ const CompetitionResults = () => {
                         <div className="flex-1 grid grid-cols-1 md:grid-cols-6 gap-4">
                           <div>
                             <label className="block text-xs font-medium text-gray-700 mb-1">
-                              Student Details
+                              Learner Details
                             </label>
                             <div className="text-sm font-semibold text-gray-900">
-                              {result.student_name}
+                              {result.learner_name}
                             </div>
-                            <div className="text-xs text-gray-500">{result.student_email}</div>
+                            <div className="text-xs text-gray-500">{result.learner_email}</div>
                             <div className="text-xs text-gray-500">
                               Grade {result.grade} - {result.section}
                             </div>
@@ -1328,7 +1328,7 @@ const CompetitionResults = () => {
                               max="100"
                               step="0.1"
                               value={result.score || ''}
-                              onChange={(e) => handleResultChange(result.student_email, 'score', e.target.value)}
+                              onChange={(e) => handleResultChange(result.learner_email, 'score', e.target.value)}
                               placeholder="0-100"
                               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             />
@@ -1350,7 +1350,7 @@ const CompetitionResults = () => {
                             <input
                               type="text"
                               value={result.notes || ''}
-                              onChange={(e) => handleResultChange(result.student_email, 'notes', e.target.value)}
+                              onChange={(e) => handleResultChange(result.learner_email, 'notes', e.target.value)}
                               placeholder="Optional notes"
                               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             />
@@ -1361,12 +1361,12 @@ const CompetitionResults = () => {
                               Certificate
                             </label>
                             {(() => {
-                              const studentCert = competitionCertificates.find(cert => cert.student_email === result.student_email);
-                              if (studentCert) {
+                              const learnerCert = competitionCertificates.find(cert => cert.learner_email === result.learner_email);
+                              if (learnerCert) {
                                 return (
                                   <div className="flex items-center gap-1">
                                     <button
-                                      onClick={() => setCertificatePreview({ open: true, certificate: studentCert })}
+                                      onClick={() => setCertificatePreview({ open: true, certificate: learnerCert })}
                                       className="flex-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 flex items-center justify-center gap-1"
                                       title="View Certificate"
                                     >
@@ -1374,7 +1374,7 @@ const CompetitionResults = () => {
                                       View
                                     </button>
                                     <button
-                                      onClick={() => downloadCertificate(studentCert)}
+                                      onClick={() => downloadCertificate(learnerCert)}
                                       className="flex-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200 flex items-center justify-center gap-1"
                                       title="Download Certificate"
                                     >
@@ -1472,8 +1472,8 @@ const CompetitionResults = () => {
 
                   <div className="grid grid-cols-2 gap-4 bg-white rounded-lg p-4">
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">Student Email</p>
-                      <p className="font-semibold text-gray-900">{certificatePreview.certificate?.student_email}</p>
+                      <p className="text-sm text-gray-600 mb-1">Learner Email</p>
+                      <p className="font-semibold text-gray-900">{certificatePreview.certificate?.learner_email}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600 mb-1">Issued Date</p>

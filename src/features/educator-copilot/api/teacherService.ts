@@ -32,10 +32,10 @@ export interface Teacher {
 export interface TeacherPerformance {
   teacher_id: string;
   classes_taught: number;
-  students_count: number;
+  learners_count: number;
   lesson_plans_created: number;
   assignments_created: number;
-  average_student_performance: number;
+  average_learner_performance: number;
   attendance_rate: number;
 }
 
@@ -137,8 +137,8 @@ export const getTeacherPerformance = async (teacherId: string): Promise<TeacherP
     .select('id')
     .eq('teacher_id', teacherId);
 
-  // Get students count from class assignments
-  const { data: students } = await supabase
+  // Get learners count from class assignments
+  const { data: learners } = await supabase
     .from('school_educator_class_assignments')
     .select('class_id')
     .eq('educator_id', teacherId);
@@ -146,10 +146,10 @@ export const getTeacherPerformance = async (teacherId: string): Promise<TeacherP
   return {
     teacher_id: teacherId,
     classes_taught: classes?.length || 0,
-    students_count: students?.length || 0,
+    learners_count: learners?.length || 0,
     lesson_plans_created: lessonPlans?.length || 0,
     assignments_created: assignments?.length || 0,
-    average_student_performance: 0, // Calculate from student grades
+    average_learner_performance: 0, // Calculate from learner grades
     attendance_rate: 0, // Calculate from attendance records
   };
 };

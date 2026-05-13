@@ -1,39 +1,39 @@
 import { supabase } from '@/shared/api/supabaseClient';
-import { StudentProfile, TechnicalSkill, Experience } from '@/features/student-profile/model';
+import { LearnerProfile, TechnicalSkill, Experience } from '@/features/learner-profile/model';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('profile-service');
 
 /**
  * Profile Service
- * Handles fetching and parsing student profiles from database
+ * Handles fetching and parsing learner profiles from database
  */
 
-export async function fetchStudentProfile(studentId: string): Promise<StudentProfile | null> {
+export async function fetchlearnerProfile(learnerId: string): Promise<LearnerProfile | null> {
   try {
-    // Fetch student base data with JSONB profile
-    const { data: student, error: studentError } = await supabase
-      .from('students')
+    // Fetch learner base data with JSONB profile
+    const { data: learner, error: learnerError } = await supabase
+      .from('learners')
       .select('*')
-      .eq('id', studentId)
+      .eq('id', learnerId)
       .single();
 
-    if (studentError || !student) {
-      logger.error('Error fetching student profile', studentError instanceof Error ? studentError : new Error(String(studentError)), {
-        studentId,
-        hasError: !!studentError
+    if (learnerError || !learner) {
+      logger.error('Error fetching learner profile', learnerError instanceof Error ? learnerError : new Error(String(learnerError)), {
+        learnerId,
+        hasError: !!learnerError
       });
       return null;
     }
 
     // Parse the JSONB profile column
-    const profileData = student.profile || {};
+    const profileData = learner.profile || {};
 
     // Extract department from education or profile
     const department = profileData.education?.[0]?.department || 
                       profileData.education?.[0]?.degree || 
                       profileData.branch_field ||
-                      student.department ||
+                      learner.department ||
                       'General';
 
     // Extract technical skills from training courses
@@ -88,11 +88,11 @@ export async function fetchStudentProfile(studentId: string): Promise<StudentPro
     }
 
     return {
-      id: student.id,
-      name: profileData.name || student.name || 'Student',
-      email: profileData.email || student.email,
+      id: learner.id,
+      name: profileData.name || learner.name || 'Learner',
+      email: profileData.email || learner.email,
       department: department,
-      university: profileData.university || student.university || '',
+      university: profileData.university || learner.university || '',
       cgpa: profileData.education?.[0]?.cgpa || '',
       year_of_passing: profileData.education?.[0]?.yearOfPassing || '',
       profile: {
@@ -106,8 +106,8 @@ export async function fetchStudentProfile(studentId: string): Promise<StudentPro
       }
     };
   } catch (error) {
-    logger.error('Exception in fetchStudentProfile', error instanceof Error ? error : new Error(String(error)), {
-      studentId
+    logger.error('Exception in fetchlearnerProfile', error instanceof Error ? error : new Error(String(error)), {
+      learnerId
     });
     return null;
   }

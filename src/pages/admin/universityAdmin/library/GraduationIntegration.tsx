@@ -63,7 +63,7 @@ const GraduationIntegration = () => {
       color: "yellow" as const,
     },
     {
-      title: "Cleared Students",
+      title: "Cleared Learners",
       value: "1,158",
       change: 18,
       changeLabel: "ready to graduate",
@@ -91,8 +91,8 @@ const GraduationIntegration = () => {
       batchName: 'May 2025 - Engineering',
       college: 'Engineering College A',
       program: 'B.Tech',
-      totalStudents: 245,
-      clearedStudents: 198,
+      totallearners: 245,
+      clearedlearners: 198,
       pendingClearances: 47,
       graduationDate: '2025-05-15',
       status: 'in-progress',
@@ -106,8 +106,8 @@ const GraduationIntegration = () => {
       batchName: 'June 2025 - Arts & Science',
       college: 'Arts & Science College B',
       program: 'M.Sc',
-      totalStudents: 156,
-      clearedStudents: 142,
+      totallearners: 156,
+      clearedlearners: 142,
       pendingClearances: 14,
       graduationDate: '2025-06-20',
       status: 'in-progress',
@@ -121,8 +121,8 @@ const GraduationIntegration = () => {
       batchName: 'April 2025 - Commerce',
       college: 'Commerce College C',
       program: 'B.Com',
-      totalStudents: 189,
-      clearedStudents: 189,
+      totallearners: 189,
+      clearedlearners: 189,
       pendingClearances: 0,
       graduationDate: '2025-04-30',
       status: 'completed',
@@ -136,8 +136,8 @@ const GraduationIntegration = () => {
       batchName: 'July 2025 - Medical',
       college: 'Medical College D',
       program: 'MBBS',
-      totalStudents: 98,
-      clearedStudents: 45,
+      totallearners: 98,
+      clearedlearners: 45,
       pendingClearances: 53,
       graduationDate: '2025-07-10',
       status: 'pending',
@@ -152,7 +152,7 @@ const GraduationIntegration = () => {
     {
       id: 1,
       requirement: 'All Library Books Returned',
-      description: 'Student must return all issued books',
+      description: 'Learner must return all issued books',
       automated: true,
       priority: 'High',
     },
@@ -181,10 +181,10 @@ const GraduationIntegration = () => {
 
   const integrationPoints = [
     {
-      system: 'Student Information System (SIS)',
+      system: 'Learner Information System (SIS)',
       status: 'connected',
       lastSync: '2025-01-10 14:30',
-      description: 'Student enrollment and academic records',
+      description: 'Learner enrollment and academic records',
     },
     {
       system: 'Library Management System',
@@ -202,7 +202,7 @@ const GraduationIntegration = () => {
       system: 'Alumni Database',
       status: 'pending',
       lastSync: 'Never',
-      description: 'Post-graduation student tracking',
+      description: 'Post-graduation learner tracking',
     },
   ];
 
@@ -238,7 +238,7 @@ const GraduationIntegration = () => {
     const data = {
       batches: graduationBatches,
       exportDate: new Date().toISOString(),
-      totalStudents: graduationBatches.reduce((sum, batch) => sum + batch.totalStudents, 0),
+      totallearners: graduationBatches.reduce((sum, batch) => sum + batch.totallearners, 0),
     };
     
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -256,14 +256,14 @@ const GraduationIntegration = () => {
     const batch = graduationBatches.find(b => b.id === batchId);
     if (batch) {
       // Simulate batch processing
-      alert(`Processing ${batch.batchName}\n\nThis will:\n• Verify all library clearances\n• Generate graduation certificates\n• Update student records\n• Send notifications\n\nEstimated time: 15-30 minutes`);
+      alert(`Processing ${batch.batchName}\n\nThis will:\n• Verify all library clearances\n• Generate graduation certificates\n• Update learner records\n• Send notifications\n\nEstimated time: 15-30 minutes`);
     }
   };
 
   const handleViewBatchDetails = (batchId: number) => {
     const batch = graduationBatches.find(b => b.id === batchId);
     if (batch) {
-      alert(`Batch Details: ${batch.batchName}\n\nLibrary Status:\n• Books Returned: ${batch.booksReturned}/${batch.totalStudents}\n• Library Cleared: ${batch.libraryCleared}\n• Pending Clearances: ${batch.libraryPending}\n• Outstanding Fines: ${batch.finesPending} students\n\nNext Steps:\n• Follow up on pending returns\n• Process fine payments\n• Generate clearance reports`);
+      alert(`Batch Details: ${batch.batchName}\n\nLibrary Status:\n• Books Returned: ${batch.booksReturned}/${batch.totallearners}\n• Library Cleared: ${batch.libraryCleared}\n• Pending Clearances: ${batch.libraryPending}\n• Outstanding Fines: ${batch.finesPending} learners\n\nNext Steps:\n• Follow up on pending returns\n• Process fine payments\n• Generate clearance reports`);
     }
   };
 
@@ -291,7 +291,7 @@ const GraduationIntegration = () => {
           <h3 className="text-lg font-semibold text-blue-900">Library Clearance Integration</h3>
         </div>
         <p className="text-blue-700 mb-6">
-          The system integrates library clearance with graduation process to ensure all students 
+          The system integrates library clearance with graduation process to ensure all learners 
           complete required library procedures before receiving their certificates.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -339,7 +339,7 @@ const GraduationIntegration = () => {
               </li>
               <li className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                Enhanced student experience
+                Enhanced learner experience
               </li>
             </ul>
           </div>
@@ -354,7 +354,7 @@ const GraduationIntegration = () => {
             <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center mb-3 shadow-sm">
               <UserGroupIcon className="h-8 w-8 text-blue-600" />
             </div>
-            <p className="text-sm font-semibold text-gray-900">Student Registration</p>
+            <p className="text-sm font-semibold text-gray-900">Learner Registration</p>
             <p className="text-xs text-gray-500 mt-1">Graduation batch created</p>
           </div>
           <div className="flex-1 h-0.5 bg-gradient-to-r from-blue-300 to-yellow-300 mx-4"></div>
@@ -546,11 +546,11 @@ const GraduationIntegration = () => {
             {/* Statistics Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="text-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200">
-                <p className="text-2xl font-bold text-gray-900">{batch.totalStudents}</p>
-                <p className="text-sm text-gray-600">Total Students</p>
+                <p className="text-2xl font-bold text-gray-900">{batch.totallearners}</p>
+                <p className="text-sm text-gray-600">Total Learners</p>
               </div>
               <div className="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200">
-                <p className="text-2xl font-bold text-green-600">{batch.clearedStudents}</p>
+                <p className="text-2xl font-bold text-green-600">{batch.clearedlearners}</p>
                 <p className="text-sm text-gray-600">Library Cleared</p>
               </div>
               <div className="text-center p-4 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl border border-yellow-200">
@@ -572,7 +572,7 @@ const GraduationIntegration = () => {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                 <div>
                   <p className="text-blue-700 font-medium">Books Returned</p>
-                  <p className="text-blue-900 font-bold">{batch.booksReturned}/{batch.totalStudents}</p>
+                  <p className="text-blue-900 font-bold">{batch.booksReturned}/{batch.totallearners}</p>
                 </div>
                 <div>
                   <p className="text-blue-700 font-medium">Clearances Issued</p>
@@ -580,7 +580,7 @@ const GraduationIntegration = () => {
                 </div>
                 <div>
                   <p className="text-blue-700 font-medium">Outstanding Fines</p>
-                  <p className="text-blue-900 font-bold">{batch.finesPending} students</p>
+                  <p className="text-blue-900 font-bold">{batch.finesPending} learners</p>
                 </div>
               </div>
             </div>
@@ -590,13 +590,13 @@ const GraduationIntegration = () => {
               <div className="flex justify-between items-center mb-2">
                 <p className="text-sm font-medium text-gray-700">Clearance Progress</p>
                 <p className="text-sm text-gray-600">
-                  {Math.round((batch.clearedStudents / batch.totalStudents) * 100)}% completed
+                  {Math.round((batch.clearedlearners / batch.totallearners) * 100)}% completed
                 </p>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3 shadow-inner">
                 <div 
                   className="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full shadow-sm transition-all duration-300" 
-                  style={{ width: `${(batch.clearedStudents / batch.totalStudents) * 100}%` }}
+                  style={{ width: `${(batch.clearedlearners / batch.totallearners) * 100}%` }}
                 ></div>
               </div>
             </div>

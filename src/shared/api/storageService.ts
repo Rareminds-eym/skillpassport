@@ -7,7 +7,7 @@
  */
 
 import { getApiUrl } from '@/shared/api/apiUtils';
-import { supabase } from '@/shared/api/supabaseClient';
+import { getCurrentSession } from "./authUtils";
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('storage-service');
@@ -53,7 +53,7 @@ class StorageService {
    */
   private async getAuthToken(): Promise<string | null> {
     try {
-      const { data: { session }, error } = await supabase.auth.getSession();
+      const { data: { session } } = await getCurrentSession(); const error = null;
       if (error || !session) {
         return null;
       }
@@ -167,17 +167,17 @@ class StorageService {
       results
     };
   }
-  async uploadStudentDocument(file: File, studentId: string, documentType: string = 'general'): Promise<UploadResponse> {
+  async uploadlearnerDocument(file: File, learnerId: string, documentType: string = 'general'): Promise<UploadResponse> {
     try {
       // Create organized filename with timestamp
       const timestamp = Date.now();
       const extension = file.name.substring(file.name.lastIndexOf('.'));
       const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const filename = `students/${studentId}/documents/${documentType}/${timestamp}_${sanitizedName}`;
+      const filename = `learners/${learnerId}/documents/${documentType}/${timestamp}_${sanitizedName}`;
 
       return await this.uploadFile(file, filename);
     } catch (error) {
-      logger.error('Student document upload error', error as Error);
+      logger.error('Learner document upload error', error as Error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Document upload failed'
@@ -186,9 +186,9 @@ class StorageService {
   }
 
   /**
-   * Upload multiple student documents
+   * Upload multiple learner documents
    */
-  async uploadStudentDocuments(files: File[], studentId: string): Promise<{
+  async uploadlearnerDocuments(files: File[], learnerId: string): Promise<{
     success: boolean;
     results: Array<{
       file: string;
@@ -201,7 +201,7 @@ class StorageService {
 
     for (const file of files) {
       try {
-        const result = await this.uploadStudentDocument(file, studentId);
+        const result = await this.uploadlearnerDocument(file, learnerId);
         results.push({
           file: file.name,
           success: result.success,
@@ -227,7 +227,7 @@ class StorageService {
   /**
    * Get presigned URL for large file uploads
    */
-  async getPresignedUrl(filename: string, contentType: string, studentId: string): Promise<PresignedResponse> {
+  async getPresignedUrl(filename: string, contentType: string, learnerId: string): Promise<PresignedResponse> {
     try {
       const token = await this.getAuthToken();
       
@@ -247,8 +247,8 @@ class StorageService {
         body: JSON.stringify({
           filename,
           contentType,
-          courseId: 'students',
-          lessonId: studentId,
+          courseId: 'learners',
+          lessonId: learnerId,
         }),
       });
 

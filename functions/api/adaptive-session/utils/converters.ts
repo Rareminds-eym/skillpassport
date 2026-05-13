@@ -24,7 +24,7 @@ export function dbSessionToTestSession(
 ): TestSession {
   return {
     id: dbSession.id as string,
-    studentId: dbSession.student_id as string,
+    learnerId: dbSession.learner_id as string,
     gradeLevel: dbSession.grade_level as GradeLevel,
     currentPhase: dbSession.current_phase as TestPhase,
     tier: dbSession.tier as Tier | null,

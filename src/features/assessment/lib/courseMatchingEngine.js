@@ -4,11 +4,11 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
  * A sophisticated multi-dimensional analysis system that performs deep micro-level
- * profiling of students to generate highly accurate, personalized recommendations.
+ * profiling of learners to generate highly accurate, personalized recommendations.
  * 
  * ARCHITECTURE:
  * ┌─────────────────────────────────────────────────────────────────────────────┐
- * │                        STUDENT PROFILE ANALYZER                             │
+ * │                        LEARNER PROFILE ANALYZER                             │
  * ├─────────────────────────────────────────────────────────────────────────────┤
  * │  Layer 1: Interest DNA Analysis (RIASEC Deep Mapping)                       │
  * │  Layer 2: Academic Intelligence Profiling                                   │
@@ -200,9 +200,9 @@ export const COURSE_KNOWLEDGE_BASE = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// DEGREE PROGRAMS LIST FOR AFTER 12TH STUDENTS
+// DEGREE PROGRAMS LIST FOR AFTER 12TH LEARNERS
 // ═══════════════════════════════════════════════════════════════════════════════
-// This array is used to generate degree program recommendations for after12 students
+// This array is used to generate degree program recommendations for after12 learners
 // instead of platform training courses. Each entry maps to COURSE_KNOWLEDGE_BASE.
 
 export const DEGREE_PROGRAMS = [
@@ -505,11 +505,11 @@ const calculateDetailedScore = (courseId, courseProfile, interestDNA, academicPr
     let matchedSubjects = [];
     Object.entries(courseProfile.subjects.core).forEach(([subject, weight]) => {
       const aliases = [subject, ...(courseProfile.subjects.aliases || [])];
-      Object.entries(academicProfile.subjectScores).forEach(([studentSubject, score]) => {
-        if (aliases.some(a => studentSubject.includes(a))) {
+      Object.entries(academicProfile.subjectScores).forEach(([learnerSubject, score]) => {
+        if (aliases.some(a => learnerSubject.includes(a))) {
           const contribution = (score / 100) * weight * 20;
           subjectMatchScore += contribution;
-          if (score >= 70) matchedSubjects.push({ name: studentSubject, score: Math.round(score) });
+          if (score >= 70) matchedSubjects.push({ name: learnerSubject, score: Math.round(score) });
         }
       });
     });
@@ -666,37 +666,37 @@ const calculateDetailedScore = (courseId, courseProfile, interestDNA, academicPr
  * 
  * @param {Array} courseRecommendations - List of courses to score
  * @param {Object} riasecScores - RIASEC scores {R, I, A, S, E, C}
- * @param {Object} academicData - {subjectMarks, projects, experiences, education, studentStream}
- * @param {String} studentStream - Optional: Filter by student's stream (science/commerce/arts)
+ * @param {Object} academicData - {subjectMarks, projects, experiences, education, learnerStream}
+ * @param {String} learnerStream - Optional: Filter by learner's stream (science/commerce/arts)
  * @returns {Array} Sorted courses with match scores, reasons, and career paths
  */
-export const calculateCourseMatchScores = (courseRecommendations, riasecScores, academicData = {}, studentStream = null) => {
+export const calculateCourseMatchScores = (courseRecommendations, riasecScores, academicData = {}, learnerStream = null) => {
   console.log('🚀 calculateCourseMatchScores called with:', {
     courseCount: courseRecommendations?.length,
     hasRiasec: !!riasecScores && Object.keys(riasecScores).length > 0,
-    studentStream: studentStream,
-    streamType: typeof studentStream
+    learnerStream: learnerStream,
+    streamType: typeof learnerStream
   });
   
   if (!courseRecommendations || courseRecommendations.length === 0) return courseRecommendations || [];
 
   const { subjectMarks = [], projects = [], experiences = [], education = [], _assessmentResults } = academicData;
   
-  // STREAM FILTERING: If student has a specific stream (from after10 assessment), filter courses
+  // STREAM FILTERING: If learner has a specific stream (from after10 assessment), filter courses
   let filteredCourses = courseRecommendations;
-  if (studentStream) {
-    const normalizedStream = studentStream.toLowerCase().trim();
+  if (learnerStream) {
+    const normalizedStream = learnerStream.toLowerCase().trim();
     
     // Skip filtering if stream is invalid/placeholder
     if (normalizedStream === 'n/a' || normalizedStream === '—' || normalizedStream === '') {
-      console.log('⚠️ Invalid stream value, skipping filter:', studentStream);
+      console.log('⚠️ Invalid stream value, skipping filter:', learnerStream);
     } 
     // Extract parent category from stream (e.g., science_pcmb → science)
     else {
       const streamCategory = extractStreamCategory(normalizedStream);
       
       if (streamCategory) {
-        console.log(`🎯 Filtering programs by stream category: ${streamCategory} (from ${studentStream})`);
+        console.log(`🎯 Filtering programs by stream category: ${streamCategory} (from ${learnerStream})`);
         
         filteredCourses = courseRecommendations.filter(course => {
           const courseId = course.courseId?.toLowerCase() || '';
@@ -720,16 +720,16 @@ export const calculateCourseMatchScores = (courseRecommendations, riasecScores, 
         
         // If no courses match the stream, return empty array
         if (filteredCourses.length === 0) {
-          console.log('   ⚠️ No programs match student stream category - returning empty array');
+          console.log('   ⚠️ No programs match learner stream category - returning empty array');
           return [];
         }
       } else {
         // Stream is a specific program name (like ANIMATION, B.Sc, BBA) - don't filter
-        console.log(`⚠️ Stream "${studentStream}" is not a valid category - skipping filter (showing all programs)`);
+        console.log(`⚠️ Stream "${learnerStream}" is not a valid category - skipping filter (showing all programs)`);
       }
     }
   } else {
-    console.log('⚠️ No studentStream provided - showing all programs');
+    console.log('⚠️ No learnerStream provided - showing all programs');
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

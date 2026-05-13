@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { CalendarDay, CalendarView, CollegeEvent, WeekEvent } from '@/features/student-profile/model';
+import { CalendarDay, CalendarView, CollegeEvent, WeekEvent } from '@/features/learner-profile/model';
 import { toDateStr } from "../helpers";
 
 export const useCalendar = (events: CollegeEvent[]) => {

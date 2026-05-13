@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { XMarkIcon, UserGroupIcon, UserIcon } from '@heroicons/react/24/outline';
 import SearchBar from '@/shared/ui/SearchBar';
 
-interface Student {
+interface Learner {
   id: number;
   name: string;
   rollNo: string;
@@ -18,7 +18,7 @@ interface Student {
 interface MentorAllocation {
   id: number;
   mentorId: number;
-  students: Student[];
+  learners: Learner[];
   allocationPeriod: {
     startDate: string;
     endDate: string;
@@ -45,7 +45,7 @@ interface Mentor {
 }
 
 interface MentorSelectionModalProps {
-  selectedStudents: Student[];
+  selectedlearners: Learner[];
   mentors: Mentor[];
   onClose: () => void;
   onBack: () => void;
@@ -57,7 +57,7 @@ interface MentorSelectionModalProps {
 }
 
 const MentorSelectionModal: React.FC<MentorSelectionModalProps> = ({
-  selectedStudents,
+  selectedlearners,
   mentors,
   onClose,
   onBack,
@@ -79,7 +79,7 @@ const MentorSelectionModal: React.FC<MentorSelectionModalProps> = ({
       : 15; // Default capacity for new mentors
     
     // Allow mentors with sufficient capacity (including new mentors with no allocations)
-    return currentLoad + selectedStudents.length <= maxCapacity;
+    return currentLoad + selectedlearners.length <= maxCapacity;
   });
 
   const filteredMentors = availableMentors.filter((m: Mentor) =>
@@ -100,7 +100,7 @@ const MentorSelectionModal: React.FC<MentorSelectionModalProps> = ({
         <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
           <div>
             <h2 className="text-xl font-bold text-gray-900">
-              Select Mentor for {selectedStudents.length} Student(s)
+              Select Mentor for {selectedlearners.length} Learner(s)
             </h2>
             <p className="text-sm text-gray-600 mt-1">
               Choose a mentor with sufficient capacity
@@ -112,25 +112,25 @@ const MentorSelectionModal: React.FC<MentorSelectionModalProps> = ({
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0 p-6">
-          {/* Selected Students Summary */}
+          {/* Selected Learners Summary */}
           <div className="lg:col-span-1 flex flex-col min-h-0">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Selected Students</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Selected Learners</h3>
             <div className="bg-gray-50 rounded-lg p-4 flex-1 overflow-y-auto min-h-0">
               <div className="space-y-3">
-                {selectedStudents.map((student: Student) => (
-                  <div key={student.id} className="bg-white rounded-lg p-3">
+                {selectedlearners.map((learner: Learner) => (
+                  <div key={learner.id} className="bg-white rounded-lg p-3">
                     <div className="flex items-center gap-2 mb-1">
-                      <p className="font-medium text-gray-900 text-sm">{student.name}</p>
-                      {student.atRisk && (
+                      <p className="font-medium text-gray-900 text-sm">{learner.name}</p>
+                      {learner.atRisk && (
                         <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full">
                           At Risk
                         </span>
                       )}
                     </div>
                     <p className="text-xs text-gray-600">
-                      {student.rollNo} • {student.department}
+                      {learner.rollNo} • {learner.department}
                     </p>
-                    <p className="text-xs text-gray-500">CGPA: {student.cgpa}</p>
+                    <p className="text-xs text-gray-500">CGPA: {learner.cgpa}</p>
                   </div>
                 ))}
               </div>
@@ -157,7 +157,7 @@ const MentorSelectionModal: React.FC<MentorSelectionModalProps> = ({
                   <div className="text-center py-8 text-gray-500">
                     <UserGroupIcon className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                     <p>No mentors available with sufficient capacity</p>
-                    <p className="text-sm mt-1">Required capacity: {selectedStudents.length} students</p>
+                    <p className="text-sm mt-1">Required capacity: {selectedlearners.length} learners</p>
                   </div>
                 ) : (
                   filteredMentors.map((mentor: Mentor) => {
@@ -212,7 +212,7 @@ const MentorSelectionModal: React.FC<MentorSelectionModalProps> = ({
             onClick={onBack}
             className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
-            ← Back to Students
+            ← Back to Learners
           </button>
           <div className="flex gap-3">
             <button

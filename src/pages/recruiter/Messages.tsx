@@ -498,8 +498,8 @@ const Messages = () => {
     };
 
     const contacts = activeConversations.map((conv: any) => {
-      const profile = parseProfile(conv.student?.profile);
-      const studentName = profile?.name || conv.student?.email || 'Student';
+      const profile = parseProfile(conv.learner?.profile);
+      const learnerName = profile?.name || conv.learner?.email || 'Learner';
       const opportunityTitle = conv.opportunity?.title || 'No job specified';
       const opportunityDetails = conv.opportunity?.company_name 
         ? `${opportunityTitle} • ${conv.opportunity.company_name}`
@@ -507,17 +507,17 @@ const Messages = () => {
       
       return {
         id: conv.id,
-        name: studentName,
+        name: learnerName,
         role: opportunityDetails,
                       avatar: profile?.profilePicture || 
-                        `https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=3B82F6&color=fff`,
+                        `https://ui-avatars.com/api/?name=${encodeURIComponent(learnerName)}&background=3B82F6&color=fff`,
                       lastMessage: conv.last_message_preview || 'No messages yet',
-                      online: onlineUsers.some(u => u.userId === conv.student_id),
+                      online: onlineUsers.some(u => u.userId === conv.learner_id),
         time: conv.last_message_at 
           ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })
           : 'No messages',
         unread: conv.recruiter_unread_count || 0,
-        studentId: conv.student_id,
+        learnerId: conv.learner_id,
         applicationId: conv.application_id,
         opportunityId: conv.opportunity_id,
       };
@@ -544,20 +544,20 @@ const Messages = () => {
       await sendMessage({
         senderId: recruiterId,
         senderType: 'recruiter',
-        receiverId: currentChat.studentId,
-        receiverType: 'student',
+        receiverId: currentChat.learnerId,
+        receiverType: 'learner',
         messageText: messageInput,
         applicationId: currentChat.applicationId,
         opportunityId: currentChat.opportunityId
       });
       
-      // Send notification broadcast to student
+      // Send notification broadcast to learner
       try {
-        await sendNotification(currentChat.studentId, {
+        await sendNotification(currentChat.learnerId, {
           title: 'New Message from Recruiter',
           message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
           type: 'message',
-          link: `/student/messages?conversation=${selectedConversationId}`
+          link: `/learner/messages?conversation=${selectedConversationId}`
         });
       } catch (notifError) {
       }

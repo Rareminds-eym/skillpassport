@@ -45,7 +45,7 @@ export function buildAnalysisPrompt(assessmentData: AssessmentData): string {
     return buildAfter12Prompt(assessmentData, answersHash);
   }
 
-  // College (university students) - fallback to college prompt
+  // College (university learners) - fallback to college prompt
   return buildCollegePrompt(assessmentData, answersHash);
 }
 
@@ -60,7 +60,7 @@ export function getSystemMessage(gradeLevel: GradeLevel): string {
 CRITICAL REQUIREMENTS:
 1) Always return complete, valid JSON - never truncate.
 2) You MUST provide EXACTLY 3 career clusters (High fit, Medium fit, Explore fit) - this is MANDATORY.
-3) **CRITICAL FOR AFTER12 STUDENTS**: You MUST include "degreePrograms" array with EXACTLY 3 programs inside "careerFit" object - this is MANDATORY.
+3) **CRITICAL FOR AFTER12 LEARNERS**: You MUST include "degreePrograms" array with EXACTLY 3 programs inside "careerFit" object - this is MANDATORY.
 4) Ensure all arrays and objects are properly closed.
 5) Each cluster must have description, evidence, roles, domains, and whyItFits fields filled.
 6) **CRITICAL**: You MUST include the "overallSummary" field at the end of the JSON - this is MANDATORY and must be 3-4 sentences.
@@ -125,21 +125,21 @@ WRONG FORMAT (DO NOT USE):
 
 Return ONLY the JSON object (starting with {), nothing else. ENSURE "overallSummary" is included at the end!`;
 
-  const collegeStudentProgramValidation = `
+  const collegelearnerProgramValidation = `
 
-🚨 CRITICAL FOR COLLEGE STUDENTS: PROGRAM ALIGNMENT IS MANDATORY 🚨
+🚨 CRITICAL FOR COLLEGE LEARNERS: PROGRAM ALIGNMENT IS MANDATORY 🚨
 
-If the student provides their program/degree information (e.g., "Bsc Physics", "B.Tech CS", "MBA"), you MUST:
+If the learner provides their program/degree information (e.g., "Bsc Physics", "B.Tech CS", "MBA"), you MUST:
 1. Identify the program field (Physics, Computer Science, Business, etc.)
 2. Generate ALL 3 career clusters from careers related to that field ONLY
-3. DO NOT recommend careers from unrelated fields (e.g., Creative Arts for Physics students)
-4. Validate your response before returning: Are all 3 clusters related to the student's program?
+3. DO NOT recommend careers from unrelated fields (e.g., Creative Arts for Physics learners)
+4. Validate your response before returning: Are all 3 clusters related to the learner's program?
 
 If you ignore the program and recommend unrelated careers, your response will be REJECTED and you will be asked to try again.`;
 
   const after12DegreePrograms = `
 
-🚨 CRITICAL FOR AFTER12 STUDENTS: DEGREE PROGRAMS ARE MANDATORY 🚨
+🚨 CRITICAL FOR AFTER12 LEARNERS: DEGREE PROGRAMS ARE MANDATORY 🚨
 
 You MUST include "degreePrograms" array with EXACTLY 3 programs inside the "careerFit" object.
 
@@ -157,21 +157,21 @@ Each program MUST have these fields:
 If you do NOT include degreePrograms array, your response will be REJECTED.`;
 
   if (gradeLevel === 'middle') {
-    return `${baseMessage} You are speaking to middle school students (grades 6-8). Use encouraging, age-appropriate language. Focus on exploration and discovery rather than specific career paths.${requirements}`;
+    return `${baseMessage} You are speaking to middle school learners (grades 6-8). Use encouraging, age-appropriate language. Focus on exploration and discovery rather than specific career paths.${requirements}`;
   }
 
   if (gradeLevel === 'highschool' || gradeLevel === 'after10' || gradeLevel === 'higher_secondary') {
-    return `${baseMessage} You are speaking to high school students (grades 9-12). Provide guidance on college majors and career paths. Be aspirational but realistic.${requirements}`;
+    return `${baseMessage} You are speaking to high school learners (grades 9-12). Provide guidance on college majors and career paths. Be aspirational but realistic.${requirements}`;
   }
 
-  // After 12th students - add degree programs requirement
+  // After 12th learners - add degree programs requirement
   if (gradeLevel === 'after12') {
     return `${baseMessage}${after12DegreePrograms}${requirements}`;
   }
 
-  // College students - add program validation
+  // College learners - add program validation
   if (gradeLevel === 'college') {
-    return `${baseMessage}${collegeStudentProgramValidation}${requirements}`;
+    return `${baseMessage}${collegelearnerProgramValidation}${requirements}`;
   }
 
   return `${baseMessage}${requirements}`;

@@ -3,7 +3,7 @@
  */
 
 export interface KPIData {
-  totalStudents: number
+  totallearners: number
   attendanceToday: number
   examsScheduled: number
   pendingAssessments: number

@@ -32,13 +32,13 @@ class IndustryKnowledgeService {
    * AI-Powered Universal Domain Detection
    * Detects ANY industry/domain from user query
    */
-  async detectDomain(message: string, studentProfile?: any): Promise<DomainDetectionResult> {
+  async detectDomain(message: string, learnerProfile?: any): Promise<DomainDetectionResult> {
     try {
       const prompt = `Analyze this query and detect the industry/domain/sector:
 
 **Query:** "${message}"
 
-${studentProfile ? `**Student Context:** ${studentProfile.department || 'Unknown'}` : ''}
+${learnerProfile ? `**Learner Context:** ${learnerProfile.department || 'Unknown'}` : ''}
 
 **Your Task:**
 Identify the industry/domain being discussed. Consider ALL possible domains including but not limited to:
@@ -134,7 +134,7 @@ Identify the industry/domain being discussed. Consider ALL possible domains incl
       };
     } catch (error) {
       logger.error('Failed to detect industry domain', error as Error, {
-        hasProfile: !!studentProfile,
+        hasProfile: !!learnerProfile,
         messageLength: message.length
       });
       return {
@@ -153,14 +153,14 @@ Identify the industry/domain being discussed. Consider ALL possible domains incl
   async researchIndustry(
     domain: string,
     subDomain?: string,
-    studentSkills?: string[]
+    learnerSkills?: string[]
   ): Promise<IndustryKnowledge> {
     try {
       const prompt = `You are an industry research expert. Provide deep insights about this industry:
 
 **Industry:** ${domain}
 ${subDomain ? `**Sub-sector:** ${subDomain}` : ''}
-${studentSkills ? `**Student Skills:** ${studentSkills.join(', ')}` : ''}
+${learnerSkills ? `**Learner Skills:** ${learnerSkills.join(', ')}` : ''}
 
 **Research and provide:**
 
@@ -235,7 +235,7 @@ ${studentSkills ? `**Student Skills:** ${studentSkills.join(', ')}` : ''}
       logger.error('Failed to research industry knowledge', error as Error, {
         domain,
         subDomain,
-        hasStudentSkills: !!studentSkills && studentSkills.length > 0
+        haslearnerSkills: !!learnerSkills && learnerSkills.length > 0
       });
       return {
         domain,

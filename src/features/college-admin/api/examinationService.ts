@@ -31,8 +31,8 @@ export interface ExamWindow {
 export interface ExamRegistration {
   id: string;
   exam_window_id: string;
-  student_id: string;
-  student_name: string;
+  learner_id: string;
+  learner_name: string;
   roll_number: string;
   registration_number: string;
   registration_type: 'regular' | 'arrear' | 'improvement' | 'supplementary';
@@ -65,8 +65,8 @@ export interface ExamSeatingArrangement {
   id: string;
   exam_timetable_id: string;
   exam_room_id: string;
-  student_id: string;
-  student_name: string;
+  learner_id: string;
+  learner_name: string;
   roll_number: string;
   hall_ticket_number?: string;
   seat_number: string;
@@ -148,7 +148,7 @@ export async function publishExamWindow(id: string): Promise<void> {
 // EXAM REGISTRATION
 // ============================================
 
-export async function registerStudentForExam(data: Partial<ExamRegistration>): Promise<ExamRegistration> {
+export async function registerlearnerForExam(data: Partial<ExamRegistration>): Promise<ExamRegistration> {
   // Generate registration number
   const registrationNumber = `REG${Date.now()}${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
 
@@ -164,7 +164,7 @@ export async function registerStudentForExam(data: Partial<ExamRegistration>): P
 
   if (error) {
     if (error.code === '23505') {
-      throw new Error('Student already registered for this exam');
+      throw new Error('Learner already registered for this exam');
     }
     throw error;
   }
@@ -408,7 +408,7 @@ export const examinationService = {
   getExamWindows,
   updateExamWindow,
   publishExamWindow,
-  registerStudentForExam,
+  registerlearnerForExam,
   getExamRegistrations,
   issueHallTicket,
   bulkIssueHallTickets,

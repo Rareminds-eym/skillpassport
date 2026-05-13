@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -74,7 +75,7 @@ class CurriculumApprovalService {
     try {
       
       // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await getCurrentUser();
       if (userError || !user) {
         logger.error('Failed to get authenticated user', userError instanceof Error ? userError : new Error(String(userError)));
         return {

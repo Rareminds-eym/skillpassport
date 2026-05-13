@@ -1,10 +1,10 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Github, Linkedin, Twitter, Mail, Phone, MapPin, Calendar, Award, Code, Briefcase } from 'lucide-react';
-import { Student, AnimationType, DisplayPreferences } from '@/shared/types/student';
+import { Learner, AnimationType, DisplayPreferences } from '@/shared/types/learner';
 
 interface ModernLayoutProps {
-  student: Student;
+  learner: Learner;
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
@@ -13,7 +13,7 @@ interface ModernLayoutProps {
 }
 
 const ModernLayout: React.FC<ModernLayoutProps> = ({ 
-  student, 
+  learner, 
   primaryColor, 
   secondaryColor, 
   accentColor, 
@@ -72,8 +72,8 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
               transition={{ duration: 0.6, delay: 0.2 }}
             >
               <img
-                src={student.profile.profileImage || '/api/placeholder/200/200'}
-                alt={student.name || 'Profile'}
+                src={learner.profile.profileImage || '/api/placeholder/200/200'}
+                alt={learner.name || 'Profile'}
                 className="w-48 h-48 rounded-full object-cover border-8 border-white shadow-2xl"
               />
             </motion.div>
@@ -86,44 +86,44 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
               transition={{ delay: 0.4 }}
             >
               <h1 className="text-5xl font-bold mb-4">
-                {student.name || student.profile.name}
+                {learner.name || learner.profile.name}
               </h1>
               <p className="text-xl mb-6 opacity-90">
-                {student.branch_field && `${student.branch_field} • `}
-                {student.school?.name || 
-                 student.profile?.school?.name || 
-                 student.college_school_name || 
-                 student.universityCollege?.name || 
-                 student.profile?.universityCollege?.name ||
-                 student.university || 'Student'}
+                {learner.branch_field && `${learner.branch_field} • `}
+                {learner.school?.name || 
+                 learner.profile?.school?.name || 
+                 learner.college_school_name || 
+                 learner.universityCollege?.name || 
+                 learner.profile?.universityCollege?.name ||
+                 learner.university || 'Learner'}
               </p>
-              {student.profile.bio && (
+              {learner.profile.bio && (
                 <p className="text-lg max-w-2xl leading-relaxed opacity-80">
-                  {student.profile.bio}
+                  {learner.profile.bio}
                 </p>
               )}
               
               <div className="flex flex-wrap justify-center lg:justify-start gap-4 mt-8">
                 {displayPreferences.showSocialLinks && (
                   <>
-                    {student.github_link && (
-                      <a href={student.github_link} className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all">
+                    {learner.github_link && (
+                      <a href={learner.github_link} className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all">
                         <Github className="w-6 h-6" />
                       </a>
                     )}
-                    {student.linkedin_link && (
-                      <a href={student.linkedin_link} className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all">
+                    {learner.linkedin_link && (
+                      <a href={learner.linkedin_link} className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all">
                         <Linkedin className="w-6 h-6" />
                       </a>
                     )}
-                    {student.twitter_link && (
-                      <a href={student.twitter_link} className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all">
+                    {learner.twitter_link && (
+                      <a href={learner.twitter_link} className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all">
                         <Twitter className="w-6 h-6" />
                       </a>
                     )}
                   </>
                 )}
-                <a href={`mailto:${student.email}`} className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all">
+                <a href={`mailto:${learner.email}`} className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all">
                   <Mail className="w-6 h-6" />
                 </a>
               </div>
@@ -143,20 +143,20 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
           <div className="grid md:grid-cols-3 gap-6">
             <motion.div variants={itemVariants} className="flex items-center space-x-3">
               <Phone className="w-5 h-5" style={{ color: primaryColor }} />
-              <span>{student.contact_number}</span>
+              <span>{learner.contact_number}</span>
             </motion.div>
             <motion.div variants={itemVariants} className="flex items-center space-x-3">
               <Mail className="w-5 h-5" style={{ color: primaryColor }} />
-              <span>{student.email}</span>
+              <span>{learner.email}</span>
             </motion.div>
             <motion.div variants={itemVariants} className="flex items-center space-x-3">
               <MapPin className="w-5 h-5" style={{ color: primaryColor }} />
               <span>
                 {[
-                  student.address,
-                  student.city,
-                  student.state,
-                  student.country || 'India'
+                  learner.address,
+                  learner.city,
+                  learner.state,
+                  learner.country || 'India'
                 ].filter(Boolean).join(', ')}
               </span>
             </motion.div>
@@ -165,7 +165,7 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
       </motion.section>
 
       {/* Skills Section */}
-      {displayPreferences.showSkillBars && student.profile.technicalSkills && student.profile.technicalSkills.length > 0 && (
+      {displayPreferences.showSkillBars && learner.profile.technicalSkills && learner.profile.technicalSkills.length > 0 && (
         <motion.section 
           className="py-16"
           variants={containerVariants}
@@ -181,7 +181,7 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
               Technical Skills
             </motion.h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {student.profile.technicalSkills.map((skill, index) => (
+              {learner.profile.technicalSkills.map((skill, index) => (
                 <motion.div
                   key={index}
                   variants={itemVariants}
@@ -209,7 +209,7 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
       )}
       
       {/* Projects Section */}
-      {student.profile.projects && student.profile.projects.length > 0 && (
+      {learner.profile.projects && learner.profile.projects.length > 0 && (
         <motion.section 
           className="py-16 bg-gray-50"
           variants={containerVariants}
@@ -225,7 +225,7 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
               Featured Projects
             </motion.h2>
             <div className="grid md:grid-cols-2 gap-8">
-              {student.profile.projects.map((project) => (
+              {learner.profile.projects.map((project) => (
                 <motion.div
                   key={project.id}
                   variants={itemVariants}
@@ -283,7 +283,7 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
       )}
 
       {/* Experience Section */}
-      {student.profile.experience && student.profile.experience.length > 0 && (
+      {learner.profile.experience && learner.profile.experience.length > 0 && (
         <motion.section 
           className="py-16"
           variants={containerVariants}
@@ -299,7 +299,7 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
               Experience
             </motion.h2>
             <div className="max-w-4xl mx-auto">
-              {student.profile.experience.map((exp) => (
+              {learner.profile.experience.map((exp) => (
                 <motion.div
                   key={exp.id}
                   variants={itemVariants}
@@ -341,7 +341,7 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
       )}
 
       {/* Education Section */}
-      {student.profile.education && student.profile.education.length > 0 && (
+      {learner.profile.education && learner.profile.education.length > 0 && (
         <motion.section 
           className="py-16 bg-gray-50"
           variants={containerVariants}
@@ -357,7 +357,7 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
               Education
             </motion.h2>
             <div className="max-w-4xl mx-auto">
-              {student.profile.education.map((edu) => (
+              {learner.profile.education.map((edu) => (
                 <motion.div
                   key={edu.id}
                   variants={itemVariants}

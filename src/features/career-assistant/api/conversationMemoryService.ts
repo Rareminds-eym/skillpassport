@@ -13,7 +13,7 @@ export interface ConversationMessage {
 }
 
 export interface ConversationContext {
-  studentId: string;
+  learnerId: string;
   messages: ConversationMessage[];
   userGoals: string[];
   detectedDomains: string[];
@@ -27,41 +27,41 @@ class ConversationMemoryService {
   private readonly MAX_MESSAGES = 10; // Keep last 10 messages
 
   /**
-   * Initialize conversation for a student
+   * Initialize conversation for a learner
    */
-  initConversation(studentId: string): ConversationContext {
+  initConversation(learnerId: string): ConversationContext {
     const context: ConversationContext = {
-      studentId,
+      learnerId,
       messages: [],
       userGoals: [],
       detectedDomains: [],
       technologiesMentioned: [],
       sessionStarted: new Date()
     };
-    this.conversations.set(studentId, context);
+    this.conversations.set(learnerId, context);
     return context;
   }
 
   /**
-   * Get conversation context for a student
+   * Get conversation context for a learner
    */
-  getContext(studentId: string): ConversationContext | null {
-    return this.conversations.get(studentId) || null;
+  getContext(learnerId: string): ConversationContext | null {
+    return this.conversations.get(learnerId) || null;
   }
 
   /**
    * Add user message to conversation
    */
   addUserMessage(
-    studentId: string,
+    learnerId: string,
     content: string,
     intent?: string,
     domain?: string,
     entities?: Record<string, any>
   ): void {
-    let context = this.getContext(studentId);
+    let context = this.getContext(learnerId);
     if (!context) {
-      context = this.initConversation(studentId);
+      context = this.initConversation(learnerId);
     }
 
     const message: ConversationMessage = {
@@ -93,16 +93,16 @@ class ConversationMemoryService {
       context.messages = context.messages.slice(-this.MAX_MESSAGES);
     }
 
-    this.conversations.set(studentId, context);
+    this.conversations.set(learnerId, context);
   }
 
   /**
    * Add assistant message to conversation
    */
-  addAssistantMessage(studentId: string, content: string): void {
-    let context = this.getContext(studentId);
+  addAssistantMessage(learnerId: string, content: string): void {
+    let context = this.getContext(learnerId);
     if (!context) {
-      context = this.initConversation(studentId);
+      context = this.initConversation(learnerId);
     }
 
     const message: ConversationMessage = {
@@ -118,29 +118,29 @@ class ConversationMemoryService {
       context.messages = context.messages.slice(-this.MAX_MESSAGES);
     }
 
-    this.conversations.set(studentId, context);
+    this.conversations.set(learnerId, context);
   }
 
   /**
    * Get formatted conversation history for AI context
    */
-  getFormattedHistory(studentId: string, lastN: number = 5): string {
-    const context = this.getContext(studentId);
+  getFormattedHistory(learnerId: string, lastN: number = 5): string {
+    const context = this.getContext(learnerId);
     if (!context || context.messages.length === 0) {
       return '';
     }
 
     const recentMessages = context.messages.slice(-lastN);
     return recentMessages
-      .map(msg => `${msg.role === 'user' ? 'Student' : 'AI'}: ${msg.content}`)
+      .map(msg => `${msg.role === 'user' ? 'Learner' : 'AI'}: ${msg.content}`)
       .join('\n');
   }
 
   /**
    * Get conversation summary for AI context
    */
-  getConversationSummary(studentId: string): string {
-    const context = this.getContext(studentId);
+  getConversationSummary(learnerId: string): string {
+    const context = this.getContext(learnerId);
     if (!context) return 'New conversation';
 
     const parts: string[] = [];
@@ -161,17 +161,17 @@ class ConversationMemoryService {
   }
 
   /**
-   * Clear conversation for a student
+   * Clear conversation for a learner
    */
-  clearConversation(studentId: string): void {
-    this.conversations.delete(studentId);
+  clearConversation(learnerId: string): void {
+    this.conversations.delete(learnerId);
   }
 
   /**
    * Check if this is a follow-up question
    */
-  isFollowUpQuestion(studentId: string, message: string): boolean {
-    const context = this.getContext(studentId);
+  isFollowUpQuestion(learnerId: string, message: string): boolean {
+    const context = this.getContext(learnerId);
     if (!context || context.messages.length === 0) return false;
 
     const followUpIndicators = [

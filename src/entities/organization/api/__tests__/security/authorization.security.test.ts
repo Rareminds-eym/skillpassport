@@ -17,7 +17,7 @@ describe('Security Tests: Authorization', () => {
       ['admin-1', { id: 'admin-1', role: 'school_admin', organization_id: 'org-1' }],
       ['admin-2', { id: 'admin-2', role: 'college_admin', organization_id: 'org-2' }],
       ['educator-1', { id: 'educator-1', role: 'educator', organization_id: 'org-1' }],
-      ['student-1', { id: 'student-1', role: 'student', organization_id: 'org-1' }],
+      ['learner-1', { id: 'learner-1', role: 'learner', organization_id: 'org-1' }],
       ['super-admin', { id: 'super-admin', role: 'super_admin', organization_id: null }]
     ]);
 
@@ -73,8 +73,8 @@ describe('Security Tests: Authorization', () => {
         'Unauthorized: Admin access required'
       );
 
-      // Student should fail
-      await expect(purchaseSubscription('student-1', 'org-1')).rejects.toThrow(
+      // Learner should fail
+      await expect(purchaseSubscription('learner-1', 'org-1')).rejects.toThrow(
         'Unauthorized: Admin access required'
       );
     });
@@ -91,7 +91,7 @@ describe('Security Tests: Authorization', () => {
         return { success: true, assignment_id: 'new-assign' };
       };
 
-      const result = await assignLicense('admin-1', 'pool-1', 'student-1');
+      const result = await assignLicense('admin-1', 'pool-1', 'learner-1');
       expect(result.success).toBe(true);
     });
 
@@ -107,7 +107,7 @@ describe('Security Tests: Authorization', () => {
         return { success: true };
       };
 
-      await expect(assignLicense('educator-1', 'pool-1', 'student-1')).rejects.toThrow(
+      await expect(assignLicense('educator-1', 'pool-1', 'learner-1')).rejects.toThrow(
         'Unauthorized: Admin access required'
       );
     });
@@ -148,7 +148,7 @@ describe('Security Tests: Authorization', () => {
         return { success: true };
       };
 
-      await expect(sendInvitation('student-1', 'org-1', 'new@example.com')).rejects.toThrow(
+      await expect(sendInvitation('learner-1', 'org-1', 'new@example.com')).rejects.toThrow(
         'Unauthorized: Admin access required'
       );
     });
@@ -226,15 +226,15 @@ describe('Security Tests: Authorization', () => {
       };
 
       // User can view own entitlements
-      const result = await viewEntitlements('student-1', 'student-1');
+      const result = await viewEntitlements('learner-1', 'learner-1');
       expect(result.entitlements).toBeDefined();
 
       // Admin can view member entitlements
-      const adminResult = await viewEntitlements('admin-1', 'student-1');
+      const adminResult = await viewEntitlements('admin-1', 'learner-1');
       expect(adminResult.entitlements).toBeDefined();
 
       // User cannot view other user's entitlements
-      await expect(viewEntitlements('student-1', 'educator-1')).rejects.toThrow(
+      await expect(viewEntitlements('learner-1', 'educator-1')).rejects.toThrow(
         'Unauthorized: Cannot view other user entitlements'
       );
     });
@@ -260,12 +260,12 @@ describe('Security Tests: Authorization', () => {
       };
 
       // Regular admin cannot change roles
-      await expect(updateUserRole('admin-1', 'student-1', 'admin')).rejects.toThrow(
+      await expect(updateUserRole('admin-1', 'learner-1', 'admin')).rejects.toThrow(
         'Unauthorized: Only super admin can modify roles'
       );
 
       // User cannot elevate themselves
-      await expect(updateUserRole('student-1', 'student-1', 'admin')).rejects.toThrow(
+      await expect(updateUserRole('learner-1', 'learner-1', 'admin')).rejects.toThrow(
         'Unauthorized: Only super admin can modify roles'
       );
     });

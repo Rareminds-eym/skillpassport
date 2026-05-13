@@ -33,7 +33,7 @@ interface AssessmentCriteria {
   status: "upcoming" | "ongoing" | "completed";
 }
 
-interface StudentProgress {
+interface LearnerProgress {
   id: string;
   name: string;
   rollNumber: string;
@@ -49,7 +49,7 @@ interface StudentProgress {
 }
 
 const ContinuousAssessment: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"overview" | "configure" | "students" | "analytics">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "configure" | "learners" | "analytics">("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
 
@@ -63,8 +63,8 @@ const ContinuousAssessment: React.FC = () => {
     { id: "6", name: "Attendance", type: "Attendance", weightage: 10, totalMarks: 100, status: "ongoing" },
   ];
 
-  // ===== Mock Data: Student Progress =====
-  const studentProgress: StudentProgress[] = [
+  // ===== Mock Data: Learner Progress =====
+  const learnerProgress: LearnerProgress[] = [
     {
       id: "1",
       name: "Priya Sharma",
@@ -148,10 +148,10 @@ const ContinuousAssessment: React.FC = () => {
       color: "blue" as const,
     },
     {
-      title: "Total Students",
+      title: "Total Learners",
       value: "248",
       change: 0,
-      changeLabel: "enrolled students",
+      changeLabel: "enrolled learners",
       icon: <Users className="h-6 w-6" />,
       color: "purple" as const,
     },
@@ -164,7 +164,7 @@ const ContinuousAssessment: React.FC = () => {
       color: "green" as const,
     },
     {
-      title: "At-Risk Students",
+      title: "At-Risk Learners",
       value: "18",
       change: -2.1,
       changeLabel: "fewer than last month",
@@ -243,7 +243,7 @@ const ContinuousAssessment: React.FC = () => {
   const performanceDistributionChart = {
     series: [
       {
-        name: "Students",
+        name: "Learners",
         data: [8, 15, 28, 35, 42],
       },
     ],
@@ -268,7 +268,7 @@ const ContinuousAssessment: React.FC = () => {
           style: { colors: "#6b7280" },
         },
         title: {
-          text: "Number of Students",
+          text: "Number of Learners",
           style: { color: "#6b7280" },
         },
       },
@@ -278,7 +278,7 @@ const ContinuousAssessment: React.FC = () => {
   };
 
   // ===== Helper Functions =====
-  const getStatusColor = (status: StudentProgress["status"]) => {
+  const getStatusColor = (status: LearnerProgress["status"]) => {
     switch (status) {
       case "excellent":
         return "bg-green-100 text-green-700 border-green-200";
@@ -293,7 +293,7 @@ const ContinuousAssessment: React.FC = () => {
     }
   };
 
-  const getTrendIcon = (trend: StudentProgress["trend"]) => {
+  const getTrendIcon = (trend: LearnerProgress["trend"]) => {
     switch (trend) {
       case "up":
         return <TrendingUp className="h-4 w-4 text-green-600" />;
@@ -315,10 +315,10 @@ const ContinuousAssessment: React.FC = () => {
     }
   };
 
-  const filteredStudents = studentProgress.filter((student) => {
-    const matchesSearch = student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.rollNumber.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = selectedFilter === "all" || student.status === selectedFilter;
+  const filteredlearners = learnerProgress.filter((learner) => {
+    const matchesSearch = learner.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      learner.rollNumber.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = selectedFilter === "all" || learner.status === selectedFilter;
     return matchesSearch && matchesFilter;
   });
 
@@ -333,7 +333,7 @@ const ContinuousAssessment: React.FC = () => {
               Continuous Assessment Dashboard
             </h1>
             <p className="text-gray-600 text-sm sm:text-base">
-              Track student progress through ongoing evaluation, not just final exams
+              Track learner progress through ongoing evaluation, not just final exams
             </p>
           </div>
           <button className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium">
@@ -349,7 +349,7 @@ const ContinuousAssessment: React.FC = () => {
           {[
             { key: "overview", label: "Overview", icon: BarChart3 },
             { key: "configure", label: "Configure Assessment", icon: ClipboardCheck },
-            { key: "students", label: "Student Progress", icon: Users },
+            { key: "learners", label: "Learner Progress", icon: Users },
             { key: "analytics", label: "Analytics", icon: TrendingUp },
           ].map(({ key, label, icon: Icon }) => (
             <button
@@ -408,7 +408,7 @@ const ContinuousAssessment: React.FC = () => {
           {/* Performance Distribution Chart */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
             <h2 className="text-lg font-semibold text-gray-800 mb-4">
-              Student Performance Distribution
+              Learner Performance Distribution
             </h2>
             <ReactApexChart
               options={performanceDistributionChart.options}
@@ -418,7 +418,7 @@ const ContinuousAssessment: React.FC = () => {
             />
           </div>
 
-          {/* At-Risk Students Alert */}
+          {/* At-Risk Learners Alert */}
           <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-2xl border border-red-200 p-6 shadow-sm">
             <div className="flex items-start gap-4">
               <div className="p-3 bg-red-100 rounded-xl">
@@ -426,14 +426,14 @@ const ContinuousAssessment: React.FC = () => {
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-bold text-gray-900 mb-2">
-                  At-Risk Students Detected
+                  At-Risk Learners Detected
                 </h3>
                 <p className="text-gray-700 mb-4">
-                  18 students are currently scoring below 60% and may need additional support.
+                  18 learners are currently scoring below 60% and may need additional support.
                   Early intervention can help them improve.
                 </p>
                 <button className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium">
-                  View At-Risk Students
+                  View At-Risk Learners
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
@@ -546,7 +546,7 @@ const ContinuousAssessment: React.FC = () => {
         </div>
       )}
 
-      {activeTab === "students" && (
+      {activeTab === "learners" && (
         <div className="space-y-6">
           {/* Search and Filter Bar */}
           <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
@@ -567,7 +567,7 @@ const ContinuousAssessment: React.FC = () => {
                   onChange={(e) => setSelectedFilter(e.target.value)}
                   className="px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all bg-white"
                 >
-                  <option value="all">All Students</option>
+                  <option value="all">All Learners</option>
                   <option value="excellent">Excellent</option>
                   <option value="good">Good</option>
                   <option value="average">Average</option>
@@ -581,13 +581,13 @@ const ContinuousAssessment: React.FC = () => {
             </div>
           </div>
 
-          {/* Student Progress Table */}
+          {/* Learner Progress Table */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-                    <th className="text-left p-4 font-semibold text-gray-700 text-sm">Student</th>
+                    <th className="text-left p-4 font-semibold text-gray-700 text-sm">Learner</th>
                     <th className="text-left p-4 font-semibold text-gray-700 text-sm">Roll Number</th>
                     <th className="text-center p-4 font-semibold text-gray-700 text-sm">Overall</th>
                     <th className="text-center p-4 font-semibold text-gray-700 text-sm">Quizzes</th>
@@ -599,59 +599,59 @@ const ContinuousAssessment: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredStudents.map((student, index) => (
+                  {filteredlearners.map((learner, index) => (
                     <tr
-                      key={student.id}
+                      key={learner.id}
                       className="border-b border-gray-100 hover:bg-indigo-50/30 transition-colors"
                     >
                       <td className="p-4">
                         <div>
-                          <p className="font-semibold text-gray-900">{student.name}</p>
-                          <p className="text-sm text-gray-500">{student.email}</p>
+                          <p className="font-semibold text-gray-900">{learner.name}</p>
+                          <p className="text-sm text-gray-500">{learner.email}</p>
                         </div>
                       </td>
                       <td className="p-4">
-                        <span className="font-mono text-sm text-gray-700">{student.rollNumber}</span>
+                        <span className="font-mono text-sm text-gray-700">{learner.rollNumber}</span>
                       </td>
                       <td className="p-4">
                         <div className="flex flex-col items-center gap-2">
-                          <span className="font-bold text-lg text-gray-900">{student.overallScore}%</span>
+                          <span className="font-bold text-lg text-gray-900">{learner.overallScore}%</span>
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div
                               className={`h-2 rounded-full transition-all duration-500 ${
-                                student.overallScore >= 80
+                                learner.overallScore >= 80
                                   ? "bg-gradient-to-r from-green-500 to-green-600"
-                                  : student.overallScore >= 60
+                                  : learner.overallScore >= 60
                                   ? "bg-gradient-to-r from-blue-500 to-blue-600"
                                   : "bg-gradient-to-r from-red-500 to-red-600"
                               }`}
-                              style={{ width: `${student.overallScore}%` }}
+                              style={{ width: `${learner.overallScore}%` }}
                             />
                           </div>
                         </div>
                       </td>
                       <td className="p-4 text-center">
-                        <span className="font-semibold text-gray-900">{student.quizScore}%</span>
+                        <span className="font-semibold text-gray-900">{learner.quizScore}%</span>
                       </td>
                       <td className="p-4 text-center">
-                        <span className="font-semibold text-gray-900">{student.assignmentScore}%</span>
+                        <span className="font-semibold text-gray-900">{learner.assignmentScore}%</span>
                       </td>
                       <td className="p-4 text-center">
-                        <span className="font-semibold text-gray-900">{student.projectScore}%</span>
+                        <span className="font-semibold text-gray-900">{learner.projectScore}%</span>
                       </td>
                       <td className="p-4 text-center">
-                        <span className="font-semibold text-gray-900">{student.attendance}%</span>
+                        <span className="font-semibold text-gray-900">{learner.attendance}%</span>
                       </td>
                       <td className="p-4">
                         <div className="flex justify-center">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(student.status)}`}>
-                            {student.status.charAt(0).toUpperCase() + student.status.slice(1).replace("-", " ")}
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(learner.status)}`}>
+                            {learner.status.charAt(0).toUpperCase() + learner.status.slice(1).replace("-", " ")}
                           </span>
                         </div>
                       </td>
                       <td className="p-4">
                         <div className="flex justify-center">
-                          {getTrendIcon(student.trend)}
+                          {getTrendIcon(learner.trend)}
                         </div>
                       </td>
                     </tr>
@@ -661,10 +661,10 @@ const ContinuousAssessment: React.FC = () => {
             </div>
           </div>
 
-          {filteredStudents.length === 0 && (
+          {filteredlearners.length === 0 && (
             <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
               <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 text-lg">No students found matching your criteria</p>
+              <p className="text-gray-600 text-lg">No learners found matching your criteria</p>
             </div>
           )}
         </div>
@@ -693,7 +693,7 @@ const ContinuousAssessment: React.FC = () => {
                 </div>
                 <Clock className="h-8 w-8 opacity-90" />
               </div>
-              <p className="text-sm text-purple-100">Across all students</p>
+              <p className="text-sm text-purple-100">Across all learners</p>
             </div>
 
             <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-2xl p-6 text-white shadow-lg">
@@ -704,7 +704,7 @@ const ContinuousAssessment: React.FC = () => {
                 </div>
                 <CheckCircle className="h-8 w-8 opacity-90" />
               </div>
-              <p className="text-sm text-green-100">Students above 60%</p>
+              <p className="text-sm text-green-100">Learners above 60%</p>
             </div>
 
             <div className="bg-gradient-to-br from-orange-600 to-orange-700 rounded-2xl p-6 text-white shadow-lg">
@@ -754,7 +754,7 @@ const ContinuousAssessment: React.FC = () => {
                   <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-semibold text-gray-900 mb-1">Strong Lab Performance</p>
-                    <p className="text-sm text-gray-600">Students showing 85% average in practical work</p>
+                    <p className="text-sm text-gray-600">Learners showing 85% average in practical work</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-xl border border-yellow-200">

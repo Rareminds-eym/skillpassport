@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GraduationCap, Briefcase, Award, Code, Trophy, MapPin, Calendar, Github, ExternalLink, ChevronRight, BookOpen } from 'lucide-react';
 
-import type { Student, AnimationType, DisplayPreferences } from '@/features/types/student';
+import type { Learner, AnimationType, DisplayPreferences } from '@/features/types/learner';
 
 import { usePortfolio } from '@/features/digital-portfolio/model/portfolioStore';
 interface JourneyMapLayoutProps {
-  student?: Student;
+  learner?: Learner;
   primaryColor?: string;
   secondaryColor?: string;
   accentColor?: string;
@@ -15,8 +15,8 @@ interface JourneyMapLayoutProps {
 }
 
 const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
-  const { student: contextStudent } = usePortfolio();
-  const student = props.student || contextStudent;
+  const { learner: contextLearner } = usePortfolio();
+  const learner = props.learner || contextLearner;
   const displayPreferences = props.displayPreferences || {
     showSocialLinks: true,
     showSkillBars: true,
@@ -28,7 +28,7 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
   const [selectedMilestone, setSelectedMilestone] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<'education' | 'experience' | 'projects' | 'certifications' | 'achievements'>('education');
 
-  if (!student) {
+  if (!learner) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 data-layout-container">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
@@ -37,7 +37,7 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
   }
 
   // Create comprehensive milestone data
-  const educationMilestones = (student.profile.education || []).map((edu, index) => ({
+  const educationMilestones = (learner.profile.education || []).map((edu, index) => ({
     id: `edu-${index}`,
     type: 'education' as const,
     icon: GraduationCap,
@@ -52,7 +52,7 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
     year: new Date(edu.startDate).getFullYear()
   }));
 
-  const experienceMilestones = (student.profile.experience || []).map((exp, index) => ({
+  const experienceMilestones = (learner.profile.experience || []).map((exp, index) => ({
     id: `exp-${index}`,
     type: 'experience' as const,
     icon: Briefcase,
@@ -67,7 +67,7 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
     year: new Date(exp.startDate).getFullYear()
   }));
 
-  const projectMilestones = (student.profile.projects || []).map((proj, index) => ({
+  const projectMilestones = (learner.profile.projects || []).map((proj, index) => ({
     id: `proj-${index}`,
     type: 'project' as const,
     icon: Code,
@@ -82,7 +82,7 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
     year: proj.startDate ? new Date(proj.startDate).getFullYear() : new Date().getFullYear()
   }));
 
-  const certificationMilestones = (student.profile.certifications || []).map((cert, index) => ({
+  const certificationMilestones = (learner.profile.certifications || []).map((cert, index) => ({
     id: `cert-${index}`,
     type: 'certification' as const,
     icon: Award,
@@ -97,7 +97,7 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
     year: new Date(cert.date).getFullYear()
   }));
 
-  const achievementMilestones = (student.profile.achievements || []).map((achievement, index) => ({
+  const achievementMilestones = (learner.profile.achievements || []).map((achievement, index) => ({
     id: `ach-${index}`,
     type: 'achievement' as const,
     icon: Trophy,
@@ -141,8 +141,8 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
             >
               <div className="w-32 h-32 rounded-full overflow-hidden ring-4 ring-indigo-500 ring-offset-4 shadow-xl">
                 <img
-                  src={student.profile.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.name || 'Student')}&size=200&background=6366f1&color=fff&bold=true`}
-                  alt={student.name || 'Student'}
+                  src={learner.profile.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(learner.name || 'Learner')}&size=200&background=6366f1&color=fff&bold=true`}
+                  alt={learner.name || 'Learner'}
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -159,7 +159,7 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
                 transition={{ delay: 0.2 }}
                 className="text-4xl font-bold text-gray-900 mb-2"
               >
-                {student.name || student.profile.name || 'Student'}
+                {learner.name || learner.profile.name || 'Learner'}
               </motion.h1>
               
               <motion.p
@@ -168,7 +168,7 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
                 transition={{ delay: 0.3 }}
                 className="text-xl text-indigo-600 font-medium mb-4"
               >
-                {student.branch_field || 'Student'}
+                {learner.branch_field || 'Learner'}
               </motion.p>
 
               <motion.p
@@ -177,7 +177,7 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
                 transition={{ delay: 0.4 }}
                 className="text-gray-600 mb-6 max-w-2xl"
               >
-                {student.profile.bio || 'Passionate about learning and growth'}
+                {learner.profile.bio || 'Passionate about learning and growth'}
               </motion.p>
 
               {/* Contact Info */}
@@ -187,28 +187,28 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
                 transition={{ delay: 0.5 }}
                 className="flex flex-wrap gap-4 justify-center md:justify-start"
               >
-                {student.email && (
+                {learner.email && (
                   <span className="flex items-center gap-2 text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
-                    <span className="text-sm">{student.email}</span>
+                    <span className="text-sm">{learner.email}</span>
                   </span>
                 )}
-                {student.contact_number && (
+                {learner.contact_number && (
                   <span className="flex items-center gap-2 text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
-                    <span className="text-sm">{student.contact_number}</span>
+                    <span className="text-sm">{learner.contact_number}</span>
                   </span>
                 )}
-                {(student.school?.name || student.profile?.school?.name || 
-                  student.college_school_name || student.university || 
-                  student.universityCollege?.name || student.profile?.universityCollege?.name) && (
+                {(learner.school?.name || learner.profile?.school?.name || 
+                  learner.college_school_name || learner.university || 
+                  learner.universityCollege?.name || learner.profile?.universityCollege?.name) && (
                   <span className="flex items-center gap-2 text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
                     <GraduationCap className="w-4 h-4" />
                     <span className="text-sm">
-                      {student.school?.name || 
-                       student.profile?.school?.name || 
-                       student.college_school_name || 
-                       student.universityCollege?.name || 
-                       student.profile?.universityCollege?.name ||
-                       student.university}
+                      {learner.school?.name || 
+                       learner.profile?.school?.name || 
+                       learner.college_school_name || 
+                       learner.universityCollege?.name || 
+                       learner.profile?.universityCollege?.name ||
+                       learner.university}
                     </span>
                   </span>
                 )}

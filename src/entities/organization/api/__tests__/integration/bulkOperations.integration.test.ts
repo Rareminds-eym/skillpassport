@@ -20,7 +20,7 @@ describe('Bulk Operations Integration Tests', () => {
       organization_id: 'org-123',
       allocated_seats: 200,
       assigned_seats: 0,
-      member_type: 'student'
+      member_type: 'learner'
     };
     assignments = new Map();
     entitlements = new Map();

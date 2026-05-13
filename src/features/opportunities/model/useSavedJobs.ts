@@ -5,7 +5,7 @@ import { getLogger } from '@/shared/config/logging';
 const logger = getLogger('useSavedJobs');
 
 interface UseSavedJobsProps {
-  studentId: string | undefined;
+  learnerId: string | undefined;
 }
 
 interface UseSavedJobsReturn {
@@ -29,7 +29,7 @@ interface UseSavedJobsReturn {
   handleApply: (opportunity: any) => Promise<void>;
 }
 
-export const useSavedJobs = ({ studentId }: UseSavedJobsProps): UseSavedJobsReturn => {
+export const useSavedJobs = ({ learnerId }: UseSavedJobsProps): UseSavedJobsReturn => {
   const [savedJobs, setSavedJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +44,7 @@ export const useSavedJobs = ({ studentId }: UseSavedJobsProps): UseSavedJobsRetu
   // Load saved jobs
   useEffect(() => {
     const loadSavedJobs = async () => {
-      if (!studentId) {
+      if (!learnerId) {
         setLoading(false);
         return;
       }
@@ -52,7 +52,7 @@ export const useSavedJobs = ({ studentId }: UseSavedJobsProps): UseSavedJobsRetu
       try {
         setLoading(true);
         
-        const jobs = await SavedJobsService.getSavedJobsWithAppliedStatus(studentId);
+        const jobs = await SavedJobsService.getSavedJobsWithAppliedStatus(learnerId);
         
         setSavedJobs(jobs);
         
@@ -72,7 +72,7 @@ export const useSavedJobs = ({ studentId }: UseSavedJobsProps): UseSavedJobsRetu
     };
 
     loadSavedJobs();
-  }, [studentId]);
+  }, [learnerId]);
 
   // Filter and sort saved jobs
   const filteredAndSortedJobs = useMemo(() => {
@@ -109,7 +109,7 @@ export const useSavedJobs = ({ studentId }: UseSavedJobsProps): UseSavedJobsRetu
 
   // Handle unsave
   const handleUnsave = async (opportunity: any) => {
-    if (!studentId) {
+    if (!learnerId) {
       alert('Please log in to unsave jobs');
       return;
     }
@@ -121,7 +121,7 @@ export const useSavedJobs = ({ studentId }: UseSavedJobsProps): UseSavedJobsRetu
     if (!confirmUnsave) return;
 
     try {
-      const result = await SavedJobsService.unsaveJob(studentId, opportunity.id);
+      const result = await SavedJobsService.unsaveJob(learnerId, opportunity.id);
       
       if (result.success) {
         // Remove from local state
@@ -138,7 +138,7 @@ export const useSavedJobs = ({ studentId }: UseSavedJobsProps): UseSavedJobsRetu
 
   // Handle apply
   const handleApply = async (opportunity: any) => {
-    if (!studentId) {
+    if (!learnerId) {
       alert('Please log in to apply for jobs');
       return;
     }
@@ -159,7 +159,7 @@ export const useSavedJobs = ({ studentId }: UseSavedJobsProps): UseSavedJobsRetu
         
         // Still record the application
         try {
-          await AppliedJobsService.applyToJob(studentId, opportunity.id);
+          await AppliedJobsService.applyToJob(learnerId, opportunity.id);
           setAppliedJobs(prev => new Set([...prev, opportunity.id]));
         } catch (error) {
           logger.error('Error recording external application', error as Error);
@@ -171,7 +171,7 @@ export const useSavedJobs = ({ studentId }: UseSavedJobsProps): UseSavedJobsRetu
     // Internal application
     setIsApplying(true);
     try {
-      const result = await AppliedJobsService.applyToJob(studentId, opportunity.id);
+      const result = await AppliedJobsService.applyToJob(learnerId, opportunity.id);
       
       if (result.success) {
         setAppliedJobs(prev => new Set([...prev, opportunity.id]));

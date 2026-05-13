@@ -261,7 +261,7 @@ function Modal({ open, onClose, title, children }) {
 }
 
 export default function ClubsActivitiesPage() {
-    const currentStudent = useMemo(() => ({ id: "s_new", name: "You" }), []);
+    const currentLearner = useMemo(() => ({ id: "s_new", name: "You" }), []);
 
     const [clubs, setClubs] = useState([]);
     const [competitions, setCompetitions] = useState([]);
@@ -366,10 +366,10 @@ export default function ClubsActivitiesPage() {
         meeting_time: null,
         location: ""
     });
-    const [studentDrawer, setStudentDrawer] = useState({ open: false, club: null });
-    const [allStudents, setAllStudents] = useState([]);
-    const [loadingStudents, setLoadingStudents] = useState(true);
-    const [studentSearchQuery, setStudentSearchQuery] = useState("");
+    const [learnerDrawer, setlearnerDrawer] = useState({ open: false, club: null });
+    const [alllearners, setAlllearners] = useState([]);
+    const [loadinglearners, setLoadinglearners] = useState(true);
+    const [learnerSearchQuery, setlearnerSearchQuery] = useState("");
     const [attendanceModal, setAttendanceModal] = useState({ open: false, club: null });
     const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
     const [attendanceTopic, setAttendanceTopic] = useState("");
@@ -377,20 +377,20 @@ export default function ClubsActivitiesPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [currentCompetitionPage, setCurrentCompetitionPage] = useState(1);
 
-    // Fetch real students from Supabase (only from the same school)
+    // Fetch real learners from Supabase (only from the same school)
     useEffect(() => {
-        const fetchStudents = async () => {
+        const fetchlearners = async () => {
             try {
-                setLoadingStudents(true);
+                setLoadinglearners(true);
                 
                 // Get logged-in user's email
                 const userEmail = localStorage.getItem('userEmail');
-                logger.info('Fetching students for user', { userEmail });
+                logger.info('Fetching learners for user', { userEmail });
                 
                 if (!userEmail) {
                     logger.warn('No user email found in localStorage');
-                    setAllStudents([]);
-                    setLoadingStudents(false);
+                    setAlllearners([]);
+                    setLoadinglearners(false);
                     return;
                 }
                 
@@ -446,58 +446,58 @@ export default function ClubsActivitiesPage() {
 
                 if (!schoolId) {
                     logger.warn('No school_id found for user', { userEmail });
-                    setAllStudents([]);
-                    setLoadingStudents(false);
+                    setAlllearners([]);
+                    setLoadinglearners(false);
                     return;
                 }
 
-                logger.info('Fetching students for school_id', { schoolId });
+                logger.info('Fetching learners for school_id', { schoolId });
 
-                // Fetch students from this school only
+                // Fetch learners from this school only
                 const { data, error } = await supabase
-                    .from('students')
+                    .from('learners')
                     .select('id, email, name, grade, section, roll_number, school_id')
                     .eq('school_id', schoolId)
                     .eq('is_deleted', false)
                     .order('name');
 
                 if (error) {
-                    logger.error('Error fetching students', error);
-                    setAllStudents([]);
-                    setLoadingStudents(false);
+                    logger.error('Error fetching learners', error);
+                    setAlllearners([]);
+                    setLoadinglearners(false);
                     return;
                 }
 
                 if (!data || data.length === 0) {
-                    logger.info('No students found for school_id', { schoolId });
-                    setAllStudents([]);
-                    setLoadingStudents(false);
+                    logger.info('No learners found for school_id', { schoolId });
+                    setAlllearners([]);
+                    setLoadinglearners(false);
                     return;
                 }
 
-                // Map students to the format we need (using email as ID)
-                const mappedStudents = data.map(student => ({
-                    id: student.email,
-                    email: student.email,
-                    name: student.name || student.email,
-                    grade: student.grade || 'N/A',
-                    section: student.section,
-                    rollNumber: student.roll_number,
-                    school_id: student.school_id
+                // Map learners to the format we need (using email as ID)
+                const mappedlearners = data.map(learner => ({
+                    id: learner.email,
+                    email: learner.email,
+                    name: learner.name || learner.email,
+                    grade: learner.grade || 'N/A',
+                    section: learner.section,
+                    rollNumber: learner.roll_number,
+                    school_id: learner.school_id
                 }));
                 
-                logger.info('Loaded students from school', { count: mappedStudents.length, schoolId });
-                setAllStudents(mappedStudents);
+                logger.info('Loaded learners from school', { count: mappedlearners.length, schoolId });
+                setAlllearners(mappedlearners);
                 
             } catch (err) {
-                logger.error('Error loading students', err);
-                setAllStudents([]);
+                logger.error('Error loading learners', err);
+                setAlllearners([]);
             } finally {
-                setLoadingStudents(false);
+                setLoadinglearners(false);
             }
         };
 
-        fetchStudents();
+        fetchlearners();
     }, []);
     const [newCompForm, setNewCompForm] = useState({
         name: "",
@@ -520,7 +520,7 @@ export default function ClubsActivitiesPage() {
         location: ""
     });
     const [registrationForm, setRegistrationForm] = useState({
-        studentEmail: "",
+        learnerEmail: "",
         teamMembers: "",
         notes: "",
         status: "upcoming"
@@ -544,17 +544,17 @@ export default function ClubsActivitiesPage() {
     const [bulkUploadProgress, setBulkUploadProgress] = useState(null);
 
     const joinedClubIds = useMemo(() => {
-        return new Set(clubs.filter((c) => c.members.includes(currentStudent.id)).map((c) => c.club_id));
-    }, [clubs, currentStudent]);
+        return new Set(clubs.filter((c) => c.members.includes(currentLearner.id)).map((c) => c.club_id));
+    }, [clubs, currentLearner]);
 
     const filteredClubs = useMemo(() => {
         return clubs.filter((c) => {
             if (categoryFilter !== "all" && c.category !== categoryFilter) return false;
-            if (showMine && !c.members.includes(currentStudent.id)) return false;
+            if (showMine && !c.members.includes(currentLearner.id)) return false;
             if (q && !c.name.toLowerCase().includes(q.toLowerCase())) return false;
             return true;
         });
-    }, [clubs, q, categoryFilter, showMine, currentStudent]);
+    }, [clubs, q, categoryFilter, showMine, currentLearner]);
 
     const filteredCompetitions = useMemo(() => {
         return competitions.filter((comp) => {
@@ -587,20 +587,20 @@ export default function ClubsActivitiesPage() {
         setCurrentCompetitionPage(1);
     }, [competitions, competitionSearchQuery]);
 
-    const enrollStudent = (club) => {
-        setStudentDrawer({ open: true, club: club });
+    const enrollLearner = (club) => {
+        setlearnerDrawer({ open: true, club: club });
     };
 
     const leaveClub = async (club) => {
-        if (!club.members.includes(currentStudent.id)) {
+        if (!club.members.includes(currentLearner.id)) {
             setNotice({ type: "warning", text: "You are not a member of this club." });
             return;
         }
 
         try {
-            await clubsService.removeStudent(club.club_id, currentStudent.id);
+            await clubsService.removeLearner(club.club_id, currentLearner.id);
             
-            const updated = clubs.map((c) => (c.club_id === club.club_id ? { ...c, members: c.members.filter((m) => m !== currentStudent.id) } : c));
+            const updated = clubs.map((c) => (c.club_id === club.club_id ? { ...c, members: c.members.filter((m) => m !== currentLearner.id) } : c));
             setClubs(updated);
             setNotice({ type: "info", text: `Left ${club.name}` });
         } catch (error) {
@@ -626,10 +626,10 @@ export default function ClubsActivitiesPage() {
         setAttendanceRecords(records);
     };
 
-    const handleAttendanceStatusChange = (studentId, status) => {
+    const handleAttendanceStatusChange = (learnerId, status) => {
         setAttendanceRecords(prev => ({
             ...prev,
-            [studentId]: status
+            [learnerId]: status
         }));
     };
 
@@ -640,8 +640,8 @@ export default function ClubsActivitiesPage() {
         }
 
         try {
-            const attendanceRecordsArray = Object.entries(attendanceRecords).map(([studentEmail, status]) => ({
-                student_email: studentEmail,
+            const attendanceRecordsArray = Object.entries(attendanceRecords).map(([learnerEmail, status]) => ({
+                learner_email: learnerEmail,
                 status: status
             }));
 
@@ -667,9 +667,9 @@ export default function ClubsActivitiesPage() {
             setNotice({ type: "error", text: "Failed to save attendance. Please try again." });
         }
     };
-   const handleStudentEnroll = async (studentId, club) => {
-    if (club.members.includes(studentId)) {
-        setNotice({ type: "warning", text: "Student is already enrolled in this club." });
+   const handlelearnerEnroll = async (learnerId, club) => {
+    if (club.members.includes(learnerId)) {
+        setNotice({ type: "warning", text: "Learner is already enrolled in this club." });
         return;
     }
 
@@ -679,42 +679,42 @@ export default function ClubsActivitiesPage() {
     }
 
     try {
-        await clubsService.enrollStudent(club.club_id, studentId);
+        await clubsService.enrollLearner(club.club_id, learnerId);
         
         const updated = clubs.map((c) => 
             c.club_id === club.club_id 
-                ? { ...c, members: [...c.members, studentId] } 
+                ? { ...c, members: [...c.members, learnerId] } 
                 : c
         );
         setClubs(updated);
-        setStudentDrawer({ open: true, club: updated.find(c => c.club_id === club.club_id) });
-        setNotice({ type: "success", text: `Student enrolled in ${club.name}` });
+        setlearnerDrawer({ open: true, club: updated.find(c => c.club_id === club.club_id) });
+        setNotice({ type: "success", text: `Learner enrolled in ${club.name}` });
     } catch (error) {
-        logger.error('Error enrolling student', error);
-        setNotice({ type: "error", text: "Failed to enroll student. Please try again." });
+        logger.error('Error enrolling learner', error);
+        setNotice({ type: "error", text: "Failed to enroll learner. Please try again." });
     }
 };
 
-const handleStudentLeave = async (studentId, club) => {
-    if (!club.members.includes(studentId)) {
-        setNotice({ type: "warning", text: "Student is not a member of this club." });
+const handlelearnerLeave = async (learnerId, club) => {
+    if (!club.members.includes(learnerId)) {
+        setNotice({ type: "warning", text: "Learner is not a member of this club." });
         return;
     }
 
     try {
-        await clubsService.removeStudent(club.club_id, studentId);
+        await clubsService.removeLearner(club.club_id, learnerId);
         
         const updated = clubs.map((c) => 
             c.club_id === club.club_id 
-                ? { ...c, members: c.members.filter((m) => m !== studentId) } 
+                ? { ...c, members: c.members.filter((m) => m !== learnerId) } 
                 : c
         );
         setClubs(updated);
-        setStudentDrawer({ open: true, club: updated.find(c => c.club_id === club.club_id) });
-        setNotice({ type: "info", text: `Student removed from ${club.name}` });
+        setlearnerDrawer({ open: true, club: updated.find(c => c.club_id === club.club_id) });
+        setNotice({ type: "info", text: `Learner removed from ${club.name}` });
     } catch (error) {
-        logger.error('Error removing student', error);
-        setNotice({ type: "error", text: "Failed to remove student. Please try again." });
+        logger.error('Error removing learner', error);
+        setNotice({ type: "error", text: "Failed to remove learner. Please try again." });
     }
 };
 
@@ -730,7 +730,7 @@ const handleStudentLeave = async (studentId, club) => {
                 // Fallback to localStorage data
                 return clubs.map((c) => ({
                     "Club Name": c.name,
-                    "Student Count": c.members.length,
+                    "Learner Count": c.members.length,
                     "Average attendance": c.avgAttendance ? c.avgAttendance + '%' : '--',
                     "Top performers": '--',
                     "Participation score": Math.round((c.members.length / c.capacity) * 100) + '%',
@@ -739,7 +739,7 @@ const handleStudentLeave = async (studentId, club) => {
             
             return data.map(row => ({
                 "Club Name": row.club_name,
-                "Student Count": row.student_count,
+                "Learner Count": row.learner_count,
                 "Average attendance": row.avg_attendance ? row.avg_attendance + '%' : '--',
                 "Top performers": row.top_performers || 'N/A',
                 "Participation score": row.participation_score ? row.participation_score + '%' : '--'
@@ -749,7 +749,7 @@ const handleStudentLeave = async (studentId, club) => {
             // Fallback to localStorage data
             return clubs.map((c) => ({
                 "Club Name": c.name,
-                "Student Count": c.members.length,
+                "Learner Count": c.members.length,
                 "Average attendance": c.avgAttendance ? c.avgAttendance + '%' : '--',
                 "Top performers": '--',
                 "Participation score": Math.round((c.members.length / c.capacity) * 100) + '%',
@@ -770,7 +770,7 @@ const handleStudentLeave = async (studentId, club) => {
                 return competitions.map((t) => ({
                     "Competition Name": t.name,
                     "Level": t.level,
-                    "Student Results": t.results?.length ? JSON.stringify(t.results) : '--',
+                    "Learner Results": t.results?.length ? JSON.stringify(t.results) : '--',
                     "Awards": '--',
                 }));
             }
@@ -780,7 +780,7 @@ const handleStudentLeave = async (studentId, club) => {
                 "Level": row.level,
                 "Date": row.competition_date,
                 "Total Participants": row.total_participants || 0,
-                "Student Results": row.student_results || '--',
+                "Learner Results": row.learner_results || '--',
                 "Awards": row.awards_won || '--',
                 "Average Score": row.avg_score || '--'
             }));
@@ -790,7 +790,7 @@ const handleStudentLeave = async (studentId, club) => {
             return competitions.map((t) => ({
                 "Competition Name": t.name,
                 "Level": t.level,
-                "Student Results": t.results?.length ? JSON.stringify(t.results) : '--',
+                "Learner Results": t.results?.length ? JSON.stringify(t.results) : '--',
                 "Awards": '--',
             }));
         }
@@ -1032,15 +1032,15 @@ const handleStudentLeave = async (studentId, club) => {
     };
 
     const handleRegisterCompetition = async () => {
-        if (!registrationForm.studentEmail) {
-            setNotice({ type: "error", text: "Please select a student" });
+        if (!registrationForm.learnerEmail) {
+            setNotice({ type: "error", text: "Please select a learner" });
             return;
         }
 
-        // Get student details from allStudents
-        const student = allStudents.find(s => s.email === registrationForm.studentEmail);
-        if (!student) {
-            setNotice({ type: "error", text: "Student not found" });
+        // Get learner details from alllearners
+        const learner = alllearners.find(s => s.email === registrationForm.learnerEmail);
+        if (!learner) {
+            setNotice({ type: "error", text: "Learner not found" });
             return;
         }
 
@@ -1062,18 +1062,18 @@ const handleStudentLeave = async (studentId, club) => {
                 // Create new registration
                 await competitionsService.registerForCompetition(
                     registerCompModal?.comp_id,
-                    registrationForm.studentEmail,
+                    registrationForm.learnerEmail,
                     {
-                        studentName: student.name,
-                        studentId: student.email,
-                        grade: student.grade,
+                        learnerName: learner.name,
+                        learnerId: learner.email,
+                        grade: learner.grade,
                         teamMembers: registrationForm.teamMembers,
                         notes: registrationForm.notes
                     }
                 );
                 setNotice({
                     type: "success",
-                    text: `${student.name} registered for ${registerCompModal?.name}!`
+                    text: `${learner.name} registered for ${registerCompModal?.name}!`
                 });
             }
 
@@ -1101,7 +1101,7 @@ const handleStudentLeave = async (studentId, club) => {
             await loadCompetitionRegistrations(registerCompModal.comp_id);
             
             // Reset form
-            setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
+            setRegistrationForm({ learnerEmail: "", teamMembers: "", notes: "", status: "upcoming" });
             setEditingRegistration(null);
         } catch (error) {
             logger.error('Error registering for competition', error);
@@ -1112,7 +1112,7 @@ const handleStudentLeave = async (studentId, club) => {
     const handleEditRegistration = (registration) => {
         setEditingRegistration(registration);
         setRegistrationForm({
-            studentEmail: registration.student_email,
+            learnerEmail: registration.learner_email,
             teamMembers: registration.team_members?.members?.join(', ') || '',
             notes: registration.notes || '',
             status: registration.status || 'upcoming'
@@ -1136,7 +1136,7 @@ const handleStudentLeave = async (studentId, club) => {
 
     const handleCancelEdit = () => {
         setEditingRegistration(null);
-        setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
+        setRegistrationForm({ learnerEmail: "", teamMembers: "", notes: "", status: "upcoming" });
     };
 
     // Bulk upload functionality
@@ -1177,30 +1177,30 @@ const handleStudentLeave = async (studentId, club) => {
                 
                 try {
                     // Validate required fields
-                    if (!row.student_email) {
-                        errors.push(`Row ${i + 2}: Student email is required`);
+                    if (!row.learner_email) {
+                        errors.push(`Row ${i + 2}: Learner email is required`);
                         errorCount++;
                         continue;
                     }
 
-                    // Find student in our system
-                    const student = allStudents.find(s => 
-                        s.email.toLowerCase() === row.student_email.toLowerCase()
+                    // Find learner in our system
+                    const learner = alllearners.find(s => 
+                        s.email.toLowerCase() === row.learner_email.toLowerCase()
                     );
 
-                    if (!student) {
-                        errors.push(`Row ${i + 2}: Student ${row.student_email} not found in system`);
+                    if (!learner) {
+                        errors.push(`Row ${i + 2}: Learner ${row.learner_email} not found in system`);
                         errorCount++;
                         continue;
                     }
 
                     // Check if already registered
                     const existingRegistration = competitionRegistrations.find(reg => 
-                        reg.student_email.toLowerCase() === row.student_email.toLowerCase()
+                        reg.learner_email.toLowerCase() === row.learner_email.toLowerCase()
                     );
 
                     if (existingRegistration) {
-                        errors.push(`Row ${i + 2}: Student ${row.student_email} is already registered`);
+                        errors.push(`Row ${i + 2}: Learner ${row.learner_email} is already registered`);
                         errorCount++;
                         continue;
                     }
@@ -1211,14 +1211,14 @@ const handleStudentLeave = async (studentId, club) => {
                         teamMembers = row.team_members.split(',').map(name => name.trim()).filter(name => name);
                     }
 
-                    // Register the student
+                    // Register the learner
                     await competitionsService.registerForCompetition(
                         registerCompModal.comp_id,
-                        row.student_email,
+                        row.learner_email,
                         {
-                            studentName: student.name,
-                            studentId: student.email,
-                            grade: student.grade,
+                            learnerName: learner.name,
+                            learnerId: learner.email,
+                            grade: learner.grade,
                             teamMembers: teamMembers.join(', '),
                             notes: row.notes || ''
                         }
@@ -1238,7 +1238,7 @@ const handleStudentLeave = async (studentId, club) => {
             if (successCount > 0) {
                 setNotice({ 
                     type: "success", 
-                    text: `Bulk upload completed! ${successCount} students registered successfully${errorCount > 0 ? `, ${errorCount} errors` : ''}` 
+                    text: `Bulk upload completed! ${successCount} learners registered successfully${errorCount > 0 ? `, ${errorCount} errors` : ''}` 
                 });
                 
                 // Reload registrations
@@ -1272,12 +1272,12 @@ const handleStudentLeave = async (studentId, club) => {
     const downloadBulkTemplate = () => {
         const templateData = [
             {
-                student_email: "student1@example.com",
+                learner_email: "learner1@example.com",
                 team_members: "John Doe, Jane Smith",
                 notes: "Special requirements or notes"
             },
             {
-                student_email: "student2@example.com", 
+                learner_email: "learner2@example.com", 
                 team_members: "",
                 notes: "Individual participation"
             }
@@ -1289,14 +1289,14 @@ const handleStudentLeave = async (studentId, club) => {
         
         // Add column headers with descriptions
         const headerDescriptions = [
-            "Student Email (Required) - Must match student email in system",
+            "Learner Email (Required) - Must match learner email in system",
             "Team Members (Optional) - Comma-separated names for team events", 
             "Notes (Optional) - Any special requirements or notes"
         ];
         
         // Auto-size columns
         worksheet['!cols'] = [
-            { wch: 30 }, // student_email
+            { wch: 30 }, // learner_email
             { wch: 40 }, // team_members  
             { wch: 50 }  // notes
         ];
@@ -1740,7 +1740,7 @@ const handleStudentLeave = async (studentId, club) => {
                                                 key={club.club_id}
                                                 club={club}
                                                 isJoined={joinedClubIds.has(club.club_id)}
-                                                onJoin={enrollStudent}
+                                                onJoin={enrollLearner}
                                                 onLeave={leaveClub}
                                                 onOpenDetails={openDetails}
                                                 onEdit={handleEditClub}
@@ -1988,7 +1988,7 @@ const handleStudentLeave = async (studentId, club) => {
                             <div className="flex items-center gap-3 flex-wrap">
                                 <button 
                                     onClick={() => { 
-                                        enrollStudent(selectedClub); 
+                                        enrollLearner(selectedClub); 
                                         setDetailsOpen(false); 
                                     }} 
                                     className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
@@ -2240,7 +2240,7 @@ const handleStudentLeave = async (studentId, club) => {
                     onClose={() => {
                         setRegisterCompModal(null);
                         setEditingRegistration(null);
-                        setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
+                        setRegistrationForm({ learnerEmail: "", teamMembers: "", notes: "", status: "upcoming" });
                         setRegistrationTab("individual");
                         setBulkUploadFile(null);
                         setBulkUploadProgress(null);
@@ -2304,15 +2304,15 @@ const handleStudentLeave = async (studentId, club) => {
                                 {/* Existing Registrations */}
                                 {!editingRegistration && competitionRegistrations.length > 0 && (
                                     <div className="border rounded-lg p-3 bg-gray-50">
-                                        <h4 className="text-sm font-semibold mb-2">Registered Students ({competitionRegistrations.length})</h4>
+                                        <h4 className="text-sm font-semibold mb-2">Registered Learners ({competitionRegistrations.length})</h4>
                                         <div className="space-y-2 max-h-48 overflow-y-auto">
                                             {competitionRegistrations.map((reg) => {
-                                                const student = allStudents.find(s => s.email === reg.student_email);
+                                                const learner = alllearners.find(s => s.email === reg.learner_email);
                                                 return (
                                                     <div key={reg.registration_id} className="flex items-center justify-between p-2 bg-white rounded border">
                                                         <div className="flex-1">
-                                                            <div className="font-medium text-sm">{student?.name || reg.student_email}</div>
-                                                            <div className="text-xs text-slate-500">{student?.grade || 'N/A'} • {reg.student_email}</div>
+                                                            <div className="font-medium text-sm">{learner?.name || reg.learner_email}</div>
+                                                            <div className="text-xs text-slate-500">{learner?.grade || 'N/A'} • {reg.learner_email}</div>
                                                             {reg.team_members?.members && (
                                                                 <div className="text-xs text-blue-600 mt-1">Team: {reg.team_members.members.join(', ')}</div>
                                                             )}
@@ -2344,31 +2344,31 @@ const handleStudentLeave = async (studentId, club) => {
                                     
                                     <div className="space-y-3">
                                         <div>
-                                            <label className="block text-sm font-medium mb-1">Student Email *</label>
+                                            <label className="block text-sm font-medium mb-1">Learner Email *</label>
                                             <select
-                                                value={registrationForm.studentEmail}
-                                                onChange={(e) => setRegistrationForm({ ...registrationForm, studentEmail: e.target.value })}
+                                                value={registrationForm.learnerEmail}
+                                                onChange={(e) => setRegistrationForm({ ...registrationForm, learnerEmail: e.target.value })}
                                                 disabled={!!editingRegistration}
                                                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                                             >
-                                                <option value="">Select a student</option>
-                                                {allStudents.map((student) => (
-                                                    <option key={student.email} value={student.email}>
-                                                        {student.name} - {student.grade} ({student.email})
+                                                <option value="">Select a learner</option>
+                                                {alllearners.map((learner) => (
+                                                    <option key={learner.email} value={learner.email}>
+                                                        {learner.name} - {learner.grade} ({learner.email})
                                                     </option>
                                                 ))}
                                             </select>
                                         </div>
 
-                                        {registrationForm.studentEmail && (() => {
-                                            const selectedStudent = allStudents.find(s => s.email === registrationForm.studentEmail);
-                                            return selectedStudent ? (
+                                        {registrationForm.learnerEmail && (() => {
+                                            const selectedLearner = alllearners.find(s => s.email === registrationForm.learnerEmail);
+                                            return selectedLearner ? (
                                                 <div className="bg-green-50 p-3 rounded-lg text-sm">
-                                                    <div className="font-medium text-green-900">Selected Student:</div>
+                                                    <div className="font-medium text-green-900">Selected Learner:</div>
                                                     <div className="text-green-700 mt-1">
-                                                        <div>Name: {selectedStudent.name}</div>
-                                                        <div>Grade/Class: {selectedStudent.grade}</div>
-                                                        <div>Email: {selectedStudent.email}</div>
+                                                        <div>Name: {selectedLearner.name}</div>
+                                                        <div>Grade/Class: {selectedLearner.grade}</div>
+                                                        <div>Email: {selectedLearner.email}</div>
                                                     </div>
                                                 </div>
                                             ) : null;
@@ -2433,7 +2433,7 @@ const handleStudentLeave = async (studentId, club) => {
                                         onClick={() => {
                                             setRegisterCompModal(null);
                                             setEditingRegistration(null);
-                                            setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
+                                            setRegistrationForm({ learnerEmail: "", teamMembers: "", notes: "", status: "upcoming" });
                                         }}
                                         className="px-4 py-2 border rounded-md hover:bg-gray-50"
                                     >
@@ -2451,7 +2451,7 @@ const handleStudentLeave = async (studentId, club) => {
                                     <div className="bg-blue-50 p-3 rounded-lg">
                                         <div className="flex items-center justify-between">
                                             <div className="text-sm font-medium text-blue-900">
-                                                Current Registrations: {competitionRegistrations.length} students
+                                                Current Registrations: {competitionRegistrations.length} learners
                                             </div>
                                             <button
                                                 onClick={() => setRegistrationTab("individual")}
@@ -2470,11 +2470,11 @@ const handleStudentLeave = async (studentId, club) => {
                                         <div>
                                             <h4 className="text-sm font-semibold text-amber-900 mb-2">Bulk Upload Instructions</h4>
                                             <ul className="text-xs text-amber-800 space-y-1">
-                                                <li>• Download the template file and fill in student details</li>
-                                                <li>• Student emails must match exactly with students in your system</li>
+                                                <li>• Download the template file and fill in learner details</li>
+                                                <li>• Learner emails must match exactly with learners in your system</li>
                                                 <li>• Team members should be comma-separated (optional)</li>
                                                 <li>• Save as Excel (.xlsx) or CSV format</li>
-                                                <li>• Maximum 100 students per upload</li>
+                                                <li>• Maximum 100 learners per upload</li>
                                             </ul>
                                         </div>
                                     </div>
@@ -2541,7 +2541,7 @@ const handleStudentLeave = async (studentId, club) => {
                                         disabled={!bulkUploadFile || !!bulkUploadProgress}
                                         className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                                     >
-                                        {bulkUploadProgress ? 'Processing...' : 'Upload & Register Students'}
+                                        {bulkUploadProgress ? 'Processing...' : 'Upload & Register Learners'}
                                     </button>
                                     <button
                                         onClick={() => {
@@ -2751,7 +2751,7 @@ const handleStudentLeave = async (studentId, club) => {
                                     }}
                                     className="flex-1 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
                                 >
-                                    Register Students
+                                    Register Learners
                                 </button>
                                 <button
                                     onClick={() => setViewComp(null)}
@@ -2945,7 +2945,7 @@ const handleStudentLeave = async (studentId, club) => {
                                 </div>
                             </div>
 
-                            {/* Student List */}
+                            {/* Learner List */}
                             <div>
                                 <div className="flex items-center justify-between mb-2">
                                     <h4 className="text-sm font-semibold text-gray-900">Mark Attendance</h4>
@@ -2976,9 +2976,9 @@ const handleStudentLeave = async (studentId, club) => {
                                 <div className="max-h-80 overflow-y-auto space-y-2 border rounded-lg p-3 bg-gray-50">
                                     {attendanceModal.club.members.length > 0 ? (
                                         attendanceModal.club.members.map((memberId) => {
-                                            const student = allStudents.find(s => s.id === memberId);
-                                            const studentName = student?.name || memberId;
-                                            const studentGrade = student?.grade || 'N/A';
+                                            const learner = alllearners.find(s => s.id === memberId);
+                                            const learnerName = learner?.name || memberId;
+                                            const learnerGrade = learner?.grade || 'N/A';
                                             
                                             return (
                                                 <div
@@ -2986,8 +2986,8 @@ const handleStudentLeave = async (studentId, club) => {
                                                     className="flex items-center justify-between p-3 bg-white rounded-lg border hover:shadow-sm"
                                                 >
                                                     <div className="flex-1">
-                                                        <div className="font-medium text-sm">{studentName}</div>
-                                                        <div className="text-xs text-slate-500">{studentGrade}</div>
+                                                        <div className="font-medium text-sm">{learnerName}</div>
+                                                        <div className="text-xs text-slate-500">{learnerGrade}</div>
                                                     </div>
 
                                                     <div className="flex gap-1">
@@ -3066,17 +3066,17 @@ const handleStudentLeave = async (studentId, club) => {
                 </Modal>
 
                 <Modal
-    open={studentDrawer.open}
+    open={learnerDrawer.open}
     onClose={() => {
-        setStudentDrawer({ open: false, club: null });
-        setStudentSearchQuery("");
+        setlearnerDrawer({ open: false, club: null });
+        setlearnerSearchQuery("");
     }}
-    title={`Manage Students - ${studentDrawer.club?.name ?? ""}`}
+    title={`Manage Learners - ${learnerDrawer.club?.name ?? ""}`}
 >
-    {studentDrawer.club && (
+    {learnerDrawer.club && (
         <div className="space-y-3">
             <div className="text-sm text-slate-600 mb-4">
-                Current Members: {studentDrawer.club.members.length} / {studentDrawer.club.capacity}
+                Current Members: {learnerDrawer.club.members.length} / {learnerDrawer.club.capacity}
             </div>
 
             {/* Search Bar */}
@@ -3084,14 +3084,14 @@ const handleStudentLeave = async (studentId, club) => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
                 <input
                     type="text"
-                    value={studentSearchQuery}
-                    onChange={(e) => setStudentSearchQuery(e.target.value)}
+                    value={learnerSearchQuery}
+                    onChange={(e) => setlearnerSearchQuery(e.target.value)}
                     placeholder="Search by name, email, or grade..."
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-                {studentSearchQuery && (
+                {learnerSearchQuery && (
                     <button
-                        onClick={() => setStudentSearchQuery("")}
+                        onClick={() => setlearnerSearchQuery("")}
                         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     >
                         <X size={18} />
@@ -3099,40 +3099,40 @@ const handleStudentLeave = async (studentId, club) => {
                 )}
             </div>
 
-            {loadingStudents ? (
+            {loadinglearners ? (
                 <div className="text-center py-8 text-slate-500">
-                    Loading students...
+                    Loading learners...
                 </div>
-            ) : allStudents.length === 0 ? (
+            ) : alllearners.length === 0 ? (
                 <div className="text-center py-8 text-slate-500">
-                    No students found. Students will appear here once they register.
+                    No learners found. Learners will appear here once they register.
                 </div>
             ) : (() => {
-                const filteredStudents = allStudents.filter((student) => {
-                    if (!studentSearchQuery) return true;
-                    const query = studentSearchQuery.toLowerCase();
+                const filteredlearners = alllearners.filter((learner) => {
+                    if (!learnerSearchQuery) return true;
+                    const query = learnerSearchQuery.toLowerCase();
                     return (
-                        student.name.toLowerCase().includes(query) ||
-                        student.email.toLowerCase().includes(query) ||
-                        student.grade.toLowerCase().includes(query)
+                        learner.name.toLowerCase().includes(query) ||
+                        learner.email.toLowerCase().includes(query) ||
+                        learner.grade.toLowerCase().includes(query)
                     );
                 });
 
-                if (filteredStudents.length === 0) {
+                if (filteredlearners.length === 0) {
                     return (
                         <div className="text-center py-8 text-slate-500">
-                            {studentSearchQuery ? (
+                            {learnerSearchQuery ? (
                                 <>
-                                    No students found matching "{studentSearchQuery}"
+                                    No learners found matching "{learnerSearchQuery}"
                                     <button
-                                        onClick={() => setStudentSearchQuery("")}
+                                        onClick={() => setlearnerSearchQuery("")}
                                         className="block mx-auto mt-2 text-blue-600 hover:underline text-sm"
                                     >
                                         Clear search
                                     </button>
                                 </>
                             ) : (
-                                "No students available"
+                                "No learners available"
                             )}
                         </div>
                     );
@@ -3140,23 +3140,23 @@ const handleStudentLeave = async (studentId, club) => {
 
                 return (
                     <div className="max-h-96 overflow-y-auto space-y-2">
-                        {filteredStudents.map((student) => {
-                            const isEnrolled = studentDrawer.club.members.includes(student.id);
-                            const isFull = studentDrawer.club.members.length >= studentDrawer.club.capacity;
+                        {filteredlearners.map((learner) => {
+                            const isEnrolled = learnerDrawer.club.members.includes(learner.id);
+                            const isFull = learnerDrawer.club.members.length >= learnerDrawer.club.capacity;
 
                             return (
                                 <div
-                                    key={student.id}
+                                    key={learner.id}
                                     className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100"
                                 >
                                     <div>
-                                        <div className="font-medium text-sm">{student.name}</div>
-                                        <div className="text-xs text-slate-500">{student.grade} • {student.email}</div>
+                                        <div className="font-medium text-sm">{learner.name}</div>
+                                        <div className="text-xs text-slate-500">{learner.grade} • {learner.email}</div>
                                     </div>
 
                                     {isEnrolled ? (
                                         <button
-                                            onClick={() => handleStudentLeave(student.id, studentDrawer.club)}
+                                            onClick={() => handlelearnerLeave(learner.id, learnerDrawer.club)}
                                             className="flex items-center gap-1 px-3 py-1 text-sm bg-red-50 text-red-600 rounded-md border border-red-100 hover:bg-red-100"
                                         >
                                             <X size={14} />
@@ -3165,7 +3165,7 @@ const handleStudentLeave = async (studentId, club) => {
                                     ) : (
                                         <button
                                             disabled={isFull}
-                                            onClick={() => handleStudentEnroll(student.id, studentDrawer.club)}
+                                            onClick={() => handlelearnerEnroll(learner.id, learnerDrawer.club)}
                                             className={`flex items-center gap-1 px-3 py-1 text-sm rounded-md ${
                                                 isFull
                                                     ? "bg-gray-200 text-gray-500 cursor-not-allowed"
@@ -3186,8 +3186,8 @@ const handleStudentLeave = async (studentId, club) => {
             <div className="pt-4 border-t">
                 <button
                     onClick={() => {
-                        setStudentDrawer({ open: false, club: null });
-                        setStudentSearchQuery("");
+                        setlearnerDrawer({ open: false, club: null });
+                        setlearnerSearchQuery("");
                     }}
                     className="w-full px-4 py-2 border rounded-md hover:bg-gray-50"
                 >

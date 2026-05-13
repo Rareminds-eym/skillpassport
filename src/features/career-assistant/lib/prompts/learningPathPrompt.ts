@@ -1,4 +1,4 @@
-import { StudentProfile } from '@/features/student-profile/model';
+import { LearnerProfile } from '@/features/learner-profile/model';
 
 /**
  * Learning Path Prompt Templates
@@ -9,15 +9,15 @@ import { StudentProfile } from '@/features/student-profile/model';
  * Create detailed learning path prompt for AI
  */
 export function createLearningPathPrompt(
-  studentProfile: StudentProfile,
+  learnerProfile: LearnerProfile,
   userMessage: string,
   inDemandSkills: string[],
   opportunitiesCount: number
 ): string {
-  const department = studentProfile.department || 'your field';
-  const currentSkills = studentProfile.profile?.technicalSkills || [];
-  const completedCourses = studentProfile.profile?.training?.filter((t: any) => t.status === 'completed') || [];
-  const ongoingCourses = studentProfile.profile?.training?.filter((t: any) => t.status === 'ongoing') || [];
+  const department = learnerProfile.department || 'your field';
+  const currentSkills = learnerProfile.profile?.technicalSkills || [];
+  const completedCourses = learnerProfile.profile?.training?.filter((t: any) => t.status === 'completed') || [];
+  const ongoingCourses = learnerProfile.profile?.training?.filter((t: any) => t.status === 'ongoing') || [];
   
   const skillsList = currentSkills.map((s: any) => `${s.name} (Level: ${s.level}/5)`).join(', ') || 'No skills listed yet';
   const completedList = completedCourses.map((c: any) => c.course).join(', ') || 'None';
@@ -25,8 +25,8 @@ export function createLearningPathPrompt(
   
   return `You are an expert career coach creating a personalized learning roadmap.
 
-**STUDENT PROFILE:**
-Name: ${studentProfile.name}
+**LEARNER PROFILE:**
+Name: ${learnerProfile.name}
 Field: ${department}
 Current Skills: ${skillsList}
 Completed Courses: ${completedList}
@@ -35,11 +35,11 @@ Ongoing Learning: ${ongoingList}
 **MARKET DEMAND (from ${opportunitiesCount} job postings):**
 Top In-Demand Skills: ${inDemandSkills.slice(0, 10).join(', ')}
 
-**STUDENT'S REQUEST:**
+**LEARNER'S REQUEST:**
 "${userMessage}"
 
 **YOUR TASK:**
-Analyze the student's request and respond accordingly:
+Analyze the learner's request and respond accordingly:
 
 **IF** they ask a simple, specific question (e.g., "Suggest SQL courses", "Best Python tutorial"):
 - Answer directly and concisely
@@ -80,11 +80,11 @@ export const LEARNING_PATH_SYSTEM_PROMPT =
 /**
  * Create fallback learning path when AI fails or profile is minimal
  */
-export function createFallbackLearningPath(studentProfile: StudentProfile, userMessage: string): string {
-  const studentName = studentProfile.name?.split(' ')[0] || 'there';
-  const currentSkills = studentProfile.profile?.technicalSkills || [];
+export function createFallbackLearningPath(learnerProfile: LearnerProfile, userMessage: string): string {
+  const learnerName = learnerProfile.name?.split(' ')[0] || 'there';
+  const currentSkills = learnerProfile.profile?.technicalSkills || [];
   
-  return `Hey ${studentName}! 🎓
+  return `Hey ${learnerName}! 🎓
 
 I'd love to create a personalized learning path for you. Based on your profile, here's a general roadmap:
 

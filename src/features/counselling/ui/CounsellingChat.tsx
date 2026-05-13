@@ -5,7 +5,7 @@ import { useCounsellingStore } from '../model';
 import { counsellingService } from '../api';
 import { counsellingConfig } from '../lib/config';
 import { getLogger } from '@/shared/config/logging';
-import type { CounsellingMessage, CounsellingTopicType, StudentContext } from '../model/types';
+import type { CounsellingMessage, CounsellingTopicType, LearnerContext } from '../model/types';
 
 const logger = getLogger('counselling-chat');
 
@@ -27,10 +27,10 @@ const CounsellingChat: React.FC = () => {
   const scrollTimeoutRef = useRef<number | null>(null);
   const lastScrollTopRef = useRef(0);
 
-  // Mock student context (replace with actual data in production)
-  const studentContext: StudentContext = {
-    id: 'demo-student',
-    name: 'Demo Student',
+  // Mock learner context (replace with actual data in production)
+  const learnerContext: LearnerContext = {
+    id: 'demo-learner',
+    name: 'Demo Learner',
     department: 'Computer Science',
     year: 3,
     gpa: 3.5,
@@ -148,7 +148,7 @@ const CounsellingChat: React.FC = () => {
         session_id: 'current-session',
         message: userInput,
         topic: detectedTopic,
-        student_context: studentContext
+        learner_context: learnerContext
       }, conversationHistory);
 
       for await (const chunk of stream) {

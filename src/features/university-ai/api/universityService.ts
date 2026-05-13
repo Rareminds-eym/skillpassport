@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -95,7 +96,7 @@ export const createUniversity = async (universityData, userId = null) => {
         let uid = userId;
 
         if (!uid) {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await getCurrentUser();
             if (user) {
                 uid = user.id;
             }
@@ -175,7 +176,7 @@ export const createUniversityCollege = async (collegeData, userId = null) => {
         let uid = userId;
 
         if (!uid) {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await getCurrentUser();
             if (user) {
                 uid = user.id;
             }
@@ -240,7 +241,7 @@ export const getUniversityCollegeByOwner = async (userId) => {
 };
 
 /**
- * Get all active universities for student registration dropdown from organizations table
+ * Get all active universities for learner registration dropdown from organizations table
  * @returns {Promise<{ success: boolean, data: Array | null, error: string | null }>}
  */
 export const getActiveUniversities = async () => {

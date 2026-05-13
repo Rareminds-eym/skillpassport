@@ -10,8 +10,8 @@ export interface ProgramSection {
   semester: number
   section: string
   academic_year: string
-  max_students: number
-  current_students: number
+  max_learners: number
+  current_learners: number
   faculty_id: string | null
   status: string
   created_at: string
@@ -34,7 +34,7 @@ export interface ProgramSection {
   } | null
 }
 
-export interface ProgramStudent {
+export interface ProgramLearner {
   id: string
   name: string
   email: string
@@ -50,13 +50,13 @@ export interface ProgramStudent {
 type ServiceResponse<T> = { data: T; error: null } | { data: null; error: string }
 
 /**
- * Update student count in program section
+ * Update learner count in program section
  */
-const updateProgramSectionStudentCount = async (programId: string, semester: number, section: string): Promise<void> => {
+const updateProgramSectionlearnerCount = async (programId: string, semester: number, section: string): Promise<void> => {
   try {
-    // Count students in this specific program, semester, and section
+    // Count learners in this specific program, semester, and section
     const { count, error: countError } = await supabase
-      .from('students')
+      .from('learners')
       .select('*', { count: 'exact', head: true })
       .eq('program_id', programId)
       .eq('semester', semester)
@@ -64,25 +64,25 @@ const updateProgramSectionStudentCount = async (programId: string, semester: num
       .eq('is_deleted', false)
 
     if (countError) {
-      logger.error('Error counting students', countError as Error, { programId, semester, section })
+      logger.error('Error counting learners', countError as Error, { programId, semester, section })
       return
     }
 
-    // Update the specific program section's current_students count
+    // Update the specific program section's current_learners count
     const { error: updateError } = await supabase
       .from('program_sections')
       .update({ 
-        current_students: count || 0
+        current_learners: count || 0
       })
       .eq('program_id', programId)
       .eq('semester', semester)
       .eq('section', section)
 
     if (updateError) {
-      logger.error('Error updating student count', updateError as Error, { programId, semester, section })
+      logger.error('Error updating learner count', updateError as Error, { programId, semester, section })
     }
   } catch (err) {
-    logger.error('Error in updateProgramSectionStudentCount', err as Error, { programId, semester, section })
+    logger.error('Error in updateProgramSectionlearnerCount', err as Error, { programId, semester, section })
   }
 }
 
@@ -198,7 +198,7 @@ export const createProgramSection = async (
     semester: number
     section: string
     academic_year: string
-    max_students: number
+    max_learners: number
     status: string
   },
   facultyId: string
@@ -245,7 +245,7 @@ export const createProgramSection = async (
         semester: sectionData.semester,
         section: sectionData.section,
         academic_year: sectionData.academic_year,
-        max_students: sectionData.max_students,
+        max_learners: sectionData.max_learners,
         faculty_id: facultyId, // Assign to the creating lecturer
         status: sectionData.status
       }])
@@ -316,10 +316,10 @@ export const unassignLecturerFromProgramSection = async (
 }
 
 /**
- * Get students from lecturer's assigned program sections with full rich data
- * Filters students by exact match of program_id, semester, and section from assigned program sections
+ * Get learners from lecturer's assigned program sections with full rich data
+ * Filters learners by exact match of program_id, semester, and section from assigned program sections
  */
-export const getProgramSectionStudents = async (userId: string): Promise<ServiceResponse<any[]>> => {
+export const getProgramSectionlearners = async (userId: string): Promise<ServiceResponse<any[]>> => {
   try {
     // First get the program sections assigned to this lecturer (program_id, semester, section)
     const { data: sections, error: sectionsError } = await supabase
@@ -339,11 +339,11 @@ export const getProgramSectionStudents = async (userId: string): Promise<Service
 
     // Build OR conditions for each program section (program_id + semester + section)
     let query = supabase
-      .from('students')
+      .from('learners')
       .select(`
         id,
         user_id,
-        student_id,
+        learner_id,
         name,
         email,
         contact_number,
@@ -400,7 +400,7 @@ export const getProgramSectionStudents = async (userId: string): Promise<Service
         guardianRelation,
         enrollmentDate,
         expectedGraduationDate,
-        student_type,
+        learner_type,
         hobbies,
         languages,
         interests,
@@ -408,7 +408,7 @@ export const getProgramSectionStudents = async (userId: string): Promise<Service
         quota,
         metadata,
         notification_settings,
-        skills!skills_student_id_fkey(
+        skills!skills_learner_id_fkey(
           id,
           name,
           type,
@@ -420,7 +420,7 @@ export const getProgramSectionStudents = async (userId: string): Promise<Service
           created_at,
           updated_at
         ),
-        projects!projects_student_id_fkey(
+        projects!projects_learner_id_fkey(
           id,
           title,
           description,
@@ -440,7 +440,7 @@ export const getProgramSectionStudents = async (userId: string): Promise<Service
           created_at,
           updated_at
         ),
-        certificates!certificates_student_id_fkey(
+        certificates!certificates_learner_id_fkey(
           id,
           title,
           issuer,
@@ -456,7 +456,7 @@ export const getProgramSectionStudents = async (userId: string): Promise<Service
           created_at,
           updated_at
         ),
-        experience!experience_student_id_fkey(
+        experience!experience_learner_id_fkey(
           id,
           organization,
           role,
@@ -468,7 +468,7 @@ export const getProgramSectionStudents = async (userId: string): Promise<Service
           created_at,
           updated_at
         ),
-        trainings!trainings_student_id_fkey(
+        trainings!trainings_learner_id_fkey(
           id,
           title,
           organization,
@@ -496,21 +496,21 @@ export const getProgramSectionStudents = async (userId: string): Promise<Service
     const { data, error } = await query
 
     if (error) {
-      logger.error('Error fetching program students', error as Error, { userId })
+      logger.error('Error fetching program learners', error as Error, { userId })
       return { data: null, error: error.message }
     }
 
     return { data: data || [], error: null }
   } catch (err: any) {
-    logger.error('Error in getProgramSectionStudents', err as Error, { userId })
-    return { data: null, error: err?.message || 'Unable to fetch students' }
+    logger.error('Error in getProgramSectionlearners', err as Error, { userId })
+    return { data: null, error: err?.message || 'Unable to fetch learners' }
   }
 }
 
 /**
- * Get students for a specific program section
+ * Get learners for a specific program section
  */
-export const getStudentsByProgramSection = async (programSectionId: string): Promise<ServiceResponse<ProgramStudent[]>> => {
+export const getlearnersByProgramSection = async (programSectionId: string): Promise<ServiceResponse<ProgramLearner[]>> => {
   try {
     // Get the program section details
     const { data: section, error: sectionError } = await supabase
@@ -523,9 +523,9 @@ export const getStudentsByProgramSection = async (programSectionId: string): Pro
       return { data: null, error: 'Program section not found' }
     }
 
-    // Get students from that specific program, semester, and section
+    // Get learners from that specific program, semester, and section
     const { data, error } = await supabase
-      .from('students')
+      .from('learners')
       .select(`
         id,
         name,
@@ -545,37 +545,37 @@ export const getStudentsByProgramSection = async (programSectionId: string): Pro
       .order('name', { ascending: true })
 
     if (error) {
-      logger.error('Error fetching section students', error as Error, { programSectionId })
+      logger.error('Error fetching section learners', error as Error, { programSectionId })
       return { data: null, error: error.message }
     }
 
-    const students: ProgramStudent[] = (data || []).map(student => ({
-      id: student.id,
-      name: student.name || 'Unknown',
-      email: student.email || '',
-      city: student.city || '',
-      program_id: student.program_id,
-      semester: student.semester || 1,
-      enrollment_number: student.enrollmentNumber || '',
-      contact_number: student.contact_number || '',
+    const learners: ProgramLearner[] = (data || []).map(learner => ({
+      id: learner.id,
+      name: learner.name || 'Unknown',
+      email: learner.email || '',
+      city: learner.city || '',
+      program_id: learner.program_id,
+      semester: learner.semester || 1,
+      enrollment_number: learner.enrollmentNumber || '',
+      contact_number: learner.contact_number || '',
       progress: 0, // TODO: Calculate actual progress
-      lastActive: student.updated_at || new Date().toISOString()
+      lastActive: learner.updated_at || new Date().toISOString()
     }))
 
-    return { data: students, error: null }
+    return { data: learners, error: null }
   } catch (err: any) {
-    logger.error('Error in getStudentsByProgramSection', err as Error, { programSectionId })
-    return { data: null, error: err?.message || 'Unable to fetch section students' }
+    logger.error('Error in getlearnersByProgramSection', err as Error, { programSectionId })
+    return { data: null, error: err?.message || 'Unable to fetch section learners' }
   }
 }
 
 /**
- * Get available students that can be added to a program (students without program_id)
+ * Get available learners that can be added to a program (learners without program_id)
  */
-export const getAvailableStudentsForProgram = async (collegeId: string): Promise<ServiceResponse<ProgramStudent[]>> => {
+export const getAvailablelearnersForProgram = async (collegeId: string): Promise<ServiceResponse<ProgramLearner[]>> => {
   try {
     const { data, error } = await supabase
-      .from('students')
+      .from('learners')
       .select(`
         id,
         name,
@@ -588,113 +588,113 @@ export const getAvailableStudentsForProgram = async (collegeId: string): Promise
         updated_at
       `)
       .eq('college_id', collegeId)
-      .is('program_id', null) // Only students without program assignment
+      .is('program_id', null) // Only learners without program assignment
       .eq('is_deleted', false)
       .order('name', { ascending: true })
 
     if (error) {
-      logger.error('Error fetching available students', error as Error, { collegeId })
+      logger.error('Error fetching available learners', error as Error, { collegeId })
       return { data: null, error: error.message }
     }
 
-    const students: ProgramStudent[] = (data || []).map(student => ({
-      id: student.id,
-      name: student.name || 'Unknown',
-      email: student.email || '',
-      city: student.city || '',
-      program_id: student.program_id,
-      semester: student.semester || 1,
-      enrollment_number: student.enrollmentNumber || '',
-      contact_number: student.contact_number || '',
+    const learners: ProgramLearner[] = (data || []).map(learner => ({
+      id: learner.id,
+      name: learner.name || 'Unknown',
+      email: learner.email || '',
+      city: learner.city || '',
+      program_id: learner.program_id,
+      semester: learner.semester || 1,
+      enrollment_number: learner.enrollmentNumber || '',
+      contact_number: learner.contact_number || '',
       progress: 0,
-      lastActive: student.updated_at || new Date().toISOString()
+      lastActive: learner.updated_at || new Date().toISOString()
     }))
 
-    return { data: students, error: null }
+    return { data: learners, error: null }
   } catch (err: any) {
-    logger.error('Error in getAvailableStudentsForProgram', err as Error, { collegeId })
-    return { data: null, error: err?.message || 'Unable to fetch available students' }
+    logger.error('Error in getAvailablelearnersForProgram', err as Error, { collegeId })
+    return { data: null, error: err?.message || 'Unable to fetch available learners' }
   }
 }
 
 /**
- * Add student to a program
+ * Add learner to a program
  */
-export const addStudentToProgram = async (
-  studentId: string, 
+export const addlearnerToProgram = async (
+  learnerId: string, 
   programId: string, 
   semester: number,
   section: string
 ): Promise<ServiceResponse<boolean>> => {
   try {
     const { error } = await supabase
-      .from('students')
+      .from('learners')
       .update({ 
         program_id: programId,
         semester: semester,
         section: section,
         updated_at: new Date().toISOString()
       })
-      .eq('id', studentId)
+      .eq('id', learnerId)
 
     if (error) {
-      logger.error('Error adding student to program', error as Error, { studentId, programId })
+      logger.error('Error adding learner to program', error as Error, { learnerId, programId })
       return { data: null, error: error.message }
     }
 
-    // Update the student count in program section
-    await updateProgramSectionStudentCount(programId, semester, section)
+    // Update the learner count in program section
+    await updateProgramSectionlearnerCount(programId, semester, section)
 
     return { data: true, error: null }
   } catch (err: any) {
-    logger.error('Error in addStudentToProgram', err as Error, { studentId, programId })
-    return { data: null, error: err?.message || 'Unable to add student to program' }
+    logger.error('Error in addlearnerToProgram', err as Error, { learnerId, programId })
+    return { data: null, error: err?.message || 'Unable to add learner to program' }
   }
 }
 
 /**
- * Remove student from program
+ * Remove learner from program
  */
-export const removeStudentFromProgram = async (studentId: string): Promise<ServiceResponse<boolean>> => {
+export const removelearnerFromProgram = async (learnerId: string): Promise<ServiceResponse<boolean>> => {
   try {
-    // First get the student's current program info before removing
-    const { data: student, error: fetchError } = await supabase
-      .from('students')
+    // First get the learner's current program info before removing
+    const { data: learner, error: fetchError } = await supabase
+      .from('learners')
       .select('program_id, semester, section')
-      .eq('id', studentId)
+      .eq('id', learnerId)
       .single()
 
-    if (fetchError || !student) {
-      logger.error('Error fetching student info', fetchError as Error, { studentId })
-      return { data: null, error: 'Student not found' }
+    if (fetchError || !learner) {
+      logger.error('Error fetching learner info', fetchError as Error, { learnerId })
+      return { data: null, error: 'Learner not found' }
     }
 
-    const { program_id: oldProgramId, semester: oldSemester, section: oldSection } = student
+    const { program_id: oldProgramId, semester: oldSemester, section: oldSection } = learner
 
-    // Remove student from program
+    // Remove learner from program
     const { error } = await supabase
-      .from('students')
+      .from('learners')
       .update({ 
         program_id: null,
         semester: null,
         section: null,
         updated_at: new Date().toISOString()
       })
-      .eq('id', studentId)
+      .eq('id', learnerId)
 
     if (error) {
-      logger.error('Error removing student from program', error as Error, { studentId })
+      logger.error('Error removing learner from program', error as Error, { learnerId })
       return { data: null, error: error.message }
     }
 
-    // Update the student count in the old program section
+    // Update the learner count in the old program section
     if (oldProgramId && oldSemester && oldSection) {
-      await updateProgramSectionStudentCount(oldProgramId, oldSemester, oldSection)
+      await updateProgramSectionlearnerCount(oldProgramId, oldSemester, oldSection)
     }
 
     return { data: true, error: null }
   } catch (err: any) {
-    logger.error('Error in removeStudentFromProgram', err as Error, { studentId })
-    return { data: null, error: err?.message || 'Unable to remove student from program' }
+    logger.error('Error in removelearnerFromProgram', err as Error, { learnerId })
+    return { data: null, error: err?.message || 'Unable to remove learner from program' }
   }
 }

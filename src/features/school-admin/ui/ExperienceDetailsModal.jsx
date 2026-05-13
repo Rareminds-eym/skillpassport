@@ -133,22 +133,22 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
 
         {/* Content */}
         <div className="p-6 space-y-6">
-          {/* Student Information */}
+          {/* Learner Information */}
           <div className="bg-blue-50 rounded-xl p-4">
             <div className="flex items-center gap-3 mb-3">
               <div className="p-2 bg-blue-100 rounded-lg">
                 <User className="h-5 w-5 text-blue-600" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">Student Information</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Learner Information</h3>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-600">Name</p>
-                <p className="font-medium text-gray-900">{experience.student_name}</p>
+                <p className="font-medium text-gray-900">{experience.learner_name}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Email</p>
-                <p className="font-medium text-gray-900">{experience.student_email}</p>
+                <p className="font-medium text-gray-900">{experience.learner_email}</p>
               </div>
             </div>
           </div>
@@ -238,7 +238,7 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
                 <p className="text-sm text-gray-600">Reason</p>
                 <p className="text-sm text-gray-700">
                   {experience.approval_authority === 'school_admin' || experience.approval_authority === 'college_admin'
-                    ? 'Experience is from the same institution as the student'
+                    ? 'Experience is from the same institution as the learner'
                     : 'Experience is from an external organization'}
                 </p>
               </div>

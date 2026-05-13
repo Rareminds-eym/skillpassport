@@ -45,7 +45,7 @@ rules:
     description: |
       Features must never import from sibling features — only downward.
       Allowed: features → entities, features → shared.
-      Violation: src/features/auth importing from src/features/student.
+      Violation: src/features/auth importing from src/features/learner.
       If two features need to share logic, extract it to src/entities/ or src/shared/.
     severity: critical
 
@@ -62,7 +62,7 @@ rules:
     description: |
       Shared is the lowest layer — zero upward dependencies, zero business logic.
       It must contain only generic utilities, UI primitives, API clients, and configs
-      that have no knowledge of any domain concept (user, student, course, etc.).
+      that have no knowledge of any domain concept (user, learner, course, etc.).
       Violation: src/shared/lib importing from src/entities/* or src/features/*.
     severity: critical
 
@@ -72,7 +72,7 @@ rules:
       src/app/ sits at the top of the layer hierarchy. It is the only layer allowed
       to import from multiple features simultaneously (e.g., to wire up routing,
       providers, and layouts). Features must never import from src/app/.
-      Violation: src/features/student importing from src/app/routes/*.
+      Violation: src/features/learner importing from src/app/routes/*.
     severity: critical
 
   - category: architecture
@@ -98,10 +98,10 @@ rules:
     title: "FSD: No business domain logic in shared/"
     description: |
       src/shared/ must be domain-agnostic. It must not contain concepts like
-      student, educator, course, subscription, or role-specific logic.
+      learner, educator, course, subscription, or role-specific logic.
       If a utility references a domain concept, it belongs in the relevant entity
       or feature, not in shared.
-      Violation: src/shared/lib/utils/studentHelpers.ts
+      Violation: src/shared/lib/utils/learnerHelpers.ts
     severity: high
 
   - category: architecture
@@ -187,17 +187,17 @@ rules:
   - category: security
     title: "No PII or sensitive data in URL query params"
     description: |
-      Student IDs, user tokens, email addresses, and scores must never appear
+      learner IDs, user tokens, email addresses, and scores must never appear
       in URL query strings. They get logged by servers, proxies, and browsers.
       Use route params or POST body for sensitive identifiers.
     severity: high
 
   - category: security
-    title: "No student PII in logs or error messages"
+    title: "No learner PII in logs or error messages"
     description: |
       console.log, logger calls, and thrown error messages must never include
-      raw student names, emails, scores, or health data. This project handles
-      student PII — log correlation IDs and anonymized context only.
+      raw learner names, emails, scores, or health data. This project handles
+      learner PII — log correlation IDs and anonymized context only.
     severity: critical
 
   - category: security
@@ -211,7 +211,7 @@ rules:
   - category: security
     title: "No PII sent to third-party services unmasked"
     description: |
-      Student names, emails, and scores must not be sent to OpenAI, Google AI,
+      learner names, emails, and scores must not be sent to OpenAI, Google AI,
       or any analytics service in plain form. Use anonymized IDs or masked values
       when calling external APIs that do not have a data processing agreement.
     severity: critical
@@ -521,7 +521,7 @@ focus:
     severity: high
 
   - path: "src/features/analytics/**"
-    reason: "Aggregates sensitive student and organization data"
+    reason: "Aggregates sensitive learner and organization data"
     severity: high
 
   - path: "src/entities/subscription/**"
@@ -529,7 +529,7 @@ focus:
     severity: high
 
   - path: "functions/api/career/**"
-    reason: "Sends student data to AI/vector services — data privacy boundary"
+    reason: "Sends learner data to AI/vector services — data privacy boundary"
     severity: high
 
 # ============================================================================
@@ -624,7 +624,7 @@ examples:
         const { data, error } = await supabase
           .from('assessments')
           .select('id, title, score, completed_at')
-          .eq('student_id', user.id)
+          .eq('learner_id', user.id)
           .order('completed_at', { ascending: false })
           .range(0, 19);
 
@@ -634,7 +634,7 @@ examples:
     - description: "Correct React Query usage with query key factory"
       code: |
         const { data, isLoading, isError } = useQuery({
-          queryKey: queryKeys.student.assessments.list(userId),
+          queryKey: queryKeys.learner.assessments.list(userId),
           queryFn: () => fetchStudentAssessments(userId),
           staleTime: 2 * 60 * 1000,
           enabled: !!userId,
@@ -670,7 +670,7 @@ examples:
       code: |
         // WRONG: fetch inside component, no error handling, no caching
         useEffect(() => {
-          fetch('/api/student/data')
+          fetch('/api/learner/data')
             .then(r => r.json())
             .then(setData);
         }, []);
@@ -678,7 +678,7 @@ examples:
     - description: "Cross-feature FSD violation"
       code: |
         // WRONG: features importing from sibling features
-        import { useStudentProfile } from '@/features/student/hooks/useStudentProfile';
+        import { useStudentProfile } from '@/features/learner/hooks/useStudentProfile';
         // inside src/features/auth/ — this breaks FSD boundaries
 
     - description: "Insecure auth token in localStorage"
@@ -690,14 +690,14 @@ examples:
     - description: "Missing error check on Supabase query"
       code: |
         // WRONG: ignoring the error property
-        const { data } = await supabase.from('students').select('*');
+        const { data } = await supabase.from('learners').select('*');
         setStudents(data); // data is null when there's an RLS error
 
     - description: "Ad-hoc query key (breaks cache invalidation)"
       code: |
         // WRONG: string array instead of queryKeys factory
         useQuery({
-          queryKey: ['student', 'messages', conversationId],
+          queryKey: ['learner', 'messages', conversationId],
           queryFn: ...
         });
 

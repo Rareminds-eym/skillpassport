@@ -33,7 +33,7 @@ const logger = getLogger('organization-payment-page');
 interface OrganizationConfig {
   organizationType: 'school' | 'college' | 'university';
   seatCount: number;
-  memberType: 'educator' | 'student' | 'both';
+  memberType: 'educator' | 'learner' | 'both';
   billingCycle: 'monthly' | 'annual';
   pricing: {
     basePrice: number;

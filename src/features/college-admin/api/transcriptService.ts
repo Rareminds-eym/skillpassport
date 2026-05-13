@@ -14,12 +14,12 @@ export const transcriptService = {
   async generateTranscript(data: Partial<Transcript>): Promise<ApiResponse<Transcript>> {
     try {
       // Validate required fields
-      if (!data.student_id || !data.semester_from || !data.semester_to) {
+      if (!data.learner_id || !data.semester_from || !data.semester_to) {
         return {
           success: false,
           error: {
             code: 'VALIDATION_ERROR',
-            message: 'Student ID and semester range are required',
+            message: 'Learner ID and semester range are required',
           },
         };
       }
@@ -78,9 +78,9 @@ export const transcriptService = {
     type: 'provisional' | 'final';
   }): Promise<ApiResponse<Transcript[]>> {
     try {
-      // Get eligible students
+      // Get eligible learners
       let query = supabase
-        .from('student_admissions')
+        .from('learner_admissions')
         .select('user_id, roll_number');
 
       if (filters.department_id) query = query.eq('department_id', filters.department_id);
@@ -90,18 +90,18 @@ export const transcriptService = {
         query = query.eq('status', 'graduated');
       }
 
-      const { data: students, error: studentsError } = await query;
+      const { data: learners, error: learnersError } = await query;
 
-      if (studentsError) throw studentsError;
+      if (learnersError) throw learnersError;
 
       const transcripts: Transcript[] = [];
 
-      for (const student of students || []) {
+      for (const learner of learners || []) {
         // Get program details to determine semester range
         const { data: admission } = await supabase
-          .from('student_admissions')
+          .from('learner_admissions')
           .select('program_id, current_semester')
-          .eq('user_id', student.user_id)
+          .eq('user_id', learner.user_id)
           .single();
 
         if (!admission) continue;
@@ -117,7 +117,7 @@ export const transcriptService = {
           : (admission.current_semester || 1);
 
         const result = await this.generateTranscript({
-          student_id: student.user_id,
+          learner_id: learner.user_id,
           type: filters.type,
           semester_from: 1,
           semester_to: semesterTo,
@@ -233,11 +233,11 @@ export const transcriptService = {
         };
       }
 
-      // Get student details
+      // Get learner details
       const { data: admission, error: admissionError } = await supabase
-        .from('student_admissions')
+        .from('learner_admissions')
         .select('roll_number, program_id, user_id')
-        .eq('user_id', transcript.student_id)
+        .eq('user_id', transcript.learner_id)
         .single();
 
       if (admissionError) throw admissionError;
@@ -245,7 +245,7 @@ export const transcriptService = {
       const { data: user } = await supabase
         .from('users')
         .select('name')
-        .eq('id', transcript.student_id)
+        .eq('id', transcript.learner_id)
         .single();
 
       const { data: program } = await supabase
@@ -258,11 +258,11 @@ export const transcriptService = {
       const { data: markEntries } = await supabase
         .from('mark_entries')
         .select('grade, assessment_id')
-        .eq('student_id', transcript.student_id);
+        .eq('learner_id', transcript.learner_id);
 
       // Build transcript data (simplified)
       const transcriptData: TranscriptData = {
-        student: {
+        learner: {
           name: user?.name || '',
           roll_number: admission.roll_number || '',
           program: program?.name || '',
@@ -287,14 +287,14 @@ export const transcriptService = {
    * Get transcripts with filters
    */
   async getTranscripts(filters: {
-    student_id?: string;
+    learner_id?: string;
     type?: 'provisional' | 'final';
     status?: string;
   }): Promise<ApiResponse<Transcript[]>> {
     try {
       let query = supabase.from('transcripts').select('*');
 
-      if (filters.student_id) query = query.eq('student_id', filters.student_id);
+      if (filters.learner_id) query = query.eq('learner_id', filters.learner_id);
       if (filters.type) query = query.eq('type', filters.type);
       if (filters.status) query = query.eq('status', filters.status);
 

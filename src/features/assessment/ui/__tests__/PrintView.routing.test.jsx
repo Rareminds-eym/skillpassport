@@ -36,8 +36,8 @@ const determineGradeLevel = (gradeLevel, results) => {
 };
 
 describe('PrintView Router Component', () => {
-  const mockStudentInfo = {
-    name: 'Test Student',
+  const mocklearnerInfo = {
+    name: 'Test Learner',
     regNo: '12345',
     college: 'Test College',
     stream: 'Computer Science'

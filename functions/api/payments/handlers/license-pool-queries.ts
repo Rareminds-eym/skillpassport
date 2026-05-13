@@ -1,0 +1,60 @@
+import { withAuth } from '../../../lib/auth';
+import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getServiceClient } from '../../../lib/supabase';
+
+export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
+  return handleLicensePoolQueries(context);
+});
+
+export async function handleLicensePoolQueries(context: AuthenticatedContext): Promise<Response> {
+  const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
+  const url = new URL(context.request.url);
+  const action = url.searchParams.get('action');
+  const poolId = url.searchParams.get('poolId');
+  const orgId = url.searchParams.get('orgId');
+
+  try {
+    const supabase = getServiceClient(env);
+
+    if (action === 'getLicensePools' && orgId) {
+      const { data, error } = await supabase
+        .from('license_pools')
+        .select('*')
+        .eq('organization_id', orgId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true, data: data || [], error: null }), { status: 200 });
+    }
+
+    if (action === 'getLicensePoolById' && poolId) {
+      const { data, error } = await supabase
+        .from('license_pools')
+        .select('*')
+        .eq('id', poolId)
+        .single();
+
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true, data, error: null }), { status: 200 });
+    }
+
+    if (action === 'getPoolAssignments' && poolId) {
+      const { data, error } = await supabase
+        .from('license_assignments')
+        .select(`*, users (id, email, full_name)`)
+        .eq('license_pool_id', poolId)
+        .order('assigned_at', { ascending: false });
+
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true, data: data || [], error: null }), { status: 200 });
+    }
+
+    return new Response(JSON.stringify({ success: false, error: 'Invalid action or missing params' }), { status: 400 });
+  } catch (error) {
+    console.error('[LicensePoolQueries] Error:', error);
+    return new Response(
+      JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }),
+      { status: 200 }
+    );
+  }
+}

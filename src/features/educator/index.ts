@@ -13,25 +13,25 @@ export { default as CSVImportPreview } from './ui/CSVImportPreview';
 export { default as GradingModal } from './ui/GradingModal';
 export { default as Header } from './ui/Header';
 export { default as InterventionResponseModal } from './ui/InterventionResponseModal';
-export { default as ManageProgramStudentsModal } from '@/features/college-admin/ui/modals/ManageProgramStudentsModal';
-export { default as ManageStudentsModal } from '@/features/college-admin/ui/modals/ManageStudentsModal';
+export { default as ManageProgramLearnersModal } from '@/features/college-admin/ui/modals/ManageProgramLearnersModal';
+export { default as ManageLearnersModal } from '@/features/college-admin/ui/modals/ManageLearnersModal';
 export { default as MentorResponseModal } from '@/features/college-admin/ui/modals/MentorResponseModal';
 export { default as NotificationPanel } from './ui/NotificationPanel';
 export { default as Pagination } from './ui/Pagination';
 export { default as ResourceUploadComponent } from './ui/ResourceUploadComponent';
 export { default as Sidebar } from './ui/Sidebar';
-export { default as StudentProfileDrawer } from './ui/StudentProfileDrawer';
-export { default as StudentSelectionModal } from './ui/StudentSelectionModal';
+export { default as LearnerProfileDrawer } from './ui/LearnerProfileDrawer';
+export { default as LearnerSelectionModal } from './ui/LearnerSelectionModal';
 export { default as FloatingEducatorAIButton } from '@/shared/ui/FloatingEducatorAIButton';
 
 // Modals
-export { default as AddStudentModal } from './ui/modals/Addstudentmodal';
+export { default as AddLearnerModal } from './ui/modals/AddLearnerModal';
 export { default as AddToShortlistModal } from './ui/modals/AddToShortlistModal';
-export { default as BulkDeleteStudentsModal } from '@/features/college-admin/ui/modals/BulkDeleteStudentsModal';
+export { default as BulkDeleteLearnersModal } from '@/features/college-admin/ui/modals/BulkDeleteLearnersModal';
 export { default as CSVImportModal } from './ui/modals/CSVImportModal';
-export { default as DeleteStudentModal } from '@/features/college-admin/ui/modals/DeleteStudentModal';
+export { default as DeleteLearnerModal } from '@/features/college-admin/ui/modals/DeleteLearnerModal';
 export { default as DiversityExportModal } from '@/features/recruiter-pipeline/ui/modals/DiversityExportModal';
-export { default as EditStudentModal } from '@/features/college-admin/ui/modals/EditStudentModal';
+export { default as EditLearnerModal } from '@/features/college-admin/ui/modals/EditLearnerModal';
 export { default as ScheduleInterviewModal } from './ui/modals/ScheduleInterviewModal';
 
 // Teacher Components
@@ -52,7 +52,7 @@ export * from './model/useTopHiringColleges';
 
 // Services
 export * from './api/fileUploadService';
-export { getAssignmentStudents, gradeAssignment } from './api/assignmentsService';
+export { getAssignmentLearners, gradeAssignment } from './api/assignmentsService';
 export { addResource, deleteResource, addLesson, updateLesson, deleteLesson, getAllCourses, getCoursesByEducator, createCourse, updateCourse, deleteCourse } from './api/coursesService';
 export * from './api/mentorNotes';
 export * from '@/features/educator-copilot/api/dashboardApi';
@@ -61,5 +61,5 @@ export * from '@/features/educator-copilot/api/dashboardApi';
 export { SKILL_CATEGORIES, CLASSES } from './model/mockCourses';
 export { mockClasses, type Class } from './model/mockClasses';
 export { mockActivities, type Activity } from './model/mockActivities';
-export { mockStudents, type Student } from './model/mockStudents';
+export { mockLearners, type Learner } from './model/mockLearners';
 export { mockMediaAssets, type MediaAsset } from './model/mockMedia';

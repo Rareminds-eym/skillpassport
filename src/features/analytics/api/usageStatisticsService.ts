@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Usage Statistics Service
  * 
@@ -16,7 +17,7 @@ const logger = getLogger('usage-statistics');
  */
 export const getUserUsageStatistics = async () => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getCurrentUser();
     
     if (!user) {
       return {
@@ -70,7 +71,7 @@ const getAssessmentsUsage = async (userId) => {
     const { count, error } = await supabase
       .from('personal_assessment_results')
       .select('*', { count: 'exact', head: true })
-      .eq('student_id', userId);
+      .eq('learner_id', userId);
 
     if (error) throw error;
 
@@ -104,7 +105,7 @@ const getProfileViewsUsage = async (userId) => {
     const { count, error } = await supabase
       .from('profile_views')
       .select('*', { count: 'exact', head: true })
-      .eq('student_id', userId);
+      .eq('learner_id', userId);
 
     if (error) {
       // If table doesn't exist, return 0
@@ -146,11 +147,11 @@ const getProfileViewsUsage = async (userId) => {
  */
 const getReportsUsage = async (userId) => {
   try {
-    // Count generated reports from student_reports table
+    // Count generated reports from learner_reports table
     const { count, error } = await supabase
-      .from('student_reports')
+      .from('learner_reports')
       .select('*', { count: 'exact', head: true })
-      .eq('student_id', userId);
+      .eq('learner_id', userId);
 
     if (error) {
       // If table doesn't exist, return 0

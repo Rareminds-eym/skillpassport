@@ -4,7 +4,7 @@
  * **Feature: rag-course-recommendations, Property 4: Similarity Search Result Limit**
  * **Validates: Requirements 3.2**
  * 
- * Property: For any student profile embedding, the vector similarity search
+ * Property: For any learner profile embedding, the vector similarity search
  * SHALL return at most 10 courses.
  */
 

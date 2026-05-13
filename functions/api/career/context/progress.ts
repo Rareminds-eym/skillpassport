@@ -5,7 +5,7 @@ import type { CareerProgress } from '../types';
 
 export async function buildCareerProgressContext(
   supabase: SupabaseClient, 
-  studentId: string
+  learnerId: string
 ): Promise<CareerProgress> {
   const defaultProgress: CareerProgress = {
     appliedJobs: [],
@@ -16,10 +16,10 @@ export async function buildCareerProgressContext(
 
   try {
     const [applications, saved, enrollments, recommendations] = await Promise.all([
-      supabase.from('applied_jobs').select('*, opportunities(id, title, company_name)').eq('student_id', studentId).limit(20),
-      supabase.from('saved_jobs').select('*, opportunities(id, title, company_name)').eq('student_id', studentId).limit(20),
-      supabase.from('course_enrollments').select('course_id, course_title, progress, status').eq('student_id', studentId).limit(10),
-      supabase.from('student_course_recommendations').select('course_id, relevance_score, match_reasons, courses(title)').eq('student_id', studentId).eq('status', 'active').limit(10)
+      supabase.from('applied_jobs').select('*, opportunities(id, title, company_name)').eq('learner_id', learnerId).limit(20),
+      supabase.from('saved_jobs').select('*, opportunities(id, title, company_name)').eq('learner_id', learnerId).limit(20),
+      supabase.from('course_enrollments').select('course_id, course_title, progress, status').eq('learner_id', learnerId).limit(10),
+      supabase.from('learner_course_recommendations').select('course_id, relevance_score, match_reasons, courses(title)').eq('learner_id', learnerId).eq('status', 'active').limit(10)
     ]);
 
     return {

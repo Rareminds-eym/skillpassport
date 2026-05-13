@@ -39,7 +39,7 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
         const courseId = course.course_id || course.id;
         if (courseId) {
             onClose(); // Close the modal first
-            navigate(`/student/courses/${courseId}/learn`);
+            navigate(`/learner/courses/${courseId}/learn`);
         }
     };
 
@@ -308,13 +308,13 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
             const courseId = firstCourse.course_id || firstCourse.id;
             if (courseId) {
                 onClose();
-                navigate(`/student/courses/${courseId}/learn`);
+                navigate(`/learner/courses/${courseId}/learn`);
                 return;
             }
         }
         // Fallback to courses page if no relevant course found
         onClose();
-        navigate('/student/courses');
+        navigate('/learner/courses');
     };
 
     // Generate PDF roadmap

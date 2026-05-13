@@ -168,7 +168,7 @@ const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
   );
 };
 
-const NewEducatorConversationModal = ({ isOpen, onClose, studentId, onConversationCreated }) => {
+const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversationCreated }) => {
   const [educators, setEducators] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -176,54 +176,54 @@ const NewEducatorConversationModal = ({ isOpen, onClose, studentId, onConversati
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
 
-  // Fetch student's educators (from their classes)
+  // Fetch learner's educators (from their classes)
   useEffect(() => {
-    if (isOpen && studentId) {
-      fetchStudentEducators();
+    if (isOpen && learnerId) {
+      fetchlearnerEducators();
     }
-  }, [isOpen, studentId]);
+  }, [isOpen, learnerId]);
 
-  const fetchStudentEducators = async () => {
+  const fetchlearnerEducators = async () => {
     setLoading(true);
     try {
-      console.log('🔍 Starting fetchStudentEducators for studentId:', studentId);
+      console.log('🔍 Starting fetchlearnerEducators for learnerId:', learnerId);
       
-      // Get student data to check both school_id and university_college_id
-      let { data: studentData, error: studentError } = await supabase
-        .from('students')
+      // Get learner data to check both school_id and university_college_id
+      let { data: learnerData, error: learnerError } = await supabase
+        .from('learners')
         .select('school_id, university_college_id, program_section_id, program_id, id, user_id')
-        .eq('id', studentId)
+        .eq('id', learnerId)
         .single();
 
-      console.log('📊 Student data:', studentData);
-      console.log('❌ Student error:', studentError);
+      console.log('📊 Learner data:', learnerData);
+      console.log('❌ Learner error:', learnerError);
 
-      if (studentError) {
-        console.error('❌ Error fetching student data:', studentError);
+      if (learnerError) {
+        console.error('❌ Error fetching learner data:', learnerError);
         // Try with user_id instead
-        const { data: studentDataByUserId, error: userIdError } = await supabase
-          .from('students')
+        const { data: learnerDataByUserId, error: userIdError } = await supabase
+          .from('learners')
           .select('school_id, university_college_id, program_section_id, program_id, id, user_id')
-          .eq('user_id', studentId)
+          .eq('user_id', learnerId)
           .single();
         
-        console.log('📊 Student data by user_id:', studentDataByUserId);
+        console.log('📊 Learner data by user_id:', learnerDataByUserId);
         
         if (userIdError) {
-          console.error('❌ Error fetching student by user_id:', userIdError);
+          console.error('❌ Error fetching learner by user_id:', userIdError);
           setLoading(false);
           return;
         }
         
         // Use the data found by user_id
-        studentData = studentDataByUserId;
+        learnerData = learnerDataByUserId;
       }
 
       const allEducators = [];
 
-      // Fetch ALL school educators if student has school_id
-      if (studentData?.school_id) {
-        console.log('🏫 Fetching ALL school educators for school_id:', studentData.school_id);
+      // Fetch ALL school educators if learner has school_id
+      if (learnerData?.school_id) {
+        console.log('🏫 Fetching ALL school educators for school_id:', learnerData.school_id);
         
         const { data: schoolEducators, error: schoolError } = await supabase
           .from('school_educators')
@@ -234,7 +234,7 @@ const NewEducatorConversationModal = ({ isOpen, onClose, studentId, onConversati
             email,
             photo_url
           `)
-          .eq('school_id', studentData.school_id);
+          .eq('school_id', learnerData.school_id);
 
         console.log('🏫 School educators:', schoolEducators);
         console.log('❌ School error:', schoolError);
@@ -254,11 +254,11 @@ const NewEducatorConversationModal = ({ isOpen, onClose, studentId, onConversati
         }
       }
 
-      // Fetch college lecturers if student has university_college_id
-      if (studentData?.university_college_id) {
-        console.log('🎓 Fetching all college lecturers for college_id:', studentData.university_college_id);
+      // Fetch college lecturers if learner has university_college_id
+      if (learnerData?.university_college_id) {
+        console.log('🎓 Fetching all college lecturers for college_id:', learnerData.university_college_id);
         
-        // Get all lecturers from the student's college
+        // Get all lecturers from the learner's college
         const { data: allCollegeLecturers, error: collegeError } = await supabase
           .from('college_lecturers')
           .select(`
@@ -271,7 +271,7 @@ const NewEducatorConversationModal = ({ isOpen, onClose, studentId, onConversati
             collegeId,
             user_id
           `)
-          .eq('collegeId', studentData.university_college_id);
+          .eq('collegeId', learnerData.university_college_id);
 
         console.log('🎓 All college lecturers:', allCollegeLecturers);
         console.log('❌ College error:', collegeError);

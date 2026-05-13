@@ -1,9 +1,9 @@
 /**
  * Authenticated handlers (Admin creates users)
- * - Create student (admin adds student)
+ * - Create learner (admin adds learner)
  * - Create teacher (admin adds teacher)
  * - Create college staff (college admin adds staff)
- * - Update student documents
+ * - Update learner documents
  */
 
 import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
@@ -19,16 +19,16 @@ import {
 } from '../utils/helpers';
 
 /**
- * Handle admin creating a student
+ * Handle admin creating a learner
  */
-export async function handleCreateStudent(request: Request, env: any): Promise<Response> {
+export async function handleCreateLearner(request: Request, env: any): Promise<Response> {
   const auth = await authenticateUser(request, env);
   if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
 
   const { user, supabaseAdmin } = auth;
 
   const body = await request.json() as {
-    student: {
+    learner: {
       name: string;
       email: string;
       contactNumber: string;
@@ -45,9 +45,9 @@ export async function handleCreateStudent(request: Request, env: any): Promise<R
     collegeId?: string;
   };
 
-  const { student, userEmail, schoolId: requestSchoolId, collegeId: requestCollegeId } = body;
+  const { learner, userEmail, schoolId: requestSchoolId, collegeId: requestCollegeId } = body;
 
-  if (!student || !student.name || !student.email || !student.contactNumber) {
+  if (!learner || !learner.name || !learner.email || !learner.contactNumber) {
     return jsonResponse({ error: 'Missing required fields: name, email, and contactNumber' }, 400);
   }
 
@@ -55,7 +55,7 @@ export async function handleCreateStudent(request: Request, env: any): Promise<R
     return jsonResponse({ error: 'No user email provided' }, 400);
   }
 
-  if (!validateEmail(student.email)) {
+  if (!validateEmail(learner.email)) {
     return jsonResponse({ error: 'Invalid email format' }, 400);
   }
 
@@ -123,34 +123,34 @@ export async function handleCreateStudent(request: Request, env: any): Promise<R
   // Check if email already exists
   const { data: existingAuthUsers } = await supabaseAdmin.auth.admin.listUsers();
   const emailExists = existingAuthUsers?.users?.some(
-    (u: any) => u.email === student.email.toLowerCase()
+    (u: any) => u.email === learner.email.toLowerCase()
   );
   if (emailExists) {
-    return jsonResponse({ error: `Student with email ${student.email} already exists` }, 400);
+    return jsonResponse({ error: `Learner with email ${learner.email} already exists` }, 400);
   }
 
-  const { data: existingStudent } = await supabaseAdmin
-    .from('students')
+  const { data: existingLearner } = await supabaseAdmin
+    .from('learners')
     .select('id')
-    .eq('email', student.email.toLowerCase())
+    .eq('email', learner.email.toLowerCase())
     .maybeSingle();
-  if (existingStudent) {
-    return jsonResponse({ error: `Student with email ${student.email} already exists` }, 400);
+  if (existingLearner) {
+    return jsonResponse({ error: `Learner with email ${learner.email} already exists` }, 400);
   }
 
-  const studentPassword = generatePassword();
-  const studentRole = institutionType === 'college' ? 'college_student' : 'school_student';
+  const learnerPassword = generatePassword();
+  const learnerRole = institutionType === 'college' ? 'learner' : 'learner';
 
   // Create auth user
   const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-    email: student.email.toLowerCase(),
-    password: studentPassword,
+    email: learner.email.toLowerCase(),
+    password: learnerPassword,
     email_confirm: true,
     user_metadata: {
-      name: student.name,
-      role: studentRole,
-      phone: student.contactNumber,
-      password: studentPassword,
+      name: learner.name,
+      role: learnerRole,
+      phone: learner.contactNumber,
+      password: learnerPassword,
       added_by: userId,
     },
   });
@@ -161,14 +161,14 @@ export async function handleCreateStudent(request: Request, env: any): Promise<R
 
   try {
     // Create public.users record
-    const { firstName, lastName } = splitName(student.name);
+    const { firstName, lastName } = splitName(learner.name);
 
     await supabaseAdmin.from('users').insert({
       id: authUser.user.id,
-      email: student.email.toLowerCase(),
+      email: learner.email.toLowerCase(),
       firstName,
       lastName,
-      role: studentRole,
+      role: learnerRole,
       organizationId: schoolId || collegeId,
       isActive: true,
       metadata: {
@@ -176,56 +176,56 @@ export async function handleCreateStudent(request: Request, env: any): Promise<R
         schoolId,
         collegeId,
         addedBy: userId,
-        password: studentPassword,
+        password: learnerPassword,
       },
     });
 
-    // Create students record
-    const age = calculateAge(student.dateOfBirth || '');
+    // Create learners record
+    const age = calculateAge(learner.dateOfBirth || '');
 
-    const { data: studentRecord, error: studentError } = await supabaseAdmin
-      .from('students')
+    const { data: learnerRecord, error: learnerError } = await supabaseAdmin
+      .from('learners')
       .insert({
         user_id: authUser.user.id,
-        email: student.email.toLowerCase(),
-        name: student.name,
-        contactNumber: student.contactNumber,
-        contact_number: student.contactNumber,
-        dateOfBirth: student.dateOfBirth || null,
-        date_of_birth: student.dateOfBirth || null,
+        email: learner.email.toLowerCase(),
+        name: learner.name,
+        contactNumber: learner.contactNumber,
+        contact_number: learner.contactNumber,
+        dateOfBirth: learner.dateOfBirth || null,
+        date_of_birth: learner.dateOfBirth || null,
         age,
-        gender: student.gender || null,
-        enrollmentNumber: student.enrollmentNumber || null,
-        grade: student.grade || null,
-        section: student.section || null,
-        guardianName: student.guardianName || null,
-        guardianPhone: student.guardianPhone || null,
+        gender: learner.gender || null,
+        enrollmentNumber: learner.enrollmentNumber || null,
+        grade: learner.grade || null,
+        section: learner.section || null,
+        guardianName: learner.guardianName || null,
+        guardianPhone: learner.guardianPhone || null,
         school_id: schoolId,
         college_id: collegeId,
-        student_type: institutionType === 'college' ? 'direct' : 'school_student',
+        learner_type: institutionType === 'college' ? 'direct' : 'learner',
         approval_status: 'approved',
         metadata: {
           source: `${institutionType}_admin_added`,
           addedBy: userId,
-          password: studentPassword,
+          password: learnerPassword,
         },
       })
       .select()
       .single();
 
-    if (studentError) {
-      throw new Error(`Failed to create student profile: ${studentError.message}`);
+    if (learnerError) {
+      throw new Error(`Failed to create learner profile: ${learnerError.message}`);
     }
 
     return jsonResponse({
       success: true,
-      message: `Student ${student.name} created successfully`,
+      message: `Learner ${learner.name} created successfully`,
       data: {
         authUserId: authUser.user.id,
-        studentId: studentRecord.id,
-        email: student.email,
-        name: student.name,
-        password: studentPassword,
+        learnerId: learnerRecord.id,
+        email: learner.email,
+        name: learner.name,
+        password: learnerPassword,
         institutionType,
         schoolId,
         collegeId,
@@ -445,16 +445,16 @@ export async function handleCreateTeacher(request: Request, env: any): Promise<R
 }
 
 /**
- * Handle updating student documents
+ * Handle updating learner documents
  */
-export async function handleUpdateStudentDocuments(request: Request, env: any): Promise<Response> {
+export async function handleUpdateLearnerDocuments(request: Request, env: any): Promise<Response> {
   const auth = await authenticateUser(request, env);
   if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
 
   const { supabaseAdmin } = auth;
 
   const body = await request.json() as {
-    studentId: string;
+    learnerId: string;
     documents: Array<{
       name: string;
       url: string;
@@ -463,10 +463,10 @@ export async function handleUpdateStudentDocuments(request: Request, env: any): 
     }>;
   };
 
-  const { studentId, documents } = body;
+  const { learnerId, documents } = body;
 
-  if (!studentId) {
-    return jsonResponse({ error: 'Missing required field: studentId' }, 400);
+  if (!learnerId) {
+    return jsonResponse({ error: 'Missing required field: learnerId' }, 400);
   }
 
   if (!documents || !Array.isArray(documents)) {
@@ -474,15 +474,15 @@ export async function handleUpdateStudentDocuments(request: Request, env: any): 
   }
 
   try {
-    // Validate that the student exists
-    const { data: existingStudent, error: fetchError } = await supabaseAdmin
-      .from('students')
+    // Validate that the learner exists
+    const { data: existingLearner, error: fetchError } = await supabaseAdmin
+      .from('learners')
       .select('id, documents')
-      .eq('id', studentId)
+      .eq('id', learnerId)
       .single();
 
-    if (fetchError || !existingStudent) {
-      return jsonResponse({ error: 'Student not found' }, 404);
+    if (fetchError || !existingLearner) {
+      return jsonResponse({ error: 'Learner not found' }, 404);
     }
 
     // Format documents for storage
@@ -495,24 +495,24 @@ export async function handleUpdateStudentDocuments(request: Request, env: any): 
     }));
 
     // Get existing documents and merge with new ones
-    const existingDocuments = existingStudent.documents || [];
+    const existingDocuments = existingLearner.documents || [];
     const updatedDocuments = [...existingDocuments, ...formattedDocuments];
 
-    // Update student record with documents
+    // Update learner record with documents
     const { error: updateError } = await supabaseAdmin
-      .from('students')
+      .from('learners')
       .update({ documents: updatedDocuments })
-      .eq('id', studentId);
+      .eq('id', learnerId);
 
     if (updateError) {
-      return jsonResponse({ error: `Failed to update student documents: ${updateError.message}` }, 500);
+      return jsonResponse({ error: `Failed to update learner documents: ${updateError.message}` }, 500);
     }
 
     return jsonResponse({
       success: true,
-      message: `Successfully updated documents for student ${studentId}`,
+      message: `Successfully updated documents for learner ${learnerId}`,
       data: {
-        studentId,
+        learnerId,
         documentsCount: formattedDocuments.length,
         totalDocuments: updatedDocuments.length
       }

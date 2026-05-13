@@ -44,7 +44,7 @@ const TOPIC_OPTIONS: TopicOption[] = [
   },
   {
     value: 'mental-health',
-    label: 'Student Wellbeing',
+    label: 'Learner Wellbeing',
     description: 'Stress management, work-life balance, and emotional support',
     icon: Heart,
     color: 'from-pink-500 to-pink-600',
@@ -52,7 +52,7 @@ const TOPIC_OPTIONS: TopicOption[] = [
   {
     value: 'general',
     label: 'General Guidance',
-    description: 'Campus resources, student life, and general questions',
+    description: 'Campus resources, learner life, and general questions',
     icon: MessageSquare,
     color: 'from-gray-500 to-gray-600',
   },

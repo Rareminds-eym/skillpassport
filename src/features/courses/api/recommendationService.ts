@@ -143,7 +143,7 @@ export const fallbackKeywordMatching = async (assessmentResults) => {
 };
 
 /**
- * Get recommended courses for a student based on their assessment results.
+ * Get recommended courses for a learner based on their assessment results.
  * Uses vector similarity search to find semantically similar courses.
  * 
  * @param {Object} assessmentResults - Assessment results from AI analysis
@@ -165,7 +165,7 @@ export const getRecommendedCourses = async (assessmentResults) => {
       return [];
     }
 
-    // Step 2: Generate embedding for the student profile (Requirement 2.3)
+    // Step 2: Generate embedding for the learner profile (Requirement 2.3)
     let profileEmbedding;
     try {
       profileEmbedding = await generateEmbedding(profileText);

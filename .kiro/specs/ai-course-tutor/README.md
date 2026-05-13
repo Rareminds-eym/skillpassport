@@ -1,6 +1,6 @@
 # AI Course Tutor
 
-An intelligent, context-aware tutoring system that provides personalized assistance to students learning course content. Built with React, Supabase Edge Functions, and powered by Grok AI.
+An intelligent, context-aware tutoring system that provides personalized assistance to learners learning course content. Built with React, Supabase Edge Functions, and powered by Grok AI.
 
 ## Features
 
@@ -11,7 +11,7 @@ An intelligent, context-aware tutoring system that provides personalized assista
 - **Conversation History** - Persistent chat history with ability to continue past discussions
 - **Suggested Questions** - Context-aware question suggestions based on current lesson
 - **Feedback System** - Thumbs up/down feedback to improve AI responses
-- **Progress Tracking** - Integrates with student progress data for personalized guidance
+- **Progress Tracking** - Integrates with learner progress data for personalized guidance
 - **Keyboard Shortcuts** - `⌘K` to toggle panel, `Esc` to close, `Enter` to send
 
 ## Architecture
@@ -43,7 +43,7 @@ An intelligent, context-aware tutoring system that provides personalized assista
 │  ┌─────────────────┐  ┌─────────────────────────────────┐   │
 │  │ courses         │  │ tutor_conversations             │   │
 │  │ course_modules  │  │ tutor_feedback                  │   │
-│  │ lessons         │  │ student_course_progress         │   │
+│  │ lessons         │  │ learner_course_progress         │   │
 │  └─────────────────┘  └─────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -97,7 +97,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 -- Conversations storage
 CREATE TABLE tutor_conversations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  student_id UUID REFERENCES auth.users(id),
+  learner_id UUID REFERENCES auth.users(id),
   course_id UUID REFERENCES courses(course_id),
   lesson_id UUID REFERENCES lessons(lesson_id),
   title TEXT,
@@ -192,7 +192,7 @@ const {
 |----------|--------|-------------|
 | `ai-tutor-chat` | POST | Main chat endpoint with streaming |
 | `ai-tutor-suggestions` | POST | Generate suggested questions |
-| `ai-tutor-progress` | GET/POST | Track student progress |
+| `ai-tutor-progress` | GET/POST | Track learner progress |
 | `ai-tutor-feedback` | POST | Submit response feedback |
 
 ## AI Model
@@ -205,11 +205,11 @@ Uses **Grok 4.1 Fast** via OpenRouter with:
 
 ## How It Works
 
-1. **Context Building**: When a student opens the tutor, the system fetches:
+1. **Context Building**: When a learner opens the tutor, the system fetches:
    - Course title, description, code
    - All modules and lessons structure
    - Current lesson content and resources
-   - Student's progress (completed lessons)
+   - learner's progress (completed lessons)
 
 2. **System Prompt**: A detailed prompt instructs the AI to:
    - Answer based on course content only
@@ -267,7 +267,7 @@ serve(async (req) => {
   const { message, courseId, lessonId } = await req.json();
   
   // Build full course context
-  const courseContext = await buildCourseContext(supabase, courseId, lessonId, studentId);
+  const courseContext = await buildCourseContext(supabase, courseId, lessonId, learnerId);
   const systemPrompt = buildSystemPrompt(courseContext);
   
   // Direct API call with streaming
@@ -303,7 +303,7 @@ const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         type: 'function',
         function: {
           name: 'mark_lesson_complete',
-          description: 'Mark a lesson as completed for the student',
+          description: 'Mark a lesson as completed for the learner',
           parameters: {
             type: 'object',
             properties: {
@@ -334,7 +334,7 @@ const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
 if (response.choices[0].message.tool_calls) {
   for (const toolCall of response.choices[0].message.tool_calls) {
     if (toolCall.function.name === 'mark_lesson_complete') {
-      await supabase.from('student_course_progress').upsert({...});
+      await supabase.from('learner_course_progress').upsert({...});
     }
   }
 }
@@ -413,9 +413,9 @@ const searchCourse = tool(
 );
 
 const markComplete = tool(
-  async ({ studentId, lessonId }) => {
-    await supabase.from('student_course_progress').upsert({
-      student_id: studentId,
+  async ({ learnerId, lessonId }) => {
+    await supabase.from('learner_course_progress').upsert({
+      learner_id: learnerId,
       lesson_id: lessonId,
       status: 'completed'
     });
@@ -425,7 +425,7 @@ const markComplete = tool(
     name: "mark_complete",
     description: "Mark a lesson as completed",
     schema: z.object({
-      studentId: z.string(),
+      learnerId: z.string(),
       lessonId: z.string()
     })
   }
@@ -470,7 +470,7 @@ import { ChatOpenAI } from "npm:@langchain/openai";
 import { tool } from "npm:@langchain/core/tools";
 
 serve(async (req) => {
-  const { message, courseId, studentId } = await req.json();
+  const { message, courseId, learnerId } = await req.json();
   
   const model = new ChatOpenAI({
     modelName: "gpt-4o-mini",

@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Career AI Worker Service
  * Calls the Cloudflare Worker for career AI processing
@@ -37,7 +38,7 @@ export async function streamCareerChat(
   abortSignal?: AbortSignal
 ): Promise<CareerChatResult> {
   try {
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    const { data: { session }, error: sessionError } = await getCurrentSession();
 
     if (sessionError || !session) {
       logger.error('Authentication failed for career AI service', sessionError as Error);

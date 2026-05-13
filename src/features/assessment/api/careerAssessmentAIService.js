@@ -22,10 +22,10 @@ export {
   handleInsufficientQuestions 
 } from './assessment/assessmentErrors.js';
 export { 
-  getSavedQuestionsForStudent, 
+  getSavedQuestionsForLearner, 
   saveAptitudeQuestions, 
   saveKnowledgeQuestions, 
-  clearSavedQuestionsForStudent 
+  clearSavedQuestionsForLearner 
 } from './assessment/assessmentRepository.js';
 export { 
   generateWithValidation, 
@@ -35,16 +35,16 @@ export {
 
 import { normalizeStreamId } from './assessment/streamUtils.js';
 import { generateAptitudeQuestions, generateStreamKnowledgeQuestions } from './assessment/questionGenerator.js';
-import { getSavedQuestionsForStudent, clearSavedQuestionsForStudent } from './assessment/assessmentRepository.js';
+import { getSavedQuestionsForLearner, clearSavedQuestionsForLearner } from './assessment/assessmentRepository.js';
 import { STREAM_KNOWLEDGE_PROMPTS, APTITUDE_CATEGORIES } from './assessment/streamPrompts.js';
 
 /**
  * Load questions for career assessment
- * - If student has saved questions (from previous attempt), loads those
+ * - If learner has saved questions (from previous attempt), loads those
  * - Otherwise generates fresh AI questions and saves them
  * - Main entry point for assessment question loading
  */
-export async function loadCareerAssessmentQuestions(streamId, gradeLevel, studentId = null, attemptId = null, studentCourse = null) {
+export async function loadCareerAssessmentQuestions(streamId, gradeLevel, learnerId = null, attemptId = null, learnerCourse = null) {
   const questions = {
     aptitude: null,
     knowledge: null
@@ -52,20 +52,20 @@ export async function loadCareerAssessmentQuestions(streamId, gradeLevel, studen
 
   // Generate AI questions for after10, after12, higher_secondary AND college grade levels
   if ((gradeLevel === 'after10' || gradeLevel === 'after12' || gradeLevel === 'higher_secondary' || gradeLevel === 'college') && streamId) {
-    console.log(`🤖 Loading AI questions for ${gradeLevel} student, stream:`, streamId, 'studentId:', studentId);
+    console.log(`🤖 Loading AI questions for ${gradeLevel} learner, stream:`, streamId, 'learnerId:', learnerId);
     
-    // Normalize stream ID for college students
+    // Normalize stream ID for college learners
     const normalizedStreamId = normalizeStreamId(streamId);
     console.log(`📋 Normalized stream ID: ${normalizedStreamId}`);
     
-    // For college students, use their actual course for knowledge questions
-    if (gradeLevel === 'college' && studentCourse) {
-      console.log(`🎓 College student - using course "${studentCourse}" for knowledge questions instead of stream`);
+    // For college learners, use their actual course for knowledge questions
+    if (gradeLevel === 'college' && learnerCourse) {
+      console.log(`🎓 College learner - using course "${learnerCourse}" for knowledge questions instead of stream`);
     }
     
     // Generate/load aptitude questions first (will use saved if available)
     // Pass gradeLevel so API knows to use appropriate difficulty
-    const aiAptitude = await generateAptitudeQuestions(normalizedStreamId, 50, studentId, attemptId, gradeLevel);
+    const aiAptitude = await generateAptitudeQuestions(normalizedStreamId, 50, learnerId, attemptId, gradeLevel);
     
     if (aiAptitude && aiAptitude.length > 0) {
       questions.aptitude = aiAptitude;
@@ -76,9 +76,9 @@ export async function loadCareerAssessmentQuestions(streamId, gradeLevel, studen
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Generate/load knowledge questions (will use saved if available)
-    // For college students, pass their course; for others, use normalized stream
-    const knowledgeStreamId = (gradeLevel === 'college' && studentCourse) ? studentCourse : normalizedStreamId;
-    const aiKnowledge = await generateStreamKnowledgeQuestions(knowledgeStreamId, 20, studentId, attemptId, gradeLevel);
+    // For college learners, pass their course; for others, use normalized stream
+    const knowledgeStreamId = (gradeLevel === 'college' && learnerCourse) ? learnerCourse : normalizedStreamId;
+    const aiKnowledge = await generateStreamKnowledgeQuestions(knowledgeStreamId, 20, learnerId, attemptId, gradeLevel);
     
     if (aiKnowledge && aiKnowledge.length > 0) {
       questions.knowledge = aiKnowledge;
@@ -94,8 +94,8 @@ export default {
   generateStreamKnowledgeQuestions,
   generateAptitudeQuestions,
   loadCareerAssessmentQuestions,
-  getSavedQuestionsForStudent,
-  clearSavedQuestionsForStudent,
+  getSavedQuestionsForLearner,
+  clearSavedQuestionsForLearner,
   normalizeStreamId,
   STREAM_KNOWLEDGE_PROMPTS,
   APTITUDE_CATEGORIES

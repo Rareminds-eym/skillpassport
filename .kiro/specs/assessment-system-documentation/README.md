@@ -1,6 +1,6 @@
 # Assessment System Documentation
 
-> **Consolidated, streamlined documentation for the student career assessment system**
+> **Consolidated, streamlined documentation for the learner career assessment system**
 
 ## 🎯 Quick Start
 

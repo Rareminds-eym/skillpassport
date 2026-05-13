@@ -1,0 +1,13 @@
+// Entity-level tabs - now in correct location
+export { default as OverviewTab } from '../../tabs/OverviewTab';
+export { default as EventsTab } from '@/features/learner-profile/ui/tabs/EventsTab';
+export { default as AcademicTab } from '@/features/learner-profile/ui/tabs/AcademicTab';
+export { default as CoursesTab } from './CoursesTab';
+export { default as ProjectsTab } from './ProjectsTab';
+export { default as CertificatesTab } from './CertificatesTab';
+export { default as AssessmentsTab } from './AssessmentsTab';
+export { default as CurriculumTab } from './CurriculumTab';
+export { default as ClubsCompetitionsTab } from '@/features/learner-profile/ui/tabs/ClubsCompetitionsTab';
+export { default as ExamResultsTab } from '@/features/learner-profile/ui/tabs/ExamResultsTab';
+export { default as NotesTab } from '@/features/learner-profile/ui/tabs/NotesTab';
+export { default as DocumentsTab } from '@/features/learner-profile/ui/tabs/DocumentsTab';

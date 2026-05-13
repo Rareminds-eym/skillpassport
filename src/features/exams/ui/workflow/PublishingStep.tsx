@@ -38,8 +38,8 @@ const PublishingStep: React.FC<PublishingStepProps> = ({ exam, setActiveStep, up
       // 1. It has no moderation (clean marks) - automatically ready
       // 2. OR it has moderation and is approved (isModerated = true)
       
-      // Count students with moderation (original_marks different from current marks)
-      const moderationCount = subjectMark.studentMarks.filter(s => 
+      // Count learners with moderation (original_marks different from current marks)
+      const moderationCount = subjectMark.learnerMarks.filter(s => 
         s.originalMarks !== null && s.originalMarks !== s.marks && !s.isAbsent
       ).length;
       
@@ -59,7 +59,7 @@ const PublishingStep: React.FC<PublishingStepProps> = ({ exam, setActiveStep, up
 
     if (subjectsReadyForPublishing < exam.marks.length) {
       const pendingSubjects = exam.marks.filter(subjectMark => {
-        const moderationCount = subjectMark.studentMarks.filter(s => 
+        const moderationCount = subjectMark.learnerMarks.filter(s => 
           s.originalMarks !== null && s.originalMarks !== s.marks && !s.isAbsent
         ).length;
         const hasModeration = moderationCount > 0;
@@ -98,7 +98,7 @@ const PublishingStep: React.FC<PublishingStepProps> = ({ exam, setActiveStep, up
 
   // Calculate subjects ready for publishing using the same logic as publishResults
   const subjectsReadyForPublishing = exam.marks.filter(subjectMark => {
-    const moderationCount = subjectMark.studentMarks.filter(s => 
+    const moderationCount = subjectMark.learnerMarks.filter(s => 
       s.originalMarks !== null && s.originalMarks !== s.marks && !s.isAbsent
     ).length;
     const hasModeration = moderationCount > 0;
@@ -135,8 +135,8 @@ const PublishingStep: React.FC<PublishingStepProps> = ({ exam, setActiveStep, up
                 <h4 className="font-medium text-gray-900 mb-3">Publication Summary</h4>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Students:</span>
-                    <span className="font-medium">{exam.marks[0]?.studentMarks.length || 0}</span>
+                    <span className="text-gray-600">Learners:</span>
+                    <span className="font-medium">{exam.marks[0]?.learnerMarks.length || 0}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Subjects:</span>
@@ -160,7 +160,7 @@ const PublishingStep: React.FC<PublishingStepProps> = ({ exam, setActiveStep, up
                   <div className="text-sm">
                     <p className="font-medium text-amber-900 mb-1">Important Notice</p>
                     <ul className="text-amber-700 space-y-1">
-                      <li>• Results will be immediately visible to students and parents</li>
+                      <li>• Results will be immediately visible to learners and parents</li>
                       <li>• Notifications will be sent automatically</li>
                       <li>• This action cannot be undone</li>
                       <li>• Report cards will be generated in the background</li>
@@ -224,7 +224,7 @@ const PublishingStep: React.FC<PublishingStepProps> = ({ exam, setActiveStep, up
             <div>
               <h3 className="text-2xl font-bold text-gray-900">Publish Results</h3>
               <p className="text-sm text-gray-600 mt-1">
-                Final step: Review and publish exam results to students and parents
+                Final step: Review and publish exam results to learners and parents
               </p>
               <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
                 <span className="flex items-center gap-1">
@@ -237,7 +237,7 @@ const PublishingStep: React.FC<PublishingStepProps> = ({ exam, setActiveStep, up
                 </span>
                 <span className="flex items-center gap-1">
                   <UserGroupIcon className="h-3 w-3" />
-                  {exam.marks[0]?.studentMarks.length || 0} Students
+                  {exam.marks[0]?.learnerMarks.length || 0} Learners
                 </span>
               </div>
             </div>
@@ -390,21 +390,21 @@ const PublishingStep: React.FC<PublishingStepProps> = ({ exam, setActiveStep, up
               {/* Overall Statistics */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 {(() => {
-                  const totalStudents = exam.marks[0]?.studentMarks.length || 0;
+                  const totallearners = exam.marks[0]?.learnerMarks.length || 0;
                   const totalPresent = exam.marks.reduce((sum, subject) => 
-                    sum + subject.studentMarks.filter(s => !s.isAbsent).length, 0) / exam.marks.length;
+                    sum + subject.learnerMarks.filter(s => !s.isAbsent).length, 0) / exam.marks.length;
                   const overallPassRate = exam.marks.reduce((sum, subject) => {
                     const subjectData = exam.subjects.find(s => s.id === subject.subjectId);
-                    const presentStudents = subject.studentMarks.filter(s => !s.isAbsent);
-                    const passedStudents = presentStudents.filter(s => s.marks !== null && s.marks >= (subjectData?.passingMarks || 0));
-                    return sum + (presentStudents.length > 0 ? (passedStudents.length / presentStudents.length) * 100 : 0);
+                    const presentlearners = subject.learnerMarks.filter(s => !s.isAbsent);
+                    const passedlearners = presentlearners.filter(s => s.marks !== null && s.marks >= (subjectData?.passingMarks || 0));
+                    return sum + (presentlearners.length > 0 ? (passedlearners.length / presentlearners.length) * 100 : 0);
                   }, 0) / exam.marks.length;
                   
                   return (
                     <>
                       <div className="text-center p-4 bg-blue-50 rounded-lg">
-                        <p className="text-2xl font-bold text-blue-600">{totalStudents}</p>
-                        <p className="text-xs text-gray-600">Total Students</p>
+                        <p className="text-2xl font-bold text-blue-600">{totallearners}</p>
+                        <p className="text-xs text-gray-600">Total Learners</p>
                       </div>
                       <div className="text-center p-4 bg-green-50 rounded-lg">
                         <p className="text-2xl font-bold text-green-600">{Math.round(totalPresent)}</p>
@@ -429,14 +429,14 @@ const PublishingStep: React.FC<PublishingStepProps> = ({ exam, setActiveStep, up
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {exam.marks.map(subjectMark => {
                     const subject = exam.subjects.find(s => s.id === subjectMark.subjectId);
-                    const presentStudents = subjectMark.studentMarks.filter(s => !s.isAbsent);
-                    const passedStudents = presentStudents.filter(s => s.marks !== null && s.marks >= (subject?.passingMarks || 0));
-                    const passRate = presentStudents.length > 0 ? Math.round((passedStudents.length / presentStudents.length) * 100) : 0;
-                    const avgMarks = presentStudents.length > 0 ? 
-                      Math.round(presentStudents.reduce((sum, s) => sum + (s.marks || 0), 0) / presentStudents.length) : 0;
+                    const presentlearners = subjectMark.learnerMarks.filter(s => !s.isAbsent);
+                    const passedlearners = presentlearners.filter(s => s.marks !== null && s.marks >= (subject?.passingMarks || 0));
+                    const passRate = presentlearners.length > 0 ? Math.round((passedlearners.length / presentlearners.length) * 100) : 0;
+                    const avgMarks = presentlearners.length > 0 ? 
+                      Math.round(presentlearners.reduce((sum, s) => sum + (s.marks || 0), 0) / presentlearners.length) : 0;
                     
                     // Check if subject has moderation
-                    const moderationCount = subjectMark.studentMarks.filter(s => 
+                    const moderationCount = subjectMark.learnerMarks.filter(s => 
                       s.originalMarks !== null && s.originalMarks !== s.marks && !s.isAbsent
                     ).length;
                     
@@ -465,15 +465,15 @@ const PublishingStep: React.FC<PublishingStepProps> = ({ exam, setActiveStep, up
                         <div className="space-y-2 text-xs text-gray-600">
                           <div className="flex justify-between">
                             <span>Present:</span>
-                            <span className="font-medium">{presentStudents.length}</span>
+                            <span className="font-medium">{presentlearners.length}</span>
                           </div>
                           <div className="flex justify-between">
                             <span>Passed:</span>
-                            <span className="font-medium text-green-600">{passedStudents.length}</span>
+                            <span className="font-medium text-green-600">{passedlearners.length}</span>
                           </div>
                           <div className="flex justify-between">
                             <span>Failed:</span>
-                            <span className="font-medium text-red-600">{presentStudents.length - passedStudents.length}</span>
+                            <span className="font-medium text-red-600">{presentlearners.length - passedlearners.length}</span>
                           </div>
                         </div>
                         
@@ -526,8 +526,8 @@ const PublishingStep: React.FC<PublishingStepProps> = ({ exam, setActiveStep, up
                   <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer">
                     <input type="checkbox" defaultChecked className="rounded border-gray-300 text-green-600 focus:ring-green-500" />
                     <div>
-                      <p className="font-medium text-gray-900">Students</p>
-                      <p className="text-xs text-gray-500">Send SMS/Email to students</p>
+                      <p className="font-medium text-gray-900">Learners</p>
+                      <p className="text-xs text-gray-500">Send SMS/Email to learners</p>
                     </div>
                   </label>
                   <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer">
@@ -551,7 +551,7 @@ const PublishingStep: React.FC<PublishingStepProps> = ({ exam, setActiveStep, up
                     <input type="checkbox" defaultChecked className="rounded border-gray-300 text-green-600 focus:ring-green-500" />
                     <div>
                       <p className="font-medium text-gray-900">Report Cards</p>
-                      <p className="text-xs text-gray-500">Individual student reports</p>
+                      <p className="text-xs text-gray-500">Individual learner reports</p>
                     </div>
                   </label>
                   <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer">
@@ -569,7 +569,7 @@ const PublishingStep: React.FC<PublishingStepProps> = ({ exam, setActiveStep, up
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h5 className="font-medium text-blue-900 mb-2">Publication Timeline</h5>
               <div className="text-sm text-blue-700 space-y-1">
-                <p>• Results will be immediately visible to students and parents</p>
+                <p>• Results will be immediately visible to learners and parents</p>
                 <p>• Notifications will be sent within 5 minutes</p>
                 <p>• Report cards will be generated in the background</p>
                 <p>• This action cannot be undone once completed</p>
@@ -589,7 +589,7 @@ const PublishingStep: React.FC<PublishingStepProps> = ({ exam, setActiveStep, up
               </div>
               <div>
                 <h4 className="text-lg font-semibold text-green-900">Results Successfully Published</h4>
-                <p className="text-sm text-gray-500">Results are now live and accessible to students and parents</p>
+                <p className="text-sm text-gray-500">Results are now live and accessible to learners and parents</p>
               </div>
             </div>
           </div>
@@ -613,8 +613,8 @@ const PublishingStep: React.FC<PublishingStepProps> = ({ exam, setActiveStep, up
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Total Students:</span>
-                    <span className="font-medium text-gray-900">{exam.marks[0]?.studentMarks.length || 0}</span>
+                    <span className="text-gray-600">Total Learners:</span>
+                    <span className="font-medium text-gray-900">{exam.marks[0]?.learnerMarks.length || 0}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Subjects Published:</span>
@@ -643,7 +643,7 @@ const PublishingStep: React.FC<PublishingStepProps> = ({ exam, setActiveStep, up
                   </button>
                   <button 
                     onClick={() => {
-                      alert("📄 Report Generation\n\nThis will generate:\n• Individual student report cards\n• Class performance summary\n• Subject-wise analysis\n• Grade distribution charts\n• Export to PDF format\n\nEstimated time: 2-3 minutes");
+                      alert("📄 Report Generation\n\nThis will generate:\n• Individual learner report cards\n• Class performance summary\n• Subject-wise analysis\n• Grade distribution charts\n• Export to PDF format\n\nEstimated time: 2-3 minutes");
                     }}
                     className="w-full px-4 py-3 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 inline-flex items-center justify-center gap-2"
                   >
@@ -652,7 +652,7 @@ const PublishingStep: React.FC<PublishingStepProps> = ({ exam, setActiveStep, up
                   </button>
                   <button 
                     onClick={() => {
-                      alert("📊 Analytics Dashboard\n\nView comprehensive analytics:\n• Performance trends\n• Subject-wise comparisons\n• Student progress tracking\n• Historical data analysis");
+                      alert("📊 Analytics Dashboard\n\nView comprehensive analytics:\n• Performance trends\n• Subject-wise comparisons\n• Learner progress tracking\n• Historical data analysis");
                     }}
                     className="w-full px-4 py-3 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 inline-flex items-center justify-center gap-2"
                   >

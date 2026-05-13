@@ -11,14 +11,14 @@ import type { User, UserRole, CreateUserData, UpdateUserData } from '@/shared/ty
 // ============================================================================
 
 const VALID_ROLES: UserRole[] = [
-  'student',
+  'learner',
   'recruiter',
   'educator',
   'school_admin',
   'college_admin',
   'university_admin',
-  'school_student',
-  'college_student',
+  'learner',
+  'learner',
   'school_educator',
   'college_educator',
   'admin',
@@ -39,8 +39,8 @@ export const isValidRole = (role: string): role is UserRole => {
 // Role Checks
 // ============================================================================
 
-export const isStudentRole = (role: string | null | undefined): boolean =>
-  role === 'student' || role === 'school_student' || role === 'college_student';
+export const islearnerRole = (role: string | null | undefined): boolean =>
+  role === 'learner';
 
 export const isEducatorRole = (role: string | null | undefined): boolean =>
   role === 'educator' || role === 'school_educator' || role === 'college_educator';

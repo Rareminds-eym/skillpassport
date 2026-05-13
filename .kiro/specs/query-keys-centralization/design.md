@@ -2,12 +2,12 @@
 
 ## Overview
 
-This design implements a centralized query key factory for React Query that eliminates hardcoded magic strings across 46 files in the codebase. The solution provides type-safe, consistent query key generation organized by domain (student, educator, college, recruiter, analytics, courses, subscription) with a six-phase migration strategy that preserves existing cache behavior while improving maintainability and refactorability.
+This design implements a centralized query key factory for React Query that eliminates hardcoded magic strings across 46 files in the codebase. The solution provides type-safe, consistent query key generation organized by domain (learner, educator, college, recruiter, analytics, courses, subscription) with a six-phase migration strategy that preserves existing cache behavior while improving maintainability and refactorability.
 
 ### Problem Statement
 
 The current codebase uses hardcoded query key strings scattered across multiple files:
-- `['student-messages', conversationId || 'none']`
+- `['learner-messages', conversationId || 'none']`
 - `['recruiter-conversations', recruiterId, 'active']`
 - `['curriculum_courses', collegeId]`
 
@@ -21,7 +21,7 @@ This approach creates several issues:
 ### Solution Approach
 
 Create a centralized `queryKeys.ts` factory module that:
-- Exports domain-organized factory functions (e.g., `queryKeys.student.messages()`)
+- Exports domain-organized factory functions (e.g., `queryKeys.learner.messages()`)
 - Returns readonly tuple arrays for type safety and immutability
 - Enforces consistent parameter ordering and structure
 - Provides base keys for hierarchical cache invalidation
@@ -44,7 +44,7 @@ Create a centralized `queryKeys.ts` factory module that:
 ```
 src/shared/lib/queryKeys/
 ├── index.ts                 # Main export and factory aggregation
-├── student.ts              # Student domain keys
+├── learner.ts              # learner domain keys
 ├── educator.ts             # Educator domain keys
 ├── college.ts              # College/lecturer domain keys
 ├── recruiter.ts            # Recruiter domain keys
@@ -63,14 +63,14 @@ Query keys follow a hierarchical structure to enable efficient cache invalidatio
 ```
 
 Examples:
-- `['student', 'messages', conversationId]` - Specific conversation messages
-- `['student', 'messages']` - All student messages (base key)
-- `['student']` - All student-related queries (domain key)
+- `['learner', 'messages', conversationId]` - Specific conversation messages
+- `['learner', 'messages']` - All learner messages (base key)
+- `['learner']` - All learner-related queries (domain key)
 
 This hierarchy allows:
-- Invalidating all student queries: `queryClient.invalidateQueries({ queryKey: ['student'] })`
-- Invalidating all student messages: `queryClient.invalidateQueries({ queryKey: ['student', 'messages'] })`
-- Invalidating specific conversation: `queryClient.invalidateQueries({ queryKey: ['student', 'messages', conversationId] })`
+- Invalidating all learner queries: `queryClient.invalidateQueries({ queryKey: ['learner'] })`
+- Invalidating all learner messages: `queryClient.invalidateQueries({ queryKey: ['learner', 'messages'] })`
+- Invalidating specific conversation: `queryClient.invalidateQueries({ queryKey: ['learner', 'messages', conversationId] })`
 
 ### Type Safety Strategy
 
@@ -83,11 +83,11 @@ TypeScript ensures compile-time correctness through:
 
 Example:
 ```typescript
-export const studentKeys = {
-  all: ['student'] as const,
-  messages: (conversationId: string) => ['student', 'messages', conversationId] as const,
-  conversations: (studentId: string, type?: string) => 
-    ['student', 'conversations', studentId, type] as const,
+export const learnerKeys = {
+  all: ['learner'] as const,
+  messages: (conversationId: string) => ['learner', 'messages', conversationId] as const,
+  conversations: (learnerId: string, type?: string) => 
+    ['learner', 'conversations', learnerId, type] as const,
 } as const;
 ```
 
@@ -106,18 +106,18 @@ export type QueryKey = readonly [string, ...any[]];
 /**
  * User type discriminator for messaging queries
  */
-export type UserType = 'student' | 'recruiter' | 'educator' | 'admin' | 
+export type UserType = 'learner' | 'recruiter' | 'educator' | 'admin' | 
                        'school_admin' | 'college_admin' | 'college_lecturer';
 
 /**
  * Conversation type discriminator
  */
 export type ConversationType = 
-  | 'student_recruiter'
-  | 'student_educator'
-  | 'student_admin'
-  | 'student_college_admin'
-  | 'student_college_educator'
+  | 'learner_recruiter'
+  | 'learner_educator'
+  | 'learner_admin'
+  | 'learner_college_admin'
+  | 'learner_college_educator'
   | 'educator_admin'
   | 'college_educator_admin';
 
@@ -127,45 +127,45 @@ export type ConversationType =
 export type ArchiveStatus = 'active' | 'archived' | 'all';
 ```
 
-### Student Domain Keys
+### learner Domain Keys
 
 ```typescript
-// src/shared/lib/queryKeys/student.ts
+// src/shared/lib/queryKeys/learner.ts
 
 import type { QueryKey, ConversationType, ArchiveStatus } from './types';
 
-export const studentKeys = {
-  // Base key for all student queries
-  all: ['student'] as const,
+export const learnerKeys = {
+  // Base key for all learner queries
+  all: ['learner'] as const,
   
   // Messages
   messages: {
-    all: ['student', 'messages'] as const,
+    all: ['learner', 'messages'] as const,
     conversation: (conversationId: string): QueryKey => 
-      ['student', 'messages', conversationId] as const,
+      ['learner', 'messages', conversationId] as const,
   },
   
   // Conversations
   conversations: {
-    all: ['student', 'conversations'] as const,
-    byStudent: (studentId: string, type?: ConversationType): QueryKey =>
+    all: ['learner', 'conversations'] as const,
+    byStudent: (learnerId: string, type?: ConversationType): QueryKey =>
       type 
-        ? ['student', 'conversations', studentId, type] as const
-        : ['student', 'conversations', studentId] as const,
+        ? ['learner', 'conversations', learnerId, type] as const
+        : ['learner', 'conversations', learnerId] as const,
   },
   
   // Unread counts
   unread: {
-    all: ['student', 'unread'] as const,
-    count: (studentId: string): QueryKey => 
-      ['student', 'unread', studentId] as const,
+    all: ['learner', 'unread'] as const,
+    count: (learnerId: string): QueryKey => 
+      ['learner', 'unread', learnerId] as const,
   },
   
   // Realtime activities
   activities: {
-    all: ['student', 'activities'] as const,
-    realtime: (studentId: string): QueryKey =>
-      ['student', 'activities', 'realtime', studentId] as const,
+    all: ['learner', 'activities'] as const,
+    realtime: (learnerId: string): QueryKey =>
+      ['learner', 'activities', 'realtime', learnerId] as const,
   },
 } as const;
 ```
@@ -195,8 +195,8 @@ export const educatorKeys = {
       status
         ? ['educator', 'conversations', educatorId, status] as const
         : ['educator', 'conversations', educatorId] as const,
-    students: (conversationId: string): QueryKey =>
-      ['educator', 'conversations', 'students', conversationId] as const,
+    learners: (conversationId: string): QueryKey =>
+      ['educator', 'conversations', 'learners', conversationId] as const,
   },
   
   // Admin conversations
@@ -390,8 +390,8 @@ export const coursesKeys = {
     all: ['courses', 'enrollment'] as const,
     byCourse: (courseId: string): QueryKey =>
       ['courses', 'enrollment', courseId] as const,
-    byStudent: (studentId: string): QueryKey =>
-      ['courses', 'enrollment', 'student', studentId] as const,
+    byStudent: (learnerId: string): QueryKey =>
+      ['courses', 'enrollment', 'learner', learnerId] as const,
   },
   
   // Course performance
@@ -399,15 +399,15 @@ export const coursesKeys = {
     all: ['courses', 'performance'] as const,
     byCourse: (courseId: string): QueryKey =>
       ['courses', 'performance', courseId] as const,
-    byStudent: (studentId: string, courseId: string): QueryKey =>
-      ['courses', 'performance', studentId, courseId] as const,
+    byStudent: (learnerId: string, courseId: string): QueryKey =>
+      ['courses', 'performance', learnerId, courseId] as const,
   },
   
   // Course progress
   progress: {
     all: ['courses', 'progress'] as const,
-    byStudent: (studentId: string, courseId: string): QueryKey =>
-      ['courses', 'progress', studentId, courseId] as const,
+    byStudent: (learnerId: string, courseId: string): QueryKey =>
+      ['courses', 'progress', learnerId, courseId] as const,
   },
   
   // Curriculum courses (legacy naming)
@@ -458,7 +458,7 @@ export const subscriptionKeys = {
 ```typescript
 // src/shared/lib/queryKeys/index.ts
 
-export { studentKeys } from './student';
+export { learnerKeys } from './learner';
 export { educatorKeys } from './educator';
 export { collegeKeys } from './college';
 export { recruiterKeys } from './recruiter';
@@ -475,19 +475,19 @@ export type { QueryKey, UserType, ConversationType, ArchiveStatus } from './type
  *   import { queryKeys } from '@/shared/lib/queryKeys';
  *   
  *   useQuery({
- *     queryKey: queryKeys.student.messages.conversation(conversationId),
+ *     queryKey: queryKeys.learner.messages.conversation(conversationId),
  *     queryFn: ...
  *   });
  * 
  * Cache Invalidation:
- *   // Invalidate all student queries
- *   queryClient.invalidateQueries({ queryKey: queryKeys.student.all });
+ *   // Invalidate all learner queries
+ *   queryClient.invalidateQueries({ queryKey: queryKeys.learner.all });
  *   
- *   // Invalidate all student messages
- *   queryClient.invalidateQueries({ queryKey: queryKeys.student.messages.all });
+ *   // Invalidate all learner messages
+ *   queryClient.invalidateQueries({ queryKey: queryKeys.learner.messages.all });
  */
 export const queryKeys = {
-  student: studentKeys,
+  learner: learnerKeys,
   educator: educatorKeys,
   college: collegeKeys,
   recruiter: recruiterKeys,
@@ -508,7 +508,7 @@ type QueryKey = readonly [domain: string, resource: string, ...params: any[]];
 ```
 
 Components:
-1. **Domain**: Top-level category (student, educator, college, recruiter, analytics, courses, subscription)
+1. **Domain**: Top-level category (learner, educator, college, recruiter, analytics, courses, subscription)
 2. **Resource**: Specific resource type within domain (messages, conversations, unread, etc.)
 3. **Parameters**: Optional identifiers and filters (IDs, status flags, date ranges, etc.)
 
@@ -527,20 +527,20 @@ interface MigrationPhase {
 const migrationPhases: MigrationPhase[] = [
   {
     phase: 1,
-    name: 'Student Messaging',
-    description: 'Migrate student messaging hooks and pages',
+    name: 'learner Messaging',
+    description: 'Migrate learner messaging hooks and pages',
     files: [
-      'src/entities/student/model/useStudentMessages.ts',
-      'src/features/student-profile/model/useStudentMessages.ts',
-      'src/features/student-profile/model/useStudentEducatorMessages.ts',
-      'src/features/student-profile/model/useStudentAdminMessages.ts',
-      'src/features/student-profile/model/useStudentCollegeAdminMessages.ts',
-      'src/features/student-profile/model/useStudentCollegeLecturerMessages.ts',
-      'src/pages/student/Messages.jsx',
-      'src/pages/student/EducatorMessages.jsx',
-      'src/pages/student/Applications.jsx',
+      'src/entities/learner/model/useStudentMessages.ts',
+      'src/features/learner-profile/model/useStudentMessages.ts',
+      'src/features/learner-profile/model/useStudentEducatorMessages.ts',
+      'src/features/learner-profile/model/useStudentAdminMessages.ts',
+      'src/features/learner-profile/model/useStudentCollegeAdminMessages.ts',
+      'src/features/learner-profile/model/useStudentCollegeLecturerMessages.ts',
+      'src/pages/learner/Messages.jsx',
+      'src/pages/learner/EducatorMessages.jsx',
+      'src/pages/learner/Applications.jsx',
     ],
-    domains: ['student'],
+    domains: ['learner'],
     estimatedEffort: '2-3 hours',
   },
   {
@@ -582,13 +582,13 @@ const migrationPhases: MigrationPhase[] = [
     description: 'Migrate admin page components',
     files: [
       'src/pages/admin/schoolAdmin/EducatorCommunication.tsx',
-      'src/pages/admin/schoolAdmin/StudentCommunication.tsx',
-      'src/pages/admin/collegeAdmin/StudentCollegeAdminCommunication.tsx',
+      'src/pages/admin/schoolAdmin/learnerCommunication.tsx',
+      'src/pages/admin/collegeAdmin/learnerCollegeAdminCommunication.tsx',
       'src/pages/admin/collegeAdmin/CourseManagement.tsx',
       'src/pages/admin/collegeAdmin/Departmentmanagement.tsx',
       'src/pages/admin/collegeAdmin/ExaminationManagement.tsx',
     ],
-    domains: ['college', 'educator', 'student'],
+    domains: ['college', 'educator', 'learner'],
     estimatedEffort: '2-3 hours',
   },
   {
@@ -623,7 +623,7 @@ const migrationPhases: MigrationPhase[] = [
       'src/shared/hooks/useSubscriptionQuery.js',
       'src/shared/hooks/useAddOnCatalog.ts',
     ],
-    domains: ['subscription', 'student'],
+    domains: ['subscription', 'learner'],
     estimatedEffort: '1-2 hours',
   },
 ];
@@ -636,10 +636,10 @@ const migrationPhases: MigrationPhase[] = [
 
 The migration follows a six-phase strategy organized by domain to minimize risk and enable incremental validation:
 
-**Phase 1: Student Messaging (9 files)**
-- Focus: Student-facing messaging hooks and pages
+**Phase 1: learner Messaging (9 files)**
+- Focus: learner-facing messaging hooks and pages
 - Risk: Medium (high usage, but isolated domain)
-- Validation: Test student message flows, conversation loading, unread counts
+- Validation: Test learner message flows, conversation loading, unread counts
 
 **Phase 2: Educator Messaging (8 files)**
 - Focus: Educator-facing messaging hooks and pages
@@ -709,10 +709,10 @@ If issues are discovered during a phase:
 **Resolution**:
 ```typescript
 // ❌ Wrong - missing required parameter
-queryKeys.student.messages.conversation()
+queryKeys.learner.messages.conversation()
 
 // ✅ Correct - provide required conversationId
-queryKeys.student.messages.conversation(conversationId)
+queryKeys.learner.messages.conversation(conversationId)
 ```
 
 **Prevention**: TypeScript function signatures enforce required parameters at compile time
@@ -728,8 +728,8 @@ queryKeys.student.messages.conversation(conversationId)
 // ❌ Wrong - invalidates nothing
 queryClient.invalidateQueries({ queryKey: ['messages'] })
 
-// ✅ Correct - invalidates all student messages
-queryClient.invalidateQueries({ queryKey: queryKeys.student.messages.all })
+// ✅ Correct - invalidates all learner messages
+queryClient.invalidateQueries({ queryKey: queryKeys.learner.messages.all })
 ```
 
 **Prevention**: Use exported base keys (`all` properties) for invalidation
@@ -773,7 +773,7 @@ queryClient.invalidateQueries({ queryKey: queryKeys.student.messages.all })
 conversations: (id: string) => ['conversations', id] as const
 
 // ✅ Clear - explicit parameter name and purpose
-conversations: (studentId: string) => ['conversations', studentId] as const
+conversations: (learnerId: string) => ['conversations', learnerId] as const
 ```
 
 **Prevention**: Use descriptive parameter names that indicate their purpose
@@ -786,23 +786,23 @@ conversations: (studentId: string) => ['conversations', studentId] as const
 
 **Test Structure**:
 ```typescript
-// src/shared/lib/queryKeys/__tests__/student.test.ts
+// src/shared/lib/queryKeys/__tests__/learner.test.ts
 
 import { describe, it, expect } from 'vitest';
 import { queryKeys } from '../index';
 
-describe('Student Query Keys', () => {
+describe('learner Query Keys', () => {
   describe('messages', () => {
     it('generates conversation key with conversationId', () => {
       const conversationId = 'conv-123';
-      const key = queryKeys.student.messages.conversation(conversationId);
+      const key = queryKeys.learner.messages.conversation(conversationId);
       
-      expect(key).toEqual(['student', 'messages', 'conv-123']);
-      expect(key).toMatchObject(['student', 'messages', conversationId]);
+      expect(key).toEqual(['learner', 'messages', 'conv-123']);
+      expect(key).toMatchObject(['learner', 'messages', conversationId]);
     });
     
     it('returns readonly array', () => {
-      const key = queryKeys.student.messages.all;
+      const key = queryKeys.learner.messages.all;
       
       // TypeScript should prevent mutation
       // @ts-expect-error - readonly array cannot be mutated
@@ -812,27 +812,27 @@ describe('Student Query Keys', () => {
   
   describe('conversations', () => {
     it('generates conversation key without type', () => {
-      const studentId = 'student-456';
-      const key = queryKeys.student.conversations.byStudent(studentId);
+      const learnerId = 'learner-456';
+      const key = queryKeys.learner.conversations.byStudent(learnerId);
       
-      expect(key).toEqual(['student', 'conversations', 'student-456']);
+      expect(key).toEqual(['learner', 'conversations', 'learner-456']);
     });
     
     it('generates conversation key with type', () => {
-      const studentId = 'student-456';
-      const type = 'student_recruiter';
-      const key = queryKeys.student.conversations.byStudent(studentId, type);
+      const learnerId = 'learner-456';
+      const type = 'learner_recruiter';
+      const key = queryKeys.learner.conversations.byStudent(learnerId, type);
       
-      expect(key).toEqual(['student', 'conversations', 'student-456', 'student_recruiter']);
+      expect(key).toEqual(['learner', 'conversations', 'learner-456', 'learner_recruiter']);
     });
   });
   
   describe('unread', () => {
     it('generates unread count key', () => {
-      const studentId = 'student-789';
-      const key = queryKeys.student.unread.count(studentId);
+      const learnerId = 'learner-789';
+      const key = queryKeys.learner.unread.count(learnerId);
       
-      expect(key).toEqual(['student', 'unread', 'student-789']);
+      expect(key).toEqual(['learner', 'unread', 'learner-789']);
     });
   });
 });
@@ -850,7 +850,7 @@ describe('Student Query Keys', () => {
 
 **Test Structure**:
 ```typescript
-// src/features/student-profile/model/__tests__/useStudentMessages.test.tsx
+// src/features/learner-profile/model/__tests__/useStudentMessages.test.tsx
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
@@ -871,7 +871,7 @@ describe('useStudentMessages with centralized keys', () => {
   
   it('uses correct query key for messages', async () => {
     const conversationId = 'conv-123';
-    const studentId = 'student-456';
+    const learnerId = 'learner-456';
     
     const wrapper = ({ children }) => (
       <QueryClientProvider client={queryClient}>
@@ -880,7 +880,7 @@ describe('useStudentMessages with centralized keys', () => {
     );
     
     const { result } = renderHook(
-      () => useStudentMessages({ studentId, conversationId }),
+      () => useStudentMessages({ learnerId, conversationId }),
       { wrapper }
     );
     
@@ -888,7 +888,7 @@ describe('useStudentMessages with centralized keys', () => {
       const queries = queryClient.getQueryCache().getAll();
       const messageQuery = queries.find(q => 
         JSON.stringify(q.queryKey) === 
-        JSON.stringify(queryKeys.student.messages.conversation(conversationId))
+        JSON.stringify(queryKeys.learner.messages.conversation(conversationId))
       );
       
       expect(messageQuery).toBeDefined();
@@ -904,23 +904,23 @@ describe('useStudentMessages with centralized keys', () => {
     
     // Set up some cached data
     queryClient.setQueryData(
-      queryKeys.student.messages.conversation('conv-1'),
+      queryKeys.learner.messages.conversation('conv-1'),
       []
     );
     queryClient.setQueryData(
-      queryKeys.student.messages.conversation('conv-2'),
+      queryKeys.learner.messages.conversation('conv-2'),
       []
     );
     
-    // Invalidate all student messages
+    // Invalidate all learner messages
     await queryClient.invalidateQueries({
-      queryKey: queryKeys.student.messages.all
+      queryKey: queryKeys.learner.messages.all
     });
     
     // Verify both queries are invalidated
     const queries = queryClient.getQueryCache().getAll();
     queries.forEach(q => {
-      if (q.queryKey[0] === 'student' && q.queryKey[1] === 'messages') {
+      if (q.queryKey[0] === 'learner' && q.queryKey[1] === 'messages') {
         expect(q.state.isInvalidated).toBe(true);
       }
     });
@@ -996,7 +996,7 @@ For any parameterized query key, when the factory function is called with multip
 
 ### Property 6: Hierarchical Prefix Invalidation
 
-For any base key (e.g., queryKeys.student.messages.all) used to invalidate queries in React Query, all queries whose keys start with that base key prefix must be invalidated.
+For any base key (e.g., queryKeys.learner.messages.all) used to invalidate queries in React Query, all queries whose keys start with that base key prefix must be invalidated.
 
 **Validates: Requirements 10.2**
 
@@ -1017,7 +1017,7 @@ The main export module aggregates all domain-specific key factories and provides
 
 ```typescript
 export const queryKeys = {
-  student: studentKeys,
+  learner: learnerKeys,
   educator: educatorKeys,
   college: collegeKeys,
   recruiter: recruiterKeys,
@@ -1036,9 +1036,9 @@ The `as const` assertion ensures:
 
 **Before Migration:**
 ```typescript
-// src/features/student-profile/model/useStudentMessages.ts
+// src/features/learner-profile/model/useStudentMessages.ts
 const { data: fetchedMessages } = useQuery({
-  queryKey: ['student-messages', conversationId || 'none'],
+  queryKey: ['learner-messages', conversationId || 'none'],
   queryFn: async () => {
     // ...
   },
@@ -1047,11 +1047,11 @@ const { data: fetchedMessages } = useQuery({
 
 **After Migration:**
 ```typescript
-// src/features/student-profile/model/useStudentMessages.ts
+// src/features/learner-profile/model/useStudentMessages.ts
 import { queryKeys } from '@/shared/lib/queryKeys';
 
 const { data: fetchedMessages } = useQuery({
-  queryKey: queryKeys.student.messages.conversation(conversationId || 'none'),
+  queryKey: queryKeys.learner.messages.conversation(conversationId || 'none'),
   queryFn: async () => {
     // ...
   },
@@ -1062,21 +1062,21 @@ const { data: fetchedMessages } = useQuery({
 
 **Before Migration:**
 ```typescript
-// Invalidate all student messages
-queryClient.invalidateQueries({ queryKey: ['student-messages'] });
+// Invalidate all learner messages
+queryClient.invalidateQueries({ queryKey: ['learner-messages'] });
 
 // Invalidate specific conversation
-queryClient.invalidateQueries({ queryKey: ['student-messages', conversationId] });
+queryClient.invalidateQueries({ queryKey: ['learner-messages', conversationId] });
 ```
 
 **After Migration:**
 ```typescript
-// Invalidate all student messages
-queryClient.invalidateQueries({ queryKey: queryKeys.student.messages.all });
+// Invalidate all learner messages
+queryClient.invalidateQueries({ queryKey: queryKeys.learner.messages.all });
 
 // Invalidate specific conversation
 queryClient.invalidateQueries({ 
-  queryKey: queryKeys.student.messages.conversation(conversationId) 
+  queryKey: queryKeys.learner.messages.conversation(conversationId) 
 });
 ```
 
@@ -1085,27 +1085,27 @@ queryClient.invalidateQueries({
 **Compile-Time Parameter Validation:**
 ```typescript
 // ✅ Correct - TypeScript accepts valid parameters
-const key1 = queryKeys.student.messages.conversation('conv-123');
+const key1 = queryKeys.learner.messages.conversation('conv-123');
 
 // ❌ Error - TypeScript rejects missing parameter
-const key2 = queryKeys.student.messages.conversation();
+const key2 = queryKeys.learner.messages.conversation();
 // Error: Expected 1 arguments, but got 0
 
 // ❌ Error - TypeScript rejects wrong type
-const key3 = queryKeys.student.messages.conversation(123);
+const key3 = queryKeys.learner.messages.conversation(123);
 // Error: Argument of type 'number' is not assignable to parameter of type 'string'
 ```
 
 **Readonly Array Enforcement:**
 ```typescript
-const key = queryKeys.student.messages.all;
+const key = queryKeys.learner.messages.all;
 
 // ❌ Error - TypeScript prevents mutation
 key[0] = 'modified';
 // Error: Cannot assign to '0' because it is a read-only property
 
 key.push('new-element');
-// Error: Property 'push' does not exist on type 'readonly ["student", "messages"]'
+// Error: Property 'push' does not exist on type 'readonly ["learner", "messages"]'
 ```
 
 ### Realtime Subscription Integration
@@ -1116,10 +1116,10 @@ Query keys work seamlessly with existing realtime subscriptions:
 // Before migration
 useEffect(() => {
   const channel = supabase
-    .channel(`student-conversation:${conversationId}`)
+    .channel(`learner-conversation:${conversationId}`)
     .on('postgres_changes', { /* ... */ }, (payload) => {
       queryClient.invalidateQueries({
-        queryKey: ['student-messages', conversationId],
+        queryKey: ['learner-messages', conversationId],
         refetchType: 'none'
       });
     })
@@ -1131,10 +1131,10 @@ useEffect(() => {
 // After migration
 useEffect(() => {
   const channel = supabase
-    .channel(`student-conversation:${conversationId}`)
+    .channel(`learner-conversation:${conversationId}`)
     .on('postgres_changes', { /* ... */ }, (payload) => {
       queryClient.invalidateQueries({
-        queryKey: queryKeys.student.messages.conversation(conversationId),
+        queryKey: queryKeys.learner.messages.conversation(conversationId),
         refetchType: 'none'
       });
     })
@@ -1166,7 +1166,7 @@ useEffect(() => {
 
 **Adding New Query Keys:**
 
-1. Identify the appropriate domain module (student, educator, etc.)
+1. Identify the appropriate domain module (learner, educator, etc.)
 2. Add the factory function following existing patterns
 3. Export from the domain module
 4. Add unit test verifying key structure
@@ -1174,28 +1174,28 @@ useEffect(() => {
 
 Example:
 ```typescript
-// 1. Add to src/shared/lib/queryKeys/student.ts
-export const studentKeys = {
+// 1. Add to src/shared/lib/queryKeys/learner.ts
+export const learnerKeys = {
   // ... existing keys
   
-  // New key for student profile
+  // New key for learner profile
   profile: {
-    all: ['student', 'profile'] as const,
-    byId: (studentId: string): QueryKey =>
-      ['student', 'profile', studentId] as const,
+    all: ['learner', 'profile'] as const,
+    byId: (learnerId: string): QueryKey =>
+      ['learner', 'profile', learnerId] as const,
   },
 } as const;
 
-// 2. Add test in src/shared/lib/queryKeys/__tests__/student.test.ts
+// 2. Add test in src/shared/lib/queryKeys/__tests__/learner.test.ts
 it('generates profile key', () => {
-  const key = queryKeys.student.profile.byId('student-123');
-  expect(key).toEqual(['student', 'profile', 'student-123']);
+  const key = queryKeys.learner.profile.byId('learner-123');
+  expect(key).toEqual(['learner', 'profile', 'learner-123']);
 });
 
 // 3. Use in code
 const { data: profile } = useQuery({
-  queryKey: queryKeys.student.profile.byId(studentId),
-  queryFn: () => fetchStudentProfile(studentId),
+  queryKey: queryKeys.learner.profile.byId(learnerId),
+  queryFn: () => fetchStudentProfile(learnerId),
 });
 ```
 
@@ -1204,9 +1204,9 @@ const { data: profile } = useQuery({
 **Inspecting Query Keys:**
 ```typescript
 // Log factory output to compare with expected key
-const key = queryKeys.student.messages.conversation(conversationId);
+const key = queryKeys.learner.messages.conversation(conversationId);
 console.log('Generated key:', key);
-console.log('Expected key:', ['student-messages', conversationId]);
+console.log('Expected key:', ['learner-messages', conversationId]);
 ```
 
 **Verifying Cache Invalidation:**
@@ -1216,7 +1216,7 @@ console.log('Queries before:', queryClient.getQueryCache().getAll());
 
 // Invalidate
 await queryClient.invalidateQueries({ 
-  queryKey: queryKeys.student.messages.all 
+  queryKey: queryKeys.learner.messages.all 
 });
 
 // After invalidation
@@ -1228,7 +1228,7 @@ console.log('Queries after:', queryClient.getQueryCache().getAll());
 // Use TypeScript's type system to verify key types
 import type { QueryKey } from '@/shared/lib/queryKeys';
 
-const key: QueryKey = queryKeys.student.messages.conversation('conv-123');
+const key: QueryKey = queryKeys.learner.messages.conversation('conv-123');
 // TypeScript will error if key doesn't match QueryKey type
 ```
 
@@ -1248,8 +1248,8 @@ For each migrated file:
 
 ### Rollout Strategy
 
-**Phase 1 Rollout (Student Messaging):**
-1. Create factory module with student domain keys
+**Phase 1 Rollout (learner Messaging):**
+1. Create factory module with learner domain keys
 2. Migrate one hook file as proof of concept
 3. Verify functionality in development environment
 4. Migrate remaining 8 files
@@ -1276,7 +1276,7 @@ For each migrated file:
 
 ```
 src/shared/lib/queryKeys/__tests__/
-├── student.test.ts          # Student domain key tests
+├── learner.test.ts          # learner domain key tests
 ├── educator.test.ts         # Educator domain key tests
 ├── college.test.ts          # College domain key tests
 ├── recruiter.test.ts        # Recruiter domain key tests
@@ -1291,54 +1291,54 @@ src/shared/lib/queryKeys/__tests__/
 
 **Testing Key Structure:**
 ```typescript
-// src/shared/lib/queryKeys/__tests__/student.test.ts
+// src/shared/lib/queryKeys/__tests__/learner.test.ts
 import { describe, it, expect } from 'vitest';
 import { queryKeys } from '../index';
 
-describe('Student Query Keys', () => {
+describe('learner Query Keys', () => {
   describe('base keys', () => {
     it('exports all base key', () => {
-      expect(queryKeys.student.all).toEqual(['student']);
+      expect(queryKeys.learner.all).toEqual(['learner']);
     });
     
     it('exports messages base key', () => {
-      expect(queryKeys.student.messages.all).toEqual(['student', 'messages']);
+      expect(queryKeys.learner.messages.all).toEqual(['learner', 'messages']);
     });
   });
   
   describe('parameterized keys', () => {
     it('generates conversation key with conversationId', () => {
       const conversationId = 'conv-abc-123';
-      const key = queryKeys.student.messages.conversation(conversationId);
+      const key = queryKeys.learner.messages.conversation(conversationId);
       
-      expect(key).toEqual(['student', 'messages', 'conv-abc-123']);
-      expect(key[0]).toBe('student');
+      expect(key).toEqual(['learner', 'messages', 'conv-abc-123']);
+      expect(key[0]).toBe('learner');
       expect(key[1]).toBe('messages');
       expect(key[2]).toBe(conversationId);
     });
     
     it('generates conversation key with different conversationId', () => {
       const conversationId = 'conv-xyz-789';
-      const key = queryKeys.student.messages.conversation(conversationId);
+      const key = queryKeys.learner.messages.conversation(conversationId);
       
-      expect(key).toEqual(['student', 'messages', 'conv-xyz-789']);
+      expect(key).toEqual(['learner', 'messages', 'conv-xyz-789']);
     });
   });
   
   describe('optional parameters', () => {
     it('generates conversation key without type parameter', () => {
-      const studentId = 'student-123';
-      const key = queryKeys.student.conversations.byStudent(studentId);
+      const learnerId = 'learner-123';
+      const key = queryKeys.learner.conversations.byStudent(learnerId);
       
-      expect(key).toEqual(['student', 'conversations', 'student-123']);
+      expect(key).toEqual(['learner', 'conversations', 'learner-123']);
     });
     
     it('generates conversation key with type parameter', () => {
-      const studentId = 'student-123';
-      const type = 'student_recruiter';
-      const key = queryKeys.student.conversations.byStudent(studentId, type);
+      const learnerId = 'learner-123';
+      const type = 'learner_recruiter';
+      const key = queryKeys.learner.conversations.byStudent(learnerId, type);
       
-      expect(key).toEqual(['student', 'conversations', 'student-123', 'student_recruiter']);
+      expect(key).toEqual(['learner', 'conversations', 'learner-123', 'learner_recruiter']);
     });
   });
 });
@@ -1351,15 +1351,15 @@ import { describe, it, expect } from 'vitest';
 import { queryKeys } from '../index';
 
 describe('Backward Compatibility', () => {
-  it('student messages key matches legacy format', () => {
+  it('learner messages key matches legacy format', () => {
     const conversationId = 'conv-123';
-    const factoryKey = queryKeys.student.messages.conversation(conversationId);
-    const legacyKey = ['student-messages', conversationId];
+    const factoryKey = queryKeys.learner.messages.conversation(conversationId);
+    const legacyKey = ['learner-messages', conversationId];
     
     // Note: These are intentionally different formats
     // This test documents the migration from legacy to new format
-    expect(factoryKey).toEqual(['student', 'messages', 'conv-123']);
-    expect(legacyKey).toEqual(['student-messages', 'conv-123']);
+    expect(factoryKey).toEqual(['learner', 'messages', 'conv-123']);
+    expect(legacyKey).toEqual(['learner-messages', 'conv-123']);
     
     // The migration maintains cache by using the same conversationId
     expect(factoryKey[2]).toBe(legacyKey[1]);
@@ -1392,7 +1392,7 @@ describe('Property 1: Query Key Immutability', () => {
     fc.assert(
       fc.property(
         fc.constantFrom(
-          queryKeys.student.messages.all,
+          queryKeys.learner.messages.all,
           queryKeys.educator.conversations.all,
           queryKeys.analytics.diversity.all,
           queryKeys.courses.enrollment.all
@@ -1416,7 +1416,7 @@ describe('Property 1: Query Key Immutability', () => {
       fc.property(
         fc.string(),
         (id) => {
-          const key = queryKeys.student.messages.conversation(id);
+          const key = queryKeys.learner.messages.conversation(id);
           
           // Attempt mutation should fail
           expect(() => {
@@ -1441,7 +1441,7 @@ describe('Property 2: Parameterized Key Inclusion', () => {
       fc.property(
         fc.string({ minLength: 1 }),
         (conversationId) => {
-          const key = queryKeys.student.messages.conversation(conversationId);
+          const key = queryKeys.learner.messages.conversation(conversationId);
           
           // Key must include the provided parameter
           expect(key).toContain(conversationId);
@@ -1457,13 +1457,13 @@ describe('Property 2: Parameterized Key Inclusion', () => {
       fc.property(
         fc.string({ minLength: 1 }),
         fc.string({ minLength: 1 }),
-        (studentId, courseId) => {
-          const key = queryKeys.courses.performance.byStudent(studentId, courseId);
+        (learnerId, courseId) => {
+          const key = queryKeys.courses.performance.byStudent(learnerId, courseId);
           
           // Both parameters must be present
-          expect(key).toContain(studentId);
+          expect(key).toContain(learnerId);
           expect(key).toContain(courseId);
-          expect(key[2]).toBe(studentId);
+          expect(key[2]).toBe(learnerId);
           expect(key[3]).toBe(courseId);
         }
       ),
@@ -1485,7 +1485,7 @@ describe('Property 3: Query Key Structure Consistency', () => {
         fc.string({ minLength: 1 }),
         (id) => {
           const testCases = [
-            queryKeys.student.messages.conversation(id),
+            queryKeys.learner.messages.conversation(id),
             queryKeys.educator.conversations.byEducator(id),
             queryKeys.recruiter.messages.conversation(id),
             queryKeys.analytics.diversity.data(id),
@@ -1581,23 +1581,23 @@ describe('Property 6: Hierarchical Prefix Invalidation', () => {
           // Set up multiple queries with different conversation IDs
           conversationIds.forEach(id => {
             queryClient.setQueryData(
-              queryKeys.student.messages.conversation(id),
+              queryKeys.learner.messages.conversation(id),
               []
             );
           });
           
           // Invalidate using base key
           await queryClient.invalidateQueries({
-            queryKey: queryKeys.student.messages.all
+            queryKey: queryKeys.learner.messages.all
           });
           
           // All queries should be invalidated
           const queries = queryClient.getQueryCache().getAll();
-          const studentMessageQueries = queries.filter(q => 
-            q.queryKey[0] === 'student' && q.queryKey[1] === 'messages'
+          const learnerMessageQueries = queries.filter(q => 
+            q.queryKey[0] === 'learner' && q.queryKey[1] === 'messages'
           );
           
-          studentMessageQueries.forEach(q => {
+          learnerMessageQueries.forEach(q => {
             expect(q.state.isInvalidated).toBe(true);
           });
         }
@@ -1619,8 +1619,8 @@ describe('Property 7: Parent-Child Key Hierarchy', () => {
       fc.property(
         fc.string({ minLength: 1 }),
         (id) => {
-          const parentKey = queryKeys.student.messages.all;
-          const childKey = queryKeys.student.messages.conversation(id);
+          const parentKey = queryKeys.learner.messages.all;
+          const childKey = queryKeys.learner.messages.conversation(id);
           
           // Child key must start with all elements of parent key
           expect(childKey.length).toBeGreaterThan(parentKey.length);
@@ -1639,11 +1639,11 @@ describe('Property 7: Parent-Child Key Hierarchy', () => {
       fc.property(
         fc.string({ minLength: 1 }),
         (id) => {
-          const domainKey = queryKeys.student.all;
+          const domainKey = queryKeys.learner.all;
           const childKeys = [
-            queryKeys.student.messages.conversation(id),
-            queryKeys.student.conversations.byStudent(id),
-            queryKeys.student.unread.count(id),
+            queryKeys.learner.messages.conversation(id),
+            queryKeys.learner.conversations.byStudent(id),
+            queryKeys.learner.unread.count(id),
           ];
           
           childKeys.forEach(childKey => {
@@ -1689,7 +1689,7 @@ describe('React Query Integration', () => {
     
     const { result } = renderHook(
       () => useQuery({
-        queryKey: queryKeys.student.messages.conversation(conversationId),
+        queryKey: queryKeys.learner.messages.conversation(conversationId),
         queryFn: async () => ['message1', 'message2'],
       }),
       { wrapper }
@@ -1703,7 +1703,7 @@ describe('React Query Integration', () => {
     
     // Verify the query is cached with correct key
     const cachedData = queryClient.getQueryData(
-      queryKeys.student.messages.conversation(conversationId)
+      queryKeys.learner.messages.conversation(conversationId)
     );
     expect(cachedData).toEqual(['message1', 'message2']);
   });
@@ -1717,31 +1717,31 @@ describe('React Query Integration', () => {
     
     // Set up multiple queries
     queryClient.setQueryData(
-      queryKeys.student.messages.conversation('conv-1'),
+      queryKeys.learner.messages.conversation('conv-1'),
       ['msg1']
     );
     queryClient.setQueryData(
-      queryKeys.student.messages.conversation('conv-2'),
+      queryKeys.learner.messages.conversation('conv-2'),
       ['msg2']
     );
     queryClient.setQueryData(
-      queryKeys.student.unread.count('student-1'),
+      queryKeys.learner.unread.count('learner-1'),
       5
     );
     
-    // Invalidate all student messages
+    // Invalidate all learner messages
     await queryClient.invalidateQueries({
-      queryKey: queryKeys.student.messages.all
+      queryKey: queryKeys.learner.messages.all
     });
     
     // Check which queries were invalidated
     const queries = queryClient.getQueryCache().getAll();
     
     const messageQueries = queries.filter(q => 
-      q.queryKey[0] === 'student' && q.queryKey[1] === 'messages'
+      q.queryKey[0] === 'learner' && q.queryKey[1] === 'messages'
     );
     const unreadQueries = queries.filter(q => 
-      q.queryKey[0] === 'student' && q.queryKey[1] === 'unread'
+      q.queryKey[0] === 'learner' && q.queryKey[1] === 'unread'
     );
     
     // Message queries should be invalidated
@@ -1817,12 +1817,12 @@ Query keys themselves don't implement access control, but they support secure pa
 **Parameter Sanitization:**
 ```typescript
 // ❌ Don't pass unsanitized user input directly
-const key = queryKeys.student.messages.conversation(userInput);
+const key = queryKeys.learner.messages.conversation(userInput);
 
 // ✅ Validate and sanitize first
 const sanitizedId = validateConversationId(userInput);
 if (sanitizedId) {
-  const key = queryKeys.student.messages.conversation(sanitizedId);
+  const key = queryKeys.learner.messages.conversation(sanitizedId);
 }
 ```
 
@@ -1830,7 +1830,7 @@ if (sanitizedId) {
 ```typescript
 // Always verify user has access before querying
 const { data } = useQuery({
-  queryKey: queryKeys.student.messages.conversation(conversationId),
+  queryKey: queryKeys.learner.messages.conversation(conversationId),
   queryFn: async () => {
     // Authorization check happens in the query function
     if (!await userHasAccessToConversation(userId, conversationId)) {
@@ -1869,7 +1869,7 @@ Prefix-based invalidation is efficient:
 ```typescript
 // O(n) where n is number of cached queries
 queryClient.invalidateQueries({ 
-  queryKey: queryKeys.student.messages.all 
+  queryKey: queryKeys.learner.messages.all 
 });
 ```
 
@@ -1963,11 +1963,11 @@ const migrationProgress: MigrationMetrics[] = [
 ```typescript
 // Track factory-related errors
 try {
-  const key = queryKeys.student.messages.conversation(conversationId);
+  const key = queryKeys.learner.messages.conversation(conversationId);
 } catch (error) {
   errorTracking.captureException(error, {
     context: 'query_key_factory',
-    domain: 'student',
+    domain: 'learner',
     resource: 'messages',
   });
 }
@@ -1993,7 +1993,7 @@ import { queryKeys } from '@/shared/lib/queryKeys';
 Use in queries:
 \`\`\`typescript
 const { data } = useQuery({
-  queryKey: queryKeys.student.messages.conversation(conversationId),
+  queryKey: queryKeys.learner.messages.conversation(conversationId),
   queryFn: () => fetchMessages(conversationId),
 });
 \`\`\`
@@ -2001,7 +2001,7 @@ const { data } = useQuery({
 Invalidate queries:
 \`\`\`typescript
 queryClient.invalidateQueries({ 
-  queryKey: queryKeys.student.messages.all 
+  queryKey: queryKeys.learner.messages.all 
 });
 \`\`\`
 
@@ -2021,16 +2021,16 @@ queryClient.invalidateQueries({
  * Generate query key for a specific conversation's messages
  * 
  * @param conversationId - Unique identifier for the conversation
- * @returns Readonly query key array: ['student', 'messages', conversationId]
+ * @returns Readonly query key array: ['learner', 'messages', conversationId]
  * 
  * @example
- * const key = queryKeys.student.messages.conversation('conv-123');
- * // Returns: ['student', 'messages', 'conv-123']
+ * const key = queryKeys.learner.messages.conversation('conv-123');
+ * // Returns: ['learner', 'messages', 'conv-123']
  * 
  * @see useStudentMessages hook for usage example
  */
 conversation: (conversationId: string): QueryKey =>
-  ['student', 'messages', conversationId] as const,
+  ['learner', 'messages', conversationId] as const,
 ```
 
 ### Migration Guide
@@ -2048,7 +2048,7 @@ conversation: (conversationId: string): QueryKey =>
 ```typescript
 // Before
 const { data } = useQuery({
-  queryKey: ['student-messages', conversationId || 'none'],
+  queryKey: ['learner-messages', conversationId || 'none'],
   queryFn: fetchMessages,
 });
 
@@ -2056,7 +2056,7 @@ const { data } = useQuery({
 import { queryKeys } from '@/shared/lib/queryKeys';
 
 const { data } = useQuery({
-  queryKey: queryKeys.student.messages.conversation(conversationId || 'none'),
+  queryKey: queryKeys.learner.messages.conversation(conversationId || 'none'),
   queryFn: fetchMessages,
 });
 ```
@@ -2099,7 +2099,7 @@ export function serializeQueryKey(key: QueryKey): string {
   return key.join(':');
 }
 
-// Example: ['student', 'messages', 'conv-123'] -> 'student:messages:conv-123'
+// Example: ['learner', 'messages', 'conv-123'] -> 'learner:messages:conv-123'
 ```
 
 **3. Query Key Parsing:**
@@ -2114,13 +2114,13 @@ export function parseQueryKey(serialized: string): QueryKey {
 ```typescript
 // Type-safe invalidation helpers
 export const invalidate = {
-  student: {
+  learner: {
     allMessages: (queryClient: QueryClient) =>
-      queryClient.invalidateQueries({ queryKey: queryKeys.student.messages.all }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.learner.messages.all }),
     
     conversation: (queryClient: QueryClient, conversationId: string) =>
       queryClient.invalidateQueries({ 
-        queryKey: queryKeys.student.messages.conversation(conversationId) 
+        queryKey: queryKeys.learner.messages.conversation(conversationId) 
       }),
   },
   // ... other domains
@@ -2190,7 +2190,7 @@ After design approval:
 1. Create the factory module structure
 2. Implement domain-specific key factories
 3. Write comprehensive test suite
-4. Begin Phase 1 migration (Student Messaging)
+4. Begin Phase 1 migration (learner Messaging)
 5. Validate and iterate based on feedback
 6. Proceed through remaining phases
 7. Monitor production for issues

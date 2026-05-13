@@ -182,7 +182,7 @@ export async function generateDiagnosticScreenerQuestions(
     gradeLevel: GradeLevel,
     excludeQuestionIds: string[] = [],
     excludeQuestionTexts: string[] = [],
-    studentCourse?: string | null
+    learnerCourse?: string | null
 ): Promise<QuestionGenerationResult> {
     console.log(`🎯 [Diagnostic] Starting generation for ${gradeLevel}`);
     
@@ -227,7 +227,7 @@ export async function generateAdaptiveCoreQuestions(
     difficulty: DifficultyLevel,
     excludeQuestionIds: string[] = [],
     excludeQuestionTexts: string[] = [],
-    studentCourse?: string | null
+    learnerCourse?: string | null
 ): Promise<QuestionGenerationResult> {
     console.log(`🎯 [Adaptive-Core] Starting generation`);
     
@@ -271,7 +271,7 @@ export async function generateStabilityConfirmationQuestions(
     difficulty: DifficultyLevel,
     excludeQuestionIds: string[] = [],
     excludeQuestionTexts: string[] = [],
-    studentCourse?: string | null
+    learnerCourse?: string | null
 ): Promise<QuestionGenerationResult> {
     console.log(`🎯 [Stability] Starting generation`);
     
@@ -317,7 +317,7 @@ export async function generateSingleQuestion(
     subtag: Subtag,
     excludeQuestionIds: string[] = [],
     excludeQuestionTexts: string[] = [],
-    studentCourse?: string | null
+    learnerCourse?: string | null
 ): Promise<Question> {
     console.log(`🎯 [Single-Question] Generating for ${subtag} in phase ${phase}`);
 

@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { supabase } from '@/shared/api/supabaseClient';
 import toast from "react-hot-toast";
-import { EventRegistration, CollegeEvent } from '@/features/student-profile/model';
+import { EventRegistration, CollegeEvent } from '@/features/learner-profile/model';
 import { collegeEventRegistrationsService } from "@/features/college-admin";
 
 export const useRegistrations = (onCountsChange: () => void) => {
@@ -19,31 +19,31 @@ export const useRegistrations = (onCountsChange: () => void) => {
         .order("registered_at", { ascending: false });
       if (regError) throw regError;
       
-      // Then fetch student details separately to avoid 406 errors
-      const studentIds = [...new Set((regs || []).map(r => r.student_id))];
-      let studentMap: Record<string, { name: string; email: string }> = {};
+      // Then fetch learner details separately to avoid 406 errors
+      const learnerIds = [...new Set((regs || []).map(r => r.learner_id))];
+      let learnerMap: Record<string, { name: string; email: string }> = {};
       
-      if (studentIds.length > 0) {
-        const { data: students } = await supabase
-          .from("students")
+      if (learnerIds.length > 0) {
+        const { data: learners } = await supabase
+          .from("learners")
           .select("id, name, email")
-          .in("id", studentIds);
-        studentMap = (students || []).reduce((acc, s) => ({ ...acc, [s.id]: s }), {});
+          .in("id", learnerIds);
+        learnerMap = (learners || []).reduce((acc, s) => ({ ...acc, [s.id]: s }), {});
       }
       
       // Combine data
       const combined = (regs || []).map(r => ({
         ...r,
-        student: studentMap[r.student_id] || null
+        learner: learnerMap[r.learner_id] || null
       }));
       setRegistrations(combined);
     } catch { toast.error("Failed to load registrations"); }
     finally { setLoading(false); }
   }, []);
 
-  const addRegistration = async (eventId: string, studentId: string) => {
+  const addRegistration = async (eventId: string, learnerId: string) => {
     try {
-      await collegeEventRegistrationsService.createRegistration(eventId, studentId);
+      await collegeEventRegistrationsService.createRegistration(eventId, learnerId);
       toast.success("Registered");
       loadRegistrations(eventId);
       onCountsChange();
@@ -82,8 +82,8 @@ export const useRegistrations = (onCountsChange: () => void) => {
     }
     const headers = ["Name", "Email", "Registered Date", "Attended"];
     const rows = registrations.map((r) => [
-      r.student?.name || "",
-      r.student?.email || "",
+      r.learner?.name || "",
+      r.learner?.email || "",
       new Date(r.registered_at).toLocaleDateString(),
       r.attended ? "Yes" : "No",
     ]);

@@ -7,10 +7,10 @@ const logger = getLogger('analytics');
 
 // Types
 export interface KPIData {
-  activeStudents: number;
+  activelearners: number;
   totalVerifiedActivities: number;
   pendingVerifications: number;
-  avgSkillsPerStudent: number;
+  avgSkillsPerLearner: number;
   attendanceRate: number;
   engagementRate: number;
 }
@@ -40,8 +40,8 @@ export interface SkillGrowthData {
 
 export interface LeaderboardEntry {
   rank: number;
-  studentId: string;
-  studentName: string;
+  learnerId: string;
+  learnerName: string;
   totalActivities: number;
   verifiedActivities: number;
   awards: number;
@@ -79,7 +79,7 @@ export interface AssignmentDetailStats {
 
 export interface SkillStats {
   skillName: string;
-  studentCount: number;
+  learnerCount: number;
   averageLevel: number;
 }
 
@@ -101,10 +101,10 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
   
   // State for all data
   const [kpiData, setKpiData] = useState<KPIData>({
-    activeStudents: 0,
+    activelearners: 0,
     totalVerifiedActivities: 0,
     pendingVerifications: 0,
-    avgSkillsPerStudent: 0,
+    avgSkillsPerLearner: 0,
     attendanceRate: 0,
     engagementRate: 0,
   });
@@ -119,38 +119,38 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
   const [assignmentDetails, setAssignmentDetails] = useState<AssignmentDetailStats[]>([]);
   const [topSkills, setTopSkills] = useState<SkillStats[]>([]);
 
-  // Helper function to get filtered student IDs based on educator type and assignments
-  const getFilteredStudentIds = async (): Promise<string[]> => {
+  // Helper function to get filtered learner IDs based on educator type and assignments
+  const getFilteredLearnerIds = async (): Promise<string[]> => {
     if (!schoolId && !collegeId) return [];
     
     try {
       if (educatorType === 'school' && schoolId) {
         // For school educators, check role and class assignments
         if (educatorRole === 'admin' || educatorRole === 'school_admin') {
-          // School admins can see all students in their school
-          const { data: schoolStudents } = await supabase
-            .from('students')
+          // School admins can see all learners in their school
+          const { data: schoollearners } = await supabase
+            .from('learners')
             .select('user_id')
             .eq('school_id', schoolId)
             .eq('is_deleted', false)
-            .is('college_id', null)  // Ensure they're NOT college students
-            .not('student_id', 'is', null);  // Exclude students without student_id
+            .is('college_id', null)  // Ensure they're NOT college learners
+            .not('learner_id', 'is', null);  // Exclude learners without learner_id
           // Filter out null user_ids
-          return schoolStudents?.map(s => s.user_id).filter(id => id != null) || [];
+          return schoollearners?.map(s => s.user_id).filter(id => id != null) || [];
         } else if (assignedClassIds && assignedClassIds.length > 0) {
-          // Regular educators can only see students in their assigned classes
-          const { data: schoolStudents } = await supabase
-            .from('students')
+          // Regular educators can only see learners in their assigned classes
+          const { data: schoollearners } = await supabase
+            .from('learners')
             .select('user_id')
             .eq('school_id', schoolId)
             .in('school_class_id', assignedClassIds)
             .eq('is_deleted', false)
-            .is('college_id', null)  // Ensure they're NOT college students
-            .not('student_id', 'is', null);  // Exclude students without student_id
+            .is('college_id', null)  // Ensure they're NOT college learners
+            .not('learner_id', 'is', null);  // Exclude learners without learner_id
           // Filter out null user_ids
-          return schoolStudents?.map(s => s.user_id).filter(id => id != null) || [];
+          return schoollearners?.map(s => s.user_id).filter(id => id != null) || [];
         } else {
-          // Educators with no class assignments should see no students
+          // Educators with no class assignments should see no learners
           return [];
         }
       } else if (educatorType === 'college' && collegeId) {
@@ -168,15 +168,15 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
           return [];
         }
 
-        // Get students using EXACT same filtering as Dashboard
+        // Get learners using EXACT same filtering as Dashboard
         // Build OR conditions for each program section (program_id + semester + section)
-        let studentsQuery = supabase
-          .from('students')
-          .select('user_id, name, student_id, college_id, school_id, program_id, semester, section')
+        let learnersQuery = supabase
+          .from('learners')
+          .select('user_id, name, learner_id, college_id, school_id, program_id, semester, section')
           .eq('college_id', collegeId)
           .eq('is_deleted', false)
-          .is('school_id', null)  // Ensure they're NOT school students
-          .not('student_id', 'is', null);  // Exclude students without student_id
+          .is('school_id', null)  // Ensure they're NOT school learners
+          .not('learner_id', 'is', null);  // Exclude learners without learner_id
 
         // Build complex OR condition: (program_id=X AND semester=Y AND section=Z) OR ...
         const orConditions = programSections.map(section => 
@@ -184,49 +184,49 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
         ).join(',');
 
         // Use the or() method to combine all conditions
-        studentsQuery = studentsQuery.or(orConditions);
+        learnersQuery = learnersQuery.or(orConditions);
 
-        const { data: collegeStudents } = await studentsQuery;
+        const { data: collegelearners } = await learnersQuery;
 
-        // Filter out null user_ids, school students, and students without student_id
-        return collegeStudents
-          ?.filter(s => s.user_id != null && !s.school_id && s.student_id != null)
+        // Filter out null user_ids, school learners, and learners without learner_id
+        return collegelearners
+          ?.filter(s => s.user_id != null && !s.school_id && s.learner_id != null)
           .map(s => s.user_id) || [];
       }
       
       return [];
     } catch (error) {
-      logger.error('Error getting filtered student IDs', error instanceof Error ? error : new Error(String(error)));
+      logger.error('Error getting filtered learner IDs', error instanceof Error ? error : new Error(String(error)));
       return [];
     }
   };
 
-  // Helper function to get filtered student RECORD IDs (for attendance queries)
-  const getFilteredStudentRecordIds = async (): Promise<string[]> => {
+  // Helper function to get filtered learner RECORD IDs (for attendance queries)
+  const getFilteredlearnerRecordIds = async (): Promise<string[]> => {
     if (!schoolId && !collegeId) return [];
     
     try {
       if (educatorType === 'school' && schoolId) {
         // For school educators, check role and class assignments
         if (educatorRole === 'admin' || educatorRole === 'school_admin') {
-          const { data: schoolStudents } = await supabase
-            .from('students')
+          const { data: schoollearners } = await supabase
+            .from('learners')
             .select('id')
             .eq('school_id', schoolId)
             .eq('is_deleted', false)
             .is('college_id', null)
-            .not('student_id', 'is', null);
-          return schoolStudents?.map(s => s.id).filter(id => id != null) || [];
+            .not('learner_id', 'is', null);
+          return schoollearners?.map(s => s.id).filter(id => id != null) || [];
         } else if (assignedClassIds && assignedClassIds.length > 0) {
-          const { data: schoolStudents } = await supabase
-            .from('students')
+          const { data: schoollearners } = await supabase
+            .from('learners')
             .select('id')
             .eq('school_id', schoolId)
             .in('school_class_id', assignedClassIds)
             .eq('is_deleted', false)
             .is('college_id', null)
-            .not('student_id', 'is', null);
-          return schoolStudents?.map(s => s.id).filter(id => id != null) || [];
+            .not('learner_id', 'is', null);
+          return schoollearners?.map(s => s.id).filter(id => id != null) || [];
         } else {
           return [];
         }
@@ -242,28 +242,28 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
           return [];
         }
 
-        // Get student record IDs
-        let studentsQuery = supabase
-          .from('students')
+        // Get learner record IDs
+        let learnersQuery = supabase
+          .from('learners')
           .select('id')
           .eq('college_id', collegeId)
           .eq('is_deleted', false)
           .is('school_id', null)
-          .not('student_id', 'is', null);
+          .not('learner_id', 'is', null);
 
         const orConditions = programSections.map(section => 
           `and(program_id.eq.${section.program_id},semester.eq.${section.semester},section.eq.${section.section})`
         ).join(',');
 
-        studentsQuery = studentsQuery.or(orConditions);
-        const { data: collegeStudents } = await studentsQuery;
+        learnersQuery = learnersQuery.or(orConditions);
+        const { data: collegelearners } = await learnersQuery;
 
-        return collegeStudents?.map(s => s.id).filter(id => id != null) || [];
+        return collegelearners?.map(s => s.id).filter(id => id != null) || [];
       }
       
       return [];
     } catch (error) {
-      logger.error('Error getting filtered student record IDs', error instanceof Error ? error : new Error(String(error)));
+      logger.error('Error getting filtered learner record IDs', error instanceof Error ? error : new Error(String(error)));
       return [];
     }
   };
@@ -271,30 +271,30 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
   // Fetch KPI Data
   const fetchKPIData = async () => {
     try {
-      // Get filtered student IDs based on educator type and assignments
-      const studentIds = await getFilteredStudentIds();
+      // Get filtered learner IDs based on educator type and assignments
+      const learnerIds = await getFilteredLearnerIds();
 
-      if (studentIds.length === 0) {
+      if (learnerIds.length === 0) {
         setKpiData({
-          activeStudents: 0,
+          activelearners: 0,
           totalVerifiedActivities: 0,
           pendingVerifications: 0,
-          avgSkillsPerStudent: 0,
+          avgSkillsPerLearner: 0,
           attendanceRate: 0,
           engagementRate: 0,
         });
         return;
       }
 
-      // Helper to build queries with student filtering
+      // Helper to build queries with learner filtering
       const buildCountQuery = (table: string) => {
         return supabase.from(table).select('id', { count: 'exact', head: true })
-          .in('student_id', studentIds);
+          .in('learner_id', learnerIds);
       };
 
       const buildDataQuery = (table: string, select: string) => {
         return supabase.from(table).select(select)
-          .in('student_id', studentIds);
+          .in('learner_id', learnerIds);
       };
 
       const [
@@ -308,9 +308,9 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
         { count: pendingCerts },
         { count: pendingTrainings },
         { data: allSkills },
-        { data: projectStudents },
-        { data: certStudents },
-        { data: trainingStudents },
+        { data: projectlearners },
+        { data: certlearners },
+        { data: traininglearners },
       ] = await Promise.all([
         buildCountQuery('projects')
           .eq('approval_status', 'approved'),
@@ -330,74 +330,74 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
           .eq('approval_status', 'pending'),
         buildCountQuery('trainings')
           .eq('approval_status', 'pending'),
-        buildDataQuery('skills', 'student_id')
+        buildDataQuery('skills', 'learner_id')
           .eq('enabled', true),
-        buildDataQuery('projects', 'student_id'),
-        buildDataQuery('certificates', 'student_id'),
-        buildDataQuery('trainings', 'student_id'),
+        buildDataQuery('projects', 'learner_id'),
+        buildDataQuery('certificates', 'learner_id'),
+        buildDataQuery('trainings', 'learner_id'),
       ]);
 
-      // Calculate active students: students who have at least one activity (project, certificate, training, or skill)
-      const activeStudentSet = new Set<string>();
+      // Calculate active learners: learners who have at least one activity (project, certificate, training, or skill)
+      const activelearnerSet = new Set<string>();
       
-      // Add students with skills
-      (allSkills as Array<{ student_id: string }> | null)?.forEach(skill => {
-        if (skill.student_id) activeStudentSet.add(skill.student_id);
+      // Add learners with skills
+      (allSkills as Array<{ learner_id: string }> | null)?.forEach(skill => {
+        if (skill.learner_id) activelearnerSet.add(skill.learner_id);
       });
       
-      // Add students with projects
-      (projectStudents as Array<{ student_id: string }> | null)?.forEach(project => {
-        if (project.student_id) activeStudentSet.add(project.student_id);
+      // Add learners with projects
+      (projectlearners as Array<{ learner_id: string }> | null)?.forEach(project => {
+        if (project.learner_id) activelearnerSet.add(project.learner_id);
       });
       
-      // Add students with certificates
-      (certStudents as Array<{ student_id: string }> | null)?.forEach(cert => {
-        if (cert.student_id) activeStudentSet.add(cert.student_id);
+      // Add learners with certificates
+      (certlearners as Array<{ learner_id: string }> | null)?.forEach(cert => {
+        if (cert.learner_id) activelearnerSet.add(cert.learner_id);
       });
       
-      // Add students with trainings
-      (trainingStudents as Array<{ student_id: string }> | null)?.forEach(training => {
-        if (training.student_id) activeStudentSet.add(training.student_id);
+      // Add learners with trainings
+      (traininglearners as Array<{ learner_id: string }> | null)?.forEach(training => {
+        if (training.learner_id) activelearnerSet.add(training.learner_id);
       });
 
-      const activeStudents = activeStudentSet.size;
+      const activelearners = activelearnerSet.size;
 
       // Calculate totals to match Activities page logic
       const totalApproved = (approvedProjects || 0) + (approvedCerts || 0) + (approvedTrainings || 0);
       const totalSentToAdmin = (sentToAdminProjects || 0) + (sentToAdminCerts || 0) + (sentToAdminTrainings || 0);
       const totalVerified = totalApproved + totalSentToAdmin; // Verified = approved + sent_to_admin
       const totalPending = (pendingProjects || 0) + (pendingCerts || 0) + (pendingTrainings || 0);
-      const avgSkills = activeStudents ? (allSkills?.length || 0) / activeStudents : 0;
+      const avgSkills = activelearners ? (allSkills?.length || 0) / activelearners : 0;
 
-      // Calculate real attendance rate from database (filtered by school/college and educator's students)
+      // Calculate real attendance rate from database (filtered by school/college and educator's learners)
       let attendanceRate = 0;
       let engagementRate = 0;
 
-      if (educatorType === 'school' && studentIds.length > 0 && schoolId) {
-        // Get student record IDs for attendance query
-        const studentRecordIds = await getFilteredStudentRecordIds();
+      if (educatorType === 'school' && learnerIds.length > 0 && schoolId) {
+        // Get learner record IDs for attendance query
+        const learnerRecordIds = await getFilteredlearnerRecordIds();
 
-        // Query attendance_records for school - filtered by school_id and student record IDs
+        // Query attendance_records for school - filtered by school_id and learner record IDs
         const { data: attendanceRecords } = await supabase
           .from('attendance_records')
-          .select('status, student_id')
+          .select('status, learner_id')
           .eq('school_id', schoolId)
-          .in('student_id', studentRecordIds);
+          .in('learner_id', learnerRecordIds);
 
         if (attendanceRecords && attendanceRecords.length > 0) {
           const presentCount = attendanceRecords.filter(r => r.status === 'present' || r.status === 'late').length;
           attendanceRate = Math.round((presentCount / attendanceRecords.length) * 100);
         }
-      } else if (educatorType === 'college' && studentIds.length > 0 && collegeId) {
-        // Get student record IDs for attendance query
-        const studentRecordIds = await getFilteredStudentRecordIds();
+      } else if (educatorType === 'college' && learnerIds.length > 0 && collegeId) {
+        // Get learner record IDs for attendance query
+        const learnerRecordIds = await getFilteredlearnerRecordIds();
 
-        // Query college_attendance_records for college - filtered by college_id and student record IDs
+        // Query college_attendance_records for college - filtered by college_id and learner record IDs
         const { data: collegeAttendanceRecords } = await supabase
           .from('college_attendance_records')
-          .select('status, student_id, date, college_id')
+          .select('status, learner_id, date, college_id')
           .eq('college_id', collegeId)
-          .in('student_id', studentRecordIds);
+          .in('learner_id', learnerRecordIds);
 
         if (collegeAttendanceRecords && collegeAttendanceRecords.length > 0) {
           const presentCount = collegeAttendanceRecords.filter(r => r.status === 'present' || r.status === 'late').length;
@@ -406,9 +406,9 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
       }
 
       // Calculate engagement rate based on activity participation
-      if (activeStudents > 0) {
+      if (activelearners > 0) {
         const totalActivities = totalVerified + totalPending;
-        engagementRate = Math.min(100, Math.round((totalActivities / activeStudents) * 10));
+        engagementRate = Math.min(100, Math.round((totalActivities / activelearners) * 10));
       }
 
       // COMMENTED OUT: Old static/dummy data
@@ -416,10 +416,10 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
       // engagementRate: Math.floor(Math.random() * 20) + 65,
 
       const finalKpiData = {
-        activeStudents: activeStudents || 0,
+        activelearners: activelearners || 0,
         totalVerifiedActivities: totalVerified,
         pendingVerifications: totalPending,
-        avgSkillsPerStudent: Math.round(avgSkills * 10) / 10,
+        avgSkillsPerLearner: Math.round(avgSkills * 10) / 10,
         attendanceRate: attendanceRate,
         engagementRate: engagementRate,
       };
@@ -433,10 +433,10 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
   // Fetch Skill Summary by Category
   const fetchSkillSummary = async () => {
     try {
-      // Get filtered student IDs based on educator type and assignments
-      const studentIds = await getFilteredStudentIds();
+      // Get filtered learner IDs based on educator type and assignments
+      const learnerIds = await getFilteredLearnerIds();
       
-      if (studentIds.length === 0) {
+      if (learnerIds.length === 0) {
         setSkillSummary([]);
         return;
       }
@@ -446,20 +446,20 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
       ] = await Promise.all([
         supabase
           .from('skills')
-          .select('type, verified, level, student_id, enabled')
+          .select('type, verified, level, learner_id, enabled')
           .eq('enabled', true)
-          .in('student_id', studentIds),
+          .in('learner_id', learnerIds),
       ]);
 
       if (!skills) return;
 
-      const totalStudents = studentIds.length;
+      const totallearners = learnerIds.length;
 
       const categoryMap: Record<string, {
         total: number;
         verified: number;
         totalLevels: number;
-        studentSet: Set<string>;
+        learnerSet: Set<string>;
       }> = {};
 
       skills.forEach(skill => {
@@ -469,7 +469,7 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
             total: 0,
             verified: 0,
             totalLevels: 0,
-            studentSet: new Set(),
+            learnerSet: new Set(),
           };
         }
         categoryMap[category].total++;
@@ -478,7 +478,7 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
           categoryMap[category].verified++;
         }
         categoryMap[category].totalLevels += skill.level || 0;
-        categoryMap[category].studentSet.add(skill.student_id);
+        categoryMap[category].learnerSet.add(skill.learner_id);
       });
 
       const summary: SkillSummary[] = Object.entries(categoryMap)
@@ -486,8 +486,8 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
           category: category.charAt(0).toUpperCase() + category.slice(1),
           totalActivities: data.total,
           verifiedActivities: data.verified,
-          participationRate: totalStudents 
-            ? Math.round((data.studentSet.size / totalStudents) * 100) 
+          participationRate: totallearners 
+            ? Math.round((data.learnerSet.size / totallearners) * 100) 
             : 0,
           avgScore: data.total 
             ? Math.round((data.totalLevels / data.total) * 20)
@@ -504,10 +504,10 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
   // Fetch Attendance Data (Last 6 Months)
   const fetchAttendanceData = async () => {
     try {
-      // Get filtered student IDs based on educator type and assignments
-      const studentIds = await getFilteredStudentIds();
+      // Get filtered learner IDs based on educator type and assignments
+      const learnerIds = await getFilteredLearnerIds();
 
-      if (studentIds.length === 0) {
+      if (learnerIds.length === 0) {
         setAttendanceData([]);
         return;
       }
@@ -524,30 +524,30 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
         });
       }
 
-      // Query real attendance data from database (filtered by school/college and educator's students)
+      // Query real attendance data from database (filtered by school/college and educator's learners)
       const attendancePromises = months.map(async month => {
-        let attendanceRecords: Array<{ status: string; date: string; student_id: string }> = [];
+        let attendanceRecords: Array<{ status: string; date: string; learner_id: string }> = [];
 
         if (educatorType === 'school' && schoolId) {
-          const studentRecordIds = await getFilteredStudentRecordIds();
+          const learnerRecordIds = await getFilteredlearnerRecordIds();
 
           const { data } = await supabase
             .from('attendance_records')
-            .select('status, date, student_id')
+            .select('status, date, learner_id')
             .eq('school_id', schoolId)
-            .in('student_id', studentRecordIds)
+            .in('learner_id', learnerRecordIds)
             .gte('date', month.startDate)
             .lte('date', month.endDate);
 
           attendanceRecords = data || [];
         } else if (educatorType === 'college' && collegeId) {
-          const studentRecordIds = await getFilteredStudentRecordIds();
+          const learnerRecordIds = await getFilteredlearnerRecordIds();
 
           const { data } = await supabase
             .from('college_attendance_records')
-            .select('status, date, student_id')
+            .select('status, date, learner_id')
             .eq('college_id', collegeId)
-            .in('student_id', studentRecordIds)
+            .in('learner_id', learnerRecordIds)
             .gte('date', month.startDate)
             .lte('date', month.endDate);
 
@@ -577,10 +577,10 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
   // Fetch Skill Growth Data (Last 6 Months)
   const fetchSkillGrowthData = async () => {
     try {
-      // Get filtered student IDs based on educator type and assignments
-      const studentIds = await getFilteredStudentIds();
+      // Get filtered learner IDs based on educator type and assignments
+      const learnerIds = await getFilteredLearnerIds();
       
-      if (studentIds.length === 0) {
+      if (learnerIds.length === 0) {
         setSkillGrowthData([]);
         return;
       }
@@ -605,7 +605,7 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
           .lte('created_at', month.endDate)
           .eq('enabled', true)
           .eq('approval_status', 'approved')
-          .in('student_id', studentIds);
+          .in('learner_id', learnerIds);
 
         // Calculate average level by type
         const technical = skills?.filter(s => s.type === 'technical') || [];
@@ -673,27 +673,27 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
   // Fetch Leaderboard Data
   const fetchLeaderboardData = async () => {
     try {
-      // Get students directly using the same filtering as Dashboard (not via getFilteredStudentIds)
-      let studentsQuery;
+      // Get learners directly using the same filtering as Dashboard (not via getFilteredLearnerIds)
+      let learnersQuery;
       
       if (educatorType === 'school' && schoolId) {
         if (educatorRole === 'admin' || educatorRole === 'school_admin') {
-          studentsQuery = supabase
-            .from('students')
-            .select('id, user_id, name, student_id')
+          learnersQuery = supabase
+            .from('learners')
+            .select('id, user_id, name, learner_id')
             .eq('school_id', schoolId)
             .eq('is_deleted', false)
             .is('college_id', null)
-            .not('student_id', 'is', null);
+            .not('learner_id', 'is', null);
         } else if (assignedClassIds && assignedClassIds.length > 0) {
-          studentsQuery = supabase
-            .from('students')
-            .select('id, user_id, name, student_id')
+          learnersQuery = supabase
+            .from('learners')
+            .select('id, user_id, name, learner_id')
             .eq('school_id', schoolId)
             .in('school_class_id', assignedClassIds)
             .eq('is_deleted', false)
             .is('college_id', null)
-            .not('student_id', 'is', null);
+            .not('learner_id', 'is', null);
         } else {
           setLeaderboard([]);
           return;
@@ -716,33 +716,33 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
           `and(program_id.eq.${section.program_id},semester.eq.${section.semester},section.eq.${section.section})`
         ).join(',');
 
-        studentsQuery = supabase
-          .from('students')
-          .select('id, user_id, name, student_id')
+        learnersQuery = supabase
+          .from('learners')
+          .select('id, user_id, name, learner_id')
           .eq('college_id', collegeId)
           .eq('is_deleted', false)
           .is('school_id', null)
-          .not('student_id', 'is', null)
+          .not('learner_id', 'is', null)
           .or(orConditions);
       } else {
         setLeaderboard([]);
         return;
       }
 
-      const { data: students } = await studentsQuery;
+      const { data: learners } = await learnersQuery;
 
-      if (!students || students.length === 0) {
+      if (!learners || learners.length === 0) {
         setLeaderboard([]);
         return;
       }
 
-      // Use user_id for students that have it, otherwise use id
-      // This ensures we include ALL students from educator's sections
-      const studentUserIds = students.map(s => s.user_id || s.id).filter(id => id != null);
+      // Use user_id for learners that have it, otherwise use id
+      // This ensures we include ALL learners from educator's sections
+      const learnerUserIds = learners.map(s => s.user_id || s.id).filter(id => id != null);
       
       const buildQuery = (table: string, select: string) => {
         return supabase.from(table).select(select)
-          .in('student_id', studentUserIds)
+          .in('learner_id', learnerUserIds)
           .eq('enabled', true);  // Only count enabled activities
       };
 
@@ -751,42 +751,42 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
         certificatesResult,
         trainingsResult,
       ] = await Promise.all([
-        buildQuery('projects', 'student_id, approval_status'),
-        buildQuery('certificates', 'student_id, approval_status'),
-        buildQuery('trainings', 'student_id, approval_status'),
+        buildQuery('projects', 'learner_id, approval_status'),
+        buildQuery('certificates', 'learner_id, approval_status'),
+        buildQuery('trainings', 'learner_id, approval_status'),
       ]);
 
       const projects = projectsResult.data || [];
       const certificates = certificatesResult.data || [];
       const trainings = trainingsResult.data || [];
 
-      // Initialize activity map for ALL students (using user_id or id as key)
+      // Initialize activity map for ALL learners (using user_id or id as key)
       const activityMap: Record<string, { total: number; verified: number }> = {};
 
-      students.forEach(s => {
+      learners.forEach(s => {
         const key = s.user_id || s.id;
         activityMap[key] = { total: 0, verified: 0 };
       });
 
       // Process activities (excluding skills to match Activities page)
       [...projects, ...certificates, ...trainings].forEach((activity: any) => {
-        if (activity && activityMap[activity.student_id]) {
-          activityMap[activity.student_id].total++;
+        if (activity && activityMap[activity.learner_id]) {
+          activityMap[activity.learner_id].total++;
           // Count both 'approved' and 'sent_to_admin' as verified
           // (approved = admin approved, sent_to_admin = educator verified)
           if (activity.approval_status === 'sent_to_admin' || activity.approval_status === 'approved') {
-            activityMap[activity.student_id].verified++;
+            activityMap[activity.learner_id].verified++;
           }
         }
       });
 
-      const leaderboardData = students
-        .map(student => {
-          const key = student.user_id || student.id;
+      const leaderboardData = learners
+        .map(learner => {
+          const key = learner.user_id || learner.id;
           const { total, verified } = activityMap[key] || { total: 0, verified: 0 };
           return {
-            studentId: student.student_id || student.id,
-            studentName: student.name || 'Unknown Student',
+            learnerId: learner.learner_id || learner.id,
+            learnerName: learner.name || 'Unknown Learner',
             totalActivities: total,
             verifiedActivities: verified,
             awards: Math.floor(verified / 5),
@@ -809,10 +809,10 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
   // Fetch Activity Heatmap (Last 90 Days)
   const fetchActivityHeatmap = async () => {
     try {
-      // Get filtered student IDs based on educator type and assignments
-      const studentIds = await getFilteredStudentIds();
+      // Get filtered learner IDs based on educator type and assignments
+      const learnerIds = await getFilteredLearnerIds();
       
-      if (studentIds.length === 0) {
+      if (learnerIds.length === 0) {
         setActivityHeatmap([]);
         return;
       }
@@ -826,7 +826,7 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
           .from(table)
           .select('created_at')
           .gte('created_at', startDate)
-          .in('student_id', studentIds);
+          .in('learner_id', learnerIds);
       };
 
       const [
@@ -874,10 +874,10 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
   // Fetch Certificate Statistics
   const fetchCertificateStats = async () => {
     try {
-      // Get filtered student IDs based on educator type and assignments
-      const studentIds = await getFilteredStudentIds();
+      // Get filtered learner IDs based on educator type and assignments
+      const learnerIds = await getFilteredLearnerIds();
       
-      if (studentIds.length === 0) {
+      if (learnerIds.length === 0) {
         setCertificateStats([]);
         return;
       }
@@ -885,7 +885,7 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
       const { data: certificates } = await supabase
         .from('certificates')
         .select('created_at, approval_status')
-        .in('student_id', studentIds);
+        .in('learner_id', learnerIds);
 
       if (!certificates) return;
 
@@ -926,21 +926,21 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
   // Fetch Assignment Statistics
   const fetchAssignmentStats = async () => {
     try {
-      // Get filtered student IDs based on educator type and assignments
-      const studentIds = await getFilteredStudentIds();
+      // Get filtered learner IDs based on educator type and assignments
+      const learnerIds = await getFilteredLearnerIds();
       
-      if (studentIds.length === 0) {
+      if (learnerIds.length === 0) {
         setAssignmentStats([]);
         return;
       }
 
-      const { data: studentAssignments } = await supabase
-        .from('student_assignments')
+      const { data: learnerAssignments } = await supabase
+        .from('learner_assignments')
         .select('status, submission_date, is_deleted')
         .eq('is_deleted', false)
-        .in('student_id', studentIds);
+        .in('learner_id', learnerIds);
 
-      if (!studentAssignments) {
+      if (!learnerAssignments) {
         setAssignmentStats([]);
         return;
       }
@@ -954,7 +954,7 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
         monthlyStats.set(monthName, { pending: 0, submitted: 0, graded: 0 });
       }
 
-      studentAssignments.forEach(assignment => {
+      learnerAssignments.forEach(assignment => {
         const date = assignment.submission_date 
           ? new Date(assignment.submission_date)
           : new Date();
@@ -985,10 +985,10 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
   // Fetch Assignment Details (Individual Assignments)
   const fetchAssignmentDetails = async () => {
     try {
-      // Get filtered student IDs based on educator type and assignments
-      const studentIds = await getFilteredStudentIds();
+      // Get filtered learner IDs based on educator type and assignments
+      const learnerIds = await getFilteredLearnerIds();
       
-      if (studentIds.length === 0) {
+      if (learnerIds.length === 0) {
         setAssignmentDetails([]);
         return;
       }
@@ -1005,14 +1005,14 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
 
       const assignmentIds = assignments.map(a => a.assignment_id);
 
-      const { data: studentAssignments } = await supabase
-        .from('student_assignments')
+      const { data: learnerAssignments } = await supabase
+        .from('learner_assignments')
         .select('assignment_id, status, grade_percentage, is_deleted')
         .in('assignment_id', assignmentIds)
         .eq('is_deleted', false)
-        .in('student_id', studentIds);
+        .in('learner_id', learnerIds);
 
-      if (!studentAssignments) {
+      if (!learnerAssignments) {
         setAssignmentDetails([]);
         return;
       }
@@ -1039,7 +1039,7 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
         };
       });
 
-      studentAssignments.forEach(sa => {
+      learnerAssignments.forEach(sa => {
         if (detailsMap[sa.assignment_id]) {
           const detail = detailsMap[sa.assignment_id];
           detail.total++;
@@ -1082,19 +1082,19 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
   // Fetch Top Skills
   const fetchTopSkills = async () => {
     try {
-      // Get filtered student IDs based on educator type and assignments
-      const studentIds = await getFilteredStudentIds();
+      // Get filtered learner IDs based on educator type and assignments
+      const learnerIds = await getFilteredLearnerIds();
       
-      if (studentIds.length === 0) {
+      if (learnerIds.length === 0) {
         setTopSkills([]);
         return;
       }
 
       const { data: skills } = await supabase
         .from('skills')
-        .select('name, student_id, level, enabled')
+        .select('name, learner_id, level, enabled')
         .eq('enabled', true)
-        .in('student_id', studentIds);
+        .in('learner_id', learnerIds);
 
       if (!skills || skills.length === 0) {
         setTopSkills([]);
@@ -1115,10 +1115,10 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
       const skillsArray: SkillStats[] = Array.from(skillMap.entries())
         .map(([name, data]) => ({
           skillName: name,
-          studentCount: data.count,
+          learnerCount: data.count,
           averageLevel: Math.round((data.totalLevel / data.count) * 100) / 100,
         }))
-        .sort((a, b) => b.studentCount - a.studentCount)
+        .sort((a, b) => b.learnerCount - a.learnerCount)
         .slice(0, 8);
 
       setTopSkills(skillsArray);
@@ -1160,10 +1160,10 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
     // KPIs Section
     csvContent += 'KEY PERFORMANCE INDICATORS\n';
     csvContent += 'Metric,Value\n';
-    csvContent += `Active Students,${kpiData.activeStudents}\n`;
+    csvContent += `Active Learners,${kpiData.activelearners}\n`;
     csvContent += `Verified Activities,${kpiData.totalVerifiedActivities}\n`;
     csvContent += `Pending Verifications,${kpiData.pendingVerifications}\n`;
-    csvContent += `Avg Skills/Student,${kpiData.avgSkillsPerStudent}\n`;
+    csvContent += `Avg Skills/Learner,${kpiData.avgSkillsPerLearner}\n`;
     csvContent += `Attendance Rate,${kpiData.attendanceRate}%\n`;
     csvContent += `Engagement Rate,${kpiData.engagementRate}%\n`;
     csvContent += '\n\n';
@@ -1178,9 +1178,9 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
     
     // Leaderboard Section
     csvContent += 'COMPLETE LEADERBOARD\n';
-    csvContent += 'Rank,Student ID,Student Name,Total Activities,Verified Activities,Awards,Progress %\n';
+    csvContent += 'Rank,Learner ID,Learner Name,Total Activities,Verified Activities,Awards,Progress %\n';
     leaderboard.forEach(s => {
-      csvContent += `${s.rank},${s.studentId},"${s.studentName}",${s.totalActivities},${s.verifiedActivities},${s.awards},${s.progress}%\n`;
+      csvContent += `${s.rank},${s.learnerId},"${s.learnerName}",${s.totalActivities},${s.verifiedActivities},${s.awards},${s.progress}%\n`;
     });
     csvContent += '\n\n';
     
@@ -1223,10 +1223,10 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
       startY: 40,
       head: [['Metric', 'Value']],
       body: [
-        ['Active Students', kpiData.activeStudents.toString()],
+        ['Active Learners', kpiData.activelearners.toString()],
         ['Verified Activities', kpiData.totalVerifiedActivities.toString()],
         ['Pending Verifications', kpiData.pendingVerifications.toString()],
-        ['Avg Skills/Student', kpiData.avgSkillsPerStudent.toFixed(1)],
+        ['Avg Skills/Learner', kpiData.avgSkillsPerLearner.toFixed(1)],
         ['Attendance Rate', `${kpiData.attendanceRate}%`],
         ['Engagement Rate', `${kpiData.engagementRate}%`],
       ],
@@ -1250,14 +1250,14 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
     
     // Leaderboard
     doc.addPage();
-    doc.text('Top 10 Students', 14, 20);
+    doc.text('Top 10 Learners', 14, 20);
     
     autoTable(doc, {
       startY: 25,
-      head: [['Rank', 'Student Name', 'Total', 'Verified', 'Progress %']],
+      head: [['Rank', 'Learner Name', 'Total', 'Verified', 'Progress %']],
       body: leaderboard.slice(0, 10).map(s => [
         s.rank.toString(),
-        s.studentName,
+        s.learnerName,
         s.totalActivities.toString(),
         s.verifiedActivities.toString(),
         `${s.progress}%`,

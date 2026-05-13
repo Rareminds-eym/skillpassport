@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Plus, Search, Pencil, Trash2, Copy, ToggleLeft, ToggleRight, IndianRupee, ChevronDown, ChevronUp, Eye, FileDown } from "lucide-react";
-import { FeeStructure } from '@/features/student-profile/model';
+import { FeeStructure } from '@/features/learner-profile/model';
 import { FeeStructureViewModal } from "./FeeStructureViewModal";
 import { exportFeeStructurePDF } from '../utils/exportFeeStructurePDF';
 

@@ -8,7 +8,7 @@ Allow: /api/public/*
 Disallow: /api/private/*
 Disallow: /admin/*
 Disallow: /dashboard/*
-Disallow: /student/*
+Disallow: /learner/*
 Disallow: /educator/*
 Disallow: /recruiter/*
 

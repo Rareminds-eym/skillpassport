@@ -20,7 +20,7 @@
         },
         "role": {
           "type": "string",
-          "enum": ["student", "educator", "school_admin", "college_admin", "recruiter"],
+          "enum": ["learner", "educator", "school_admin", "college_admin", "recruiter"],
           "description": "Primary user role"
         },
         "name": {
@@ -34,9 +34,9 @@
       },
       "required": ["id", "email", "role"]
     },
-    "Student": {
+    "learner": {
       "type": "object",
-      "description": "Student profile with academic information",
+      "description": "learner profile with academic information",
       "properties": {
         "id": {
           "type": "string",
@@ -218,7 +218,7 @@
     },
     "AssessmentResult": {
       "type": "object",
-      "description": "Student assessment result",
+      "description": "learner assessment result",
       "properties": {
         "id": {
           "type": "string",
@@ -228,7 +228,7 @@
           "type": "string",
           "format": "uuid"
         },
-        "student_id": {
+        "learner_id": {
           "type": "string",
           "format": "uuid"
         },
@@ -272,7 +272,7 @@
           "format": "date-time"
         }
       },
-      "required": ["id", "assessment_id", "student_id", "score"]
+      "required": ["id", "assessment_id", "learner_id", "score"]
     },
     "Opportunity": {
       "type": "object",
@@ -342,7 +342,7 @@
     },
     "Application": {
       "type": "object",
-      "description": "Student application to opportunity",
+      "description": "learner application to opportunity",
       "properties": {
         "id": {
           "type": "string",
@@ -352,7 +352,7 @@
           "type": "string",
           "format": "uuid"
         },
-        "student_id": {
+        "learner_id": {
           "type": "string",
           "format": "uuid"
         },
@@ -381,7 +381,7 @@
           "format": "date-time"
         }
       },
-      "required": ["id", "opportunity_id", "student_id", "status"]
+      "required": ["id", "opportunity_id", "learner_id", "status"]
     },
     "Course": {
       "type": "object",
@@ -445,7 +445,7 @@
     },
     "Enrollment": {
       "type": "object",
-      "description": "Student course enrollment",
+      "description": "learner course enrollment",
       "properties": {
         "id": {
           "type": "string",
@@ -455,7 +455,7 @@
           "type": "string",
           "format": "uuid"
         },
-        "student_id": {
+        "learner_id": {
           "type": "string",
           "format": "uuid"
         },
@@ -482,7 +482,7 @@
           "format": "uri"
         }
       },
-      "required": ["id", "course_id", "student_id", "status"]
+      "required": ["id", "course_id", "learner_id", "status"]
     },
     "School": {
       "type": "object",
@@ -526,15 +526,15 @@
     }
   },
   "relationships": {
-    "student_to_user": "one-to-one",
-    "student_to_school": "many-to-one",
-    "student_to_courses": "many-to-many (via enrollments)",
-    "student_to_opportunities": "many-to-many (via applications)",
+    "learner_to_user": "one-to-one",
+    "learner_to_school": "many-to-one",
+    "learner_to_courses": "many-to-many (via enrollments)",
+    "learner_to_opportunities": "many-to-many (via applications)",
     "educator_to_school": "many-to-one",
     "educator_to_subjects": "many-to-many",
     "application_to_opportunity": "many-to-one",
-    "application_to_student": "many-to-one",
+    "application_to_learner": "many-to-one",
     "assessment_result_to_assessment": "many-to-one",
-    "assessment_result_to_student": "many-to-one"
+    "assessment_result_to_learner": "many-to-one"
   }
 }

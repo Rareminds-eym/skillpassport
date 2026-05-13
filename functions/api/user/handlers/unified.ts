@@ -1,8 +1,11 @@
 /**
- * Unified Signup Handler for User API
+ * Unified Signup Handler for User API (SSO-compatible)
  * 
- * Handles signup for all user types with proper rollback on failure.
- * This ensures no orphaned auth users are created.
+ * Creates the application profile (public.users + role-specific record)
+ * for a user who has already been created in the SSO system.
+ * 
+ * The SSO user ID is passed in the request body as `userId`.
+ * Authentication is handled by the SSO JWT (via withAuth middleware or ssoClient.fetch).
  */
 
 import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
@@ -14,26 +17,37 @@ import { apiLogger } from '../../../lib/logger';
 import {
   capitalizeFirstLetter,
   validateEmail,
-  checkEmailExists,
-  deleteAuthUser,
 } from '../utils/helpers';
 
 /**
- * Handle unified signup for all user types
- * Creates auth user, public.users record, and role-specific record
- * Rolls back all changes if any step fails
+ * Handle unified signup for all user types (SSO-compatible).
+ * 
+ * Expects the SSO user to already exist. Creates:
+ * 1. public.users record (app profile)
+ * 2. Role-specific record (learners, school_educators, recruiters, etc.)
+ * 
+ * The `userId` field in the request body is the SSO user ID (from ssoClient.signup/signupMember).
  */
 export async function handleUnifiedSignup(request: Request, env: PagesEnv): Promise<Response> {
   const supabaseAdmin = createSupabaseAdminClient(env);
 
   try {
-    const body = (await request.json()) as UnifiedSignupRequest;
+    const body = (await request.json()) as UnifiedSignupRequest & { userId?: string };
 
     // Validate required fields
-    if (!body.email || !body.password || !body.firstName || !body.lastName || !body.role) {
+    if (!body.email || !body.firstName || !body.lastName || !body.role) {
       return jsonResponse(
         {
-          error: 'Missing required fields: email, password, firstName, lastName, role',
+          error: 'Missing required fields: email, firstName, lastName, role',
+        },
+        400
+      );
+    }
+
+    if (!body.userId) {
+      return jsonResponse(
+        {
+          error: 'Missing userId. The SSO user must be created first.',
         },
         400
       );
@@ -43,87 +57,79 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
       return jsonResponse({ error: 'Invalid email format' }, 400);
     }
 
-    if (body.password.length < 6) {
-      return jsonResponse({ error: 'Password must be at least 6 characters' }, 400);
-    }
-
     const email = body.email.toLowerCase();
     const firstName = capitalizeFirstLetter(body.firstName);
     const lastName = capitalizeFirstLetter(body.lastName);
     const fullName = `${firstName} ${lastName}`.trim();
+    const userId = body.userId;
 
-    // Pre-check: Verify email doesn't exist in auth or users table
-    if (await checkEmailExists(supabaseAdmin, email)) {
-      return jsonResponse(
-        {
-          error: 'This email is already registered. Please login instead.',
-        },
-        400
-      );
-    }
-
-    // Pre-check: Verify email doesn't exist in users table
+    // Check if profile already exists by SSO user ID (idempotency)
     const { data: existingUser } = await supabaseAdmin
       .from('users')
       .select('id')
-      .eq('email', email)
+      .eq('id', userId)
       .maybeSingle();
 
     if (existingUser) {
       return jsonResponse(
         {
-          error: 'This email is already registered. Please login instead.',
+          success: true,
+          data: { userId },
+          message: 'Profile already exists',
         },
-        400
+        200
       );
     }
 
-    // Pre-check: Verify phone doesn't exist in users table (if provided)
-    if (body.phone) {
-      const { data: existingPhone } = await supabaseAdmin
+    // Check if profile exists with same email but different ID (legacy Supabase Auth user)
+    // Link the existing profile to the new SSO user ID
+    const { data: existingByEmail } = await supabaseAdmin
+      .from('users')
+      .select('id, role')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (existingByEmail && existingByEmail.id !== userId) {
+      const oldId = existingByEmail.id;
+
+      // Update role-specific records FIRST (child tables) before updating the parent
+      await supabaseAdmin.from('learners').update({ user_id: userId }).eq('user_id', oldId);
+      await supabaseAdmin.from('recruiters').update({ user_id: userId }).eq('user_id', oldId);
+      await supabaseAdmin.from('school_educators').update({ user_id: userId }).eq('user_id', oldId);
+      await supabaseAdmin.from('college_educators').update({ user_id: userId }).eq('user_id', oldId);
+
+      // Now delete the old users row and create a new one with the SSO user ID
+      // (UPDATE on PK with FK references is problematic, so delete + insert is safer)
+      const { data: oldUser } = await supabaseAdmin
         .from('users')
-        .select('id')
-        .eq('phone', body.phone)
-        .maybeSingle();
+        .select('*')
+        .eq('id', oldId)
+        .single();
 
-      if (existingPhone) {
-        return jsonResponse(
-          {
-            error: 'This phone number is already registered with another account.',
-          },
-          400
-        );
+      if (oldUser) {
+        await supabaseAdmin.from('users').delete().eq('id', oldId);
+        const { error: insertError } = await supabaseAdmin.from('users').insert({
+          ...oldUser,
+          id: userId,
+          updatedAt: new Date().toISOString(),
+        });
+        if (insertError) {
+          throw new Error(`Failed to link existing profile to SSO user: ${insertError.message}`);
+        }
       }
-    }
 
-    // 1. Create auth user
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password: body.password,
-      email_confirm: true,
-      user_metadata: {
-        name: fullName,
-        first_name: firstName,
-        last_name: lastName,
-        role: body.role,
-        phone: body.phone,
-      },
-    });
-
-    if (authError || !authUser.user) {
-      console.error('Auth user creation failed:', authError);
       return jsonResponse(
         {
-          error: authError?.message || 'Failed to create account',
+          success: true,
+          data: { userId, linked: true, previousId: oldId },
+          message: 'Existing profile linked to SSO account',
         },
-        500
+        200
       );
     }
 
-    const userId = authUser.user.id;
-
     try {
-      // 2. Create public.users record
+      // 1. Create public.users record (app profile)
       const { error: userError } = await supabaseAdmin.from('users').insert({
         id: userId,
         email,
@@ -142,7 +148,7 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
           preferredLanguage: body.preferredLanguage,
           referralCode: body.referralCode,
           registrationDate: new Date().toISOString(),
-          source: 'unified_signup',
+          source: 'sso_signup',
         },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -152,8 +158,14 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
         throw new Error(`Failed to create user record: ${userError.message}`);
       }
 
-      // 3. Create role-specific record
-      await createRoleSpecificRecord(supabaseAdmin, userId, email, fullName, firstName, lastName, body);
+      // 2. Create role-specific record
+      try {
+        await createRoleSpecificRecord(supabaseAdmin, userId, email, fullName, firstName, lastName, body);
+      } catch (roleError) {
+        // Rollback: delete the users row if role-specific record fails
+        await supabaseAdmin.from('users').delete().eq('id', userId);
+        throw roleError;
+      }
 
       // 4. Send welcome email
       const baseUrl = new URL(request.url).origin;
@@ -180,15 +192,15 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
         })
       });
     } catch (error) {
-      // ROLLBACK: Delete auth user if any subsequent step fails
-      console.error('Rollback: deleting auth user due to error:', error);
-      await deleteAuthUser(supabaseAdmin, userId);
+      // Profile creation failed — SSO user still exists but has no app profile.
+      // The frontend should handle this gracefully (retry or show error).
+      console.error('Profile creation error:', error);
       throw error;
     }
   } catch (error) {
     console.error('Unified signup error:', error);
     return jsonResponse(
-      { error: error instanceof Error ? error.message : 'Failed to create account' },
+      { error: error instanceof Error ? error.message : 'Failed to create profile' },
       500
     );
   }
@@ -211,21 +223,17 @@ async function createRoleSpecificRecord(
   const { role, phone, dateOfBirth } = body;
 
   switch (role) {
-    case 'school_student':
-    case 'college_student':
     case 'learner': {
-      const studentType = role === 'school_student' ? 'school' : role === 'college_student' ? 'college' : 'learner';
-      const { error } = await supabaseAdmin.from('students').insert({
+      const { error } = await supabaseAdmin.from('learners').insert({
         user_id: userId,
         name: fullName,
         email,
         contact_number: phone,
         date_of_birth: dateOfBirth || null,
-        student_type: studentType,
-        approval_status: role === 'learner' ? 'approved' : 'pending', // Auto-approve learners
+        approval_status: 'approved', // Auto-approve learners
       });
       if (error) {
-        throw new Error(`Failed to create student record: ${error.message}`);
+        throw new Error(`Failed to create learner record: ${error.message}`);
       }
       break;
     }

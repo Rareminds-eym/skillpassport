@@ -1,7 +1,7 @@
 import { TourStep } from '@/shared/types';
 
 /**
- * Student Dashboard Tour Configuration - Professional Solution
+ * Learner Dashboard Tour Configuration - Professional Solution
  * Contains all steps, content, and styling for the dashboard onboarding tour
  * Features custom scroll management for optimal user experience
  */

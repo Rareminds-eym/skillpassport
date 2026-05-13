@@ -3,9 +3,8 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Menu, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { supabase } from '@/shared/api/supabaseClient';
 import { SocialMediaLinks } from '@/shared/ui/SocialMediaLinks';
-import { formatAuthUser } from '@/shared/lib/auth/getUserRole';
+import { useAuthStore } from '@/shared/model/authStore';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -38,27 +37,23 @@ const Header = ({ hasBanner = false }) => {
     [location.pathname]
   );
 
-  // Fetch authenticated user data
+  // Subscribe to auth store changes (SSO-based, not Supabase auth)
   useEffect(() => {
-    const fetchAuthUser = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        setAuthUser(formatAuthUser(user));
-      } catch (error) {
-        console.error('Error fetching auth user:', error);
+    const updateAuthUser = (state) => {
+      const user = state.user;
+      if (user) {
+        setAuthUser({ email: user.email, role: user.role });
+      } else {
+        setAuthUser(null);
       }
     };
 
-    fetchAuthUser();
+    // Set initial value
+    updateAuthUser(useAuthStore.getState());
 
-    // Subscribe to auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setAuthUser(session?.user ? formatAuthUser(session.user) : null);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    // Subscribe to changes
+    const unsubscribe = useAuthStore.subscribe(updateAuthUser);
+    return unsubscribe;
   }, []);
 
   const closeMobileMenuWithAnimation = useCallback(() => {

@@ -30,5 +30,5 @@ export * from './storageService';
 // - analytics* services -> @/features/analytics/api/
 // - dashboard* services -> @/features/analytics/api/
 // - migration* services -> @/features/admin/api/
-// - streak* services -> @/features/student-profile/api/
+// - streak* services -> @/features/learner-profile/api/
 // Import them directly from their feature locations

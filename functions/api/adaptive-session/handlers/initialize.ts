@@ -11,13 +11,13 @@ import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabas
 import type { InitializeTestOptions, InitializeTestResult, GradeLevel } from '../types';
 import { dbSessionToTestSession } from '../utils/converters';
 import { authenticateUser } from '../../shared/auth';
-import { fetchDiagnosticQuestions, extractGradeNumber, studentGradeToGradeLevel } from '../utils/question-bank';
+import { fetchDiagnosticQuestions, extractGradeNumber, learnerGradeToGradeLevel } from '../utils/question-bank';
 
 /**
  * Initializes a new adaptive aptitude test session
  * 
  * Requirements: 1.1
- * - Creates a new session with student ID and grade level
+ * - Creates a new session with learner ID and grade level
  * - Generates initial question set (diagnostic screener)
  * - Requires authentication
  * 
@@ -39,8 +39,8 @@ export const initializeHandler: PagesFunction = async (context) => {
 
     // Parse request body
     const body = await request.json() as InitializeTestOptions;
-    const { gradeLevel, studentCourse } = body;
-    // Note: studentId from body is ignored - we look it up from auth.user.id
+    const { gradeLevel, learnerCourse } = body;
+    // Note: learnerId from body is ignored - we look it up from auth.user.id
 
     if (!gradeLevel) {
       return jsonResponse(
@@ -49,41 +49,41 @@ export const initializeHandler: PagesFunction = async (context) => {
       );
     }
 
-    console.log('📋 [InitializeHandler] Request:', { gradeLevel, studentCourse });
+    console.log('📋 [InitializeHandler] Request:', { gradeLevel, learnerCourse });
 
     // Create Supabase admin client for verification
     const supabase = createSupabaseAdminClient(env);
 
-    // Look up the student record for the authenticated user
-    const { data: studentData, error: studentError } = await supabase
-      .from('students')
+    // Look up the learner record for the authenticated user
+    const { data: learnerData, error: learnerError } = await supabase
+      .from('learners')
       .select('id, user_id, grade')
       .eq('user_id', auth.user.id)
       .single();
 
-    if (studentError || !studentData) {
-      console.error('❌ [InitializeHandler] Student record not found for user:', auth.user.id, studentError);
+    if (learnerError || !learnerData) {
+      console.error('❌ [InitializeHandler] Learner record not found for user:', auth.user.id, learnerError);
       return jsonResponse(
-        { error: 'Student record not found', message: studentError?.message },
+        { error: 'Learner record not found', message: learnerError?.message },
         404
       );
     }
 
-    const studentId = studentData.id;
-    const studentGradeString = studentData.grade;
-    console.log('✅ [InitializeHandler] Found student record:', { studentId, grade: studentGradeString });
+    const learnerId = learnerData.id;
+    const learnerGradeString = learnerData.grade;
+    console.log('✅ [InitializeHandler] Found learner record:', { learnerId, grade: learnerGradeString });
 
-    // Determine actual gradeLevel from student's grade column for college students
-    // This overrides the frontend-provided gradeLevel if student has UG/PG in their grade
+    // Determine actual gradeLevel from learner's grade column for college learners
+    // This overrides the frontend-provided gradeLevel if learner has UG/PG in their grade
     let actualGradeLevel = gradeLevel;
-    if (studentGradeString) {
-      const detectedGradeLevel = studentGradeToGradeLevel(studentGradeString);
+    if (learnerGradeString) {
+      const detectedGradeLevel = learnerGradeToGradeLevel(learnerGradeString);
       if (detectedGradeLevel === 'undergraduate' || detectedGradeLevel === 'postgraduate') {
         actualGradeLevel = detectedGradeLevel;
-        console.log('🎓 [InitializeHandler] Overriding gradeLevel based on student grade:', {
+        console.log('🎓 [InitializeHandler] Overriding gradeLevel based on learner grade:', {
           provided: gradeLevel,
           detected: actualGradeLevel,
-          studentGrade: studentGradeString
+          learnerGrade: learnerGradeString
         });
       }
     }
@@ -97,13 +97,13 @@ export const initializeHandler: PagesFunction = async (context) => {
       );
     }
 
-    console.log('🚀 [InitializeHandler] initializeTest called:', { studentId, gradeLevel: actualGradeLevel });
+    console.log('🚀 [InitializeHandler] initializeTest called:', { learnerId, gradeLevel: actualGradeLevel });
 
     // Fetch diagnostic screener questions from question bank (no AI)
     console.log('📝 [InitializeHandler] Fetching diagnostic screener questions from database...');
     
-    // Extract specific grade number from student record
-    const specificGrade = extractGradeNumber(studentGradeString);
+    // Extract specific grade number from learner record
+    const specificGrade = extractGradeNumber(learnerGradeString);
     console.log('🎯 [InitializeHandler] Using specific grade:', specificGrade || 'fallback to range');
     
     const diagnosticQuestions = await fetchDiagnosticQuestions(supabase, actualGradeLevel, [], specificGrade || undefined);
@@ -124,9 +124,9 @@ export const initializeHandler: PagesFunction = async (context) => {
     const { data: sessionData, error: sessionError } = await supabase
       .from('adaptive_aptitude_sessions')
       .insert({
-        student_id: studentId,
+        learner_id: learnerId,
         grade_level: gradeLevel,
-        student_course: specificGrade ? `Grade ${specificGrade}` : (studentCourse || null),
+        learner_course: specificGrade ? `Grade ${specificGrade}` : (learnerCourse || null),
         current_phase: 'diagnostic_screener',
         current_difficulty: 3, // Default starting difficulty
         difficulty_path: [],

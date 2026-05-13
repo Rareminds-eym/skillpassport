@@ -7,7 +7,7 @@
  * All supported user roles in the messaging system
  */
 export type UserRole =
-    | 'student'
+    | 'learner'
     | 'recruiter'
     | 'educator'
     | 'college_educator'
@@ -19,11 +19,11 @@ export type UserRole =
  * All supported conversation types between users
  */
 export type ConversationType =
-    | 'student_recruiter'
-    | 'student_educator'
+    | 'learner_recruiter'
+    | 'learner_educator'
     | 'educator_recruiter'
-    | 'student_admin'
-    | 'student_college_admin'
-    | 'student_college_educator'
+    | 'learner_admin'
+    | 'learner_college_admin'
+    | 'learner_college_educator'
     | 'educator_admin'
     | 'college_educator_admin';

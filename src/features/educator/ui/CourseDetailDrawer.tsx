@@ -393,7 +393,7 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
                   <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-100">
                     <div className="flex items-center gap-3 mb-2">
                       <UsersIcon className="h-5 w-5 text-indigo-600" />
-                      <span className="text-xs text-indigo-900 font-medium">Enrolled Students</span>
+                      <span className="text-xs text-indigo-900 font-medium">Enrolled Learners</span>
                     </div>
                     <p className="text-2xl font-bold text-indigo-700">{course.enrollmentCount}</p>
                   </div>

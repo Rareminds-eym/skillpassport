@@ -23,7 +23,7 @@ interface College {
   status: "active" | "inactive";
   location: string;
   establishedYear: number;
-  totalStudents: number;
+  totallearners: number;
   totalFaculty: number;
 }
 
@@ -116,7 +116,7 @@ const Settings = () => {
       status: "active",
       location: "Main Campus",
       establishedYear: 1985,
-      totalStudents: 2500,
+      totallearners: 2500,
       totalFaculty: 150,
     },
     {
@@ -126,7 +126,7 @@ const Settings = () => {
       status: "active",
       location: "North Campus",
       establishedYear: 1990,
-      totalStudents: 1800,
+      totallearners: 1800,
       totalFaculty: 120,
     },
   ]);
@@ -162,14 +162,14 @@ const Settings = () => {
       id: "2",
       roleName: "Registrar",
       level: "university",
-      permissions: ["students", "academics", "reports"],
+      permissions: ["learners", "academics", "reports"],
       userCount: 1,
     },
     {
       id: "3",
       roleName: "College Principal",
       level: "college",
-      permissions: ["college_management", "faculty", "students"],
+      permissions: ["college_management", "faculty", "learners"],
       userCount: 5,
     },
   ]);
@@ -270,7 +270,7 @@ const Settings = () => {
                       <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">College</th>
                       <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Code</th>
                       <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Location</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Students</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Learners</th>
                       <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Faculty</th>
                       <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Status</th>
                     </tr>
@@ -281,7 +281,7 @@ const Settings = () => {
                         <td className="py-3 px-4 font-medium text-gray-900">{college.name}</td>
                         <td className="py-3 px-4 text-gray-600">{college.code}</td>
                         <td className="py-3 px-4 text-gray-600">{college.location}</td>
-                        <td className="py-3 px-4 text-gray-600">{college.totalStudents.toLocaleString()}</td>
+                        <td className="py-3 px-4 text-gray-600">{college.totallearners.toLocaleString()}</td>
                         <td className="py-3 px-4 text-gray-600">{college.totalFaculty}</td>
                         <td className="py-3 px-4">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${

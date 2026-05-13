@@ -11,7 +11,7 @@ import { memo, useCallback, useState } from 'react';
 interface LicensePool {
   id: string;
   poolName: string;
-  memberType: 'educator' | 'student';
+  memberType: 'educator' | 'learner';
   allocatedSeats: number;
   assignedSeats: number;
   availableSeats: number;
@@ -148,7 +148,7 @@ function LicensePoolManager({
                             : 'bg-green-100 text-green-700'
                         }`}
                       >
-                        {pool.memberType === 'educator' ? 'Educators' : 'Students'}
+                        {pool.memberType === 'educator' ? 'Educators' : 'Learners'}
                       </span>
                       {pool.autoAssignNewMembers && (
                         <span className="px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">

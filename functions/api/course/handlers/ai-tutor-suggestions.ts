@@ -1,7 +1,7 @@
 /**
  * AI Tutor Suggestions Handler
  * 
- * Generates 3-5 helpful questions that students might want to ask
+ * Generates 3-5 helpful questions that learners might want to ask
  * to better understand lesson material.
  * 
  * Features:
@@ -126,7 +126,7 @@ export const handleAiTutorSuggestions: PagesFunction<PagesEnv> = async (context)
     }
 
     // Build prompt for AI
-    const prompt = `Based on the following lesson, generate 3-5 helpful questions that a student might want to ask to better understand the material.
+    const prompt = `Based on the following lesson, generate 3-5 helpful questions that a learner might want to ask to better understand the material.
 
 ## Lesson: ${lesson.title}
 ## Module: ${moduleTitle}

@@ -6,7 +6,7 @@ interface MediaFile {
   name: string;
   type: string;
   size: string;
-  student: string;
+  learner: string;
   activity: string;
 }
 
@@ -29,7 +29,7 @@ const MediaManager = () => {
               ? 'PDF'
               : 'Video',
           size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
-          student: '-',
+          learner: '-',
           activity: '-',
         };
         setUploadedFiles([...uploadedFiles, newMedia]);
@@ -52,7 +52,7 @@ const MediaManager = () => {
       {/* Upload Section */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          Upload Media for Students
+          Upload Media for Learners
         </h2>
         <label className="flex flex-col items-center justify-center w-full px-6 py-8 border-2 border-dashed border-gray-300 rounded-2xl text-center cursor-pointer hover:border-emerald-500 hover:bg-emerald-50 transition-colors">
           <CloudArrowUpIcon className="h-10 w-10 text-emerald-500 mb-2" />
@@ -119,7 +119,7 @@ const MediaManager = () => {
                     Size
                   </th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                    Student
+                    Learner
                   </th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                     Activity
@@ -135,7 +135,7 @@ const MediaManager = () => {
                     <td className="px-4 py-3 text-sm">{media.name}</td>
                     <td className="px-4 py-3 text-sm">{media.type}</td>
                     <td className="px-4 py-3 text-sm">{media.size}</td>
-                    <td className="px-4 py-3 text-sm">{media.student}</td>
+                    <td className="px-4 py-3 text-sm">{media.learner}</td>
                     <td className="px-4 py-3 text-sm">{media.activity}</td>
                     <td className="px-4 py-3 text-sm">
                       <button className="text-emerald-600 hover:text-emerald-700 mr-2">

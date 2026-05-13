@@ -48,7 +48,7 @@ export interface IntentScore {
 
 export type ConversationPhase = 'opening' | 'exploring' | 'deep_dive' | 'follow_up';
 
-export interface StudentProfile {
+export interface LearnerProfile {
   id: string;
   name: string;
   email: string;
@@ -57,7 +57,7 @@ export interface StudentProfile {
   cgpa: string;
   yearOfPassing: string;
   grade: string;
-  gradeNumber?: number; // Numeric grade level for school students (e.g., 10 for "Grade 10")
+  gradeNumber?: number; // Numeric grade level for school learners (e.g., 10 for "Grade 10")
   bio: string;
   technicalSkills: TechnicalSkill[];
   softSkills: SoftSkill[];

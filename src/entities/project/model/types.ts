@@ -109,8 +109,8 @@ export type ProposalStatus =
 export interface Proposal {
   id: string;
   project_id: string;
-  student_id: string;
-  student?: StudentProfile;
+  learner_id: string;
+  learner?: LearnerProfile;
   cover_letter: string;
   proposed_budget: number;
   proposed_timeline: string;
@@ -127,7 +127,7 @@ export interface Proposal {
   updated_at: string;
 }
 
-export interface StudentProfile {
+export interface LearnerProfile {
   id: string;
   name: string;
   email: string;
@@ -155,9 +155,9 @@ export interface ProjectContract {
   id: string;
   project_id: string;
   proposal_id: string;
-  student_id: string;
+  learner_id: string;
   recruiter_id: string;
-  student?: StudentProfile;
+  learner?: LearnerProfile;
   project?: Project;
   agreed_budget: number;
   agreed_timeline: string;
@@ -186,9 +186,9 @@ export interface ProjectReview {
   recruiter_rating?: number;
   recruiter_review?: string;
   recruiter_would_rehire?: boolean;
-  student_rating?: number;
-  student_review?: string;
-  student_would_work_again?: boolean;
+  learner_rating?: number;
+  learner_review?: string;
+  learner_would_work_again?: boolean;
   quality_rating?: number;
   communication_rating?: number;
   timeliness_rating?: number;
@@ -232,15 +232,15 @@ export interface ProjectAnalytics {
 export interface QA {
   question: string;
   answer?: string;
-  asked_by: 'recruiter' | 'student';
+  asked_by: 'recruiter' | 'learner';
   timestamp: string;
 }
 
 // ============================================================================
-// Student Portfolio Project Types
+// Learner Portfolio Project Types
 // ============================================================================
 
-export interface StudentProject {
+export interface LearnerProject {
   id: string;
   title: string;
   description: string;

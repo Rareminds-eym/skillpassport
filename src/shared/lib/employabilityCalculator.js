@@ -1,7 +1,7 @@
 /**
  * Employability Score Calculator
  * 
- * Calculates employability score based on student data from separate tables:
+ * Calculates employability score based on learner data from separate tables:
  * - certificates table
  * - education table  
  * - training table
@@ -40,13 +40,13 @@ function determineFocusArea(breakdown) {
 }
 
 /**
- * Calculate employability score from student profile data
- * @param {Object} studentData - Student profile data from Supabase
+ * Calculate employability score from learner profile data
+ * @param {Object} learnerData - Learner profile data from Supabase
  * @returns {Object} - Score, level, and label information
  */
-export function calculateEmployabilityScore(studentData) {
+export function calculateEmployabilityScore(learnerData) {
   
-  if (!studentData || typeof studentData !== 'object') {
+  if (!learnerData || typeof learnerData !== 'object') {
     return getDefaultEmployabilityScore();
   }
 
@@ -94,8 +94,8 @@ export function calculateEmployabilityScore(studentData) {
   };
 
   // 1. EDUCATION TABLE -> Foundational Skills
-  if (studentData.education && Array.isArray(studentData.education) && studentData.education.length > 0) {
-    skillsData.foundational = studentData.education.map(edu => ({
+  if (learnerData.education && Array.isArray(learnerData.education) && learnerData.education.length > 0) {
+    skillsData.foundational = learnerData.education.map(edu => ({
       name: edu.degree || edu.course || 'Academic Background',
       rating: edu.cgpa ? Math.min(5, Math.max(1, parseFloat(edu.cgpa) / 2)) : 3,
       verified: edu.verified || edu.approval_status === 'approved' || true,
@@ -104,8 +104,8 @@ export function calculateEmployabilityScore(studentData) {
   }
 
   // 2. SKILLS TABLE (type='technical') -> Digital Skills  
-  if (studentData.technicalSkills && Array.isArray(studentData.technicalSkills) && studentData.technicalSkills.length > 0) {
-    skillsData.digital = studentData.technicalSkills.map(skill => ({
+  if (learnerData.technicalSkills && Array.isArray(learnerData.technicalSkills) && learnerData.technicalSkills.length > 0) {
+    skillsData.digital = learnerData.technicalSkills.map(skill => ({
       name: skill.name || skill.skill_name || 'Technical Skill',
       rating: skill.level || skill.proficiency_level || skill.rating || 3,
       verified: skill.verified || skill.approval_status === 'approved' || false,
@@ -114,8 +114,8 @@ export function calculateEmployabilityScore(studentData) {
   }
 
   // 3. SKILLS TABLE (type='soft') -> Behavioral Skills
-  if (studentData.softSkills && Array.isArray(studentData.softSkills) && studentData.softSkills.length > 0) {
-    skillsData.behavior = studentData.softSkills.map(skill => ({
+  if (learnerData.softSkills && Array.isArray(learnerData.softSkills) && learnerData.softSkills.length > 0) {
+    skillsData.behavior = learnerData.softSkills.map(skill => ({
       name: skill.name || skill.skill_name || 'Soft Skill',
       rating: skill.level || skill.proficiency_level || skill.rating || 3,
       verified: skill.verified || skill.approval_status === 'approved' || false,
@@ -124,8 +124,8 @@ export function calculateEmployabilityScore(studentData) {
   }
 
   // 4. TRAINING TABLE -> Career Skills
-  if (studentData.training && Array.isArray(studentData.training) && studentData.training.length > 0) {
-    skillsData.career = studentData.training.map(training => ({
+  if (learnerData.training && Array.isArray(learnerData.training) && learnerData.training.length > 0) {
+    skillsData.career = learnerData.training.map(training => ({
       name: training.course || training.title || 'Professional Training',
       rating: training.progress ? Math.min(5, training.progress / 20) : 3, // Convert progress % to 1-5 scale
       verified: training.verified || training.approval_status === 'approved' || training.status === 'completed',
@@ -134,8 +134,8 @@ export function calculateEmployabilityScore(studentData) {
   }
 
   // 5. PROJECTS TABLE -> 21st Century Skills (Innovation, Problem Solving)
-  if (studentData.projects && Array.isArray(studentData.projects) && studentData.projects.length > 0) {
-    skillsData.century21 = studentData.projects.map(project => ({
+  if (learnerData.projects && Array.isArray(learnerData.projects) && learnerData.projects.length > 0) {
+    skillsData.century21 = learnerData.projects.map(project => ({
       name: `Project: ${project.title || 'Innovation Project'}`,
       rating: project.status === 'completed' ? 4 : 3,
       verified: project.verified || project.approval_status === 'approved' || false,
@@ -147,18 +147,18 @@ export function calculateEmployabilityScore(studentData) {
   const totalCategorizedSkills = Object.values(skillsData).reduce((sum, arr) => sum + arr.length, 0);
   
   // Also check for experience and certificates
-  const hasExperience = studentData.experience && 
-    Array.isArray(studentData.experience) && 
-    studentData.experience.length > 0;
+  const hasExperience = learnerData.experience && 
+    Array.isArray(learnerData.experience) && 
+    learnerData.experience.length > 0;
   
-  const hasCertificates = studentData.certificates &&
-    Array.isArray(studentData.certificates) &&
-    studentData.certificates.length > 0;
+  const hasCertificates = learnerData.certificates &&
+    Array.isArray(learnerData.certificates) &&
+    learnerData.certificates.length > 0;
   
   // If NO data at all from any table, return 0 score
   if (totalCategorizedSkills === 0 && !hasExperience && !hasCertificates) {
     // Check if there's at least basic profile info
-    const hasBasicInfo = studentData.name || studentData.email || studentData.university;
+    const hasBasicInfo = learnerData.name || learnerData.email || learnerData.university;
     
     if (!hasBasicInfo) {
       return getDefaultEmployabilityScore();
@@ -213,14 +213,14 @@ export function calculateEmployabilityScore(studentData) {
   if (allEvidenceVerified) bonus += 2;
   
   // EXPERIENCE TABLE - Check for work experience/internships
-  const hasTraining = studentData.training &&
-    Array.isArray(studentData.training) &&
-    studentData.training.length > 0;
+  const hasTraining = learnerData.training &&
+    Array.isArray(learnerData.training) &&
+    learnerData.training.length > 0;
   
   // PROJECTS TABLE - Check for project work (hackathons, etc.)
-  const hasProjects = studentData.projects &&
-    Array.isArray(studentData.projects) &&
-    studentData.projects.length > 0;
+  const hasProjects = learnerData.projects &&
+    Array.isArray(learnerData.projects) &&
+    learnerData.projects.length > 0;
   
   const participatedHackathonOrInternship = hasExperience || hasTraining || hasProjects;
   if (participatedHackathonOrInternship) bonus += 1;
@@ -229,11 +229,11 @@ export function calculateEmployabilityScore(studentData) {
   if (hasCertificates) bonus += 2;
   
   // Additional bonuses from separate tables
-  if (hasExperience && studentData.experience.some(exp => exp.verified || exp.approval_status === 'approved')) {
+  if (hasExperience && learnerData.experience.some(exp => exp.verified || exp.approval_status === 'approved')) {
     bonus += 1; // Verified work experience
   }
   
-  if (hasProjects && studentData.projects.some(proj => proj.approval_status === 'approved')) {
+  if (hasProjects && learnerData.projects.some(proj => proj.approval_status === 'approved')) {
     bonus += 1; // Approved projects
   }
   
@@ -307,10 +307,10 @@ export function getDefaultEmployabilityScore() {
 /**
  * Calculate a minimum score based on basic profile information
  * This is only called when there's actual data but score is very low
- * @param {Object} studentData - Student profile data
+ * @param {Object} learnerData - Learner profile data
  * @returns {Object} Minimum score based on available data
  */
-export function calculateMinimumScore(studentData) {
+export function calculateMinimumScore(learnerData) {
   // This function is deprecated - we now return 0 for empty profiles
   // Keeping for backward compatibility but it should rarely be called
   return getDefaultEmployabilityScore();

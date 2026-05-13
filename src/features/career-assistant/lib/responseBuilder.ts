@@ -285,7 +285,7 @@ export function buildProfileAnalysisResponse(
     {
       id: 'compare',
       label: 'Compare with peers',
-      query: 'How do I compare to other students?',
+      query: 'How do I compare to other learners?',
       icon: 'Users'
     }
   ];

@@ -11,13 +11,13 @@ const logger = getLogger('ai-recommendation-service');
 
 class AIRecommendationService {
   /**
-   * Get AI-powered job recommendations for a student
+   * Get AI-powered job recommendations for a learner
    */
-  async getRecommendations(studentId, forceRefresh = false) {
+  async getRecommendations(learnerId, forceRefresh = false) {
     try {
       // Check cache first unless force refresh is requested
       if (!forceRefresh) {
-        const cachedData = await this.getCachedRecommendations(studentId);
+        const cachedData = await this.getCachedRecommendations(learnerId);
         if (cachedData) {
           return {
             success: true,
@@ -32,7 +32,7 @@ class AIRecommendationService {
       // Generate fresh recommendations via Cloudflare Worker (falls back to edge function)
       let data, error;
       try {
-        data = await careerApiService.getRecommendations(studentId, { forceRefresh: true });
+        data = await careerApiService.getRecommendations(learnerId, { forceRefresh: true });
       } catch (err: unknown) {
         logger.error('Error fetching recommendations', err instanceof Error ? err : new Error(String(err)));
         throw err;
@@ -40,7 +40,7 @@ class AIRecommendationService {
 
       // Cache the fresh recommendations
       if (data?.recommendations && data.recommendations.length > 0) {
-        await this.cacheRecommendations(studentId, data.recommendations);
+        await this.cacheRecommendations(learnerId, data.recommendations);
       }
 
       return {
@@ -61,9 +61,9 @@ class AIRecommendationService {
   }
 
   /**
-   * Get cached recommendations for a student
+   * Get cached recommendations for a learner
    */
-  async getCachedRecommendations(studentId) {
+  async getCachedRecommendations(learnerId) {
     try {
       // recommendation_cache table doesn't exist, return null to force fresh fetch
       return null;
@@ -74,9 +74,9 @@ class AIRecommendationService {
   }
 
   /**
-   * Cache recommendations for a student
+   * Cache recommendations for a learner
    */
-  async cacheRecommendations(studentId, recommendations) {
+  async cacheRecommendations(learnerId, recommendations) {
     try {
       // recommendation_cache table doesn't exist, skip caching
       return;
@@ -139,32 +139,32 @@ class AIRecommendationService {
   }
 
   /**
-   * Generate embedding for a student profile
+   * Generate embedding for a learner profile
    */
-  async generateStudentEmbedding(studentId) {
+  async generatelearnerEmbedding(learnerId) {
     try {
 
-      // Get student details
-      const { data: student, error: fetchError } = await supabase
-        .from('students')
+      // Get learner details
+      const { data: learner, error: fetchError } = await supabase
+        .from('learners')
         .select('*')
-        .eq('id', studentId)
+        .eq('id', learnerId)
         .maybeSingle();
 
-      if (fetchError || !student) {
-        throw new Error('Student not found');
+      if (fetchError || !learner) {
+        throw new Error('Learner not found');
       }
 
       // Create text representation
       const text = [
-        student.name,
-        student.bio,
-        student.resume_text,
-        student.experience_level,
-        Array.isArray(student.skills) ? student.skills.join(' ') : '',
-        Array.isArray(student.interests) ? student.interests.join(' ') : '',
-        Array.isArray(student.preferred_departments) ? student.preferred_departments.join(' ') : '',
-        Array.isArray(student.preferred_employment_types) ? student.preferred_employment_types.join(' ') : ''
+        learner.name,
+        learner.bio,
+        learner.resume_text,
+        learner.experience_level,
+        Array.isArray(learner.skills) ? learner.skills.join(' ') : '',
+        Array.isArray(learner.interests) ? learner.interests.join(' ') : '',
+        Array.isArray(learner.preferred_departments) ? learner.preferred_departments.join(' ') : '',
+        Array.isArray(learner.preferred_employment_types) ? learner.preferred_employment_types.join(' ') : ''
       ].filter(Boolean).join(' ');
 
       // Generate embedding via Cloudflare Worker
@@ -172,9 +172,9 @@ class AIRecommendationService {
       try {
         data = await careerApiService.generateEmbedding({
           text,
-          table: 'students',
-          id: studentId,
-          type: 'student'
+          table: 'learners',
+          id: learnerId,
+          type: 'learner'
         });
       } catch (error) {
         throw error;
@@ -182,7 +182,7 @@ class AIRecommendationService {
 
       return { success: true, ...data };
     } catch (error) {
-      logger.error('Failed to generate student embedding', error instanceof Error ? error : new Error(String(error)));
+      logger.error('Failed to generate learner embedding', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   }
@@ -190,16 +190,16 @@ class AIRecommendationService {
   /**
    * Track user interaction with an opportunity
    */
-  async trackInteraction(studentId, opportunityId, action) {
+  async trackInteraction(learnerId, opportunityId, action) {
     try {
       const { error } = await supabase
         .from('opportunity_interactions')
         .upsert({
-          student_id: studentId,
+          learner_id: learnerId,
           opportunity_id: opportunityId,
           action
         }, {
-          onConflict: 'student_id,opportunity_id,action'
+          onConflict: 'learner_id,opportunity_id,action'
         });
 
       if (error) throw error;
@@ -211,7 +211,7 @@ class AIRecommendationService {
 
       // Invalidate cache on apply/dismiss
       if (action === 'apply' || action === 'dismiss') {
-        await this.invalidateCache(studentId);
+        await this.invalidateCache(learnerId);
       }
 
       return { success: true };
@@ -224,14 +224,14 @@ class AIRecommendationService {
   /**
    * Dismiss an opportunity (won't show in recommendations)
    */
-  async dismissOpportunity(studentId, opportunityId) {
-    return this.trackInteraction(studentId, opportunityId, 'dismiss');
+  async dismissOpportunity(learnerId, opportunityId) {
+    return this.trackInteraction(learnerId, opportunityId, 'dismiss');
   }
 
   /**
-   * Invalidate recommendation cache for a student
+   * Invalidate recommendation cache for a learner
    */
-  async invalidateCache(studentId) {
+  async invalidateCache(learnerId) {
     try {
       // recommendation_cache table doesn't exist, nothing to invalidate
       return { success: true };
@@ -277,15 +277,15 @@ class AIRecommendationService {
   }
 
   /**
-   * Update student profile and regenerate embedding
+   * Update learner profile and regenerate embedding
    */
-  async updateStudentProfile(studentId, profileData) {
+  async updateLearnerProfile(learnerId, profileData) {
     try {
       // Update profile
       const { error: updateError } = await supabase
-        .from('students')
+        .from('learners')
         .upsert({
-          id: studentId,
+          id: learnerId,
           ...profileData,
           updated_at: new Date().toISOString()
         });
@@ -293,14 +293,14 @@ class AIRecommendationService {
       if (updateError) throw updateError;
 
       // Regenerate embedding
-      await this.generateStudentEmbedding(studentId);
+      await this.generatelearnerEmbedding(learnerId);
 
       // Invalidate cache
-      await this.invalidateCache(studentId);
+      await this.invalidateCache(learnerId);
 
       return { success: true };
     } catch (error) {
-      logger.error('Error updating student profile', error instanceof Error ? error : new Error(String(error)));
+      logger.error('Error updating learner profile', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   }

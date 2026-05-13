@@ -13,7 +13,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
-export interface SchoolStudentExam {
+export interface SchoollearnerExam {
   id: string;
   assessment_id: string;
   assessment_code: string;
@@ -34,7 +34,7 @@ export interface SchoolGroupedExam {
   type: string;
   overall_total_marks: number;
   instructions?: string;
-  subjects: SchoolStudentExam[];
+  subjects: SchoollearnerExam[];
 }
 
 interface SchoolExamsTabProps {

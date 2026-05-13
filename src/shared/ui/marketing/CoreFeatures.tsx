@@ -207,9 +207,9 @@ const CoreFeatures: React.FC = () => {
           </div>
           <div className="w-[300px] h-[120px] bg-white border-2 border-black rounded-2xl 
             p-4 shadow-md text-center card-hover flex flex-col justify-center">
-            <h3 className="text-lg font-bold">Students & Workforce Talent</h3>
+            <h3 className="text-lg font-bold">Learners & Workforce Talent</h3>
             <p className="text-sm text-gray-600">
-             School learners, university students, and professionals building skill portfolios.
+             School learners, university learners, and professionals building skill portfolios.
             </p>
           </div>
         </div>

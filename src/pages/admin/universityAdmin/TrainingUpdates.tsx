@@ -35,7 +35,7 @@ interface TrainingProgram {
   format: "online" | "offline" | "hybrid";
   instructor: string;
   instructorProfile: string;
-  targetAudience: "students" | "faculty" | "staff" | "all";
+  targetAudience: "learners" | "faculty" | "staff" | "all";
   targetColleges?: string[];
   maxParticipants: number;
   currentEnrollments: number;
@@ -180,15 +180,15 @@ const TrainingUpdates: React.FC = () => {
     },
     {
       id: 3,
-      title: "Digital Literacy for Students",
-      description: "Basic to intermediate digital skills training for students across all disciplines.",
+      title: "Digital Literacy for Learners",
+      description: "Basic to intermediate digital skills training for learners across all disciplines.",
       category: "technical",
       level: "beginner",
       duration: "3 weeks",
       format: "online",
       instructor: "Mr. Amit Patel",
       instructorProfile: "IT Training Specialist",
-      targetAudience: "students",
+      targetAudience: "learners",
       maxParticipants: 200,
       currentEnrollments: 156,
       startDate: "2025-01-15",
@@ -207,7 +207,7 @@ const TrainingUpdates: React.FC = () => {
       isApprovalRequired: false,
       createdBy: "IT Department",
       createdAt: "2024-12-20T11:00:00Z",
-      tags: ["Digital Skills", "Students", "Basic Training"],
+      tags: ["Digital Skills", "Learners", "Basic Training"],
       rating: 4.2,
       reviews: 45,
     },
@@ -243,7 +243,7 @@ const TrainingUpdates: React.FC = () => {
     {
       id: 3,
       trainingId: 3,
-      trainingTitle: "Digital Literacy for Students",
+      trainingTitle: "Digital Literacy for Learners",
       updateType: "material_update",
       title: "Assessment Guidelines Updated",
       message: "The final assessment criteria have been updated. Please review the new guidelines in the course materials section.",
@@ -274,7 +274,7 @@ const TrainingUpdates: React.FC = () => {
     format: "online" | "offline" | "hybrid";
     instructor: string;
     instructorProfile: string;
-    targetAudience: "students" | "faculty" | "staff" | "all";
+    targetAudience: "learners" | "faculty" | "staff" | "all";
     targetColleges: string[];
     maxParticipants: number;
     startDate: string;
@@ -1478,8 +1478,8 @@ const TrainingUpdates: React.FC = () => {
                     onChange={(e) => setFormData({...formData, targetAudience: e.target.value as any})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value="all">All (Students, Faculty, Staff)</option>
-                    <option value="students">Students Only</option>
+                    <option value="all">All (Learners, Faculty, Staff)</option>
+                    <option value="learners">Learners Only</option>
                     <option value="faculty">Faculty Only</option>
                     <option value="staff">Staff Only</option>
                   </select>

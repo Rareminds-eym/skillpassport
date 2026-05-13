@@ -6,15 +6,15 @@
  */
 
 export type ConversationType = 
-  | 'student-educator'
-  | 'student-admin'
-  | 'student-college-admin'
-  | 'admin-student'
+  | 'learner-educator'
+  | 'learner-admin'
+  | 'learner-college-admin'
+  | 'admin-learner'
   | 'admin-educator'
-  | 'college-admin-student'
+  | 'college-admin-learner'
   | 'college-admin-educator'
   | 'educator-admin'
-  | 'educator-student'
+  | 'educator-learner'
   | 'college-lecturer'
   | 'college-educator-admin';
 
@@ -36,7 +36,7 @@ export interface ConversationConfig {
 }
 
 export const conversationConfigs: Record<ConversationType, ConversationConfig> = {
-  'student-educator': {
+  'learner-educator': {
     title: 'Select Educator',
     subtitle: 'Choose who you want to message',
     icon: 'GraduationCap',
@@ -56,7 +56,7 @@ export const conversationConfigs: Record<ConversationType, ConversationConfig> =
     fetchRecipients: true
   },
   
-  'student-admin': {
+  'learner-admin': {
     title: 'Message School Admin',
     subtitle: 'Start a conversation',
     icon: 'Building2',
@@ -88,7 +88,7 @@ export const conversationConfigs: Record<ConversationType, ConversationConfig> =
     fetchRecipients: false
   },
   
-  'student-college-admin': {
+  'learner-college-admin': {
     title: 'Message College Admin',
     subtitle: 'Start a conversation',
     icon: 'Building2',
@@ -124,8 +124,8 @@ export const conversationConfigs: Record<ConversationType, ConversationConfig> =
     fetchRecipients: false
   },
   
-  'admin-student': {
-    title: 'Select Student',
+  'admin-learner': {
+    title: 'Select Learner',
     subtitle: 'Choose who you want to message',
     icon: 'GraduationCap',
     iconColor: 'text-blue-600',
@@ -152,7 +152,7 @@ export const conversationConfigs: Record<ConversationType, ConversationConfig> =
       'Regarding your academic progress',
       'Can we schedule a meeting?'
     ],
-    recipientLabel: 'Student',
+    recipientLabel: 'Learner',
     fetchRecipients: true
   },
   
@@ -166,7 +166,7 @@ export const conversationConfigs: Record<ConversationType, ConversationConfig> =
     subjects: [
       'General Communication',
       'Resource Allocation',
-      'Student Performance',
+      'Learner Performance',
       'Curriculum Discussion',
       'Policy Update',
       'Training Information',
@@ -188,8 +188,8 @@ export const conversationConfigs: Record<ConversationType, ConversationConfig> =
     fetchRecipients: true
   },
   
-  'college-admin-student': {
-    title: 'Select Student',
+  'college-admin-learner': {
+    title: 'Select Learner',
     subtitle: 'Choose who you want to message',
     icon: 'GraduationCap',
     iconColor: 'text-purple-600',
@@ -217,7 +217,7 @@ export const conversationConfigs: Record<ConversationType, ConversationConfig> =
       'Regarding your academic progress',
       'Can we schedule a meeting?'
     ],
-    recipientLabel: 'Student',
+    recipientLabel: 'Learner',
     fetchRecipients: true
   },
   
@@ -231,7 +231,7 @@ export const conversationConfigs: Record<ConversationType, ConversationConfig> =
     subjects: [
       'General Communication',
       'Resource Allocation',
-      'Student Performance',
+      'Learner Performance',
       'Curriculum Discussion',
       'Policy Update',
       'Training Information',
@@ -263,7 +263,7 @@ export const conversationConfigs: Record<ConversationType, ConversationConfig> =
     subjects: [
       'General Communication',
       'Resource Request',
-      'Student Issue',
+      'Learner Issue',
       'Curriculum Support',
       'Policy Question',
       'Training Request',
@@ -284,8 +284,8 @@ export const conversationConfigs: Record<ConversationType, ConversationConfig> =
     fetchRecipients: false
   },
   
-  'educator-student': {
-    title: 'Select Student',
+  'educator-learner': {
+    title: 'Select Learner',
     subtitle: 'Choose who you want to message',
     icon: 'GraduationCap',
     iconColor: 'text-blue-600',
@@ -301,7 +301,7 @@ export const conversationConfigs: Record<ConversationType, ConversationConfig> =
       'Regarding your progress',
       'Can we talk about this?'
     ],
-    recipientLabel: 'Student',
+    recipientLabel: 'Learner',
     fetchRecipients: true
   },
   
@@ -335,7 +335,7 @@ export const conversationConfigs: Record<ConversationType, ConversationConfig> =
     subjects: [
       'General Communication',
       'Resource Request',
-      'Student Issue',
+      'Learner Issue',
       'Curriculum Support',
       'Policy Question',
       'Training Request',

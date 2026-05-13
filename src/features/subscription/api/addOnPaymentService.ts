@@ -1,6 +1,12 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+import { apiGet } from '@/shared/api/apiClient';
+import { extractErrorMessage } from './paymentsApiService';
 
-const PAYMENTS_API_URL = import.meta.env.VITE_PAYMENTS_API_URL || 'https://payments-api.dark-mode-d021.workers.dev';
+// Use Pages Functions for payments (not direct worker access)
+const getBaseUrl = () => {
+  const origin = window.location.origin;
+  return `${origin}/api/payments`;
+};
 
 /**
  * Helper function to make fetch requests with retry logic
@@ -51,13 +57,13 @@ export const addOnPaymentService = {
    */
   async createAddOnOrder({ featureKey, userId, billingPeriod, userEmail, userName }) {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await getCurrentSession();
 
       if (!session) {
         return { success: false, error: 'User not authenticated' };
       }
 
-      const response = await fetchWithRetry(`${PAYMENTS_API_URL}/create-addon-order`, {
+      const response = await fetchWithRetry(`${getBaseUrl()}/create-addon-order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -73,7 +79,7 @@ export const addOnPaymentService = {
       const data = await response.json();
 
       if (!response.ok) {
-        return { success: false, error: data.error || 'Failed to create addon order' };
+        return { success: false, error: extractErrorMessage(data) || 'Failed to create addon order' };
       }
 
       return {
@@ -105,13 +111,13 @@ export const addOnPaymentService = {
    */
   async createBundleOrder({ bundleId, userId, billingPeriod, userEmail, userName }) {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await getCurrentSession();
 
       if (!session) {
         return { success: false, error: 'User not authenticated' };
       }
 
-      const response = await fetch(`${PAYMENTS_API_URL}/create-bundle-order`, {
+      const response = await fetch(`${getBaseUrl()}/create-bundle-order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -127,7 +133,7 @@ export const addOnPaymentService = {
       const data = await response.json();
 
       if (!response.ok) {
-        return { success: false, error: data.error || 'Failed to create bundle order' };
+        return { success: false, error: extractErrorMessage(data) || 'Failed to create bundle order' };
       }
 
       return {
@@ -187,7 +193,7 @@ export const addOnPaymentService = {
   async verifyAddonPayment(razorpayOrderId, razorpayPaymentId, razorpaySignature, retries = 3) {
     const attemptVerification = async (attempt) => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await getCurrentSession();
 
         if (!session) {
           throw new Error('User not authenticated');
@@ -196,7 +202,7 @@ export const addOnPaymentService = {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-        const response = await fetch(`${PAYMENTS_API_URL}/verify-addon-payment`, {
+        const response = await fetch(`${getBaseUrl()}/verify-addon-payment`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -215,7 +221,7 @@ export const addOnPaymentService = {
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.error || 'Payment verification failed');
+          throw new Error(extractErrorMessage(data) || 'Payment verification failed');
         }
 
         return {
@@ -259,7 +265,7 @@ export const addOnPaymentService = {
   async verifyBundlePayment(razorpayOrderId, razorpayPaymentId, razorpaySignature, bundleId, billingPeriod, retries = 3) {
     const attemptVerification = async (attempt) => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await getCurrentSession();
 
         if (!session) {
           throw new Error('User not authenticated');
@@ -268,7 +274,7 @@ export const addOnPaymentService = {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-        const response = await fetch(`${PAYMENTS_API_URL}/verify-bundle-payment`, {
+        const response = await fetch(`${getBaseUrl()}/verify-bundle-payment`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -289,7 +295,7 @@ export const addOnPaymentService = {
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.error || 'Bundle payment verification failed');
+          throw new Error(extractErrorMessage(data) || 'Bundle payment verification failed');
         }
 
         return {
@@ -325,17 +331,12 @@ export const addOnPaymentService = {
    * @param {string} userId - User ID
    * @returns {Promise<Array>} - List of add-on purchases
    */
-  async getAddonPurchaseHistory(userId) {
+  async getAddonPurchaseHistory(userId: string) {
     try {
-      const { data, error } = await supabase
-        .from('addon_pending_orders')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      return data || [];
+      const result = await apiGet<{ success: boolean; data: any; error: string | null }>(
+        `/payments/addon-orders?action=getAddonPurchaseHistory`
+      );
+      return result.success ? result.data || [] : [];
     } catch (error) {
       return [];
     }
@@ -347,19 +348,12 @@ export const addOnPaymentService = {
    * @param {string} featureKey - Feature key
    * @returns {Promise<Object|null>} - Pending order if exists
    */
-  async getPendingAddonOrder(userId, featureKey) {
+  async getPendingAddonOrder(userId: string, featureKey: string) {
     try {
-      const { data, error } = await supabase
-        .from('addon_pending_orders')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('addon_feature_key', featureKey)
-        .eq('status', 'pending')
-        .maybeSingle();
-
-      if (error) throw error;
-
-      return data;
+      const result = await apiGet<{ success: boolean; data: any; error: string | null }>(
+        `/payments/addon-orders?action=getPendingAddonOrder&featureKey=${featureKey}`
+      );
+      return result.success ? result.data : null;
     } catch (error) {
       return null;
     }

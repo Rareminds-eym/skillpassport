@@ -34,12 +34,12 @@ interface TimetableSlot {
   class_name: string;
   class_grade: string;
   class_section: string;
-  total_students: number;
+  total_learners: number;
   attendance_marked?: boolean;
   is_locked?: boolean;
 }
 
-interface Student {
+interface Learner {
   id: string;
   name: string;
   roll_number: string;
@@ -49,7 +49,7 @@ interface Student {
 }
 
 interface AttendanceRecord {
-  student_id: string;
+  learner_id: string;
   status: "present" | "absent" | "late";
   time_in?: string;
   remarks?: string;
@@ -57,7 +57,7 @@ interface AttendanceRecord {
 
 interface AttendanceSession {
   slot: TimetableSlot;
-  students: Student[];
+  learners: Learner[];
   records: Map<string, AttendanceRecord>;
   isSubmitted: boolean;
   submittedAt?: string;
@@ -243,7 +243,7 @@ const MarkAttendance: React.FC = () => {
           name,
           grade,
           section,
-          current_students
+          current_learners
         )
       `)
       .eq("timetable_id", timetable.id)
@@ -281,7 +281,7 @@ const MarkAttendance: React.FC = () => {
         section,
         academic_year,
         room_number,
-        total_students,
+        total_learners,
         present_count,
         absent_count,
         status
@@ -319,7 +319,7 @@ const MarkAttendance: React.FC = () => {
       class_name: `${session.program_name} - Sem ${session.semester} ${session.section}`,
       class_grade: `Semester ${session.semester}`,
       class_section: session.section,
-      total_students: session.total_students || 0,
+      total_learners: session.total_learners || 0,
       attendance_marked: session.status === 'completed',
       is_locked: isSlotLocked(selectedDate)
     }));
@@ -334,39 +334,39 @@ const MarkAttendance: React.FC = () => {
       // Optimize: Fetch all class IDs at once
       const classIds = slots?.map((slot: any) => slot.class_id) || [];
       
-      // Fetch all students for these classes in one query
-      const { data: allStudents } = await supabase
-        .from("students")
+      // Fetch all learners for these classes in one query
+      const { data: alllearners } = await supabase
+        .from("learners")
         .select("id, school_class_id")
         .in("school_class_id", classIds)
         .eq("is_deleted", false);
 
-      // Group students by class_id
-      const studentsByClass = new Map<string, string[]>();
-      allStudents?.forEach(student => {
-        const classStudents = studentsByClass.get(student.school_class_id) || [];
-        classStudents.push(student.id);
-        studentsByClass.set(student.school_class_id, classStudents);
+      // Group learners by class_id
+      const learnersByClass = new Map<string, string[]>();
+      alllearners?.forEach(learner => {
+        const classlearners = learnersByClass.get(learner.school_class_id) || [];
+        classlearners.push(learner.id);
+        learnersByClass.set(learner.school_class_id, classlearners);
       });
 
       // Fetch all attendance records for today with valid slot_id
-      const allStudentIds = allStudents?.map(s => s.id) || [];
-      const { data: attendanceRecords } = allStudentIds.length > 0 ? await supabase
+      const allLearnerIds = alllearners?.map(s => s.id) || [];
+      const { data: attendanceRecords } = allLearnerIds.length > 0 ? await supabase
         .from("attendance_records")
-        .select("student_id, slot_id")
+        .select("learner_id, slot_id")
         .eq("school_id", schoolId)
         .eq("date", selectedDate)
-        .in("student_id", allStudentIds)
+        .in("learner_id", allLearnerIds)
         .not("slot_id", "is", null) : { data: [] };
 
-      // Create a map of slot_id -> Set of student IDs with attendance marked
+      // Create a map of slot_id -> Set of learner IDs with attendance marked
       const attendanceBySlot = new Map();
       attendanceRecords?.forEach(record => {
         if (record.slot_id) {
           if (!attendanceBySlot.has(record.slot_id)) {
             attendanceBySlot.set(record.slot_id, new Set());
           }
-          attendanceBySlot.get(record.slot_id).add(record.student_id);
+          attendanceBySlot.get(record.slot_id).add(record.learner_id);
         }
       });
 
@@ -375,9 +375,9 @@ const MarkAttendance: React.FC = () => {
 
       // Format slots with pre-fetched data
       const formattedSlots: TimetableSlot[] = (slots || []).map((slot: any) => {
-        const classStudentIds = studentsByClass.get(slot.class_id) || [];
+        const classLearnerIds = learnersByClass.get(slot.class_id) || [];
         const slotAttendanceSet = attendanceBySlot.get(slot.id) || new Set();
-        const attendanceMarked = classStudentIds.some(id => slotAttendanceSet.has(id));
+        const attendanceMarked = classLearnerIds.some(id => slotAttendanceSet.has(id));
         const locked = isDateLocked && !attendanceMarked;
 
         return {
@@ -392,7 +392,7 @@ const MarkAttendance: React.FC = () => {
           class_name: slot.school_classes?.name || "Unknown",
           class_grade: slot.school_classes?.grade || "",
           class_section: slot.school_classes?.section || "",
-          total_students: slot.school_classes?.current_students || 0,
+          total_learners: slot.school_classes?.current_learners || 0,
           attendance_marked: attendanceMarked,
           is_locked: locked,
         };
@@ -420,36 +420,36 @@ const MarkAttendance: React.FC = () => {
         await startCollegeAttendanceSession(slot);
       }
     } catch (error) {
-      alert("Failed to load students. Please try again.");
+      alert("Failed to load learners. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   const startSchoolAttendanceSession = async (slot: TimetableSlot) => {
-    // First get all students in this class
-    const { data: classStudents } = await supabase
-      .from("students")
+    // First get all learners in this class
+    const { data: classlearners } = await supabase
+      .from("learners")
       .select("id")
       .eq("school_class_id", slot.class_id)
       .eq("is_deleted", false);
 
-    const classStudentIds = classStudents?.map(s => s.id) || [];
+    const classLearnerIds = classlearners?.map(s => s.id) || [];
 
-    // Check if attendance already exists for these students on this date and slot
+    // Check if attendance already exists for these learners on this date and slot
     const { data: existingRecords } = await supabase
       .from("attendance_records")
       .select("*")
       .eq("school_id", schoolId)
       .eq("date", selectedDate)
       .eq("slot_id", slot.id)
-      .in("student_id", classStudentIds);
+      .in("learner_id", classLearnerIds);
 
     const existingForThisSlot = existingRecords || [];
     const isSubmitted = !!(existingForThisSlot.length > 0);
 
-    const { data: students, error } = await supabase
-      .from("students")
+    const { data: learners, error } = await supabase
+      .from("learners")
       .select("id, name, roll_number, grade, section, profilePicture")
       .eq("school_class_id", slot.class_id)
       .eq("is_deleted", false)
@@ -457,7 +457,7 @@ const MarkAttendance: React.FC = () => {
 
     if (error) throw error;
 
-    const formattedStudents: Student[] = (students || []).map((s: any) => ({
+    const formattedlearners: Learner[] = (learners || []).map((s: any) => ({
       id: s.id,
       name: s.name,
       roll_number: s.roll_number || "N/A",
@@ -470,17 +470,17 @@ const MarkAttendance: React.FC = () => {
     
     if (isSubmitted) {
       existingForThisSlot.forEach((record: any) => {
-        recordsMap.set(record.student_id, {
-          student_id: record.student_id,
+        recordsMap.set(record.learner_id, {
+          learner_id: record.learner_id,
           status: record.status,
           time_in: record.time_in,
           remarks: record.remarks,
         });
       });
     } else {
-      formattedStudents.forEach((student) => {
-        recordsMap.set(student.id, {
-          student_id: student.id,
+      formattedlearners.forEach((learner) => {
+        recordsMap.set(learner.id, {
+          learner_id: learner.id,
           status: "present",
           time_in: undefined,
           remarks: "",
@@ -490,7 +490,7 @@ const MarkAttendance: React.FC = () => {
 
     setActiveSession({
       slot,
-      students: formattedStudents,
+      learners: formattedlearners,
       records: recordsMap,
       isSubmitted,
       submittedAt: isSubmitted ? existingForThisSlot[0]?.created_at : undefined,
@@ -611,11 +611,11 @@ const MarkAttendance: React.FC = () => {
       throw new Error('No program_id found in program section');
     }
 
-    // Now find students using the correct program_id
-    logger.info('Searching students', { program_id: programSection.program_id });
+    // Now find learners using the correct program_id
+    logger.info('Searching learners', { program_id: programSection.program_id });
     
-    const { data: students, error } = await supabase
-      .from("students")
+    const { data: learners, error } = await supabase
+      .from("learners")
       .select("id, name, roll_number, grade, section, profilePicture, program_id")
       .eq("is_deleted", false)
       .eq("program_id", programSection.program_id)
@@ -623,8 +623,8 @@ const MarkAttendance: React.FC = () => {
       .eq("section", section)
       .order("roll_number");
 
-    logger.info('Students query result', {
-      studentsFound: students?.length || 0,
+    logger.info('Learners query result', {
+      learnersFound: learners?.length || 0,
       error,
       queryType: 'program_id_lookup',
       program_id: programSection.program_id
@@ -632,7 +632,7 @@ const MarkAttendance: React.FC = () => {
 
     if (error) throw error;
 
-    const formattedStudents: Student[] = (students || []).map((s: any) => ({
+    const formattedlearners: Learner[] = (learners || []).map((s: any) => ({
       id: s.id,
       name: s.name,
       roll_number: s.roll_number || "N/A",
@@ -645,17 +645,17 @@ const MarkAttendance: React.FC = () => {
     
     if (isSubmitted) {
       existingRecords.forEach((record: any) => {
-        recordsMap.set(record.student_id, {
-          student_id: record.student_id,
+        recordsMap.set(record.learner_id, {
+          learner_id: record.learner_id,
           status: record.status,
           time_in: record.time_in,
           remarks: record.remarks,
         });
       });
     } else {
-      formattedStudents.forEach((student) => {
-        recordsMap.set(student.id, {
-          student_id: student.id,
+      formattedlearners.forEach((learner) => {
+        recordsMap.set(learner.id, {
+          learner_id: learner.id,
           status: "present",
           time_in: undefined,
           remarks: "",
@@ -665,7 +665,7 @@ const MarkAttendance: React.FC = () => {
 
     setActiveSession({
       slot,
-      students: formattedStudents,
+      learners: formattedlearners,
       records: recordsMap,
       isSubmitted,
       submittedAt: isSubmitted ? existingRecords[0]?.marked_at : undefined,
@@ -675,7 +675,7 @@ const MarkAttendance: React.FC = () => {
   };
 
   const updateAttendanceRecord = (
-    studentId: string,
+    learnerId: string,
     field: keyof AttendanceRecord,
     value: any
   ) => {
@@ -693,13 +693,13 @@ const MarkAttendance: React.FC = () => {
       });
 
       // Get the current record or create a new one
-      const currentRecord = updatedRecords.get(studentId) || {
-        student_id: studentId,
+      const currentRecord = updatedRecords.get(learnerId) || {
+        learner_id: learnerId,
         status: "present" as "present" | "absent" | "late",
       };
 
       // Update the specific field
-      updatedRecords.set(studentId, {
+      updatedRecords.set(learnerId, {
         ...currentRecord,
         [field]: value,
       });
@@ -716,12 +716,12 @@ const MarkAttendance: React.FC = () => {
     if (!activeSession) return;
 
     const updatedRecords = new Map(activeSession.records);
-    activeSession.students.forEach((student) => {
-      const record = updatedRecords.get(student.id) || {
-        student_id: student.id,
+    activeSession.learners.forEach((learner) => {
+      const record = updatedRecords.get(learner.id) || {
+        learner_id: learner.id,
         status: "present",
       };
-      updatedRecords.set(student.id, {
+      updatedRecords.set(learner.id, {
         ...record,
         status,
         time_in: status === "present"
@@ -744,13 +744,13 @@ const MarkAttendance: React.FC = () => {
       return;
     }
 
-    // Validate that all students have attendance marked
-    const totalStudents = activeSession.students.length;
-    const markedStudents = activeSession.records.size;
+    // Validate that all learners have attendance marked
+    const totallearners = activeSession.learners.length;
+    const markedlearners = activeSession.records.size;
     
-    if (markedStudents < totalStudents) {
-      const unmarkedCount = totalStudents - markedStudents;
-      alert(`Please mark attendance for all students. ${unmarkedCount} student${unmarkedCount > 1 ? 's' : ''} still need${unmarkedCount === 1 ? 's' : ''} attendance marked.`);
+    if (markedlearners < totallearners) {
+      const unmarkedCount = totallearners - markedlearners;
+      alert(`Please mark attendance for all learners. ${unmarkedCount} learner${unmarkedCount > 1 ? 's' : ''} still need${unmarkedCount === 1 ? 's' : ''} attendance marked.`);
       return;
     }
 
@@ -824,7 +824,7 @@ const MarkAttendance: React.FC = () => {
     }
 
     const recordsToInsert = Array.from(activeSession.records.values()).map((record) => ({
-      student_id: record.student_id,
+      learner_id: record.learner_id,
       school_id: schoolId,
       date: selectedDate,
       status: record.status,
@@ -908,9 +908,9 @@ const MarkAttendance: React.FC = () => {
     // Prepare attendance records
     const recordsToInsert = Array.from(activeSession.records.values()).map((record) => ({
       session_id: activeSession.slot.id,
-      student_id: record.student_id,
-      student_name: activeSession.students.find(s => s.id === record.student_id)?.name || "Unknown",
-      roll_number: activeSession.students.find(s => s.id === record.student_id)?.roll_number || "N/A",
+      learner_id: record.learner_id,
+      learner_name: activeSession.learners.find(s => s.id === record.learner_id)?.name || "Unknown",
+      roll_number: activeSession.learners.find(s => s.id === record.learner_id)?.roll_number || "N/A",
       department_name: departmentName,
       program_name: programName,
       semester: semester,
@@ -960,22 +960,22 @@ const MarkAttendance: React.FC = () => {
     loadTodaySchedule();
   };
 
-  const filteredStudents = useMemo(() => {
+  const filteredlearners = useMemo(() => {
     if (!activeSession) return [];
-    if (!searchQuery) return activeSession.students;
+    if (!searchQuery) return activeSession.learners;
 
     const query = searchQuery.toLowerCase();
-    return activeSession.students.filter(
-      (student) =>
-        student.name.toLowerCase().includes(query) ||
-        student.roll_number.toLowerCase().includes(query)
+    return activeSession.learners.filter(
+      (learner) =>
+        learner.name.toLowerCase().includes(query) ||
+        learner.roll_number.toLowerCase().includes(query)
     );
   }, [activeSession, searchQuery]);
 
   const attendanceStats = useMemo(() => {
     if (!activeSession) return { present: 0, absent: 0, late: 0, total: 0 };
 
-    const stats = { present: 0, absent: 0, late: 0, total: activeSession.students.length };
+    const stats = { present: 0, absent: 0, late: 0, total: activeSession.learners.length };
     activeSession.records.forEach((record) => {
       stats[record.status]++;
     });
@@ -1016,7 +1016,7 @@ const MarkAttendance: React.FC = () => {
           session={activeSession}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
-          filteredStudents={filteredStudents}
+          filteredlearners={filteredlearners}
           attendanceStats={attendanceStats}
           updateAttendanceRecord={updateAttendanceRecord}
           markAllAs={markAllAs}
@@ -1118,7 +1118,7 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({
       <div className="p-4 sm:p-6 lg:p-8 mb-2">
         <div className="mb-6">
           <h1 className="text-xl md:text-3xl font-bold text-gray-900">Attendance Management</h1>
-          <p className="text-base md:text-lg mt-2 text-gray-600">Mark attendance for your classes and track student presence.</p>
+          <p className="text-base md:text-lg mt-2 text-gray-600">Mark attendance for your classes and track learner presence.</p>
         </div>
 
         {/* Search and Filters Row */}
@@ -1452,14 +1452,14 @@ const SlotCard: React.FC<SlotCardProps> = ({ slot, isFuture, onStartSession }) =
 
           {/* Two Column Grid */}
           <div className="grid grid-cols-2 gap-3">
-            {/* Students Count */}
+            {/* Learners Count */}
             <div className="flex items-center gap-2 p-3 bg-emerald-50 rounded-lg border border-emerald-100">
               <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
                 <UsersIcon className="h-4 w-4 text-emerald-600" />
               </div>
               <div className="min-w-0">
-                <div className="text-xs text-emerald-600 font-medium">Students</div>
-                <div className="text-lg font-bold text-gray-900">{slot.total_students}</div>
+                <div className="text-xs text-emerald-600 font-medium">Learners</div>
+                <div className="text-lg font-bold text-gray-900">{slot.total_learners}</div>
               </div>
             </div>
 
@@ -1534,9 +1534,9 @@ interface MarkingViewProps {
   session: AttendanceSession | null;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  filteredStudents: Student[];
+  filteredlearners: Learner[];
   attendanceStats: { present: number; absent: number; late: number; total: number };
-  updateAttendanceRecord: (studentId: string, field: keyof AttendanceRecord, value: any) => void;
+  updateAttendanceRecord: (learnerId: string, field: keyof AttendanceRecord, value: any) => void;
   markAllAs: (status: "present" | "absent") => void;
   submitAttendance: () => void;
   submitting: boolean;
@@ -1547,7 +1547,7 @@ const MarkingView: React.FC<MarkingViewProps> = ({
   session,
   searchQuery,
   setSearchQuery,
-  filteredStudents,
+  filteredlearners,
   attendanceStats,
   updateAttendanceRecord,
   markAllAs,
@@ -1557,7 +1557,7 @@ const MarkingView: React.FC<MarkingViewProps> = ({
 }) => {
   if (!session) return null;
 
-  const attendancePercentage = session.students.length > 0
+  const attendancePercentage = session.learners.length > 0
     ? ((attendanceStats.present + attendanceStats.late) / attendanceStats.total * 100).toFixed(0)
     : "0";
 
@@ -1598,7 +1598,7 @@ const MarkingView: React.FC<MarkingViewProps> = ({
                 </span>
                 <span className="flex items-center gap-1.5">
                   <UsersIcon className="h-4 w-4" />
-                  {session.students.length} Students
+                  {session.learners.length} Learners
                 </span>
               </div>
             </div>
@@ -1646,7 +1646,7 @@ const MarkingView: React.FC<MarkingViewProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search students..."
+              placeholder="Search learners..."
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
@@ -1671,34 +1671,34 @@ const MarkingView: React.FC<MarkingViewProps> = ({
         </div>
       </div>
 
-      {/* Student List */}
+      {/* Learner List */}
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           {/* Table Header - Hidden on Mobile */}
           <div className="hidden lg:block bg-gray-50 px-6 py-3 border-b border-gray-200">
             <div className="grid grid-cols-12 gap-4 text-xs font-semibold text-gray-600 uppercase">
               <div className="col-span-2">Roll</div>
-              <div className="col-span-3">Student</div>
+              <div className="col-span-3">Learner</div>
               <div className="col-span-3">Status</div>
               <div className="col-span-2">Time In</div>
               <div className="col-span-2">Remarks</div>
             </div>
           </div>
 
-          {/* Student Rows */}
+          {/* Learner Rows */}
           <div className="divide-y divide-gray-200">
-            {filteredStudents.length === 0 ? (
+            {filteredlearners.length === 0 ? (
               <div className="px-6 py-12 text-center">
                 <MagnifyingGlassIcon className="h-10 w-10 text-gray-400 mx-auto mb-3" />
-                <p className="text-sm text-gray-600">No students found</p>
+                <p className="text-sm text-gray-600">No learners found</p>
               </div>
             ) : (
-              filteredStudents.map((student) => {
-                const record = session.records.get(student.id);
+              filteredlearners.map((learner) => {
+                const record = session.records.get(learner.id);
                 return (
-                  <StudentRow
-                    key={student.id}
-                    student={student}
+                  <LearnerRow
+                    key={learner.id}
+                    learner={learner}
                     record={record}
                     isDisabled={false} // Allow editing even after submission
                     onUpdate={updateAttendanceRecord}
@@ -1742,15 +1742,15 @@ const MarkingView: React.FC<MarkingViewProps> = ({
   );
 };
 
-// ==================== STUDENT ROW COMPONENT ====================
-interface StudentRowProps {
-  student: Student;
+// ==================== LEARNER ROW COMPONENT ====================
+interface LearnerRowProps {
+  learner: Learner;
   record?: AttendanceRecord;
   isDisabled: boolean;
-  onUpdate: (studentId: string, field: keyof AttendanceRecord, value: any) => void;
+  onUpdate: (learnerId: string, field: keyof AttendanceRecord, value: any) => void;
 }
 
-const StudentRow: React.FC<StudentRowProps> = ({ student, record, isDisabled, onUpdate }) => {
+const LearnerRow: React.FC<LearnerRowProps> = ({ learner, record, isDisabled, onUpdate }) => {
   const statusButtons = [
     { value: "present", label: "Present", icon: CheckCircleIcon, color: "emerald" },
     { value: "absent", label: "Absent", icon: XCircleIcon, color: "rose" },
@@ -1782,29 +1782,29 @@ const StudentRow: React.FC<StudentRowProps> = ({ student, record, isDisabled, on
           <div className="col-span-2">
             <div className="flex items-left justify-left min-w-0">
               <span className="inline-flex items-center justify-center px-3 py-2 bg-indigo-100 text-indigo-700 rounded-lg font-bold text-xs whitespace-nowrap">
-                {student.roll_number}
+                {learner.roll_number}
               </span>
             </div>
           </div>
 
-          {/* Student Name */}
+          {/* Learner Name */}
           <div className="col-span-3">
             <div className="flex items-center gap-2">
-              {student.profile_picture ? (
+              {learner.profile_picture ? (
                 <img
-                  src={student.profile_picture}
-                  alt={student.name}
+                  src={learner.profile_picture}
+                  alt={learner.name}
                   className="w-8 h-8 rounded-full object-cover border border-gray-200 flex-shrink-0"
                 />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-                  {student.name.charAt(0).toUpperCase()}
+                  {learner.name.charAt(0).toUpperCase()}
                 </div>
               )}
               <div className="min-w-0">
-                <div className="font-semibold text-gray-900 text-sm truncate">{student.name}</div>
+                <div className="font-semibold text-gray-900 text-sm truncate">{learner.name}</div>
                 <div className="text-xs text-gray-500">
-                  {student.grade} - {student.section}
+                  {learner.grade} - {learner.section}
                 </div>
               </div>
             </div>
@@ -1820,11 +1820,11 @@ const StudentRow: React.FC<StudentRowProps> = ({ student, record, isDisabled, on
                     key={btn.value}
                     onClick={() => {
                       if (!isDisabled) {
-                        onUpdate(student.id, "status", btn.value);
+                        onUpdate(learner.id, "status", btn.value);
                         if (btn.value === "present" || btn.value === "late") {
-                          onUpdate(student.id, "time_in", new Date().toTimeString().slice(0, 5));
+                          onUpdate(learner.id, "time_in", new Date().toTimeString().slice(0, 5));
                         } else if (btn.value === "absent") {
-                          onUpdate(student.id, "time_in", undefined);
+                          onUpdate(learner.id, "time_in", undefined);
                         }
                       }
                     }}
@@ -1845,7 +1845,7 @@ const StudentRow: React.FC<StudentRowProps> = ({ student, record, isDisabled, on
             <input
               type="time"
               value={record?.time_in || ""}
-              onChange={(e) => onUpdate(student.id, "time_in", e.target.value)}
+              onChange={(e) => onUpdate(learner.id, "time_in", e.target.value)}
               disabled={isDisabled || record?.status === "absent"}
               className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
@@ -1856,7 +1856,7 @@ const StudentRow: React.FC<StudentRowProps> = ({ student, record, isDisabled, on
             <input
               type="text"
               value={record?.remarks || ""}
-              onChange={(e) => onUpdate(student.id, "remarks", e.target.value)}
+              onChange={(e) => onUpdate(learner.id, "remarks", e.target.value)}
               disabled={isDisabled}
               placeholder="Note..."
               className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
@@ -1868,26 +1868,26 @@ const StudentRow: React.FC<StudentRowProps> = ({ student, record, isDisabled, on
       {/* Mobile View - Card Layout */}
       <div className="lg:hidden p-4 hover:bg-gray-50 transition-colors">
         <div className="space-y-3">
-          {/* Student Info Header */}
+          {/* Learner Info Header */}
           <div className="flex items-center gap-3">
             <span className="inline-flex items-center justify-center w-10 h-10 bg-indigo-100 text-indigo-700 rounded-lg font-bold text-sm flex-shrink-0">
-              {student.roll_number}
+              {learner.roll_number}
             </span>
-            {student.profile_picture ? (
+            {learner.profile_picture ? (
               <img
-                src={student.profile_picture}
-                alt={student.name}
+                src={learner.profile_picture}
+                alt={learner.name}
                 className="w-10 h-10 rounded-full object-cover border border-gray-200 flex-shrink-0"
               />
             ) : (
               <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                {student.name.charAt(0).toUpperCase()}
+                {learner.name.charAt(0).toUpperCase()}
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-gray-900 text-sm truncate">{student.name}</div>
+              <div className="font-semibold text-gray-900 text-sm truncate">{learner.name}</div>
               <div className="text-xs text-gray-500">
-                Grade {student.grade} • Section {student.section}
+                Grade {learner.grade} • Section {learner.section}
               </div>
             </div>
           </div>
@@ -1903,11 +1903,11 @@ const StudentRow: React.FC<StudentRowProps> = ({ student, record, isDisabled, on
                     key={btn.value}
                     onClick={() => {
                       if (!isDisabled) {
-                        onUpdate(student.id, "status", btn.value);
+                        onUpdate(learner.id, "status", btn.value);
                         if (btn.value === "present" || btn.value === "late") {
-                          onUpdate(student.id, "time_in", new Date().toTimeString().slice(0, 5));
+                          onUpdate(learner.id, "time_in", new Date().toTimeString().slice(0, 5));
                         } else if (btn.value === "absent") {
-                          onUpdate(student.id, "time_in", undefined);
+                          onUpdate(learner.id, "time_in", undefined);
                         }
                       }
                     }}
@@ -1928,7 +1928,7 @@ const StudentRow: React.FC<StudentRowProps> = ({ student, record, isDisabled, on
             <input
               type="time"
               value={record?.time_in || ""}
-              onChange={(e) => onUpdate(student.id, "time_in", e.target.value)}
+              onChange={(e) => onUpdate(learner.id, "time_in", e.target.value)}
               disabled={isDisabled || record?.status === "absent"}
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
@@ -1940,7 +1940,7 @@ const StudentRow: React.FC<StudentRowProps> = ({ student, record, isDisabled, on
             <input
               type="text"
               value={record?.remarks || ""}
-              onChange={(e) => onUpdate(student.id, "remarks", e.target.value)}
+              onChange={(e) => onUpdate(learner.id, "remarks", e.target.value)}
               disabled={isDisabled}
               placeholder="Add a note..."
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"

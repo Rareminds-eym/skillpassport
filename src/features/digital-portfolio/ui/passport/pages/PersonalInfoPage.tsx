@@ -1,16 +1,16 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle, XCircle } from 'lucide-react';
-import { Student } from '@/shared/types/student';
+import { Learner } from '@/shared/types/learner';
 import PassportPage from '../PassportPage';
 
 interface PersonalInfoPageProps {
-  student: Student;
+  learner: Learner;
   isActive: boolean;
 }
 
-const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({ student, isActive }) => {
-  const isVerified = student.approval_status === 'approved';
+const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({ learner, isActive }) => {
+  const isVerified = learner.approval_status === 'approved';
 
   return (
     <PassportPage pageNumber={1} isActive={isActive}>
@@ -31,8 +31,8 @@ const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({ student, isActive }
               transition={{ delay: 0.2, duration: 0.5 }}
             >
               <img
-                src={student.profile.profileImage || '/api/placeholder/150/180'}
-                alt={student.name || 'Profile'}
+                src={learner.profile.profileImage || '/api/placeholder/150/180'}
+                alt={learner.name || 'Profile'}
                 className="w-32 h-40 object-cover border-4 border-gray-300 shadow-lg"
                 style={{ filter: 'sepia(10%)' }}
               />
@@ -104,7 +104,7 @@ const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({ student, isActive }
                   Full Name
                 </label>
                 <p className="text-lg font-bold text-gray-800 mt-1">
-                  {student.name || student.profile.name || 'N/A'}
+                  {learner.name || learner.profile.name || 'N/A'}
                 </p>
               </div>
 
@@ -114,7 +114,7 @@ const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({ student, isActive }
                   Passport ID
                 </label>
                 <p className="text-lg font-mono font-bold text-blue-600 mt-1">
-                  {student.profile.passportId || 'DP' + student.id.slice(-6).toUpperCase()}
+                  {learner.profile.passportId || 'DP' + learner.id.slice(-6).toUpperCase()}
                 </p>
               </div>
 
@@ -124,7 +124,7 @@ const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({ student, isActive }
                   Date of Birth
                 </label>
                 <p className="text-base text-gray-700 mt-1">
-                  {student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString('en-US', {
+                  {learner.date_of_birth ? new Date(learner.date_of_birth).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric'
@@ -138,7 +138,7 @@ const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({ student, isActive }
                   Age
                 </label>
                 <p className="text-base text-gray-700 mt-1">
-                  {student.age || 'N/A'} years
+                  {learner.age || 'N/A'} years
                 </p>
               </div>
 
@@ -148,7 +148,7 @@ const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({ student, isActive }
                   Contact Number
                 </label>
                 <p className="text-base text-gray-700 mt-1">
-                  {student.contact_number || 'N/A'}
+                  {learner.contact_number || 'N/A'}
                 </p>
               </div>
 
@@ -158,7 +158,7 @@ const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({ student, isActive }
                   Email Address
                 </label>
                 <p className="text-base text-gray-700 mt-1 break-all">
-                  {student.email}
+                  {learner.email}
                 </p>
               </div>
 
@@ -168,7 +168,7 @@ const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({ student, isActive }
                   Location
                 </label>
                 <p className="text-base text-gray-700 mt-1">
-                  {student.district_name || 'N/A'}
+                  {learner.district_name || 'N/A'}
                 </p>
               </div>
             </motion.div>
@@ -183,7 +183,7 @@ const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({ student, isActive }
           transition={{ delay: 1.1 }}
         >
           <p className="text-xs text-gray-500">
-            Issued: {new Date(student.created_at).toLocaleDateString()}
+            Issued: {new Date(learner.created_at).toLocaleDateString()}
           </p>
         </motion.div>
       </div>

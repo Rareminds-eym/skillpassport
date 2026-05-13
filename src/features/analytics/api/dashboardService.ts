@@ -16,9 +16,9 @@ const generateRealisticCandidate = () => {
     'Jain', 'Agarwal', 'Mehta', 'Verma', 'Iyer', 'Nair', 'Pillai', 'Menon'
   ];
   const specializations = [
-    'Computer Science Graduate', 'Software Engineering Student', 'Data Science Aspirant',
+    'Computer Science Graduate', 'Software Engineering Learner', 'Data Science Aspirant',
     'Full Stack Developer', 'Frontend Developer', 'Backend Developer', 'DevOps Engineer',
-    'Machine Learning Student', 'AI/ML Graduate', 'Product Manager', 'UI/UX Designer',
+    'Machine Learning Learner', 'AI/ML Graduate', 'Product Manager', 'UI/UX Designer',
     'Business Analyst', 'Quality Assurance Engineer', 'Mobile App Developer'
   ];
   
@@ -45,17 +45,17 @@ export const getDashboardKPIs = async () => {
     // Since your tables might be empty or have different structures, let's start with basic counts
     // and make the queries more robust
     
-    // 1. Get total student count and new profiles this week
-    const [totalStudentsResult, newStudentsResult] = await Promise.all([
-      supabase.from('students').select('*', { count: 'exact', head: true }).eq('is_deleted', false),
-      supabase.from('students')
+    // 1. Get total learner count and new profiles this week
+    const [totallearnersResult, newlearnersResult] = await Promise.all([
+      supabase.from('learners').select('*', { count: 'exact', head: true }).eq('is_deleted', false),
+      supabase.from('learners')
         .select('*', { count: 'exact', head: true })
         .eq('is_deleted', false)
         .gte('createdAt', oneWeekAgo.toISOString())
     ]);
     
-    const totalStudents = totalStudentsResult.count || 0;
-    const newProfiles = newStudentsResult.count || 0;
+    const totallearners = totallearnersResult.count || 0;
+    const newProfiles = newlearnersResult.count || 0;
     
     // 2. Get shortlist counts (handling if table doesn't exist or is empty)
     let shortlisted = 0;
@@ -178,7 +178,7 @@ export const getRecentActivity = async (limit = 15) => {
             id: `recruiter-activity-${ra.id}`,
             user: ra.recruiterId || 'Recruiter',
             action: ra.activityType,
-            candidate: ra.targetStudentId ? `Student ${ra.targetStudentId}` : 'Multiple candidates',
+            candidate: ra.targetLearnerId ? `Learner ${ra.targetLearnerId}` : 'Multiple candidates',
             timestamp: ra.createdAt,
             type: 'recruiter_activity',
             metadata: ra.metadata,
@@ -197,26 +197,26 @@ export const getRecentActivity = async (limit = 15) => {
         .select(`
           *,
           shortlists(name),
-          students(id, name)
+          learners(id, name)
         `)
         .order('added_at', { ascending: false })
         .limit(limit);
 
       if (shortlistCandidates?.length > 0) {
         shortlistCandidates.forEach(sc => {
-          // Extract student name from direct column
-          let studentName = 'Student';
-          if (sc.students?.name) {
-            studentName = sc.students.name;
+          // Extract learner name from direct column
+          let learnerName = 'Learner';
+          if (sc.learners?.name) {
+            learnerName = sc.learners.name;
           } else {
-            studentName = `Student ${sc.student_id}`;
+            learnerName = `Learner ${sc.learner_id}`;
           }
           
           allActivities.push({
             id: `shortlist-${sc.id}`,
             user: sc.added_by || 'Recruiter',
             action: 'shortlisted',
-            candidate: studentName,
+            candidate: learnerName,
             details: sc.shortlists?.name || 'to shortlist',
             timestamp: sc.added_at,
             type: 'shortlist',
@@ -311,7 +311,7 @@ export const getRecentActivity = async (limit = 15) => {
         .from('placements')
         .select(`
           *,
-          students(id, name)
+          learners(id, name)
         `)
         .order('updatedAt', { ascending: false })
         .limit(limit);
@@ -322,17 +322,17 @@ export const getRecentActivity = async (limit = 15) => {
           if (placement.placementStatus === 'hired') action = 'hired';
           if (placement.placementStatus === 'applied') action = 'applied';
           
-          // Extract student name from direct column
-          let studentName = `Student ${placement.studentId}`;
-          if (placement.students?.name) {
-            studentName = placement.students.name;
+          // Extract learner name from direct column
+          let learnerName = `Learner ${placement.learnerId}`;
+          if (placement.learners?.name) {
+            learnerName = placement.learners.name;
           }
           
           allActivities.push({
             id: `placement-${placement.id}`,
             user: placement.recruiterId || 'Recruiter',
             action: action,
-            candidate: studentName,
+            candidate: learnerName,
             details: `${placement.jobTitle}${placement.salaryOffered ? ` - ₹${placement.salaryOffered}` : ''}`,
             timestamp: placement.updatedAt,
             type: 'placement',

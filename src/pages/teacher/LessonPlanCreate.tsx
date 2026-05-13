@@ -244,7 +244,7 @@ const LessonPlanCreate: React.FC = () => {
             onChange={(e) => setFormData({ ...formData, learning_objectives: e.target.value })}
             rows={4}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            placeholder="What should students learn from this lesson? List specific, measurable objectives..."
+            placeholder="What should learners learn from this lesson? List specific, measurable objectives..."
           />
         </div>
 
@@ -405,7 +405,7 @@ const LessonPlanCreate: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, assessment_methods: e.target.value })}
                 rows={3}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                placeholder="How will you assess student learning?"
+                placeholder="How will you assess learner learning?"
               />
             </div>
             <div>

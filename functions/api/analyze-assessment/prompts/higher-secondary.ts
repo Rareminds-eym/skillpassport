@@ -1,7 +1,7 @@
 /**
  * Higher Secondary (Grades 11-12) Assessment Prompt Builder
  * 
- * Students in grades 11-12 have already chosen their stream (Science/Commerce/Arts)
+ * Learners in grades 11-12 have already chosen their stream (Science/Commerce/Arts)
  * and complete the comprehensive 6-section assessment.
  * 
  * This prompt requires evidence from ALL 6 sections for career cluster generation:
@@ -75,13 +75,13 @@ ${weakAreas.length > 0 ? weakAreas.map(s => `- ${s}`).join('\n') : '- No signifi
 }
 
 export function buildHigherSecondaryPrompt(assessmentData: AssessmentData, answersHash: number, jobMarketSection?: string): string {
-  // Extract student context for stream-specific guidance
+  // Extract learner context for stream-specific guidance
   const selectedStream = assessmentData.stream;
   const gradeLevel = assessmentData.gradeLevel; // 'higher_secondary' for both 11th and 12th
   
-  // Determine if student is in 11th or 12th grade based on context
+  // Determine if learner is in 11th or 12th grade based on context
   // If we have more specific grade info, use it; otherwise default to Grade 11
-  const rawGrade = assessmentData.studentContext?.rawGrade || '';
+  const rawGrade = assessmentData.learnerContext?.rawGrade || '';
   const isGrade12 = rawGrade.startsWith('Grade 12');
   
   // Pre-process adaptive results for efficiency
@@ -122,12 +122,12 @@ export function buildHigherSecondaryPrompt(assessmentData: AssessmentData, answe
 
 ## 🚨 CRITICAL ALERT: PSYCHOLOGY STREAM DETECTED 🚨
 
-**THIS STUDENT SELECTED: ${selectedStream}**
+**THIS LEARNER SELECTED: ${selectedStream}**
 
 ## CORE REASONING RULES FOR PSYCHOLOGY STREAM
 
 **RULE 1 — STREAM LOCK**
-This student chose Psychology. Every career cluster you generate MUST be psychology-adjacent.
+This learner chose Psychology. Every career cluster you generate MUST be psychology-adjacent.
 
 **FORBIDDEN CAREERS:**
 ❌ Creative Industries, Media Production, Performing Arts
@@ -148,7 +148,7 @@ Interpret each RIASEC type through a psychology lens:
 - **C (Conventional)** → Psychometrics, psychological testing, case management, educational psychology, behavioral data analysis
 
 **RULE 3 — TRACK GENERATION LOGIC**
-Use the student's RIASEC ranking to determine tracks:
+Use the learner's RIASEC ranking to determine tracks:
 
 **TRACK 1 (90%+ match):**
 - Combine their TOP 2 RIASEC types through the psychology lens above
@@ -215,7 +215,7 @@ Before finalizing output, verify:
 **If any check fails → revise that track before outputting.**
 
 **EXAMPLE REASONING (learn the pattern, do not copy):**
-If student scores: S=85, I=78, A=60
+If learner scores: S=85, I=78, A=60
 - Type 1 = S, Type 2 = I, Type 3 = A
 - Track 1: S(counseling) + I(research) = "Clinical Assessment & Evidence-Based Therapy"
   - Roles: Clinical Psychologist, Psychological Assessment Specialist, Clinical Research Psychologist
@@ -231,7 +231,7 @@ Notice: ALL tracks stayed in psychology. The A type was interpreted as expressiv
   // Build comprehensive sub-stream-specific instructions
   const streamSpecificInstructions = streamCategory ? `
 
-## ⚠️ CRITICAL: STUDENT'S SELECTED STREAM & SUB-STREAM
+## ⚠️ CRITICAL: LEARNER'S SELECTED STREAM & SUB-STREAM
 
 **Stream Category**: ${streamCategory.toUpperCase()}
 **Sub-Stream**: ${subStream?.toUpperCase() || 'GENERAL'}
@@ -245,7 +245,7 @@ ${streamCategory === 'science' && subStream === 'pcmb' ? `
 ## CORE REASONING RULES FOR PCMB STREAM
 
 **RULE 1 — STREAM LOCK**
-This student chose PCMB. Every career cluster MUST be medical/biotech/life sciences.
+This learner chose PCMB. Every career cluster MUST be medical/biotech/life sciences.
 
 **FORBIDDEN CAREERS:**
 ❌ Engineering (Mechanical, Civil, Electrical, Software)
@@ -302,7 +302,7 @@ Generate 3 entry-level + 3 mid-career roles per track that are:
 ## CORE REASONING RULES FOR PCMS STREAM
 
 **RULE 1 — STREAM LOCK**
-This student chose PCMS. Every career cluster MUST be technology/engineering/IT.
+This learner chose PCMS. Every career cluster MUST be technology/engineering/IT.
 
 **FORBIDDEN CAREERS:**
 ❌ Medical, Healthcare, Biotechnology, Life Sciences
@@ -358,7 +358,7 @@ Generate 3 entry-level + 3 mid-career roles per track that are:
 ## CORE REASONING RULES FOR PCM STREAM
 
 **RULE 1 — STREAM LOCK**
-This student chose PCM. Every career cluster MUST be core engineering/architecture/defense.
+This learner chose PCM. Every career cluster MUST be core engineering/architecture/defense.
 
 **FORBIDDEN CAREERS:**
 ❌ Medical, Healthcare, Biotechnology (requires Biology)
@@ -415,7 +415,7 @@ Generate 3 entry-level + 3 mid-career roles per track that are:
 ## CORE REASONING RULES FOR PCB STREAM
 
 **RULE 1 — STREAM LOCK**
-This student chose PCB. Every career cluster MUST be medical/nursing/allied health.
+This learner chose PCB. Every career cluster MUST be medical/nursing/allied health.
 
 **FORBIDDEN CAREERS:**
 ❌ Engineering (ALL types - cannot appear for JEE without Maths)
@@ -472,7 +472,7 @@ Generate 3 entry-level + 3 mid-career roles per track that are:
 ## CORE REASONING RULES FOR COMMERCE WITH MATHS STREAM
 
 **RULE 1 — STREAM LOCK**
-This student chose Commerce with Maths. Every career cluster MUST be quantitative finance/analytics.
+This learner chose Commerce with Maths. Every career cluster MUST be quantitative finance/analytics.
 
 **FORBIDDEN CAREERS:**
 ❌ Engineering, Medical, Technology (unless Business Analytics/FinTech)
@@ -529,7 +529,7 @@ Generate 3 entry-level + 3 mid-career roles per track that are:
 ## CORE REASONING RULES FOR COMMERCE WITHOUT MATHS STREAM
 
 **RULE 1 — STREAM LOCK**
-This student chose Commerce without Maths. Every career cluster MUST be management/marketing/HR.
+This learner chose Commerce without Maths. Every career cluster MUST be management/marketing/HR.
 
 **FORBIDDEN CAREERS:**
 ❌ CA, CFA, Actuarial Science (require Maths)
@@ -585,7 +585,7 @@ Generate 3 entry-level + 3 mid-career roles per track that are:
 
 **DYNAMIC CLUSTER GENERATION INSTRUCTIONS:**
 
-When generating clusters for Psychology students, you MUST:
+When generating clusters for Psychology learners, you MUST:
 1. Analyze their top 2 RIASEC types
 2. Map those RIASEC types to PSYCHOLOGY SPECIALIZATIONS (NOT generic examples)
 3. Track 1 MUST be Clinical/Counseling Psychology - they chose this stream specifically for psychology
@@ -622,7 +622,7 @@ When generating clusters for Psychology students, you MUST:
 ## CORE REASONING RULES FOR ECONOMICS STREAM
 
 **RULE 1 — STREAM LOCK**
-This student chose Economics. Every career cluster MUST be economics/policy/civil services.
+This learner chose Economics. Every career cluster MUST be economics/policy/civil services.
 
 **FORBIDDEN CAREERS:**
 ❌ Pure Creative Arts, Media (unless Economic Journalism)
@@ -676,11 +676,11 @@ Generate 3 entry-level + 3 mid-career roles per track that are:
 ## CORE REASONING RULES FOR ARTS GENERAL STREAM
 
 **RULE 1 — STREAM LOCK**
-This student chose Arts General. Every career cluster MUST be law/education/journalism/creative arts.
+This learner chose Arts General. Every career cluster MUST be law/education/journalism/creative arts.
 
 **FORBIDDEN CAREERS:**
 ❌ Psychology-specific careers (unless RIASEC strongly indicates)
-❌ Economics-specific careers (unless student has economics subject)
+❌ Economics-specific careers (unless learner has economics subject)
 ❌ Engineering, Medical, Commerce
 ❌ Technology (unless Media Tech/Digital Journalism)
 
@@ -723,7 +723,7 @@ Generate 3 entry-level + 3 mid-career roles per track that are:
 ✅ BA English/History/Political Science/Sociology, LLB/BA LLB (5-year), BA Journalism/Mass Communication, BFA (Fine Arts), B.Ed
 
 **STRICTLY FORBIDDEN:**
-❌ NO Psychology-specific careers (unless RIASEC strongly indicates), NO Economics-specific careers (unless student has economics subject), NO Engineering/Medical/Commerce careers
+❌ NO Psychology-specific careers (unless RIASEC strongly indicates), NO Economics-specific careers (unless learner has economics subject), NO Engineering/Medical/Commerce careers
 
 ` : ''}
 
@@ -732,19 +732,19 @@ Generate 3 entry-level + 3 mid-career roles per track that are:
 **RIASEC determines ROLE TYPE within the stream's allowed career pool, NOT the career domain itself.**
 
 
-**RULE**: RIASEC can ONLY choose from careers that the student's subjects allow them to pursue.
+**RULE**: RIASEC can ONLY choose from careers that the learner's subjects allow them to pursue.
 
 ` : '';
 
-  return `You are an expert career counselor for higher secondary students (grades 11-12). These students have already chosen their academic stream and are preparing for college entrance exams and career decisions.
+  return `You are an expert career counselor for higher secondary learners (grades 11-12). These learners have already chosen their academic stream and are preparing for college entrance exams and career decisions.
 
 ${isGrade12 ? `
-## 🎓 GRADE 12 STUDENT - ADVANCED CAREER PLANNING
+## 🎓 GRADE 12 LEARNER - ADVANCED CAREER PLANNING
 
-**CRITICAL: This is a Grade 12 student. Your recommendations must be MORE ADVANCED and ACTION-ORIENTED than Grade 11.**
+**CRITICAL: This is a Grade 12 learner. Your recommendations must be MORE ADVANCED and ACTION-ORIENTED than Grade 11.**
 
 **Grade 12 Specific Requirements:**
-1. **Immediate Action Focus**: Student is 6-12 months away from college. Recommendations must be IMMEDIATELY ACTIONABLE.
+1. **Immediate Action Focus**: Learner is 6-12 months away from college. Recommendations must be IMMEDIATELY ACTIONABLE.
 2. **Entrance Exam Specificity**: Provide SPECIFIC entrance exam strategies, not general advice.
 3. **College Application Ready**: Include specific college names, application timelines, cutoffs.
 4. **Career Path Clarity**: More detailed career progression (5-year, 10-year outlook).
@@ -762,12 +762,12 @@ ${isGrade12 ? `
 - Projects: Must be completable before college applications (portfolio building)
 
 ` : `
-## 📚 GRADE 11 STUDENT - FOUNDATIONAL CAREER EXPLORATION
+## 📚 GRADE 11 LEARNER - FOUNDATIONAL CAREER EXPLORATION
 
-**This is a Grade 11 student. Your recommendations should be EXPLORATORY and FOUNDATIONAL.**
+**This is a Grade 11 learner. Your recommendations should be EXPLORATORY and FOUNDATIONAL.**
 
 **Grade 11 Specific Requirements:**
-1. **Exploration Focus**: Student has 18-24 months. Encourage exploration and skill building.
+1. **Exploration Focus**: Learner has 18-24 months. Encourage exploration and skill building.
 2. **Foundation Building**: Focus on building strong subject fundamentals.
 3. **Career Awareness**: Introduce career options, not immediate decisions.
 4. **Skill Development**: Long-term skill building (12-18 months).
@@ -790,19 +790,19 @@ ${streamSpecificInstructions}
 ## CRITICAL: This must be DETERMINISTIC - same input = same output always
 Session ID: ${answersHash}
 
-## STUDENT CONTEXT
+## LEARNER CONTEXT
 - **Grade Level**: Higher Secondary (11th or 12th grade)
 - **Stream**: ${assessmentData.stream}
 - **Assessment Type**: Comprehensive 6-section career assessment
 
 ## ⚠️ ABSOLUTE REQUIREMENT: STREAM ALIGNMENT
 
-**THE STUDENT SELECTED ${assessmentData.stream?.toUpperCase()} STREAM.**
+**THE LEARNER SELECTED ${assessmentData.stream?.toUpperCase()} STREAM.**
 
 🚫 **STRICTLY FORBIDDEN:**
-- DO NOT recommend Commerce programs (BBA, B.Com, etc.) to Science students
-- DO NOT recommend Science programs (B.Tech, MBBS, etc.) to Commerce students  
-- DO NOT recommend Arts programs to Science/Commerce students
+- DO NOT recommend Commerce programs (BBA, B.Com, etc.) to Science learners
+- DO NOT recommend Science programs (B.Tech, MBBS, etc.) to Commerce learners  
+- DO NOT recommend Arts programs to Science/Commerce learners
 - ALL career clusters and program recommendations MUST align with ${assessmentData.stream}
 
 ✅ **YOU MUST:**
@@ -813,7 +813,7 @@ Session ID: ${answersHash}
 
 ## ⚠️ CRITICAL REQUIREMENT: USE ALL 6 ASSESSMENT SECTIONS
 
-This student completed a comprehensive assessment with 6 sections. You MUST use data from ALL 6 sections when generating career clusters:
+This learner completed a comprehensive assessment with 6 sections. You MUST use data from ALL 6 sections when generating career clusters:
 
 1. **RIASEC** (Career Interests) - Primary factor for career family identification
 2. **Aptitude** (Cognitive Abilities) - Validates cognitive fit for careers
@@ -921,7 +921,7 @@ ${adaptiveSection}
 
 ## CAREER CLUSTER GENERATION REQUIREMENTS
 
-For higher secondary students, career clusters MUST:
+For higher secondary learners, career clusters MUST:
 
 1. **Align with their chosen stream** (${assessmentData.stream})
 2. **Align with their sub-stream** (${subStream || 'general'})
@@ -934,11 +934,11 @@ For higher secondary students, career clusters MUST:
 
 ### ⚠️ CRITICAL: DYNAMIC MATCH SCORE CALCULATION
 
-**Match scores MUST be calculated based on the student's ACTUAL assessment data:**
+**Match scores MUST be calculated based on the learner's ACTUAL assessment data:**
 
 1. **Calculate RIASEC alignment percentage** for each career cluster:
    - Identify which RIASEC types (R, I, A, S, E, C) align with the career
-   - Use the student's actual RIASEC percentages from their responses
+   - Use the learner's actual RIASEC percentages from their responses
    - Average the relevant RIASEC percentages
 
 2. **Apply the formula for each cluster:**
@@ -952,12 +952,12 @@ For higher secondary students, career clusters MUST:
    - Strong personality fit: +1 to +2 points
 
 4. **Ensure uniqueness:**
-   - Each student should get different scores based on their profile
+   - Each learner should get different scores based on their profile
    - Avoid round numbers (80, 85, 90, 95)
    - Use specific values (78, 82, 87, 91, 94)
 
 **Example Calculation:**
-- Student has I=85%, R=75%, A=60%, S=45%, E=40%, C=35%
+- Learner has I=85%, R=75%, A=60%, S=45%, E=40%, C=35%
 - Career Cluster 1 (Technology): Needs I+R
   - RIASEC match: (85 + 75) / 2 = 80%
   - Base score: 75 + (80 × 0.20) = 75 + 16 = 91
@@ -971,7 +971,7 @@ For higher secondary students, career clusters MUST:
 
 ### ⚠️ CRITICAL: KNOWLEDGE SCORE GATING
 
-**Career difficulty tier MUST match the student's knowledge score:**
+**Career difficulty tier MUST match the learner's knowledge score:**
 
 **Knowledge Score Calculation:**
 - Total correct: ${assessmentData.knowledgeAnswers ? Object.values(assessmentData.knowledgeAnswers).filter(a => a.isCorrect === true).length : 0}
@@ -1070,12 +1070,12 @@ Each career cluster MUST include:
 ${jobMarketSection || `
 ### ⚠️ CRITICAL: DYNAMIC CAREER CLUSTER GENERATION
 
-**YOU MUST GENERATE CAREER CLUSTERS DYNAMICALLY BASED ON THE STUDENT'S ACTUAL DATA - NO TEMPLATES!**
+**YOU MUST GENERATE CAREER CLUSTERS DYNAMICALLY BASED ON THE LEARNER'S ACTUAL DATA - NO TEMPLATES!**
 
 ${isGrade12 ? `
 ## 🎯 GRADE 12 SPECIFIC REQUIREMENTS - READ CAREFULLY
 
-**THIS IS A GRADE 12 STUDENT - CAREER RECOMMENDATIONS MUST BE MORE SPECIFIC:**
+**THIS IS A GRADE 12 LEARNER - CAREER RECOMMENDATIONS MUST BE MORE SPECIFIC:**
 
 **CRITICAL RULE: Cluster titles MUST be different for Grade 12 vs Grade 11**
 - Grade 12 titles should be MORE SPECIFIC and career-focused
@@ -1113,7 +1113,7 @@ ${isGrade12 ? `
 ` : `
 ## 🎯 GRADE 11 SPECIFIC REQUIREMENTS
 
-**THIS IS A GRADE 11 STUDENT - KEEP RECOMMENDATIONS EXPLORATORY:**
+**THIS IS A GRADE 11 LEARNER - KEEP RECOMMENDATIONS EXPLORATORY:**
 
 **CRITICAL RULE: Cluster titles should be BROADER and EXPLORATORY**
 - Grade 11 titles are broader to encourage exploration
@@ -1137,7 +1137,7 @@ ${isGrade12 ? `
 
 **STEP-BY-STEP DYNAMIC GENERATION PROCESS:**
 
-**STEP 1: ANALYZE STUDENT'S COMPLETE PROFILE**
+**STEP 1: ANALYZE LEARNER'S COMPLETE PROFILE**
 - Calculate RIASEC scores and identify top 3 types with percentages
 - Review aptitude scores (Verbal, Numerical, Abstract, Spatial, Clerical)
 - Calculate Big Five personality averages
@@ -1170,7 +1170,7 @@ ${subStream === 'pcmb' ? `**ALLOWED DOMAINS:** Medical, Biotechnology, Life Scie
 **REASON:** Commerce without Maths = Cannot pursue quantitative finance careers`
 : subStream === 'psychology' ? `**ALLOWED DOMAINS:** Clinical Psychology, Counseling, Therapy, Social Work, HR Psychology, Applied Psychology
 **FORBIDDEN AS TRACK 1:** Creative Arts, Media, Journalism, Performing Arts (can only be Track 3)
-**REASON:** Psychology stream = Student specifically chose psychology careers`
+**REASON:** Psychology stream = Learner specifically chose psychology careers`
 : subStream === 'economics' ? `**ALLOWED DOMAINS:** Economics, Policy Analysis, Civil Services, Public Administration, Economic Research, Economic Journalism
 **FORBIDDEN:** Pure creative arts, Engineering, Medical, Pure Commerce
 **REASON:** Economics stream = Economics/Policy focus`
@@ -1191,7 +1191,7 @@ For each RIASEC combination, determine the ROLE TYPE within the allowed career d
 - **Conventional (C)**: Organizing, data, systems → Operations, Administration, Systems roles
 
 **STEP 4: GENERATE CLUSTER 1 (HIGH FIT - 75-95% match)**
-- Identify student's TOP 2 RIASEC types (highest percentages)
+- Identify learner's TOP 2 RIASEC types (highest percentages)
 - Find careers within allowed domain that match BOTH types
 - Create a UNIQUE cluster title that reflects their specific RIASEC combination
 - Example logic: If PCMB + I+S → "Clinical Medicine & Research" NOT generic "Healthcare"
@@ -1238,7 +1238,7 @@ For each RIASEC combination, determine the ROLE TYPE within the allowed career d
 - Integrate work values: If Autonomy > 4.0, add "Freelance" or "Research" variants
 
 **STEP 5: GENERATE CLUSTER 2 (MEDIUM FIT - 60-78% match)**
-- Identify student's 2nd and 3rd RIASEC types OR 1st + 3rd types
+- Identify learner's 2nd and 3rd RIASEC types OR 1st + 3rd types
 - Find careers within allowed domain that match these types
 - Create a DIFFERENT cluster title (not similar to Cluster 1)
 - Must be at least 10-15 points lower match score than Cluster 1
@@ -1279,7 +1279,7 @@ For each RIASEC combination, determine the ROLE TYPE within the allowed career d
 - Apply same gating rules as Cluster 1
 
 **STEP 6: GENERATE CLUSTER 3 (EXPLORE - 45-62% match)**
-- Identify student's 3rd RIASEC type OR adjacent interests
+- Identify learner's 3rd RIASEC type OR adjacent interests
 - Find exploratory careers within allowed domain
 - Create an EXPLORATORY cluster title
 - Must be at least 10-15 points lower match score than Cluster 2
@@ -1350,7 +1350,7 @@ ${subStream === 'pcmb' ? '- ❌ NO Engineering, Software, or CS careers\n- ✅ A
 **TITLE STRUCTURE RULES:**
 1. Use "&" to connect two related domains/specializations
 2. Include 2-4 words that describe the FIELD, not a single job
-3. Make it specific to the student's RIASEC combination
+3. Make it specific to the learner's RIASEC combination
 4. Must contain anchor words from the stream's validation list
 
 **EXAMPLES BY RIASEC COMBINATION:**
@@ -1391,7 +1391,7 @@ For each cluster, provide evidence from:
 6. Knowledge: How their subject mastery prepares them
 7. Adaptive Aptitude: How their test results validate this choice
 
-**REMEMBER: EVERY STUDENT GETS COMPLETELY UNIQUE CLUSTERS BASED ON THEIR SPECIFIC:**
+**REMEMBER: EVERY LEARNER GETS COMPLETELY UNIQUE CLUSTERS BASED ON THEIR SPECIFIC:**
 - RIASEC combination (not just top type, but the COMBINATION)
 - Sub-stream constraints (what they CAN and CANNOT pursue)
 - Aptitude thresholds (gating for specific careers)
@@ -1399,7 +1399,7 @@ For each cluster, provide evidence from:
 - Work values (role variants like freelance, management, etc.)
 - Adaptive aptitude results (cognitive validation)
 
-**NO TEMPLATES. NO EXAMPLES. GENERATE FRESH FOR EACH STUDENT.**
+**NO TEMPLATES. NO EXAMPLES. GENERATE FRESH FOR EACH LEARNER.**
 `}
 
 ## ⚠️ CRITICAL: COMPLETE RESPONSE REQUIRED
@@ -1546,7 +1546,7 @@ Return ONLY a JSON object (no markdown). Use this exact structure:
       {
         "title": "<Career Cluster 1 - MUST align with ${assessmentData.stream}>",
         "fit": "High",
-        "matchScore": "<REQUIRED: Calculate as INTEGER between 75-95 based on student's actual scores. Formula: Base = 75 + (avg of top 2 RIASEC percentages * 0.20).  If top RIASEC are I=80%, R=70%, score = 75 + ((80+70)/2 * 0.20) = 75 + 15 = 90. Adjust ±2-4 based on aptitude alignment (high aptitude +3, low aptitude -3) and personality fit. Result must be unique per student (e.g., 78, 82, 87, 91, 94) - NEVER use round numbers like 80, 85, 90, 95>",
+        "matchScore": "<REQUIRED: Calculate as INTEGER between 75-95 based on learner's actual scores. Formula: Base = 75 + (avg of top 2 RIASEC percentages * 0.20).  If top RIASEC are I=80%, R=70%, score = 75 + ((80+70)/2 * 0.20) = 75 + 15 = 90. Adjust ±2-4 based on aptitude alignment (high aptitude +3, low aptitude -3) and personality fit. Result must be unique per learner (e.g., 78, 82, 87, 91, 94) - NEVER use round numbers like 80, 85, 90, 95>",
         "description": "<3-4 sentences explaining WHY this fits based on ALL 6 assessment sections>",
         "evidence": {
           "interest": "<RIASEC evidence - REQUIRED>",
@@ -1570,7 +1570,7 @@ Return ONLY a JSON object (no markdown). Use this exact structure:
       {
         "title": "<Career Cluster 2>",
         "fit": "Medium",
-        "matchScore": "<REQUIRED: Calculate as INTEGER between 60-78 based on student's actual scores. Formula: Base = 60 + (avg of secondary RIASEC match * 0.18). If 1-2 RIASEC types match at 60% and 55%, score = 60 + ((60+55)/2 * 0.18) = 60 + 10.35 = 70. Adjust ±2-3 based on partial aptitude/personality fit. Result must be unique (e.g., 63, 68, 72, 76). MUST be at least 10-15 points lower than Cluster 1. ❌ FORBIDDEN: 65, 70, 75 - too round>",
+        "matchScore": "<REQUIRED: Calculate as INTEGER between 60-78 based on learner's actual scores. Formula: Base = 60 + (avg of secondary RIASEC match * 0.18). If 1-2 RIASEC types match at 60% and 55%, score = 60 + ((60+55)/2 * 0.18) = 60 + 10.35 = 70. Adjust ±2-3 based on partial aptitude/personality fit. Result must be unique (e.g., 63, 68, 72, 76). MUST be at least 10-15 points lower than Cluster 1. ❌ FORBIDDEN: 65, 70, 75 - too round>",
         "description": "<Explanation based on all 7 sections>",
         "evidence": {
           "interest": "<RIASEC evidence>",
@@ -1594,7 +1594,7 @@ Return ONLY a JSON object (no markdown). Use this exact structure:
       {
         "title": "<Career Cluster 3>",
         "fit": "Explore",
-        "matchScore": "<REQUIRED: Calculate as INTEGER between 45-62 based on student's actual scores. Formula: Base = 45 + (exploratory RIASEC match * 0.17). If 1 RIASEC type matches at 45%, score = 45 + (45 * 0.17) = 45 + 7.65 = 53. Adjust ±1-2 based on growth potential. Result must be unique (e.g., 48, 52, 57, 61). MUST be at least 10-15 points lower than Cluster 2. ❌ FORBIDDEN: 50, 55, 60 - too round>",
+        "matchScore": "<REQUIRED: Calculate as INTEGER between 45-62 based on learner's actual scores. Formula: Base = 45 + (exploratory RIASEC match * 0.17). If 1 RIASEC type matches at 45%, score = 45 + (45 * 0.17) = 45 + 7.65 = 53. Adjust ±1-2 based on growth potential. Result must be unique (e.g., 48, 52, 57, 61). MUST be at least 10-15 points lower than Cluster 2. ❌ FORBIDDEN: 50, 55, 60 - too round>",
         "description": "<Why worth exploring>",
         "evidence": {
           "interest": "<RIASEC evidence>",
@@ -1707,11 +1707,11 @@ Before returning your response, verify:
 4. ✅ **roadmap section is included** (immediate, shortTerm, projects)
 5. ✅ **finalNote section is included** (advantage, growthFocus, collegeGuidance, entranceExamStrategy)
 6. ✅ Each career cluster has evidence from ALL 6 sections (interest, aptitude, personality, values, employability, knowledge)
-7. ✅ Career clusters align with the student's stream (${assessmentData.stream})
+7. ✅ Career clusters align with the learner's stream (${assessmentData.stream})
 8. ✅ Entrance exams and college majors are specified for each cluster
 9. ✅ All 3 career clusters are provided with complete information
 10. ✅ Salary ranges are realistic for India (2025-2030)
-11. ✅ Preparation guidance is specific to 11th/12th grade students
+11. ✅ Preparation guidance is specific to 11th/12th grade learners
 12. ✅ The response is personalized based on THEIR specific scores, not generic
 
 ${isPsychologyStream ? `
@@ -1734,9 +1734,9 @@ ${isPsychologyStream ? `
 5. Is Track 3 about applied psychology (UX Research, Consumer Psychology)?
    - If NO → Consider revising to better match psychology applications
 
-**REMEMBER:** This student chose psychology stream SPECIFICALLY for psychology careers. 
-Recommending creative arts as Track 1 is like recommending medicine to an engineering student.
-It's a fundamental mismatch that will make the student lose trust in the assessment.
+**REMEMBER:** This learner chose psychology stream SPECIFICALLY for psychology careers. 
+Recommending creative arts as Track 1 is like recommending medicine to an engineering learner.
+It's a fundamental mismatch that will make the learner lose trust in the assessment.
 
 **IF YOU FAILED ANY CHECK ABOVE, DO NOT SUBMIT - FIX THE CAREER CLUSTERS FIRST!**
 ` : ''}

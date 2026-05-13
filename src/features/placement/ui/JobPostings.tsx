@@ -303,7 +303,7 @@ const JobPostings: React.FC = () => {
   const publishJobPost = (jobId: number) => {
     const job = opportunities.find(j => j.id === jobId);
     if (job) {
-      toast.success(`Job "${job.title}" published and students auto-listed successfully!`);
+      toast.success(`Job "${job.title}" published and learners auto-listed successfully!`);
     }
   };
 
@@ -478,7 +478,7 @@ const JobPostings: React.FC = () => {
         </button>
       </div>
       
-      <p className="text-gray-600 mb-4">Manage job roles, eligibility rules, rounds scheduling, student allocation, and application stage updates.</p>
+      <p className="text-gray-600 mb-4">Manage job roles, eligibility rules, rounds scheduling, learner allocation, and application stage updates.</p>
       
       <div className="flex gap-2 mb-6">
         <div className="flex-1 relative">
@@ -991,7 +991,7 @@ const JobPostings: React.FC = () => {
                   className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
                 >
                   <CheckCircle className="h-4 w-4" />
-                  Publish Job & Auto-list Students
+                  Publish Job & Auto-list Learners
                 </button>
               </div>
             </div>

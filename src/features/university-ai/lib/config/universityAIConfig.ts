@@ -7,7 +7,7 @@ import { GraduationCap, Briefcase, TrendingUp, Heart, MessageSquare } from 'luci
 export const universityAIConfig = {
   welcome: {
     title: 'University AI Counselling',
-    subtitle: 'Get personalized guidance and support for your academic journey. Ask me anything about academics, career, wellbeing, or student life.',
+    subtitle: 'Get personalized guidance and support for your academic journey. Ask me anything about academics, career, wellbeing, or learner life.',
     quickActions: [
       {
         id: 'academic',
@@ -32,7 +32,7 @@ export const universityAIConfig = {
       },
       {
         id: 'wellbeing',
-        label: 'Student Wellbeing',
+        label: 'Learner Wellbeing',
         icon: Heart,
         gradient: 'bg-gradient-to-br from-pink-500 to-pink-600 text-white',
         query: 'I need advice on managing stress and maintaining work-life balance'
@@ -47,7 +47,7 @@ export const universityAIConfig = {
     ]
   },
   chat: {
-    placeholder: 'Ask me anything about academics, career, wellbeing, or student life...',
+    placeholder: 'Ask me anything about academics, career, wellbeing, or learner life...',
     disclaimer: 'AI-powered counselling assistant. For urgent matters, please contact your university counsellor.'
   }
 };

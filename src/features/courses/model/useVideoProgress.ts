@@ -8,12 +8,12 @@ const logger = getLogger('use-video-progress');
  * Custom hook for video progress tracking
  * Handles auto-save, resume, and completion detection
  */
-export const useVideoProgress = (studentId, courseId, lessonId, options = {}) => {
+export const useVideoProgress = (learnerId, courseId, lessonId, options = {}) => {
   const {
     saveInterval = 5000,      // Save every 5 seconds during playback
     completionThreshold = 0.9, // 90% watched = completed
     resumeBuffer = 2,          // Resume 2 seconds before saved position
-    enabled = true             // Allow disabling for non-students
+    enabled = true             // Allow disabling for non-learners
   } = options;
 
   const videoRef = useRef(null);
@@ -28,7 +28,7 @@ export const useVideoProgress = (studentId, courseId, lessonId, options = {}) =>
 
   // Load saved position on mount/lesson change
   useEffect(() => {
-    if (!enabled || !studentId || !courseId || !lessonId) {
+    if (!enabled || !learnerId || !courseId || !lessonId) {
       setIsLoading(false);
       return;
     }
@@ -38,7 +38,7 @@ export const useVideoProgress = (studentId, courseId, lessonId, options = {}) =>
       setHasRestored(false);
       
       try {
-        const saved = await courseProgressService.getVideoPosition(studentId, courseId, lessonId);
+        const saved = await courseProgressService.getVideoPosition(learnerId, courseId, lessonId);
         
         if (saved) {
           setIsCompleted(saved.video_completed || false);
@@ -63,21 +63,21 @@ export const useVideoProgress = (studentId, courseId, lessonId, options = {}) =>
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [studentId, courseId, lessonId, enabled, resumeBuffer]);
+  }, [learnerId, courseId, lessonId, enabled, resumeBuffer]);
 
   // Save position to database (debounced)
   const savePosition = useCallback(async (position, videoDuration) => {
-    if (!enabled || !studentId || !courseId || !lessonId) return;
+    if (!enabled || !learnerId || !courseId || !lessonId) return;
     
     await courseProgressService.saveVideoPosition(
-      studentId,
+      learnerId,
       courseId,
       lessonId,
       Math.floor(position),
       Math.floor(videoDuration)
     );
     lastSavedPositionRef.current = position;
-  }, [enabled, studentId, courseId, lessonId]);
+  }, [enabled, learnerId, courseId, lessonId]);
 
   // Immediate save (for pause, seek, blur events)
   const saveImmediately = useCallback(() => {
@@ -117,7 +117,7 @@ export const useVideoProgress = (studentId, courseId, lessonId, options = {}) =>
       // Check for completion
       if (video.duration > 0 && position / video.duration >= completionThreshold && !isCompleted) {
         setIsCompleted(true);
-        courseProgressService.markVideoCompleted(studentId, courseId, lessonId);
+        courseProgressService.markVideoCompleted(learnerId, courseId, lessonId);
       }
 
       // Debounced save during playback
@@ -145,7 +145,7 @@ export const useVideoProgress = (studentId, courseId, lessonId, options = {}) =>
     // Save when video ends
     const handleEnded = () => {
       setIsCompleted(true);
-      courseProgressService.markVideoCompleted(studentId, courseId, lessonId);
+      courseProgressService.markVideoCompleted(learnerId, courseId, lessonId);
     };
 
     // Add event listeners
@@ -167,7 +167,7 @@ export const useVideoProgress = (studentId, courseId, lessonId, options = {}) =>
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [enabled, studentId, courseId, lessonId, savePosition, saveImmediately, 
+  }, [enabled, learnerId, courseId, lessonId, savePosition, saveImmediately, 
       saveInterval, completionThreshold, isCompleted, hasRestored]);
 
   // Save on page unload
@@ -178,7 +178,7 @@ export const useVideoProgress = (studentId, courseId, lessonId, options = {}) =>
       if (videoRef.current && videoRef.current.currentTime > 0) {
         // Use sendBeacon for reliable save on page close
         const data = JSON.stringify({
-          studentId,
+          learnerId,
           courseId,
           lessonId,
           position: Math.floor(videoRef.current.currentTime),
@@ -203,7 +203,7 @@ export const useVideoProgress = (studentId, courseId, lessonId, options = {}) =>
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [enabled, studentId, courseId, lessonId, saveImmediately]);
+  }, [enabled, learnerId, courseId, lessonId, saveImmediately]);
 
   // Seek to specific position
   const seekTo = useCallback((seconds) => {

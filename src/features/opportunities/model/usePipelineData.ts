@@ -24,7 +24,7 @@ export interface PipelineCandidate {
   ai_score_overall: number;
   last_updated: string;
   created_at?: string;
-  student_id: number;
+  learner_id: number;
   stage: string;
   source: string;
   next_action?: string;
@@ -69,13 +69,13 @@ export const usePipelineData = (
     name: pc.candidate_name || 'N/A',
     email: pc.candidate_email || '',
     phone: pc.candidate_phone || '',
-    dept: pc.students?.dept || 'N/A',
-    college: pc.students?.college || 'N/A',
-    location: pc.students?.location || 'N/A',
-    skills: Array.isArray(pc.students?.skills) ? pc.students.skills : [],
-    ai_score_overall: pc.students?.ai_score_overall || 0,
+    dept: pc.learners?.dept || 'N/A',
+    college: pc.learners?.college || 'N/A',
+    location: pc.learners?.location || 'N/A',
+    skills: Array.isArray(pc.learners?.skills) ? pc.learners.skills : [],
+    ai_score_overall: pc.learners?.ai_score_overall || 0,
     last_updated: pc.updated_at || pc.created_at,
-    student_id: pc.student_id,
+    learner_id: pc.learner_id,
     stage: pc.stage,
     source: pc.source,
     next_action: pc.next_action,
@@ -169,19 +169,19 @@ export const usePipelineData = (
       }
 
       const applicantsForAnalysis = applicantsData
-        .filter((app: any) => app.student && app.opportunity)
+        .filter((app: any) => app.learner && app.opportunity)
         .map((app: any) => ({
           id: app.id,
-          student_id: app.student_id,
+          learner_id: app.learner_id,
           opportunity_id: app.opportunity_id,
           pipeline_stage: app.pipeline_stage,
-          student: {
-            id: app.student_id,
-            name: app.student?.name || 'Unknown',
-            email: app.student?.email || '',
-            university: app.student?.university,
-            cgpa: app.student?.cgpa,
-            branch_field: app.student?.department
+          learner: {
+            id: app.learner_id,
+            name: app.learner?.name || 'Unknown',
+            email: app.learner?.email || '',
+            university: app.learner?.university,
+            cgpa: app.learner?.cgpa,
+            branch_field: app.learner?.department
           },
           opportunity: {
             id: app.opportunity_id,
@@ -197,22 +197,22 @@ export const usePipelineData = (
         .select('id, skills_required')
         .in('id', opportunityIds);
 
-      // Fetch skills for all students from the skills table
-      const studentIds = [...new Set(applicantsData.map((a: any) => a.student_id))];
+      // Fetch skills for all learners from the skills table
+      const learnerIds = [...new Set(applicantsData.map((a: any) => a.learner_id))];
       const { data: skillsData } = await supabase
         .from('skills')
-        .select('student_id, name, enabled')
-        .in('student_id', studentIds)
+        .select('learner_id, name, enabled')
+        .in('learner_id', learnerIds)
         .eq('enabled', true);
 
-      // Create a map of student_id to skills array
+      // Create a map of learner_id to skills array
       const skillsMap: Record<string, string[]> = {};
       (skillsData || []).forEach((skill: any) => {
-        if (!skillsMap[skill.student_id]) {
-          skillsMap[skill.student_id] = [];
+        if (!skillsMap[skill.learner_id]) {
+          skillsMap[skill.learner_id] = [];
         }
         if (skill.name) {
-          skillsMap[skill.student_id].push(skill.name);
+          skillsMap[skill.learner_id].push(skill.name);
         }
       });
       
@@ -230,33 +230,33 @@ export const usePipelineData = (
       // Map applicants to PipelineCandidate-like structure for profile view compatibility
       const applicantsForPanel = applicantsData.map((app: any) => {
         // Get skills from skills table, fallback to profile skill field
-        const studentSkills = skillsMap[app.student_id] || [];
-        const profileSkill = app.student?.skill;
-        const skills = studentSkills.length > 0 
-          ? studentSkills 
+        const learnerSkills = skillsMap[app.learner_id] || [];
+        const profileSkill = app.learner?.skill;
+        const skills = learnerSkills.length > 0 
+          ? learnerSkills 
           : (profileSkill ? (Array.isArray(profileSkill) ? profileSkill : [profileSkill]) : []);
 
         return {
           id: app.id,
-          student_id: app.student_id,
+          learner_id: app.learner_id,
           opportunity_id: app.opportunity_id,
-          name: app.student?.name || 'Unknown',
-          email: app.student?.email || '',
-          phone: app.student?.phone || '',
-          dept: app.student?.department?.trim() || app.student?.course?.trim() || 'N/A',
-          college: app.student?.college?.trim() || app.student?.university?.trim() || 'N/A',
-          location: app.student?.district?.trim() || 'N/A',
+          name: app.learner?.name || 'Unknown',
+          email: app.learner?.email || '',
+          phone: app.learner?.phone || '',
+          dept: app.learner?.department?.trim() || app.learner?.course?.trim() || 'N/A',
+          college: app.learner?.college?.trim() || app.learner?.university?.trim() || 'N/A',
+          location: app.learner?.district?.trim() || 'N/A',
           skills: skills,
-          ai_score_overall: app.student?.employability_score || 0,
+          ai_score_overall: app.learner?.employability_score || 0,
           last_updated: app.updated_at || app.applied_at || new Date().toISOString(),
           created_at: app.applied_at,
           stage: app.pipeline_stage || app.application_status || 'applied',
           source: 'application',
-          photo: app.student?.photo || null,
-          university: app.student?.university?.trim() || '',
-          cgpa: app.student?.cgpa || '',
-          year_of_passing: app.student?.year_of_passing || '',
-          verified: app.student?.verified || false
+          photo: app.learner?.photo || null,
+          university: app.learner?.university?.trim() || '',
+          cgpa: app.learner?.cgpa || '',
+          year_of_passing: app.learner?.year_of_passing || '',
+          verified: app.learner?.verified || false
         };
       });
       setAllPipelineCandidatesForAI(applicantsForPanel);

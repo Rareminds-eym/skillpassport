@@ -4,7 +4,7 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
-import { StudentProfile } from '@/features/student-profile/model';
+import { LearnerProfile } from '@/features/learner-profile/model';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('intelligence-service');
@@ -52,7 +52,7 @@ class IntelligenceService {
   /**
    * Calculate comprehensive career readiness score
    */
-  async calculateCareerReadiness(profile: StudentProfile): Promise<CareerReadinessScore> {
+  async calculateCareerReadiness(profile: LearnerProfile): Promise<CareerReadinessScore> {
     const scores = {
       profileCompleteness: this.scoreProfileCompleteness(profile),
       skillsMarketability: await this.scoreSkillsMarketability(profile),
@@ -98,7 +98,7 @@ class IntelligenceService {
   /**
    * Score profile completeness (0-100)
    */
-  private scoreProfileCompleteness(profile: StudentProfile): number {
+  private scoreProfileCompleteness(profile: LearnerProfile): number {
     let score = 0;
     const weights = {
       basicInfo: 10,
@@ -158,9 +158,9 @@ class IntelligenceService {
   }
 
   /**
-   * Score how marketable the student's skills are
+   * Score how marketable the learner's skills are
    */
-  private async scoreSkillsMarketability(profile: StudentProfile): Promise<number> {
+  private async scoreSkillsMarketability(profile: LearnerProfile): Promise<number> {
     const skills = profile.profile?.technicalSkills || [];
     
     if (skills.length === 0) return 0;
@@ -198,7 +198,7 @@ class IntelligenceService {
   /**
    * Score experience level
    */
-  private scoreExperienceLevel(profile: StudentProfile): number {
+  private scoreExperienceLevel(profile: LearnerProfile): number {
     const experience = profile.profile?.experience || [];
     const projects = profile.profile?.projects || [];
     
@@ -222,7 +222,7 @@ class IntelligenceService {
   /**
    * Score project quality
    */
-  private scoreProjectQuality(profile: StudentProfile): number {
+  private scoreProjectQuality(profile: LearnerProfile): number {
     const projects = profile.profile?.projects || [];
     
     if (projects.length === 0) return 0;
@@ -257,7 +257,7 @@ class IntelligenceService {
   /**
    * Score learning consistency
    */
-  private scoreLearningConsistency(profile: StudentProfile): number {
+  private scoreLearningConsistency(profile: LearnerProfile): number {
     const training = profile.profile?.training || [];
     
     if (training.length === 0) return 0;
@@ -292,7 +292,7 @@ class IntelligenceService {
   /**
    * Analyze score breakdown to provide insights
    */
-  private analyzeScoreBreakdown(scores: any, profile: StudentProfile) {
+  private analyzeScoreBreakdown(scores: any, profile: LearnerProfile) {
     const strengths: string[] = [];
     const weaknesses: string[] = [];
     const criticalGaps: string[] = [];
@@ -393,10 +393,10 @@ class IntelligenceService {
   /**
    * Save readiness score to database
    */
-  private async saveReadinessScore(studentId: string, data: any): Promise<void> {
+  private async saveReadinessScore(learnerId: string, data: any): Promise<void> {
     try {
       await supabase.from('career_readiness_scores').insert({
-        student_id: studentId,
+        learner_id: learnerId,
         overall_score: data.overall_score,
         profile_completeness: data.profileCompleteness,
         skills_marketability: data.skillsMarketability,
@@ -414,7 +414,7 @@ class IntelligenceService {
   /**
    * Analyze profile health and provide actionable insights
    */
-  async analyzeProfileHealth(profile: StudentProfile): Promise<ProfileHealthAnalysis> {
+  async analyzeProfileHealth(profile: LearnerProfile): Promise<ProfileHealthAnalysis> {
     const missingSections: string[] = [];
     const weakSections: Array<{ section: string; reason: string; impact: string }> = [];
     const suggestions: Array<{ action: string; priority: string; impact: string }> = [];
@@ -512,7 +512,7 @@ class IntelligenceService {
 
     // Save to database
     await supabase.from('profile_health_analysis').insert({
-      student_id: profile.id,
+      learner_id: profile.id,
       completeness_score: completenessScore,
       missing_sections: missingSections,
       weak_sections: weakSections,
@@ -532,7 +532,7 @@ class IntelligenceService {
   /**
    * Get peer comparison insights
    */
-  async getPeerComparison(profile: StudentProfile): Promise<PeerComparison> {
+  async getPeerComparison(profile: LearnerProfile): Promise<PeerComparison> {
     // Determine cohort (e.g., "cs_2024", "engineering_fresher")
     const cohort = this.determineCohort(profile);
 
@@ -590,9 +590,9 @@ class IntelligenceService {
   }
 
   /**
-   * Determine student cohort for comparison
+   * Determine learner cohort for comparison
    */
-  private determineCohort(profile: StudentProfile): string {
+  private determineCohort(profile: LearnerProfile): string {
     const department = profile.department?.toLowerCase() || 'general';
     const year = profile.year_of_passing || new Date().getFullYear().toString();
     

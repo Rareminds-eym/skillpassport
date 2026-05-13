@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -25,8 +26,8 @@ export interface SchoolLibraryBookIssue {
   id: string;
   school_id: string;
   book_id: string;
-  student_id: string;
-  student_name: string;
+  learner_id: string;
+  learner_name: string;
   roll_number: string;
   class: string;
   academic_year: string;
@@ -96,7 +97,7 @@ class SchoolLibraryService {
     }
     
     // If not found in localStorage, try Supabase Auth
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getCurrentUser();
     if (!user) throw new Error('User not authenticated');
     
     // Check school_educators table
@@ -228,8 +229,8 @@ class SchoolLibraryService {
 
   async issueBook(issue: {
     book_id: string;
-    student_id: string;
-    student_name: string;
+    learner_id: string;
+    learner_name: string;
     roll_number: string;
     class: string;
     academic_year: string;
@@ -237,19 +238,19 @@ class SchoolLibraryService {
   }) {
     const schoolId = await this.getCurrentSchoolId();
     
-    // First check if student has reached max book limit
+    // First check if learner has reached max book limit
     const settings = await this.getSettings();
-    const maxBooks = parseInt(settings.find(s => s.setting_key === 'max_books_per_student')?.setting_value || '3');
+    const maxBooks = parseInt(settings.find(s => s.setting_key === 'max_books_per_learner')?.setting_value || '3');
     
     const { count: currentIssues } = await supabase
       .from('library_book_issues_school')
       .select('*', { count: 'exact', head: true })
       .eq('school_id', schoolId)
-      .eq('student_id', issue.student_id)
+      .eq('learner_id', issue.learner_id)
       .eq('status', 'issued');
 
     if (currentIssues && currentIssues >= maxBooks) {
-      throw new Error(`Student has already issued ${maxBooks} books. Maximum limit reached.`);
+      throw new Error(`Learner has already issued ${maxBooks} books. Maximum limit reached.`);
     }
 
     // Check book availability
@@ -338,7 +339,7 @@ class SchoolLibraryService {
   }
 
   async getBookIssues(filters?: {
-    student_id?: string;
+    learner_id?: string;
     book_id?: string;
     status?: string;
     search?: string;
@@ -356,8 +357,8 @@ class SchoolLibraryService {
       .eq('school_id', schoolId)
       .order('issue_date', { ascending: false });
 
-    if (filters?.student_id) {
-      query = query.eq('student_id', filters.student_id);
+    if (filters?.learner_id) {
+      query = query.eq('learner_id', filters.learner_id);
     }
 
     if (filters?.book_id) {
@@ -369,7 +370,7 @@ class SchoolLibraryService {
     }
 
     if (filters?.search) {
-      query = query.or(`student_name.ilike.%${filters.search}%,roll_number.ilike.%${filters.search}%`);
+      query = query.or(`learner_name.ilike.%${filters.search}%,roll_number.ilike.%${filters.search}%`);
     }
 
     if (filters?.page && filters?.limit) {
@@ -384,7 +385,7 @@ class SchoolLibraryService {
     return { issues: data as SchoolLibraryBookIssue[], count };
   }
 
-  async searchIssuedBook(bookId?: string, studentId?: string) {
+  async searchIssuedBook(bookId?: string, learnerId?: string) {
     const schoolId = await this.getCurrentSchoolId();
     
     let query = supabase
@@ -396,14 +397,14 @@ class SchoolLibraryService {
       .eq('school_id', schoolId)
       .eq('status', 'issued');
 
-    if (bookId && studentId) {
-      query = query.eq('book_id', bookId).eq('student_id', studentId);
+    if (bookId && learnerId) {
+      query = query.eq('book_id', bookId).eq('learner_id', learnerId);
     } else if (bookId) {
       query = query.eq('book_id', bookId);
-    } else if (studentId) {
-      query = query.eq('student_id', studentId);
+    } else if (learnerId) {
+      query = query.eq('learner_id', learnerId);
     } else {
-      throw new Error('Either book_id or student_id must be provided');
+      throw new Error('Either book_id or learner_id must be provided');
     }
 
     const { data, error } = await query.maybeSingle();
@@ -553,23 +554,23 @@ class SchoolLibraryService {
     return data as number;
   }
 
-  // Get student's current issued books count
-  async getStudentIssuedBooksCount(studentId: string) {
+  // Get learner's current issued books count
+  async getlearnerIssuedBooksCount(learnerId: string) {
     const schoolId = await this.getCurrentSchoolId();
     
     const { count, error } = await supabase
       .from('library_book_issues_school')
       .select('*', { count: 'exact', head: true })
       .eq('school_id', schoolId)
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .eq('status', 'issued');
 
     if (error) throw error;
     return count || 0;
   }
 
-  // Get borrow history for a student
-  async getStudentBorrowHistory(studentId: string) {
+  // Get borrow history for a learner
+  async getlearnerBorrowHistory(learnerId: string) {
     const schoolId = await this.getCurrentSchoolId();
     
     const { data, error } = await supabase
@@ -579,19 +580,19 @@ class SchoolLibraryService {
         book:library_books_school(*)
       `)
       .eq('school_id', schoolId)
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .order('issue_date', { ascending: false });
 
     if (error) throw error;
     return data as SchoolLibraryBookIssue[];
   }
 
-  // Search students for book issuing
-  async searchStudents(searchTerm: string) {
+  // Search learners for book issuing
+  async searchlearners(searchTerm: string) {
     const schoolId = await this.getCurrentSchoolId();
     
     const { data, error } = await supabase
-      .from('students')
+      .from('learners')
       .select('id, name, roll_number, enrollmentNumber, admission_number, contact_number, email, grade, section, course_name, semester')
       .eq('school_id', schoolId)
       .eq('is_deleted', false)
@@ -603,14 +604,14 @@ class SchoolLibraryService {
     return data;
   }
 
-  // Get student details by ID
-  async getStudentById(studentId: string) {
+  // Get learner details by ID
+  async getlearnerById(learnerId: string) {
     const schoolId = await this.getCurrentSchoolId();
     
     const { data, error } = await supabase
-      .from('students')
+      .from('learners')
       .select('id, name, roll_number, enrollmentNumber, admission_number, contact_number, email, grade, section, course_name, semester')
-      .eq('id', studentId)
+      .eq('id', learnerId)
       .eq('school_id', schoolId)
       .eq('is_deleted', false)
       .maybeSingle();

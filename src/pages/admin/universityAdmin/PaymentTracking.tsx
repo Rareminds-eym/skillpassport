@@ -24,9 +24,9 @@ import {
 
 interface PaymentRecord {
   id: string;
-  student_id: string;
-  student_name: string;
-  student_email: string;
+  learner_id: string;
+  learner_name: string;
+  learner_email: string;
   college_id: string;
   college_name: string;
   fee_structure_id: string;
@@ -62,9 +62,9 @@ interface PaymentStats {
 const mockPaymentRecords: PaymentRecord[] = [
   {
     id: '1',
-    student_id: '1',
-    student_name: 'Rajesh Kumar',
-    student_email: 'rajesh.kumar@student.edu',
+    learner_id: '1',
+    learner_name: 'Rajesh Kumar',
+    learner_email: 'rajesh.kumar@learner.edu',
     college_id: '1',
     college_name: 'Anna University College of Engineering',
     fee_structure_id: '1',
@@ -86,9 +86,9 @@ const mockPaymentRecords: PaymentRecord[] = [
   },
   {
     id: '2',
-    student_id: '2',
-    student_name: 'Priya Sharma',
-    student_email: 'priya.sharma@student.edu',
+    learner_id: '2',
+    learner_name: 'Priya Sharma',
+    learner_email: 'priya.sharma@learner.edu',
     college_id: '2',
     college_name: 'PSG College of Technology',
     fee_structure_id: '2',
@@ -108,9 +108,9 @@ const mockPaymentRecords: PaymentRecord[] = [
   },
   {
     id: '3',
-    student_id: '3',
-    student_name: 'Arun Krishnan',
-    student_email: 'arun.krishnan@student.edu',
+    learner_id: '3',
+    learner_name: 'Arun Krishnan',
+    learner_email: 'arun.krishnan@learner.edu',
     college_id: '1',
     college_name: 'Anna University College of Engineering',
     fee_structure_id: '1',
@@ -131,9 +131,9 @@ const mockPaymentRecords: PaymentRecord[] = [
   },
   {
     id: '4',
-    student_id: '4',
-    student_name: 'Meera Patel',
-    student_email: 'meera.patel@student.edu',
+    learner_id: '4',
+    learner_name: 'Meera Patel',
+    learner_email: 'meera.patel@learner.edu',
     college_id: '3',
     college_name: 'Coimbatore Institute of Technology',
     fee_structure_id: '3',
@@ -155,9 +155,9 @@ const mockPaymentRecords: PaymentRecord[] = [
   },
   {
     id: '5',
-    student_id: '5',
-    student_name: 'Vikram Singh',
-    student_email: 'vikram.singh@student.edu',
+    learner_id: '5',
+    learner_name: 'Vikram Singh',
+    learner_email: 'vikram.singh@learner.edu',
     college_id: '2',
     college_name: 'PSG College of Technology',
     fee_structure_id: '2',
@@ -206,7 +206,7 @@ const PaymentTracking: React.FC = () => {
   const filteredPayments = paymentRecords
     .filter(payment => {
       const matchesSearch = !searchTerm || 
-        payment.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        payment.learner_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         payment.college_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         payment.transaction_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         payment.fee_name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -314,19 +314,19 @@ const PaymentTracking: React.FC = () => {
           </div>
 
           <div className="p-6 space-y-6">
-            {/* Student Information */}
+            {/* Learner Information */}
             <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Student Information</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Learner Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-gray-500" />
                   <span className="text-sm text-gray-600">Name:</span>
-                  <span className="text-sm font-medium">{selectedPayment.student_name}</span>
+                  <span className="text-sm font-medium">{selectedPayment.learner_name}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Mail className="h-4 w-4 text-gray-500" />
                   <span className="text-sm text-gray-600">Email:</span>
-                  <span className="text-sm font-medium">{selectedPayment.student_email}</span>
+                  <span className="text-sm font-medium">{selectedPayment.learner_email}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-gray-500" />
@@ -606,10 +606,10 @@ const PaymentTracking: React.FC = () => {
               <tr>
                 <th 
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('student_name')}
+                  onClick={() => handleSort('learner_name')}
                 >
                   <div className="flex items-center gap-1">
-                    Student/College
+                    Learner/College
                     <ArrowUpDown className="h-3 w-3" />
                   </div>
                 </th>
@@ -650,7 +650,7 @@ const PaymentTracking: React.FC = () => {
                 <tr key={payment.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
-                      <div className="text-sm font-medium text-gray-900">{payment.student_name}</div>
+                      <div className="text-sm font-medium text-gray-900">{payment.learner_name}</div>
                       <div className="text-sm text-gray-500">{payment.college_name}</div>
                     </div>
                   </td>

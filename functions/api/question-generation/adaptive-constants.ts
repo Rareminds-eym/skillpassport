@@ -33,7 +33,7 @@ export const SUBTAG_DESCRIPTIONS: Record<Subtag, string> = {
 
 export const DIFFICULTY_DESCRIPTIONS: Record<DifficultyLevel, string> = {
   1: 'Very Easy - Basic concepts, straightforward questions, minimal steps required. Foundation level for the grade.',
-  2: 'Easy - Simple concepts with slight complexity, 1-2 steps to solve. Accessible to most students at this grade.',
+  2: 'Easy - Simple concepts with slight complexity, 1-2 steps to solve. Accessible to most learners at this grade.',
   3: 'Medium - Moderate complexity, requires careful thinking, 2-3 steps. Grade-appropriate challenge level.',
   4: 'Hard - Complex reasoning required, multiple steps, some tricky elements. Above-average difficulty for the grade.',
   5: 'Very Hard - Advanced concepts, multi-step reasoning, requires deep analysis. Top-tier difficulty for the grade.',
@@ -44,11 +44,11 @@ export const DIFFICULTY_DESCRIPTIONS: Record<DifficultyLevel, string> = {
 ====================================================== */
 
 export const GRADE_LEVEL_CONTEXT: Record<GradeLevel, string> = {
-  middle_school: `You are creating aptitude test questions for MIDDLE SCHOOL students (grades 6-8, ages 11-14).
+  middle_school: `You are creating aptitude test questions for MIDDLE SCHOOL learners (grades 6-8, ages 11-14).
 
-⚠️ CRITICAL: This is for younger students (ages 11-14). Keep questions simple and age-appropriate.`,
+⚠️ CRITICAL: This is for younger learners (ages 11-14). Keep questions simple and age-appropriate.`,
 
-  high_school: `You are creating aptitude test questions for HIGH SCHOOL students (grades 9-10, ages 14-16).
+  high_school: `You are creating aptitude test questions for HIGH SCHOOL learners (grades 9-10, ages 14-16).
 
 ⚠️ CRITICAL: TEXT-ONLY QUESTIONS REQUIRED ⚠️
 - DO NOT reference any visual elements (graphs, charts, tables, diagrams, images, shapes, patterns, figures)
@@ -68,7 +68,7 @@ export const GRADE_LEVEL_CONTEXT: Record<GradeLevel, string> = {
 - Vocabulary: 8,000-12,000 words (everyday + some academic terms)
 
 📚 CAREER CONTEXT - STREAM SELECTION AWARENESS:
-- Students are exploring interests before choosing Science/Commerce/Arts stream
+- Learners are exploring interests before choosing Science/Commerce/Arts stream
 - Questions should help identify natural aptitudes for stream selection
 - Focus on discovering abilities: analytical thinking, creative reasoning, verbal skills, numerical ability
 - Build awareness of different career paths and skill requirements
@@ -202,7 +202,7 @@ VARIETY REQUIREMENTS FOR GRADES 9-10:
 - Spatial + Pattern Recognition → Design/Engineering indicators
 - Results should guide stream selection after 10th grade`,
 
-  higher_secondary: `You are creating aptitude test questions for HIGHER SECONDARY students (grades 11-12, ages 16-18).
+  higher_secondary: `You are creating aptitude test questions for HIGHER SECONDARY learners (grades 11-12, ages 16-18).
 
 ⚠️ CRITICAL: TEXT-ONLY QUESTIONS REQUIRED ⚠️
 - DO NOT reference any visual elements (graphs, charts, tables, diagrams, images, shapes, patterns, figures)
@@ -222,7 +222,7 @@ VARIETY REQUIREMENTS FOR GRADES 9-10:
 - Vocabulary: 8,000-12,000 words (everyday + some academic terms)
 
 📚 CAREER CONTEXT - STREAM SELECTION AWARENESS:
-- Students are exploring interests before choosing Science/Commerce/Arts stream after 10th
+- Learners are exploring interests before choosing Science/Commerce/Arts stream after 10th
 - Questions should help identify natural aptitudes for stream selection
 - Focus on discovering abilities: analytical thinking, creative reasoning, verbal skills, numerical ability
 - Build awareness of different career paths and skill requirements
@@ -244,7 +244,7 @@ CRITICAL GUIDELINES FOR GRADES 9-10:
 - Keep question text CLEAR and CONCISE (2-4 sentences max)
 - Use concrete examples with some abstract elements
 - Numbers should be manageable: basic algebra, simple equations, mental-math friendly
-- DO NOT reference competitive exams (JEE, NEET, etc.) - students are not at that level yet
+- DO NOT reference competitive exams (JEE, NEET, etc.) - learners are not at that level yet
 
 📐 MATHEMATICAL CONCEPTS FOR NUMERICAL REASONING (Grades 9-10 Level - Use Diverse Topics):
 
@@ -505,13 +505,13 @@ VARIETY REQUIREMENTS FOR GRADES 9-10:
    SYSTEM PROMPT (PHASE + BATCH AWARE)
 ====================================================== */
 
-export function buildSystemPrompt(gradeLevel: GradeLevel, studentCourse?: string | null, phase?: string): string {
-  const courseContext = studentCourse ? `
+export function buildSystemPrompt(gradeLevel: GradeLevel, learnerCourse?: string | null, phase?: string): string {
+  const courseContext = learnerCourse ? `
 
-🎓 COURSE-SPECIFIC CONTEXT FOR ${studentCourse.toUpperCase()}:
-- The student is studying ${studentCourse}
+🎓 COURSE-SPECIFIC CONTEXT FOR ${learnerCourse.toUpperCase()}:
+- The learner is studying ${learnerCourse}
 - Frame questions using scenarios, examples, and contexts relevant to this field
-- Use terminology and situations that a ${studentCourse} student would encounter
+- Use terminology and situations that a ${learnerCourse} learner would encounter
 - Questions should still test general aptitude, but contextualized to their field
 - Examples: If studying B.COM, use business/finance scenarios; if B.Tech CSE, use tech/programming contexts
 ` : '';
@@ -522,11 +522,11 @@ export function buildSystemPrompt(gradeLevel: GradeLevel, studentCourse?: string
 ${phase === 'diagnostic' ? `- This is the DIAGNOSTIC SCREENER phase (8 questions)
 - Questions should be at difficulty level 3 (medium) to establish baseline
 - Focus on broad aptitude assessment across all subtags
-- Questions should help classify student into Low/Medium/High tier
+- Questions should help classify learner into Low/Medium/High tier
 - Avoid extreme difficulty - aim for discriminative power at the median` : phase === 'core' ? `- This is the ADAPTIVE CORE phase (10 questions)
-- Difficulty will adjust based on student performance
+- Difficulty will adjust based on learner performance
 - Questions should progressively reveal true ability level
-- Focus on precise ability estimation within the student's tier
+- Focus on precise ability estimation within the learner's tier
 - Each question should provide maximum information for adaptive algorithm` : phase === 'stability' ? `- This is the STABILITY CONFIRMATION phase (4 questions)
 - Questions should confirm the provisional ability band
 - Difficulty should be consistent with estimated ability level
@@ -621,7 +621,7 @@ Example format:
     "explanation": "Solving: 3x = 14 - 5 = 9, so x = 9/3 = 3"
   },
   {
-    "text": "In a survey, 30 students chose Basketball, 15 chose Tennis, 25 chose Soccer, and 20 chose Swimming. How many more students chose Basketball than Tennis?",
+    "text": "In a survey, 30 learners chose Basketball, 15 chose Tennis, 25 chose Soccer, and 20 chose Swimming. How many more learners chose Basketball than Tennis?",
     "options": {
       "A": "5",
       "B": "10",
@@ -629,7 +629,7 @@ Example format:
       "D": "20"
     },
     "correctAnswer": "C",
-    "explanation": "Basketball has 30 students and Tennis has 15 students. 30 - 15 = 15"
+    "explanation": "Basketball has 30 learners and Tennis has 15 learners. 30 - 15 = 15"
   }
 ]
 

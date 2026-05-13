@@ -74,9 +74,9 @@ const PlacementAnalytics: React.FC = () => {
           id,
           application_status,
           applied_at,
-          students!fk_applied_jobs_student (
+          learners!fk_applied_jobs_learner (
             name,
-            student_id,
+            learner_id,
             branch_field,
             course_name
           ),
@@ -100,11 +100,11 @@ const PlacementAnalytics: React.FC = () => {
       // Transform recent placements data
       const transformedRecentPlacements = (recentPlacementsData || []).map(record => ({
         id: record.id.toString(),
-        student_name: record.students?.name || 'Unknown Student',
-        student_id: record.students?.student_id || '',
+        learner_name: record.learners?.name || 'Unknown Learner',
+        learner_id: record.learners?.learner_id || '',
         company_name: record.opportunities?.company_name || '',
         job_title: record.opportunities?.title || '',
-        department: record.students?.branch_field || record.students?.course_name || '',
+        department: record.learners?.branch_field || record.learners?.course_name || '',
         employment_type: record.opportunities?.employment_type as 'Full-time' | 'Internship',
         salary_offered: record.opportunities?.salary_range_max || record.opportunities?.salary_range_min || 0,
         placement_date: record.applied_at,
@@ -112,13 +112,13 @@ const PlacementAnalytics: React.FC = () => {
         location: record.opportunities?.location || ''
       }));
 
-      // Get all students by department for department analytics
-      const { data: allStudentsData, error: studentsError } = await supabase
-        .from('students')
+      // Get all learners by department for department analytics
+      const { data: alllearnersData, error: learnersError } = await supabase
+        .from('learners')
         .select('branch_field, course_name, id');
 
-      if (studentsError) {
-        logger.error('Error fetching all students', studentsError);
+      if (learnersError) {
+        logger.error('Error fetching all learners', learnersError);
       }
 
       // Get all placements for department analytics
@@ -126,8 +126,8 @@ const PlacementAnalytics: React.FC = () => {
         .from('applied_jobs')
         .select(`
           id,
-          student_id,
-          students!fk_applied_jobs_student (
+          learner_id,
+          learners!fk_applied_jobs_learner (
             branch_field,
             course_name
           ),
@@ -146,33 +146,33 @@ const PlacementAnalytics: React.FC = () => {
       // Calculate department-wise analytics
       const departmentStats: { [key: string]: any } = {};
       
-      // Count total students by department
-      (allStudentsData || []).forEach(student => {
-        const dept = student.branch_field || student.course_name || 'Unknown';
+      // Count total learners by department
+      (alllearnersData || []).forEach(learner => {
+        const dept = learner.branch_field || learner.course_name || 'Unknown';
         if (!departmentStats[dept]) {
           departmentStats[dept] = {
             department: dept,
-            total_students: 0,
-            placed_students: 0,
+            total_learners: 0,
+            placed_learners: 0,
             placements: [],
             full_time: 0,
             internships: 0
           };
         }
-        departmentStats[dept].total_students++;
+        departmentStats[dept].total_learners++;
       });
 
-      // Count placements by department (count unique students, not total offers)
-      const uniqueStudentsByDept: { [key: string]: Set<number> } = {};
+      // Count placements by department (count unique learners, not total offers)
+      const uniquelearnersByDept: { [key: string]: Set<number> } = {};
       
       (allPlacementsData || []).forEach(placement => {
-        const dept = placement.students?.branch_field || placement.students?.course_name || 'Unknown';
+        const dept = placement.learners?.branch_field || placement.learners?.course_name || 'Unknown';
         if (departmentStats[dept]) {
-          // Use Set to track unique student IDs
-          if (!uniqueStudentsByDept[dept]) {
-            uniqueStudentsByDept[dept] = new Set();
+          // Use Set to track unique learner IDs
+          if (!uniquelearnersByDept[dept]) {
+            uniquelearnersByDept[dept] = new Set();
           }
-          uniqueStudentsByDept[dept].add(placement.student_id);
+          uniquelearnersByDept[dept].add(placement.learner_id);
           
           // Still track all placements for salary calculations
           departmentStats[dept].placements.push(placement);
@@ -185,9 +185,9 @@ const PlacementAnalytics: React.FC = () => {
         }
       });
 
-      // Update placed_students count with unique students
+      // Update placed_learners count with unique learners
       Object.keys(departmentStats).forEach(dept => {
-        departmentStats[dept].placed_students = uniqueStudentsByDept[dept]?.size || 0;
+        departmentStats[dept].placed_learners = uniquelearnersByDept[dept]?.size || 0;
       });
 
       // Calculate analytics for each department
@@ -211,21 +211,21 @@ const PlacementAnalytics: React.FC = () => {
 
         return {
           department: dept.department,
-          total_students: dept.total_students,
-          placed_students: dept.placed_students, // This is now unique students
-          placement_rate: dept.total_students > 0 ? (dept.placed_students / dept.total_students) * 100 : 0,
+          total_learners: dept.total_learners,
+          placed_learners: dept.placed_learners, // This is now unique learners
+          placement_rate: dept.total_learners > 0 ? (dept.placed_learners / dept.total_learners) * 100 : 0,
           avg_ctc: avgCtc,
           median_ctc: medianCtc,
           highest_ctc: highestCtc,
-          total_offers: dept.placements.length, // Total offers (can be > placed_students)
+          total_offers: dept.placements.length, // Total offers (can be > placed_learners)
           internships: dept.internships,
           full_time: dept.full_time,
         };
-      }).sort((a, b) => b.placed_students - a.placed_students);
+      }).sort((a, b) => b.placed_learners - a.placed_learners);
 
       // Set the stats using the same data source
       setPlacementStats({
-        totalPlacements: stats.studentsPlaced,
+        totalPlacements: stats.learnersPlaced,
         totalApplications: 0, // We'll calculate this separately if needed
         avgCTC: stats.avgCTC,
         medianCTC: stats.medianCTC,
@@ -335,10 +335,10 @@ const PlacementAnalytics: React.FC = () => {
         ["Recent Placements Report"],
         ["Generated on:", new Date().toLocaleDateString()],
         [],
-        ["Student Name", "Student ID", "Company", "Job Title", "Department", "Employment Type", "CTC (₹)", "Location", "Placement Date", "Status"],
+        ["Learner Name", "Learner ID", "Company", "Job Title", "Department", "Employment Type", "CTC (₹)", "Location", "Placement Date", "Status"],
         ...recentPlacements.map(record => [
-          record.student_name,
-          record.student_id,
+          record.learner_name,
+          record.learner_id,
           record.company_name,
           record.job_title,
           record.department,
@@ -502,10 +502,10 @@ const PlacementAnalytics: React.FC = () => {
                   Department
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total Students
+                  Total Learners
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Placed Students
+                  Placed Learners
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Placement Rate
@@ -540,10 +540,10 @@ const PlacementAnalytics: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {dept.total_students}
+                    {dept.total_learners}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {dept.placed_students}
+                    {dept.placed_learners}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -589,7 +589,7 @@ const PlacementAnalytics: React.FC = () => {
             <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
               <div>
                 <div className="text-sm font-medium text-green-800">Above ₹10L</div>
-                <div className="text-xs text-green-600">{ctcDistribution.above10L.count} students</div>
+                <div className="text-xs text-green-600">{ctcDistribution.above10L.count} learners</div>
               </div>
               <div className="text-lg font-bold text-green-800">{ctcDistribution.above10L.percentage.toFixed(1)}%</div>
             </div>
@@ -598,7 +598,7 @@ const PlacementAnalytics: React.FC = () => {
             <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
               <div>
                 <div className="text-sm font-medium text-blue-800">₹5L - ₹10L</div>
-                <div className="text-xs text-blue-600">{ctcDistribution.between5L10L.count} students</div>
+                <div className="text-xs text-blue-600">{ctcDistribution.between5L10L.count} learners</div>
               </div>
               <div className="text-lg font-bold text-blue-800">{ctcDistribution.between5L10L.percentage.toFixed(1)}%</div>
             </div>
@@ -607,7 +607,7 @@ const PlacementAnalytics: React.FC = () => {
             <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
               <div>
                 <div className="text-sm font-medium text-orange-800">Below ₹5L</div>
-                <div className="text-xs text-orange-600">{ctcDistribution.below5L.count} students</div>
+                <div className="text-xs text-orange-600">{ctcDistribution.below5L.count} learners</div>
               </div>
               <div className="text-lg font-bold text-orange-800">{ctcDistribution.below5L.percentage.toFixed(1)}%</div>
             </div>
@@ -616,7 +616,7 @@ const PlacementAnalytics: React.FC = () => {
             <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
               <div>
                 <div className="text-sm font-medium text-purple-800">Internships</div>
-                <div className="text-xs text-purple-600">{ctcDistribution.internships.count} students</div>
+                <div className="text-xs text-purple-600">{ctcDistribution.internships.count} learners</div>
               </div>
               <div className="text-lg font-bold text-purple-800">{ctcDistribution.internships.percentage.toFixed(1)}%</div>
             </div>
@@ -642,7 +642,7 @@ const PlacementAnalytics: React.FC = () => {
                 <div key={placement.id} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <div className="text-sm font-medium text-gray-900">{placement.student_name}</div>
+                      <div className="text-sm font-medium text-gray-900">{placement.learner_name}</div>
                       <span className={`px-2 py-0.5 text-xs rounded-full ${
                         placement.employment_type === 'Full-time' 
                           ? 'bg-green-100 text-green-800' 
@@ -651,7 +651,7 @@ const PlacementAnalytics: React.FC = () => {
                         {placement.employment_type}
                       </span>
                     </div>
-                    <div className="text-xs text-gray-600 mb-1">{placement.student_id} • {placement.department}</div>
+                    <div className="text-xs text-gray-600 mb-1">{placement.learner_id} • {placement.department}</div>
                     <div className="text-sm text-gray-800 font-medium">{placement.company_name}</div>
                     <div className="text-xs text-gray-600">{placement.job_title}</div>
                     <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">

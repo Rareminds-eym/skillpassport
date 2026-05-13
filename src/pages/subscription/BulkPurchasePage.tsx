@@ -44,7 +44,7 @@ function BulkPurchasePage() {
     id: string;
     name: string;
     email: string;
-    type: 'educator' | 'student';
+    type: 'educator' | 'learner';
     department?: string;
     grade?: string;
   }>>([]);

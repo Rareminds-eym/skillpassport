@@ -1,12 +1,8 @@
-// Auth Cleanup Utilities
-export {
-  clearPendingUserData,
-  clearStaleAuthData,
-  userExistsInDatabase,
-  validateLocalStorageUser,
-} from './authCleanup';
+/**
+ * Auth Lib Public Exports (SSO-only)
+ */
 
-// Auth Error Handler
+// Auth Error Handler (still useful for validation utilities)
 export {
   AUTH_ERROR_CODES,
   AuthError,
@@ -32,11 +28,5 @@ export {
   redirectToRoleDashboard,
 } from './roleBasedRouter';
 
-// Token Monitor
-export {
-  getGlobalTokenMonitor,
-  resetGlobalTokenMonitor,
-  TokenMonitor,
-  type TokenInfo,
-  type TokenMonitorConfig,
-} from './tokenMonitor';
+// SSO Login Helper
+export { ssoLoginWithRoleCheck, type SsoLoginResult } from './ssoLogin';

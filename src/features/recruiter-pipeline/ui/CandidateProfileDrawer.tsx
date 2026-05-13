@@ -591,14 +591,14 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
   // router navigation for View Portfolio button
   const navigate = useNavigate();
 
-  // Fetch projects and certificates when student changes
+  // Fetch projects and certificates when learner changes
 
   useEffect(() => {
     // Use user_id if available, fallback to id
-    const studentId = candidate?.user_id || candidate?.id;
-    if (!studentId) return;
+    const learnerId = candidate?.user_id || candidate?.id;
+    if (!learnerId) return;
 
-    // Check if data is already available from useStudents (prefetched)
+    // Check if data is already available from useLearners (prefetched)
     const hasProjects = candidate?.projects && Array.isArray(candidate.projects) && candidate.projects.length > 0;
     const hasCertificates = candidate?.certificates && Array.isArray(candidate.certificates) && candidate.certificates.length > 0;
     
@@ -621,7 +621,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
           supabase
             .from('projects')
             .select('*')
-            .eq('student_id', studentId)
+            .eq('learner_id', learnerId)
             .eq('enabled', true)
             .in('approval_status', ['approved', 'verified'])
             .order('created_at', { ascending: false })
@@ -644,7 +644,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
           supabase
             .from('certificates')
             .select('*')
-            .eq('student_id', studentId)
+            .eq('learner_id', learnerId)
             .eq('enabled', true)
             .in('approval_status', ['approved', 'verified'])
             .order('issued_on', { ascending: false })
@@ -661,11 +661,11 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
         );
       }
 
-      // Always fetch assignments (not included in useStudents)
+      // Always fetch assignments (not included in useLearners)
       setLoadingAssessments(true);
       fetchPromises.push(
         supabase
-          .from('student_assignments')
+          .from('learner_assignments')
           .select(`
             *,
             assignments (
@@ -680,7 +680,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
               educator_name
             )
           `)
-          .eq('student_id', studentId)
+          .eq('learner_id', learnerId)
           .eq('is_deleted', false)
           .order('updated_date', { ascending: false })
           .then(({ data, error }) => {
@@ -710,7 +710,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
   const candidateId = (candidate as any).id || (candidate as any).candidate_id || '';
   const candidateEmail = (candidate as any).email || (candidate as any).candidate_email || '';
 
-  const qrCodeValue = `${window.location.origin}/student/profile/${candidateId}`;
+  const qrCodeValue = `${window.location.origin}/learner/profile/${candidateId}`;
 
   // Parse profile data if it's a string/object and prepare helpers
   let profileData: any = candidate;
@@ -770,7 +770,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
   const knownComposite = new Set(['training', 'education', 'technicalSkills', 'softSkills', 'experience', 'projects', 'certificates', 'assessments']);
   // Fields to exclude from Profile Information display (metadata/internal fields)
   const excludedFields = new Set([
-    '_', 'imported_at', 'contact_number_dial_code', 'id', 'student_id',
+    '_', 'imported_at', 'contact_number_dial_code', 'id', 'learner_id',
     'created_at', 'updated_at', 'last_updated'
   ]);
 
@@ -1229,7 +1229,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                           <BeakerIcon className="mx-auto h-12 w-12 text-gray-400" />
                           <p className="text-gray-500 mt-2">No projects available</p>
                           <p className="text-gray-400 text-sm mt-1">
-                            Student hasn't added any projects yet
+                            Learner hasn't added any projects yet
                           </p>
                         </div>
                       )}
@@ -1268,7 +1268,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
 
                           return (
                             <div
-                              key={assessment.student_assignment_id || index}
+                              key={assessment.learner_assignment_id || index}
                               className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-all"
                             >
                               <div className="flex items-start justify-between">
@@ -1556,9 +1556,9 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                             const verificationInfo: any = {
                               self_verified: {
                                 title: 'Self Verified',
-                                description: 'Student has self-declared this information',
+                                description: 'Learner has self-declared this information',
                                 date: profileData.imported_at || 'N/A',
-                                verifier: 'Student',
+                                verifier: 'Learner',
                                 status: 'pending',
                                 icon: '👤'
                               },

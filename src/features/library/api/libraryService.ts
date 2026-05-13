@@ -28,8 +28,8 @@ export interface LibraryBook {
 export interface IssuedBook {
   id: string;
   book_id: string;
-  student_id: string;
-  student_name: string;
+  learner_id: string;
+  learner_name: string;
   roll_number: string;
   email: string;
   issue_date: string;
@@ -46,8 +46,8 @@ export interface IssuedBook {
 export interface LibraryReservation {
   id: string;
   book_id: string;
-  student_id: string;
-  student_name: string;
+  learner_id: string;
+  learner_name: string;
   roll_number: string;
   reserved_date: string;
   expiry_date: string;
@@ -58,8 +58,8 @@ export interface LibraryReservation {
 export interface LibraryReview {
   id: string;
   book_id: string;
-  student_id: string;
-  student_name: string;
+  learner_id: string;
+  learner_name: string;
   rating: number;
   review_text?: string;
   is_approved: boolean;
@@ -148,8 +148,8 @@ export async function deleteBook(id: string): Promise<void> {
 
 export async function issueBook(data: {
   book_id: string;
-  student_id: string;
-  student_name: string;
+  learner_id: string;
+  learner_name: string;
   roll_number: string;
   email: string;
   department_id?: string;
@@ -171,16 +171,16 @@ export async function issueBook(data: {
     throw new Error('Book not available');
   }
 
-  // Check student's current issues
+  // Check learner's current issues
   const { data: currentIssues, error: issuesError } = await supabase
     .from('library_issued_books')
     .select('id')
-    .eq('student_id', data.student_id)
+    .eq('learner_id', data.learner_id)
     .eq('status', 'issued');
 
   if (issuesError) throw issuesError;
   if (currentIssues && currentIssues.length >= 3) {
-    throw new Error('Student has reached maximum book limit (3 books)');
+    throw new Error('Learner has reached maximum book limit (3 books)');
   }
 
   // Calculate due date (14 days from now)
@@ -263,8 +263,8 @@ export async function returnBook(issuedBookId: string, returnedTo: string): Prom
     book_id: issued.book_id,
     book_title: issued.library_books?.title,
     book_author: issued.library_books?.author,
-    student_id: issued.student_id,
-    student_name: issued.student_name,
+    learner_id: issued.learner_id,
+    learner_name: issued.learner_name,
     roll_number: issued.roll_number,
     email: issued.email,
     issue_date: issued.issue_date,
@@ -313,7 +313,7 @@ export async function renewBook(issuedBookId: string): Promise<void> {
 // ============================================
 
 export async function getIssuedBooks(filters?: {
-  student_id?: string;
+  learner_id?: string;
   status?: string;
   overdue?: boolean;
 }): Promise<IssuedBook[]> {
@@ -321,7 +321,7 @@ export async function getIssuedBooks(filters?: {
     .from('library_issued_books')
     .select('*');
 
-  if (filters?.student_id) query = query.eq('student_id', filters.student_id);
+  if (filters?.learner_id) query = query.eq('learner_id', filters.learner_id);
   if (filters?.status) query = query.eq('status', filters.status);
   if (filters?.overdue) {
     const today = new Date().toISOString().split('T')[0];
@@ -353,8 +353,8 @@ export async function getOverdueBooks(): Promise<IssuedBook[]> {
 
 export async function reserveBook(data: {
   book_id: string;
-  student_id: string;
-  student_name: string;
+  learner_id: string;
+  learner_name: string;
   roll_number: string;
 }): Promise<LibraryReservation> {
   // Check if book is available
@@ -418,8 +418,8 @@ export async function getReservations(bookId?: string): Promise<LibraryReservati
 
 export async function addReview(data: {
   book_id: string;
-  student_id: string;
-  student_name: string;
+  learner_id: string;
+  learner_name: string;
   rating: number;
   review_text?: string;
 }): Promise<LibraryReview> {

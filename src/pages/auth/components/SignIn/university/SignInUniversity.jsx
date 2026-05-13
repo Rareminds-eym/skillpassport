@@ -2,7 +2,7 @@ import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
-import { loginStudent } from '@/features/auth/api';
+import { loginLearner } from '@/features/auth/api';
 
 const SignInUniversity = () => {
   const [formData, setFormData] = useState({
@@ -74,7 +74,7 @@ const SignInUniversity = () => {
 
     try {
       // Authenticate with Supabase Auth
-      const result = await loginStudent(formData.email, formData.password);
+      const result = await loginLearner(formData.email, formData.password);
 
       if (!result.success) {
         setGeneralError(result.error || 'Login failed. Please check your credentials.');
@@ -82,23 +82,23 @@ const SignInUniversity = () => {
         return;
       }
 
-      // Store student data in context
-      const studentData = result.student;
+      // Store learner data in context
+      const learnerData = result.learner;
       login({
-        id: studentData.id,
-        user_id: studentData.user_id,
-        name: studentData.name || studentData.profile?.name || '',
-        email: studentData.email,
-        role: 'student',
-        school_id: studentData.school_id,
-        university_college_id: studentData.university_college_id,
-        school: studentData.schools,
-        university_college: studentData.university_colleges,
-        approval_status: studentData.approval_status
+        id: learnerData.id,
+        user_id: learnerData.user_id,
+        name: learnerData.name || learnerData.profile?.name || '',
+        email: learnerData.email,
+        role: 'learner',
+        school_id: learnerData.school_id,
+        university_college_id: learnerData.university_college_id,
+        school: learnerData.schools,
+        university_college: learnerData.university_colleges,
+        approval_status: learnerData.approval_status
       });
 
-      // Navigate to student dashboard
-      navigate('/student/dashboard');
+      // Navigate to learner dashboard
+      navigate('/learner/dashboard');
     } catch (error) {
       console.error('Login error:', error);
       setGeneralError('An unexpected error occurred. Please try again.');
@@ -122,7 +122,7 @@ const SignInUniversity = () => {
         </div>
         
         <h1 className="text-2xl font-semibold text-center mb-2 text-indigo-600">
-          University Student Sign In
+          University Learner Sign In
         </h1>
         <p className="text-gray-600 text-center mb-6">
           Sign in with your registered email and password

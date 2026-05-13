@@ -21,7 +21,7 @@ export interface MentorPeriod {
 export interface MentorAllocation {
   id: string;
   mentor_id: string;
-  student_id: string;
+  learner_id: string;
   period_id: string;
   assigned_date: string;
   assigned_by: string;
@@ -35,7 +35,7 @@ export interface MentorNote {
   id: string;
   allocation_id: string;
   mentor_id: string;
-  student_id: string;
+  learner_id: string;
   title?: string;
   note_text: string;
   outcome?: string;
@@ -85,7 +85,7 @@ export interface Mentor {
   user_id?: string;
 }
 
-export interface Student {
+export interface Learner {
   id: string;
   name: string;
   email: string;
@@ -101,7 +101,7 @@ export interface Student {
   gender?: string;
   enrollment_date?: string;
   expected_graduation_date?: string;
-  student_type?: string;
+  learner_type?: string;
   user_id?: string;
   // Computed fields
   program_name?: string;
@@ -164,28 +164,28 @@ export const getMentors = async (collegeId: string): Promise<Mentor[]> => {
   }));
 };
 
-// Get all students for a college - simplified direct fetch
-export const getStudents = async (collegeId: string): Promise<Student[]> => {
+// Get all learners for a college - simplified direct fetch
+export const getLearners = async (collegeId: string): Promise<Learner[]> => {
   const { data, error } = await supabase
-    .from('students')
+    .from('learners')
     .select('*')
     .eq('college_id', collegeId);
 
   if (error) {
-    logger.error('Error fetching students', error as Error, { collegeId });
+    logger.error('Error fetching learners', error as Error, { collegeId });
     throw error;
   }
 
-  return (data || []).map(student => {
+  return (data || []).map(learner => {
     // Calculate batch from enrollment date or expected graduation
     let batch = '';
-    if (student.enrollmentDate && student.expectedGraduationDate) {
-      const enrollYear = new Date(student.enrollmentDate).getFullYear();
-      const gradYear = new Date(student.expectedGraduationDate).getFullYear();
+    if (learner.enrollmentDate && learner.expectedGraduationDate) {
+      const enrollYear = new Date(learner.enrollmentDate).getFullYear();
+      const gradYear = new Date(learner.expectedGraduationDate).getFullYear();
       batch = `${enrollYear}-${gradYear}`;
-    } else if (student.enrollment_date && student.expected_graduation_date) {
-      const enrollYear = new Date(student.enrollment_date).getFullYear();
-      const gradYear = new Date(student.expected_graduation_date).getFullYear();
+    } else if (learner.enrollment_date && learner.expected_graduation_date) {
+      const enrollYear = new Date(learner.enrollment_date).getFullYear();
+      const gradYear = new Date(learner.expected_graduation_date).getFullYear();
       batch = `${enrollYear}-${gradYear}`;
     } else {
       // Default batch based on current year and typical 4-year program
@@ -193,35 +193,35 @@ export const getStudents = async (collegeId: string): Promise<Student[]> => {
       batch = `${currentYear - 2}-${currentYear + 2}`;
     }
 
-    // Determine if student is at risk based on CGPA
-    const cgpa = parseFloat(student.currentCgpa || student.current_cgpa || '0');
-    const atRisk = cgpa < 7.0 || (student.semester && student.semester > 4 && cgpa < 7.5);
+    // Determine if learner is at risk based on CGPA
+    const cgpa = parseFloat(learner.currentCgpa || learner.current_cgpa || '0');
+    const atRisk = cgpa < 7.0 || (learner.semester && learner.semester > 4 && cgpa < 7.5);
 
     const riskFactors = [];
     if (cgpa < 6.5) riskFactors.push('Low CGPA');
-    if (cgpa < 7.0 && student.semester && student.semester > 2) riskFactors.push('Academic Struggles');
+    if (cgpa < 7.0 && learner.semester && learner.semester > 2) riskFactors.push('Academic Struggles');
 
     return {
-      id: student.id,
-      name: student.name || '',
-      email: student.email,
-      roll_number: student.roll_number || student.registration_number || student.enrollmentNumber || '',
-      semester: student.semester || 1,
+      id: learner.id,
+      name: learner.name || '',
+      email: learner.email,
+      roll_number: learner.roll_number || learner.registration_number || learner.enrollmentNumber || '',
+      semester: learner.semester || 1,
       current_cgpa: cgpa,
-      college_id: student.college_id,
-      program_id: student.program_id,
-      program_section_id: student.program_section_id,
-      contact_number: student.contactNumber || student.contact_number,
-      address: student.address,
-      date_of_birth: student.dateOfBirth || student.date_of_birth,
-      gender: student.gender,
-      enrollment_date: student.enrollmentDate || student.enrollment_date,
-      expected_graduation_date: student.expectedGraduationDate || student.expected_graduation_date,
-      student_type: student.student_type,
-      user_id: student.user_id,
+      college_id: learner.college_id,
+      program_id: learner.program_id,
+      program_section_id: learner.program_section_id,
+      contact_number: learner.contactNumber || learner.contact_number,
+      address: learner.address,
+      date_of_birth: learner.dateOfBirth || learner.date_of_birth,
+      gender: learner.gender,
+      enrollment_date: learner.enrollmentDate || learner.enrollment_date,
+      expected_graduation_date: learner.expectedGraduationDate || learner.expected_graduation_date,
+      learner_type: learner.learner_type,
+      user_id: learner.user_id,
       // Computed fields
-      program_name: student.course_name || student.branch_field || '',
-      department_name: student.branch_field || '',
+      program_name: learner.course_name || learner.branch_field || '',
+      department_name: learner.branch_field || '',
       batch,
       at_risk: atRisk,
       risk_factors: riskFactors,
@@ -234,7 +234,7 @@ export const getStudents = async (collegeId: string): Promise<Student[]> => {
 // Get mentor allocations for a college
 export const getMentorAllocations = async (collegeId: string): Promise<MentorAllocation[]> => {
   const { data, error } = await supabase
-    .from('college_mentor_student_allocations')
+    .from('college_mentor_learner_allocations')
     .select(`
       *,
       college_mentor_periods!inner (
@@ -252,24 +252,24 @@ export const getMentorAllocations = async (collegeId: string): Promise<MentorAll
   return data || [];
 };
 
-// Find allocation ID for a specific mentor-student pair
+// Find allocation ID for a specific mentor-learner pair
 export const findAllocationId = async (
   mentorId: string, 
-  studentId: string, 
+  learnerId: string, 
   status: string = 'active'
 ): Promise<string | null> => {
   const { data, error } = await supabase
-    .from('college_mentor_student_allocations')
+    .from('college_mentor_learner_allocations')
     .select('id')
     .eq('mentor_id', mentorId)
-    .eq('student_id', studentId)
+    .eq('learner_id', learnerId)
     .eq('status', status)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (error) {
-    logger.error('Error finding allocation ID', error as Error, { mentorId, studentId, status });
+    logger.error('Error finding allocation ID', error as Error, { mentorId, learnerId, status });
     return null;
   }
 
@@ -280,7 +280,7 @@ export const findAllocationId = async (
 export const getMentorNotes = async (collegeId: string): Promise<MentorNote[]> => {
   // First, get all allocation IDs for this college
   const { data: allocations, error: allocError } = await supabase
-    .from('college_mentor_student_allocations')
+    .from('college_mentor_learner_allocations')
     .select(`
       id,
       college_mentor_periods!inner (
@@ -335,29 +335,29 @@ export const createMentorAllocations = async (
   allocations: Omit<MentorAllocation, 'id' | 'created_at'>[]
 ): Promise<MentorAllocation[]> => {
   // Check for existing active or pending allocations before inserting
-  const studentIds = allocations.map(a => a.student_id);
+  const learnerIds = allocations.map(a => a.learner_id);
   const { data: existing } = await supabase
-    .from('college_mentor_student_allocations')
-    .select('student_id, status, mentor_id')
-    .in('student_id', studentIds)
+    .from('college_mentor_learner_allocations')
+    .select('learner_id, status, mentor_id')
+    .in('learner_id', learnerIds)
     .in('status', ['active', 'pending']);
 
   if (existing && existing.length > 0) {
-    // Filter out students that are being re-allocated to the same mentor
-    const conflictingStudents = existing.filter(e => {
-      const newAllocation = allocations.find(a => a.student_id === e.student_id);
+    // Filter out learners that are being re-allocated to the same mentor
+    const conflictinglearners = existing.filter(e => {
+      const newAllocation = allocations.find(a => a.learner_id === e.learner_id);
       // Only consider it a conflict if it's a different mentor
       return newAllocation && newAllocation.mentor_id !== e.mentor_id;
     });
 
-    if (conflictingStudents.length > 0) {
-      const conflictingIds = conflictingStudents.map(e => e.student_id);
-      throw new Error(`Some students already have active allocations with different mentors: ${conflictingIds.join(', ')}`);
+    if (conflictinglearners.length > 0) {
+      const conflictingIds = conflictinglearners.map(e => e.learner_id);
+      throw new Error(`Some learners already have active allocations with different mentors: ${conflictingIds.join(', ')}`);
     }
   }
 
   const { data, error } = await supabase
-    .from('college_mentor_student_allocations')
+    .from('college_mentor_learner_allocations')
     .insert(allocations)
     .select();
 
@@ -391,7 +391,7 @@ export const updateMentorAllocation = async (
   updates: Partial<MentorAllocation>
 ): Promise<MentorAllocation> => {
   const { data, error } = await supabase
-    .from('college_mentor_student_allocations')
+    .from('college_mentor_learner_allocations')
     .update(updates)
     .eq('id', id)
     .select()

@@ -46,7 +46,7 @@ export const useOptimizedCoCurricularsData = (userEmail: string | null): UseCoCu
           .select(`
             membership_id,
             club_id,
-            student_email,
+            learner_email,
             status,
             enrolled_at,
             total_sessions_attended,
@@ -65,7 +65,7 @@ export const useOptimizedCoCurricularsData = (userEmail: string | null): UseCoCu
               is_active
             )
           `)
-          .eq('student_email', userEmail)
+          .eq('learner_email', userEmail)
           .eq('status', 'active'),
         
         supabase
@@ -85,7 +85,7 @@ export const useOptimizedCoCurricularsData = (userEmail: string | null): UseCoCu
               status
             )
           `)
-          .eq('student_email', userEmail)
+          .eq('learner_email', userEmail)
           .order('rank', { ascending: true }),
         
         supabase
@@ -104,7 +104,7 @@ export const useOptimizedCoCurricularsData = (userEmail: string | null): UseCoCu
               category
             )
           `)
-          .eq('student_email', userEmail)
+          .eq('learner_email', userEmail)
           .order('issued_date', { ascending: false }),
         
         // Fetch member counts for all active clubs in parallel

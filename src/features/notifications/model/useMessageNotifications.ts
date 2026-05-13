@@ -6,7 +6,7 @@ import { Message } from '@/features/messaging';
 
 interface UseMessageNotificationsProps {
   userId: string | null;
-  userType: 'student' | 'recruiter' | 'educator';
+  userType: 'learner' | 'recruiter' | 'educator';
   enabled?: boolean;
   onMessageReceived?: (message: Message) => void;
 }

@@ -129,7 +129,7 @@ if __name__ == '__main__':
 - `ConfirmModal` - named export from `@/shared/ui`
 
 ### 5. Widget Components
-- Mock data exports from `@/widgets/student-dashboard/model/mockData`
+- Mock data exports from `@/widgets/learner-dashboard/model/mockData`
 - NOT from feature index files
 
 ## Verification Steps

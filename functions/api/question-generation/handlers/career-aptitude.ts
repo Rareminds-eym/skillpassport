@@ -62,7 +62,7 @@ const APTITUDE_CATEGORIES = [
     { id: 'clerical', name: 'Clerical Speed & Accuracy', description: 'String comparison, attention to detail - mark Same or Different', count: 5 }
 ];
 
-// School Subject Categories for After 10th students (total: 50 questions)
+// School Subject Categories for After 10th learners (total: 50 questions)
 const SCHOOL_SUBJECT_CATEGORIES = [
     { id: 'mathematics', name: 'Mathematics', description: 'Algebra, geometry, arithmetic, problem-solving - tests analytical and numerical skills', count: 10 },
     { id: 'science', name: 'Science (Physics, Chemistry, Biology)', description: 'Scientific concepts, experiments, formulas, natural phenomena', count: 10 },
@@ -76,7 +76,7 @@ export async function generateAptitudeQuestions(
     env: PagesEnv,
     streamId: string,
     questionsPerCategory: number = 5,
-    studentId?: string,
+    learnerId?: string,
     attemptId?: string,
     gradeLevel?: string
 ) {
@@ -86,7 +86,7 @@ export async function generateAptitudeQuestions(
     console.log(`📋 Stream ID: ${streamId}`);
     console.log(`📋 Questions Per Category: ${questionsPerCategory}`);
     console.log(`📋 Grade Level: ${gradeLevel || 'not specified'}`);
-    console.log(`📋 Student ID: ${studentId || 'not specified'}`);
+    console.log(`📋 Learner ID: ${learnerId || 'not specified'}`);
     console.log(`📋 Attempt ID: ${attemptId || 'not specified'}`);
     
     const supabase = createSupabaseAdminClient(env);
@@ -175,7 +175,7 @@ export async function generateAptitudeQuestions(
         }
 
         const systemPrompt = isAfter10
-            ? `You are an expert educational assessment creator for 10th grade students. 
+            ? `You are an expert educational assessment creator for 10th grade learners. 
 
 🎯 CRITICAL: You MUST generate EXACTLY ${batchTotal} questions total covering school subjects. This is a strict requirement.
 
@@ -465,18 +465,18 @@ Before responding, verify you have EXACTLY ${batchTotal} questions. Generate ONL
         created_at: new Date().toISOString()
     }));
 
-    if (studentId && attemptId) {
+    if (learnerId && attemptId) {
         // Use upsert to handle potential race conditions or re-generation
         const { error } = await supabase
             .from('career_assessment_ai_questions')
             .upsert({
-                student_id: studentId,
+                learner_id: learnerId,
                 question_type: 'aptitude',
                 questions: processedQuestions,
                 stream_id: streamId,
                 created_at: new Date().toISOString()
             }, {
-                onConflict: 'student_id, stream_id, question_type',
+                onConflict: 'learner_id, stream_id, question_type',
                 ignoreDuplicates: false // Update if exists
             });
 

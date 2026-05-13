@@ -55,7 +55,7 @@ import { calculateCourseMatchScores, DEGREE_PROGRAMS, COURSE_KNOWLEDGE_BASE } fr
 // Import AI career paths service
 import { generateProgramCareerPathsWithFallback } from '@/features/counselling';
 
-// Import stream matching engine for after 10th students
+// Import stream matching engine for after 10th learners
 import { calculateStreamRecommendations } from '../lib/streamMatchingEngine';
 
 // Import centralized utilities from assessment feature
@@ -585,8 +585,8 @@ const AssessmentResult = () => {
         retryAttemptCount,
         gradeLevel,
         monthsInGrade,
-        studentInfo,
-        studentAcademicData,
+        learnerInfo,
+        learnerAcademicData,
         validationWarnings,
         handleRetry,
         validateResults,
@@ -601,10 +601,10 @@ const AssessmentResult = () => {
     // Determine if we should show program recommendations
     // Only show for: After 10 with 6+ months, After 12, College
     // DON'T show for: Grade 6-10 (middle, highschool), After 10 with < 6 months
-    // IMPORTANT: Use student's ACTUAL grade from database, not the assessment's grade_level
+    // IMPORTANT: Use learner's ACTUAL grade from database, not the assessment's grade_level
     const shouldShowProgramRecommendations = useMemo(() => {
-        // Get the student's actual grade from studentInfo (from database)
-        const actualGrade = studentInfo?.grade;
+        // Get the learner's actual grade from learnerInfo (from database)
+        const actualGrade = learnerInfo?.grade;
 
         // Parse the actual grade number
         let actualGradeNum = null;
@@ -670,11 +670,11 @@ const AssessmentResult = () => {
             return false;
         }
         return false;
-    }, [gradeLevel, monthsInGrade, studentInfo?.grade]);
+    }, [gradeLevel, monthsInGrade, learnerInfo?.grade]);
 
     // Calculate enhanced course recommendations with accurate match scores
     // Only calculate for grade levels that should show recommendations
-    // IMPORTANT: Use student's ACTUAL grade from database, not the assessment's grade_level
+    // IMPORTANT: Use learner's ACTUAL grade from database, not the assessment's grade_level
     const enhancedCourseRecommendations = useMemo(() => {
         // DIAGNOSTIC: Check if we have results and RIASEC data
         console.log('🔍 Course Recommendations - Initial Check:', {
@@ -699,8 +699,8 @@ const AssessmentResult = () => {
             return [];
         }
 
-        // Get the student's actual grade from studentInfo (from database)
-        const actualGrade = studentInfo?.grade;
+        // Get the learner's actual grade from learnerInfo (from database)
+        const actualGrade = learnerInfo?.grade;
         let actualGradeNum = null;
         if (actualGrade) {
             const match = actualGrade.toString().match(/\d+/);
@@ -731,13 +731,13 @@ const AssessmentResult = () => {
             }
         }
 
-        // For eligible students - use DEGREE_PROGRAMS
+        // For eligible learners - use DEGREE_PROGRAMS
         // Use degree programs from knowledge base for proper scoring
         // FIXED: Pass assessment results as academic data if profile is empty
         const assessmentBasedAcademicData = {
-            subjectMarks: studentAcademicData?.subjectMarks || [],
-            projects: studentAcademicData?.projects || [],
-            experiences: studentAcademicData?.experiences || [],
+            subjectMarks: learnerAcademicData?.subjectMarks || [],
+            projects: learnerAcademicData?.projects || [],
+            experiences: learnerAcademicData?.experiences || [],
             // Add assessment results as fallback data source
             _assessmentResults: {
                 riasec: results?.riasec,
@@ -758,46 +758,46 @@ const AssessmentResult = () => {
             fullRiasec: results?.riasec
         });
 
-        // STREAM FILTERING: Get student's stream from assessment results or profile
+        // STREAM FILTERING: Get learner's stream from assessment results or profile
         // Priority: 1) Stream from current assessment, 2) Stream recommendation from after10, 3) Profile stream, 4) No filter
-        let studentStream = null;
+        let learnerStream = null;
 
         console.log('🔍 Stream Detection - Checking sources:', {
             'results exists': !!results,
             'results keys': results ? Object.keys(results) : [],
             'has streamRecommendation': !!results?.streamRecommendation?.recommendedStream,
             'streamRecommendation value': results?.streamRecommendation?.recommendedStream,
-            'studentInfo exists': !!studentInfo,
-            'studentInfo.stream': studentInfo?.stream,
-            'stream check': studentInfo?.stream && studentInfo.stream !== '—' && studentInfo.stream.toUpperCase() !== 'N/A',
-            'academicData.stream': studentAcademicData?.stream,
+            'learnerInfo exists': !!learnerInfo,
+            'learnerInfo.stream': learnerInfo?.stream,
+            'stream check': learnerInfo?.stream && learnerInfo.stream !== '—' && learnerInfo.stream.toUpperCase() !== 'N/A',
+            'academicData.stream': learnerAcademicData?.stream,
             'gradeLevel': gradeLevel
         });
         
         // PRIORITY 1: Check if results contain stream information (for after12/higher_secondary/college)
-        // The stream is stored in the assessment results when student selects it during assessment
+        // The stream is stored in the assessment results when learner selects it during assessment
         if (results?.stream || results?.streamId || results?.stream_id) {
-            studentStream = results.stream || results.streamId || results.stream_id;
-            console.log('📚 Using stream from assessment results:', studentStream);
+            learnerStream = results.stream || results.streamId || results.stream_id;
+            console.log('📚 Using stream from assessment results:', learnerStream);
         }
-        // PRIORITY 2: Check if student has completed after10 assessment and has stream recommendation
+        // PRIORITY 2: Check if learner has completed after10 assessment and has stream recommendation
         // IMPORTANT: Validate that the stream recommendation is not a placeholder value
         else if (results?.streamRecommendation?.recommendedStream && 
                  results.streamRecommendation.recommendedStream !== 'N/A' &&
                  results.streamRecommendation.recommendedStream !== '—' &&
                  results.streamRecommendation.recommendedStream !== '') {
-            studentStream = results.streamRecommendation.recommendedStream;
-            console.log('📚 Using stream from after10 assessment:', studentStream);
+            learnerStream = results.streamRecommendation.recommendedStream;
+            console.log('📚 Using stream from after10 assessment:', learnerStream);
         } 
-        // PRIORITY 3: Check if student has stream in their profile (for after12/college students)
-        else if (studentInfo?.stream && studentInfo.stream !== '—' && studentInfo.stream.toUpperCase() !== 'N/A') {
-            studentStream = studentInfo.stream;
-            console.log('📚 Using stream from student profile:', studentStream);
+        // PRIORITY 3: Check if learner has stream in their profile (for after12/college learners)
+        else if (learnerInfo?.stream && learnerInfo.stream !== '—' && learnerInfo.stream.toUpperCase() !== 'N/A') {
+            learnerStream = learnerInfo.stream;
+            console.log('📚 Using stream from learner profile:', learnerStream);
         }
         // PRIORITY 4: Check academic data for stream indicators
-        else if (studentAcademicData?.stream) {
-            studentStream = studentAcademicData.stream;
-            console.log('📚 Using stream from academic data:', studentStream);
+        else if (learnerAcademicData?.stream) {
+            learnerStream = learnerAcademicData.stream;
+            console.log('📚 Using stream from academic data:', learnerStream);
         }
         else {
             console.log('⚠️ No valid stream found in any source!');
@@ -807,12 +807,12 @@ const AssessmentResult = () => {
         // Debug: Log all stream sources
         console.log('🔍 Stream Detection Debug:', {
             'results.streamRecommendation': results?.streamRecommendation?.recommendedStream,
-            'studentInfo.stream': studentInfo?.stream,
-            'academicData.stream': studentAcademicData?.stream,
-            'finalStream': studentStream
+            'learnerInfo.stream': learnerInfo?.stream,
+            'academicData.stream': learnerAcademicData?.stream,
+            'finalStream': learnerStream
         });
 
-        console.log('🎯 About to call calculateCourseMatchScores with stream:', studentStream);
+        console.log('🎯 About to call calculateCourseMatchScores with stream:', learnerStream);
 
         // DIAGNOSTIC: Final check before calling calculateCourseMatchScores
         const riasecScores = results?.riasec?.scores || {};
@@ -838,11 +838,11 @@ const AssessmentResult = () => {
             DEGREE_PROGRAMS,
             riasecScores,
             assessmentBasedAcademicData,
-            studentStream // Pass student's stream for filtering
+            learnerStream // Pass learner's stream for filtering
         );
-    }, [gradeLevel, monthsInGrade, results, studentAcademicData, studentInfo?.grade, studentInfo?.stream, loading, retrying]);
+    }, [gradeLevel, monthsInGrade, results, learnerAcademicData, learnerInfo?.grade, learnerInfo?.stream, loading, retrying]);
 
-    // Calculate stream recommendations for after 10th students
+    // Calculate stream recommendations for after 10th learners
     const enhancedStreamRecommendation = useMemo(() => {
         if (gradeLevel !== 'after10') return null;
 
@@ -900,9 +900,9 @@ const AssessmentResult = () => {
 
         console.log('⚠️ No AI streamRecommendation found, using fallback engine');
         // Fallback: Use the stream matching engine if AI recommendation is not available
-        const streamRec = calculateStreamRecommendations(results, studentAcademicData);
+        const streamRec = calculateStreamRecommendations(results, learnerAcademicData);
         return streamRec;
-    }, [gradeLevel, results, studentAcademicData]);
+    }, [gradeLevel, results, learnerAcademicData]);
 
     // Custom print function that opens print view in new window
     const handlePrint = () => {
@@ -1019,7 +1019,7 @@ const AssessmentResult = () => {
                 onRetry={handleRetry}
                 retrying={retrying}
                 retryAttemptCount={retryAttemptCount}
-                onRetake={() => navigate('/student/assessment/test')}
+                onRetake={() => navigate('/learner/assessment/test')}
             />
         );
     }
@@ -1055,13 +1055,13 @@ const AssessmentResult = () => {
             })}
             <PrintView
                 results={results}
-                studentInfo={studentInfo}
+                learnerInfo={learnerInfo}
                 gradeLevel={gradeLevel}
                 riasecNames={RIASEC_NAMES}
                 traitNames={TRAIT_NAMES}
                 courseRecommendations={enhancedCourseRecommendations}
                 streamRecommendation={enhancedStreamRecommendation || streamRecommendation}
-                studentAcademicData={studentAcademicData}
+                learnerAcademicData={learnerAcademicData}
             />
 
             {/* Web View - Rich UI for screen */}
@@ -1074,7 +1074,7 @@ const AssessmentResult = () => {
                     <div className="relative flex justify-between items-center bg-white/95 backdrop-blur-md shadow-md border-b border-gray-200 px-6 py-3" data-tour="navigation-actions">
                         <Button
                             variant="ghost"
-                            onClick={() => navigate('/student/dashboard')}
+                            onClick={() => navigate('/learner/dashboard')}
                             className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 h-8 text-sm"
                         >
                             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -1179,7 +1179,7 @@ const AssessmentResult = () => {
                 <div className="max-w-6xl mx-auto print:max-w-none print-container mt-4">
                     {/* Header Section */}
                     <div data-tour="report-header">
-                        <ReportHeader studentInfo={studentInfo} gradeLevel={gradeLevel} />
+                        <ReportHeader learnerInfo={learnerInfo} gradeLevel={gradeLevel} />
                     </div>
 
                     {/* Overall Summary Banner */}
@@ -2054,8 +2054,8 @@ const AssessmentResult = () => {
                                                         setAiCareerPathsLoading(true);
 
                                                         try {
-                                                            // Prepare student profile for AI
-                                                            const studentProfile = {
+                                                            // Prepare learner profile for AI
+                                                            const learnerProfile = {
                                                                 riasecScores: results?.riasec?.scores || {},
                                                                 aptitudeScores: results?.aptitude?.scores ? {
                                                                     verbal: results.aptitude.scores.verbal?.percentage,
@@ -2069,8 +2069,8 @@ const AssessmentResult = () => {
                                                                     const names = { R: 'Realistic', I: 'Investigative', A: 'Artistic', S: 'Social', E: 'Enterprising', C: 'Conventional' };
                                                                     return names[code];
                                                                 }) || [],
-                                                                projects: studentAcademicData?.projects || [],
-                                                                experiences: studentAcademicData?.experiences || []
+                                                                projects: learnerAcademicData?.projects || [],
+                                                                experiences: learnerAcademicData?.experiences || []
                                                             };
 
                                                             // Fetch AI-generated career paths with fallback
@@ -2079,7 +2079,7 @@ const AssessmentResult = () => {
                                                                     programName: course.courseName,
                                                                     programCategory: course.category,
                                                                     programStream: courseProfile?.stream || 'general',
-                                                                    studentProfile
+                                                                    learnerProfile
                                                                 },
                                                                 fallbackCareerPaths
                                                             );
@@ -2341,14 +2341,14 @@ const AssessmentResult = () => {
             <AssessmentDebugPanel
                 assessmentData={results?.all_responses || results?.raw_answers}
                 aiResponse={results?.gemini_results || results}
-                studentContext={{
-                    rawGrade: studentInfo?.grade,
-                    grade: studentInfo?.grade,
-                    programName: studentAcademicData?.program_name,
-                    degreeLevel: studentAcademicData?.degree_level,
+                learnerContext={{
+                    rawGrade: learnerInfo?.grade,
+                    grade: learnerInfo?.grade,
+                    programName: learnerAcademicData?.program_name,
+                    degreeLevel: learnerAcademicData?.degree_level,
                 }}
                 gradeLevel={gradeLevel}
-                studentStream={results?.stream_id}
+                learnerStream={results?.stream_id}
                 adaptiveResults={results?.adaptive_aptitude_results}
                 timings={results?.timings || results?.section_timings}
                 attemptData={attemptData}

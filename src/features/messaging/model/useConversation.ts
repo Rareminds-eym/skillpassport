@@ -48,7 +48,7 @@ export function useConversation(
     // This is a simplified implementation - in reality, you'd get the current user's role
     // from auth context or props
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userRole: any = 'student'; // Default assumption
+    const userRole: any = 'learner'; // Default assumption
 
     const {
         conversations,
@@ -66,10 +66,10 @@ export function useConversation(
     // Find existing conversation between the two users
     const conversation = conversations.find(
         (conv) =>
-            (conv.student_id === userId1 && conv.recruiter_id === userId2) ||
-            (conv.student_id === userId2 && conv.recruiter_id === userId1) ||
-            (conv.student_id === userId1 && conv.educator_id === userId2) ||
-            (conv.educator_id === userId1 && conv.student_id === userId2)
+            (conv.learner_id === userId1 && conv.recruiter_id === userId2) ||
+            (conv.learner_id === userId2 && conv.recruiter_id === userId1) ||
+            (conv.learner_id === userId1 && conv.educator_id === userId2) ||
+            (conv.educator_id === userId1 && conv.learner_id === userId2)
     ) || null;
 
     // Auto-create conversation if it doesn't exist and modal is open
@@ -77,7 +77,7 @@ export function useConversation(
         if (enabled && !conversation && !isLoadingConversations && !isCreatingConversation) {
             createConversation({
                 userId2,
-                conversationType: 'student_recruiter', // Default - should be determined by user roles
+                conversationType: 'learner_recruiter', // Default - should be determined by user roles
                 metadata: {
                     applicationId,
                     opportunityId,

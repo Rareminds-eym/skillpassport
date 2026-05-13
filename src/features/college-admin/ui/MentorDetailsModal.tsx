@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { XMarkIcon, UserIcon, AcademicCapIcon, DocumentTextIcon, ExclamationTriangleIcon, PhoneIcon, MapPinIcon, ClockIcon, EnvelopeIcon, ChatBubbleLeftEllipsisIcon, UserMinusIcon, CalendarIcon, ChevronDownIcon, ChevronUpIcon, CogIcon, UserPlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 
-interface Student {
+interface Learner {
   id: number;
   name: string;
   rollNo: string;
@@ -19,7 +19,7 @@ interface Student {
 interface MentorAllocation {
   id: number;
   mentorId: number;
-  students: Student[];
+  learners: Learner[];
   allocationPeriod: {
     startDate: string;
     endDate: string;
@@ -48,7 +48,7 @@ interface Mentor {
 interface MentorNote {
   id: number;
   mentorId: number;
-  studentId: number;
+  learnerId: number;
   note: string;
   date: string;
   outcome: string;
@@ -70,12 +70,12 @@ interface MentorDetailsDrawerProps {
   mentor: Mentor;
   notes: MentorNote[];
   onClose: () => void;
-  onLogIntervention?: (student: Student) => void;
-  onReassignStudent?: (student: Student) => void;
+  onLogIntervention?: (learner: Learner) => void;
+  onReassignLearner?: (learner: Learner) => void;
   onConfigureAllocation?: (allocation: MentorAllocation) => void;
   onViewConversation?: (note: MentorNote) => void;
-  onAddStudentsToAllocation?: (mentor: Mentor, allocation: MentorAllocation) => void;
-  onRemoveStudent?: (student: Student, allocation: MentorAllocation) => void;
+  onAddlearnersToAllocation?: (mentor: Mentor, allocation: MentorAllocation) => void;
+  onRemoveLearner?: (learner: Learner, allocation: MentorAllocation) => void;
 }
 
 const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({ 
@@ -83,11 +83,11 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
   notes, 
   onClose, 
   onLogIntervention,
-  onReassignStudent,
+  onReassignLearner,
   onConfigureAllocation,
   onViewConversation,
-  onAddStudentsToAllocation,
-  onRemoveStudent
+  onAddlearnersToAllocation,
+  onRemoveLearner
 }) => {
   // State for accordion management
   const [expandedAllocations, setExpandedAllocations] = useState<Set<number>>(new Set());
@@ -146,19 +146,19 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
   const shouldShowAllocation = (allocation: MentorAllocation) => {
     const displayStatus = getAllocationDisplayStatus(allocation);
     // Show all periods except inactive ones
-    // Include allocations with status: 'active', 'pending', 'transferred', or 'available' (no students)
+    // Include allocations with status: 'active', 'pending', 'transferred', or 'available' (no learners)
     return displayStatus !== 'inactive' && ['active', 'pending', 'transferred', 'available'].includes(allocation.status);
   };
 
   // Helper functions to work with new allocation structure
-  const getAllocatedStudents = () => {
+  const getAllocatedlearners = () => {
     return mentor.allocations
       .filter(allocation => shouldShowAllocation(allocation))
-      .flatMap(allocation => allocation.students);
+      .flatMap(allocation => allocation.learners);
   };
 
-  const getAtRiskStudents = () => {
-    return getAllocatedStudents().filter(student => student.atRisk);
+  const getAtRisklearners = () => {
+    return getAllocatedlearners().filter(learner => learner.atRisk);
   };
 
   const getLatestAllocation = () => {
@@ -347,11 +347,11 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                         <span className="text-sm text-gray-500">
                           {mentor.allocations.filter(a => shouldShowAllocation(a)).length} period{mentor.allocations.filter(a => shouldShowAllocation(a)).length !== 1 ? 's' : ''}
                         </span>
-                        {getAtRiskStudents().length > 0 && (
+                        {getAtRisklearners().length > 0 && (
                           <div className="flex items-center gap-1">
                             <ExclamationTriangleIcon className="h-4 w-4 text-red-500" />
                             <span className="text-sm text-red-600">
-                              {getAtRiskStudents().length} at-risk
+                              {getAtRisklearners().length} at-risk
                             </span>
                           </div>
                         )}
@@ -379,7 +379,7 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                       <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-xl">
                         <AcademicCapIcon className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                         <p className="text-lg font-medium">No allocations</p>
-                        <p className="text-sm">Allocations will appear here once students are assigned to this mentor</p>
+                        <p className="text-sm">Allocations will appear here once learners are assigned to this mentor</p>
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -461,42 +461,42 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                                       <div className="text-right">
                                         <div className="flex items-center gap-2 mb-1">
                                           <span className="text-sm font-medium text-gray-900">
-                                            {allocation.students.length}/{allocation.capacity || allocation.period?.default_mentor_capacity || 15}
+                                            {allocation.learners.length}/{allocation.capacity || allocation.period?.default_mentor_capacity || 15}
                                           </span>
                                           <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                                            allocation.students.length >= (allocation.capacity || allocation.period?.default_mentor_capacity || 15)
+                                            allocation.learners.length >= (allocation.capacity || allocation.period?.default_mentor_capacity || 15)
                                               ? "bg-red-100 text-red-700"
-                                              : allocation.students.length >= (allocation.capacity || allocation.period?.default_mentor_capacity || 15) * 0.8
+                                              : allocation.learners.length >= (allocation.capacity || allocation.period?.default_mentor_capacity || 15) * 0.8
                                               ? "bg-yellow-100 text-yellow-700"
                                               : "bg-green-100 text-green-700"
                                           }`}>
-                                            {allocation.students.length >= (allocation.capacity || allocation.period?.default_mentor_capacity || 15)
+                                            {allocation.learners.length >= (allocation.capacity || allocation.period?.default_mentor_capacity || 15)
                                               ? "Full"
-                                              : allocation.students.length >= (allocation.capacity || allocation.period?.default_mentor_capacity || 15) * 0.8
+                                              : allocation.learners.length >= (allocation.capacity || allocation.period?.default_mentor_capacity || 15) * 0.8
                                               ? "Near Full"
-                                              : allocation.students.length === 0
+                                              : allocation.learners.length === 0
                                               ? "Available"
                                               : "Available"
                                             }
                                           </span>
                                         </div>
                                         <p className="text-xs text-gray-500">
-                                          {allocation.students.filter(s => s.atRisk).length > 0 && 
-                                            `${allocation.students.filter(s => s.atRisk).length} at-risk`
+                                          {allocation.learners.filter(s => s.atRisk).length > 0 && 
+                                            `${allocation.learners.filter(s => s.atRisk).length} at-risk`
                                           }
                                         </p>
                                       </div>
                                       <div className="flex items-center gap-1">
                                         {(() => {
-                                          // Only show add students button for active or upcoming periods
+                                          // Only show add learners button for active or upcoming periods
                                           return (displayStatus === 'active' || displayStatus === 'upcoming') && (
                                             <button
                                               onClick={(e) => {
                                                 e.stopPropagation();
-                                                onAddStudentsToAllocation?.(mentor, allocation);
+                                                onAddlearnersToAllocation?.(mentor, allocation);
                                               }}
                                               className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                                              title="Add students to this allocation"
+                                              title="Add learners to this allocation"
                                             >
                                               <UserPlusIcon className="h-4 w-4" />
                                             </button>
@@ -561,45 +561,45 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                                       </div>
                                     </div>
 
-                                    {/* Students in this Allocation */}
+                                    {/* Learners in this Allocation */}
                                     <div>
                                       <div className="flex items-center justify-between mb-3">
                                         <h5 className="text-sm font-medium text-gray-700">
-                                          Students ({allocation.students.length})
+                                          Learners ({allocation.learners.length})
                                         </h5>
-                                        {onAddStudentsToAllocation && (displayStatus === 'active' || displayStatus === 'upcoming') && (
+                                        {onAddlearnersToAllocation && (displayStatus === 'active' || displayStatus === 'upcoming') && (
                                           <button
-                                            onClick={() => onAddStudentsToAllocation(mentor, allocation)}
+                                            onClick={() => onAddlearnersToAllocation(mentor, allocation)}
                                             className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-1"
                                           >
                                             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                             </svg>
-                                            Add Students
+                                            Add Learners
                                           </button>
                                         )}
                                       </div>
-                                      {allocation.students.length === 0 ? (
+                                      {allocation.learners.length === 0 ? (
                                         <div className="text-center py-4 text-gray-400 bg-gray-50 rounded-lg">
-                                          <p className="text-sm">No students in this allocation period</p>
-                                          {onAddStudentsToAllocation && (displayStatus === 'active' || displayStatus === 'upcoming') && (
+                                          <p className="text-sm">No learners in this allocation period</p>
+                                          {onAddlearnersToAllocation && (displayStatus === 'active' || displayStatus === 'upcoming') && (
                                             <button
-                                              onClick={() => onAddStudentsToAllocation(mentor, allocation)}
+                                              onClick={() => onAddlearnersToAllocation(mentor, allocation)}
                                               className="mt-2 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
                                             >
-                                              Click to add students
+                                              Click to add learners
                                             </button>
                                           )}
                                         </div>
                                       ) : (
                                         <div className="space-y-2 max-h-60 overflow-y-auto">
-                                          {allocation.students.map((student: Student, index: number) => (
-                                            <div key={`${allocation.id}-${student.id}-${index}`} className="bg-gray-50 border border-gray-100 rounded-lg p-3 hover:shadow-sm transition-shadow">
+                                          {allocation.learners.map((learner: Learner, index: number) => (
+                                            <div key={`${allocation.id}-${learner.id}-${index}`} className="bg-gray-50 border border-gray-100 rounded-lg p-3 hover:shadow-sm transition-shadow">
                                               <div className="flex items-start justify-between">
                                                 <div className="flex-1">
                                                   <div className="flex items-center gap-2 mb-2">
-                                                    <h6 className="font-medium text-gray-900 text-sm">{student.name}</h6>
-                                                    {student.atRisk && (
+                                                    <h6 className="font-medium text-gray-900 text-sm">{learner.name}</h6>
+                                                    {learner.atRisk && (
                                                       <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full flex items-center gap-1">
                                                         <ExclamationTriangleIcon className="h-3 w-3" />
                                                         At Risk
@@ -609,27 +609,27 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                                                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-600 mb-2">
                                                     <div>
                                                       <span className="text-gray-500">Roll No:</span>
-                                                      <p className="font-medium">{student.rollNo}</p>
+                                                      <p className="font-medium">{learner.rollNo}</p>
                                                     </div>
                                                     <div>
                                                       <span className="text-gray-500">Batch:</span>
-                                                      <p className="font-medium">{student.batch}</p>
+                                                      <p className="font-medium">{learner.batch}</p>
                                                     </div>
                                                     <div>
                                                       <span className="text-gray-500">CGPA:</span>
-                                                      <p className="font-medium">{student.cgpa}</p>
+                                                      <p className="font-medium">{learner.cgpa}</p>
                                                     </div>
                                                     <div>
                                                       <span className="text-gray-500">Semester:</span>
-                                                      <p className="font-medium">{student.semester}</p>
+                                                      <p className="font-medium">{learner.semester}</p>
                                                     </div>
                                                   </div>
                                                   
-                                                  {student.riskFactors && student.riskFactors.length > 0 && (
+                                                  {learner.riskFactors && learner.riskFactors.length > 0 && (
                                                     <div className="mb-2">
                                                       <p className="text-xs text-gray-500 mb-1">Risk Factors:</p>
                                                       <div className="flex flex-wrap gap-1">
-                                                        {student.riskFactors.map((factor, index) => (
+                                                        {learner.riskFactors.map((factor, index) => (
                                                           <span key={index} className="px-2 py-1 bg-red-50 text-red-600 text-xs rounded">
                                                             {factor}
                                                           </span>
@@ -638,9 +638,9 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                                                     </div>
                                                   )}
 
-                                                  {student.lastInteraction && (
+                                                  {learner.lastInteraction && (
                                                     <p className="text-xs text-gray-500">
-                                                      Last interaction: {new Date(student.lastInteraction).toLocaleDateString()}
+                                                      Last interaction: {new Date(learner.lastInteraction).toLocaleDateString()}
                                                     </p>
                                                   )}
                                                 </div>
@@ -648,25 +648,25 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                                                 <div className="flex items-center gap-1 ml-3">
                                                   {onLogIntervention && (
                                                     <button
-                                                      onClick={() => onLogIntervention(student)}
+                                                      onClick={() => onLogIntervention(learner)}
                                                       className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
                                                       title="Add Mentoring Note"
                                                     >
                                                       <ChatBubbleLeftEllipsisIcon className="h-3.5 w-3.5" />
                                                     </button>
                                                   )}
-                                                  {onReassignStudent && (
+                                                  {onReassignLearner && (
                                                     <button
-                                                      onClick={() => onReassignStudent(student)}
+                                                      onClick={() => onReassignLearner(learner)}
                                                       className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-md transition-colors"
-                                                      title="Reassign Student"
+                                                      title="Reassign Learner"
                                                     >
                                                       <UserMinusIcon className="h-3.5 w-3.5" />
                                                     </button>
                                                   )}
-                                                  {onRemoveStudent && (displayStatus === 'active' || displayStatus === 'upcoming') && (
+                                                  {onRemoveLearner && (displayStatus === 'active' || displayStatus === 'upcoming') && (
                                                     <button
-                                                      onClick={() => onRemoveStudent(student, allocation)}
+                                                      onClick={() => onRemoveLearner(learner, allocation)}
                                                       className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
                                                       title="Remove from this allocation"
                                                     >
@@ -712,7 +712,7 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                     ) : (
                       <div className="space-y-4">
                         {notes.slice(0, 20).map((note: MentorNote) => {
-                          const student = getAllocatedStudents().find((s: Student) => s.id === note.studentId);
+                          const learner = getAllocatedlearners().find((s: Learner) => s.id === note.learnerId);
                           const hasEducatorResponse = note.educator_response || note.action_taken || note.next_steps;
                           const needsResponse = !hasEducatorResponse && note.status === 'pending';
                           
@@ -739,7 +739,7 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                                       <UserIcon className="h-5 w-5 text-indigo-600" />
                                     </div>
                                     <div>
-                                      <h4 className="font-semibold text-gray-900 text-base">{student?.name || 'Unknown Student'}</h4>
+                                      <h4 className="font-semibold text-gray-900 text-base">{learner?.name || 'Unknown Learner'}</h4>
                                       <div className="flex items-center gap-2 mt-1">
                                         <CalendarIcon className="h-3.5 w-3.5 text-gray-400" />
                                         <p className="text-sm text-gray-500">

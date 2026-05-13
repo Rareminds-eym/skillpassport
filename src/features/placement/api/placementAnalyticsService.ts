@@ -2,8 +2,8 @@ import { supabase } from '@/shared/api/supabaseClient';
 
 export interface PlacementRecord {
   id: string;
-  student_name: string;
-  student_id: string;
+  learner_name: string;
+  learner_id: string;
   company_name: string;
   job_title: string;
   department: string;
@@ -16,8 +16,8 @@ export interface PlacementRecord {
 
 export interface DepartmentAnalytics {
   department: string;
-  total_students: number;
-  placed_students: number;
+  total_learners: number;
+  placed_learners: number;
   placement_rate: number;
   avg_ctc: number;
   median_ctc: number;
@@ -39,7 +39,7 @@ export interface PlacementStats {
 }
 
 class PlacementAnalyticsService {
-  // Get placement records with student and company details
+  // Get placement records with learner and company details
   async getPlacementRecords(filters?: {
     department?: string;
     year?: string;
@@ -57,10 +57,10 @@ class PlacementAnalyticsService {
           responded_at,
           interview_scheduled_at,
           notes,
-          students!fk_applied_jobs_student (
+          learners!fk_applied_jobs_learner (
             user_id,
             name,
-            student_id,
+            learner_id,
             branch_field,
             course_name,
             semester
@@ -82,7 +82,7 @@ class PlacementAnalyticsService {
 
       // Apply filters
       if (filters?.department) {
-        query = query.eq('students.branch_field', filters.department);
+        query = query.eq('learners.branch_field', filters.department);
       }
 
       if (filters?.year) {
@@ -105,11 +105,11 @@ class PlacementAnalyticsService {
       // Transform data to match PlacementRecord interface
       return (data || []).map(record => ({
         id: record.id.toString(),
-        student_name: record.students?.name || 'Unknown Student',
-        student_id: record.students?.student_id || '',
+        learner_name: record.learners?.name || 'Unknown Learner',
+        learner_id: record.learners?.learner_id || '',
         company_name: record.opportunities?.company_name || '',
         job_title: record.opportunities?.title || '',
-        department: record.students?.branch_field || '',
+        department: record.learners?.branch_field || '',
         employment_type: record.opportunities?.employment_type as 'Full-time' | 'Internship',
         salary_offered: record.opportunities?.salary_range_max || record.opportunities?.salary_range_min || 0,
         placement_date: record.applied_at,
@@ -135,10 +135,10 @@ class PlacementAnalyticsService {
           id,
           application_status,
           applied_at,
-          students!fk_applied_jobs_student (
+          learners!fk_applied_jobs_learner (
             user_id,
             name,
-            student_id,
+            learner_id,
             branch_field,
             course_name
           ),
@@ -154,7 +154,7 @@ class PlacementAnalyticsService {
 
       // Apply filters
       if (filters?.department) {
-        query = query.eq('students.branch_field', filters.department);
+        query = query.eq('learners.branch_field', filters.department);
       }
 
       if (filters?.year) {
@@ -185,22 +185,22 @@ class PlacementAnalyticsService {
     employmentType?: string;
   }): Promise<DepartmentAnalytics[]> {
     try {
-      // Get all students by department (using branch_field)
-      const { data: studentsData, error: studentsError } = await supabase
-        .from('students')
+      // Get all learners by department (using branch_field)
+      const { data: learnersData, error: learnersError } = await supabase
+        .from('learners')
         .select('branch_field, user_id')
         .not('branch_field', 'is', null);
 
-      if (studentsError) {
-        throw studentsError;
+      if (learnersError) {
+        throw learnersError;
       }
 
       // Get placement records
       const placementRecords = await this.getPlacementRecords(filters);
 
-      // Group students by department (branch_field)
-      const departmentStudents = (studentsData || []).reduce((acc, student) => {
-        const dept = student.branch_field || 'Unknown';
+      // Group learners by department (branch_field)
+      const departmentlearners = (learnersData || []).reduce((acc, learner) => {
+        const dept = learner.branch_field || 'Unknown';
         acc[dept] = (acc[dept] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
@@ -216,8 +216,8 @@ class PlacementAnalyticsService {
       }, {} as Record<string, PlacementRecord[]>);
 
       // Calculate analytics for each department
-      const analytics: DepartmentAnalytics[] = Object.keys(departmentStudents).map(department => {
-        const totalStudents = departmentStudents[department] || 0;
+      const analytics: DepartmentAnalytics[] = Object.keys(departmentlearners).map(department => {
+        const totallearners = departmentlearners[department] || 0;
         const deptPlacements = departmentPlacements[department] || [];
         const fullTimePlacements = deptPlacements.filter(p => p.employment_type === 'Full-time');
         const internships = deptPlacements.filter(p => p.employment_type === 'Internship');
@@ -242,9 +242,9 @@ class PlacementAnalyticsService {
 
         return {
           department,
-          total_students: totalStudents,
-          placed_students: deptPlacements.length,
-          placement_rate: totalStudents > 0 ? (deptPlacements.length / totalStudents) * 100 : 0,
+          total_learners: totallearners,
+          placed_learners: deptPlacements.length,
+          placement_rate: totallearners > 0 ? (deptPlacements.length / totallearners) * 100 : 0,
           avg_ctc: avgCtc,
           median_ctc: medianCtc,
           highest_ctc: highestCtc,
@@ -254,7 +254,7 @@ class PlacementAnalyticsService {
         };
       });
 
-      return analytics.sort((a, b) => b.placed_students - a.placed_students);
+      return analytics.sort((a, b) => b.placed_learners - a.placed_learners);
 
     } catch (error) {
       return [];
@@ -291,19 +291,19 @@ class PlacementAnalyticsService {
 
       const highestCTC = fullTimeSalaries.length > 0 ? Math.max(...fullTimeSalaries) : 0;
 
-      // Get total students for placement rate calculation
-      let totalStudentsQuery = supabase
-        .from('students')
+      // Get total learners for placement rate calculation
+      let totallearnersQuery = supabase
+        .from('learners')
         .select('user_id', { count: 'exact' });
 
       if (filters?.department) {
-        totalStudentsQuery = totalStudentsQuery.eq('branch_field', filters.department);
+        totallearnersQuery = totallearnersQuery.eq('branch_field', filters.department);
       }
 
-      const { count: totalStudents } = await totalStudentsQuery;
+      const { count: totallearners } = await totallearnersQuery;
 
-      const placementRate = totalStudents && totalStudents > 0 
-        ? (placementRecords.length / totalStudents) * 100 
+      const placementRate = totallearners && totallearners > 0 
+        ? (placementRecords.length / totallearners) * 100 
         : 0;
 
       return {
@@ -452,11 +452,11 @@ class PlacementAnalyticsService {
         ["Internships", stats.totalInternships],
         [],
         ["DEPARTMENT-WISE ANALYTICS"],
-        ["Department", "Total Students", "Placed Students", "Placement Rate (%)", "Avg CTC (₹)", "Median CTC (₹)", "Highest CTC (₹)", "Full-time", "Internships"],
+        ["Department", "Total Learners", "Placed Learners", "Placement Rate (%)", "Avg CTC (₹)", "Median CTC (₹)", "Highest CTC (₹)", "Full-time", "Internships"],
         ...departmentAnalytics.map(dept => [
           dept.department,
-          dept.total_students,
-          dept.placed_students,
+          dept.total_learners,
+          dept.placed_learners,
           dept.placement_rate.toFixed(1),
           dept.avg_ctc.toFixed(0),
           dept.median_ctc.toFixed(0),
@@ -466,10 +466,10 @@ class PlacementAnalyticsService {
         ]),
         [],
         ["PLACEMENT RECORDS"],
-        ["Student Name", "Student ID", "Company", "Job Title", "Department", "Employment Type", "CTC (₹)", "Location", "Placement Date", "Status"],
+        ["Learner Name", "Learner ID", "Company", "Job Title", "Department", "Employment Type", "CTC (₹)", "Location", "Placement Date", "Status"],
         ...placementRecords.map(record => [
-          record.student_name,
-          record.student_id,
+          record.learner_name,
+          record.learner_id,
           record.company_name,
           record.job_title,
           record.department,

@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -487,16 +488,16 @@ class OpportunitiesService {
 
   // Get placement statistics from applied_jobs table (simplified direct approach)
   async getPlacementStats(): Promise<{
-    studentsPlaced: number;
+    learnersPlaced: number;
     placementRate: number;
-    totalStudents: number;
+    totallearners: number;
     avgCTC: number;
     medianCTC: number;
     highestCTC: number;
   }> {
     try {
       // Get current user's college_id
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await getCurrentUser();
       let currentCollegeId = null;
       
       if (user) {
@@ -510,20 +511,20 @@ class OpportunitiesService {
         currentCollegeId = collegeLecturer?.collegeId;
       }
 
-      // Get total students from students table (filter by college)
-      let studentsQuery = supabase
-        .from('students')
+      // Get total learners from learners table (filter by college)
+      let learnersQuery = supabase
+        .from('learners')
         .select('*', { count: 'exact', head: true });
 
       // Add college filter if we have college_id
       if (currentCollegeId) {
-        studentsQuery = studentsQuery.eq('college_id', currentCollegeId);
+        learnersQuery = learnersQuery.eq('college_id', currentCollegeId);
       }
 
-      const { count: totalStudents, error: totalError } = await studentsQuery;
+      const { count: totallearners, error: totalError } = await learnersQuery;
 
       if (totalError) {
-        logger.error('Failed to fetch total students count', totalError as Error);
+        logger.error('Failed to fetch total learners count', totalError as Error);
         throw totalError;
       }
 
@@ -532,8 +533,8 @@ class OpportunitiesService {
         .from('applied_jobs')
         .select(`
           id,
-          student_id,
-          students!fk_applied_jobs_student (
+          learner_id,
+          learners!fk_applied_jobs_learner (
             id,
             college_id,
             name
@@ -548,22 +549,22 @@ class OpportunitiesService {
 
       // Filter by college if we have college_id
       if (currentCollegeId) {
-        // First get student IDs from this college
-        const { data: collegeStudents } = await supabase
-          .from('students')
+        // First get learner IDs from this college
+        const { data: collegelearners } = await supabase
+          .from('learners')
           .select('id')
           .eq('college_id', currentCollegeId);
 
-        const studentIds = collegeStudents?.map(s => s.id) || [];
+        const learnerIds = collegelearners?.map(s => s.id) || [];
         
-        if (studentIds.length > 0) {
-          placementQuery = placementQuery.in('student_id', studentIds);
+        if (learnerIds.length > 0) {
+          placementQuery = placementQuery.in('learner_id', learnerIds);
         } else {
-          // No students in this college, so no placements
+          // No learners in this college, so no placements
           return {
-            studentsPlaced: 0,
+            learnersPlaced: 0,
             placementRate: 0,
-            totalStudents: totalStudents || 0,
+            totallearners: totallearners || 0,
             avgCTC: 0,
             medianCTC: 0,
             highestCTC: 0
@@ -577,15 +578,15 @@ class OpportunitiesService {
         throw placementError;
       }
 
-      // Count unique students placed (not total offers)
-      const uniqueStudentIds = new Set();
+      // Count unique learners placed (not total offers)
+      const uniqueLearnerIds = new Set();
       if (placements) {
         placements.forEach(placement => {
-          uniqueStudentIds.add(placement.student_id);
+          uniqueLearnerIds.add(placement.learner_id);
         });
       }
       
-      const studentsPlaced = uniqueStudentIds.size;
+      const learnersPlaced = uniqueLearnerIds.size;
 
       // Calculate CTC statistics from salary data
       const salaries: number[] = [];
@@ -617,21 +618,21 @@ class OpportunitiesService {
       const highestCTC = salaries.length > 0 ? Math.max(...salaries) : 0;
 
       // Calculate placement rate
-      const placementRate = totalStudents && totalStudents > 0 ? (studentsPlaced / totalStudents) * 100 : 0;
+      const placementRate = totallearners && totallearners > 0 ? (learnersPlaced / totallearners) * 100 : 0;
 
       return {
-        studentsPlaced,
+        learnersPlaced,
         placementRate: Math.round(placementRate * 10) / 10, // Round to 1 decimal place
-        totalStudents: totalStudents || 0,
+        totallearners: totallearners || 0,
         avgCTC,
         medianCTC,
         highestCTC
       };
     } catch (error) {
       return {
-        studentsPlaced: 0,
+        learnersPlaced: 0,
         placementRate: 0,
-        totalStudents: 0,
+        totallearners: 0,
         avgCTC: 0,
         medianCTC: 0,
         highestCTC: 0

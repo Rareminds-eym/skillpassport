@@ -7,7 +7,7 @@ import { STREAM_KNOWLEDGE_PROMPTS, APTITUDE_CATEGORIES } from './streamPrompts.j
 import { normalizeStreamId } from './streamUtils.js';
 import { validateQuestionBatch } from './questionValidator.js';
 import { classifyError, getUserErrorMessage, handleAPIError, handleNetworkError } from './assessmentErrors.js';
-import { getSavedQuestionsForStudent, saveAptitudeQuestions, saveKnowledgeQuestions, clearSavedQuestionsForStudent } from './assessmentRepository.js';
+import { getSavedQuestionsForLearner, saveAptitudeQuestions, saveKnowledgeQuestions, clearSavedQuestionsForLearner } from './assessmentRepository.js';
 
 /**
  * Generate questions with validation and retry logic
@@ -73,23 +73,23 @@ export async function generateWithValidation(generatorFn, questionType, expected
 
 /**
  * Generate Stream Knowledge questions using AI
- * If studentId provided, saves questions for resume functionality
+ * If learnerId provided, saves questions for resume functionality
  */
-export async function generateStreamKnowledgeQuestions(streamId, questionCount = 20, studentId = null, attemptId = null, gradeLevel = null) {
-  // For college students AND higher secondary (11th/12th), streamId is their actual course/stream
-  // For other students, normalize the stream ID to match STREAM_KNOWLEDGE_PROMPTS keys
-  const isCollegeStudent = gradeLevel === 'college' || gradeLevel === 'higher_secondary';
+export async function generateStreamKnowledgeQuestions(streamId, questionCount = 20, learnerId = null, attemptId = null, gradeLevel = null) {
+  // For college learners AND higher secondary (11th/12th), streamId is their actual course/stream
+  // For other learners, normalize the stream ID to match STREAM_KNOWLEDGE_PROMPTS keys
+  const isCollegeLearner = gradeLevel === 'college' || gradeLevel === 'higher_secondary';
   
   let effectiveStreamId, effectiveStreamName, effectiveTopics;
   
-  if (isCollegeStudent) {
-    // For college students and 11th/12th students, use their course/stream directly without normalization
+  if (isCollegeLearner) {
+    // For college learners and 11th/12th learners, use their course/stream directly without normalization
     effectiveStreamId = streamId;
     effectiveStreamName = streamId; // Use course/stream name as-is (e.g., "B.COM", "Science (PCM)")
     effectiveTopics = null; // Let AI determine topics dynamically based on course/stream name
-    console.log(`🎓 ${gradeLevel === 'higher_secondary' ? 'Higher Secondary (11th/12th)' : 'College'} student - generating knowledge questions for: ${streamId}`);
+    console.log(`🎓 ${gradeLevel === 'higher_secondary' ? 'Higher Secondary (11th/12th)' : 'College'} learner - generating knowledge questions for: ${streamId}`);
   } else {
-    // For non-college students, use the hardcoded topic mappings
+    // For non-college learners, use the hardcoded topic mappings
     const normalizedStreamId = normalizeStreamId(streamId);
     const streamInfo = STREAM_KNOWLEDGE_PROMPTS[normalizedStreamId];
     
@@ -105,11 +105,11 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
     console.log('📚 Stream topics:', effectiveTopics);
   }
 
-  // Check for saved questions first if studentId provided
-  if (studentId) {
-    const saved = await getSavedQuestionsForStudent(studentId, effectiveStreamId, 'knowledge');
+  // Check for saved questions first if learnerId provided
+  if (learnerId) {
+    const saved = await getSavedQuestionsForLearner(learnerId, effectiveStreamId, 'knowledge');
     if (saved) {
-      console.log('✅ Using saved knowledge questions for student');
+      console.log('✅ Using saved knowledge questions for learner');
       return saved;
     }
   }
@@ -133,12 +133,12 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
         body: JSON.stringify({
           streamId: effectiveStreamId,
           streamName: effectiveStreamName,
-          topics: effectiveTopics, // null for college students - AI will determine
+          topics: effectiveTopics, // null for college learners - AI will determine
           questionCount: requestCount, // Request more than needed
-          studentId,
+          learnerId,
           attemptId,
           gradeLevel,
-          isCollegeStudent // Flag to tell backend to generate dynamically
+          isCollegeLearner // Flag to tell backend to generate dynamically
         })
       });
 
@@ -217,9 +217,9 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
       console.log(`✅ Validation passed: Exactly ${questionCount} valid unique knowledge questions`);
       
       // If API returned questions but didn't save them, save from frontend as fallback
-      if (validQuestions.length > 0 && studentId && !data.cached) {
+      if (validQuestions.length > 0 && learnerId && !data.cached) {
         console.log('💾 Saving knowledge questions to database...');
-        await saveKnowledgeQuestions(studentId, effectiveStreamId, attemptId, validQuestions, gradeLevel);
+        await saveKnowledgeQuestions(learnerId, effectiveStreamId, attemptId, validQuestions, gradeLevel);
       }
       
       return validQuestions;
@@ -241,26 +241,26 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
 
 /**
  * Generate Aptitude questions using AI
- * If studentId provided, saves questions for resume functionality
+ * If learnerId provided, saves questions for resume functionality
  * @param {string} streamId - The stream ID (science, commerce, arts, etc.)
  * @param {number} questionCount - Number of questions to generate (default 50)
- * @param {string} studentId - Student ID for saving questions
+ * @param {string} learnerId - Learner ID for saving questions
  * @param {string} attemptId - Assessment attempt ID
  * @param {string} gradeLevel - Grade level: 'after10', 'after12', 'college'
  */
-export async function generateAptitudeQuestions(streamId, questionCount = 50, studentId = null, attemptId = null, gradeLevel = null) {
-  // Check for saved questions first if studentId provided
-  if (studentId) {
-    const saved = await getSavedQuestionsForStudent(studentId, streamId, 'aptitude');
+export async function generateAptitudeQuestions(streamId, questionCount = 50, learnerId = null, attemptId = null, gradeLevel = null) {
+  // Check for saved questions first if learnerId provided
+  if (learnerId) {
+    const saved = await getSavedQuestionsForLearner(learnerId, streamId, 'aptitude');
     if (saved && saved.length > 0) {
       // Validate that saved questions have the expected count
       if (saved.length === questionCount) {
-        console.log(`✅ Using saved aptitude questions for student: ${saved.length}/${questionCount}`);
+        console.log(`✅ Using saved aptitude questions for learner: ${saved.length}/${questionCount}`);
         return saved;
       } else {
         console.warn(`⚠️ Saved questions count mismatch: ${saved.length}/${questionCount} - regenerating`);
         // Clear invalid cached questions
-        await clearSavedQuestionsForStudent(studentId, streamId, 'aptitude');
+        await clearSavedQuestionsForLearner(learnerId, streamId, 'aptitude');
       }
     }
   }
@@ -294,7 +294,7 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
         body: JSON.stringify({
           streamId,
           questionsPerCategory,
-          studentId,
+          learnerId,
           attemptId,
           gradeLevel // Pass gradeLevel to API
         })
@@ -353,10 +353,10 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
         const finalQuestions = allValidQuestions.slice(0, questionCount);
         console.log(`✅ Success! Have ${finalQuestions.length} valid questions`);
         
-        // Save valid questions if we have studentId
-        if (finalQuestions.length > 0 && studentId && !data.cached) {
+        // Save valid questions if we have learnerId
+        if (finalQuestions.length > 0 && learnerId && !data.cached) {
           console.log('💾 Saving questions to database...');
-          await saveAptitudeQuestions(studentId, streamId, attemptId, finalQuestions, gradeLevel);
+          await saveAptitudeQuestions(learnerId, streamId, attemptId, finalQuestions, gradeLevel);
         }
         
         return finalQuestions;
@@ -376,9 +376,9 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
         console.warn(`⚠️ Only have ${allValidQuestions.length}/${questionCount} questions, but accepting (above 90% threshold)`);
         
         // Save what we have
-        if (allValidQuestions.length > 0 && studentId && !data.cached) {
+        if (allValidQuestions.length > 0 && learnerId && !data.cached) {
           console.log('💾 Saving questions to database...');
-          await saveAptitudeQuestions(studentId, streamId, attemptId, allValidQuestions, gradeLevel);
+          await saveAptitudeQuestions(learnerId, streamId, attemptId, allValidQuestions, gradeLevel);
         }
         
         return allValidQuestions;

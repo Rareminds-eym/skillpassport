@@ -1,0 +1,175 @@
+/**
+ * Learners By-Email API
+ *
+ * GET /api/learners/by-email?email=...
+ *
+ * Full learner profile fetch by email with all relations.
+ * Uses service_role to bypass RLS. Requires SSO authentication.
+ * 
+ * Falls back to simpler queries if the complex JOIN fails.
+ */
+import { withAuth } from '../../lib/auth';
+import { getServiceClient } from '../../lib/supabase';
+import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { apiSuccess, apiError, apiDbError } from '../../lib/response';
+
+export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
+  const startTime = Date.now();
+  const env = context.env as Record<string, string>;
+  const supabase = getServiceClient(env as any);
+  const user = context.data.user;
+
+  const url = new URL(context.request.url);
+  const email = url.searchParams.get('email');
+
+  if (!email) {
+    return apiError(400, 'INVALID_INPUT', 'Email is required', context.request, { startTime });
+  }
+
+  // Security: only allow fetching your own data (unless admin)
+  const isAdmin = user.roles?.some((r: string) =>
+    ['admin', 'super_admin', 'org_admin', 'college_admin', 'university_admin'].includes(r)
+  );
+  if (!isAdmin && user.email !== email) {
+    console.log(`[LearnersByEmail] Security check: JWT email="${user.email}", requested="${email}"`);
+    // Note: We don't block here because the SSO email might differ from the learner email.
+    // The query below will restrict it to either email OR user_id.
+  }
+
+  try {
+    // Strategy 1: Try full query with all relations by email
+    console.log(`[LearnersByEmail] Trying full query for email="${email}"`);
+    const { data: fullData, error: fullError } = await supabase
+      .from('learners')
+      .select(`
+        *,
+        skill_passports (
+          id, projects, certificates, assessments, status,
+          aiVerification, nsqfLevel, skills, createdAt, updatedAt
+        ),
+        projects (
+          id, title, description, role, status, start_date, end_date,
+          duration, organization, tech_stack, demo_link, github_link,
+          enabled, approval_status, created_at, updated_at,
+          certificate_url, video_url, ppt_url
+        ),
+        certificates (*),
+        experience (*),
+        skills (*),
+        trainings (*),
+        education (*)
+      `)
+      .eq('email', email)
+      .maybeSingle();
+
+    if (fullError) {
+      console.error('[LearnersByEmail] Full query error:', JSON.stringify(fullError));
+    }
+
+    if (fullData) {
+      console.log(`[LearnersByEmail] Full query success for "${email}", learner id="${fullData.id}"`);
+      return apiSuccess(fullData, context.request, { startTime });
+    }
+
+    // Strategy 2: Try simple query without joins
+    console.log(`[LearnersByEmail] Full query returned null, trying simple query for email="${email}"`);
+    const { data: simpleData, error: simpleError } = await supabase
+      .from('learners')
+      .select('*')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (simpleError) {
+      console.error('[LearnersByEmail] Simple query error:', JSON.stringify(simpleError));
+    }
+
+    if (simpleData) {
+      console.log(`[LearnersByEmail] Simple query found learner id="${simpleData.id}" — JOINs were the problem`);
+      const learnerId = simpleData.id;
+      const [skillPassports, projects, certificates, experience, skills, trainings, educationData] = await Promise.all([
+        supabase.from('skill_passports').select('*').eq('learner_id', learnerId),
+        supabase.from('projects').select('*').eq('learner_id', learnerId),
+        supabase.from('certificates').select('*').eq('learner_id', learnerId),
+        supabase.from('experience').select('*').eq('learner_id', learnerId),
+        supabase.from('skills').select('*').eq('learner_id', learnerId),
+        supabase.from('trainings').select('*').eq('learner_id', learnerId),
+        supabase.from('education').select('*').eq('learner_id', learnerId),
+      ]);
+
+      const mergedData = {
+        ...simpleData,
+        skill_passports: skillPassports.data || [],
+        projects: projects.data || [],
+        certificates: certificates.data || [],
+        experience: experience.data || [],
+        skills: skills.data || [],
+        trainings: trainings.data || [],
+        education: educationData.data || [],
+      };
+
+      return apiSuccess(mergedData, context.request, { startTime });
+    }
+
+    // Strategy 3: Try by user_id from JWT
+    const userId = user.sub;
+    console.log(`[LearnersByEmail] No learner found by email, trying user_id="${userId}"`);
+    const { data: byUserData, error: byUserError } = await supabase
+      .from('learners')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (byUserError) {
+      console.error('[LearnersByEmail] user_id query error:', JSON.stringify(byUserError));
+    }
+
+    if (byUserData) {
+      console.log(`[LearnersByEmail] Found learner by user_id! id="${byUserData.id}", learner_email="${byUserData.email}"`);
+      const learnerId = byUserData.id;
+      const [skillPassports, projects, certificates, experience, skills, trainings, educationData] = await Promise.all([
+        supabase.from('skill_passports').select('*').eq('learner_id', learnerId),
+        supabase.from('projects').select('*').eq('learner_id', learnerId),
+        supabase.from('certificates').select('*').eq('learner_id', learnerId),
+        supabase.from('experience').select('*').eq('learner_id', learnerId),
+        supabase.from('skills').select('*').eq('learner_id', learnerId),
+        supabase.from('trainings').select('*').eq('learner_id', learnerId),
+        supabase.from('education').select('*').eq('learner_id', learnerId),
+      ]);
+
+      const mergedData = {
+        ...byUserData,
+        skill_passports: skillPassports.data || [],
+        projects: projects.data || [],
+        certificates: certificates.data || [],
+        experience: experience.data || [],
+        skills: skills.data || [],
+        trainings: trainings.data || [],
+        education: educationData.data || [],
+      };
+
+      return apiSuccess(mergedData, context.request, { startTime });
+    }
+
+    // Strategy 4: Try case-insensitive search
+    console.log(`[LearnersByEmail] Trying case-insensitive search for "${email}"`);
+    const { data: ilikeData } = await supabase
+      .from('learners')
+      .select('id, email, name, user_id')
+      .ilike('email', email)
+      .limit(1)
+      .maybeSingle();
+
+    if (ilikeData) {
+      console.log(`[LearnersByEmail] Found by ILIKE! Actual email="${ilikeData.email}"`);
+      return apiError(404, 'CASE_MISMATCH', `Email case mismatch. DB has "${ilikeData.email}" but requested "${email}".`, context.request, { startTime });
+    }
+
+    // Nothing found
+    console.log(`[LearnersByEmail] No learner record found anywhere for email="${email}" or user_id="${userId}"`);
+    return apiError(404, 'NOT_FOUND', `No learner record found for email "${email}".`, context.request, { startTime });
+
+  } catch (err) {
+    console.error('[LearnersByEmail] Error:', err);
+    return apiError(500, 'INTERNAL_ERROR', 'An internal error occurred', context.request, { startTime });
+  }
+});

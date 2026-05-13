@@ -48,7 +48,7 @@ describe('Load Tests: Bulk Invitations', () => {
           id: `inv-${index}`,
           organization_id: 'org-load-test',
           email,
-          member_type: index % 2 === 0 ? 'student' : 'educator',
+          member_type: index % 2 === 0 ? 'learner' : 'educator',
           status: 'pending',
           invitation_token: generateToken(),
           expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),

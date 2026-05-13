@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 import { UserRole, Permission } from '@/shared/types/Permissions';
@@ -22,7 +23,7 @@ class PermissionService {
    */
   async getCurrentUserRole(): Promise<UserRole | null> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await getCurrentUser();
       if (!user) return null;
 
       const { data: userData, error } = await supabase
@@ -47,7 +48,7 @@ class PermissionService {
       let targetUserId = userId;
       
       if (!targetUserId) {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await getCurrentUser();
         if (!user) return {};
         targetUserId = user.id;
       }
@@ -97,7 +98,7 @@ class PermissionService {
    */
   async checkPermission(feature: string, permission: Permission): Promise<PermissionCheck> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await getCurrentUser();
       if (!user) {
         return { allowed: false, reason: 'User not authenticated' };
       }
@@ -123,22 +124,22 @@ class PermissionService {
       const permissions = await this.getUserPermissions();
       
       return {
-        canAddStudent: permissions['Students']?.includes('create') || false,
-        canEditProfile: permissions['Students']?.includes('edit') || false,
+        canAddLearner: permissions['Learners']?.includes('create') || false,
+        canEditProfile: permissions['Learners']?.includes('edit') || false,
         canMarkAttendance: permissions['Classroom Management']?.includes('create') || false,
         canEditAttendance: permissions['Classroom Management']?.includes('edit') || false,
-        canTransferStudent: permissions['Students']?.includes('edit') || false,
+        canTransferLearner: permissions['Learners']?.includes('edit') || false,
         canGenerateReport: permissions['Reports']?.includes('view') || false,
         canChangeClassSection: permissions['Classroom Management']?.includes('edit') || false
       };
     } catch (error) {
       logger.error('Failed to get feature access', error instanceof Error ? error : new Error(String(error)));
       return {
-        canAddStudent: false,
+        canAddLearner: false,
         canEditProfile: false,
         canMarkAttendance: false,
         canEditAttendance: false,
-        canTransferStudent: false,
+        canTransferLearner: false,
         canGenerateReport: false,
         canChangeClassSection: false
       };
@@ -146,29 +147,29 @@ class PermissionService {
   }
 
   /**
-   * Check if user can access a specific student
+   * Check if user can access a specific learner
    */
-  async canAccessStudent(studentId: string): Promise<PermissionCheck> {
+  async canAccessLearner(learnerId: string): Promise<PermissionCheck> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await getCurrentUser();
       if (!user) {
         return { allowed: false, reason: 'User not authenticated' };
       }
 
-      // For now, allow access if user has view permission for Students
+      // For now, allow access if user has view permission for Learners
       // In the future, you could add logic to check if the user is specifically
-      // assigned to this student (e.g., as their teacher or counselor)
-      const permissionCheck = await this.checkPermission('Students', 'view');
+      // assigned to this learner (e.g., as their teacher or counselor)
+      const permissionCheck = await this.checkPermission('Learners', 'view');
       
-      // You could add additional student-specific checks here:
-      // - Check if educator is assigned to student's class
-      // - Check if parent is linked to this student
+      // You could add additional learner-specific checks here:
+      // - Check if educator is assigned to learner's class
+      // - Check if parent is linked to this learner
       // - etc.
       
       return permissionCheck;
     } catch (error) {
-      logger.error('Failed to check student access', error instanceof Error ? error : new Error(String(error)), { studentId });
-      return { allowed: false, reason: 'Error checking student access' };
+      logger.error('Failed to check learner access', error instanceof Error ? error : new Error(String(error)), { learnerId });
+      return { allowed: false, reason: 'Error checking learner access' };
     }
   }
 
@@ -177,7 +178,7 @@ class PermissionService {
    */
   async canEditAttendance(attendanceDate: string): Promise<PermissionCheck> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await getCurrentUser();
       if (!user) {
         return { allowed: false, reason: 'User not authenticated' };
       }

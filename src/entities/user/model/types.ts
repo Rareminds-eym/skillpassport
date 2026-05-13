@@ -8,18 +8,15 @@
 // ============================================================================
 
 export type UserRole = 
-  | 'student' 
+  | 'learner' 
   | 'recruiter' 
   | 'educator' 
   | 'school_admin' 
   | 'college_admin' 
   | 'university_admin'
-  | 'school_student'
-  | 'college_student'
   | 'school_educator'
   | 'college_educator'
   | 'admin'
-  | 'learner'
   | 'hr'
   | 'principal'
   | 'vice_principal'

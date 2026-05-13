@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from '@/shared/api/supabaseClient';
-import { Faculty, CollegeClass, ScheduleSlot, Break, TimePeriod, Substitution, Department } from '@/features/student-profile/model';
+import { Faculty, CollegeClass, ScheduleSlot, Break, TimePeriod, Substitution, Department } from '@/features/learner-profile/model';
 import { DEFAULT_PERIODS } from "../constants";
 
 interface UseTimetableDataProps {

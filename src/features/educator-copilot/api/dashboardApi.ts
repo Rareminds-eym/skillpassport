@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -5,7 +6,7 @@ const logger = getLogger('dashboard-api');
 
 // Shared function to get authenticated educator data with class assignments
 async function getAuthenticatedEducator() {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await getCurrentSession();
   if (!session?.user) {
     logger.error('Authentication failed: no authenticated user found');
     throw new Error('No authenticated user');
@@ -110,7 +111,7 @@ async function getAuthenticatedEducator() {
           role: 'educator'
         },
         educatorType: 'college' as const,
-        assignedClassIds: [] // College educators see all college students
+        assignedClassIds: [] // College educators see all college learners
       };
     }
 
@@ -124,7 +125,7 @@ async function getAuthenticatedEducator() {
           role: 'educator'
         },
         educatorType: 'school' as const,
-        assignedClassIds: [] // For now, let them see all school students
+        assignedClassIds: [] // For now, let them see all school learners
       };
     }
   }
@@ -134,8 +135,8 @@ async function getAuthenticatedEducator() {
 }
 
 export interface DashboardKPIs {
-  totalStudents: number;
-  activeStudents: number;
+  totallearners: number;
+  activelearners: number;
   pendingActivities: number;
   verifiedActivities: number;
   totalActivities: number;
@@ -148,7 +149,7 @@ export interface RecentActivity {
   id: string;
   title: string;
   description: string;
-  studentName: string;
+  learnerName: string;
   category: string;
   status: 'pending' | 'sent_to_admin' | 'approved' | 'rejected';
   submittedDate: string;
@@ -172,10 +173,10 @@ export const dashboardApi = {
 
       // Check if educator has no class assignments (and is not admin)
       if (educatorType === 'school' && educatorData.role !== 'admin' && assignedClassIds.length === 0) {
-        // School educators with no class assignments should see no students
+        // School educators with no class assignments should see no learners
         return {
-          totalStudents: 0,
-          activeStudents: 0,
+          totallearners: 0,
+          activelearners: 0,
           pendingActivities: 0,
           verifiedActivities: 0,
           totalActivities: 0,
@@ -187,33 +188,33 @@ export const dashboardApi = {
 
       // Check if college lecturer has no course assignments (and is not admin)
       if (educatorType === 'college' && educatorData.role !== 'admin' && assignedClassIds.length === 0) {
-        // For college lecturers with no course assignments, show all students in their college
+        // For college lecturers with no course assignments, show all learners in their college
         // This is different from school educators who need specific class assignments
       }
 
-      let studentsQuery = supabase
-        .from('students')
+      let learnersQuery = supabase
+        .from('learners')
         .select('id, user_id')
         .eq('is_deleted', false)
-        .not('student_id', 'is', null);  // Exclude students without student_id
+        .not('learner_id', 'is', null);  // Exclude learners without learner_id
 
       // Apply filtering based on educator type and role
       if (educatorType === 'school') {
         // For school educators, check if they have class assignments
         if (educatorData.role === 'admin') {
-          // School admins can see all students in their school
-          studentsQuery = studentsQuery
+          // School admins can see all learners in their school
+          learnersQuery = learnersQuery
             .eq('school_id', educatorData.school_id)
-            .is('college_id', null);  // Exclude college students
+            .is('college_id', null);  // Exclude college learners
         } else if (assignedClassIds.length > 0) {
-          // Regular educators can only see students in their assigned classes
-          studentsQuery = studentsQuery
+          // Regular educators can only see learners in their assigned classes
+          learnersQuery = learnersQuery
             .eq('school_id', educatorData.school_id)
             .in('school_class_id', assignedClassIds)
-            .is('college_id', null);  // Exclude college students
+            .is('college_id', null);  // Exclude college learners
         }
       } else if (educatorType === 'college') {
-        // Step 1: Get program sections (same as getProgramSectionStudents)
+        // Step 1: Get program sections (same as getProgramSectionlearners)
         const { data: sections, error: sectionsError } = await supabase
           .from('program_sections')
           .select('program_id, semester, section')
@@ -227,8 +228,8 @@ export const dashboardApi = {
 
         if (!sections || sections.length === 0) {
           return {
-            totalStudents: 0,
-            activeStudents: 0,
+            totallearners: 0,
+            activelearners: 0,
             pendingActivities: 0,
             verifiedActivities: 0,
             totalActivities: 0,
@@ -238,13 +239,13 @@ export const dashboardApi = {
           };
         }
 
-        // Step 2: Get students with EXACT same filtering as getProgramSectionStudents
+        // Step 2: Get learners with EXACT same filtering as getProgramSectionlearners
         // Build OR conditions for each program section (program_id + semester + section)
-        let studentsQuery = supabase
-          .from('students')
+        let learnersQuery = supabase
+          .from('learners')
           .select('id, user_id, name, email, college_id, program_id, semester, section')
           .eq('is_deleted', false)
-          .not('student_id', 'is', null);  // Exclude students without student_id
+          .not('learner_id', 'is', null);  // Exclude learners without learner_id
 
         // Apply filtering for each program section combination
         // Build a complex OR condition: (program_id=X AND semester=Y AND section=Z) OR (program_id=A AND semester=B AND section=C)
@@ -253,23 +254,23 @@ export const dashboardApi = {
         ).join(',');
 
         // Use the or() method to combine all conditions
-        studentsQuery = studentsQuery.or(orConditions);
+        learnersQuery = learnersQuery.or(orConditions);
 
-        const { data: studentsData, error: studentsError } = await studentsQuery;
+        const { data: learnersData, error: learnersError } = await learnersQuery;
 
-        if (studentsError) {
-          logger.error('Students query failed', new Error(studentsError.message));
-          throw studentsError;
+        if (learnersError) {
+          logger.error('Learners query failed', new Error(learnersError.message));
+          throw learnersError;
         }
 
-        const totalStudents = studentsData?.length || 0;
-        const studentUserIds = studentsData?.map(s => s.user_id).filter(id => id !== null && id !== undefined) || [];
-        const studentIds = studentsData?.map(s => s.id).filter(id => id !== null && id !== undefined) || [];
+        const totallearners = learnersData?.length || 0;
+        const learnerUserIds = learnersData?.map(s => s.user_id).filter(id => id !== null && id !== undefined) || [];
+        const learnerIds = learnersData?.map(s => s.id).filter(id => id !== null && id !== undefined) || [];
 
-        if (totalStudents === 0) {
+        if (totallearners === 0) {
           return {
-            totalStudents: 0,
-            activeStudents: 0,
+            totallearners: 0,
+            activelearners: 0,
             pendingActivities: 0,
             verifiedActivities: 0,
             totalActivities: 0,
@@ -291,15 +292,15 @@ export const dashboardApi = {
           assignmentData,
           mentorNotesData
         ] = await Promise.all([
-          supabase.from('projects').select('approval_status').in('student_id', studentUserIds),
-          supabase.from('trainings').select('approval_status').in('student_id', studentUserIds),
-          supabase.from('certificates').select('approval_status').in('student_id', studentUserIds),
+          supabase.from('projects').select('approval_status').in('learner_id', learnerUserIds),
+          supabase.from('trainings').select('approval_status').in('learner_id', learnerUserIds),
+          supabase.from('certificates').select('approval_status').in('learner_id', learnerUserIds),
           // Use college_attendance_records for college educators
-          supabase.from('college_attendance_records').select('status, student_id, date, college_id').in('student_id', studentIds),
-          supabase.from('personal_assessment_results').select('status').in('student_id', studentUserIds).eq('status', 'completed'),
-          supabase.from('student_assignments').select('status').in('student_id', studentIds).in('status', ['submitted', 'graded']),
+          supabase.from('college_attendance_records').select('status, learner_id, date, college_id').in('learner_id', learnerIds),
+          supabase.from('personal_assessment_results').select('status').in('learner_id', learnerUserIds).eq('status', 'completed'),
+          supabase.from('learner_assignments').select('status').in('learner_id', learnerIds).in('status', ['submitted', 'graded']),
           // For college educators, use college_lecturer_id
-          supabase.from('mentor_notes').select('id').eq('college_lecturer_id', (educatorData as any).id).in('student_id', studentIds)
+          supabase.from('mentor_notes').select('id').eq('college_lecturer_id', (educatorData as any).id).in('learner_id', learnerIds)
         ]);
 
         // Combine all activities for verification metrics (excluding assignments - they have separate grading workflow)
@@ -325,8 +326,8 @@ export const dashboardApi = {
           Math.round((verifiedActivities / verifiableActivities.length) * 100) : 0;
 
         const result = {
-          totalStudents,
-          activeStudents: totalStudents,
+          totallearners,
+          activelearners: totallearners,
           pendingActivities,
           verifiedActivities,
           totalActivities,
@@ -339,21 +340,21 @@ export const dashboardApi = {
       }
       // At this point, we know educatorType is 'school' because college returned early
       const currentEducatorType = educatorType as 'school';
-      const { data: studentsData, error: studentsError } = await studentsQuery;
+      const { data: learnersData, error: learnersError } = await learnersQuery;
 
-      if (studentsError) {
-        logger.error('Students query failed', new Error(studentsError.message));
-        throw studentsError;
+      if (learnersError) {
+        logger.error('Learners query failed', new Error(learnersError.message));
+        throw learnersError;
       }
 
-      const studentUserIds = studentsData?.map(s => s.user_id).filter(id => id !== null && id !== undefined) || [];
-      const studentIds = studentsData?.map(s => s.id).filter(id => id !== null && id !== undefined) || [];
-      const totalStudents = studentsData?.length || 0; // Count ALL students, not just those with user_id
+      const learnerUserIds = learnersData?.map(s => s.user_id).filter(id => id !== null && id !== undefined) || [];
+      const learnerIds = learnersData?.map(s => s.id).filter(id => id !== null && id !== undefined) || [];
+      const totallearners = learnersData?.length || 0; // Count ALL learners, not just those with user_id
 
-      if (totalStudents === 0) {
+      if (totallearners === 0) {
         return {
-          totalStudents: 0,
-          activeStudents: 0,
+          totallearners: 0,
+          activelearners: 0,
           pendingActivities: 0,
           verifiedActivities: 0,
           totalActivities: 0,
@@ -373,16 +374,16 @@ export const dashboardApi = {
         assignmentData,
         mentorNotesData
       ] = await Promise.all([
-        supabase.from('projects').select('approval_status').in('student_id', studentUserIds),
-        supabase.from('trainings').select('approval_status').in('student_id', studentUserIds),
-        supabase.from('certificates').select('approval_status').in('student_id', studentUserIds),
-        supabase.from('attendance_records').select('status').in('student_id', studentIds),
-        supabase.from('personal_assessment_results').select('status').in('student_id', studentUserIds).eq('status', 'completed'),
-        supabase.from('student_assignments').select('status').in('student_id', studentIds).in('status', ['submitted', 'graded']),
+        supabase.from('projects').select('approval_status').in('learner_id', learnerUserIds),
+        supabase.from('trainings').select('approval_status').in('learner_id', learnerUserIds),
+        supabase.from('certificates').select('approval_status').in('learner_id', learnerUserIds),
+        supabase.from('attendance_records').select('status').in('learner_id', learnerIds),
+        supabase.from('personal_assessment_results').select('status').in('learner_id', learnerUserIds).eq('status', 'completed'),
+        supabase.from('learner_assignments').select('status').in('learner_id', learnerIds).in('status', ['submitted', 'graded']),
         // Use correct educator column based on type
         currentEducatorType === 'school' 
-          ? supabase.from('mentor_notes').select('id').eq('school_educator_id', (educatorData as any).id).in('student_id', studentIds)
-          : supabase.from('mentor_notes').select('id').eq('college_lecturer_id', (educatorData as any).id).in('student_id', studentIds)
+          ? supabase.from('mentor_notes').select('id').eq('school_educator_id', (educatorData as any).id).in('learner_id', learnerIds)
+          : supabase.from('mentor_notes').select('id').eq('college_lecturer_id', (educatorData as any).id).in('learner_id', learnerIds)
       ]);
 
       // Combine all activities for verification metrics (excluding assignments - they have separate grading workflow)
@@ -408,8 +409,8 @@ export const dashboardApi = {
         Math.round((verifiedActivities / verifiableActivities.length) * 100) : 0;
 
       const result = {
-        totalStudents,
-        activeStudents: totalStudents,
+        totallearners,
+        activelearners: totallearners,
         pendingActivities,
         verifiedActivities,
         totalActivities,
@@ -422,8 +423,8 @@ export const dashboardApi = {
     } catch (error) {
       logger.error('KPI calculation failed', error instanceof Error ? error : new Error(String(error)));
       return {
-        totalStudents: 0,
-        activeStudents: 0,
+        totallearners: 0,
+        activelearners: 0,
         pendingActivities: 0,
         verifiedActivities: 0,
         totalActivities: 0,
@@ -440,12 +441,12 @@ export const dashboardApi = {
 
       // Check if educator has no class assignments (and is not admin)
       if (educatorType === 'school' && educatorData.role !== 'admin' && assignedClassIds.length === 0) {
-        // Educators with no class assignments should see no students
+        // Educators with no class assignments should see no learners
         return [];
       }
 
-      let studentsQuery = supabase
-        .from('students')
+      let learnersQuery = supabase
+        .from('learners')
         .select('id, user_id, name')
         .eq('is_deleted', false);
 
@@ -453,31 +454,31 @@ export const dashboardApi = {
       if (educatorType === 'school') {
         // For school educators, check if they have class assignments
         if (educatorData.role === 'admin') {
-          // School admins can see all students in their school
-          studentsQuery = studentsQuery.eq('school_id', educatorData.school_id);
+          // School admins can see all learners in their school
+          learnersQuery = learnersQuery.eq('school_id', educatorData.school_id);
         } else if (assignedClassIds.length > 0) {
-          // Regular educators can only see students in their assigned classes
-          studentsQuery = studentsQuery
+          // Regular educators can only see learners in their assigned classes
+          learnersQuery = learnersQuery
             .eq('school_id', educatorData.school_id)
             .in('school_class_id', assignedClassIds);
         }
       } else if (educatorType === 'college') {
-        studentsQuery = studentsQuery.eq('college_id', educatorData.school_id);
+        learnersQuery = learnersQuery.eq('college_id', educatorData.school_id);
       }
 
-      const { data: studentsData } = await studentsQuery;
+      const { data: learnersData } = await learnersQuery;
 
-      const studentUserIds = studentsData?.map(s => s.user_id).filter(id => id !== null && id !== undefined) || [];
-      const studentIds = studentsData?.map(s => s.id).filter(id => id !== null && id !== undefined) || [];
-      const studentMap: { [key: string]: string } = {};
-      const studentIdMap: { [key: string]: string } = {};
+      const learnerUserIds = learnersData?.map(s => s.user_id).filter(id => id !== null && id !== undefined) || [];
+      const learnerIds = learnersData?.map(s => s.id).filter(id => id !== null && id !== undefined) || [];
+      const learnerMap: { [key: string]: string } = {};
+      const learnerIdMap: { [key: string]: string } = {};
 
-      studentsData?.forEach(student => {
-        const studentName = student.name || `Student ${student.id.substring(0, 8)}`;
-        studentMap[student.user_id] = studentName;
-        studentIdMap[student.id] = studentName;
+      learnersData?.forEach(learner => {
+        const learnerName = learner.name || `Learner ${learner.id.substring(0, 8)}`;
+        learnerMap[learner.user_id] = learnerName;
+        learnerIdMap[learner.id] = learnerName;
       });
-      if (studentUserIds.length === 0) {
+      if (learnerUserIds.length === 0) {
         return [];
       }
 
@@ -502,8 +503,8 @@ export const dashboardApi = {
         // Projects
         supabase
           .from('projects')
-          .select('id, title, description, approval_status, created_at, student_id')
-          .in('student_id', studentUserIds)
+          .select('id, title, description, approval_status, created_at, learner_id')
+          .in('learner_id', learnerUserIds)
           .gte('created_at', dateFilter)
           .order('created_at', { ascending: false })
           .limit(Math.ceil(limit / 7)),
@@ -511,8 +512,8 @@ export const dashboardApi = {
         // Trainings
         supabase
           .from('trainings')
-          .select('id, title, description, approval_status, created_at, student_id')
-          .in('student_id', studentUserIds)
+          .select('id, title, description, approval_status, created_at, learner_id')
+          .in('learner_id', learnerUserIds)
           .gte('created_at', dateFilter)
           .order('created_at', { ascending: false })
           .limit(Math.ceil(limit / 7)),
@@ -520,8 +521,8 @@ export const dashboardApi = {
         // Certificates
         supabase
           .from('certificates')
-          .select('id, title, description, approval_status, created_at, student_id')
-          .in('student_id', studentUserIds)
+          .select('id, title, description, approval_status, created_at, learner_id')
+          .in('learner_id', learnerUserIds)
           .gte('created_at', dateFilter)
           .order('created_at', { ascending: false })
           .limit(Math.ceil(limit / 7)),
@@ -530,13 +531,13 @@ export const dashboardApi = {
         supabase
           .from('attendance_records')
           .select(`
-            id, date, status, remarks, created_at, student_id, slot_id,
+            id, date, status, remarks, created_at, learner_id, slot_id,
             timetable_slots!inner(
               period_number, subject_name, class_id,
               school_classes!inner(name, grade, section)
             )
           `)
-          .in('student_id', studentIds)
+          .in('learner_id', learnerIds)
           .gte('created_at', dateFilter)
           .order('created_at', { ascending: false })
           .limit(Math.ceil(limit / 7)),
@@ -546,22 +547,22 @@ export const dashboardApi = {
           .from('personal_assessment_results')
           .select(`
             id, stream_id, status, employability_readiness, knowledge_score, 
-            created_at, student_id, grade_level
+            created_at, learner_id, grade_level
           `)
-          .in('student_id', studentUserIds)
+          .in('learner_id', learnerUserIds)
           .eq('status', 'completed')
           .gte('created_at', dateFilter)
           .order('created_at', { ascending: false })
           .limit(Math.ceil(limit / 7)),
         
-        // Student Assignments (only submitted ones)
+        // Learner Assignments (only submitted ones)
         supabase
-          .from('student_assignments')
+          .from('learner_assignments')
           .select(`
-            student_assignment_id, status, grade_received, submission_date, updated_date, student_id,
+            learner_assignment_id, status, grade_received, submission_date, updated_date, learner_id,
             assignments!inner(title, description, assignment_type)
           `)
-          .in('student_id', studentIds)
+          .in('learner_id', learnerIds)
           .in('status', ['submitted', 'graded'])
           .gte('updated_date', dateFilter)
           .order('updated_date', { ascending: false })
@@ -570,9 +571,9 @@ export const dashboardApi = {
         // Mentor Notes
         supabase
           .from('mentor_notes')
-          .select('id, note, category, created_at, student_id')
+          .select('id, note, category, created_at, learner_id')
           .eq('educator_id', user.id)
-          .in('student_id', studentIds)
+          .in('learner_id', learnerIds)
           .gte('created_at', dateFilter)
           .order('created_at', { ascending: false })
           .limit(Math.ceil(limit / 7)),
@@ -630,7 +631,7 @@ export const dashboardApi = {
           id: `project-${project.id}`,
           title: project.title,
           description: project.description || 'Project submission',
-          studentName: studentMap[project.student_id] || 'Unknown Student',
+          learnerName: learnerMap[project.learner_id] || 'Unknown Learner',
           category: 'Project',
           status: project.approval_status || 'pending',
           submittedDate: project.created_at,
@@ -643,7 +644,7 @@ export const dashboardApi = {
           id: `training-${training.id}`,
           title: training.title,
           description: training.description || 'Training completion',
-          studentName: studentMap[training.student_id] || 'Unknown Student',
+          learnerName: learnerMap[training.learner_id] || 'Unknown Learner',
           category: 'Training',
           status: training.approval_status || 'pending',
           submittedDate: training.created_at,
@@ -656,7 +657,7 @@ export const dashboardApi = {
           id: `certificate-${certificate.id}`,
           title: certificate.title,
           description: certificate.description || 'Certificate submission',
-          studentName: studentMap[certificate.student_id] || 'Unknown Student',
+          learnerName: learnerMap[certificate.learner_id] || 'Unknown Learner',
           category: 'Certificate',
           status: certificate.approval_status || 'pending',
           submittedDate: certificate.created_at,
@@ -731,7 +732,7 @@ export const dashboardApi = {
           id: `attendance-${slotAttendance.slot_id}-${slotAttendance.date}`,
           title: `${periodText} - ${slotAttendance.subject_name}`,
           description: `${classDisplay} • Attendance marked`,
-          studentName: `${slotAttendance.date}`,
+          learnerName: `${slotAttendance.date}`,
           category: 'Attendance',
           status: 'sent_to_admin',
           submittedDate: slotAttendance.created_at,
@@ -748,7 +749,7 @@ export const dashboardApi = {
           id: `assessment-${assessment.id}`,
           title: `${streamName} Personal Assessment`,
           description: `Employability: ${readinessLevel} • Knowledge Score: ${knowledgeScore}`,
-          studentName: studentMap[assessment.student_id] || 'Unknown Student',
+          learnerName: learnerMap[assessment.learner_id] || 'Unknown Learner',
           category: 'Assessment',
           status: 'approved',
           submittedDate: assessment.created_at,
@@ -762,13 +763,13 @@ export const dashboardApi = {
           'graded': 'approved'
         };
 
-        const studentName = studentIdMap[assignment.student_id] || 'Unknown Student';
+        const learnerName = learnerIdMap[assignment.learner_id] || 'Unknown Learner';
         
         activities.push({
-          id: `assignment-${assignment.student_assignment_id}`,
+          id: `assignment-${assignment.learner_assignment_id}`,
           title: assignment.assignments?.title || 'Assignment',
           description: assignment.assignments?.description || `${assignment.assignments?.assignment_type || 'Assignment'} submission`,
-          studentName: studentName,
+          learnerName: learnerName,
           category: 'Assignment',
           status: statusMap[assignment.status] || 'sent_to_admin',
           submittedDate: assignment.submission_date || assignment.updated_date,
@@ -781,7 +782,7 @@ export const dashboardApi = {
           id: `note-${note.id}`,
           title: `Mentor Note - ${note.category || 'General'}`,
           description: note.note.length > 100 ? `${note.note.substring(0, 100)}...` : note.note,
-          studentName: studentIdMap[note.student_id] || 'Unknown Student',
+          learnerName: learnerIdMap[note.learner_id] || 'Unknown Learner',
           category: 'Mentor Note',
           status: 'approved', // Mentor notes are always considered complete
           submittedDate: note.created_at,
@@ -799,7 +800,7 @@ export const dashboardApi = {
           id: `timetable-slot-${slot.id}`,
           title: `Period ${slot.period_number} - ${slot.subject_name}`,
           description: `${className} • ${dayName} ${timeRange} • Room ${slot.room_number}`,
-          studentName: new Date(slot.created_at).toLocaleDateString(),
+          learnerName: new Date(slot.created_at).toLocaleDateString(),
           category: 'Schedule',
           status: 'sent_to_admin',
           submittedDate: slot.created_at,
@@ -816,7 +817,7 @@ export const dashboardApi = {
           id: `club-${club.club_id}`,
           title: `Club: ${club.name}`,
           description: `${club.category} • ${role}`,
-          studentName: club.description?.substring(0, 50) || 'No description',
+          learnerName: club.description?.substring(0, 50) || 'No description',
           category: 'Club',
           status: 'approved',
           submittedDate: club.created_at,
@@ -835,7 +836,7 @@ export const dashboardApi = {
           id: `competition-${competition.comp_id}`,
           title: `Competition: ${competition.name}`,
           description: `${competition.level} • ${competition.category} • ${new Date(competition.competition_date).toLocaleDateString()}`,
-          studentName: competition.description?.substring(0, 50) || 'No description',
+          learnerName: competition.description?.substring(0, 50) || 'No description',
           category: 'Competition',
           status: statusMap[competition.status] || 'pending',
           submittedDate: competition.created_at,
@@ -854,7 +855,7 @@ export const dashboardApi = {
           id: `course-${course.course_id}`,
           title: `Course: ${course.title}`,
           description: `${course.code} • ${course.enrollment_count || 0} enrolled`,
-          studentName: course.description?.substring(0, 50) || 'No description',
+          learnerName: course.description?.substring(0, 50) || 'No description',
           category: 'Course',
           status: statusMap[course.status] || 'pending',
           submittedDate: course.created_at,
@@ -878,15 +879,15 @@ export const dashboardApi = {
 
       // Check if educator has no class assignments (and is not admin)
       if (educatorType === 'school' && educatorData.role !== 'admin' && assignedClassIds.length === 0) {
-        // Educators with no class assignments should see no students
+        // Educators with no class assignments should see no learners
         return {
           skillParticipation: [],
           skillDistribution: [],
         };
       }
 
-      let studentsQuery = supabase
-        .from('students')
+      let learnersQuery = supabase
+        .from('learners')
         .select('id, user_id')
         .eq('is_deleted', false);
 
@@ -894,47 +895,47 @@ export const dashboardApi = {
       if (educatorType === 'school') {
         // For school educators, check if they have class assignments
         if (educatorData.role === 'admin') {
-          // School admins can see all students in their school
-          studentsQuery = studentsQuery.eq('school_id', educatorData.school_id);
+          // School admins can see all learners in their school
+          learnersQuery = learnersQuery.eq('school_id', educatorData.school_id);
         } else if (assignedClassIds.length > 0) {
-          // Regular educators can only see students in their assigned classes
-          studentsQuery = studentsQuery
+          // Regular educators can only see learners in their assigned classes
+          learnersQuery = learnersQuery
             .eq('school_id', educatorData.school_id)
             .in('school_class_id', assignedClassIds);
         }
       } else if (educatorType === 'college') {
-        studentsQuery = studentsQuery.eq('college_id', educatorData.school_id);
+        learnersQuery = learnersQuery.eq('college_id', educatorData.school_id);
       }
 
-      const { data: studentsData } = await studentsQuery;
+      const { data: learnersData } = await learnersQuery;
 
-      const studentUserIds = studentsData?.map(s => s.user_id).filter(id => id !== null && id !== undefined) || [];
+      const learnerUserIds = learnersData?.map(s => s.user_id).filter(id => id !== null && id !== undefined) || [];
 
-      if (studentUserIds.length === 0) {
+      if (learnerUserIds.length === 0) {
         return {
           skillParticipation: [],
           skillDistribution: [],
         };
       }
 
-      // Get skill data from activities (projects, trainings, certificates) for students in this school
+      // Get skill data from activities (projects, trainings, certificates) for learners in this school
       const [projectsData, trainingsData, certificatesData] = await Promise.all([
         supabase
           .from('projects')
           .select('tech_stack')
-          .in('student_id', studentUserIds)
+          .in('learner_id', learnerUserIds)
           .not('tech_stack', 'is', null),
         supabase
           .from('trainings')
           .select('title, description')
-          .in('student_id', studentUserIds),
+          .in('learner_id', learnerUserIds),
         supabase
           .from('certificates')
           .select('title, description')
-          .in('student_id', studentUserIds)
+          .in('learner_id', learnerUserIds)
       ]);
 
-      // Process skill participation from student activities
+      // Process skill participation from learner activities
       const skillCounts: { [key: string]: number } = {};
       const categoryCounts: { [key: string]: number } = {};
 

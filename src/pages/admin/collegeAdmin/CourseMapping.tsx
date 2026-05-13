@@ -421,7 +421,7 @@ const AddEditCourseMappingModal = ({
                     {(offeringType === 'dept_elective' || offeringType === 'open_elective') && (
                         <div className="sm:col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Student Capacity <span className="text-red-500">*</span>
+                                Learner Capacity <span className="text-red-500">*</span>
                             </label>
                             <input
                                 type="number"
@@ -871,7 +871,7 @@ const ElectiveManagementModal = ({
                                             
                                             <div>
                                                 <label className="block text-xs font-medium text-gray-700 mb-1">
-                                                    Student Capacity
+                                                    Learner Capacity
                                                 </label>
                                                 <input
                                                     type="number"

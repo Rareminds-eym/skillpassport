@@ -1,7 +1,8 @@
 import { useState, FormEvent, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, AlertCircle, CheckCircle, Loader2, ArrowLeft, Info } from 'lucide-react';
-import { sendPasswordResetOTP } from '@/features/auth/api';
+import { ssoClient } from '@/shared/api/ssoClient';
+import { AuthFetchError } from '@rareminds-eym/auth-client';
 
 interface ForgotPasswordState {
   email: string;
@@ -39,17 +40,9 @@ const UnifiedForgotPassword = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      const result = await sendPasswordResetOTP(state.email);
+      await ssoClient.forgotPassword({ email: state.email });
 
-      if (!result.success) {
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: result.error || 'Failed to send reset link'
-        }));
-        return;
-      }
-
+      // Always show success (prevents email enumeration)
       setState(prev => ({
         ...prev,
         loading: false,
@@ -57,12 +50,22 @@ const UnifiedForgotPassword = () => {
       }));
 
     } catch (error) {
-      console.error('Password reset error:', error);
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: 'An unexpected error occurred. Please try again'
-      }));
+      // Even on error, show success to prevent email enumeration
+      // Only show actual error for rate limiting or server issues
+      if (error instanceof AuthFetchError && error.status === 429) {
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: 'Too many requests. Please try again in a few minutes.'
+        }));
+      } else {
+        // Show success regardless (prevents enumeration)
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          success: true
+        }));
+      }
     }
   };
 

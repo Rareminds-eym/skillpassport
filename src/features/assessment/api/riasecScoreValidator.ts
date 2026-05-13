@@ -32,7 +32,7 @@ const getRatingPoints = (rating) => {
 /**
  * Validate and correct RIASEC scores
  * @param {Object} riasecData - RIASEC data from gemini_results
- * @param {Object} allResponses - All student responses
+ * @param {Object} allResponses - All learner responses
  * @returns {Object} Corrected RIASEC data
  */
 export const validateRiasecScores = (riasecData, allResponses) => {

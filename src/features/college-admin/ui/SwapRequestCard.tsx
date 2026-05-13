@@ -233,7 +233,7 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
         {/* Swap Explanation */}
         <div className="mb-3 bg-purple-50 border border-purple-200 rounded-lg p-3">
           <p className="text-xs text-purple-800">
-            <strong>Time Slot Exchange:</strong> Each educator continues teaching their own subject to their own students, just at the swapped time.
+            <strong>Time Slot Exchange:</strong> Each educator continues teaching their own subject to their own learners, just at the swapped time.
           </p>
         </div>
 

@@ -671,7 +671,7 @@ export default function SimpleEventRegistration() {
             transition={{ duration: 0.5 }}
             className="text-center mb-6"
           >
-            {/* Student Only Badge with Animation */}
+            {/* Learner Only Badge with Animation */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -695,7 +695,7 @@ export default function SimpleEventRegistration() {
 
               {/* Text */}
               <span className="text-gray-900 text-base font-semibold">
-                For Students Only
+                For Learners Only
               </span>
             </motion.div>
 

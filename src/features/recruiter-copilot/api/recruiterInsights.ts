@@ -1,13 +1,13 @@
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
-import { CandidateSummary, CandidateMatchResult } from '@/features/student-profile/model';
+import { CandidateSummary, CandidateMatchResult } from '@/features/learner-profile/model';
 
 const logger = getLogger('recruiter-insights');
 
 /**
  * Recruiter Insights Service
  * Intelligent candidate analysis using actual database schema:
- * - students, skills, trainings, certificates tables
+ * - learners, skills, trainings, certificates tables
  * - opportunities for job matching
  * - pipeline_candidates for recruitment tracking
  */
@@ -18,67 +18,67 @@ class RecruiterInsightsService {
    */
   async getTopCandidates(limit: number = 20): Promise<CandidateSummary[]> {
     try {
-      // Fetch students with complete profiles
-      const { data: students, error } = await supabase
-        .from('students')
+      // Fetch learners with complete profiles
+      const { data: learners, error } = await supabase
+        .from('learners')
         .select('user_id, name, email, university, branch_field, city, state, currentCgpa, expectedGraduationDate, updated_at, resumeUrl')
         .not('name', 'is', null)
         .order('updated_at', { ascending: false })
         .limit(limit * 2);
 
-      if (error || !students || students.length === 0) {
-        logger.error('Error fetching students', new Error(error?.message || 'No students found'));
+      if (error || !learners || learners.length === 0) {
+        logger.error('Error fetching learners', new Error(error?.message || 'No learners found'));
         return [];
       }
 
       // Enrich candidates with skills, training, certificates
       const candidates: CandidateSummary[] = await Promise.all(
-        students.map(async (student) => {
+        learners.map(async (learner) => {
           // Fetch skills
           const { data: skills } = await supabase
             .from('skills')
             .select('name, level, type')
-            .eq('student_id', student.user_id)
+            .eq('learner_id', learner.user_id)
             .eq('enabled', true);
 
           // Fetch training count
           const { count: trainingCount } = await supabase
             .from('trainings')
             .select('id', { count: 'exact', head: true })
-            .eq('student_id', student.user_id);
+            .eq('learner_id', learner.user_id);
 
           // Fetch certificates count
           const { count: certCount } = await supabase
             .from('certificates')
             .select('id', { count: 'exact', head: true })
-            .eq('student_id', student.user_id)
+            .eq('learner_id', learner.user_id)
             .eq('enabled', true);
 
           // Calculate profile score
           const profileScore = this.calculateProfileScore({
-            hasName: !!student.name,
+            hasName: !!learner.name,
             skillCount: skills?.length || 0,
             trainingCount: trainingCount || 0,
             certCount: certCount || 0,
-            hasCGPA: !!student.currentCgpa,
-            hasResume: !!student.resumeUrl,
-            hasLocation: !!(student.city || student.state)
+            hasCGPA: !!learner.currentCgpa,
+            hasResume: !!learner.resumeUrl,
+            hasLocation: !!(learner.city || learner.state)
           });
 
           return {
-            id: student.user_id,
-            name: student.name || 'Candidate',
-            email: student.email,
-            institution: student.university,
-            graduation_year: student.expectedGraduationDate?.split('-')[0],
-            cgpa: student.currentCgpa?.toString(),
+            id: learner.user_id,
+            name: learner.name || 'Candidate',
+            email: learner.email,
+            institution: learner.university,
+            graduation_year: learner.expectedGraduationDate?.split('-')[0],
+            cgpa: learner.currentCgpa?.toString(),
             skills: skills?.map(s => s.name) || [],
             projects_count: 0,
             training_count: trainingCount || 0,
             experience_count: certCount || 0,
-            career_interests: [student.branch_field].filter(Boolean),
-            location: [student.city, student.state].filter(Boolean).join(', '),
-            last_active: student.updated_at,
+            career_interests: [learner.branch_field].filter(Boolean),
+            location: [learner.city, learner.state].filter(Boolean).join(', '),
+            last_active: learner.updated_at,
             profile_completeness: profileScore
           };
         })
@@ -107,15 +107,15 @@ class RecruiterInsightsService {
       // Search for skills (case-insensitive partial match)
       const { data: matchingSkills, error } = await supabase
         .from('skills')
-        .select('student_id, name, level')
+        .select('learner_id, name, level')
         .eq('enabled', true);
 
       if (error || !matchingSkills || matchingSkills.length === 0) {
         return [];
       }
 
-      // Calculate match scores per student
-      const studentScores = new Map<string, { score: number; matchedSkills: string[] }>();
+      // Calculate match scores per learner
+      const learnerScores = new Map<string, { score: number; matchedSkills: string[] }>();
       
       matchingSkills.forEach(skill => {
         const skillLower = skill.name.toLowerCase();
@@ -125,24 +125,24 @@ class RecruiterInsightsService {
         );
 
         if (matchedInputSkills.length > 0) {
-          const current = studentScores.get(skill.student_id) || { score: 0, matchedSkills: [] };
+          const current = learnerScores.get(skill.learner_id) || { score: 0, matchedSkills: [] };
           const levelBonus = (skill.level || 1) * 0.5;
-          studentScores.set(skill.student_id, {
+          learnerScores.set(skill.learner_id, {
             score: current.score + matchedInputSkills.length + levelBonus,
             matchedSkills: [...current.matchedSkills, skill.name]
           });
         }
       });
 
-      // Get top matching students
-      const topStudents = Array.from(studentScores.entries())
+      // Get top matching learners
+      const toplearners = Array.from(learnerScores.entries())
         .sort((a, b) => b[1].score - a[1].score)
         .slice(0, limit)
         .map(entry => entry[0]);
 
-      if (topStudents.length === 0) return [];
+      if (toplearners.length === 0) return [];
 
-      return await this.getCandidatesByIds(topStudents);
+      return await this.getCandidatesByIds(toplearners);
 
     } catch (error) {
       logger.error('Error in findCandidatesBySkills', error as Error);
@@ -248,45 +248,45 @@ class RecruiterInsightsService {
    */
   private async getCandidatesByIds(userIds: string[]): Promise<CandidateSummary[]> {
     try {
-      const { data: students, error } = await supabase
-        .from('students')
+      const { data: learners, error } = await supabase
+        .from('learners')
         .select('user_id, name, email, university, branch_field, city, state, currentCgpa, expectedGraduationDate, resumeUrl')
         .in('user_id', userIds);
 
-      if (error || !students) return [];
+      if (error || !learners) return [];
 
       return Promise.all(
-        students.map(async (student) => {
+        learners.map(async (learner) => {
           const { data: skills } = await supabase
             .from('skills')
             .select('name')
-            .eq('student_id', student.user_id)
+            .eq('learner_id', learner.user_id)
             .eq('enabled', true);
 
           const { count: trainingCount } = await supabase
             .from('trainings')
             .select('id', { count: 'exact', head: true })
-            .eq('student_id', student.user_id);
+            .eq('learner_id', learner.user_id);
 
           const { count: certCount } = await supabase
             .from('certificates')
             .select('id', { count: 'exact', head: true })
-            .eq('student_id', student.user_id)
+            .eq('learner_id', learner.user_id)
             .eq('enabled', true);
 
           return {
-            id: student.user_id,
-            name: student.name || 'Candidate',
-            email: student.email,
-            institution: student.university,
-            graduation_year: student.expectedGraduationDate?.split('-')[0],
-            cgpa: student.currentCgpa?.toString(),
+            id: learner.user_id,
+            name: learner.name || 'Candidate',
+            email: learner.email,
+            institution: learner.university,
+            graduation_year: learner.expectedGraduationDate?.split('-')[0],
+            cgpa: learner.currentCgpa?.toString(),
             skills: skills?.map(s => s.name) || [],
             projects_count: 0,
             training_count: trainingCount || 0,
             experience_count: certCount || 0,
-            career_interests: [student.branch_field].filter(Boolean),
-            location: [student.city, student.state].filter(Boolean).join(', '),
+            career_interests: [learner.branch_field].filter(Boolean),
+            location: [learner.city, learner.state].filter(Boolean).join(', '),
             profile_completeness: 75
           };
         })
@@ -460,10 +460,10 @@ class RecruiterInsightsService {
    */
   async analyzeApplicantsForRecommendation(applicants: Array<{
     id: number;
-    student_id: string;
+    learner_id: string;
     opportunity_id: number;
     pipeline_stage?: string;
-    student: {
+    learner: {
       id: string;
       name: string;
       email: string;
@@ -479,7 +479,7 @@ class RecruiterInsightsService {
   }>): Promise<{
     topRecommendations: Array<{
       applicantId: number;
-      studentName: string;
+      learnerName: string;
       positionTitle: string;
       matchScore: number;
       confidence: 'high' | 'medium' | 'low';
@@ -513,24 +513,24 @@ class RecruiterInsightsService {
       const recommendations = await Promise.all(
         applicants.map(async (applicant) => {
           try {
-            // Fetch student skills
+            // Fetch learner skills
             const { data: skills } = await supabase
               .from('skills')
               .select('name, level')
-              .eq('student_id', applicant.student_id)
+              .eq('learner_id', applicant.learner_id)
               .eq('enabled', true);
 
             // Fetch training count
             const { count: trainingCount } = await supabase
               .from('trainings')
               .select('id', { count: 'exact', head: true })
-              .eq('student_id', applicant.student_id);
+              .eq('learner_id', applicant.learner_id);
 
             // Fetch certificates with details
             const { data: certificates } = await supabase
               .from('certificates')
               .select('title, issuer, level')
-              .eq('student_id', applicant.student_id)
+              .eq('learner_id', applicant.learner_id)
               .eq('enabled', true);
 
             // Get job requirements
@@ -591,11 +591,11 @@ class RecruiterInsightsService {
 
             // Calculate profile completeness
             const profileScore = this.calculateProfileScore({
-              hasName: !!applicant.student.name,
+              hasName: !!applicant.learner.name,
               skillCount: candidateSkills.length,
               trainingCount: trainingCount || 0,
               certCount: certCount,
-              hasCGPA: !!applicant.student.cgpa,
+              hasCGPA: !!applicant.learner.cgpa,
               hasResume: false,
               hasLocation: false
             });
@@ -631,7 +631,7 @@ class RecruiterInsightsService {
             } else if (certCount >= 1) {
               reasons.push(`${certCount} certifications (not role-specific)`);
             }
-            const cgpa = parseFloat(applicant.student.cgpa || '0');
+            const cgpa = parseFloat(applicant.learner.cgpa || '0');
             if (cgpa >= 7.5) {
               reasons.push(`Strong academic performance (${cgpa} CGPA)`);
             }
@@ -639,11 +639,11 @@ class RecruiterInsightsService {
               reasons.push(`Complete profile (${profileScore}% completeness)`);
             }
             // Only show university if it looks like a valid institution name
-            if (applicant.student.university && 
-                applicant.student.university.length < 100 &&
-                !applicant.student.university.toLowerCase().includes('botany') &&
-                !applicant.student.university.toLowerCase().includes('zoology')) {
-              reasons.push(`From ${applicant.student.university}`);
+            if (applicant.learner.university && 
+                applicant.learner.university.length < 100 &&
+                !applicant.learner.university.toLowerCase().includes('botany') &&
+                !applicant.learner.university.toLowerCase().includes('zoology')) {
+              reasons.push(`From ${applicant.learner.university}`);
             }
 
             // Determine confidence and next action
@@ -671,7 +671,7 @@ class RecruiterInsightsService {
 
             return {
               applicantId: applicant.id,
-              studentName: applicant.student.name,
+              learnerName: applicant.learner.name,
               positionTitle: applicant.opportunity.job_title,
               matchScore,
               confidence,

@@ -18,7 +18,7 @@ const logger = getLogger('school-admin-dashboard');
 
 interface CourseStats {
   category: string;
-  studentCount: number;
+  learnerCount: number;
 }
 
 interface RecentActivity {
@@ -34,7 +34,7 @@ interface RecentActivity {
 interface ProgramOverviewItem {
   program: string;
   enrollments: number;
-  students: number;
+  learners: number;
   duration: string;
 }
 
@@ -181,7 +181,7 @@ const SchoolDashboard: React.FC = () => {
         if (courseIds.length > 0) {
           const { data, error: enrollmentsError } = await supabase
             .from("course_enrollments")
-            .select("course_id, student_id, student_name, status, progress, enrolled_at, last_accessed")
+            .select("course_id, learner_id, learner_name, status, progress, enrolled_at, last_accessed")
             .in("course_id", courseIds)
             .order("enrolled_at", { ascending: false });
 
@@ -195,7 +195,7 @@ const SchoolDashboard: React.FC = () => {
         // Fetch recent attendance records for activities
         const { data: attendanceData, error: attendanceError } = await supabase
           .from("attendance_records")
-          .select("student_id, status, date, created_at")
+          .select("learner_id, status, date, created_at")
           .eq("school_id", schoolId)
           .gte("date", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
           .order("created_at", { ascending: false })
@@ -205,17 +205,17 @@ const SchoolDashboard: React.FC = () => {
           logger.warn('Error fetching attendance', attendanceError);
         }
 
-        // Fetch recent student registrations
-        const { data: studentsData, error: studentsError } = await supabase
-          .from("students")
+        // Fetch recent learner registrations
+        const { data: learnersData, error: learnersError } = await supabase
+          .from("learners")
           .select("id, name, created_at, grade, section")
           .eq("school_id", schoolId)
           .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
           .order("created_at", { ascending: false })
           .limit(5);
 
-        if (studentsError) {
-          logger.warn('Error fetching students', studentsError);
+        if (learnersError) {
+          logger.warn('Error fetching learners', learnersError);
         }
 
         // Group by category for chart with better data
@@ -240,7 +240,7 @@ const SchoolDashboard: React.FC = () => {
         const stats: CourseStats[] = Array.from(categoryEnrollmentMap.entries()).map(
           ([category, count]) => ({
             category,
-            studentCount: count,
+            learnerCount: count,
           })
         );
         setCourseStats(stats);
@@ -251,7 +251,7 @@ const SchoolDashboard: React.FC = () => {
             const enrollmentCount = enrollmentsData.filter(
               (e) => e.course_id === course.course_id
             ).length;
-            const activeStudents = enrollmentsData.filter(
+            const activelearners = enrollmentsData.filter(
               (e) => e.course_id === course.course_id && 
               (e.status === "active" || e.status === "in_progress")
             ).length;
@@ -259,7 +259,7 @@ const SchoolDashboard: React.FC = () => {
             return {
               program: course.title,
               enrollments: enrollmentCount,
-              students: activeStudents,
+              learners: activelearners,
               duration: course.duration || "N/A",
             };
           })
@@ -277,7 +277,7 @@ const SchoolDashboard: React.FC = () => {
           activities.push({
             id: activities.length + 1,
             title: `New Enrollment: ${course?.title || "Course"}`,
-            description: `${enrollment.student_name || "Student"} enrolled in ${course?.category || "course"}`,
+            description: `${enrollment.learner_name || "Learner"} enrolled in ${course?.category || "course"}`,
             time: formatDate(enrollment.enrolled_at),
             timestamp: enrollment.enrolled_at,
             type: "info",
@@ -292,7 +292,7 @@ const SchoolDashboard: React.FC = () => {
             activities.push({
               id: activities.length + 1,
               title: `Attendance Marked`,
-              description: `Student marked ${attendance.status} on ${new Date(attendance.date).toLocaleDateString('en-US', { 
+              description: `Learner marked ${attendance.status} on ${new Date(attendance.date).toLocaleDateString('en-US', { 
                 month: 'short', 
                 day: 'numeric' 
               })}`,
@@ -304,16 +304,16 @@ const SchoolDashboard: React.FC = () => {
           });
         }
 
-        // Add recent student registrations
-        if (studentsData && studentsData.length > 0) {
-          const recentStudents = studentsData.slice(0, 2);
-          recentStudents.forEach((student) => {
+        // Add recent learner registrations
+        if (learnersData && learnersData.length > 0) {
+          const recentlearners = learnersData.slice(0, 2);
+          recentlearners.forEach((learner) => {
             activities.push({
               id: activities.length + 1,
-              title: `New Student Registration`,
-              description: `${student.name} joined ${student.grade ? `Grade ${student.grade}` : "the school"}${student.section ? ` Section ${student.section}` : ""}`,
-              time: formatDate(student.created_at),
-              timestamp: student.created_at,
+              title: `New Learner Registration`,
+              description: `${learner.name} joined ${learner.grade ? `Grade ${learner.grade}` : "the school"}${learner.section ? ` Section ${learner.section}` : ""}`,
+              time: formatDate(learner.created_at),
+              timestamp: learner.created_at,
               type: "success",
               icon: UserPlus,
             });
@@ -346,10 +346,10 @@ const SchoolDashboard: React.FC = () => {
   const programDistribution = {
     series: [
       {
-        name: "Students Enrolled",
+        name: "Learners Enrolled",
         data:
           courseStats.length > 0
-            ? courseStats.map((s) => s.studentCount)
+            ? courseStats.map((s) => s.learnerCount)
             : [0],
       },
     ],
@@ -378,7 +378,7 @@ const SchoolDashboard: React.FC = () => {
             ? courseStats.map((s) => s.category)
             : ["No Data"],
         labels: { style: { colors: "#6b7280" } },
-        title: { text: "Number of Students", style: { color: "#6b7280" } },
+        title: { text: "Number of Learners", style: { color: "#6b7280" } },
       },
       yaxis: {
         labels: {
@@ -387,7 +387,7 @@ const SchoolDashboard: React.FC = () => {
       },
       tooltip: { 
         theme: "light",
-        y: { formatter: (val: number) => `${val} Students` },
+        y: { formatter: (val: number) => `${val} Learners` },
       },
       grid: { borderColor: "#f1f5f9" },
       noData: {
@@ -403,7 +403,7 @@ const SchoolDashboard: React.FC = () => {
         name: "Total Enrollments",
         data:
           courseStats.length > 0
-            ? courseStats.map((s) => s.studentCount)
+            ? courseStats.map((s) => s.learnerCount)
             : [0],
       },
     ],
@@ -438,7 +438,7 @@ const SchoolDashboard: React.FC = () => {
         labels: { style: { colors: "#6b7280" } },
       },
       yaxis: {
-        title: { text: "Student Enrollments", style: { color: "#6b7280" } },
+        title: { text: "Learner Enrollments", style: { color: "#6b7280" } },
         labels: { 
           style: { colors: "#6b7280" },
           formatter: (val: number) => val.toFixed(0),
@@ -446,7 +446,7 @@ const SchoolDashboard: React.FC = () => {
       },
       tooltip: {
         theme: "light",
-        y: { formatter: (val: number) => `${val} Students` },
+        y: { formatter: (val: number) => `${val} Learners` },
       },
       grid: { 
         borderColor: "#f1f5f9",
@@ -509,7 +509,7 @@ const SchoolDashboard: React.FC = () => {
       </div>
       <TrendingUp className="h-7 w-7 opacity-90" />
     </div>
-    <p className="text-sm mt-3">Students trained across 233 schools</p>
+    <p className="text-sm mt-3">Learners trained across 233 schools</p>
   </div>
 
   <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-2xl p-5 text-white shadow-lg">
@@ -520,7 +520,7 @@ const SchoolDashboard: React.FC = () => {
       </div>
       <BanknotesIcon className="h-7 w-7 opacity-90" />
     </div>
-    <p className="text-sm mt-3">Students trained across 7 schools</p>
+    <p className="text-sm mt-3">Learners trained across 7 schools</p>
   </div>
 
   <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl p-5 text-white shadow-lg">
@@ -661,7 +661,7 @@ const SchoolDashboard: React.FC = () => {
                         {prog.program}
                       </p>
                       <div className="flex items-center gap-3 text-xs text-gray-500">
-                        <span>{prog.students} active students</span>
+                        <span>{prog.learners} active learners</span>
                         <span>•</span>
                         <span>{prog.enrollments} total enrollments</span>
                       </div>
@@ -673,7 +673,7 @@ const SchoolDashboard: React.FC = () => {
                     </span>
                     {prog.enrollments > 0 && (
                       <div className="text-xs text-gray-500 mt-1">
-                        {Math.round((prog.students / prog.enrollments) * 100)}% active
+                        {Math.round((prog.learners / prog.enrollments) * 100)}% active
                       </div>
                     )}
                   </div>

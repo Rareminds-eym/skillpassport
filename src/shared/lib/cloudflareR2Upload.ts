@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Upload Utility
  * Handles image uploads to Cloudflare R2 via storage-api worker
@@ -29,7 +30,7 @@ export async function uploadToCloudflareR2(
 ): Promise<R2UploadResponse> {
   try {
     // Get authentication token
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    const { data: { session }, error: sessionError } = await getCurrentSession();
     
     if (sessionError || !session) {
       return {
@@ -124,7 +125,7 @@ export async function uploadToCloudflareR2(
 export async function deleteFromCloudflareR2(url: string): Promise<boolean> {
   try {
     // Get authentication token
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    const { data: { session }, error: sessionError } = await getCurrentSession();
     
     if (sessionError || !session) {
       return false;

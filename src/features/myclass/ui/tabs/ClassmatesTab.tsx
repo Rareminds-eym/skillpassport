@@ -6,7 +6,7 @@ export interface Classmate {
   name: string;
   email: string;
   profilePicture?: string;
-  // Optional additional fields for college students
+  // Optional additional fields for college learners
   roll_number?: string;
   admission_number?: string;
   semester?: number;

@@ -201,7 +201,7 @@ export {
 
 export {
   useAssessmentSubmission,
-  useStudentGrade,
+  useLearnerGrade,
   useAIQuestions,
   useAssessmentProgress,
   useAssessmentResults,

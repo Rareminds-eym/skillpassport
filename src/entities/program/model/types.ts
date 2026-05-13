@@ -21,8 +21,8 @@ export interface ProgramSection {
   program_id: string;
   semester: number;
   section: string;
-  max_students: number;
-  current_students: number;
+  max_learners: number;
+  current_learners: number;
   faculty_id?: string;
   academic_year: string;
   status: 'active' | 'inactive' | 'archived';
@@ -58,7 +58,7 @@ export interface CreateProgramSectionInput {
   program_id: string;
   semester: number;
   section: string;
-  max_students: number;
+  max_learners: number;
   faculty_id?: string;
   academic_year: string;
   status?: ProgramSection['status'];

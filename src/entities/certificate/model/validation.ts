@@ -51,8 +51,8 @@ export function validateCertificate(certificate: Partial<Certificate>): {
 } {
   const errors: string[] = [];
 
-  if (!certificate.student_id) {
-    errors.push('Student ID is required');
+  if (!certificate.learner_id) {
+    errors.push('Learner ID is required');
   }
 
   if (!certificate.title || certificate.title.trim().length === 0) {
@@ -110,8 +110,8 @@ export function validateCertificateIssuance(request: Partial<CertificateIssuance
 } {
   const errors: string[] = [];
 
-  if (!request.student_id) {
-    errors.push('Student ID is required');
+  if (!request.learner_id) {
+    errors.push('Learner ID is required');
   }
 
   if (!request.template_id) {

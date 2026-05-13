@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import React, { useState, useEffect } from 'react';
 import { supabase } from "@/shared/api/supabaseClient";
 // Note: This debug component imports from higher layers - consider moving to features/debug
@@ -22,9 +23,9 @@ const RoleDebugger: React.FC = () => {
   const fetchDebugInfo = async () => {
     try {
       // Check session first
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await getCurrentSession();
 
-      const { data: { user }, error } = await supabase.auth.getUser();
+      const { data: { user }, error } = await getCurrentUser();
 
       setUserInfo(user || { error: error?.message || 'No user found' });
 

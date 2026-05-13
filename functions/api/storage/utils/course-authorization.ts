@@ -26,7 +26,7 @@ export async function checkCourseEnrollment(
     const { data: enrollment, error } = await supabase
       .from('course_enrollments')
       .select('*')
-      .eq('student_id', userId)
+      .eq('learner_id', userId)
       .eq('course_id', courseId)
       .maybeSingle();
 

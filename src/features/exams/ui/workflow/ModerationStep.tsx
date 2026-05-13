@@ -16,7 +16,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 const logger = getLogger('ModerationStep');
-import { UIExam, UIStudentMark } from '@/features/exams';
+import { UIExam, UIlearnerMark } from '@/features/exams';
 import { WorkflowStage, MODERATION_TYPES } from '../types';
 import StatusBadge from '../StatusBadge';
 
@@ -32,7 +32,7 @@ interface ModerationStepProps {
 interface ModerationSummary {
   subjectId: string;
   subjectName: string;
-  totalStudents: number;
+  totallearners: number;
   marksEntered: boolean;
   hasModeration: boolean;
   moderationCount: number;
@@ -51,17 +51,17 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
   currentUserId 
 }) => {
   const [moderatingSubjectId, setModeratingSubjectId] = useState<string | null>(null);
-  const [moderationData, setModerationData] = useState<UIStudentMark[]>([]);
+  const [moderationData, setModerationData] = useState<UIlearnerMark[]>([]);
   const [viewingSubjectId, setViewingSubjectId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   // Calculate moderation summary for each subject - Simplified Logic
   const moderationSummary: ModerationSummary[] = exam.subjects.map(subject => {
     const subjectMarks = exam.marks.find(m => m.subjectId === subject.id);
-    const marksEntered = !!subjectMarks && subjectMarks.studentMarks.length > 0;
+    const marksEntered = !!subjectMarks && subjectMarks.learnerMarks.length > 0;
     
-    // Count students with moderation (original_marks different from marks_obtained)
-    const moderationCount = subjectMarks?.studentMarks.filter(s => 
+    // Count learners with moderation (original_marks different from marks_obtained)
+    const moderationCount = subjectMarks?.learnerMarks.filter(s => 
       s.originalMarks !== null && s.originalMarks !== s.marks && !s.isAbsent
     ).length || 0;
     
@@ -83,7 +83,7 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
     } else if (hasModeration) {
       // CASE: Has moderation changes but not yet approved
       approvalStatus = 'pending_approval';
-      reasonText = `${moderationCount} student(s) have moderated marks - requires approval`;
+      reasonText = `${moderationCount} learner(s) have moderated marks - requires approval`;
     } else {
       // CASE: No moderation changes - automatically ready
       approvalStatus = 'approved';
@@ -93,7 +93,7 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
     return {
       subjectId: subject.id,
       subjectName: subject.name,
-      totalStudents: subjectMarks?.studentMarks.length || 0,
+      totallearners: subjectMarks?.learnerMarks.length || 0,
       marksEntered,
       hasModeration,
       moderationCount,
@@ -117,7 +117,7 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
   const startModeration = (subjectId: string) => {
     const subjectMarks = exam.marks.find(m => m.subjectId === subjectId);
     if (subjectMarks) {
-      setModerationData(subjectMarks.studentMarks.map(s => ({
+      setModerationData(subjectMarks.learnerMarks.map(s => ({
         ...s,
         originalMarks: s.originalMarks || s.marks, // Preserve existing original marks
         moderationType: s.moderationType || "correction",
@@ -135,54 +135,54 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
       const subject = exam.subjects.find(s => s.id === moderatingSubjectId);
       if (!subject) return;
 
-      // Find students with actual changes
-      const changedStudents = moderationData.filter(student => 
-        student.originalMarks !== student.marks && !student.isAbsent && 
-        student.marks !== null && student.originalMarks !== null
+      // Find learners with actual changes
+      const changedlearners = moderationData.filter(learner => 
+        learner.originalMarks !== learner.marks && !learner.isAbsent && 
+        learner.marks !== null && learner.originalMarks !== null
       );
 
-      if (changedStudents.length === 0) {
+      if (changedlearners.length === 0) {
         alert('ℹ️ No changes detected to moderate');
         setModeratingSubjectId(null);
         return;
       }
 
-      // Validate required fields for changed students
-      const missingData = changedStudents.filter(student => 
-        !student.moderationType || !student.moderationReason?.trim()
+      // Validate required fields for changed learners
+      const missingData = changedlearners.filter(learner => 
+        !learner.moderationType || !learner.moderationReason?.trim()
       );
       
       if (missingData.length > 0) {
-        alert(`Please provide moderation type and justification for all changed students:\n${missingData.map(s => `• ${s.studentName}`).join('\n')}`);
+        alert(`Please provide moderation type and justification for all changed learners:\n${missingData.map(s => `• ${s.learnerName}`).join('\n')}`);
         return;
       }
 
       // Check ±10% rule violations
-      const violations = changedStudents.filter(student => {
-        const diff = Math.abs(student.marks! - student.originalMarks!);
-        const tenPercent = student.originalMarks! * 0.1;
+      const violations = changedlearners.filter(learner => {
+        const diff = Math.abs(learner.marks! - learner.originalMarks!);
+        const tenPercent = learner.originalMarks! * 0.1;
         return diff > tenPercent;
       });
 
       if (violations.length > 0) {
         const proceed = confirm(
-          `⚠️ ${violations.length} student(s) have changes exceeding ±10%:\n\n` +
-          violations.map(s => `• ${s.studentName}: ${s.originalMarks} → ${s.marks} (${Math.abs(s.marks! - s.originalMarks!)} marks)`).join('\n') +
+          `⚠️ ${violations.length} learner(s) have changes exceeding ±10%:\n\n` +
+          violations.map(s => `• ${s.learnerName}: ${s.originalMarks} → ${s.marks} (${Math.abs(s.marks! - s.originalMarks!)} marks)`).join('\n') +
           `\n\nThis requires special approval. Continue?`
         );
         if (!proceed) return;
       }
 
-      // Save moderation for each changed student
-      const moderationPromises = changedStudents.map(student => {
-        return moderateMarks(student.markEntryId!, {
+      // Save moderation for each changed learner
+      const moderationPromises = changedlearners.map(learner => {
+        return moderateMarks(learner.markEntryId!, {
           assessment_id: exam.id,
-          student_id: student.studentId,
+          learner_id: learner.learnerId,
           subject_id: moderatingSubjectId,
-          original_marks: student.originalMarks!,
-          marks_obtained: student.marks!,
-          moderation_reason: student.moderationReason!,
-          moderation_type: student.moderationType!,
+          original_marks: learner.originalMarks!,
+          marks_obtained: learner.marks!,
+          moderation_reason: learner.moderationReason!,
+          moderation_type: learner.moderationType!,
           moderated_by: currentUserId
         });
       });
@@ -190,7 +190,7 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
       await Promise.all(moderationPromises);
       await loadData();
       
-      alert(`✅ Moderation saved for ${changedStudents.length} student(s)`);
+      alert(`✅ Moderation saved for ${changedlearners.length} learner(s)`);
       setModeratingSubjectId(null);
       setModerationData([]);
     } catch (error) {
@@ -373,7 +373,7 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
                   <div>
                     <h5 className="font-semibold text-gray-900">{summary.subjectName}</h5>
                     <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
-                      <span>Students: {summary.totalStudents}</span>
+                      <span>Learners: {summary.totallearners}</span>
                       {summary.moderationCount > 0 && (
                         <span className="text-purple-600 font-medium">
                           {summary.moderationCount} moderation(s)
@@ -504,7 +504,7 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
                   <thead className="bg-gray-50 sticky top-0">
                     <tr>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600">Roll No</th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600">Student Name</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600">Learner Name</th>
                       <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">Original</th>
                       <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">Current</th>
                       <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">±10% Range</th>
@@ -514,55 +514,55 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {moderationData.map((student, idx) => {
-                      const original = student.originalMarks ?? student.marks ?? 0;
+                    {moderationData.map((learner, idx) => {
+                      const original = learner.originalMarks ?? learner.marks ?? 0;
                       const tenPercentLower = Math.max(0, Math.floor(original - (original * 0.1)));
                       const tenPercentUpper = Math.min(
                         exam.subjects.find(s => s.id === moderatingSubjectId)?.totalMarks || 100, 
                         Math.ceil(original + (original * 0.1))
                       );
-                      const isWithinRange = student.marks !== null && student.marks >= tenPercentLower && student.marks <= tenPercentUpper;
-                      const hasChanged = student.marks !== student.originalMarks;
+                      const isWithinRange = learner.marks !== null && learner.marks >= tenPercentLower && learner.marks <= tenPercentUpper;
+                      const hasChanged = learner.marks !== learner.originalMarks;
 
                       return (
-                        <tr key={student.studentId} className={hasChanged ? "bg-yellow-50" : ""}>
-                          <td className="px-3 py-2 text-xs font-medium">{student.rollNumber}</td>
-                          <td className="px-3 py-2 text-xs">{student.studentName}</td>
+                        <tr key={learner.learnerId} className={hasChanged ? "bg-yellow-50" : ""}>
+                          <td className="px-3 py-2 text-xs font-medium">{learner.rollNumber}</td>
+                          <td className="px-3 py-2 text-xs">{learner.learnerName}</td>
                           <td className="px-3 py-2 text-center text-xs font-medium">
-                            {student.isAbsent ? "Absent" : student.originalMarks}
+                            {learner.isAbsent ? "Absent" : learner.originalMarks}
                           </td>
                           <td className="px-3 py-2 text-center">
                             <input
                               type="number"
-                              value={student.marks ?? ""}
+                              value={learner.marks ?? ""}
                               onChange={(e) => {
                                 const newMarks = e.target.value ? parseInt(e.target.value) : null;
                                 setModerationData(prev => prev.map((s, i) => 
                                   i === idx ? { ...s, marks: newMarks } : s
                                 ));
                               }}
-                              disabled={student.isAbsent}
+                              disabled={learner.isAbsent}
                               min="0"
                               max={exam.subjects.find(s => s.id === moderatingSubjectId)?.totalMarks || 100}
                               className={`w-16 rounded border px-2 py-1 text-xs text-center ${
-                                student.isAbsent ? "bg-gray-100" : 
+                                learner.isAbsent ? "bg-gray-100" : 
                                 !isWithinRange && hasChanged ? "border-red-500 bg-red-50" : 
                                 hasChanged ? "border-yellow-500 bg-yellow-50" : "border-gray-300"
                               }`}
                             />
                           </td>
                           <td className="px-3 py-2 text-center text-xs text-gray-500">
-                            {student.isAbsent ? "-" : `${tenPercentLower}-${tenPercentUpper}`}
+                            {learner.isAbsent ? "-" : `${tenPercentLower}-${tenPercentUpper}`}
                           </td>
                           <td className="px-3 py-2 text-center">
                             <select
-                              value={student.moderationType || "correction"}
+                              value={learner.moderationType || "correction"}
                               onChange={(e) => {
                                 setModerationData(prev => prev.map((s, i) => 
                                   i === idx ? { ...s, moderationType: e.target.value } : s
                                 ));
                               }}
-                              disabled={student.isAbsent || !hasChanged}
+                              disabled={learner.isAbsent || !hasChanged}
                               className="w-24 rounded border px-1 py-1 text-xs"
                             >
                               {MODERATION_TYPES.map(type => (
@@ -575,19 +575,19 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
                           <td className="px-3 py-2 text-center">
                             <input
                               type="text"
-                              value={student.moderationReason || ""}
+                              value={learner.moderationReason || ""}
                               onChange={(e) => {
                                 setModerationData(prev => prev.map((s, i) => 
                                   i === idx ? { ...s, moderationReason: e.target.value } : s
                                 ));
                               }}
-                              disabled={student.isAbsent || !hasChanged}
+                              disabled={learner.isAbsent || !hasChanged}
                               placeholder="Required for changes"
                               className="w-32 rounded border px-2 py-1 text-xs"
                             />
                           </td>
                           <td className="px-3 py-2 text-center">
-                            {student.isAbsent ? (
+                            {learner.isAbsent ? (
                               <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">Absent</span>
                             ) : hasChanged ? (
                               isWithinRange ? (
@@ -609,7 +609,7 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
             
             <div className="p-6 border-t border-gray-200 flex justify-between">
               <div className="text-sm text-gray-600">
-                Changes: {moderationData.filter(s => s.marks !== s.originalMarks && !s.isAbsent).length} students
+                Changes: {moderationData.filter(s => s.marks !== s.originalMarks && !s.isAbsent).length} learners
               </div>
               <div className="flex gap-3">
                 <button
@@ -664,7 +664,7 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600">Roll No</th>
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600">Student Name</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600">Learner Name</th>
                           <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">Original</th>
                           <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">Current</th>
                           <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">Change</th>
@@ -672,35 +672,35 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
-                        {subjectMarks.studentMarks.map(student => {
+                        {subjectMarks.learnerMarks.map(learner => {
                           // Only consider it changed if:
                           // 1. originalMarks exists (not null/undefined)
                           // 2. originalMarks is different from current marks
                           // 3. There's an actual numerical difference (not just null vs 0 issues)
-                          const hasOriginalMarks = student.originalMarks !== null && student.originalMarks !== undefined;
-                          const hasActualChange = hasOriginalMarks && student.originalMarks !== student.marks;
+                          const hasOriginalMarks = learner.originalMarks !== null && learner.originalMarks !== undefined;
+                          const hasActualChange = hasOriginalMarks && learner.originalMarks !== learner.marks;
                           const hasChanged = hasActualChange;
-                          const change = hasChanged ? (student.marks || 0) - (student.originalMarks || 0) : 0;
+                          const change = hasChanged ? (learner.marks || 0) - (learner.originalMarks || 0) : 0;
                           
                           return (
-                            <tr key={student.studentId} className={hasChanged ? "bg-yellow-50" : ""}>
-                              <td className="px-3 py-2 text-xs font-medium">{student.rollNumber}</td>
-                              <td className="px-3 py-2 text-xs">{student.studentName}</td>
+                            <tr key={learner.learnerId} className={hasChanged ? "bg-yellow-50" : ""}>
+                              <td className="px-3 py-2 text-xs font-medium">{learner.rollNumber}</td>
+                              <td className="px-3 py-2 text-xs">{learner.learnerName}</td>
                               <td className="px-3 py-2 text-center text-xs">
-                                {student.isAbsent ? "Absent" : student.originalMarks ?? student.marks}
+                                {learner.isAbsent ? "Absent" : learner.originalMarks ?? learner.marks}
                               </td>
                               <td className="px-3 py-2 text-center text-xs font-medium">
-                                {student.isAbsent ? "Absent" : student.marks}
+                                {learner.isAbsent ? "Absent" : learner.marks}
                               </td>
                               <td className="px-3 py-2 text-center text-xs">
-                                {student.isAbsent ? "-" : hasChanged && change !== 0 ? (
+                                {learner.isAbsent ? "-" : hasChanged && change !== 0 ? (
                                   <span className={change > 0 ? "text-green-600" : "text-red-600"}>
                                     {change > 0 ? "+" : ""}{change}
                                   </span>
                                 ) : "-"}
                               </td>
                               <td className="px-3 py-2 text-center">
-                                {student.isAbsent ? (
+                                {learner.isAbsent ? (
                                   <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">Absent</span>
                                 ) : hasChanged ? (
                                   <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs">Modified</span>

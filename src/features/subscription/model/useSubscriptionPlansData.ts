@@ -11,10 +11,21 @@
  *   error = ...    → fetch failed
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { getCurrentSession } from '@/shared/api/authUtils';
 
-const PAYMENTS_API_URL =
-  import.meta.env.VITE_PAYMENTS_API_URL ||
-  'https://payments-api.dark-mode-d021.workers.dev';
+// Use Pages Functions for payments (not direct worker access)
+const getBaseUrl = () => {
+  const origin = window.location.origin;
+  return `${origin}/api/payments`;
+};
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const { data: { session } } = await getCurrentSession();
+  const token = session?.access_token;
+  return token
+    ? { Authorization: `Bearer ${token}` }
+    : {};
+}
 
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1500;
@@ -29,7 +40,7 @@ function sleep(ms) {
  * @param {Object} options
  * @param {string} options.businessType  - 'b2b' | 'b2c'
  * @param {string} options.entityType    - 'school' | 'college' | 'university' | 'recruitment' | 'all'
- * @param {string} options.roleType      - 'student' | 'educator' | 'admin' | 'recruiter' | 'all'
+ * @param {string} options.roleType      - 'learner' | 'educator' | 'admin' | 'recruiter' | 'all'
  *
  * @returns {{ plans, loading, error, refetch }}
  */
@@ -76,10 +87,11 @@ export function useSubscriptionPlansData(options = {}) {
         // Fetch ALL features — no artificial limit
       });
 
-      const url = `${PAYMENTS_API_URL}/subscription-plans?${params}`;
+      const url = `${getBaseUrl()}/subscription-plans?${params}`;
 
       try {
-        const response = await fetch(url);
+        const headers = await getAuthHeaders();
+        const response = await fetch(url, { headers });
 
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
@@ -160,8 +172,10 @@ export function useSubscriptionPlan(planCode) {
       setError(null);
 
       try {
+        const headers = await getAuthHeaders();
         const response = await fetch(
-          `${PAYMENTS_API_URL}/subscription-plan?planCode=${encodeURIComponent(planCode)}`
+          `${getBaseUrl()}/subscription-plan?planCode=${encodeURIComponent(planCode)}`,
+          { headers }
         );
 
         if (!response.ok) {
@@ -214,8 +228,10 @@ export function useSubscriptionFeaturesComparison() {
       setError(null);
 
       try {
+        const headers = await getAuthHeaders();
         const response = await fetch(
-          `${PAYMENTS_API_URL}/subscription-features`
+          `${getBaseUrl()}/subscription-features`,
+          { headers }
         );
 
         if (!response.ok) {

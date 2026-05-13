@@ -19,7 +19,7 @@ import { FeatureGate } from "@/features/subscription";
 import ConfirmationModal from '@/shared/ui/ConfirmationModal';
 import NotificationModal from '@/shared/ui/NotificationModal';
 import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
-import { useStudents } from '@/entities/student';
+import { useLearners } from '@/entities/learner';
 import { supabase } from '@/shared/api/supabaseClient';
 import { saveMentorNote } from '@/features/educator';
 import { mentorNotesService } from "@/features/counselling";
@@ -27,12 +27,12 @@ import { authSessionService } from '@/features/auth';
 
 interface MentorNote {
   id: string;
-  student_id: string;
+  learner_id: string;
   feedback: string;
   action_points: string;
   quick_notes: string[];
   note_date: string;
-  students: { name: string } | { name: string }[];
+  learners: { name: string } | { name: string }[];
 }
 
 const MentorNotesContent = () => {
@@ -42,8 +42,8 @@ const MentorNotesContent = () => {
   // Get auth context for user ID
   const user = useUser();
 
-  // Fetch students filtered by educator's assigned classes or institution
-  const { students, loading: studentsLoading } = useStudents({ 
+  // Fetch learners filtered by educator's assigned classes or institution
+  const { learners, loading: learnersLoading } = useLearners({ 
     schoolId: educatorSchool?.id,
     collegeId: educatorCollege?.id,
     classIds: (educatorType === 'school' && educatorRole !== 'admin') || (educatorType === 'college' && educatorRole !== 'admin') ? assignedClassIds : undefined,
@@ -56,7 +56,7 @@ const MentorNotesContent = () => {
 
   // form state for adding new note
   const [loading, setLoading] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState("");
+  const [selectedLearner, setSelectedLearner] = useState("");
   const [selectedQuickNotes, setSelectedQuickNotes] = useState<string[]>([]);
   const [feedback, setFeedback] = useState("");
   const [actionPoints, setActionPoints] = useState("");
@@ -87,7 +87,7 @@ const MentorNotesContent = () => {
     "bg-indigo-100 text-indigo-700 border-indigo-300",
   ];
 
-  // Student dropdown search
+  // Learner dropdown search
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -135,44 +135,44 @@ const MentorNotesContent = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // filtered students for dropdown search (only show students with user_id)
-  const filteredStudents = students.filter((s) =>
+  // filtered learners for dropdown search (only show learners with user_id)
+  const filteredlearners = learners.filter((s) =>
     s.user_id && s.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-  const displayStudents =
-    searchTerm.trim() === "" ? filteredStudents.slice(0, 8) : filteredStudents;
+  const displaylearners =
+    searchTerm.trim() === "" ? filteredlearners.slice(0, 8) : filteredlearners;
 
-  // Load notes when students are available
+  // Load notes when learners are available
   useEffect(() => {
     const loadNotes = async () => {
-      if (studentsLoading || students.length === 0) {
+      if (learnersLoading || learners.length === 0) {
         setNotes([]);
         return;
       }
       
       setLoading(true);
       try {
-        // Get student user_ids from current filtered students
-        const studentUserIds = students.map(s => s.user_id).filter(Boolean);
+        // Get learner user_ids from current filtered learners
+        const learnerUserIds = learners.map(s => s.user_id).filter(Boolean);
         
-        if (studentUserIds.length === 0) {
+        if (learnerUserIds.length === 0) {
           setNotes([]);
           return;
         }
 
-        // Fetch notes only for students in educator's assigned classes/college
+        // Fetch notes only for learners in educator's assigned classes/college
         const { data: filteredNotes, error: notesError } = await supabase
           .from("mentor_notes")
           .select(`
             id,
-            student_id,
+            learner_id,
             feedback,
             action_points,
             quick_notes,
             note_date,
-            students(name)
+            learners(name)
           `)
-          .in("student_id", studentUserIds)
+          .in("learner_id", learnerUserIds)
           .order("note_date", { ascending: false });
 
         if (notesError) throw notesError;
@@ -186,37 +186,37 @@ const MentorNotesContent = () => {
     };
 
     loadNotes();
-  }, [students, studentsLoading]);
+  }, [learners, learnersLoading]);
 
   // helper: refresh notes (filtered by educator's assigned classes/college)
   const refreshNotes = async () => {
-    if (students.length === 0) {
+    if (learners.length === 0) {
       setNotes([]);
       return;
     }
 
     try {
-      // Get student user_ids from current filtered students
-      const studentUserIds = students.map(s => s.user_id).filter(Boolean);
+      // Get learner user_ids from current filtered learners
+      const learnerUserIds = learners.map(s => s.user_id).filter(Boolean);
       
-      if (studentUserIds.length === 0) {
+      if (learnerUserIds.length === 0) {
         setNotes([]);
         return;
       }
 
-      // Fetch notes only for students in educator's assigned classes/college
+      // Fetch notes only for learners in educator's assigned classes/college
       const { data: filteredNotes, error } = await supabase
         .from("mentor_notes")
         .select(`
           id,
-          student_id,
+          learner_id,
           feedback,
           action_points,
           quick_notes,
           note_date,
-          students(name)
+          learners(name)
         `)
-        .in("student_id", studentUserIds)
+        .in("learner_id", learnerUserIds)
         .order("note_date", { ascending: false });
 
       if (error) throw error;
@@ -237,7 +237,7 @@ const MentorNotesContent = () => {
   };
 
   const handleDelete = async (id: string) => {
-    // Find the note to get student name for confirmation message
+    // Find the note to get learner name for confirmation message
     const noteToDeleteData = notes.find(note => note.id === id);
     setNoteToDelete(id);
     setNoteToDeleteData(noteToDeleteData || null);
@@ -270,8 +270,8 @@ const MentorNotesContent = () => {
         return;
       }
 
-      if (!selectedStudent) {
-        showNotification("Error", "Please select a student!", "error");
+      if (!selectedLearner) {
+        showNotification("Error", "Please select a learner!", "error");
         return;
       }
 
@@ -299,7 +299,7 @@ const MentorNotesContent = () => {
         }
 
         payload = {
-          student_id: selectedStudent, // This should be user_id from the selected student
+          learner_id: selectedLearner, // This should be user_id from the selected learner
           mentor_type: "school",
           school_educator_id: educator.id,
           college_lecturer_id: null,
@@ -321,7 +321,7 @@ const MentorNotesContent = () => {
         }
 
         payload = {
-          student_id: selectedStudent, // This should be user_id from the selected student
+          learner_id: selectedLearner, // This should be user_id from the selected learner
           mentor_type: "college",
           school_educator_id: null,
           college_lecturer_id: lecturer.id,
@@ -340,7 +340,7 @@ const MentorNotesContent = () => {
       await refreshNotes();
       
       // Reset form
-      setSelectedStudent("");
+      setSelectedLearner("");
       setSelectedQuickNotes([]);
       setFeedback("");
       setActionPoints("");
@@ -469,7 +469,7 @@ const MentorNotesContent = () => {
   };
 
   // Show loading state
-  if (loading || studentsLoading || schoolLoading) {
+  if (loading || learnersLoading || schoolLoading) {
     return (
       <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
         <div className="text-center">
@@ -489,7 +489,7 @@ const MentorNotesContent = () => {
             <MessageCircle className="text-green-600" size={22} />
             Mentor Notes
           </h1>
-          <p className="text-gray-600 mt-1">Track and record qualitative feedback for your students.</p>
+          <p className="text-gray-600 mt-1">Track and record qualitative feedback for your learners.</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -542,51 +542,51 @@ const MentorNotesContent = () => {
             <Edit3 className="text-blue-600" size={20} />
             Add New Note
           </h2>
-          <div className="text-sm text-gray-500 hidden sm:block">Quickly add feedback for a student</div>
+          <div className="text-sm text-gray-500 hidden sm:block">Quickly add feedback for a learner</div>
         </div>
 
         <div className="space-y-5">
-          {/* Student Dropdown (searchable) */}
+          {/* Learner Dropdown (searchable) */}
           <div className="relative" ref={dropdownRef}>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Select Student</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Select Learner</label>
 
             <div
-              onClick={() => students.length > 0 && setDropdownOpen((v) => !v)}
+              onClick={() => learners.length > 0 && setDropdownOpen((v) => !v)}
               className={`w-full border border-gray-300 bg-white rounded-lg px-4 py-3 flex justify-between items-center transition-colors ${
-                students.length > 0 
+                learners.length > 0 
                   ? 'cursor-pointer hover:border-gray-400' 
                   : 'cursor-not-allowed bg-gray-50 text-gray-400'
               }`}
               role="button"
-              tabIndex={students.length > 0 ? 0 : -1}
-              onKeyDown={(e) => students.length > 0 && e.key === "Enter" && setDropdownOpen((v) => !v)}
+              tabIndex={learners.length > 0 ? 0 : -1}
+              onKeyDown={(e) => learners.length > 0 && e.key === "Enter" && setDropdownOpen((v) => !v)}
             >
-              <span className={students.length > 0 ? "text-gray-700" : "text-gray-400"}>
-                {selectedStudent ? students.find((s) => s.user_id === selectedStudent || s.id === selectedStudent)?.name : 
-                 students.length === 0 ? "No students available" : "Select Student"}
+              <span className={learners.length > 0 ? "text-gray-700" : "text-gray-400"}>
+                {selectedLearner ? learners.find((s) => s.user_id === selectedLearner || s.id === selectedLearner)?.name : 
+                 learners.length === 0 ? "No learners available" : "Select Learner"}
               </span>
               <svg className={`w-5 h-5 text-gray-400 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
             </div>
 
-            {dropdownOpen && students.length > 0 && (
+            {dropdownOpen && learners.length > 0 && (
               <div className="absolute z-30 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-xl">
                 <input
                   type="text"
-                  placeholder="Search student..."
+                  placeholder="Search learner..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <div className="max-h-56 overflow-y-auto p-2">
-                  {displayStudents.length > 0 ? (
-                    displayStudents.filter(s => s.user_id).map((s) => (
+                  {displaylearners.length > 0 ? (
+                    displaylearners.filter(s => s.user_id).map((s) => (
                       <div
                         key={s.id}
                         onClick={() => {
                           if (s.user_id) {
-                            setSelectedStudent(s.user_id);
+                            setSelectedLearner(s.user_id);
                             setDropdownOpen(false);
                           }
                         }}
@@ -595,17 +595,17 @@ const MentorNotesContent = () => {
                         {s.name}
                       </div>
                     ))
-                  ) : students.length === 0 ? (
+                  ) : learners.length === 0 ? (
                     <div className="px-3 py-4 text-center">
-                      <p className="text-sm text-gray-500 mb-1">No students available</p>
+                      <p className="text-sm text-gray-500 mb-1">No learners available</p>
                       <p className="text-xs text-gray-400">
                         {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
                           ? 'You have not been assigned to any classes yet'
-                          : 'No students found in your assigned classes'}
+                          : 'No learners found in your assigned classes'}
                       </p>
                     </div>
                   ) : (
-                     <p className="text-sm text-gray-500 px-3 py-2 text-center">No eligible students found</p>
+                     <p className="text-sm text-gray-500 px-3 py-2 text-center">No eligible learners found</p>
                   )}
                 </div>
               </div>
@@ -709,7 +709,7 @@ const MentorNotesContent = () => {
           <div className="flex items-center gap-3 pt-3">
             <button 
               onClick={handleSaveNote} 
-              disabled={students.length === 0 || !selectedStudent || isSaving}
+              disabled={learners.length === 0 || !selectedLearner || isSaving}
               className="bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isSaving && (
@@ -748,7 +748,7 @@ const MentorNotesContent = () => {
                   </div>
                   <div>
                     <h3 className="font-medium text-gray-800">
-                      {Array.isArray(note.students) ? note.students[0]?.name : note.students?.name}
+                      {Array.isArray(note.learners) ? note.learners[0]?.name : note.learners?.name}
                     </h3>
                     <div className="text-xs text-gray-400 flex items-center gap-2 mt-1">
                       <Calendar size={14} />
@@ -808,11 +808,11 @@ const MentorNotesContent = () => {
           {paginatedNotes.length === 0 && (
             <div className="col-span-full bg-white p-6 rounded-2xl border border-gray-100 text-center">
               <div className="text-gray-500 mb-2">No notes found.</div>
-              {students.length === 0 && (
+              {learners.length === 0 && (
                 <div className="text-sm text-gray-400">
                   {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
                     ? 'You need to be assigned to classes before you can add mentor notes.'
-                    : 'Start by adding a note for one of your students above.'}
+                    : 'Start by adding a note for one of your learners above.'}
                 </div>
               )}
             </div>
@@ -858,7 +858,7 @@ const MentorNotesContent = () => {
                 <div>
                   <h3 className="text-lg font-semibold">View Note</h3>
                   <div className="text-sm text-gray-500">
-                    {Array.isArray(viewingNote.students) ? viewingNote.students[0]?.name : viewingNote.students?.name}
+                    {Array.isArray(viewingNote.learners) ? viewingNote.learners[0]?.name : viewingNote.learners?.name}
                   </div>
                 </div>
               </div>
@@ -913,7 +913,7 @@ const MentorNotesContent = () => {
                 <div>
                   <h3 className="text-lg font-semibold">Edit Note</h3>
                   <div className="text-sm text-gray-500">
-                    {Array.isArray(editingNote.students) ? editingNote.students[0]?.name : editingNote.students?.name}
+                    {Array.isArray(editingNote.learners) ? editingNote.learners[0]?.name : editingNote.learners?.name}
                   </div>
                 </div>
               </div>
@@ -1008,11 +1008,11 @@ const MentorNotesContent = () => {
         onConfirm={confirmDeleteNote}
         title="Delete Mentor Note"
         message={`Are you sure you want to delete the mentor note for "${
-          noteToDeleteData?.students 
-            ? Array.isArray(noteToDeleteData.students) 
-              ? noteToDeleteData.students[0]?.name 
-              : noteToDeleteData.students?.name
-            : 'this student'
+          noteToDeleteData?.learners 
+            ? Array.isArray(noteToDeleteData.learners) 
+              ? noteToDeleteData.learners[0]?.name 
+              : noteToDeleteData.learners?.name
+            : 'this learner'
         }"? This action cannot be undone.`}
         type="danger"
         confirmText="Delete"

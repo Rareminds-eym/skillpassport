@@ -70,8 +70,8 @@ export interface UseConversationActionsReturn {
  */
 function getArchiveColumn(userRole: UserRole): string {
     switch (userRole) {
-        case 'student':
-            return 'archived_by_student';
+        case 'learner':
+            return 'archived_by_learner';
         case 'recruiter':
             return 'archived_by_recruiter';
         case 'educator':
@@ -100,7 +100,7 @@ function getArchiveColumn(userRole: UserRole): string {
  * @example
  * const { archiveConversation, deleteConversation } = useConversationActions({
  *   userId: 'user-123',
- *   userRole: 'student'
+ *   userRole: 'learner'
  * });
  * 
  * await archiveConversation('conv-456');

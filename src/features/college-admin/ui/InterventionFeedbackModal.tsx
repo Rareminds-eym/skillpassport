@@ -31,7 +31,7 @@ interface InterventionFeedbackModalProps {
     created_at: string;
     last_updated_at?: string;
   };
-  studentName: string;
+  learnerName: string;
   mentorName: string;
   onClose: () => void;
   onSave: (feedback: {
@@ -46,7 +46,7 @@ interface InterventionFeedbackModalProps {
 
 const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
   note,
-  studentName,
+  learnerName,
   mentorName,
   onClose,
   onSave,
@@ -162,7 +162,7 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
           <div>
             <h2 className="text-xl font-bold text-gray-900">Intervention Conversation</h2>
             <p className="text-sm text-gray-600 mt-1">
-              Student: {studentName} • Mentor: {mentorName}
+              Learner: {learnerName} • Mentor: {mentorName}
             </p>
           </div>
           <button

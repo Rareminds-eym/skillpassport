@@ -104,7 +104,7 @@ export function useEducatorSchool(): EducatorSchoolData {
                 setAssignedClassIds(classIds);
               }
             } else {
-              // Admins don't need class assignments - they see all students
+              // Admins don't need class assignments - they see all learners
               setAssignedClassIds([]);
             }
             

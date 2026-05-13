@@ -580,7 +580,7 @@ describe('MemberInvitationService', () => {
       const mockInvitations = [
         { id: 'inv-001', status: 'pending', member_type: 'educator' },
         { id: 'inv-002', status: 'accepted', member_type: 'educator' },
-        { id: 'inv-003', status: 'expired', member_type: 'student' }
+        { id: 'inv-003', status: 'expired', member_type: 'learner' }
       ];
 
       vi.mocked(supabase.from).mockImplementation(() => ({

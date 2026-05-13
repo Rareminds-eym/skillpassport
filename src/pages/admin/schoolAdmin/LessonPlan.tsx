@@ -1825,7 +1825,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                   rows={4}
                   className={`w-full px-4 py-3 rounded-lg border ${errors.learningObjectives ? "border-red-300" : "border-gray-300"
                     } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none`}
-                  placeholder="What should students learn and be able to do after this lesson? Describe specific, measurable learning objectives derived from the selected outcomes above..."
+                  placeholder="What should learners learn and be able to do after this lesson? Describe specific, measurable learning objectives derived from the selected outcomes above..."
                 />
                 {errors.learningObjectives && (
                   <p className="text-red-500 text-xs mt-1">
@@ -2359,7 +2359,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                       }
                       rows={2}
                       className="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none"
-                      placeholder="Assignments or follow-up activities for students..."
+                      placeholder="Assignments or follow-up activities for learners..."
                     />
                   </div>
 

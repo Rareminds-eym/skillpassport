@@ -43,28 +43,28 @@ export const onRequestPost: PagesFunction = async (context) => {
     // Use admin client to bypass RLS for foreign key constraint check
     const supabase = createSupabaseAdminClient(env);
 
-    // First, get the student record for the authenticated user
-    const { data: studentData, error: studentError } = await supabase
-      .from('students')
+    // First, get the learner record for the authenticated user
+    const { data: learnerData, error: learnerError } = await supabase
+      .from('learners')
       .select('id')
       .eq('user_id', auth.user.id)
       .single();
 
-    if (studentError || !studentData) {
-      console.error('❌ [LinkToAttemptHandler] Student record not found:', studentError);
+    if (learnerError || !learnerData) {
+      console.error('❌ [LinkToAttemptHandler] Learner record not found:', learnerError);
       return jsonResponse(
-        { error: 'Student record not found', message: studentError?.message },
+        { error: 'Learner record not found', message: learnerError?.message },
         404
       );
     }
 
-    const studentId = studentData.id;
-    console.log('📋 [LinkToAttemptHandler] Found student ID:', studentId);
+    const learnerId = learnerData.id;
+    console.log('📋 [LinkToAttemptHandler] Found learner ID:', learnerId);
 
-    // Verify the session belongs to the authenticated user's student record
+    // Verify the session belongs to the authenticated user's learner record
     const { data: sessionData, error: sessionError } = await supabase
       .from('adaptive_aptitude_sessions')
-      .select('student_id')
+      .select('learner_id')
       .eq('id', sessionId)
       .single();
 
@@ -76,21 +76,21 @@ export const onRequestPost: PagesFunction = async (context) => {
       );
     }
 
-    // Verify session ownership (student_id should match the student record)
-    if (sessionData.student_id !== studentId) {
+    // Verify session ownership (learner_id should match the learner record)
+    if (sessionData.learner_id !== learnerId) {
       console.error('❌ [LinkToAttemptHandler] Session ownership verification failed');
-      console.error('   Expected student_id:', studentId);
-      console.error('   Session student_id:', sessionData.student_id);
+      console.error('   Expected learner_id:', learnerId);
+      console.error('   Session learner_id:', sessionData.learner_id);
       return jsonResponse(
         { error: 'Unauthorized: You do not own this session' },
         403
       );
     }
 
-    // Verify the attempt belongs to the authenticated user's student record
+    // Verify the attempt belongs to the authenticated user's learner record
     const { data: attemptData, error: attemptError } = await supabase
       .from('personal_assessment_attempts')
-      .select('student_id')
+      .select('learner_id')
       .eq('id', attemptId)
       .single();
 
@@ -103,10 +103,10 @@ export const onRequestPost: PagesFunction = async (context) => {
     }
 
     // Verify attempt ownership
-    if (attemptData.student_id !== studentId) {
+    if (attemptData.learner_id !== learnerId) {
       console.error('❌ [LinkToAttemptHandler] Attempt ownership verification failed');
-      console.error('   Expected student_id:', studentId);
-      console.error('   Attempt student_id:', attemptData.student_id);
+      console.error('   Expected learner_id:', learnerId);
+      console.error('   Attempt learner_id:', attemptData.learner_id);
       return jsonResponse(
         { error: 'Unauthorized: You do not own this attempt' },
         403

@@ -1,4 +1,4 @@
-import { StudentProfile, Opportunity } from '@/features/student-profile/model';
+import { LearnerProfile, Opportunity } from '@/features/learner-profile/model';
 
 /**
  * Intelligent Prompt System
@@ -6,7 +6,7 @@ import { StudentProfile, Opportunity } from '@/features/student-profile/model';
  */
 
 export interface QueryContext {
-  studentProfile: StudentProfile;
+  learnerProfile: LearnerProfile;
   marketData: {
     inDemandSkills: string[];
     totalJobs: number;
@@ -17,9 +17,9 @@ export interface QueryContext {
 }
 
 /**
- * Build rich student context string with ALL available data
+ * Build rich learner context string with ALL available data
  */
-export function buildRichStudentContext(profile: StudentProfile): string {
+export function buildRichlearnerContext(profile: LearnerProfile): string {
   const skills = profile.profile?.technicalSkills || [];
   const softSkills = profile.profile?.softSkills || [];
   const training = profile.profile?.training || [];
@@ -30,7 +30,7 @@ export function buildRichStudentContext(profile: StudentProfile): string {
   const completedTraining = training.filter((t: any) => t.status === 'completed');
   const ongoingTraining = training.filter((t: any) => t.status === 'ongoing');
   
-  return `**STUDENT PROFILE:**
+  return `**LEARNER PROFILE:**
 Name: ${profile.name}
 Field/Department: ${profile.department}
 University: ${profile.university}
@@ -154,17 +154,17 @@ export function createIntelligentLearningPrompt(
   context: QueryContext,
   userMessage: string
 ): string {
-  const studentContext = buildRichStudentContext(context.studentProfile);
+  const learnerContext = buildRichlearnerContext(context.learnerProfile);
   const marketContext = buildMarketContext(
     context.marketData.relevantJobs,
     context.marketData.inDemandSkills
   );
   
-  const basePrompt = `${studentContext}
+  const basePrompt = `${learnerContext}
 
 ${marketContext}
 
-**STUDENT'S QUESTION:**
+**LEARNER'S QUESTION:**
 "${userMessage}"
 
 ---`;
@@ -174,7 +174,7 @@ ${marketContext}
     return `${basePrompt}
 
 **YOUR TASK:**
-The student asked a **specific, direct question**. Provide a **concise, focused answer**.
+The learner asked a **specific, direct question**. Provide a **concise, focused answer**.
 
 **Response Format:**
 1. **Direct Answer** (1-2 sentences addressing their question)
@@ -295,21 +295,21 @@ export function createIntelligentGeneralPrompt(
   context: QueryContext,
   userMessage: string
 ): string {
-  const studentContext = buildRichStudentContext(context.studentProfile);
+  const learnerContext = buildRichlearnerContext(context.learnerProfile);
   const marketContext = buildMarketContext(
     context.marketData.relevantJobs,
     context.marketData.inDemandSkills
   );
   
-  return `${studentContext}
+  return `${learnerContext}
 
 ${marketContext}
 
-**STUDENT'S QUESTION:**
+**LEARNER'S QUESTION:**
 "${userMessage}"
 
 **YOUR TASK:**
-You are an intelligent career assistant. Analyze the student's question and provide a helpful, personalized response that leverages their profile data and current market insights.
+You are an intelligent career assistant. Analyze the learner's question and provide a helpful, personalized response that leverages their profile data and current market insights.
 
 **Guidelines:**
 - **Be conversational** but professional
@@ -335,10 +335,10 @@ Keep responses concise (under 300 words unless they ask for comprehensive guidan
  * System prompts for different contexts
  */
 export const SYSTEM_PROMPTS = {
-  learning: `You are an expert career coach and learning advisor with deep knowledge of online education platforms, courses, and learning paths. You provide personalized, actionable recommendations based on student profiles and market demand. You are honest about skill gaps and realistic about timelines. You always include specific course names, platforms, and practical next steps.`,
+  learning: `You are an expert career coach and learning advisor with deep knowledge of online education platforms, courses, and learning paths. You provide personalized, actionable recommendations based on learner profiles and market demand. You are honest about skill gaps and realistic about timelines. You always include specific course names, platforms, and practical next steps.`,
   
-  general: `You are an intelligent career AI assistant with access to the student's complete profile and current job market data. You provide personalized, context-aware career guidance. You reference the student's actual skills, projects, and courses when relevant. You are conversational, encouraging, and always actionable. You adapt your response style to match the user's question - brief for simple questions, comprehensive for complex ones.`,
+  general: `You are an intelligent career AI assistant with access to the learner's complete profile and current job market data. You provide personalized, context-aware career guidance. You reference the learner's actual skills, projects, and courses when relevant. You are conversational, encouraging, and always actionable. You adapt your response style to match the user's question - brief for simple questions, comprehensive for complex ones.`,
   
-  jobMatching: `You are an expert career counselor and job matching AI with deep knowledge of the job market, student career development, and skill assessment. You provide accurate, honest, and helpful career guidance. You never inflate match scores - honesty helps students make better decisions.`
+  jobMatching: `You are an expert career counselor and job matching AI with deep knowledge of the job market, learner career development, and skill assessment. You provide accurate, honest, and helpful career guidance. You never inflate match scores - honesty helps learners make better decisions.`
 };
 

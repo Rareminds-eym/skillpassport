@@ -43,7 +43,7 @@ const formatSubscriptionData = (data) => {
     razorpaySubscriptionId: data.razorpay_subscription_id,
     cancelledAt: data.cancelled_at,
     cancellationReason: data.cancellation_reason,
-    // role column uses user_role enum type with values like school_admin, college_student, etc.
+    // role column uses user_role enum type with values like school_admin, learner, etc.
     userRole: data.users?.role || null,
     // Organization license fields
     isOrganizationLicense: data.is_organization_license || false,

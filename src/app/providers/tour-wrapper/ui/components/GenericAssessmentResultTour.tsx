@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import React, { useEffect, useState, useRef } from 'react';
 import Joyride, { CallBackProps, STATUS } from 'react-joyride';
 import { getLogger } from '@/shared/config/logging';
@@ -18,7 +19,7 @@ import {
 /**
  * Generic Assessment Result Tour
  * 
- * For students with grade_level NOT 'after10' or 'after12'
+ * For learners with grade_level NOT 'after10' or 'after12'
  * (e.g., 'college', 'higher_secondary', 'highschool', 'middle')
  * Flow: Welcome → Navigation → Summary → Finish
  */
@@ -49,19 +50,19 @@ const GenericAssessmentResultTour: React.FC = () => {
       }
 
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await getCurrentUser();
         if (!user) {
           return;
         }
 
-        // Get student record first (studentId in TourProvider is actually user_id)
-        const { data: studentData, error: studentError } = await supabase
-          .from('students')
+        // Get learner record first (learnerId in TourProvider is actually user_id)
+        const { data: learnerData, error: learnerError } = await supabase
+          .from('learners')
           .select('id')
           .eq('user_id', user.id)
           .maybeSingle();
 
-        if (studentError || !studentData) {
+        if (learnerError || !learnerData) {
           return;
         }
 
@@ -69,7 +70,7 @@ const GenericAssessmentResultTour: React.FC = () => {
         const { data: resultData, error } = await supabase
           .from('personal_assessment_results')
           .select('grade_level')
-          .eq('student_id', studentData.id)
+          .eq('learner_id', learnerData.id)
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();

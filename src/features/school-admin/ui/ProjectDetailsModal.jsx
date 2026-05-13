@@ -117,7 +117,7 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId
             </div>
             <div>
               <h2 className="text-xl font-semibold text-gray-900">Project Review</h2>
-              <p className="text-sm text-gray-600">Submitted by {project.student_name}</p>
+              <p className="text-sm text-gray-600">Submitted by {project.learner_name}</p>
             </div>
           </div>
           <button
@@ -137,8 +137,8 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div className="flex items-center gap-2 text-sm">
                 <User className="h-4 w-4 text-gray-500" />
-                <span className="text-gray-600">Student:</span>
-                <span className="font-medium">{project.student_name}</span>
+                <span className="text-gray-600">Learner:</span>
+                <span className="font-medium">{project.learner_name}</span>
               </div>
               
               {project.organization && (

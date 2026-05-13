@@ -1,6 +1,6 @@
 /**
  * Hook for managing AI feedback/evaluations
- * Allows students to rate AI responses with thumbs up/down, star rating, and text feedback
+ * Allows learners to rate AI responses with thumbs up/down, star rating, and text feedback
  */
 
 import { useState, useCallback } from 'react';
@@ -79,7 +79,7 @@ export function useAIFeedback() {
           .from('ai_evaluations')
           .insert({
             conversation_id: feedback.conversationId,
-            student_id: user.id,
+            learner_id: user.id,
             message_id: feedback.messageId,
             user_message: feedback.userMessage,
             ai_response: feedback.aiResponse,
@@ -126,7 +126,7 @@ export function useAIFeedback() {
         .from('ai_evaluations')
         .select('message_id, thumbs_up, user_rating, user_feedback')
         .eq('conversation_id', conversationId)
-        .eq('student_id', user.id);
+        .eq('learner_id', user.id);
 
       if (fetchError) throw fetchError;
 

@@ -38,7 +38,7 @@ export default function LibraryModule() {
 
   // Library Configuration Rules
   const [LIBRARY_RULES, setLibraryRules] = useState({
-    maxBooksPerStudent: 3,
+    maxBooksPerLearner: 3,
     defaultLoanPeriodDays: 14,
     finePerDay: 10,
   });
@@ -74,8 +74,8 @@ export default function LibraryModule() {
 
   // Issue book form state
   const [issueForm, setIssueForm] = useState({
-    studentId: "",
-    studentName: "",
+    learnerId: "",
+    learnerName: "",
     rollNumber: "",
     enrollmentNumber: "",
     admissionNumber: "",
@@ -87,19 +87,19 @@ export default function LibraryModule() {
     dueDate: "",
   });
 
-  // Student search state
-  const [studentSearch, setStudentSearch] = useState("");
-  const [studentSearchResults, setStudentSearchResults] = useState<any[]>([]);
-  const [showStudentDropdown, setShowStudentDropdown] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  // Learner search state
+  const [learnerSearch, setlearnerSearch] = useState("");
+  const [learnerSearchResults, setlearnerSearchResults] = useState<any[]>([]);
+  const [showlearnerDropdown, setShowlearnerDropdown] = useState(false);
+  const [selectedLearner, setSelectedLearner] = useState<any>(null);
   const [searchLoading, setSearchLoading] = useState(false);
-  const studentSearchRef = useRef<HTMLDivElement>(null);
+  const learnerSearchRef = useRef<HTMLDivElement>(null);
 
   // Return book form state
   const [returnForm, setReturnForm] = useState({
     bookId: "",
-    studentId: "",
-    studentName: "",
+    learnerId: "",
+    learnerName: "",
     rollNumber: "",
     class: "",
     bookTitle: "",
@@ -113,11 +113,11 @@ export default function LibraryModule() {
     loadInitialData();
   }, []);
 
-  // Click outside handler for student dropdown
+  // Click outside handler for learner dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (studentSearchRef.current && !studentSearchRef.current.contains(event.target as Node)) {
-        setShowStudentDropdown(false);
+      if (learnerSearchRef.current && !learnerSearchRef.current.contains(event.target as Node)) {
+        setShowlearnerDropdown(false);
       }
     };
 
@@ -130,13 +130,13 @@ export default function LibraryModule() {
   // Debounced search effect
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (studentSearch.length >= 2) {
-        searchStudents(studentSearch);
+      if (learnerSearch.length >= 2) {
+        searchlearners(learnerSearch);
       }
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [studentSearch]);
+  }, [learnerSearch]);
 
   const loadInitialData = async () => {
     try {
@@ -146,12 +146,12 @@ export default function LibraryModule() {
       const settings = await libraryService.getSettings();
       setLibrarySettings(settings);
 
-      const maxBooks = parseInt(settings.find(s => s.setting_key === 'max_books_per_student')?.setting_value || '3');
+      const maxBooks = parseInt(settings.find(s => s.setting_key === 'max_books_per_learner')?.setting_value || '3');
       const loanPeriod = parseInt(settings.find(s => s.setting_key === 'default_loan_period_days')?.setting_value || '14');
       const finePerDay = parseInt(settings.find(s => s.setting_key === 'fine_per_day')?.setting_value || '10');
 
       setLibraryRules({
-        maxBooksPerStudent: maxBooks,
+        maxBooksPerLearner: maxBooks,
         defaultLoanPeriodDays: loanPeriod,
         finePerDay: finePerDay,
       });
@@ -238,11 +238,11 @@ export default function LibraryModule() {
     }
   };
 
-  // Student search functionality
-  const searchStudents = async (searchTerm: string) => {
+  // Learner search functionality
+  const searchlearners = async (searchTerm: string) => {
     if (searchTerm.length < 2) {
-      setStudentSearchResults([]);
-      setShowStudentDropdown(false);
+      setlearnerSearchResults([]);
+      setShowlearnerDropdown(false);
       setSearchLoading(false);
       return;
     }
@@ -323,7 +323,7 @@ export default function LibraryModule() {
       }
 
       let query = supabase
-        .from('students')
+        .from('learners')
         .select('id, name, roll_number, enrollmentNumber, admission_number, contact_number, email, grade, section, course_name, semester')
         .eq('is_deleted', false)
         .or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,contact_number.ilike.%${searchTerm}%,grade.ilike.%${searchTerm}%,section.ilike.%${searchTerm}%,roll_number.ilike.%${searchTerm}%`)
@@ -338,67 +338,67 @@ export default function LibraryModule() {
         query = query.eq('universityId', universityId);
       }
 
-      const { data: students, error } = await query;
+      const { data: learners, error } = await query;
 
       if (error) {
         logger.error('Supabase query error:', error as Error);
         throw error;
       }
 
-      setStudentSearchResults(students || []);
-      setShowStudentDropdown(students && students.length > 0);
+      setlearnerSearchResults(learners || []);
+      setShowlearnerDropdown(learners && learners.length > 0);
 
     } catch (err) {
-      logger.error('Error searching students:', err as Error);
-      setStudentSearchResults([]);
-      setShowStudentDropdown(false);
+      logger.error('Error searching learners:', err as Error);
+      setlearnerSearchResults([]);
+      setShowlearnerDropdown(false);
     } finally {
       setSearchLoading(false);
     }
   };
 
-  const selectStudent = async (student: any) => {
-    setSelectedStudent(student);
-    setStudentSearch(student.name);
+  const selectLearner = async (learner: any) => {
+    setSelectedLearner(learner);
+    setlearnerSearch(learner.name);
     setIssueForm({
       ...issueForm,
-      studentId: student.id,
-      studentName: student.name,
-      rollNumber: student.roll_number || "",
-      enrollmentNumber: student.enrollmentNumber || "",
-      admissionNumber: student.admission_number || "",
-      grade: student.grade || "",
-      section: student.section || "",
-      courseName: student.course_name || "",
-      semester: student.semester ? student.semester.toString() : "",
+      learnerId: learner.id,
+      learnerName: learner.name,
+      rollNumber: learner.roll_number || "",
+      enrollmentNumber: learner.enrollmentNumber || "",
+      admissionNumber: learner.admission_number || "",
+      grade: learner.grade || "",
+      section: learner.section || "",
+      courseName: learner.course_name || "",
+      semester: learner.semester ? learner.semester.toString() : "",
     });
-    setShowStudentDropdown(false);
+    setShowlearnerDropdown(false);
 
-    toast.success(`Selected student: ${student.name}`, { duration: 2000 });
+    toast.success(`Selected learner: ${learner.name}`, { duration: 2000 });
 
     try {
-      const currentCount = await libraryService.getStudentIssuedBooksCount(student.id);
-      if (currentCount >= LIBRARY_RULES.maxBooksPerStudent) {
-        toast.error(`${student.name} has already issued ${currentCount} books (maximum: ${LIBRARY_RULES.maxBooksPerStudent}). Cannot issue more books.`);
+      const currentCount = await libraryService.getlearnerIssuedBooksCount(learner.id);
+      if (currentCount >= LIBRARY_RULES.maxBooksPerLearner) {
+        toast.error(`${learner.name} has already issued ${currentCount} books (maximum: ${LIBRARY_RULES.maxBooksPerLearner}). Cannot issue more books.`);
       } else if (currentCount > 0) {
-        toast.success(`${student.name} currently has ${currentCount} book(s) issued.`, {
+        toast.success(`${learner.name} currently has ${currentCount} book(s) issued.`, {
           icon: 'ℹ️',
           duration: 3000
         });
       }
     } catch (err) {
-      logger.error('Error checking student issued books:', err as Error);
-      toast.error('Failed to check student\'s current book count');
+      logger.error('Error checking learner issued books:', err as Error);
+      toast.error('Failed to check learner\'s current book count');
     }
   };
 
-  const clearStudentSelection = () => {
-    setSelectedStudent(null);
-    setStudentSearch("");
+  const clearlearnerSelection = () => {
+    setSelectedLearner(null);
+    setlearnerSearch("");
     setIssueForm({
       ...issueForm,
-      studentId: "",
-      studentName: "",
+      learnerId: "",
+      learnerName: "",
       rollNumber: "",
       enrollmentNumber: "",
       admissionNumber: "",
@@ -407,9 +407,9 @@ export default function LibraryModule() {
       courseName: "",
       semester: "",
     });
-    setStudentSearchResults([]);
-    setShowStudentDropdown(false);
-    toast.success('Student selection cleared', {
+    setlearnerSearchResults([]);
+    setShowlearnerDropdown(false);
+    toast.success('Learner selection cleared', {
       icon: 'ℹ️',
       duration: 1500
     });
@@ -489,24 +489,24 @@ export default function LibraryModule() {
   };
 
   const issueBook = async () => {
-    if (!issueForm.studentId || !issueForm.studentName || !issueForm.bookId) {
-      toast.error("Please select a student and book.");
+    if (!issueForm.learnerId || !issueForm.learnerName || !issueForm.bookId) {
+      toast.error("Please select a learner and book.");
       return;
     }
 
     try {
       setLoading(true);
-      const loadingToast = toast.loading(`Issuing book to ${issueForm.studentName}...`);
+      const loadingToast = toast.loading(`Issuing book to ${issueForm.learnerName}...`);
 
-      const studentIdentifier = issueForm.rollNumber || issueForm.enrollmentNumber || issueForm.admissionNumber || issueForm.studentId;
+      const learnerIdentifier = issueForm.rollNumber || issueForm.enrollmentNumber || issueForm.admissionNumber || issueForm.learnerId;
       const classInfo = issueForm.grade && issueForm.section ? `${issueForm.grade}-${issueForm.section}` : issueForm.grade || "";
       const academicYear = issueForm.semester ? `Semester ${issueForm.semester}` : new Date().getFullYear().toString();
 
       await libraryService.issueBook({
         book_id: issueForm.bookId,
-        student_id: issueForm.studentId,
-        student_name: issueForm.studentName,
-        roll_number: studentIdentifier,
+        learner_id: issueForm.learnerId,
+        learner_name: issueForm.learnerName,
+        roll_number: learnerIdentifier,
         class: classInfo,
         academic_year: academicYear,
       });
@@ -514,8 +514,8 @@ export default function LibraryModule() {
       toast.dismiss(loadingToast);
 
       setIssueForm({
-        studentId: "",
-        studentName: "",
+        learnerId: "",
+        learnerName: "",
         rollNumber: "",
         enrollmentNumber: "",
         admissionNumber: "",
@@ -526,9 +526,9 @@ export default function LibraryModule() {
         bookId: "",
         dueDate: ""
       });
-      clearStudentSelection();
+      clearlearnerSelection();
 
-      toast.success(`Book issued successfully to ${issueForm.studentName}!`, { duration: 4000 });
+      toast.success(`Book issued successfully to ${issueForm.learnerName}!`, { duration: 4000 });
 
       await Promise.all([
         loadBooks(),
@@ -545,8 +545,8 @@ export default function LibraryModule() {
   };
 
   const searchIssuedBook = async () => {
-    if (!returnForm.bookId && !returnForm.studentId) {
-      toast.error("Please enter at least Book ID or Student ID to search.");
+    if (!returnForm.bookId && !returnForm.learnerId) {
+      toast.error("Please enter at least Book ID or Learner ID to search.");
       return;
     }
 
@@ -556,7 +556,7 @@ export default function LibraryModule() {
 
       const issued = await libraryService.searchIssuedBook(
         returnForm.bookId || undefined,
-        returnForm.studentId || undefined
+        returnForm.learnerId || undefined
       );
 
       toast.dismiss(loadingToast);
@@ -568,8 +568,8 @@ export default function LibraryModule() {
         setReturnForm({
           ...returnForm,
           bookId: issued.book_id,
-          studentId: issued.student_id,
-          studentName: issued.student_name,
+          learnerId: issued.learner_id,
+          learnerName: issued.learner_name,
           rollNumber: issued.roll_number,
           class: issued.class,
           bookTitle: issued.book?.title || 'Unknown Book',
@@ -587,11 +587,11 @@ export default function LibraryModule() {
           toast.success("Book found! No overdue charges.");
         }
       } else {
-        toast.error("No matching issued book found. Please check the Book ID and Student ID.");
+        toast.error("No matching issued book found. Please check the Book ID and Learner ID.");
         setReturnForm({
           bookId: returnForm.bookId,
-          studentId: returnForm.studentId,
-          studentName: "",
+          learnerId: returnForm.learnerId,
+          learnerName: "",
           rollNumber: "",
           class: "",
           bookTitle: "",
@@ -609,7 +609,7 @@ export default function LibraryModule() {
   };
 
   const returnBook = async () => {
-    if (!returnForm.bookId || !returnForm.studentId || !returnForm.bookTitle) {
+    if (!returnForm.bookId || !returnForm.learnerId || !returnForm.bookTitle) {
       toast.error("Please search for the issued book first before returning.");
       return;
     }
@@ -618,7 +618,7 @@ export default function LibraryModule() {
       setLoading(true);
       const loadingToast = toast.loading(`Processing return for ${returnForm.bookTitle}...`);
 
-      const issued = await libraryService.searchIssuedBook(returnForm.bookId, returnForm.studentId);
+      const issued = await libraryService.searchIssuedBook(returnForm.bookId, returnForm.learnerId);
       if (!issued) {
         toast.dismiss(loadingToast);
         toast.error("No matching issued book found. Please search again.");
@@ -637,14 +637,14 @@ export default function LibraryModule() {
         ? `Overdue: ${overdueDays} days | Fine: ₹${fine} (@ ₹${LIBRARY_RULES.finePerDay}/day)`
         : "No fine. Returned on time.";
 
-      toast.success(`Book returned successfully!\n\nStudent: ${returnForm.studentName}\nBook: ${returnForm.bookTitle}\n${fineMessage}`, {
+      toast.success(`Book returned successfully!\n\nLearner: ${returnForm.learnerName}\nBook: ${returnForm.bookTitle}\n${fineMessage}`, {
         duration: 6000,
       });
 
       setReturnForm({
         bookId: "",
-        studentId: "",
-        studentName: "",
+        learnerId: "",
+        learnerName: "",
         rollNumber: "",
         class: "",
         bookTitle: "",
@@ -756,15 +756,15 @@ export default function LibraryModule() {
         loading={loading}
         issueBook={issueBook}
         LIBRARY_RULES={LIBRARY_RULES}
-        studentSearch={studentSearch}
-        setStudentSearch={setStudentSearch}
-        studentSearchResults={studentSearchResults}
-        showStudentDropdown={showStudentDropdown}
-        selectedStudent={selectedStudent}
+        learnerSearch={learnerSearch}
+        setlearnerSearch={setlearnerSearch}
+        learnerSearchResults={learnerSearchResults}
+        showlearnerDropdown={showlearnerDropdown}
+        selectedLearner={selectedLearner}
         searchLoading={searchLoading}
-        studentSearchRef={studentSearchRef}
-        selectStudent={selectStudent}
-        clearStudentSelection={clearStudentSelection}
+        learnerSearchRef={learnerSearchRef}
+        selectLearner={selectLearner}
+        clearlearnerSelection={clearlearnerSelection}
       />
 
       {/* Return Book Modal */}

@@ -64,8 +64,8 @@ const CourseAnalytics = () => {
   // Filter enrollments
   const filteredEnrollments = enrollments.filter(enrollment => {
     const matchesSearch =
-      enrollment.student_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      enrollment.student_email?.toLowerCase().includes(searchTerm.toLowerCase());
+      enrollment.learner_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      enrollment.learner_email?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus = filterStatus === 'all' || enrollment.status === filterStatus;
 
@@ -129,10 +129,10 @@ const CourseAnalytics = () => {
   };
 
   const exportToCSV = () => {
-    const headers = ['Student Name', 'Email', 'Enrolled Date', 'Progress %', 'Status', 'Last Accessed'];
+    const headers = ['Learner Name', 'Email', 'Enrolled Date', 'Progress %', 'Status', 'Last Accessed'];
     const rows = filteredEnrollments.map(e => [
-      e.student_name,
-      e.student_email,
+      e.learner_name,
+      e.learner_email,
       formatDate(e.enrolled_at),
       e.progress,
       e.status,
@@ -179,7 +179,7 @@ const CourseAnalytics = () => {
                 {course?.title || 'Course'} Analytics
               </h1>
               <p className="text-gray-600">
-                Track student enrollments and progress
+                Track learner enrollments and progress
               </p>
             </div>
             <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200">
@@ -194,7 +194,7 @@ const CourseAnalytics = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Total Students</p>
+                  <p className="text-sm text-gray-600 mb-1">Total Learners</p>
                   <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
                 </div>
                 <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
@@ -208,7 +208,7 @@ const CourseAnalytics = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Active Students</p>
+                  <p className="text-sm text-gray-600 mb-1">Active Learners</p>
                   <p className="text-2xl font-bold text-gray-900">{stats.active}</p>
                 </div>
                 <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -269,7 +269,7 @@ const CourseAnalytics = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
-                  placeholder="Search by student name or email..."
+                  placeholder="Search by learner name or email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -303,7 +303,7 @@ const CourseAnalytics = () => {
         {/* Enrollments Table */}
         <Card className="border-0 shadow-lg">
           <CardHeader>
-            <CardTitle>Student Enrollments ({filteredEnrollments.length})</CardTitle>
+            <CardTitle>Learner Enrollments ({filteredEnrollments.length})</CardTitle>
           </CardHeader>
           <CardContent>
             {filteredEnrollments.length === 0 ? (
@@ -311,8 +311,8 @@ const CourseAnalytics = () => {
                 <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                 <p className="text-gray-600">
                   {searchTerm || filterStatus !== 'all'
-                    ? 'No students match your filters'
-                    : 'No students enrolled yet'}
+                    ? 'No learners match your filters'
+                    : 'No learners enrolled yet'}
                 </p>
               </div>
             ) : (
@@ -320,7 +320,7 @@ const CourseAnalytics = () => {
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Student</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Learner</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Email</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Enrolled</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Progress</th>
@@ -341,12 +341,12 @@ const CourseAnalytics = () => {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
-                              {enrollment.student_name?.charAt(0).toUpperCase() || 'S'}
+                              {enrollment.learner_name?.charAt(0).toUpperCase() || 'S'}
                             </div>
-                            <span className="font-medium text-gray-900">{enrollment.student_name || 'Unknown'}</span>
+                            <span className="font-medium text-gray-900">{enrollment.learner_name || 'Unknown'}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{enrollment.student_email}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{enrollment.learner_email}</td>
                         <td className="px-4 py-3 text-sm text-gray-600">{formatDate(enrollment.enrolled_at)}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">

@@ -240,7 +240,7 @@ const ModerationPanel: React.FC<ModerationPanelProps> = ({
               <div className="bg-blue-50 rounded-lg p-4">
                 <div className="flex items-center gap-2 text-blue-600 mb-1">
                   <Users className="h-4 w-4" />
-                  <span className="text-sm font-medium">Total Students</span>
+                  <span className="text-sm font-medium">Total Learners</span>
                 </div>
                 <p className="text-2xl font-bold text-blue-900">{markEntries.length}</p>
               </div>
@@ -292,13 +292,13 @@ const ModerationPanel: React.FC<ModerationPanelProps> = ({
             {/* Mark Entries Table */}
             <div className="border border-gray-200 rounded-lg overflow-hidden">
               <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                <h3 className="font-semibold text-gray-900">Student Marks</h3>
+                <h3 className="font-semibold text-gray-900">Learner Marks</h3>
               </div>
               <div className="overflow-x-auto max-h-96">
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
                     <tr>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Student</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Learner</th>
                       <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">Marks</th>
                       <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">Status</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Moderation</th>
@@ -308,7 +308,7 @@ const ModerationPanel: React.FC<ModerationPanelProps> = ({
                   <tbody className="divide-y divide-gray-200">
                     {markEntries.map((entry) => (
                       <tr key={entry.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm text-gray-900">Student #{entry.student_id.slice(0, 8)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">Learner #{entry.learner_id.slice(0, 8)}</td>
                         <td className="px-4 py-3 text-center">
                           <span className="font-medium text-gray-900">{entry.marks_obtained}</span>
                           <span className="text-gray-500">/{totalMarks}</span>

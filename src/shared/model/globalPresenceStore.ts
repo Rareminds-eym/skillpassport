@@ -19,7 +19,7 @@ interface GlobalPresenceState {
   // User info
   currentUserId: string | null;
   currentUserName: string;
-  currentUserType: 'student' | 'recruiter' | 'educator' | null;
+  currentUserType: 'learner' | 'recruiter' | 'educator' | null;
 
   // Computed
   getOnlineCount: () => number;
@@ -30,7 +30,7 @@ interface GlobalPresenceState {
   removeOnlineUser: (userId: string) => void;
   updateUserStatus: (userId: string, status: OnlineUser['status']) => void;
   setIsConnected: (connected: boolean) => void;
-  setCurrentUser: (userId: string | null, userName: string, userType: 'student' | 'recruiter' | 'educator') => void;
+  setCurrentUser: (userId: string | null, userName: string, userType: 'learner' | 'recruiter' | 'educator') => void;
 
   // Checkers
   isUserOnline: (userId: string) => boolean;

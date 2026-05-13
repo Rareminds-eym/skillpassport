@@ -266,9 +266,9 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                         const verificationInfo = {
                           self_verified: {
                             title: 'Self Verified',
-                            description: 'Student has self-declared this information',
+                            description: 'Learner has self-declared this information',
                             date: 'Sep 20, 2025',
-                            verifier: 'Student',
+                            verifier: 'Learner',
                             status: 'pending'
                           },
                           institution_verified: {

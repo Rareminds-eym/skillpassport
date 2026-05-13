@@ -21,7 +21,7 @@ info:
     name: API Support
     email: support@skillpassport.com
 servers:
-  - url: https://payments-api.dark-mode-d021.workers.dev
+  - url: https://razorpay-api.dark-mode-d021.workers.dev
     description: Production server
   - url: http://localhost:8787
     description: Local development
@@ -881,7 +881,7 @@ components:
 
     MemberType:
       type: string
-      enum: [educator, student, both]
+      enum: [educator, learner, both]
 
     AssignmentStatus:
       type: string
@@ -1044,7 +1044,7 @@ components:
           example: "Computer Science Department"
         memberType:
           type: string
-          enum: [educator, student]
+          enum: [educator, learner]
         allocatedSeats:
           type: integer
           minimum: 1
@@ -1073,7 +1073,7 @@ components:
           type: string
         memberType:
           type: string
-          enum: [educator, student]
+          enum: [educator, learner]
         allocatedSeats:
           type: integer
         assignedSeats:
@@ -1114,7 +1114,7 @@ components:
           format: uuid
         memberType:
           type: string
-          enum: [educator, student]
+          enum: [educator, learner]
 
     LicenseAssignment:
       type: object
@@ -1133,7 +1133,7 @@ components:
           format: uuid
         memberType:
           type: string
-          enum: [educator, student]
+          enum: [educator, learner]
         status:
           $ref: '#/components/schemas/AssignmentStatus'
         assignedAt:
@@ -1387,7 +1387,7 @@ components:
           format: email
         memberType:
           type: string
-          enum: [educator, student]
+          enum: [educator, learner]
         invitedBy:
           type: string
           format: uuid
@@ -1417,7 +1417,7 @@ components:
           format: email
         memberType:
           type: string
-          enum: [educator, student]
+          enum: [educator, learner]
         invitedBy:
           type: string
           format: uuid

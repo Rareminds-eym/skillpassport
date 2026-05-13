@@ -16,9 +16,9 @@
 export { default as MessageModal } from './ui/modals/MessageModal';
 export { default as ConversationModal } from './ui/ConversationModal';
 export { default as DeleteConversationModal } from './ui/modals/DeleteConversationModal';
-export { default as NewStudentConversationModal } from './ui/modals/NewStudentConversationModal';
-export { default as NewStudentConversationModalEducator } from './ui/modals/NewStudentConversationModalEducator';
-export { default as NewStudentConversationModalCollegeAdmin } from './ui/modals/NewStudentConversationModalCollegeAdmin';
+export { default as NewLearnerConversationModal } from './ui/modals/NewLearnerConversationModal';
+export { default as NewLearnerConversationModalEducator } from './ui/modals/NewLearnerConversationModalEducator';
+export { default as NewLearnerConversationModalCollegeAdmin } from './ui/modals/NewLearnerConversationModalCollegeAdmin';
 export { default as NewEducatorAdminConversationModal } from './ui/modals/NewEducatorAdminConversationModal';
 export { default as NewEducatorConversationModal } from './ui/modals/NewEducatorConversationModal';
 export { default as NewAdminConversationModal } from './ui/modals/NewAdminConversationModal';
@@ -29,7 +29,7 @@ export { default as NewSchoolAdminEducatorConversationModal } from './ui/modals/
 // ============================================================================
 export {
   useMessages,
-  useStudentMessages,
+  useLearnerMessages,
   useEducatorMessages,
   useRecruiterMessages,
   useAdminMessages,

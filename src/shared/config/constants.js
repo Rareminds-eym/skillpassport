@@ -9,8 +9,8 @@ export const USER_ROLES = {
   SCHOOL_EDUCATOR: 'school_educator',
   COLLEGE_EDUCATOR: 'college_educator',
   RECRUITER: 'recruiter',
-  SCHOOL_STUDENT: 'school_student',
-  COLLEGE_STUDENT: 'college_student',
+  SCHOOL_LEARNER: 'learner',
+  COLLEGE_LEARNER: 'learner',
 };
 
 export const JOB_TYPES = {
@@ -33,7 +33,7 @@ export const ROUTES = {
   ABOUT: '/about',
   CONTACT: '/contact',
 
-  LOGIN_STUDENT: '/login/student',
+  LOGIN_LEARNER: '/login/learner',
   LOGIN_RECRUITER: '/login/recruiter',
   LOGIN_ADMIN: '/login/admin',
   REGISTER: '/signup',
@@ -46,8 +46,8 @@ export const ROUTES = {
   RECRUITER_POST_JOB: '/recruitment/post-job',
   RECRUITER_APPLICANTS: '/recruitment/applicants',
 
-  STUDENT_DASHBOARD: '/student/dashboard',
-  STUDENT_PROFILE: '/student/profile',
-  STUDENT_APPLIED_JOBS: '/student/applied-jobs',
-  STUDENT_BROWSE_JOBS: '/student/browse-jobs',
+  LEARNER_DASHBOARD: '/learner/dashboard',
+  LEARNER_PROFILE: '/learner/profile',
+  LEARNER_APPLIED_JOBS: '/learner/applied-jobs',
+  LEARNER_BROWSE_JOBS: '/learner/browse-jobs',
 };

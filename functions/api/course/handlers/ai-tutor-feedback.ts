@@ -2,7 +2,7 @@
  * AI Tutor Feedback Handler
  * 
  * Handles submission and updating of feedback for AI tutor chat messages.
- * Students can rate messages with thumbs up/down and provide optional text feedback.
+ * Learners can rate messages with thumbs up/down and provide optional text feedback.
  * 
  * Requirements: 7.5
  */
@@ -45,7 +45,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
     }
 
     const { user, supabase } = auth;
-    const studentId = user.id;
+    const learnerId = user.id;
 
     // Parse request body
     let body: FeedbackRequestBody;
@@ -78,7 +78,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
       .from('tutor_conversations')
       .select('id')
       .eq('id', conversationId)
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .maybeSingle();
 
     if (convError || !conversation) {

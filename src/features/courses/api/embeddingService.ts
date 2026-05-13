@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Embedding Service
  * Handles embedding generation via the career-api Cloudflare worker.
@@ -24,7 +25,7 @@ export const generateEmbedding = async (text) => {
   }
 
   // Get auth token
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await getCurrentSession();
   const token = session?.access_token;
   
   if (!token) {
@@ -41,7 +42,7 @@ export const generateEmbedding = async (text) => {
       },
       body: JSON.stringify({ 
         text, 
-        table: 'students',
+        table: 'learners',
         id: generateTempUUID(),
         returnEmbedding: true,
         skipDatabaseUpdate: true

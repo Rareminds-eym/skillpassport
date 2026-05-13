@@ -174,7 +174,7 @@ const PrivacyPolicy = () => {
                   <p>This Policy applies to all users of the Platform, including:</p>
                   <ul className="space-y-3 ml-2">
                     {[
-                      "Students and learners accessing skill development, assessments, and career services",
+                      "Learners and learners accessing skill development, assessments, and career services",
                       "Educational institutions, colleges, and universities",
                       "Employers, recruiters, and corporate partners",
                       "Government bodies and regulatory agencies",
@@ -317,7 +317,7 @@ const PrivacyPolicy = () => {
                       "To create and manage your Skill Passport profile and digital credentials",
                       "To conduct skill assessments, evaluations, and competency mapping",
                       "To facilitate job matching, placement services, and career opportunities",
-                      "To enable communication between students, institutions, and employers",
+                      "To enable communication between learners, institutions, and employers",
                       "To process payments, subscriptions, and financial transactions",
                       "To send service-related notifications, updates, and alerts",
                       "To provide customer support and respond to inquiries",

@@ -5,7 +5,7 @@
  * - Course information
  * - Module and lesson structure
  * - Current lesson content and resources
- * - Student progress
+ * - Learner progress
  * - Video summaries (if available)
  */
 
@@ -60,7 +60,7 @@ export interface CourseContext {
   currentModule: ModuleContext | null;
   currentLesson: LessonContext | null;
   availableResources: ResourceContext[];
-  studentProgress: ProgressContext;
+  learnerProgress: ProgressContext;
   allModules: ModuleContext[];
   allLessons: { title: string; lessons: { title: string; lessonId: string }[] }[];
   videoSummary: VideoSummaryContext | null;
@@ -75,7 +75,7 @@ export async function buildCourseContext(
   supabase: SupabaseClient,
   courseId: string,
   lessonId: string | null,
-  studentId: string | null
+  learnerId: string | null
 ): Promise<CourseContext> {
   // Fetch course information
   const { data: course, error: courseError } = await supabase
@@ -158,15 +158,15 @@ export async function buildCourseContext(
     }
   }
 
-  // Fetch student progress if studentId provided
+  // Fetch learner progress if learnerId provided
   let completedLessons: string[] = [];
   let currentLessonProgress: { status: string } | null = null;
   
-  if (studentId) {
+  if (learnerId) {
     const { data: progress } = await supabase
-      .from('student_course_progress')
+      .from('learner_course_progress')
       .select('lesson_id, status')
-      .eq('student_id', studentId)
+      .eq('learner_id', learnerId)
       .eq('course_id', courseId);
 
     completedLessons = (progress || [])
@@ -210,7 +210,7 @@ export async function buildCourseContext(
     currentModule,
     currentLesson,
     availableResources,
-    studentProgress: { 
+    learnerProgress: { 
       completedLessons, 
       currentLessonStatus: currentLessonProgress?.status || null, 
       totalLessons, 
@@ -239,7 +239,7 @@ export function formatCourseContextForPrompt(context: CourseContext): string {
   for (const moduleGroup of context.allLessons) {
     prompt += `### ${moduleGroup.title}\n`;
     for (const lesson of moduleGroup.lessons) {
-      const isCompleted = context.studentProgress.completedLessons.includes(lesson.lessonId);
+      const isCompleted = context.learnerProgress.completedLessons.includes(lesson.lessonId);
       const isCurrent = context.currentLesson?.lessonId === lesson.lessonId;
       const status = isCurrent ? '📍 Current' : isCompleted ? '✅' : '○';
       prompt += `  ${status} ${lesson.title}\n`;
@@ -290,10 +290,10 @@ ${context.currentLesson.content || 'No content available'}
 `;
   }
 
-  // Add student progress
+  // Add learner progress
   prompt += `
-## Student Progress
-- Completed: ${context.studentProgress.completedLessons.length}/${context.studentProgress.totalLessons} lessons (${context.studentProgress.completionPercentage}%)
+## Learner Progress
+- Completed: ${context.learnerProgress.completedLessons.length}/${context.learnerProgress.totalLessons} lessons (${context.learnerProgress.completionPercentage}%)
 `;
 
   return prompt;
@@ -308,15 +308,15 @@ export function buildSystemPrompt(context: CourseContext, phase: ConversationPha
   return `You are an expert AI Course Tutor for "${context.courseTitle}". You combine deep subject matter expertise with exceptional pedagogical skills.
 
 ## YOUR IDENTITY
-- Patient, encouraging tutor who genuinely cares about student success
+- Patient, encouraging tutor who genuinely cares about learner success
 - Master of all course materials including PDFs, lessons, and resources
-- Balance high-level concepts with granular details based on student needs
+- Balance high-level concepts with granular details based on learner needs
 
 ## TEACHING APPROACH
-- Guide students toward understanding rather than giving direct answers
+- Guide learners toward understanding rather than giving direct answers
 - Use the Socratic method when appropriate
 - Break complex problems into smaller pieces
-- Adapt to student's progress level (${context.studentProgress.completionPercentage}% complete)
+- Adapt to learner's progress level (${context.learnerProgress.completionPercentage}% complete)
 
 ## RESPONSE RULES
 - Write in flowing, natural paragraphs

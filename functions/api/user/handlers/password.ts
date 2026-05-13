@@ -38,14 +38,14 @@ export async function handleResetPassword(request: Request, env: any): Promise<R
       .maybeSingle();
 
     if (!user) {
-      // Check students table as fallback
-      const { data: student } = await supabaseAdmin
-        .from('students')
+      // Check learners table as fallback
+      const { data: learner } = await supabaseAdmin
+        .from('learners')
         .select('id, email, user_id')
         .eq('email', normalizedEmail)
         .maybeSingle();
 
-      if (!student) {
+      if (!learner) {
         return jsonResponse({ error: 'No account found with this email address' }, 404);
       }
     }
@@ -144,15 +144,15 @@ export async function handleResetPassword(request: Request, env: any): Promise<R
 
     let authUserId = dbUser?.id;
 
-    // If not in users table, check students table
+    // If not in users table, check learners table
     if (!authUserId) {
-      const { data: student } = await supabaseAdmin
-        .from('students')
+      const { data: learner } = await supabaseAdmin
+        .from('learners')
         .select('user_id')
         .eq('email', normalizedEmail)
         .maybeSingle();
 
-      authUserId = student?.user_id;
+      authUserId = learner?.user_id;
     }
 
     if (!authUserId) {

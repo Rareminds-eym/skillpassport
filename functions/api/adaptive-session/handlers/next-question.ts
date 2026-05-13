@@ -84,10 +84,10 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
     const currentPhase = sessionData.current_phase as TestPhase;
     const currentDifficulty = sessionData.current_difficulty as DifficultyLevel;
     const gradeLevel = sessionData.grade_level as GradeLevel;
-    const studentCourse = sessionData.student_course as string | null;
+    const learnerCourse = sessionData.learner_course as string | null;
     
-    // Extract specific grade from student_course if available
-    const specificGrade = extractGradeNumber(studentCourse);
+    // Extract specific grade from learner_course if available
+    const specificGrade = extractGradeNumber(learnerCourse);
     console.log('🎯 [NextQuestionHandler] Using specific grade:', specificGrade || 'fallback to range');
 
     // Calculate total questions answered across all phases

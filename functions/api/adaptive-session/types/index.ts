@@ -2,7 +2,7 @@
  * Adaptive Aptitude Test Type Definitions
  * 
  * This module defines all types and interfaces for the adaptive aptitude testing system.
- * The test adapts difficulty based on student responses to accurately measure aptitude level.
+ * The test adapts difficulty based on learner responses to accurately measure aptitude level.
  * 
  * Requirements: 7.1, 7.2
  */
@@ -18,7 +18,7 @@ export type GradeLevel = 'middle_school' | 'high_school' | 'higher_secondary' | 
 
 /**
  * Test phases in the adaptive aptitude test flow
- * - diagnostic_screener: Initial 8 questions (Q1-Q8) to classify student tier (L/M/H) - all at difficulty 3
+ * - diagnostic_screener: Initial 8 questions (Q1-Q8) to classify learner tier (L/M/H) - all at difficulty 3
  * - adaptive_core: 36 questions (Q9-Q44) with adaptive difficulty adjustment (+1 correct, -1 wrong)
  * - stability_confirmation: Final 6 questions (Q45-Q50) to confirm final aptitude level - fixed at provisional difficulty
  */
@@ -103,7 +103,7 @@ export interface Question {
 }
 
 /**
- * Represents a student's response to a question
+ * Represents a learner's response to a question
  */
 export interface Response {
   /** Unique identifier for the response */
@@ -115,7 +115,7 @@ export interface Response {
   /** Reference to the question answered */
   questionId: string;
   
-  /** The answer selected by the student */
+  /** The answer selected by the learner */
   selectedAnswer: 'A' | 'B' | 'C' | 'D';
   
   /** Whether the answer was correct */
@@ -147,8 +147,8 @@ export interface TestSession {
   /** Unique identifier for the session */
   id: string;
   
-  /** Student taking the test */
-  studentId: string;
+  /** Learner taking the test */
+  learnerId: string;
   
   /** Grade level of the test */
   gradeLevel: GradeLevel;
@@ -206,8 +206,8 @@ export interface TestResults {
   /** Reference to the session */
   sessionId: string;
   
-  /** Student who took the test */
-  studentId: string;
+  /** Learner who took the test */
+  learnerId: string;
   
   /** Final aptitude level (1-5) */
   aptitudeLevel: DifficultyLevel;
@@ -459,9 +459,9 @@ export const TEST_PHASES_ORDER: TestPhase[] = [
  * Options for initializing a new test
  */
 export interface InitializeTestOptions {
-  studentId: string;
+  learnerId: string;
   gradeLevel: GradeLevel;
-  studentCourse?: string | null;
+  learnerCourse?: string | null;
 }
 
 /**

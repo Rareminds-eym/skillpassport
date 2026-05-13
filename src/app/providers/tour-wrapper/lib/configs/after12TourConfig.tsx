@@ -3,7 +3,7 @@ import { TourStep } from '@/shared/types';
 /**
  * AFTER-12 Assessment Result Tour Configuration
  * 
- * Independent tour system for Grade 12+ students
+ * Independent tour system for Grade 12+ learners
  * Flow: Welcome → Navigation → Summary → Programs → Auto-switch → Career Tracks
  * 
  * CRITICAL: Completely isolated from AFTER-10 tour

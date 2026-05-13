@@ -86,7 +86,7 @@ export default function HeroSection() {
                   style={{ width: '100%', height: '100%' }}
                 />
               </div>
-              <span className="text-gray-800 text-xs sm:text-sm font-bold tracking-wide">FOR STUDENTS ONLY</span>
+              <span className="text-gray-800 text-xs sm:text-sm font-bold tracking-wide">FOR LEARNERS ONLY</span>
             </motion.div>
 
             {/* Headline */}
@@ -108,7 +108,7 @@ export default function HeroSection() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-700 leading-relaxed"
             >
-              Skill Passport is a verified digital profile that helps students showcase real, job-ready skills—recognized by mentors, institutions, and employers.
+              Skill Passport is a verified digital profile that helps learners showcase real, job-ready skills—recognized by mentors, institutions, and employers.
             </motion.p>
 
             {/* CTAs */}

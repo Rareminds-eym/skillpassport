@@ -229,7 +229,7 @@ export const timetableService = {
           // Check batch conflict
           if (slot1.batch_section && slot2.batch_section && slot1.batch_section === slot2.batch_section) {
             conflicts.push({
-              type: 'student_batch',
+              type: 'learner_batch',
               slot1,
               slot2,
               message: `Batch ${slot1.batch_section} has overlapping exams`,

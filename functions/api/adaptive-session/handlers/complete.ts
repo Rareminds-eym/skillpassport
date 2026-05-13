@@ -83,24 +83,24 @@ export const completeHandler: PagesFunction = async (context) => {
       );
     }
 
-    // Verify session ownership by checking if the student's user_id matches the authenticated user
-    const { data: studentData, error: studentError } = await supabase
-      .from('students')
+    // Verify session ownership by checking if the learner's user_id matches the authenticated user
+    const { data: learnerData, error: learnerError } = await supabase
+      .from('learners')
       .select('user_id')
-      .eq('id', sessionData.student_id)
+      .eq('id', sessionData.learner_id)
       .single();
 
-    if (studentError || !studentData) {
-      console.error('❌ [CompleteHandler] Failed to fetch student:', studentError);
+    if (learnerError || !learnerData) {
+      console.error('❌ [CompleteHandler] Failed to fetch learner:', learnerError);
       return jsonResponse(
-        { error: 'Student not found' },
+        { error: 'Learner not found' },
         404
       );
     }
 
-    if (studentData.user_id !== auth.user.id) {
+    if (learnerData.user_id !== auth.user.id) {
       console.error('❌ [CompleteHandler] Session ownership verification failed', {
-        studentUserId: studentData.user_id,
+        learnerUserId: learnerData.user_id,
         authUserId: auth.user.id
       });
       return jsonResponse(
@@ -198,7 +198,7 @@ export const completeHandler: PagesFunction = async (context) => {
       .from('adaptive_aptitude_results')
       .insert({
         session_id: sessionId,
-        student_id: sessionData.student_id,
+        learner_id: sessionData.learner_id,
         aptitude_level: aptitudeLevel,
         confidence_tag: confidenceTag,
         tier,
@@ -249,7 +249,7 @@ export const completeHandler: PagesFunction = async (context) => {
     const result: TestResults = {
       id: resultsData.id,
       sessionId,
-      studentId: sessionData.student_id,
+      learnerId: sessionData.learner_id,
       aptitudeLevel,
       confidenceTag,
       tier,

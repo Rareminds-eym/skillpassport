@@ -3,11 +3,11 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AddOnMarketplace, OrganizationPurchasePanel } from '@/features/subscription/ui';
-import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
+import { useSubscriptionPlansData } from '@/features/subscription/model';
 
 
 
-import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parseStudentType } from "@/shared/lib/getEntityContent";
+import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parselearnerType } from "@/shared/lib/getEntityContent";
 import { calculateDaysRemaining, isActiveOrPaused } from '@/features/subscription';
 
 import { useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
@@ -29,9 +29,9 @@ function getManagePath(userRole) {
     school_educator: '/educator/subscription/manage',
     college_educator: '/educator/subscription/manage',
     recruiter: '/recruitment/subscription/manage',
-    student: '/student/subscription/manage',
-    school_student: '/student/subscription/manage',
-    college_student: '/student/subscription/manage',
+    learner: '/learner/subscription/manage',
+    'school-learner': '/learner/subscription/manage',
+    'college-learner': '/learner/subscription/manage',
   };
   return manageRoutes[userRole] || null; // Return null instead of default to prevent wrong redirects
 }
@@ -43,12 +43,10 @@ function getManagePathFromType(type) {
   if (!type) return null; // Return null instead of default to prevent wrong redirects
 
   const typeToPath = {
-    // Student types
-    'student': '/student/subscription/manage',
-    'school_student': '/student/subscription/manage',
-    'school-student': '/student/subscription/manage',
-    'college_student': '/student/subscription/manage',
-    'college-student': '/student/subscription/manage',
+    // Learner types
+    'learner': '/learner/subscription/manage',
+    'school-learner': '/learner/subscription/manage',
+    'college-learner': '/learner/subscription/manage',
     // Educator types
     'educator': '/educator/subscription/manage',
     'school_educator': '/educator/subscription/manage',
@@ -218,7 +216,13 @@ const FeatureComparisonTable = memo(({ plans }) => {
     if (value === '~') return (
       <span className="text-amber-500 font-bold text-lg">~</span>
     );
-    return <span className="text-sm text-slate-900 font-semibold">{value}</span>;
+    
+    // Safety check for objects to prevent React error #31
+    const safeValue = typeof value === 'object' && value !== null 
+      ? (value.name || value.feature_key || String(value))
+      : value;
+      
+    return <span className="text-sm text-slate-900 font-semibold">{safeValue}</span>;
   }, []);
 
   const featureComparison = useMemo(() => getFeatureComparison(plans), [plans]);
@@ -386,7 +390,12 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
   // Render feature item
   const renderFeature = (feature, idx) => {
     const featureName = typeof feature === 'string' ? feature : (feature.name || feature.feature_key || '');
-    const featureValue = typeof feature === 'object' ? (feature.value || feature.feature_value) : null;
+    let featureValue = typeof feature === 'object' ? (feature.value || feature.feature_value) : null;
+    
+    // Safety check for objects to prevent React error #31
+    if (typeof featureValue === 'object' && featureValue !== null) {
+      featureValue = featureValue.name || featureValue.feature_key || String(featureValue);
+    }
 
     return (
       <li key={idx} className="flex items-start gap-3 py-2 group">
@@ -672,14 +681,14 @@ function SubscriptionPlans() {
   }, [type, userRole, DEBUG]);
 
   // Parse entity and role from type
-  const { entity, role: pageRole } = useMemo(() => parseStudentType(type || 'student'), [type]);
+  const { entity, role: pageRole } = useMemo(() => parselearnerType(type || 'learner'), [type]);
 
   // Map parsed entity/role to API query params
   const entityTypeParam = useMemo(() => getEntityTypeParam(entity), [entity]);
   const roleTypeParam = useMemo(() => getRoleTypeParam(pageRole), [pageRole]);
 
   // Determine business type based on user role
-  // B2C for individual students, B2B for organization admins
+  // B2C for individual learners, B2B for organization admins
   const businessType = useMemo(() => {
     return pageRole === 'admin' ? 'b2b' : 'b2c';
   }, [pageRole]);
@@ -702,11 +711,11 @@ function SubscriptionPlans() {
 
   // UI-only content (titles, subtitles, CTA text). No pricing here.
   const { title, subtitle, heroMessage, ctaText } = useMemo(
-    () => getEntityContent(type || 'student'),
+    () => getEntityContent(type || 'learner'),
     [type]
   );
 
-  const studentType = type || 'student';
+  const learnerType = type || 'learner';
 
   const { subscriptionData, loading: subscriptionLoading, error: subscriptionError, refreshAccess } = useSubscriptionAccess();
   const daysRemaining = useMemo(() => calculateDaysRemaining(subscriptionData?.endDate), [subscriptionData?.endDate]);
@@ -804,7 +813,7 @@ function SubscriptionPlans() {
     // If user is currently on their ACTIVE plan (not cancelled), go to manage page
     // Cancelled subscriptions should allow re-purchase of the same plan
     if (subscriptionData && subscriptionData.plan === plan.id && subscriptionData.status !== 'cancelled') {
-      const targetPath = managePath || getManagePathFromType(type) || getManagePath(userRole) || `/subscription/plans?type=${studentType}`;
+      const targetPath = managePath || getManagePathFromType(type) || getManagePath(userRole) || `/subscription/plans?type=${learnerType}`;
       navigate(targetPath);
       return;
     }
@@ -817,7 +826,7 @@ function SubscriptionPlans() {
 
     // If user has active/paused subscription and not already in upgrade mode, show upgrade mode
     if (hasActiveOrPausedSubscription && !isUpgradeMode) {
-      navigate(`/subscription/plans?type=${studentType}&mode=upgrade`);
+      navigate(`/subscription/plans?type=${learnerType}&mode=upgrade`);
       return;
     }
 
@@ -827,7 +836,7 @@ function SubscriptionPlans() {
       navigate('/signup', {
         state: {
           plan,
-          studentType,
+          learnerType,
           returnTo: '/subscription/payment'
         }
       });
@@ -841,12 +850,12 @@ function SubscriptionPlans() {
     navigate('/subscription/payment', {
       state: {
         plan,
-        studentType,
+        learnerType,
         isUpgrade: !!subscriptionData
       }
     });
 
-  }, [isAuthenticated, authLoading, user, navigate, studentType, subscriptionData, hasActiveOrPausedSubscription, isUpgradeMode, managePath, type, userRole]);
+  }, [isAuthenticated, authLoading, user, navigate, learnerType, subscriptionData, hasActiveOrPausedSubscription, isUpgradeMode, managePath, type, userRole]);
 
   const formatDate = useCallback((dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -871,7 +880,7 @@ function SubscriptionPlans() {
       navigate('/subscription/payment', {
         state: {
           plan: selectedPlanForOrg,
-          studentType,
+          learnerType,
           isOrganizationPurchase: true,
           organizationConfig: {
             organizationType,
@@ -889,7 +898,7 @@ function SubscriptionPlans() {
       setIsOrgPurchaseLoading(false);
       setShowOrgPurchasePanel(false);
     }
-  }, [navigate, selectedPlanForOrg, studentType, organizationType]);
+  }, [navigate, selectedPlanForOrg, learnerType, organizationType]);
 
   // Handler for canceling organization purchase
   const handleOrgPurchaseCancel = useCallback(() => {
@@ -1079,7 +1088,11 @@ function SubscriptionPlans() {
                   <div className="grid sm:grid-cols-2 gap-4">
                     {(currentPlanData?.features || []).slice(0, 8).map((feature, index) => {
                       const featureName = typeof feature === 'string' ? feature : (feature.name || feature.feature_key || '');
-                      const featureValue = typeof feature === 'object' ? (feature.value || feature.feature_value) : null;
+                      let featureValue = typeof feature === 'object' ? (feature.value || feature.feature_value) : null;
+                      // Safety check for objects to prevent React error #31
+                      if (typeof featureValue === 'object' && featureValue !== null) {
+                        featureValue = featureValue.name || featureValue.feature_key || String(featureValue);
+                      }
 
                       return (
                         <div
@@ -1262,7 +1275,7 @@ function SubscriptionPlans() {
                   allPlans={plans}
                   isCurrentPlan={isAuthenticated && hasCurrentSubscription && subscriptionData?.plan === plan.id}
                   onSelect={handlePlanSelection}
-                  onManage={() => navigate(managePath || getManagePathFromType(type) || getManagePath(userRole) || `/subscription/plans?type=${studentType}`)}
+                  onManage={() => navigate(managePath || getManagePathFromType(type) || getManagePath(userRole) || `/subscription/plans?type=${learnerType}`)}
                   subscriptionData={isAuthenticated && hasCurrentSubscription ? subscriptionData : null}
                   daysRemaining={isAuthenticated && hasCurrentSubscription ? daysRemaining : null}
                   isOrganizationMode={isOrganizationMode}

@@ -1,6 +1,7 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
-import { Assessment, AssessmentType, CurriculumSubject, ExamRoom, examsService, ExamTimetable, MarkEntry, SchoolClass, SchoolEducator, Student } from '@/features/assessment';
+import { Assessment, AssessmentType, CurriculumSubject, ExamRoom, examsService, ExamTimetable, MarkEntry, SchoolClass, SchoolEducator, Learner } from '@/features/assessment';
 
 // Transform database types to UI types
 export interface UIExam {
@@ -62,9 +63,9 @@ export interface UIInvigilationDuty {
   endTime: string;
 }
 
-export interface UIStudentMark {
-  studentId: string;
-  studentName: string;
+export interface UIlearnerMark {
+  learnerId: string;
+  learnerName: string;
   rollNumber: string;
   marks: number | null;
   isAbsent: boolean;
@@ -74,7 +75,7 @@ export interface UIStudentMark {
   moderatedBy?: string;
   moderatedAt?: string;
   moderationReason?: string;
-  moderationType?: string; // Individual moderation type for each student
+  moderationType?: string; // Individual moderation type for each learner
   markEntryId?: string; // Add mark entry ID for moderation
 }
 
@@ -82,7 +83,7 @@ export interface UISubjectMarks {
   subjectId: string;
   subjectName: string;
   totalMarks: number;
-  studentMarks: UIStudentMark[];
+  learnerMarks: UIlearnerMark[];
   submittedBy?: string;
   submittedAt?: string;
   isModerated?: boolean;
@@ -109,7 +110,7 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
   const [rooms, setRooms] = useState<ExamRoom[]>([]);
   const [allSchoolRooms, setAllSchoolRooms] = useState<any[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
-  const [, setStudents] = useState<Student[]>([]);
+  const [, setlearners] = useState<Learner[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -185,15 +186,15 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
     marksBySubject.forEach((entries, subjectId) => {
       const subject = subjects.find(s => s.id === subjectId);
       if (subject) {
-        const studentMarks: UIStudentMark[] = entries.map(entry => {
+        const learnerMarks: UIlearnerMark[] = entries.map(entry => {
           // Determine if this entry has been moderated
           const hasModeration = entry.original_marks !== null || entry.moderated_by !== null || 
                                (entry.mark_moderation_log && entry.mark_moderation_log.length > 0);
           
           return {
-            studentId: entry.student_id,
-            studentName: entry.students?.name || 'Unknown',
-            rollNumber: entry.students?.roll_number || entry.students?.admission_number || 'N/A',
+            learnerId: entry.learner_id,
+            learnerName: entry.learners?.name || 'Unknown',
+            rollNumber: entry.learners?.roll_number || entry.learners?.admission_number || 'N/A',
             marks: entry.marks_obtained ? Number(entry.marks_obtained) : null,
             isAbsent: entry.is_absent,
             isExempt: entry.is_exempt,
@@ -237,7 +238,7 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
           subjectId: subject.id,
           subjectName: subject.name,
           totalMarks: subject.totalMarks,
-          studentMarks,
+          learnerMarks,
           submittedBy: 'System',
           submittedAt: new Date().toISOString(),
           isModerated: isModerated,
@@ -362,24 +363,24 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
     }
   }, [schoolId, collegeId, transformAssessmentToExam]);
 
-  // Load students using new target classes system
-  const loadStudents = useCallback(async (targetClasses?: any, grade?: string, section?: string): Promise<any[]> => {
+  // Load learners using new target classes system
+  const loadlearners = useCallback(async (targetClasses?: any, grade?: string, section?: string): Promise<any[]> => {
     try {
-      let studentsData: any[] = [];
+      let learnersData: any[] = [];
       
       if (targetClasses?.class_ids?.length > 0) {
         // Use new target classes approach (preferred)
-        studentsData = await examsService.getStudentsByTargetClasses(targetClasses);
+        learnersData = await examsService.getlearnersByTargetClasses(targetClasses);
       } else if (grade) {
         // Fallback: build target classes from grade/section
         const builtTargetClasses = await examsService.buildTargetClasses(schoolId!, grade, section);
-        studentsData = await examsService.getStudentsByTargetClasses(builtTargetClasses);
+        learnersData = await examsService.getlearnersByTargetClasses(builtTargetClasses);
       } else {
-        studentsData = [];
+        learnersData = [];
       }
       
-      setStudents(studentsData);
-      return studentsData;
+      setlearners(learnersData);
+      return learnersData;
     } catch (err) {
       throw err;
     }
@@ -391,7 +392,7 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
       // Use provided userId or fallback to supabase auth
       let currentUserId = userId;
       if (!currentUserId) {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await getCurrentUser();
         if (!user?.id) {
           throw new Error('User not authenticated');
         }
@@ -649,7 +650,7 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
       // Use provided userId or fallback to supabase auth
       let currentUserId = userId;
       if (!currentUserId) {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await getCurrentUser();
         if (!user?.id) {
           throw new Error('User not authenticated');
         }
@@ -742,21 +743,21 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
   }, [loadData]);
 
   // Save marks
-  const saveMarks = useCallback(async (examId: string, subjectId: string, studentMarks: UIStudentMark[], userId?: string) => {
+  const saveMarks = useCallback(async (examId: string, subjectId: string, learnerMarks: UIlearnerMark[], userId?: string) => {
     try {
       // Use provided userId or fallback to supabase auth
       let currentUserId = userId;
       if (!currentUserId) {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await getCurrentUser();
         if (!user?.id) {
           throw new Error('User not authenticated');
         }
         currentUserId = user.id;
       }
 
-      const markEntries: Partial<MarkEntry>[] = studentMarks.map(mark => ({
+      const markEntries: Partial<MarkEntry>[] = learnerMarks.map(mark => ({
         assessment_id: examId,
-        student_id: mark.studentId, // This should be the student's UUID from the students table
+        learner_id: mark.learnerId, // This should be the learner's UUID from the learners table
         subject_id: subjectId, // Include the subject_id
         marks_obtained: mark.marks || undefined, // Convert null to undefined
         total_marks: 100, // You might want to get this from the subject
@@ -770,9 +771,9 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
 
       const savedEntries = await examsService.saveMarkEntries(markEntries);
       
-      // Update studentMarks with the returned mark entry IDs
-      const updatedStudentMarks = studentMarks.map(mark => {
-        const savedEntry = savedEntries.find(entry => entry.student_id === mark.studentId);
+      // Update learnerMarks with the returned mark entry IDs
+      const updatedlearnerMarks = learnerMarks.map(mark => {
+        const savedEntry = savedEntries.find(entry => entry.learner_id === mark.learnerId);
         return {
           ...mark,
           markEntryId: savedEntry?.id
@@ -787,7 +788,7 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
             subjectId,
             subjectName: exam.subjects.find(s => s.id === subjectId)?.name || 'Unknown',
             totalMarks: exam.subjects.find(s => s.id === subjectId)?.totalMarks || 100,
-            studentMarks: updatedStudentMarks,
+            learnerMarks: updatedlearnerMarks,
             submittedBy: 'Current User',
             submittedAt: new Date().toISOString()
           };
@@ -829,7 +830,7 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
   // Moderate marks
   const moderateMarks = useCallback(async (markEntryId: string, moderationData: {
     assessment_id: string;
-    student_id: string;
+    learner_id: string;
     subject_id: string; // Add subject_id parameter
     original_marks: number;
     marks_obtained: number;
@@ -852,7 +853,7 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
       // Use provided userId or fallback to supabase auth
       let currentUserId = userId;
       if (!currentUserId) {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await getCurrentUser();
         if (!user?.id) {
           throw new Error('User not authenticated');
         }
@@ -1026,7 +1027,7 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
     
     // Actions
     loadData,
-    loadStudents,
+    loadlearners,
     createExam,
     updateExam,
     createTimetableEntry,

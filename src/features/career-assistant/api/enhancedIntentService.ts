@@ -10,7 +10,7 @@
  */
 
 import { getOpenAIClient, DEFAULT_MODEL } from './openAIClient';
-import { StudentProfile } from '@/features/student-profile/model';
+import { LearnerProfile } from '@/features/learner-profile/model';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('enhanced-intent-service');
@@ -28,9 +28,9 @@ export type EnhancedIntent =
   | 'profile-improvement'
   | 'certification-advice'
   | 'project-ideas'
-  | 'code-review'           // NEW: Student wants code reviewed
-  | 'debugging-help'        // NEW: Student stuck on bug
-  | 'learning-struggle'     // NEW: Student struggling with concept
+  | 'code-review'           // NEW: Learner wants code reviewed
+  | 'debugging-help'        // NEW: Learner stuck on bug
+  | 'learning-struggle'     // NEW: Learner struggling with concept
   | 'project-guidance'      // NEW: Help with ongoing project
   | 'career-anxiety'        // NEW: Worried about career prospects
   | 'imposter-syndrome'     // NEW: Feeling inadequate
@@ -108,7 +108,7 @@ class EnhancedIntentService {
    */
   async detectIntentWithDeepReasoning(
     message: string,
-    profile?: StudentProfile,
+    profile?: LearnerProfile,
     conversationHistory?: Array<{ role: string; content: string }>,
     recentProfileChanges?: string[]
   ): Promise<EnhancedDetectedIntent> {
@@ -163,7 +163,7 @@ Think deeply. Be empathetic. Be proactive.`
    */
   private buildDeepReasoningPrompt(
     message: string,
-    profile?: StudentProfile,
+    profile?: LearnerProfile,
     conversationHistory?: Array<{ role: string; content: string }>,
     recentProfileChanges?: string[]
   ): string {
@@ -180,9 +180,9 @@ Think deeply. Be empathetic. Be proactive.`
       ? `Recent profile changes: ${recentProfileChanges.join(', ')}`
       : '';
     
-    return `You are analyzing a student's query with DEEP INTELLIGENCE and EMPATHY.
+    return `You are analyzing a learner's query with DEEP INTELLIGENCE and EMPATHY.
 
-**STUDENT PROFILE:**
+**LEARNER PROFILE:**
 - Department: ${department}
 - Skills: ${profileSkills}
 - Skill count: ${profileLevel} skills
@@ -198,7 +198,7 @@ ${historyContext}
 **YOUR DEEP ANALYSIS TASK:**
 
 1️⃣ **EMOTIONAL INTELLIGENCE** - Detect the emotional state:
-   - Is the student frustrated? ("stuck", "can't figure out", "not working")
+   - Is the learner frustrated? ("stuck", "can't figure out", "not working")
    - Excited? ("awesome", "love", "amazing")
    - Confused? ("don't understand", "confused", "what does this mean")
    - Anxious? ("worried", "nervous", "scared", "not good enough")
@@ -206,7 +206,7 @@ ${historyContext}
    
    Return: emotional_tone (neutral/excited/frustrated/confused/anxious/motivated/discouraged/confident)
    Return: emotional_intensity (0.0 to 1.0)
-   Return: needs_empathy (true if student needs encouragement)
+   Return: needs_empathy (true if learner needs encouragement)
 
 2️⃣ **MULTI-INTENT DETECTION** - What are ALL the intents?
    Primary + Secondary intents:

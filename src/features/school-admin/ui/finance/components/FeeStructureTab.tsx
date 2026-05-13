@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Plus, Search, Edit, Trash2, Copy, ToggleLeft, ToggleRight, RefreshCw } from "lucide-react";
-import { FeeStructure } from '@/features/student-profile/model';
+import { FeeStructure } from '@/features/learner-profile/model';
 
 interface Props {
   feeStructures: FeeStructure[];

@@ -57,24 +57,24 @@ const determineGradeLevel = (gradeLevel, results) => {
  * 
  * @param {Object} props - Component props
  * @param {Object} props.results - Assessment results data
- * @param {Object} props.studentInfo - Student information
+ * @param {Object} props.learnerInfo - Learner information
  * @param {string} props.gradeLevel - Grade level indicator (optional)
  * @param {Object} props.riasecNames - RIASEC code to name mapping (optional)
  * @param {Object} props.traitNames - Trait code to name mapping (optional)
  * @param {Array} props.courseRecommendations - Course/program recommendations (optional)
- * @param {Object} props.streamRecommendation - Stream recommendation for after10 students (optional)
- * @param {Object} props.studentAcademicData - Student academic data (optional)
+ * @param {Object} props.streamRecommendation - Stream recommendation for after10 learners (optional)
+ * @param {Object} props.learnerAcademicData - Learner academic data (optional)
  * @returns {JSX.Element} - Appropriate grade-level print view component
  */
 const PrintView = ({ 
   results, 
-  studentInfo, 
+  learnerInfo, 
   gradeLevel, 
   riasecNames, 
   traitNames,
   courseRecommendations,
   streamRecommendation,
-  studentAcademicData
+  learnerAcademicData
 }) => {
   // Handle null/undefined results - Requirement 6.4
   if (!results) {
@@ -95,10 +95,10 @@ const PrintView = ({
     return (
       <PrintViewMiddleHighSchool
         results={results}
-        studentInfo={studentInfo}
+        learnerInfo={learnerInfo}
         riasecNames={riasecNames}
         streamRecommendation={streamRecommendation}
-        studentAcademicData={studentAcademicData}
+        learnerAcademicData={learnerAcademicData}
         gradeLevel={gradeLevel}
       />
     );
@@ -108,12 +108,12 @@ const PrintView = ({
     return (
       <PrintViewHigherSecondary
         results={results}
-        studentInfo={studentInfo}
+        learnerInfo={learnerInfo}
         riasecNames={riasecNames}
         traitNames={traitNames}
         courseRecommendations={courseRecommendations}
         streamRecommendation={streamRecommendation}
-        studentAcademicData={studentAcademicData}
+        learnerAcademicData={learnerAcademicData}
       />
     );
   }
@@ -122,11 +122,11 @@ const PrintView = ({
   return (
     <PrintViewCollege
       results={results}
-      studentInfo={studentInfo}
+      learnerInfo={learnerInfo}
       riasecNames={riasecNames}
       traitNames={traitNames}
       courseRecommendations={courseRecommendations}
-      studentAcademicData={studentAcademicData}
+      learnerAcademicData={learnerAcademicData}
     />
   );
 };

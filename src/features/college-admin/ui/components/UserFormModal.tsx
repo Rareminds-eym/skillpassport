@@ -21,7 +21,7 @@ const UserFormModal: React.FC<UserFormModalProps> = ({
     name: '',
     email: '',
     employee_id: '',
-    student_id: '',
+    learner_id: '',
     roles: [],
     department_id: '',
     status: 'active',
@@ -37,7 +37,7 @@ const UserFormModal: React.FC<UserFormModalProps> = ({
         name: '',
         email: '',
         employee_id: '',
-        student_id: '',
+        learner_id: '',
         roles: [],
         department_id: '',
         status: 'active',
@@ -146,12 +146,12 @@ const UserFormModal: React.FC<UserFormModalProps> = ({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Student ID
+                Learner ID
               </label>
               <input
                 type="text"
-                value={formData.student_id || ''}
-                onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
+                value={formData.learner_id || ''}
+                onChange={(e) => setFormData({ ...formData, learner_id: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="STU001"
               />

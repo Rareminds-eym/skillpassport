@@ -90,35 +90,35 @@ export const CareerPathDrawer: React.FC<CareerPathDrawerProps> = ({
     setChatLoading(true);
 
     try {
-      const studentData = careerPath.studentData || {};
+      const learnerData = careerPath.learnerData || {};
       
       const careerContext = `
-Student: ${careerPath.studentName}
+Learner: ${careerPath.learnerName}
 Current Role: ${careerPath.currentRole}
 Career Goal: ${careerPath.careerGoal}
 Overall Score: ${careerPath.overallScore}%
 
-STUDENT'S ACTUAL DATA FROM DATABASE:
+LEARNER'S ACTUAL DATA FROM DATABASE:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Skills (${studentData.skills?.length || 0}): 
-${studentData.skills?.length ? studentData.skills.map((s, i) => `${i + 1}. ${s}`).join('\n') : 'None listed'}
+Skills (${learnerData.skills?.length || 0}): 
+${learnerData.skills?.length ? learnerData.skills.map((s, i) => `${i + 1}. ${s}`).join('\n') : 'None listed'}
 
-Certificates (${studentData.certificates?.length || 0}): 
-${studentData.certificates?.length ? studentData.certificates.map((c, i) => `${i + 1}. ${c}`).join('\n') : 'None listed'}
+Certificates (${learnerData.certificates?.length || 0}): 
+${learnerData.certificates?.length ? learnerData.certificates.map((c, i) => `${i + 1}. ${c}`).join('\n') : 'None listed'}
 
-Projects (${studentData.projects?.length || 0}): 
-${studentData.projects?.length ? studentData.projects.map((p, i) => `${i + 1}. ${p}`).join('\n') : 'None listed'}
+Projects (${learnerData.projects?.length || 0}): 
+${learnerData.projects?.length ? learnerData.projects.map((p, i) => `${i + 1}. ${p}`).join('\n') : 'None listed'}
 
-Education (${studentData.education?.length || 0}): 
-${studentData.education?.length ? studentData.education.map((e, i) => `${i + 1}. ${e}`).join('\n') : 'None listed'}
+Education (${learnerData.education?.length || 0}): 
+${learnerData.education?.length ? learnerData.education.map((e, i) => `${i + 1}. ${e}`).join('\n') : 'None listed'}
 
-Experience (${studentData.experience?.length || 0}): 
-${studentData.experience?.length ? studentData.experience.map((e, i) => `${i + 1}. ${e}`).join('\n') : 'None listed'}
+Experience (${learnerData.experience?.length || 0}): 
+${learnerData.experience?.length ? learnerData.experience.map((e, i) => `${i + 1}. ${e}`).join('\n') : 'None listed'}
 
-Trainings (${studentData.trainings?.length || 0}): 
-${studentData.trainings?.length ? studentData.trainings.map((t, i) => `${i + 1}. ${t}`).join('\n') : 'None listed'}
+Trainings (${learnerData.trainings?.length || 0}): 
+${learnerData.trainings?.length ? learnerData.trainings.map((t, i) => `${i + 1}. ${t}`).join('\n') : 'None listed'}
 
-Interests: ${studentData.interests?.length ? studentData.interests.join(', ') : 'None listed'}
+Interests: ${learnerData.interests?.length ? learnerData.interests.join(', ') : 'None listed'}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 CAREER PATH ANALYSIS:
@@ -243,7 +243,7 @@ IMPORTANT INSTRUCTIONS:
             <div>
               <h2 className="text-xl font-bold text-white">Career Development Path</h2>
               {careerPath && (
-                <p className="text-primary-100 text-sm">{careerPath.studentName}</p>
+                <p className="text-primary-100 text-sm">{careerPath.learnerName}</p>
               )}
             </div>
           </div>
@@ -585,7 +585,7 @@ IMPORTANT INSTRUCTIONS:
                       <ChatBubbleLeftRightIcon className="h-5 w-5 text-blue-600" />
                     </div>
                     <span className="font-bold text-gray-900">
-                      Ask Questions About {careerPath.studentName}'s Career Path
+                      Ask Questions About {careerPath.learnerName}'s Career Path
                     </span>
                   </div>
                   <ChevronDownIcon

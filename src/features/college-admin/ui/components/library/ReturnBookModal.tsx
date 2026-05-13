@@ -8,8 +8,8 @@ interface ReturnBookModalProps {
   issuedBooks: LibraryBookIssue[];
   returnForm: {
     bookId: string;
-    studentId: string;
-    studentName: string;
+    learnerId: string;
+    learnerName: string;
     rollNumber: string;
     class: string;
     bookTitle: string;
@@ -106,11 +106,11 @@ export function ReturnBookModal({
                         )}
                       </div>
 
-                      {/* Student Info */}
+                      {/* Learner Info */}
                       <div className="space-y-2 mb-3 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Student:</span>
-                          <span className="font-medium">{issued.student_name}</span>
+                          <span className="text-gray-600">Learner:</span>
+                          <span className="font-medium">{issued.learner_name}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Roll No:</span>
@@ -142,8 +142,8 @@ export function ReturnBookModal({
                         onClick={() => {
                           setReturnForm({
                             bookId: issued.book_id,
-                            studentId: issued.student_id,
-                            studentName: issued.student_name,
+                            learnerId: issued.learner_id,
+                            learnerName: issued.learner_name,
                             rollNumber: issued.roll_number,
                             class: issued.class,
                             bookTitle: issued.book?.title || 'Unknown Book',
@@ -189,8 +189,8 @@ export function ReturnBookModal({
                 </div>
                 
                 <div className="bg-gray-50 p-3 rounded border">
-                  <label className="block text-sm font-medium text-gray-600 mb-1">Student Name</label>
-                  <p className="font-semibold">{returnForm.studentName}</p>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">Learner Name</label>
+                  <p className="font-semibold">{returnForm.learnerName}</p>
                 </div>
                 
                 <div className="bg-gray-50 p-3 rounded border">

@@ -27,8 +27,8 @@ interface PerformanceMetric {
   college: string;
   avgCGPA: number;
   passRate: number;
-  atRiskStudents: number;
-  totalStudents: number;
+  atRisklearners: number;
+  totallearners: number;
   placementRate: number;
   attendanceRate: number;
   lastUpdated: string;
@@ -74,8 +74,8 @@ const PerformanceMonitoring: React.FC = () => {
       college: "Engineering College",
       avgCGPA: 7.8,
       passRate: 92,
-      atRiskStudents: 45,
-      totalStudents: 500,
+      atRisklearners: 45,
+      totallearners: 500,
       placementRate: 85,
       attendanceRate: 88,
       lastUpdated: "2024-01-10"
@@ -85,8 +85,8 @@ const PerformanceMonitoring: React.FC = () => {
       college: "Arts & Science College",
       avgCGPA: 8.2,
       passRate: 95,
-      atRiskStudents: 23,
-      totalStudents: 350,
+      atRisklearners: 23,
+      totallearners: 350,
       placementRate: 78,
       attendanceRate: 92,
       lastUpdated: "2024-01-10"
@@ -96,8 +96,8 @@ const PerformanceMonitoring: React.FC = () => {
       college: "Business School",
       avgCGPA: 7.9,
       passRate: 89,
-      atRiskStudents: 67,
-      totalStudents: 450,
+      atRisklearners: 67,
+      totallearners: 450,
       placementRate: 91,
       attendanceRate: 85,
       lastUpdated: "2024-01-10"
@@ -446,9 +446,9 @@ const PerformanceMonitoring: React.FC = () => {
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 text-sm mb-1">At-Risk Students</p>
+              <p className="text-gray-600 text-sm mb-1">At-Risk Learners</p>
               <p className="text-3xl font-bold text-gray-900">
-                {performanceData.reduce((sum, item) => sum + item.atRiskStudents, 0)}
+                {performanceData.reduce((sum, item) => sum + item.atRisklearners, 0)}
               </p>
               <p className="text-xs text-red-600 mt-1">Needs attention</p>
             </div>
@@ -513,7 +513,7 @@ const PerformanceMonitoring: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Student Engagement</span>
+                  <span className="text-sm text-gray-600">Learner Engagement</span>
                   <div className="flex items-center space-x-2">
                     <div className="w-20 bg-gray-200 rounded-full h-2">
                       <div 
@@ -580,7 +580,7 @@ const PerformanceMonitoring: React.FC = () => {
                     At Risk
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total Students
+                    Total Learners
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Last Updated
@@ -613,17 +613,17 @@ const PerformanceMonitoring: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        item.atRiskStudents > 50 
+                        item.atRisklearners > 50 
                           ? 'bg-red-100 text-red-800' 
-                          : item.atRiskStudents > 25 
+                          : item.atRisklearners > 25 
                           ? 'bg-yellow-100 text-yellow-800' 
                           : 'bg-green-100 text-green-800'
                       }`}>
-                        {item.atRiskStudents}
+                        {item.atRisklearners}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{item.totalStudents}</div>
+                      <div className="text-sm text-gray-900">{item.totallearners}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-500">{item.lastUpdated}</div>
@@ -814,20 +814,20 @@ const PerformanceMonitoring: React.FC = () => {
               {/* Detailed Information */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Student Statistics</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Learner Statistics</h3>
                   <div className="space-y-3">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Total Students:</span>
-                      <span className="font-medium">{selectedCollegeData.totalStudents}</span>
+                      <span className="text-gray-600">Total Learners:</span>
+                      <span className="font-medium">{selectedCollegeData.totallearners}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">At-Risk Students:</span>
-                      <span className="font-medium text-red-600">{selectedCollegeData.atRiskStudents}</span>
+                      <span className="text-gray-600">At-Risk Learners:</span>
+                      <span className="font-medium text-red-600">{selectedCollegeData.atRisklearners}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Risk Percentage:</span>
                       <span className="font-medium">
-                        {((selectedCollegeData.atRiskStudents / selectedCollegeData.totalStudents) * 100).toFixed(1)}%
+                        {((selectedCollegeData.atRisklearners / selectedCollegeData.totallearners) * 100).toFixed(1)}%
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -986,15 +986,15 @@ const PerformanceMonitoring: React.FC = () => {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      At-Risk Students
+                      At-Risk Learners
                     </label>
                     <input
                       type="number"
                       min="0"
-                      value={editFormData.atRiskStudents}
+                      value={editFormData.atRisklearners}
                       onChange={(e) => setEditFormData({
                         ...editFormData,
-                        atRiskStudents: parseInt(e.target.value) || 0
+                        atRisklearners: parseInt(e.target.value) || 0
                       })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
@@ -1002,15 +1002,15 @@ const PerformanceMonitoring: React.FC = () => {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Total Students
+                      Total Learners
                     </label>
                     <input
                       type="number"
                       min="0"
-                      value={editFormData.totalStudents}
+                      value={editFormData.totallearners}
                       onChange={(e) => setEditFormData({
                         ...editFormData,
-                        totalStudents: parseInt(e.target.value) || 0
+                        totallearners: parseInt(e.target.value) || 0
                       })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
@@ -1039,8 +1039,8 @@ const PerformanceMonitoring: React.FC = () => {
                     <div>
                       <span className="text-gray-600">Risk Percentage:</span>
                       <span className="ml-2 font-medium">
-                        {editFormData.totalStudents > 0 
-                          ? ((editFormData.atRiskStudents / editFormData.totalStudents) * 100).toFixed(1)
+                        {editFormData.totallearners > 0 
+                          ? ((editFormData.atRisklearners / editFormData.totallearners) * 100).toFixed(1)
                           : 0}%
                       </span>
                     </div>

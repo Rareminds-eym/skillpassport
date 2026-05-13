@@ -74,8 +74,8 @@ export async function signupEducator(data: any): Promise<any> {
   return result;
 }
 
-export async function signupStudent(data: any): Promise<any> {
-  const response = await fetch(`${API_URL}/signup/student`, {
+export async function signupLearner(data: any): Promise<any> {
+  const response = await fetch(`${API_URL}/signup/learner`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -84,7 +84,7 @@ export async function signupStudent(data: any): Promise<any> {
   const result = await response.json();
   
   if (!response.ok) {
-    throw new Error(result.error || 'Failed to create student account');
+    throw new Error(result.error || 'Failed to create learner account');
   }
 
   return result;
@@ -171,8 +171,8 @@ export async function signupCollegeEducator(data: any): Promise<any> {
   return result;
 }
 
-export async function signupCollegeStudent(data: any): Promise<any> {
-  const response = await fetch(`${API_URL}/signup/college-student`, {
+export async function signupCollegeLearner(data: any): Promise<any> {
+  const response = await fetch(`${API_URL}/signup/college-learner`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -181,7 +181,7 @@ export async function signupCollegeStudent(data: any): Promise<any> {
   const result = await response.json();
   
   if (!response.ok) {
-    throw new Error(result.error || 'Failed to create college student account');
+    throw new Error(result.error || 'Failed to create college learner account');
   }
 
   return result;
@@ -252,8 +252,8 @@ export async function signupUniversityEducator(data: any): Promise<any> {
   return result;
 }
 
-export async function signupUniversityStudent(data: any): Promise<any> {
-  const response = await fetch(`${API_URL}/signup/university-student`, {
+export async function signupUniversityLearner(data: any): Promise<any> {
+  const response = await fetch(`${API_URL}/signup/university-learner`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -262,7 +262,7 @@ export async function signupUniversityStudent(data: any): Promise<any> {
   const result = await response.json();
   
   if (!response.ok) {
-    throw new Error(result.error || 'Failed to create university student account');
+    throw new Error(result.error || 'Failed to create university learner account');
   }
 
   return result;
@@ -366,11 +366,11 @@ export async function checkCompanyCode(code: string): Promise<any> {
 
 // ==================== AUTHENTICATED ENDPOINTS ====================
 
-export async function createStudent(studentData: any, token?: string): Promise<any> {
-  const response = await fetch(`${API_URL}/create-student`, {
+export async function createLearner(learnerData: any, token?: string): Promise<any> {
+  const response = await fetch(`${API_URL}/create-learner`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(studentData),
+    body: JSON.stringify(learnerData),
   });
 
   if (!response.ok) {
@@ -381,13 +381,13 @@ export async function createStudent(studentData: any, token?: string): Promise<a
       errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
     }
     
-    logger.error('API error creating student', new Error(errorDetails.error || `HTTP ${response.status}`), { status: response.status });
+    logger.error('API error creating learner', new Error(errorDetails.error || `HTTP ${response.status}`), { status: response.status });
     
     if (response.status === 401) {
       throw new Error('Authentication failed. Please login again.');
     }
     
-    throw new Error(errorDetails.error || `Failed to create student (${response.status})`);
+    throw new Error(errorDetails.error || `Failed to create learner (${response.status})`);
   }
 
   const result = await response.json();
@@ -479,15 +479,15 @@ export async function sendInterviewReminder(params: InterviewReminderParams, tok
   return response.json();
 }
 
-export async function updateStudentDocuments(
-  studentId: string,
+export async function updatelearnerDocuments(
+  learnerId: string,
   documents: any,
   token?: string
 ): Promise<any> {
-  const response = await fetch(`${API_URL}/update-student-documents`, {
+  const response = await fetch(`${API_URL}/update-learner-documents`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify({ studentId, documents }),
+    body: JSON.stringify({ learnerId, documents }),
   });
 
   if (!response.ok) {
@@ -498,13 +498,13 @@ export async function updateStudentDocuments(
       errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
     }
     
-    logger.error('API error updating student documents', new Error(errorDetails.error || `HTTP ${response.status}`), { status: response.status, studentId });
+    logger.error('API error updating learner documents', new Error(errorDetails.error || `HTTP ${response.status}`), { status: response.status, learnerId });
     
     if (response.status === 401) {
       throw new Error('Authentication failed. Please login again.');
     }
     
-    throw new Error(errorDetails.error || `Failed to update student documents (${response.status})`);
+    throw new Error(errorDetails.error || `Failed to update learner documents (${response.status})`);
   }
 
   const result = await response.json();
@@ -575,30 +575,30 @@ export default {
   unifiedSignup,
   signupSchoolAdmin,
   signupEducator,
-  signupStudent,
+  signupLearner,
   getSchools,
   checkSchoolCode,
   checkEmail,
   signupCollegeAdmin,
   signupCollegeEducator,
-  signupCollegeStudent,
+  signupCollegeLearner,
   getColleges,
   checkCollegeCode,
   signupUniversityAdmin,
   signupUniversityEducator,
-  signupUniversityStudent,
+  signupUniversityLearner,
   getUniversities,
   checkUniversityCode,
   signupRecruiterAdmin,
   signupRecruiter,
   getCompanies,
   checkCompanyCode,
-  createStudent,
+  createLearner,
   createTeacher,
   createCollegeStaff,
   createEventUser,
   sendInterviewReminder,
   resetPassword,
-  updateStudentDocuments,
+  updatelearnerDocuments,
   updateTeacherDocuments,
 };

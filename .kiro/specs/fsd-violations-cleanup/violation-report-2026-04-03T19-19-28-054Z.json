@@ -309,49 +309,49 @@
         "suggestedFix": "Import from feature index: @/features/recruiter-copilot"
       },
       {
-        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\student\\AssessmentStart.jsx",
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\learner\\AssessmentStart.jsx",
         "line": 6,
         "importStatement": "import { checkAssessmentStatus } from '@/features/assessment/api/externalAssessmentService';",
         "violationType": "internal-api-bypass",
         "suggestedFix": "Import from feature index: @/features/assessment"
       },
       {
-        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\student\\AssessmentTest.jsx",
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\learner\\AssessmentTest.jsx",
         "line": 51,
         "importStatement": "import { analyzeAssessmentWithGemini } from '@/features/assessment/api/geminiAssessmentService';",
         "violationType": "internal-api-bypass",
         "suggestedFix": "Import from feature index: @/features/assessment"
       },
       {
-        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\student\\CareerAI.tsx",
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\learner\\CareerAI.tsx",
         "line": 2,
         "importStatement": "import CareerAssistant from '@/features/career-assistant/ui/CareerAssistant';",
         "violationType": "internal-api-bypass",
         "suggestedFix": "Import from feature index: @/features/career-assistant"
       },
       {
-        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\student\\DynamicAssessment.jsx",
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\learner\\DynamicAssessment.jsx",
         "line": 27,
         "importStatement": "import { generateAssessment, getCachedAssessment, cacheAssessment } from '@/features/assessment/api/assessmentGenerationService';",
         "violationType": "internal-api-bypass",
         "suggestedFix": "Import from feature index: @/features/assessment"
       },
       {
-        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\student\\DynamicAssessment.jsx",
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\learner\\DynamicAssessment.jsx",
         "line": 28,
         "importStatement": "import {\r\n  createAssessmentAttempt,\r\n  updateAssessmentProgress,\r\n  completeAssessment,\r\n  checkAssessmentStatus\r\n} from '@/features/assessment/api/externalAssessmentService';",
         "violationType": "internal-api-bypass",
         "suggestedFix": "Import from feature index: @/features/assessment"
       },
       {
-        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\student\\MyClass.tsx",
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\pages\\learner\\MyClass.tsx",
         "line": 5,
-        "importStatement": "import { useStudentProfile } from '@/features/student-profile/model/useStudentProfile';",
+        "importStatement": "import { useStudentProfile } from '@/features/learner-profile/model/useStudentProfile';",
         "violationType": "internal-api-bypass",
-        "suggestedFix": "Import from feature index: @/features/student-profile"
+        "suggestedFix": "Import from feature index: @/features/learner-profile"
       },
       {
-        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\widgets\\student-dashboard\\ui\\ModernLearningCard.jsx",
+        "file": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\widgets\\learner-dashboard\\ui\\ModernLearningCard.jsx",
         "line": 26,
         "importStatement": "import { checkAssessmentStatus } from \"@/features/assessment/api/externalAssessmentService\";",
         "violationType": "internal-api-bypass",
@@ -453,9 +453,9 @@
         "suggestedFix": "Move to appropriate feature or entity"
       },
       {
-        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\shared\\types\\student.ts",
+        "path": "C:\\Users\\saheb\\Assessment Test-final\\skillpassport\\src\\shared\\types\\learner.ts",
         "violationType": "domain-specific-in-shared",
-        "description": "'student.ts' appears to be domain-specific",
+        "description": "'learner.ts' appears to be domain-specific",
         "suggestedFix": "Move to appropriate feature or entity"
       },
       {

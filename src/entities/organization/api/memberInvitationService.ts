@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Member Invitation Service
  * 
@@ -20,7 +21,7 @@ export interface OrganizationInvitation {
   organizationId: string;
   organizationType: 'school' | 'college' | 'university';
   email: string;
-  memberType: 'educator' | 'student';
+  memberType: 'educator' | 'learner';
   invitedBy: string;
   autoAssignSubscription: boolean;
   targetLicensePoolId?: string;
@@ -39,7 +40,7 @@ export interface InviteMemberRequest {
   organizationId: string;
   organizationType: 'school' | 'college' | 'university';
   email: string;
-  memberType: 'educator' | 'student';
+  memberType: 'educator' | 'learner';
   autoAssignSubscription: boolean;
   licensePoolId?: string;
   invitationMessage?: string;
@@ -86,7 +87,7 @@ export class MemberInvitationService {
       }
 
       // 2. Get current user and their role
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await getCurrentUser();
       if (!user) {
         throw new Error('User not authenticated');
       }
@@ -101,7 +102,7 @@ export class MemberInvitationService {
       const invitedByRole = userData?.role || 'school_admin';
 
       // 3. Convert memberType to full role based on organization type
-      // Database expects: school_student, school_educator, college_student, college_educator, etc.
+      // Database expects: learner, school_educator, learner, college_educator, etc.
       const inviteeRole = this.getFullRoleName(request.memberType, request.organizationType);
 
       // 4. Generate secure invitation token
@@ -225,7 +226,7 @@ export class MemberInvitationService {
   async cancelInvitation(invitationId: string): Promise<void> {
     try {
       // Get current user for cancelled_by field
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await getCurrentUser();
       if (!user) {
         throw new Error('User not authenticated');
       }
@@ -373,7 +374,7 @@ export class MemberInvitationService {
     organizationId: string,
     options?: {
       status?: 'pending' | 'accepted' | 'expired' | 'cancelled';
-      memberType?: 'educator' | 'student';
+      memberType?: 'educator' | 'learner';
       limit?: number;
     }
   ): Promise<OrganizationInvitation[]> {
@@ -523,24 +524,24 @@ export class MemberInvitationService {
   }
 
   /**
-   * Convert simple member type (student/educator) to full role name based on organization type
-   * Database constraint requires: school_student, school_educator, college_student, college_educator, etc.
+   * Convert simple member type (learner/educator) to full role name based on organization type
+   * Database constraint requires: learner, school_educator, learner, college_educator, etc.
    */
   private getFullRoleName(
-    memberType: 'educator' | 'student',
+    memberType: 'educator' | 'learner',
     organizationType: 'school' | 'college' | 'university'
   ): string {
     const roleMap: Record<string, Record<string, string>> = {
       school: {
-        student: 'school_student',
+        learner: 'learner',
         educator: 'school_educator',
       },
       college: {
-        student: 'college_student',
+        learner: 'learner',
         educator: 'college_educator',
       },
       university: {
-        student: 'college_student', // University uses college roles
+        learner: 'learner', // University uses college roles
         educator: 'college_educator',
       },
     };
@@ -572,7 +573,7 @@ export class MemberInvitationService {
 
       const invitationLink = `${APP_URL}/accept-invitation?token=${invitation.invitation_token}`;
       const memberType = invitation.invitee_role;
-      const memberTypeDisplay = memberType.includes('educator') ? 'Educator' : 'Student';
+      const memberTypeDisplay = memberType.includes('educator') ? 'Educator' : 'Learner';
       const expiresDate = new Date(invitation.expires_at).toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
@@ -679,14 +680,14 @@ export class MemberInvitationService {
    * Link user to organization
    * 
    * Updates the appropriate tables to associate the user with the organization:
-   * - students table: school_id or college_id
+   * - learners table: school_id or college_id
    * - school_educators table: school_id (for school educators)
    * - users table: organizationId and role
    * 
    * @param userId - The user's auth ID
    * @param organizationId - The organization's ID
    * @param organizationType - Type of organization (school, college, university)
-   * @param inviteeRole - Full role name (e.g., school_student, college_educator)
+   * @param inviteeRole - Full role name (e.g., learner, college_educator)
    * @param inviteeEmail - The email address from the invitation (optional, for fallback matching)
    */
   private async linkUserToOrganization(
@@ -697,11 +698,11 @@ export class MemberInvitationService {
     inviteeEmail?: string
   ): Promise<void> {
     try {
-      // Determine if this is an educator or student based on the role
+      // Determine if this is an educator or learner based on the role
       const isEducator = inviteeRole.includes('educator');
-      const isStudent = inviteeRole.includes('student');
+      const isLearner = inviteeRole.includes('learner');
 
-      // Build update data for students/educators tables
+      // Build update data for learners/educators tables
       const memberUpdateData: Record<string, any> = {};
       if (organizationType === 'school') {
         memberUpdateData.school_id = organizationId;
@@ -710,33 +711,33 @@ export class MemberInvitationService {
       }
 
       // Update the appropriate member table
-      if (isStudent && Object.keys(memberUpdateData).length > 0) {
+      if (isLearner && Object.keys(memberUpdateData).length > 0) {
         // First try to update by user_id
-        const { data: updatedByUserId, error: studentError } = await supabase
-          .from('students')
+        const { data: updatedByUserId, error: learnerError } = await supabase
+          .from('learners')
           .update(memberUpdateData)
           .eq('user_id', userId)
           .select('id');
         
-        if (studentError) {
-          logger.warn('Could not update students table by user_id', studentError as Error);
+        if (learnerError) {
+          logger.warn('Could not update learners table by user_id', learnerError as Error);
         } else if (updatedByUserId && updatedByUserId.length > 0) {
-          logger.info('Updated students table with organization (by user_id)');
+          logger.info('Updated learners table with organization (by user_id)');
         } else if (inviteeEmail) {
           // Fallback: try to update by email if user_id didn't match any records
-          logger.info('No student found with user_id, trying email fallback');
+          logger.info('No learner found with user_id, trying email fallback');
           const { data: updatedByEmail, error: emailError } = await supabase
-            .from('students')
+            .from('learners')
             .update({ ...memberUpdateData, user_id: userId })
             .eq('email', inviteeEmail.toLowerCase())
             .select('id');
           
           if (emailError) {
-            logger.warn('Could not update students table by email', emailError as Error);
+            logger.warn('Could not update learners table by email', emailError as Error);
           } else if (updatedByEmail && updatedByEmail.length > 0) {
-            logger.info('Updated students table with organization (by email)');
+            logger.info('Updated learners table with organization (by email)');
           } else {
-            logger.warn('No student found with email', { email: inviteeEmail });
+            logger.warn('No learner found with email', { email: inviteeEmail });
           }
         }
       }

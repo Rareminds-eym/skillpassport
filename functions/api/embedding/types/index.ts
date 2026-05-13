@@ -52,7 +52,7 @@ export class EmbeddingError extends Error {
   }
 }
 
-export interface StudentData {
+export interface LearnerData {
   id: string;
   name?: string;
   branch_field?: string;

@@ -132,11 +132,11 @@ export const isSubscriptionActive = (
 // Member Utilities
 // ============================================================================
 
-export const getMemberTypeLabel = (memberType: 'educator' | 'student'): string => {
-  return memberType === 'educator' ? 'Educator' : 'Student';
+export const getMemberTypeLabel = (memberType: 'educator' | 'learner'): string => {
+  return memberType === 'educator' ? 'Educator' : 'Learner';
 };
 
-export const formatMemberCount = (count: number, memberType: 'educator' | 'student'): string => {
-  const label = memberType === 'educator' ? 'Educator' : 'Student';
+export const formatMemberCount = (count: number, memberType: 'educator' | 'learner'): string => {
+  const label = memberType === 'educator' ? 'Educator' : 'Learner';
   return `${count} ${label}${count !== 1 ? 's' : ''}`;
 };

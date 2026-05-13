@@ -1,5 +1,5 @@
 import { supabase } from '@/shared/api/supabaseClient';
-import { RecruiterContext } from '@/features/student-profile/model';
+import { RecruiterContext } from '@/features/learner-profile/model';
 
 /**
  * Build comprehensive recruiter context for AI

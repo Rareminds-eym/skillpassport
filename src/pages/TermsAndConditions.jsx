@@ -206,7 +206,7 @@ const TermsAndConditions = () => {
                       "Competency mapping and assessment frameworks",
                       "Institutional, corporate, and government training programs",
                       "Faculty Development Programs (FDPs)",
-                      "Student employability, placement enablement, and career readiness",
+                      "Learner employability, placement enablement, and career readiness",
                       "Recruitment enablement, talent verification, and employer dashboards",
                       "Hackathons, assessments, and evaluation initiatives",
                       "Online, blended, and digital learning solutions",

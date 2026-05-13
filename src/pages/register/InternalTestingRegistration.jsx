@@ -1,5 +1,5 @@
 /**
- * InternalTestingRegistration - Student registration form for internal testing
+ * InternalTestingRegistration - Learner registration form for internal testing
  * Route: /internal-testing
  * No payment required - for testing purposes only
  */
@@ -20,7 +20,7 @@ import {
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { signupStudent } from '@/entities/user/api/userApiService';
+import { signupLearner } from '@/entities/user/api/userApiService';
 import { supabase } from '@/shared/api/supabaseClient';
 
 const EMAIL_API_URL = import.meta.env.VITE_EMAIL_API_URL || 
@@ -206,22 +206,22 @@ export default function InternalTestingRegistration() {
       
       // Parse name into firstName and lastName
       const nameParts = form.name.trim().split(' ');
-      const firstName = nameParts[0] || 'Student';
+      const firstName = nameParts[0] || 'Learner';
       const lastName = nameParts.slice(1).join(' ') || 'Rareminds';
       
       console.log('Signup data:', {
         email: form.email.trim(),
         firstName,
         lastName,
-        role: isCollege ? 'college_student' : 'school_student',
+        role: isCollege ? 'learner' : 'learner',
         institution: 'Rareminds',
         institutionType: form.institutionType,
         grade: form.grade
       });
       
-      // Create student account with all required fields
+      // Create learner account with all required fields
       // For internal testing: auto-approve and set full subscription access
-      const signupResult = await signupStudent({
+      const signupResult = await signupLearner({
         email: form.email.trim(),
         password: form.password,
         name: `${firstName} ${lastName}`,
@@ -234,7 +234,7 @@ export default function InternalTestingRegistration() {
         institution: 'Rareminds',
         institution_type: form.institutionType, // Store institution type
         approval_status: 'approved',
-        role: isCollege ? 'college_student' : 'school_student',
+        role: isCollege ? 'learner' : 'learner',
         // Subscription fields for full access
         subscription_status: 'active',
         subscription_tier: 'premium',
@@ -378,7 +378,7 @@ export default function InternalTestingRegistration() {
               <div className="p-5 sm:p-6 md:p-8 lg:p-10">
                 <div className="space-y-3 sm:space-y-4 md:space-y-5">
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-4 py-3 sm:py-4 border-b-2 border-gray-100">
-                    <span className="text-sm sm:text-base text-gray-600 font-medium">Student Name</span>
+                    <span className="text-sm sm:text-base text-gray-600 font-medium">Learner Name</span>
                     <span className="text-sm sm:text-base text-gray-900 font-bold break-words">{form.name}</span>
                   </div>
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-4 py-3 sm:py-4 border-b-2 border-gray-100">
@@ -435,7 +435,7 @@ export default function InternalTestingRegistration() {
             </motion.div>
 
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2 sm:mb-3 px-4">
-              Student Registration
+              Learner Registration
             </h2>
             <p className="text-gray-600 text-sm sm:text-base leading-relaxed max-w-md mx-auto px-4">
               Join our internal testing program - No payment required

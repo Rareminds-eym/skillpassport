@@ -9,37 +9,30 @@
  * - Managing auto-renewal
  * - Calculating total costs
  * 
+ * IMPORTANT: This service routes through the authenticated Cloudflare Pages
+ * Function API (/api/payments/*) instead of direct Supabase calls.
+ * 
  * @requirement REQ-3.2 - Entitlement Service
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet, apiPost } from '@/shared/api/apiClient';
 
 class EntitlementService {
   /**
    * Get all entitlements for a user
    * 
-   * @param {string} userId - The user's UUID
+   * @param {string} userId - The user's UUID (kept for compatibility, though API uses SSO token)
    * @returns {Promise<{success: boolean, data?: Array, error?: string}>}
    */
   async getUserEntitlements(userId) {
     try {
-      if (!userId) {
-        return { success: false, error: 'User ID is required' };
-      }
-
-      const { data, error } = await supabase
-        .from('user_entitlements')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      return { success: true, data: data || [] };
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      const result = await apiGet<{ success: boolean; data: any; error: string | null }>(
+        '/payments/get-user-entitlements'
+      );
+      
+      return { success: result.success ?? true, data: result.data ?? [], error: result.error };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Unknown error' };
     }
   }
 
@@ -49,256 +42,45 @@ class EntitlementService {
    * 1. User's subscription plan includes the feature (is_included = true), OR
    * 2. User has an active entitlement for that feature_key
    * 
-   * Note: Cancelled subscriptions still grant access until subscription_end_date
-   * 
-   * @param {string} userId - The user's UUID
+   * @param {string} userId - The user's UUID (kept for compatibility)
    * @param {string} featureKey - The feature_key to check
    * @returns {Promise<{success: boolean, data?: {hasAccess: boolean, accessSource: 'plan'|'addon'|'bundle'|null}, error?: string}>}
    */
   async hasFeatureAccess(userId, featureKey) {
     try {
-      if (!userId || !featureKey) {
-        return { success: false, error: 'User ID and feature key are required' };
+      if (!featureKey) {
+        return { success: false, error: 'Feature key is required' };
       }
 
-      // First, check if user has a subscription plan that includes this feature
-      // Include 'cancelled' status - user retains access until subscription_end_date
-      const { data: subscription, error: subError } = await supabase
-        .from('subscriptions')
-        .select('plan_id, status, subscription_end_date')
-        .eq('user_id', userId)
-        .in('status', ['active', 'paused', 'cancelled'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (!subError && subscription?.plan_id) {
-        // For cancelled subscriptions, check if end date hasn't passed
-        if (subscription.status === 'cancelled') {
-          const endDate = new Date(subscription.subscription_end_date);
-          const now = new Date();
-          if (endDate < now) {
-            // Don't return yet - check for add-on entitlements below
-          } else {
-            // Cancelled but still within access period
-            const { data: planFeature, error: featureError } = await supabase
-              .from('subscription_plan_features')
-              .select('is_included')
-              .eq('plan_id', subscription.plan_id)
-              .eq('feature_key', featureKey)
-              .single();
-
-            if (!featureError && planFeature?.is_included) {
-              return {
-                success: true,
-                data: { hasAccess: true, accessSource: 'plan' }
-              };
-            }
-          }
-        } else {
-          // Active or paused subscription
-          const { data: planFeature, error: featureError } = await supabase
-            .from('subscription_plan_features')
-            .select('is_included')
-            .eq('plan_id', subscription.plan_id)
-            .eq('feature_key', featureKey)
-            .single();
-
-          if (!featureError && planFeature?.is_included) {
-            return {
-              success: true,
-              data: { hasAccess: true, accessSource: 'plan' }
-            };
-          }
-        }
-      }
-
-      // Check for active add-on entitlement (including cancelled ones that haven't expired)
-      const { data: entitlement, error: entError } = await supabase
-        .from('user_entitlements')
-        .select('id, bundle_id, status, end_date')
-        .eq('user_id', userId)
-        .eq('feature_key', featureKey)
-        .in('status', ['active', 'grace_period', 'cancelled'])
-        .gte('end_date', new Date().toISOString())
-        .maybeSingle();
-
-      if (!entError && entitlement) {
-        const accessSource = entitlement.bundle_id ? 'bundle' : 'addon';
-        return {
-          success: true,
-          data: { hasAccess: true, accessSource }
-        };
-      }
-
-      return {
-        success: true,
-        data: { hasAccess: false, accessSource: null }
-      };
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      const result = await apiGet<{ success: boolean; data: any; error: string | null }>(
+        `/payments/has-feature-access?featureKey=${encodeURIComponent(featureKey)}`
+      );
+      
+      return { success: result.success ?? true, data: result.data, error: result.error };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Unknown error' };
     }
   }
 
-
   /**
    * Activate an add-on for a user
-   * Creates a new entitlement record
-   * 
-   * @param {string} userId - The user's UUID
-   * @param {string} featureKey - The feature_key to activate
-   * @param {'monthly'|'annual'} billingPeriod - The billing period
-   * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
+   * NOTE: Direct activation bypasses payments. Use the paymentsApiService for proper checkout.
+   * This is kept for backwards compatibility but shouldn't be used directly in production.
    */
   async activateAddOn(userId, featureKey, billingPeriod) {
-    try {
-      if (!userId || !featureKey || !billingPeriod) {
-        return { success: false, error: 'User ID, feature key, and billing period are required' };
-      }
-
-      if (!['monthly', 'annual'].includes(billingPeriod)) {
-        return { success: false, error: 'Billing period must be "monthly" or "annual"' };
-      }
-
-      // Get the add-on details to get the price
-      const { data: addOn, error: addOnError } = await supabase
-        .from('subscription_plan_features')
-        .select('feature_key, addon_price_monthly, addon_price_annual')
-        .eq('feature_key', featureKey)
-        .eq('is_addon', true)
-        .single();
-
-      if (addOnError || !addOn) {
-        return { success: false, error: 'ADD_ON_NOT_FOUND' };
-      }
-
-      // Calculate end date based on billing period
-      const startDate = new Date();
-      const endDate = new Date(startDate);
-      if (billingPeriod === 'monthly') {
-        endDate.setMonth(endDate.getMonth() + 1);
-      } else {
-        endDate.setFullYear(endDate.getFullYear() + 1);
-      }
-
-      // Get the price based on billing period
-      const price = billingPeriod === 'monthly' 
-        ? addOn.addon_price_monthly 
-        : addOn.addon_price_annual;
-
-      // Create the entitlement
-      const { data: entitlement, error: insertError } = await supabase
-        .from('user_entitlements')
-        .insert({
-          user_id: userId,
-          feature_key: featureKey,
-          status: 'active',
-          billing_period: billingPeriod,
-          start_date: startDate.toISOString(),
-          end_date: endDate.toISOString(),
-          auto_renew: true,
-          price_at_purchase: price
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        return { success: false, error: insertError.message };
-      }
-
-      return { success: true, data: entitlement };
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
+    return { success: false, error: 'Direct add-on activation is deprecated. Use payments checkout flow.' };
   }
 
   /**
    * Activate a bundle for a user
-   * Creates entitlements for all features in the bundle
-   * 
-   * @param {string} userId - The user's UUID
-   * @param {string} bundleId - The bundle UUID
-   * @param {'monthly'|'annual'} billingPeriod - The billing period
-   * @returns {Promise<{success: boolean, data?: Array, error?: string}>}
+   * NOTE: Direct activation bypasses payments. Use the paymentsApiService for proper checkout.
    */
   async activateBundle(userId, bundleId, billingPeriod) {
-    try {
-      if (!userId || !bundleId || !billingPeriod) {
-        return { success: false, error: 'User ID, bundle ID, and billing period are required' };
-      }
-
-      if (!['monthly', 'annual'].includes(billingPeriod)) {
-        return { success: false, error: 'Billing period must be "monthly" or "annual"' };
-      }
-
-      // Get the bundle with its features
-      const { data: bundle, error: bundleError } = await supabase
-        .from('bundles')
-        .select('*, bundle_features(feature_key)')
-        .eq('id', bundleId)
-        .eq('is_active', true)
-        .single();
-
-      if (bundleError || !bundle) {
-        return { success: false, error: 'BUNDLE_NOT_FOUND' };
-      }
-
-      const featureKeys = bundle.bundle_features?.map(bf => bf.feature_key) || [];
-      
-      if (featureKeys.length === 0) {
-        return { success: false, error: 'Bundle has no features' };
-      }
-
-      // Calculate end date based on billing period
-      const startDate = new Date();
-      const endDate = new Date(startDate);
-      if (billingPeriod === 'monthly') {
-        endDate.setMonth(endDate.getMonth() + 1);
-      } else {
-        endDate.setFullYear(endDate.getFullYear() + 1);
-      }
-
-      // Get the bundle price based on billing period
-      const bundlePrice = billingPeriod === 'monthly' 
-        ? bundle.monthly_price 
-        : bundle.annual_price;
-
-      // Calculate price per feature (distribute bundle price across features)
-      const pricePerFeature = bundlePrice / featureKeys.length;
-
-      // Create entitlements for all features in the bundle
-      const entitlements = featureKeys.map(featureKey => ({
-        user_id: userId,
-        feature_key: featureKey,
-        bundle_id: bundleId,
-        status: 'active',
-        billing_period: billingPeriod,
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        auto_renew: true,
-        price_at_purchase: pricePerFeature
-      }));
-
-      const { data: createdEntitlements, error: insertError } = await supabase
-        .from('user_entitlements')
-        .insert(entitlements)
-        .select();
-
-      if (insertError) {
-        return { success: false, error: insertError.message };
-      }
-
-      return { success: true, data: createdEntitlements };
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
+    return { success: false, error: 'Direct bundle activation is deprecated. Use payments checkout flow.' };
   }
-
 
   /**
    * Cancel an add-on entitlement
-   * Sets status to 'cancelled' and records cancellation time
-   * Access is maintained until end_date
    * 
    * @param {string} entitlementId - The entitlement UUID
    * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
@@ -309,28 +91,14 @@ class EntitlementService {
         return { success: false, error: 'Entitlement ID is required' };
       }
 
-      const { data: entitlement, error } = await supabase
-        .from('user_entitlements')
-        .update({
-          status: 'cancelled',
-          auto_renew: false,
-          cancelled_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', entitlementId)
-        .select()
-        .single();
-
-      if (error) {
-        if (error.code === 'PGRST116') {
-          return { success: false, error: 'ENTITLEMENT_NOT_FOUND' };
-        }
-        return { success: false, error: error.message };
-      }
-
-      return { success: true, data: entitlement };
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      const result = await apiPost<{ success: boolean; data: any; error: string | null }>(
+        '/payments/cancel-addon',
+        { entitlementId }
+      );
+      
+      return { success: result.success ?? true, data: result.data, error: result.error };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Unknown error' };
     }
   }
 
@@ -351,26 +119,14 @@ class EntitlementService {
         return { success: false, error: 'Auto-renew must be a boolean value' };
       }
 
-      const { data: entitlement, error } = await supabase
-        .from('user_entitlements')
-        .update({
-          auto_renew: autoRenew,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', entitlementId)
-        .select()
-        .single();
-
-      if (error) {
-        if (error.code === 'PGRST116') {
-          return { success: false, error: 'ENTITLEMENT_NOT_FOUND' };
-        }
-        return { success: false, error: error.message };
-      }
-
-      return { success: true, data: entitlement };
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      const result = await apiPost<{ success: boolean; data: any; error: string | null }>(
+        '/payments/toggle-addon-autorenew',
+        { entitlementId, autoRenew }
+      );
+      
+      return { success: result.success ?? true, data: result.data, error: result.error };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Unknown error' };
     }
   }
 
@@ -383,25 +139,21 @@ class EntitlementService {
    */
   async calculateTotalCost(userId) {
     try {
-      if (!userId) {
-        return { success: false, error: 'User ID is required' };
+      // Calculate from frontend by fetching entitlements
+      const entitlementsRes = await this.getUserEntitlements(userId);
+      
+      if (!entitlementsRes.success || !entitlementsRes.data) {
+        return { success: false, error: entitlementsRes.error || 'Failed to fetch entitlements' };
       }
 
-      // Get all active entitlements for the user
-      const { data: entitlements, error } = await supabase
-        .from('user_entitlements')
-        .select('price_at_purchase, billing_period')
-        .eq('user_id', userId)
-        .in('status', ['active', 'grace_period']);
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
+      const entitlements = entitlementsRes.data.filter(e => 
+        ['active', 'grace_period'].includes(e.status)
+      );
 
       let monthlyTotal = 0;
       let annualTotal = 0;
 
-      (entitlements || []).forEach(ent => {
+      entitlements.forEach(ent => {
         const price = parseFloat(ent.price_at_purchase) || 0;
         
         if (ent.billing_period === 'monthly') {
@@ -420,92 +172,41 @@ class EntitlementService {
           annual: Math.round(annualTotal * 100) / 100
         }
       };
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Unknown error' };
     }
   }
 
   /**
-   * Apply grace period to an entitlement (for failed renewals)
-   * Extends access by 7 days with 'grace_period' status
-   * 
-   * @param {string} entitlementId - The entitlement UUID
-   * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
+   * Apply grace period to an entitlement
+   * Deprecated for frontend use.
    */
   async applyGracePeriod(entitlementId) {
-    try {
-      if (!entitlementId) {
-        return { success: false, error: 'Entitlement ID is required' };
-      }
-
-      // Get current entitlement
-      const { data: current, error: fetchError } = await supabase
-        .from('user_entitlements')
-        .select('end_date')
-        .eq('id', entitlementId)
-        .single();
-
-      if (fetchError || !current) {
-        return { success: false, error: 'ENTITLEMENT_NOT_FOUND' };
-      }
-
-      // Extend end_date by 7 days
-      const newEndDate = new Date(current.end_date);
-      newEndDate.setDate(newEndDate.getDate() + 7);
-
-      const { data: entitlement, error } = await supabase
-        .from('user_entitlements')
-        .update({
-          status: 'grace_period',
-          end_date: newEndDate.toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', entitlementId)
-        .select()
-        .single();
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      return { success: true, data: entitlement };
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
+    return { success: false, error: 'Manual grace period application is not supported from frontend' };
   }
 
   /**
    * Get entitlements expiring within a specified number of days
-   * Useful for sending renewal reminders
-   * 
-   * @param {number} daysUntilExpiry - Number of days until expiry
-   * @returns {Promise<{success: boolean, data?: Array, error?: string}>}
+   * Note: Filtered on frontend from getUserEntitlements
    */
   async getExpiringEntitlements(daysUntilExpiry) {
     try {
-      if (typeof daysUntilExpiry !== 'number' || daysUntilExpiry < 0) {
-        return { success: false, error: 'Days until expiry must be a positive number' };
-      }
+      const entitlementsRes = await this.getUserEntitlements(null);
+      if (!entitlementsRes.success) return entitlementsRes;
 
       const now = new Date();
       const futureDate = new Date(now);
       futureDate.setDate(futureDate.getDate() + daysUntilExpiry);
 
-      const { data, error } = await supabase
-        .from('user_entitlements')
-        .select('*')
-        .in('status', ['active', 'grace_period'])
-        .gte('end_date', now.toISOString())
-        .lte('end_date', futureDate.toISOString())
-        .order('end_date', { ascending: true });
+      const expiring = entitlementsRes.data.filter(e => {
+        if (!['active', 'grace_period'].includes(e.status)) return false;
+        const endDate = new Date(e.end_date);
+        return endDate >= now && endDate <= futureDate;
+      });
 
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      return { success: true, data: data || [] };
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      return { success: true, data: expiring };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Unknown error' };
     }
   }
 
@@ -531,31 +232,12 @@ class EntitlementService {
    */
   async getAddonByFeatureKey(featureKey) {
     try {
-      const { data, error } = await supabase
-        .from('subscription_plan_features')
-        .select('id, feature_key, feature_name, category, addon_price_monthly, addon_price_annual, addon_description, icon_url')
-        .eq('feature_key', featureKey)
-        .eq('is_addon', true)
-        .limit(1)
-        .maybeSingle();
-
-      if (error) {
-        return null;
-      }
-
-      if (!data) return null;
-
-      // Transform to expected format
-      return {
-        id: data.id,
-        feature_key: data.feature_key,
-        name: data.feature_name,
-        description: data.addon_description,
-        category: data.category,
-        price_monthly: parseFloat(data.addon_price_monthly) || 199,
-        price_annual: parseFloat(data.addon_price_annual) || 1990,
-        icon_url: data.icon_url,
-      };
+      const result = await apiGet<{ success: boolean; data: any; error: string | null }>(
+        `/payments/get-addon-by-feature-key?featureKey=${encodeURIComponent(featureKey)}`
+      );
+      
+      if (!result.success || !result.data) return null;
+      return result.data;
     } catch (error) {
       return null;
     }
@@ -569,47 +251,22 @@ class EntitlementService {
    * @param {string} filters.role - Filter by target role
    * @returns {Promise<Array>} - List of add-ons
    */
-  async getAvailableAddons(filters = {}) {
+  async getAvailableAddons(filters: any = {}) {
     try {
-      let query = supabase
-        .from('subscription_plan_features')
-        .select('id, feature_key, feature_name, category, addon_price_monthly, addon_price_annual, addon_description, target_roles, icon_url, sort_order_addon')
-        .eq('is_addon', true)
-        .order('sort_order_addon', { ascending: true });
-
-      if (filters.category) {
-        query = query.eq('category', filters.category);
+      let url = '/payments/get-available-addons';
+      const params = new URLSearchParams();
+      
+      if (filters.category) params.append('category', filters.category);
+      if (filters.role) params.append('role', filters.role);
+      
+      if (params.toString()) {
+        url += `?${params.toString()}`;
       }
 
-      if (filters.role) {
-        query = query.contains('target_roles', [filters.role]);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        return [];
-      }
-
-      // Transform to expected format and deduplicate by feature_key
-      const uniqueAddons = new Map();
-      (data || []).forEach(addon => {
-        if (!uniqueAddons.has(addon.feature_key)) {
-          uniqueAddons.set(addon.feature_key, {
-            id: addon.id,
-            feature_key: addon.feature_key,
-            name: addon.feature_name,
-            description: addon.addon_description,
-            category: addon.category,
-            price_monthly: parseFloat(addon.addon_price_monthly) || 0,
-            price_annual: parseFloat(addon.addon_price_annual) || 0,
-            target_roles: addon.target_roles || [],
-            icon_url: addon.icon_url,
-          });
-        }
-      });
-
-      return Array.from(uniqueAddons.values());
+      const result = await apiGet<{ success: boolean; data: any; error: string | null }>(url);
+      
+      if (!result.success || !result.data) return [];
+      return result.data;
     } catch (error) {
       return [];
     }
@@ -622,4 +279,3 @@ export default entitlementService;
 
 // Also export the class for testing purposes
 export { EntitlementService };
-

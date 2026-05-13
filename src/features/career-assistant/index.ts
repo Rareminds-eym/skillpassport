@@ -17,7 +17,7 @@ export { formatMessageTime } from './lib/dateUtils';
 
 export type { SuggestedAction } from './model/interactive';
 
-export { buildStudentContext } from './lib/contextBuilder';
+export { buildlearnerContext } from './lib/contextBuilder';
 
 export type { ActionButton } from './model/interactive';
 

@@ -79,8 +79,8 @@ interface SkillAllocation {
     batch?: string;
     year?: string;
   };
-  studentIds: string[];
-  studentCount: number;
+  learnerIds: string[];
+  learnerCount: number;
   allocationFlag: 'Mandatory' | 'Elective';
   startDate: string;
   endDate: string;
@@ -90,7 +90,7 @@ interface SkillAllocation {
   allowRetake: boolean;
 }
 
-interface Student {
+interface Learner {
   id: string;
   name: string;
   email: string;
@@ -113,17 +113,17 @@ interface AllocationFormData {
   semester: string;
   batch: string;
   year: string;
-  selectedStudents: string[];
+  selectedlearners: string[];
   allocationFlag: 'Mandatory' | 'Elective';
   startDate: string;
   endDate: string;
   allowRetake: boolean;
 }
 
-interface StudentProgress {
+interface LearnerProgress {
   id: string;
-  studentId: string;
-  studentName: string;
+  learnerId: string;
+  learnerName: string;
   rollNumber: string;
   department: string;
   batch: string;
@@ -151,7 +151,7 @@ interface ModuleProgress {
 }
 
 interface ProgressUpdateFormData {
-  studentId: string;
+  learnerId: string;
   courseId: string;
   completionPercentage: string;
   assessmentScore: string;
@@ -164,19 +164,19 @@ interface ProgressUpdateFormData {
 interface BatchProgressSummary {
   courseId: string;
   courseName: string;
-  totalStudents: number;
-  completedStudents: number;
-  inProgressStudents: number;
-  notStartedStudents: number;
+  totallearners: number;
+  completedlearners: number;
+  inProgresslearners: number;
+  notStartedlearners: number;
   averageCompletion: number;
   averageScore: number;
   averageAttendance: number;
 }
 
-interface StudentFeedback {
+interface LearnerFeedback {
   id: string;
-  studentId: string;
-  studentName: string;
+  learnerId: string;
+  learnerName: string;
   rollNumber: string;
   courseId: string;
   courseName: string;
@@ -198,21 +198,21 @@ interface TrainerFeedback {
   courseId: string;
   courseName: string;
   batchId: string;
-  studentEngagement: number;
+  learnerEngagement: number;
   contentDelivery: number;
   learningOutcomes: number;
   overallSatisfaction: number;
   challenges: string;
   improvements: string;
-  studentPerformance: string;
+  learnerPerformance: string;
   submittedAt: string;
   status: 'Pending' | 'Submitted' | 'Reviewed';
 }
 
 interface Certificate {
   id: string;
-  studentId: string;
-  studentName: string;
+  learnerId: string;
+  learnerName: string;
   rollNumber: string;
   courseId: string;
   courseName: string;
@@ -247,13 +247,13 @@ interface FeedbackFormData {
 }
 
 interface TrainerFeedbackFormData {
-  studentEngagement: string;
+  learnerEngagement: string;
   contentDelivery: string;
   learningOutcomes: string;
   overallSatisfaction: string;
   challenges: string;
   improvements: string;
-  studentPerformance: string;
+  learnerPerformance: string;
 }
 
 interface NotificationModal {
@@ -328,7 +328,7 @@ const SkillDevelopment: React.FC = () => {
   // Skill Allocation states
   const [showAllocateModal, setShowAllocateModal] = useState(false);
   const [showAllocationFilterModal, setShowAllocationFilterModal] = useState(false);
-  const [showStudentListModal, setShowStudentListModal] = useState(false);
+  const [showlearnerListModal, setShowlearnerListModal] = useState(false);
   const [selectedAllocation, setSelectedAllocation] = useState<SkillAllocation | null>(null);
   const [allocationSearchTerm, setAllocationSearchTerm] = useState("");
   const [selectedAllocationStatus, setSelectedAllocationStatus] = useState("");
@@ -336,11 +336,11 @@ const SkillDevelopment: React.FC = () => {
   const [selectedDepartmentFilter, setSelectedDepartmentFilter] = useState("");
 
   // Progress Tracker states
-  const [progressView, setProgressView] = useState<'student' | 'batch' | 'course'>('student');
+  const [progressView, setProgressView] = useState<'learner' | 'batch' | 'course'>('learner');
   const [showUpdateProgressModal, setShowUpdateProgressModal] = useState(false);
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [showProgressFilterModal, setShowProgressFilterModal] = useState(false);
-  const [selectedProgress, setSelectedProgress] = useState<StudentProgress | null>(null);
+  const [selectedProgress, setSelectedProgress] = useState<LearnerProgress | null>(null);
   const [progressSearchTerm, setProgressSearchTerm] = useState("");
   const [selectedCourseFilter, setSelectedCourseFilter] = useState("");
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("");
@@ -348,12 +348,12 @@ const SkillDevelopment: React.FC = () => {
   const [bulkUploadFile, setBulkUploadFile] = useState<File | null>(null);
 
   // Feedback & Certification states
-  const [feedbackView, setFeedbackView] = useState<'student' | 'trainer' | 'certificates'>('student');
-  const [showStudentFeedbackModal, setShowStudentFeedbackModal] = useState(false);
+  const [feedbackView, setFeedbackView] = useState<'learner' | 'trainer' | 'certificates'>('learner');
+  const [showlearnerFeedbackModal, setShowlearnerFeedbackModal] = useState(false);
   const [showTrainerFeedbackModal, setShowTrainerFeedbackModal] = useState(false);
   const [showCertificateModal, setShowCertificateModal] = useState(false);
   const [showFeedbackFilterModal, setShowFeedbackFilterModal] = useState(false);
-  const [selectedFeedback, setSelectedFeedback] = useState<StudentFeedback | TrainerFeedback | null>(null);
+  const [selectedFeedback, setSelectedFeedback] = useState<LearnerFeedback | TrainerFeedback | null>(null);
   const [feedbackSearchTerm, setFeedbackSearchTerm] = useState("");
   const [selectedFeedbackCourse, setSelectedFeedbackCourse] = useState("");
   const [selectedFeedbackStatus, setSelectedFeedbackStatus] = useState("");
@@ -396,7 +396,7 @@ const SkillDevelopment: React.FC = () => {
     semester: "",
     batch: "",
     year: "",
-    selectedStudents: [],
+    selectedlearners: [],
     allocationFlag: "Mandatory",
     startDate: "",
     endDate: "",
@@ -404,7 +404,7 @@ const SkillDevelopment: React.FC = () => {
   });
 
   const [progressUpdateFormData, setProgressUpdateFormData] = useState<ProgressUpdateFormData>({
-    studentId: "",
+    learnerId: "",
     courseId: "",
     completionPercentage: "",
     assessmentScore: "",
@@ -425,13 +425,13 @@ const SkillDevelopment: React.FC = () => {
   });
 
   const [trainerFeedbackFormData, setTrainerFeedbackFormData] = useState<TrainerFeedbackFormData>({
-    studentEngagement: "",
+    learnerEngagement: "",
     contentDelivery: "",
     learningOutcomes: "",
     overallSatisfaction: "",
     challenges: "",
     improvements: "",
-    studentPerformance: "",
+    learnerPerformance: "",
   });
 
   const tabs = [
@@ -444,7 +444,7 @@ const SkillDevelopment: React.FC = () => {
   // Sample data
   const skillStats = [
     { label: "Active Courses", value: "156", icon: BookOpen, color: "bg-blue-500" },
-    { label: "Enrolled Students", value: "12,450", icon: Users, color: "bg-purple-500" },
+    { label: "Enrolled Learners", value: "12,450", icon: Users, color: "bg-purple-500" },
     { label: "Completion Rate", value: "78.5%", icon: TrendingUp, color: "bg-green-500" },
     { label: "Certificates Issued", value: "9,780", icon: Award, color: "bg-orange-500" },
   ];
@@ -590,8 +590,8 @@ const SkillDevelopment: React.FC = () => {
   const semesterOptions = ["1", "2", "3", "4", "5", "6", "7", "8"];
   const yearOptions = ["2021", "2022", "2023", "2024", "2025"];
 
-  // Sample students data
-  const studentsData: Student[] = [
+  // Sample learners data
+  const learnersData: Learner[] = [
     {
       id: "CS2021001",
       name: "Rahul Sharma",
@@ -675,8 +675,8 @@ const SkillDevelopment: React.FC = () => {
         department: "Computer Science Engineering",
         year: "2021"
       },
-      studentIds: ["CS2021001", "CS2021002"],
-      studentCount: 2,
+      learnerIds: ["CS2021001", "CS2021002"],
+      learnerCount: 2,
       allocationFlag: "Mandatory",
       startDate: "2024-04-01",
       endDate: "2024-06-30",
@@ -695,8 +695,8 @@ const SkillDevelopment: React.FC = () => {
         semester: "6",
         year: "2021"
       },
-      studentIds: ["CS2021002"],
-      studentCount: 1,
+      learnerIds: ["CS2021002"],
+      learnerCount: 1,
       allocationFlag: "Elective",
       startDate: "2024-03-01",
       endDate: "2024-05-31",
@@ -715,8 +715,8 @@ const SkillDevelopment: React.FC = () => {
         batch: "IT-A",
         year: "2021"
       },
-      studentIds: ["IT2021001"],
-      studentCount: 1,
+      learnerIds: ["IT2021001"],
+      learnerCount: 1,
       allocationFlag: "Mandatory",
       startDate: "2024-04-15",
       endDate: "2024-07-15",
@@ -734,8 +734,8 @@ const SkillDevelopment: React.FC = () => {
         program: "B.Tech",
         semester: "6"
       },
-      studentIds: ["CS2021001", "CS2022001"],
-      studentCount: 2,
+      learnerIds: ["CS2021001", "CS2022001"],
+      learnerCount: 2,
       allocationFlag: "Mandatory",
       startDate: "2024-03-01",
       endDate: "2024-04-30",
@@ -752,8 +752,8 @@ const SkillDevelopment: React.FC = () => {
       targetGroup: {
         department: "Management Studies"
       },
-      studentIds: ["MBA2021001"],
-      studentCount: 1,
+      learnerIds: ["MBA2021001"],
+      learnerCount: 1,
       allocationFlag: "Elective",
       startDate: "2024-04-01",
       endDate: "2024-05-15",
@@ -764,12 +764,12 @@ const SkillDevelopment: React.FC = () => {
     }
   ];
 
-  // Sample student progress data
-  const studentProgressData: StudentProgress[] = [
+  // Sample learner progress data
+  const learnerProgressData: LearnerProgress[] = [
     {
       id: "1",
-      studentId: "CS2021001",
-      studentName: "Rahul Sharma",
+      learnerId: "CS2021001",
+      learnerName: "Rahul Sharma",
       rollNumber: "CS2021001",
       department: "Computer Science Engineering",
       batch: "CSE-A",
@@ -793,8 +793,8 @@ const SkillDevelopment: React.FC = () => {
     },
     {
       id: "2",
-      studentId: "CS2021002",
-      studentName: "Priya Patel",
+      learnerId: "CS2021002",
+      learnerName: "Priya Patel",
       rollNumber: "CS2021002",
       department: "Computer Science Engineering",
       batch: "CSE-A",
@@ -817,8 +817,8 @@ const SkillDevelopment: React.FC = () => {
     },
     {
       id: "3",
-      studentId: "IT2021001",
-      studentName: "Amit Kumar",
+      learnerId: "IT2021001",
+      learnerName: "Amit Kumar",
       rollNumber: "IT2021001",
       department: "Information Technology",
       batch: "IT-A",
@@ -841,8 +841,8 @@ const SkillDevelopment: React.FC = () => {
     },
     {
       id: "4",
-      studentId: "CS2022001",
-      studentName: "Sneha Reddy",
+      learnerId: "CS2022001",
+      learnerName: "Sneha Reddy",
       rollNumber: "CS2022001",
       department: "Computer Science Engineering",
       batch: "CSE-B",
@@ -866,8 +866,8 @@ const SkillDevelopment: React.FC = () => {
     },
     {
       id: "5",
-      studentId: "MBA2021001",
-      studentName: "Vikram Singh",
+      learnerId: "MBA2021001",
+      learnerName: "Vikram Singh",
       rollNumber: "MBA2021001",
       department: "Management Studies",
       batch: "MBA-A",
@@ -890,8 +890,8 @@ const SkillDevelopment: React.FC = () => {
     },
     {
       id: "6",
-      studentId: "CS2021002",
-      studentName: "Priya Patel",
+      learnerId: "CS2021002",
+      learnerName: "Priya Patel",
       rollNumber: "CS2021002",
       department: "Computer Science Engineering",
       batch: "CSE-A",
@@ -914,12 +914,12 @@ const SkillDevelopment: React.FC = () => {
     }
   ];
 
-  // Sample student feedback data
-  const studentFeedbackData: StudentFeedback[] = [
+  // Sample learner feedback data
+  const learnerFeedbackData: LearnerFeedback[] = [
     {
       id: "1",
-      studentId: "CS2021001",
-      studentName: "Rahul Sharma",
+      learnerId: "CS2021001",
+      learnerName: "Rahul Sharma",
       rollNumber: "CS2021001",
       courseId: "1",
       courseName: "Python for Data Science",
@@ -935,8 +935,8 @@ const SkillDevelopment: React.FC = () => {
     },
     {
       id: "2",
-      studentId: "CS2021002",
-      studentName: "Priya Patel",
+      learnerId: "CS2021002",
+      learnerName: "Priya Patel",
       rollNumber: "CS2021002",
       courseId: "1",
       courseName: "Python for Data Science",
@@ -952,8 +952,8 @@ const SkillDevelopment: React.FC = () => {
     },
     {
       id: "3",
-      studentId: "CS2022001",
-      studentName: "Sneha Reddy",
+      learnerId: "CS2022001",
+      learnerName: "Sneha Reddy",
       rollNumber: "CS2022001",
       courseId: "4",
       courseName: "Soft Skills & Interview Prep",
@@ -969,8 +969,8 @@ const SkillDevelopment: React.FC = () => {
     },
     {
       id: "4",
-      studentId: "IT2021001",
-      studentName: "Amit Kumar",
+      learnerId: "IT2021001",
+      learnerName: "Amit Kumar",
       rollNumber: "IT2021001",
       courseId: "3",
       courseName: "Cloud Computing (AWS)",
@@ -995,13 +995,13 @@ const SkillDevelopment: React.FC = () => {
       courseId: "4",
       courseName: "Soft Skills & Interview Prep",
       batchId: "CSE-2022",
-      studentEngagement: 5,
+      learnerEngagement: 5,
       contentDelivery: 4,
       learningOutcomes: 5,
       overallSatisfaction: 5,
-      challenges: "Some students were initially hesitant to participate in role-playing exercises.",
-      improvements: "More ice-breaking activities at the beginning would help students feel comfortable.",
-      studentPerformance: "Excellent improvement in communication skills. Students showed great enthusiasm and progress.",
+      challenges: "Some learners were initially hesitant to participate in role-playing exercises.",
+      improvements: "More ice-breaking activities at the beginning would help learners feel comfortable.",
+      learnerPerformance: "Excellent improvement in communication skills. Learners showed great enthusiasm and progress.",
       submittedAt: "2024-05-01",
       status: "Submitted"
     },
@@ -1012,13 +1012,13 @@ const SkillDevelopment: React.FC = () => {
       courseId: "1",
       courseName: "Python for Data Science",
       batchId: "CSE-2021",
-      studentEngagement: 4,
+      learnerEngagement: 4,
       contentDelivery: 4,
       learningOutcomes: 4,
       overallSatisfaction: 4,
-      challenges: "Varying levels of programming background among students made it challenging to maintain uniform pace.",
-      improvements: "Pre-course assessment and separate tracks for beginners and intermediate students.",
-      studentPerformance: "Good overall performance. Most students grasped the concepts well with practice.",
+      challenges: "Varying levels of programming background among learners made it challenging to maintain uniform pace.",
+      improvements: "Pre-course assessment and separate tracks for beginners and intermediate learners.",
+      learnerPerformance: "Good overall performance. Most learners grasped the concepts well with practice.",
       submittedAt: "2024-05-16",
       status: "Submitted"
     }
@@ -1028,8 +1028,8 @@ const SkillDevelopment: React.FC = () => {
   const certificatesData: Certificate[] = [
     {
       id: "1",
-      studentId: "CS2021001",
-      studentName: "Rahul Sharma",
+      learnerId: "CS2021001",
+      learnerName: "Rahul Sharma",
       rollNumber: "CS2021001",
       courseId: "1",
       courseName: "Python for Data Science",
@@ -1044,8 +1044,8 @@ const SkillDevelopment: React.FC = () => {
     },
     {
       id: "2",
-      studentId: "CS2022001",
-      studentName: "Sneha Reddy",
+      learnerId: "CS2022001",
+      learnerName: "Sneha Reddy",
       rollNumber: "CS2022001",
       courseId: "4",
       courseName: "Soft Skills & Interview Prep",
@@ -1060,8 +1060,8 @@ const SkillDevelopment: React.FC = () => {
     },
     {
       id: "3",
-      studentId: "CS2021002",
-      studentName: "Priya Patel",
+      learnerId: "CS2021002",
+      learnerName: "Priya Patel",
       rollNumber: "CS2021002",
       courseId: "2",
       courseName: "Full Stack Web Development",
@@ -1089,7 +1089,7 @@ const SkillDevelopment: React.FC = () => {
     {
       id: "2",
       name: "Achievement Certificate",
-      description: "Template for high-performing students with grades A and above",
+      description: "Template for high-performing learners with grades A and above",
       templateType: "Achievement",
       isActive: true,
       createdAt: "2024-01-01",
@@ -1317,7 +1317,7 @@ const SkillDevelopment: React.FC = () => {
       semester: "",
       batch: "",
       year: "",
-      selectedStudents: [],
+      selectedlearners: [],
       allocationFlag: "Mandatory",
       startDate: "",
       endDate: "",
@@ -1325,34 +1325,34 @@ const SkillDevelopment: React.FC = () => {
     });
   };
 
-  // Get eligible students based on allocation criteria
-  const getEligibleStudents = (): Student[] => {
-    return studentsData.filter(student => {
+  // Get eligible learners based on allocation criteria
+  const getEligiblelearners = (): Learner[] => {
+    return learnersData.filter(learner => {
       if (allocationFormData.allocationType === "Department") {
-        return student.department === allocationFormData.department &&
-               (!allocationFormData.year || student.year === allocationFormData.year);
+        return learner.department === allocationFormData.department &&
+               (!allocationFormData.year || learner.year === allocationFormData.year);
       } else if (allocationFormData.allocationType === "Program") {
-        return student.program === allocationFormData.program &&
-               (!allocationFormData.semester || student.semester === allocationFormData.semester);
+        return learner.program === allocationFormData.program &&
+               (!allocationFormData.semester || learner.semester === allocationFormData.semester);
       } else if (allocationFormData.allocationType === "Semester") {
-        return student.department === allocationFormData.department &&
-               student.semester === allocationFormData.semester &&
-               (!allocationFormData.year || student.year === allocationFormData.year);
+        return learner.department === allocationFormData.department &&
+               learner.semester === allocationFormData.semester &&
+               (!allocationFormData.year || learner.year === allocationFormData.year);
       } else if (allocationFormData.allocationType === "Batch") {
-        return student.batch === allocationFormData.batch &&
-               student.department === allocationFormData.department &&
-               (!allocationFormData.year || student.year === allocationFormData.year);
+        return learner.batch === allocationFormData.batch &&
+               learner.department === allocationFormData.department &&
+               (!allocationFormData.year || learner.year === allocationFormData.year);
       }
-      return true; // For Individual allocation, show all students
+      return true; // For Individual allocation, show all learners
     });
   };
 
   // Check for duplicate allocations
-  const checkDuplicateAllocation = (studentId: string, courseId: string): boolean => {
-    const student = studentsData.find(s => s.id === studentId);
-    if (!student) return false;
+  const checkDuplicateAllocation = (learnerId: string, courseId: string): boolean => {
+    const learner = learnersData.find(s => s.id === learnerId);
+    if (!learner) return false;
     
-    const hasExistingAllocation = student.allocatedCourses.includes(courseId);
+    const hasExistingAllocation = learner.allocatedCourses.includes(courseId);
     return hasExistingAllocation && !allocationFormData.allowRetake;
   };
 
@@ -1376,37 +1376,37 @@ const SkillDevelopment: React.FC = () => {
         return;
       }
 
-      // Get students to allocate
-      let studentsToAllocate: string[] = [];
+      // Get learners to allocate
+      let learnersToAllocate: string[] = [];
       if (allocationFormData.allocationType === "Individual") {
-        studentsToAllocate = allocationFormData.selectedStudents;
+        learnersToAllocate = allocationFormData.selectedlearners;
       } else {
-        const eligibleStudents = getEligibleStudents();
-        studentsToAllocate = eligibleStudents.map(s => s.id);
+        const eligiblelearners = getEligiblelearners();
+        learnersToAllocate = eligiblelearners.map(s => s.id);
       }
 
-      if (studentsToAllocate.length === 0) {
-        showNotification('warning', 'No Students Found', 'No students found for allocation');
+      if (learnersToAllocate.length === 0) {
+        showNotification('warning', 'No Learners Found', 'No learners found for allocation');
         return;
       }
 
       // Check for duplicate allocations
-      const duplicates = studentsToAllocate.filter(studentId => 
-        checkDuplicateAllocation(studentId, allocationFormData.courseId)
+      const duplicates = learnersToAllocate.filter(learnerId => 
+        checkDuplicateAllocation(learnerId, allocationFormData.courseId)
       );
 
       if (duplicates.length > 0 && !allocationFormData.allowRetake) {
         const duplicateNames = duplicates.map(id => 
-          studentsData.find(s => s.id === id)?.name
+          learnersData.find(s => s.id === id)?.name
         ).join(", ");
-        showNotification('warning', 'Duplicate Allocation', `The following students are already allocated to this course: ${duplicateNames}. Enable "Allow Retake" to proceed.`);
+        showNotification('warning', 'Duplicate Allocation', `The following learners are already allocated to this course: ${duplicateNames}. Enable "Allow Retake" to proceed.`);
         return;
       }
 
       logger.info("Allocation data to submit", {
         allocationFormData,
-        studentsToAllocate,
-        studentCount: studentsToAllocate.length
+        learnersToAllocate,
+        learnerCount: learnersToAllocate.length
       });
       
       // Simulate API call
@@ -1414,7 +1414,7 @@ const SkillDevelopment: React.FC = () => {
       
       resetAllocationForm();
       setShowAllocateModal(false);
-      showNotification('success', 'Success', `Course allocated successfully to ${studentsToAllocate.length} students!`);
+      showNotification('success', 'Success', `Course allocated successfully to ${learnersToAllocate.length} learners!`);
       
     } catch (error) {
       logger.error("Error allocating course:", error as Error);
@@ -1435,7 +1435,7 @@ const SkillDevelopment: React.FC = () => {
       semester: allocation.targetGroup.semester || "",
       batch: allocation.targetGroup.batch || "",
       year: allocation.targetGroup.year || "",
-      selectedStudents: allocation.studentIds,
+      selectedlearners: allocation.learnerIds,
       allocationFlag: allocation.allocationFlag,
       startDate: allocation.startDate,
       endDate: allocation.endDate,
@@ -1447,12 +1447,12 @@ const SkillDevelopment: React.FC = () => {
   // Handle export allocations
   const handleExportAllocations = () => {
     const csvData = [
-      ["Course Name", "Allocation Type", "Target Group", "Students Count", "Flag", "Status", "Start Date", "End Date"],
+      ["Course Name", "Allocation Type", "Target Group", "Learners Count", "Flag", "Status", "Start Date", "End Date"],
       ...filteredAllocations.map(allocation => [
         allocation.courseName,
         allocation.allocationType,
         getTargetGroupDisplay(allocation.targetGroup),
-        allocation.studentCount,
+        allocation.learnerCount,
         allocation.allocationFlag,
         allocation.status,
         allocation.startDate,
@@ -1540,7 +1540,7 @@ const SkillDevelopment: React.FC = () => {
 
   const resetProgressForm = () => {
     setProgressUpdateFormData({
-      studentId: "",
+      learnerId: "",
       courseId: "",
       completionPercentage: "",
       assessmentScore: "",
@@ -1622,9 +1622,9 @@ const SkillDevelopment: React.FC = () => {
   // Handle export progress report
   const handleExportProgressReport = () => {
     const csvData = [
-      ["Student Name", "Roll Number", "Course", "Completion %", "Assessment Score", "Attendance %", "Status", "Last Updated"],
+      ["Learner Name", "Roll Number", "Course", "Completion %", "Assessment Score", "Attendance %", "Status", "Last Updated"],
       ...filteredProgress.map(progress => [
-        progress.studentName,
+        progress.learnerName,
         progress.rollNumber,
         progress.courseName,
         progress.completionPercentage,
@@ -1647,46 +1647,46 @@ const SkillDevelopment: React.FC = () => {
 
   // Calculate batch progress summary
   const calculateBatchProgress = (): BatchProgressSummary[] => {
-    const courseGroups = studentProgressData.reduce((acc, progress) => {
+    const courseGroups = learnerProgressData.reduce((acc, progress) => {
       if (!acc[progress.courseId]) {
         acc[progress.courseId] = {
           courseId: progress.courseId,
           courseName: progress.courseName,
-          students: []
+          learners: []
         };
       }
-      acc[progress.courseId].students.push(progress);
+      acc[progress.courseId].learners.push(progress);
       return acc;
-    }, {} as Record<string, { courseId: string; courseName: string; students: StudentProgress[] }>);
+    }, {} as Record<string, { courseId: string; courseName: string; learners: LearnerProgress[] }>);
 
     return Object.values(courseGroups).map(group => {
-      const students = group.students;
-      const totalStudents = students.length;
-      const completedStudents = students.filter(s => s.status === "Completed").length;
-      const inProgressStudents = students.filter(s => s.status === "In Progress").length;
-      const notStartedStudents = students.filter(s => s.status === "Not Started").length;
+      const learners = group.learners;
+      const totallearners = learners.length;
+      const completedlearners = learners.filter(s => s.status === "Completed").length;
+      const inProgresslearners = learners.filter(s => s.status === "In Progress").length;
+      const notStartedlearners = learners.filter(s => s.status === "Not Started").length;
       
-      const averageCompletion = totalStudents > 0 
-        ? students.reduce((sum, s) => sum + s.completionPercentage, 0) / totalStudents 
+      const averageCompletion = totallearners > 0 
+        ? learners.reduce((sum, s) => sum + s.completionPercentage, 0) / totallearners 
         : 0;
       
-      const studentsWithScores = students.filter(s => s.assessmentScore !== undefined && s.assessmentScore > 0);
-      const averageScore = studentsWithScores.length > 0
-        ? studentsWithScores.reduce((sum, s) => sum + (s.assessmentScore || 0), 0) / studentsWithScores.length
+      const learnersWithScores = learners.filter(s => s.assessmentScore !== undefined && s.assessmentScore > 0);
+      const averageScore = learnersWithScores.length > 0
+        ? learnersWithScores.reduce((sum, s) => sum + (s.assessmentScore || 0), 0) / learnersWithScores.length
         : 0;
       
-      const studentsWithAttendance = students.filter(s => s.attendancePercentage !== undefined);
-      const averageAttendance = studentsWithAttendance.length > 0
-        ? studentsWithAttendance.reduce((sum, s) => sum + (s.attendancePercentage || 0), 0) / studentsWithAttendance.length
+      const learnersWithAttendance = learners.filter(s => s.attendancePercentage !== undefined);
+      const averageAttendance = learnersWithAttendance.length > 0
+        ? learnersWithAttendance.reduce((sum, s) => sum + (s.attendancePercentage || 0), 0) / learnersWithAttendance.length
         : 0;
 
       return {
         courseId: group.courseId,
         courseName: group.courseName,
-        totalStudents,
-        completedStudents,
-        inProgressStudents,
-        notStartedStudents,
+        totallearners,
+        completedlearners,
+        inProgresslearners,
+        notStartedlearners,
         averageCompletion: Math.round(averageCompletion),
         averageScore: Math.round(averageScore),
         averageAttendance: Math.round(averageAttendance)
@@ -1695,8 +1695,8 @@ const SkillDevelopment: React.FC = () => {
   };
 
   // Filter progress data
-  const filteredProgress = studentProgressData.filter(progress => {
-    const matchesSearch = progress.studentName.toLowerCase().includes(progressSearchTerm.toLowerCase()) ||
+  const filteredProgress = learnerProgressData.filter(progress => {
+    const matchesSearch = progress.learnerName.toLowerCase().includes(progressSearchTerm.toLowerCase()) ||
                          progress.rollNumber.toLowerCase().includes(progressSearchTerm.toLowerCase()) ||
                          progress.courseName.toLowerCase().includes(progressSearchTerm.toLowerCase());
     
@@ -1714,9 +1714,9 @@ const SkillDevelopment: React.FC = () => {
     setShowProgressFilterModal(false);
   };
 
-  // Get incomplete students list
-  const getIncompleteStudents = () => {
-    return studentProgressData.filter(progress => 
+  // Get incomplete learners list
+  const getIncompletelearners = () => {
+    return learnerProgressData.filter(progress => 
       progress.status === "In Progress" || progress.status === "Not Started"
     );
   };
@@ -1808,13 +1808,13 @@ const SkillDevelopment: React.FC = () => {
 
   const resetTrainerFeedbackForm = () => {
     setTrainerFeedbackFormData({
-      studentEngagement: "",
+      learnerEngagement: "",
       contentDelivery: "",
       learningOutcomes: "",
       overallSatisfaction: "",
       challenges: "",
       improvements: "",
-      studentPerformance: "",
+      learnerPerformance: "",
     });
   };
 
@@ -1834,13 +1834,13 @@ const SkillDevelopment: React.FC = () => {
         }
       }
 
-      logger.info("Student feedback data", { feedbackFormData });
+      logger.info("Learner feedback data", { feedbackFormData });
       
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       resetFeedbackForm();
-      setShowStudentFeedbackModal(false);
+      setShowlearnerFeedbackModal(false);
       showNotification('success', 'Success', 'Feedback submitted successfully!');
       
     } catch (error) {
@@ -1858,7 +1858,7 @@ const SkillDevelopment: React.FC = () => {
     
     try {
       // Validation
-      const requiredFields = ['studentEngagement', 'contentDelivery', 'learningOutcomes', 'overallSatisfaction'];
+      const requiredFields = ['learnerEngagement', 'contentDelivery', 'learningOutcomes', 'overallSatisfaction'];
       for (const field of requiredFields) {
         const value = trainerFeedbackFormData[field as keyof TrainerFeedbackFormData];
         if (!value || parseFloat(value) < 1 || parseFloat(value) > 5) {
@@ -1926,8 +1926,8 @@ const SkillDevelopment: React.FC = () => {
   };
 
   // Filter feedback data
-  const filteredStudentFeedback = studentFeedbackData.filter(feedback => {
-    const matchesSearch = feedback.studentName.toLowerCase().includes(feedbackSearchTerm.toLowerCase()) ||
+  const filteredlearnerFeedback = learnerFeedbackData.filter(feedback => {
+    const matchesSearch = feedback.learnerName.toLowerCase().includes(feedbackSearchTerm.toLowerCase()) ||
                          feedback.courseName.toLowerCase().includes(feedbackSearchTerm.toLowerCase()) ||
                          feedback.rollNumber.toLowerCase().includes(feedbackSearchTerm.toLowerCase());
     
@@ -2201,7 +2201,7 @@ const SkillDevelopment: React.FC = () => {
                 </button>
               </div>
             </div>
-            <p className="text-gray-600 mb-4">Allocate courses to departments/programs, set as mandatory/elective, and manage student-wise allocation.</p>
+            <p className="text-gray-600 mb-4">Allocate courses to departments/programs, set as mandatory/elective, and manage learner-wise allocation.</p>
             
             <div className="flex gap-2 mb-6">
               <div className="flex-1 relative">
@@ -2241,7 +2241,7 @@ const SkillDevelopment: React.FC = () => {
                         Allocation Type
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Students
+                        Learners
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Flag
@@ -2279,11 +2279,11 @@ const SkillDevelopment: React.FC = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-gray-900">{allocation.studentCount}</span>
+                              <span className="text-sm font-medium text-gray-900">{allocation.learnerCount}</span>
                               <button
                                 onClick={() => {
                                   setSelectedAllocation(allocation);
-                                  setShowStudentListModal(true);
+                                  setShowlearnerListModal(true);
                                 }}
                                 className="text-blue-600 hover:text-blue-900 text-xs underline"
                               >
@@ -2385,14 +2385,14 @@ const SkillDevelopment: React.FC = () => {
             {/* View Toggle */}
             <div className="flex gap-2 mb-6">
               <button
-                onClick={() => setProgressView('student')}
+                onClick={() => setProgressView('learner')}
                 className={`px-4 py-2 rounded-lg font-medium text-sm transition ${
-                  progressView === 'student'
+                  progressView === 'learner'
                     ? "bg-blue-600 text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                Student-wise Progress
+                Learner-wise Progress
               </button>
               <button
                 onClick={() => setProgressView('batch')}
@@ -2417,7 +2417,7 @@ const SkillDevelopment: React.FC = () => {
             </div>
 
             {/* Search and Filter */}
-            {progressView === 'student' && (
+            {progressView === 'learner' && (
               <div className="flex gap-2 mb-6">
                 <div className="flex-1 relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -2425,7 +2425,7 @@ const SkillDevelopment: React.FC = () => {
                     type="text"
                     value={progressSearchTerm}
                     onChange={(e) => setProgressSearchTerm(e.target.value)}
-                    placeholder="Search students or courses..."
+                    placeholder="Search learners or courses..."
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -2444,15 +2444,15 @@ const SkillDevelopment: React.FC = () => {
               </div>
             )}
 
-            {/* Student-wise Progress View */}
-            {progressView === 'student' && (
+            {/* Learner-wise Progress View */}
+            {progressView === 'learner' && (
               <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Student Details
+                          Learner Details
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Course
@@ -2486,7 +2486,7 @@ const SkillDevelopment: React.FC = () => {
                                   </div>
                                 </div>
                                 <div className="ml-4">
-                                  <div className="text-sm font-medium text-gray-900">{progress.studentName}</div>
+                                  <div className="text-sm font-medium text-gray-900">{progress.learnerName}</div>
                                   <div className="text-sm text-gray-500">{progress.rollNumber} • {progress.department}</div>
                                 </div>
                               </div>
@@ -2536,7 +2536,7 @@ const SkillDevelopment: React.FC = () => {
                                   onClick={() => {
                                     setSelectedProgress(progress);
                                     setProgressUpdateFormData({
-                                      studentId: progress.studentId,
+                                      learnerId: progress.learnerId,
                                       courseId: progress.courseId,
                                       completionPercentage: progress.completionPercentage.toString(),
                                       assessmentScore: progress.assessmentScore?.toString() || "",
@@ -2556,7 +2556,7 @@ const SkillDevelopment: React.FC = () => {
                                   onClick={() => {
                                     setSelectedProgress(progress);
                                     // Could open a detailed view modal here
-                                    showNotification('info', 'Progress Details', `Detailed view for ${progress.studentName} - ${progress.courseName}`);
+                                    showNotification('info', 'Progress Details', `Detailed view for ${progress.learnerName} - ${progress.courseName}`);
                                   }}
                                   className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50"
                                   title="View Details"
@@ -2576,7 +2576,7 @@ const SkillDevelopment: React.FC = () => {
                               <p className="text-gray-500">
                                 {progressSearchTerm || selectedCourseFilter || selectedStatusFilter || selectedDepartmentProgressFilter
                                   ? "Try adjusting your search or filters"
-                                  : "Progress data will appear here once students start courses"}
+                                  : "Progress data will appear here once learners start courses"}
                               </p>
                             </div>
                           </td>
@@ -2595,21 +2595,21 @@ const SkillDevelopment: React.FC = () => {
                   <div key={batch.courseId} className="bg-white border border-gray-200 rounded-lg p-6">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-lg font-semibold text-gray-900">{batch.courseName}</h3>
-                      <span className="text-sm text-gray-500">{batch.totalStudents} students</span>
+                      <span className="text-sm text-gray-500">{batch.totallearners} learners</span>
                     </div>
                     
                     <div className="space-y-4">
                       <div className="grid grid-cols-3 gap-4">
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-green-600">{batch.completedStudents}</div>
+                          <div className="text-2xl font-bold text-green-600">{batch.completedlearners}</div>
                           <div className="text-xs text-gray-500">Completed</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-blue-600">{batch.inProgressStudents}</div>
+                          <div className="text-2xl font-bold text-blue-600">{batch.inProgresslearners}</div>
                           <div className="text-xs text-gray-500">In Progress</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-gray-600">{batch.notStartedStudents}</div>
+                          <div className="text-2xl font-bold text-gray-600">{batch.notStartedlearners}</div>
                           <div className="text-xs text-gray-500">Not Started</div>
                         </div>
                       </div>
@@ -2655,7 +2655,7 @@ const SkillDevelopment: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-gray-600">Total Enrollments</p>
-                        <p className="text-2xl font-bold text-gray-900">{studentProgressData.length}</p>
+                        <p className="text-2xl font-bold text-gray-900">{learnerProgressData.length}</p>
                       </div>
                       <Users className="h-8 w-8 text-blue-600" />
                     </div>
@@ -2665,7 +2665,7 @@ const SkillDevelopment: React.FC = () => {
                       <div>
                         <p className="text-sm text-gray-600">Completed</p>
                         <p className="text-2xl font-bold text-green-600">
-                          {studentProgressData.filter(p => p.status === "Completed").length}
+                          {learnerProgressData.filter(p => p.status === "Completed").length}
                         </p>
                       </div>
                       <CheckSquare className="h-8 w-8 text-green-600" />
@@ -2676,7 +2676,7 @@ const SkillDevelopment: React.FC = () => {
                       <div>
                         <p className="text-sm text-gray-600">In Progress</p>
                         <p className="text-2xl font-bold text-blue-600">
-                          {studentProgressData.filter(p => p.status === "In Progress").length}
+                          {learnerProgressData.filter(p => p.status === "In Progress").length}
                         </p>
                       </div>
                       <Clock className="h-8 w-8 text-blue-600" />
@@ -2687,7 +2687,7 @@ const SkillDevelopment: React.FC = () => {
                       <div>
                         <p className="text-sm text-gray-600">Not Started</p>
                         <p className="text-2xl font-bold text-gray-600">
-                          {studentProgressData.filter(p => p.status === "Not Started").length}
+                          {learnerProgressData.filter(p => p.status === "Not Started").length}
                         </p>
                       </div>
                       <AlertCircle className="h-8 w-8 text-gray-600" />
@@ -2695,18 +2695,18 @@ const SkillDevelopment: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Incomplete Students List */}
+                {/* Incomplete Learners List */}
                 <div className="bg-white border border-gray-200 rounded-lg">
                   <div className="px-6 py-4 border-b border-gray-200">
-                    <h3 className="text-lg font-semibold text-gray-900">Incomplete Students</h3>
-                    <p className="text-sm text-gray-600">Students who haven't completed their assigned courses</p>
+                    <h3 className="text-lg font-semibold text-gray-900">Incomplete Learners</h3>
+                    <p className="text-sm text-gray-600">Learners who haven't completed their assigned courses</p>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Student
+                            Learner
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Course
@@ -2723,14 +2723,14 @@ const SkillDevelopment: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {getIncompleteStudents().map((progress) => {
+                        {getIncompletelearners().map((progress) => {
                           const daysSinceStart = Math.floor(
                             (new Date().getTime() - new Date(progress.startDate).getTime()) / (1000 * 60 * 60 * 24)
                           );
                           return (
                             <tr key={progress.id} className="hover:bg-gray-50">
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm font-medium text-gray-900">{progress.studentName}</div>
+                                <div className="text-sm font-medium text-gray-900">{progress.learnerName}</div>
                                 <div className="text-sm text-gray-500">{progress.rollNumber}</div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
@@ -2795,9 +2795,9 @@ const SkillDevelopment: React.FC = () => {
                     </button>
                   </>
                 )}
-                {feedbackView === 'student' && (
+                {feedbackView === 'learner' && (
                   <button 
-                    onClick={() => setShowStudentFeedbackModal(true)}
+                    onClick={() => setShowlearnerFeedbackModal(true)}
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
                   >
                     <MessageSquare className="h-4 w-4" />
@@ -2824,19 +2824,19 @@ const SkillDevelopment: React.FC = () => {
                 )}
               </div>
             </div>
-            <p className="text-gray-600 mb-4">Collect student and trainer feedback, generate certificates, and batch downloads.</p>
+            <p className="text-gray-600 mb-4">Collect learner and trainer feedback, generate certificates, and batch downloads.</p>
             
             {/* View Toggle */}
             <div className="flex gap-2 mb-6">
               <button
-                onClick={() => setFeedbackView('student')}
+                onClick={() => setFeedbackView('learner')}
                 className={`px-4 py-2 rounded-lg font-medium text-sm transition ${
-                  feedbackView === 'student'
+                  feedbackView === 'learner'
                     ? "bg-blue-600 text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                Student Feedback
+                Learner Feedback
               </button>
               <button
                 onClick={() => setFeedbackView('trainer')}
@@ -2868,7 +2868,7 @@ const SkillDevelopment: React.FC = () => {
                   type="text"
                   value={feedbackSearchTerm}
                   onChange={(e) => setFeedbackSearchTerm(e.target.value)}
-                  placeholder={`Search ${feedbackView === 'student' ? 'students' : feedbackView === 'trainer' ? 'trainers' : 'certificates'}...`}
+                  placeholder={`Search ${feedbackView === 'learner' ? 'learners' : feedbackView === 'trainer' ? 'trainers' : 'certificates'}...`}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -2886,15 +2886,15 @@ const SkillDevelopment: React.FC = () => {
               </button>
             </div>
 
-            {/* Student Feedback View */}
-            {feedbackView === 'student' && (
+            {/* Learner Feedback View */}
+            {feedbackView === 'learner' && (
               <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Student Details
+                          Learner Details
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Course
@@ -2917,8 +2917,8 @@ const SkillDevelopment: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredStudentFeedback.length > 0 ? (
-                        filteredStudentFeedback.map((feedback) => (
+                      {filteredlearnerFeedback.length > 0 ? (
+                        filteredlearnerFeedback.map((feedback) => (
                           <tr key={feedback.id} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center">
@@ -2928,7 +2928,7 @@ const SkillDevelopment: React.FC = () => {
                                   </div>
                                 </div>
                                 <div className="ml-4">
-                                  <div className="text-sm font-medium text-gray-900">{feedback.studentName}</div>
+                                  <div className="text-sm font-medium text-gray-900">{feedback.learnerName}</div>
                                   <div className="text-sm text-gray-500">{feedback.rollNumber}</div>
                                 </div>
                               </div>
@@ -2960,7 +2960,7 @@ const SkillDevelopment: React.FC = () => {
                                   onClick={() => {
                                     setSelectedFeedback(feedback);
                                     // Could open detailed feedback view modal
-                                    showNotification('info', 'Feedback', `Viewing feedback from ${feedback.studentName}`);
+                                    showNotification('info', 'Feedback', `Viewing feedback from ${feedback.learnerName}`);
                                   }}
                                   className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
                                   title="View Feedback"
@@ -2992,7 +2992,7 @@ const SkillDevelopment: React.FC = () => {
                               <p className="text-gray-500">
                                 {feedbackSearchTerm || selectedFeedbackCourse || selectedFeedbackStatus
                                   ? "Try adjusting your search or filters"
-                                  : "Student feedback will appear here once submitted"}
+                                  : "Learner feedback will appear here once submitted"}
                               </p>
                             </div>
                           </td>
@@ -3018,7 +3018,7 @@ const SkillDevelopment: React.FC = () => {
                           Course & Batch
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Student Engagement
+                          Learner Engagement
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Content Delivery
@@ -3056,7 +3056,7 @@ const SkillDevelopment: React.FC = () => {
                               <div className="text-sm text-gray-500">Batch: {feedback.batchId}</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              {renderStarRating(feedback.studentEngagement)}
+                              {renderStarRating(feedback.learnerEngagement)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               {renderStarRating(feedback.contentDelivery)}
@@ -3138,7 +3138,7 @@ const SkillDevelopment: React.FC = () => {
                           />
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Student Details
+                          Learner Details
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Course
@@ -3186,7 +3186,7 @@ const SkillDevelopment: React.FC = () => {
                                   </div>
                                 </div>
                                 <div className="ml-4">
-                                  <div className="text-sm font-medium text-gray-900">{certificate.studentName}</div>
+                                  <div className="text-sm font-medium text-gray-900">{certificate.learnerName}</div>
                                   <div className="text-sm text-gray-500">{certificate.rollNumber}</div>
                                 </div>
                               </div>
@@ -3227,7 +3227,7 @@ const SkillDevelopment: React.FC = () => {
                                   <button
                                     onClick={() => {
                                       logger.info("Downloading certificate", { filePath: certificate.filePath });
-                                      showNotification('info', 'Downloading', `Downloading certificate for ${certificate.studentName}`);
+                                      showNotification('info', 'Downloading', `Downloading certificate for ${certificate.learnerName}`);
                                     }}
                                     className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50"
                                     title="Download Certificate"
@@ -3270,7 +3270,7 @@ const SkillDevelopment: React.FC = () => {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-gray-900">Add Skill Course</h2>
-                  <p className="text-sm text-gray-500">Create a new skill course for students</p>
+                  <p className="text-sm text-gray-500">Create a new skill course for learners</p>
                 </div>
               </div>
               <button
@@ -3924,7 +3924,7 @@ const SkillDevelopment: React.FC = () => {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-gray-900">Allocate Course</h2>
-                  <p className="text-sm text-gray-500">Assign skill course to students</p>
+                  <p className="text-sm text-gray-500">Assign skill course to learners</p>
                 </div>
               </div>
               <button
@@ -3973,7 +3973,7 @@ const SkillDevelopment: React.FC = () => {
                   <option value="Program">Program</option>
                   <option value="Semester">Semester</option>
                   <option value="Batch">Batch</option>
-                  <option value="Individual">Individual Students</option>
+                  <option value="Individual">Individual Learners</option>
                 </select>
               </div>
 
@@ -4073,33 +4073,33 @@ const SkillDevelopment: React.FC = () => {
                 </div>
               </div>
 
-              {/* Individual Student Selection */}
+              {/* Individual Learner Selection */}
               {allocationFormData.allocationType === "Individual" && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Select Students <span className="text-red-500">*</span>
+                    Select Learners <span className="text-red-500">*</span>
                   </label>
                   <div className="border border-gray-300 rounded-lg p-3 max-h-40 overflow-y-auto">
-                    {studentsData.map((student) => (
-                      <label key={student.id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
+                    {learnersData.map((learner) => (
+                      <label key={learner.id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
                         <input
                           type="checkbox"
-                          checked={allocationFormData.selectedStudents.includes(student.id)}
+                          checked={allocationFormData.selectedlearners.includes(learner.id)}
                           onChange={(e) => {
-                            const currentSelected = allocationFormData.selectedStudents;
+                            const currentSelected = allocationFormData.selectedlearners;
                             if (e.target.checked) {
-                              handleAllocationInputChange("selectedStudents", [...currentSelected, student.id]);
+                              handleAllocationInputChange("selectedlearners", [...currentSelected, learner.id]);
                             } else {
-                              handleAllocationInputChange("selectedStudents", currentSelected.filter(id => id !== student.id));
+                              handleAllocationInputChange("selectedlearners", currentSelected.filter(id => id !== learner.id));
                             }
                           }}
                           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         />
                         <div className="flex-1">
-                          <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                          <div className="text-xs text-gray-500">{student.rollNumber} - {student.department}</div>
+                          <div className="text-sm font-medium text-gray-900">{learner.name}</div>
+                          <div className="text-xs text-gray-500">{learner.rollNumber} - {learner.department}</div>
                         </div>
-                        {student.allocatedCourses.includes(allocationFormData.courseId) && (
+                        {learner.allocatedCourses.includes(allocationFormData.courseId) && (
                           <div title="Already allocated">
                             <AlertTriangle className="h-4 w-4 text-yellow-500" />
                           </div>
@@ -4172,7 +4172,7 @@ const SkillDevelopment: React.FC = () => {
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <h4 className="text-sm font-medium text-blue-900 mb-2">Preview</h4>
                   <p className="text-sm text-blue-800">
-                    {getEligibleStudents().length} students will be allocated to this course
+                    {getEligiblelearners().length} learners will be allocated to this course
                   </p>
                 </div>
               )}
@@ -4212,8 +4212,8 @@ const SkillDevelopment: React.FC = () => {
         </div>
       )}
 
-      {/* Student List Modal */}
-      {showStudentListModal && selectedAllocation && (
+      {/* Learner List Modal */}
+      {showlearnerListModal && selectedAllocation && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white">
@@ -4222,12 +4222,12 @@ const SkillDevelopment: React.FC = () => {
                   <Users className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900">Allocated Students</h2>
+                  <h2 className="text-lg font-bold text-gray-900">Allocated Learners</h2>
                   <p className="text-sm text-gray-500">{selectedAllocation.courseName}</p>
                 </div>
               </div>
               <button
-                onClick={() => setShowStudentListModal(false)}
+                onClick={() => setShowlearnerListModal(false)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition"
               >
                 <X className="h-5 w-5 text-gray-500" />
@@ -4236,26 +4236,26 @@ const SkillDevelopment: React.FC = () => {
 
             <div className="p-6">
               <div className="space-y-4">
-                {selectedAllocation.studentIds.map((studentId) => {
-                  const student = studentsData.find(s => s.id === studentId);
-                  if (!student) return null;
+                {selectedAllocation.learnerIds.map((learnerId) => {
+                  const learner = learnersData.find(s => s.id === learnerId);
+                  if (!learner) return null;
                   
                   return (
-                    <div key={studentId} className="flex items-center gap-4 p-3 border border-gray-200 rounded-lg">
+                    <div key={learnerId} className="flex items-center gap-4 p-3 border border-gray-200 rounded-lg">
                       <div className="flex-shrink-0 h-10 w-10">
                         <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
                           <GraduationCap className="h-5 w-5 text-blue-600" />
                         </div>
                       </div>
                       <div className="flex-1">
-                        <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                        <div className="text-sm font-medium text-gray-900">{learner.name}</div>
                         <div className="text-sm text-gray-500">
-                          {student.rollNumber} • {student.department} • {student.program} Sem {student.semester}
+                          {learner.rollNumber} • {learner.department} • {learner.program} Sem {learner.semester}
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-medium text-gray-900">CGPA: {student.cgpa}</div>
-                        <div className="text-xs text-gray-500">{student.batch}</div>
+                        <div className="text-sm font-medium text-gray-900">CGPA: {learner.cgpa}</div>
+                        <div className="text-xs text-gray-500">{learner.batch}</div>
                       </div>
                     </div>
                   );
@@ -4353,8 +4353,8 @@ const SkillDevelopment: React.FC = () => {
         </div>
       )}
 
-      {/* Student Feedback Modal */}
-      {showStudentFeedbackModal && (
+      {/* Learner Feedback Modal */}
+      {showlearnerFeedbackModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white">
@@ -4363,13 +4363,13 @@ const SkillDevelopment: React.FC = () => {
                   <MessageSquare className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900">Student Feedback</h2>
-                  <p className="text-sm text-gray-500">Collect course feedback from students</p>
+                  <h2 className="text-lg font-bold text-gray-900">Learner Feedback</h2>
+                  <p className="text-sm text-gray-500">Collect course feedback from learners</p>
                 </div>
               </div>
               <button
                 onClick={() => {
-                  setShowStudentFeedbackModal(false);
+                  setShowlearnerFeedbackModal(false);
                   resetFeedbackForm();
                 }}
                 className="p-2 hover:bg-gray-100 rounded-lg transition"
@@ -4397,19 +4397,19 @@ const SkillDevelopment: React.FC = () => {
                 </select>
               </div>
 
-              {/* Student Selection */}
+              {/* Learner Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Student <span className="text-red-500">*</span>
+                  Select Learner <span className="text-red-500">*</span>
                 </label>
                 <select
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 >
-                  <option value="">Select a student</option>
-                  {studentsData.map((student) => (
-                    <option key={student.id} value={student.id}>
-                      {student.name} ({student.rollNumber})
+                  <option value="">Select a learner</option>
+                  {learnersData.map((learner) => (
+                    <option key={learner.id} value={learner.id}>
+                      {learner.name} ({learner.rollNumber})
                     </option>
                   ))}
                 </select>
@@ -4542,7 +4542,7 @@ const SkillDevelopment: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    setShowStudentFeedbackModal(false);
+                    setShowlearnerFeedbackModal(false);
                     resetFeedbackForm();
                   }}
                   className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
@@ -4659,11 +4659,11 @@ const SkillDevelopment: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Student Engagement <span className="text-red-500">*</span>
+                    Learner Engagement <span className="text-red-500">*</span>
                   </label>
                   <select
-                    value={trainerFeedbackFormData.studentEngagement}
-                    onChange={(e) => handleTrainerFeedbackInputChange("studentEngagement", e.target.value)}
+                    value={trainerFeedbackFormData.learnerEngagement}
+                    onChange={(e) => handleTrainerFeedbackInputChange("learnerEngagement", e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   >
@@ -4760,12 +4760,12 @@ const SkillDevelopment: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Student Performance Assessment
+                  Learner Performance Assessment
                 </label>
                 <textarea
-                  value={trainerFeedbackFormData.studentPerformance}
-                  onChange={(e) => handleTrainerFeedbackInputChange("studentPerformance", e.target.value)}
-                  placeholder="Overall assessment of student performance and engagement..."
+                  value={trainerFeedbackFormData.learnerPerformance}
+                  onChange={(e) => handleTrainerFeedbackInputChange("learnerPerformance", e.target.value)}
+                  placeholder="Overall assessment of learner performance and engagement..."
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
@@ -4887,7 +4887,7 @@ const SkillDevelopment: React.FC = () => {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-gray-900">Update Progress</h2>
-                  <p className="text-sm text-gray-500">{selectedProgress.studentName} - {selectedProgress.courseName}</p>
+                  <p className="text-sm text-gray-500">{selectedProgress.learnerName} - {selectedProgress.courseName}</p>
                 </div>
               </div>
               <button
@@ -5100,14 +5100,14 @@ const SkillDevelopment: React.FC = () => {
                   <div>
                     <h4 className="text-sm font-medium text-yellow-800">Template Format</h4>
                     <p className="text-sm text-yellow-700 mt-1">
-                      Please use the correct template format. Required columns: Student ID, Course ID, Completion %, Assessment Score, Attendance %
+                      Please use the correct template format. Required columns: Learner ID, Course ID, Completion %, Assessment Score, Attendance %
                     </p>
                     <button
                       type="button"
                       onClick={() => {
                         // Generate and download template
                         const templateData = [
-                          ["Student ID", "Course ID", "Completion %", "Assessment Score", "Max Score", "Attendance %", "Status"],
+                          ["Learner ID", "Course ID", "Completion %", "Assessment Score", "Max Score", "Attendance %", "Status"],
                           ["CS2021001", "1", "100", "85", "100", "95", "Completed"],
                           ["CS2021002", "1", "60", "", "100", "80", "In Progress"]
                         ];
@@ -5358,11 +5358,11 @@ const SkillDevelopment: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Eligible Students */}
+                {/* Eligible Learners */}
                 <div className="mb-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Eligible Students</h4>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Eligible Learners</h4>
                   <div className="bg-gray-50 rounded-lg p-4 max-h-60 overflow-y-auto">
-                    {studentProgressData
+                    {learnerProgressData
                       .filter(progress => progress.status === "Completed")
                       .map((progress) => (
                         <label
@@ -5375,7 +5375,7 @@ const SkillDevelopment: React.FC = () => {
                           />
                           <div className="flex-1">
                             <div className="text-sm font-medium text-gray-900">
-                              {progress.studentName}
+                              {progress.learnerName}
                             </div>
                             <div className="text-xs text-gray-500">
                               {progress.rollNumber} • {progress.courseName} • Score: {progress.assessmentScore || 'N/A'}
@@ -5391,11 +5391,11 @@ const SkillDevelopment: React.FC = () => {
                           </div>
                         </label>
                       ))}
-                    {studentProgressData.filter(progress => progress.status === "Completed").length === 0 && (
+                    {learnerProgressData.filter(progress => progress.status === "Completed").length === 0 && (
                       <div className="text-center py-8">
                         <Award className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                        <p className="text-gray-500">No completed students found</p>
-                        <p className="text-sm text-gray-400">Students will appear here once they complete courses</p>
+                        <p className="text-gray-500">No completed learners found</p>
+                        <p className="text-sm text-gray-400">Learners will appear here once they complete courses</p>
                       </div>
                     )}
                   </div>
@@ -5454,7 +5454,7 @@ const SkillDevelopment: React.FC = () => {
                         defaultChecked
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
-                      <span className="text-sm text-blue-800">Send email notification to students</span>
+                      <span className="text-sm text-blue-800">Send email notification to learners</span>
                     </label>
                     <label className="flex items-center gap-2">
                       <input
@@ -5481,7 +5481,7 @@ const SkillDevelopment: React.FC = () => {
                     <Award className="h-16 w-16 text-blue-400 mx-auto mb-4" />
                     <h3 className="text-xl font-bold text-gray-900 mb-2">Certificate of Completion</h3>
                     <p className="text-gray-600 mb-4">This is to certify that</p>
-                    <p className="text-2xl font-bold text-blue-600 mb-4">[Student Name]</p>
+                    <p className="text-2xl font-bold text-blue-600 mb-4">[Learner Name]</p>
                     <p className="text-gray-600 mb-2">has successfully completed the course</p>
                     <p className="text-lg font-semibold text-gray-900 mb-4">[Course Name]</p>
                     <div className="flex justify-center gap-8 text-sm text-gray-600">
@@ -5555,7 +5555,7 @@ const SkillDevelopment: React.FC = () => {
                         </div>
                         <div>
                           <div className="text-sm font-medium text-gray-900">
-                            {certificate.studentName}
+                            {certificate.learnerName}
                           </div>
                           <div className="text-xs text-gray-500">
                             {certificate.courseName} • {certificate.certificateNumber}
@@ -5567,7 +5567,7 @@ const SkillDevelopment: React.FC = () => {
                         <button
                           onClick={() => {
                             logger.info("Viewing certificate", { certificateId: certificate.id });
-                            showNotification('info', 'Certificate', `Viewing certificate for ${certificate.studentName}`);
+                            showNotification('info', 'Certificate', `Viewing certificate for ${certificate.learnerName}`);
                           }}
                           className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"
                           title="View Certificate"
@@ -5578,7 +5578,7 @@ const SkillDevelopment: React.FC = () => {
                           <button
                             onClick={() => {
                               logger.info("Downloading certificate", { certificateId: certificate.id });
-                              showNotification('info', 'Downloading', `Downloading certificate for ${certificate.studentName}`);
+                              showNotification('info', 'Downloading', `Downloading certificate for ${certificate.learnerName}`);
                             }}
                             className="text-green-600 hover:text-green-800 p-1 rounded hover:bg-green-50"
                             title="Download Certificate"
@@ -5607,11 +5607,11 @@ const SkillDevelopment: React.FC = () => {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-gray-900">
-                    {('studentName' in selectedFeedback) ? 'Student Feedback Details' : 'Trainer Feedback Details'}
+                    {('learnerName' in selectedFeedback) ? 'Learner Feedback Details' : 'Trainer Feedback Details'}
                   </h2>
                   <p className="text-sm text-gray-500">
-                    {('studentName' in selectedFeedback) 
-                      ? `${selectedFeedback.studentName} - ${selectedFeedback.courseName}`
+                    {('learnerName' in selectedFeedback) 
+                      ? `${selectedFeedback.learnerName} - ${selectedFeedback.courseName}`
                       : `${selectedFeedback.trainerName} - ${selectedFeedback.courseName}`
                     }
                   </p>
@@ -5626,15 +5626,15 @@ const SkillDevelopment: React.FC = () => {
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Student Feedback Details */}
-              {('studentName' in selectedFeedback) && (
+              {/* Learner Feedback Details */}
+              {('learnerName' in selectedFeedback) && (
                 <>
-                  {/* Student Info */}
+                  {/* Learner Info */}
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-blue-900 mb-1">Student Name</label>
-                        <p className="text-blue-800 font-medium">{selectedFeedback.studentName}</p>
+                        <label className="block text-sm font-medium text-blue-900 mb-1">Learner Name</label>
+                        <p className="text-blue-800 font-medium">{selectedFeedback.learnerName}</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-blue-900 mb-1">Roll Number</label>
@@ -5794,8 +5794,8 @@ const SkillDevelopment: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Student Engagement</label>
-                          {renderStarRating(selectedFeedback.studentEngagement, 'md')}
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Learner Engagement</label>
+                          {renderStarRating(selectedFeedback.learnerEngagement, 'md')}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Content Delivery</label>
@@ -5833,11 +5833,11 @@ const SkillDevelopment: React.FC = () => {
                         </div>
                       </div>
                     )}
-                    {selectedFeedback.studentPerformance && (
+                    {selectedFeedback.learnerPerformance && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Student Performance Assessment</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Learner Performance Assessment</label>
                         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                          <p className="text-gray-900">{selectedFeedback.studentPerformance}</p>
+                          <p className="text-gray-900">{selectedFeedback.learnerPerformance}</p>
                         </div>
                       </div>
                     )}

@@ -39,7 +39,7 @@ This document outlines the comprehensive plan for adding integration tests to al
 - `POST /ai-tutor-suggestions` - Generate suggested questions
 - `POST /ai-tutor-chat` - AI tutor chat (streaming)
 - `POST /ai-tutor-feedback` - Submit feedback
-- `GET /ai-tutor-progress` - Get student progress
+- `GET /ai-tutor-progress` - Get learner progress
 - `POST /ai-tutor-progress` - Update lesson progress
 - `POST /ai-video-summarizer` - Video transcription and summary
 - `GET /health` - Health check
@@ -75,13 +75,13 @@ This document outlines the comprehensive plan for adding integration tests to al
 - `POST /signup` - Unified signup
 - `POST /signup/school-admin` - School admin signup
 - `POST /signup/educator` - Educator signup
-- `POST /signup/student` - Student signup
+- `POST /signup/learner` - learner signup
 - `POST /signup/college-admin` - College admin signup
 - `POST /signup/college-educator` - College educator signup
-- `POST /signup/college-student` - College student signup
+- `POST /signup/college-learner` - College learner signup
 - `POST /signup/university-admin` - University admin signup
 - `POST /signup/university-educator` - University educator signup
-- `POST /signup/university-student` - University student signup
+- `POST /signup/university-learner` - University learner signup
 - `POST /signup/recruiter-admin` - Recruiter admin signup
 - `POST /signup/recruiter` - Recruiter signup
 - `GET /schools` - Get schools list
@@ -93,10 +93,10 @@ This document outlines the comprehensive plan for adding integration tests to al
 - `POST /check-university-code` - Validate university code
 - `POST /check-company-code` - Validate company code
 - `POST /check-email` - Check email availability
-- `POST /create-student` - Create student (authenticated)
+- `POST /create-learner` - Create learner (authenticated)
 - `POST /create-teacher` - Create teacher (authenticated)
 - `POST /create-college-staff` - Create college staff (authenticated)
-- `POST /update-student-documents` - Update student documents
+- `POST /update-learner-documents` - Update learner documents
 - `POST /create-event-user` - Create event user
 - `POST /send-interview-reminder` - Send interview reminder
 - `POST /reset-password` - Reset password
@@ -221,7 +221,7 @@ This document outlines the comprehensive plan for adding integration tests to al
 ### Current FSD Structure
 ```
 src/
-├── entities/          # Business entities (student, course, etc.)
+├── entities/          # Business entities (learner, course, etc.)
 ├── features/          # Feature modules
 ├── widgets/           # Composite UI components
 ├── pages/             # Page components
@@ -408,9 +408,9 @@ src/__tests__/integration/
 
 #### Task 2.1: Signup Endpoints
 - [ ] Test unified signup endpoint
-- [ ] Test school signup endpoints (admin, educator, student)
-- [ ] Test college signup endpoints (admin, educator, student)
-- [ ] Test university signup endpoints (admin, educator, student)
+- [ ] Test school signup endpoints (admin, educator, learner)
+- [ ] Test college signup endpoints (admin, educator, learner)
+- [ ] Test university signup endpoints (admin, educator, learner)
 - [ ] Test recruiter signup endpoints (admin, recruiter)
 
 **Test Cases Per Endpoint**:
@@ -435,8 +435,8 @@ src/__tests__/integration/
 - ✅ Email format validation
 
 #### Task 2.3: Authenticated Endpoints
-- [ ] Test create student/teacher/staff endpoints
-- [ ] Test update student documents
+- [ ] Test create learner/teacher/staff endpoints
+- [ ] Test update learner documents
 - [ ] Test event user creation
 - [ ] Test interview reminder
 - [ ] Test password reset

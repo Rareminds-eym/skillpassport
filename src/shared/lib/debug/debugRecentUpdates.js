@@ -1,4 +1,5 @@
 import { supabase } from '@/shared/api/supabaseClient';
+import { getCurrentUser, getCurrentSession } from '@/shared/api/authUtils';
 
 /**
  * Debug utility for recent updates functionality
@@ -8,8 +9,8 @@ import { supabase } from '@/shared/api/supabaseClient';
 export const debugRecentUpdates = async (userEmail = null) => {
   
   try {
-    // Test 1: Check authentication status
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Test 1: Check authentication status (via SSO, not Supabase auth)
+    const { data: { user }, error: authError } = await getCurrentUser();
     
     if (authError) {
     }
@@ -18,7 +19,8 @@ export const debugRecentUpdates = async (userEmail = null) => {
     
     // Test 1.5: Check current session more thoroughly
     if (isAuthenticated) {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await getCurrentSession();
+      console.log('Session check:', {
         hasSession: !!session, 
         sessionError: sessionError?.message,
         accessToken: session?.access_token ? 'Present' : 'Missing',
@@ -68,7 +70,7 @@ export const debugRecentUpdates = async (userEmail = null) => {
           .eq('user_id', user.id);
           
         if (userError) {
-          console.error('❌ User data error:', userError.message);
+          console.error('❌ User data error:', userError.message, {
             code: userError.code,
             details: userError.details,
             hint: userError.hint
@@ -77,6 +79,7 @@ export const debugRecentUpdates = async (userEmail = null) => {
           
           if (userData && userData.length > 0) {
             if (userData[0].updates) {
+              console.log('User updates found:', userData[0].updates.length);
             }
           }
           
@@ -89,14 +92,17 @@ export const debugRecentUpdates = async (userEmail = null) => {
             
           if (singleError) {
             if (singleError.code === 'PGRST116') {
+              console.log('No single row found (PGRST116) - expected for new users');
             }
           } else {
+            console.log('Single query result:', singleData);
           }
         }
       } catch (userErr) {
         console.error('❌ User data check failed:', userErr.message);
       }
     } else {
+      console.log('User not authenticated, skipping user-specific tests');
     }
     
     // Test 5: Check database configuration and basic connectivity
@@ -107,9 +113,12 @@ export const debugRecentUpdates = async (userEmail = null) => {
         .select('count', { count: 'exact', head: true });
         
       if (connError) {
+        console.error('Connection test error:', connError.message);
       } else {
+        console.log('Connection test passed');
       }
     } catch (connErr) {
+      console.error('❌ Connection test failed:', connErr.message);
     }
     
     // Test 6: Connection and basic functionality test
@@ -187,7 +196,7 @@ const createSampleRecentUpdates = async (userId) => {
 export const clearRecentUpdatesDebugData = async () => {
   try {
     
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await getCurrentUser();
     if (authError || !user) {
       return false;
     }
@@ -214,7 +223,7 @@ export const clearRecentUpdatesDebugData = async () => {
  * Get comprehensive debug info
  */
 export const getRecentUpdatesDebugInfo = async () => {
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getCurrentUser();
   
   return {
     timestamp: new Date().toISOString(),
@@ -264,8 +273,8 @@ const getSampleDataCount = async () => {
  * Quick auth check function for browser console
  */
 export const checkAuth = async () => {
-  const { data: { user }, error } = await supabase.auth.getUser();
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { user }, error } = await getCurrentUser();
+  const { data: { session } } = await getCurrentSession();
   
   
   return { user, session, error };

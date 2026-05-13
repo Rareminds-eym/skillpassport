@@ -26,7 +26,7 @@ interface ConversationModalProps {
   isOpen: boolean;
   onClose: () => void;
   conversationType: ConversationType;
-  contextId?: string; // schoolId, collegeId, studentId, etc.
+  contextId?: string; // schoolId, collegeId, learnerId, etc.
   onConversationCreated: (data: any) => void;
 }
 
@@ -269,7 +269,7 @@ export const ConversationModal: React.FC<ConversationModalProps> = ({
       let data: any[] = [];
       
       // Fetch based on conversation type
-      if (conversationType === 'student-educator' || conversationType === 'admin-educator') {
+      if (conversationType === 'learner-educator' || conversationType === 'admin-educator') {
         // Fetch educators
         const { data: educatorData, error } = await supabase
           .from('school_educators')
@@ -291,18 +291,18 @@ export const ConversationModal: React.FC<ConversationModalProps> = ({
               e.subject_expertise
           }));
         }
-      } else if (conversationType === 'admin-student' || conversationType === 'college-admin-student') {
-        // Fetch students
-        const { data: studentData, error } = await supabase
-          .from('students')
+      } else if (conversationType === 'admin-learner' || conversationType === 'college-admin-learner') {
+        // Fetch learners
+        const { data: learnerData, error } = await supabase
+          .from('learners')
           .select('id, name, email, university, branch_field, grade, section')
-          .eq(conversationType === 'admin-student' ? 'school_id' : 'university_college_id', contextId)
+          .eq(conversationType === 'admin-learner' ? 'school_id' : 'university_college_id', contextId)
           .order('name');
         
-        if (!error && studentData) {
-          data = studentData.map(s => ({
+        if (!error && learnerData) {
+          data = learnerData.map(s => ({
             id: s.id,
-            name: s.name || 'Unnamed Student',
+            name: s.name || 'Unnamed Learner',
             email: s.email,
             university: s.university,
             branch_field: s.branch_field,

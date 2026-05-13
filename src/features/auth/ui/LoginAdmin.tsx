@@ -1,105 +1,37 @@
-import { useState } from 'react';
+import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GraduationCap, Loader2 } from 'lucide-react';
-
-import { loginAdmin } from '@/features/auth/api';
 import toast from 'react-hot-toast';
+
+import { ssoLoginWithRoleCheck, redirectToRoleDashboard } from '@/features/auth/lib';
+import type { UserRole } from '@/features/auth/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/Card';
 import { Label } from '@/shared/ui/Label';
 import { Input } from '@/shared/ui/Input';
 import { Button } from '@/shared/ui/ButtonNew';
 
-import { useAuthActions } from '@/shared/model/authStore';
+const ADMIN_ROLES: UserRole[] = ['school_admin', 'college_admin', 'university_admin'];
+
 const LoginAdmin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuthActions();
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
+  const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Validate inputs
-      if (!email || !password.trim()) {
-        throw new Error('Please enter both email and password');
-      }
+      const result = await ssoLoginWithRoleCheck(email, password, ADMIN_ROLES);
 
-      // DEMO CREDENTIALS - Hardcoded for testing
-      const DEMO_CREDENTIALS = {
-        'university@admin.com': {
-          id: 'university-001',
-          name: 'University',
-          email: 'university@admin.com',
-          role: 'university_admin',
-          schoolId: 'university-001',
-          schoolName: 'University',
-          schoolCode: 'UNI',
-        },
-        'college@admin.com': {
-          id: 'college-001',
-          name: 'College',
-          email: 'college@admin.com',
-          role: 'college_admin',
-          schoolId: 'college-001',
-          schoolName: 'College',
-          schoolCode: 'COL',
-        },
-        'school@admin.com': {
-          id: 'school-001',
-          name: 'School',
-          email: 'school@admin.com',
-          role: 'school_admin',
-          schoolId: 'school-001',
-          schoolName: 'School',
-          schoolCode: 'SCH',
-        },
-      };
-
-      // Check if it's a demo credential
-      if (DEMO_CREDENTIALS[email.trim().toLowerCase()]) {
-        const demoUser = DEMO_CREDENTIALS[email.trim().toLowerCase()];
-        
-        login(demoUser);
-
-        toast.success(`Welcome back, ${demoUser.name}!`);
-
-        // Route based on role
-        const dashboardRoutes = {
-          'university_admin': '/university-admin/dashboard',
-          'college_admin': '/college-admin/dashboard',
-          'school_admin': '/school-admin/dashboard',
-        };
-        
-        navigate(dashboardRoutes[demoUser.role] || '/school-admin/dashboard');
+      if (!result.success) {
+        toast.error(result.error || 'Login failed');
         return;
       }
 
-      // Use the loginAdmin service for actual authentication
-      const result = await loginAdmin(email, password);
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Login failed');
-      }
-
-      // Store admin data in context
-      login(result.admin);
-
-      toast.success(`Welcome back, ${result.admin.name}!`);
-
-      // Redirect based on admin role
-      if (result.admin.role === 'college_admin') {
-        navigate('/college-admin/dashboard');
-      } else if (result.admin.role === 'university_admin') {
-        navigate('/university-admin/dashboard');
-      } else {
-        navigate('/school-admin/dashboard');
-      }
-    } catch (error) {
-      toast.error(error.message || 'Invalid credentials');
+      toast.success('Welcome back!');
+      redirectToRoleDashboard(result.role as UserRole, navigate);
     } finally {
       setIsLoading(false);
     }
@@ -108,7 +40,6 @@ const LoginAdmin = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <div className="w-full max-w-md space-y-6">
-        {/* Header Section */}
         <div className="text-center space-y-2">
           <div className="flex justify-center mb-4">
             <div className="w-16 h-16 bg-slate-700 rounded-2xl flex items-center justify-center shadow-lg">
@@ -116,12 +47,9 @@ const LoginAdmin = () => {
             </div>
           </div>
           <h1 className="text-3xl font-bold text-gray-900">Admin Login Portal</h1>
-          <p className="text-gray-600">
-            Manage your institution with unified access
-          </p>
+          <p className="text-gray-600">Manage your institution with unified access</p>
         </div>
 
-        {/* Login Card */}
         <Card className="border shadow-md">
           <CardHeader>
             <CardTitle>Welcome Back</CardTitle>
@@ -138,6 +66,7 @@ const LoginAdmin = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  autoComplete="email"
                 />
               </div>
 
@@ -150,21 +79,18 @@ const LoginAdmin = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  minLength={8}
+                  autoComplete="current-password"
                 />
               </div>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  {/* <Checkbox
-                    id="remember"
-                    checked={rememberMe}
-                    onCheckedChange={(checked) => setRememberMe(!!checked)}
-                  />
-                  <Label htmlFor="remember" className="text-sm cursor-pointer">
-                    Remember me
-                  </Label> */}
-                </div>
-                <Button variant="link" type="button" className="px-0 text-sm">
+              <div className="flex items-center justify-end">
+                <Button
+                  variant="link"
+                  type="button"
+                  className="px-0 text-sm"
+                  onClick={() => navigate('/password-reset')}
+                >
                   Forgot password?
                 </Button>
               </div>
@@ -186,12 +112,11 @@ const LoginAdmin = () => {
           </CardContent>
         </Card>
 
-        {/* Info Card */}
         <Card className="bg-blue-50 border-blue-200">
           <CardContent className="pt-4">
             <p className="text-sm text-blue-800">
-              <strong>Note:</strong> Only schools with approved status can login. 
-              If your registration is pending or rejected, please contact RareMinds admin.
+              <strong>Note:</strong> Only schools with approved status can login. If your
+              registration is pending or rejected, please contact RareMinds admin.
             </p>
           </CardContent>
         </Card>

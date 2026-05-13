@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { XMarkIcon, CalendarIcon, UserIcon, CogIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
-interface Student {
+interface Learner {
   id: number;
   name: string;
   rollNo: string;
@@ -17,7 +17,7 @@ interface Student {
 interface MentorAllocation {
   id: number;
   mentorId: number;
-  students: Student[];
+  learners: Learner[];
   allocationPeriod: {
     startDate: string;
     endDate: string;
@@ -43,13 +43,13 @@ interface Mentor {
 }
 
 interface AllocationConfigurationModalProps {
-  selectedStudents: Student[];
+  selectedlearners: Learner[];
   selectedMentor: Mentor;
   onClose: () => void;
   onBack: () => void;
   onAllocate: (
     mentorId: number, 
-    studentIds: number[], 
+    learnerIds: number[], 
     allocationPeriod: {startDate: string; endDate: string},
     capacityConfig: {capacity: number; officeLocation: string; availableHours: string}
   ) => void;
@@ -61,7 +61,7 @@ interface AllocationConfigurationModalProps {
 }
 
 const AllocationConfigurationModal: React.FC<AllocationConfigurationModalProps> = ({
-  selectedStudents,
+  selectedlearners,
   selectedMentor,
   onClose,
   onBack,
@@ -138,8 +138,8 @@ const AllocationConfigurationModal: React.FC<AllocationConfigurationModalProps> 
     if (capacityConfig.capacity < 1) {
       newErrors.capacity = 'Capacity must be at least 1';
     }
-    if (capacityConfig.capacity < currentLoad + selectedStudents.length) {
-      newErrors.capacity = `Capacity cannot be less than current allocation (${currentLoad + selectedStudents.length})`;
+    if (capacityConfig.capacity < currentLoad + selectedlearners.length) {
+      newErrors.capacity = `Capacity cannot be less than current allocation (${currentLoad + selectedlearners.length})`;
     }
     if (!capacityConfig.officeLocation.trim()) {
       newErrors.officeLocation = 'Office location is required';
@@ -175,7 +175,7 @@ const AllocationConfigurationModal: React.FC<AllocationConfigurationModalProps> 
     if (isPeriodValid && isCapacityValid) {
       onAllocate(
         selectedMentor.id, 
-        selectedStudents.map(s => s.id), 
+        selectedlearners.map(s => s.id), 
         allocationPeriod,
         capacityConfig // Always pass capacity config since it's now mandatory
       );
@@ -201,14 +201,14 @@ const AllocationConfigurationModal: React.FC<AllocationConfigurationModalProps> 
 
         {/* Summary Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          {/* Selected Students */}
+          {/* Selected Learners */}
           <div className="bg-gray-50 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">Selected Students ({selectedStudents.length})</h3>
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Selected Learners ({selectedlearners.length})</h3>
             <div className="space-y-2 max-h-32 overflow-y-auto">
-              {selectedStudents.map((student) => (
-                <div key={student.id} className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-gray-900">{student.name}</span>
-                  <span className="text-gray-500">{student.rollNo}</span>
+              {selectedlearners.map((learner) => (
+                <div key={learner.id} className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-gray-900">{learner.name}</span>
+                  <span className="text-gray-500">{learner.rollNo}</span>
                 </div>
               ))}
             </div>
@@ -266,7 +266,7 @@ const AllocationConfigurationModal: React.FC<AllocationConfigurationModalProps> 
             </div>
           )}
           <p className="text-xs text-blue-600 mt-2">
-            This mentoring period will be assigned to all {selectedStudents.length} selected students. Each unique period creates a separate allocation card.
+            This mentoring period will be assigned to all {selectedlearners.length} selected learners. Each unique period creates a separate allocation card.
           </p>
         </div>
 
@@ -280,7 +280,7 @@ const AllocationConfigurationModal: React.FC<AllocationConfigurationModalProps> 
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Maximum Student Capacity *
+                Maximum Learner Capacity *
               </label>
               <input
                 type="number"
@@ -296,7 +296,7 @@ const AllocationConfigurationModal: React.FC<AllocationConfigurationModalProps> 
                 <p className="mt-1 text-sm text-red-600">{capacityErrors.capacity}</p>
               )}
               <p className="mt-1 text-xs text-gray-500">
-                Current allocation: {currentLoad} students, After allocation: {currentLoad + selectedStudents.length} students
+                Current allocation: {currentLoad} learners, After allocation: {currentLoad + selectedlearners.length} learners
               </p>
             </div>
 
@@ -335,7 +335,7 @@ const AllocationConfigurationModal: React.FC<AllocationConfigurationModalProps> 
                 <p className="mt-1 text-sm text-red-600">{capacityErrors.availableHours}</p>
               )}
               <p className="mt-1 text-xs text-gray-500">
-                Specify when the mentor is available for student consultations
+                Specify when the mentor is available for learner consultations
               </p>
             </div>
           </div>

@@ -8,7 +8,7 @@ Migrated from `cloudflare-workers/course-api` (1561 lines, 6 endpoints)
 2. `/api/course/ai-tutor-suggestions` - Generate suggested questions for lessons
 3. `/api/course/ai-tutor-chat` - AI tutor chat with streaming and conversation phases
 4. `/api/course/ai-tutor-feedback` - Submit feedback on AI responses
-5. `/api/course/ai-tutor-progress` - Track student progress (GET/POST)
+5. `/api/course/ai-tutor-progress` - Track learner progress (GET/POST)
 6. `/api/course/ai-video-summarizer` - Transcribe and summarize videos with enhancements
 
 ## Features
@@ -16,7 +16,7 @@ Migrated from `cloudflare-workers/course-api` (1561 lines, 6 endpoints)
 - **R2 Integration**: Presigned URLs for secure file access
 - **AI Tutor**: Context-aware tutoring with conversation phases (opening, exploring, deep_dive)
 - **Video Processing**: Transcription (Deepgram/Groq), summarization, sentiment analysis, speaker diarization
-- **Progress Tracking**: Student course progress management
+- **Progress Tracking**: learner course progress management
 - **Feedback System**: Thumbs up/down feedback on AI responses
 
 ## Architecture
@@ -66,6 +66,6 @@ Migrated from `cloudflare-workers/course-api` (1561 lines, 6 endpoints)
 
 ### Course Context Builder
 - Fetches course, modules, lessons, resources
-- Tracks student progress
+- Tracks learner progress
 - Includes video summaries if available
 - Formats context for AI prompts

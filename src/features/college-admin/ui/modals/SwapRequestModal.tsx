@@ -246,7 +246,7 @@ const SwapRequestModal: React.FC<SwapRequestModalProps> = ({
             <div className="mb-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
               <p className="text-xs text-amber-800">
                 <strong>How it works:</strong> You exchange <strong>time slots</strong> with another educator teaching the <strong>same class</strong>. 
-                Each of you will continue teaching your own subject to the same students, just at the swapped time.
+                Each of you will continue teaching your own subject to the same learners, just at the swapped time.
               </p>
               <div className="mt-2 text-xs text-amber-700">
                 <strong>Example:</strong> If you swap your Thursday 11:45 slot with their Monday 9:00 slot:
@@ -257,7 +257,7 @@ const SwapRequestModal: React.FC<SwapRequestModalProps> = ({
               </div>
               <div className="mt-2 pt-2 border-t border-amber-300">
                 <p className="text-xs text-amber-900 font-medium">
-                  ⚠️ Only educators teaching <strong>{currentSlot.class_name}</strong> are shown to avoid student schedule conflicts.
+                  ⚠️ Only educators teaching <strong>{currentSlot.class_name}</strong> are shown to avoid learner schedule conflicts.
                 </p>
               </div>
             </div>

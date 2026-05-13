@@ -247,9 +247,9 @@ export async function generateAdaptiveCoreQuestions(
   count: number = 10,
   excludeQuestionIds: string[] = [],
   excludeQuestionTexts: string[] = [],
-  studentCourse?: string | null
+  learnerCourse?: string | null
 ): Promise<QuestionGenerationResult> {
-  console.log('🎯 [QuestionGeneratorService] generateAdaptiveCoreQuestions called:', { gradeLevel, startingDifficulty, count, studentCourse });
+  console.log('🎯 [QuestionGeneratorService] generateAdaptiveCoreQuestions called:', { gradeLevel, startingDifficulty, count, learnerCourse });
   const startTime = Date.now();
   
   const result = await callWorkerAPI<QuestionGenerationResult>('/generate/adaptive', {
@@ -258,7 +258,7 @@ export async function generateAdaptiveCoreQuestions(
     count,
     excludeQuestionIds,
     excludeQuestionTexts,
-    studentCourse,
+    learnerCourse,
   });
   
   const elapsed = Date.now() - startTime;
@@ -413,9 +413,9 @@ export class QuestionGeneratorService {
     count?: number,
     excludeQuestionIds?: string[],
     excludeQuestionTexts?: string[],
-    studentCourse?: string | null
+    learnerCourse?: string | null
   ): Promise<QuestionGenerationResult> {
-    return generateAdaptiveCoreQuestions(gradeLevel, startingDifficulty, count, excludeQuestionIds, excludeQuestionTexts, studentCourse);
+    return generateAdaptiveCoreQuestions(gradeLevel, startingDifficulty, count, excludeQuestionIds, excludeQuestionTexts, learnerCourse);
   }
 
   /**

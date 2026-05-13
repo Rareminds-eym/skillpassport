@@ -16,7 +16,7 @@ export type {
   MilestoneStatus,
   ProposalStatus,
   Proposal,
-  StudentProfile,
+  LearnerProfile,
   ContractStatus,
   PaymentSchedule,
   ProjectContract,
@@ -24,7 +24,7 @@ export type {
   ProjectFilters,
   ProjectAnalytics,
   QA,
-  StudentProject
+  LearnerProject
 } from './model';
 
 export {

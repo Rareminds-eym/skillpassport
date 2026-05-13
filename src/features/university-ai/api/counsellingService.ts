@@ -1,11 +1,11 @@
 import { getOpenAIClient, DEFAULT_MODEL } from './openAIClient';
-import { CounsellingTopic, Message, StudentContext, CounsellingResponse } from '../model';
-import { COUNSELLING_PROMPTS, buildStudentContextPrompt, getFollowUpSuggestions } from '../lib/prompts/counsellingPrompts';
+import { CounsellingTopic, Message, LearnerContext, CounsellingResponse } from '../model';
+import { COUNSELLING_PROMPTS, buildlearnerContextPrompt, getFollowUpSuggestions } from '../lib/prompts/counsellingPrompts';
 import { getLogger } from '@/shared/config/logging';
 
 /**
  * University AI Counselling Service
- * Provides streaming AI responses for student counselling
+ * Provides streaming AI responses for learner counselling
  */
 
 const logger = getLogger('university-counselling');
@@ -17,7 +17,7 @@ class UniversityCounsellingService {
   async processQueryStream(
     query: string,
     topic: CounsellingTopic,
-    studentContext: StudentContext | undefined,
+    learnerContext: LearnerContext | undefined,
     conversationHistory: Message[],
     onChunk: (chunk: string) => void
   ): Promise<CounsellingResponse> {
@@ -26,7 +26,7 @@ class UniversityCounsellingService {
 
       // Build system prompt
       const systemPrompt = COUNSELLING_PROMPTS[topic];
-      const contextPrompt = buildStudentContextPrompt(studentContext);
+      const contextPrompt = buildlearnerContextPrompt(learnerContext);
 
       // Prepare messages
       const messages = [

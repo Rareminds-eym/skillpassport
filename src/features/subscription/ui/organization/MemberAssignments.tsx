@@ -18,7 +18,7 @@ import {
     X,
 } from 'lucide-react';
 import { memo, useCallback, useMemo, useState } from 'react';
-import { AddStudentModal } from '@/features/educator';
+import { AddLearnerModal } from '@/features/educator';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('member-assignments');
@@ -27,7 +27,7 @@ interface Member {
   id: string;
   name: string;
   email: string;
-  memberType: 'educator' | 'student';
+  memberType: 'educator' | 'learner';
   department?: string;
   hasLicense: boolean;
   assignedAt?: string;
@@ -41,7 +41,7 @@ interface MemberAssignmentsProps {
   onUnassign: (memberIds: string[]) => void;
   onTransfer: (fromMemberId: string, toMemberId: string) => void;
   onViewHistory: (memberId: string) => void;
-  onRemoveMember?: (memberId: string, memberType: 'educator' | 'student') => void;
+  onRemoveMember?: (memberId: string, memberType: 'educator' | 'learner') => void;
   onMemberAdded?: () => void;
   isLoading?: boolean;
 }
@@ -57,11 +57,11 @@ function MemberAssignments({
   onMemberAdded,
   isLoading = false,
 }: MemberAssignmentsProps) {
-  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [showAddlearnerModal, setShowAddlearnerModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [filterType, setFilterType] = useState<'all' | 'assigned' | 'unassigned'>('all');
-  const [memberTypeFilter, setMemberTypeFilter] = useState<'all' | 'educator' | 'student'>('all');
+  const [memberTypeFilter, setMemberTypeFilter] = useState<'all' | 'educator' | 'learner'>('all');
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferSource, setTransferSource] = useState<string | null>(null);
   
@@ -208,11 +208,11 @@ function MemberAssignments({
             </p>
           </div>
           <button
-            onClick={() => setShowAddStudentModal(true)}
+            onClick={() => setShowAddlearnerModal(true)}
             className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
           >
             <UserPlus className="w-4 h-4" />
-            Add Student
+            Add Learner
           </button>
         </div>
 
@@ -253,7 +253,7 @@ function MemberAssignments({
             >
               <option value="all">All Types</option>
               <option value="educator">Educators</option>
-              <option value="student">Students</option>
+              <option value="learner">Learners</option>
             </select>
             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
           </div>
@@ -307,17 +307,17 @@ function MemberAssignments({
             {searchQuery 
               ? 'Try adjusting your search or filters' 
               : members.length === 0 
-                ? 'Add students and educators to your organization first'
+                ? 'Add learners and educators to your organization first'
                 : 'No members match the current filters'}
           </p>
           {members.length === 0 && (
             <div className="flex flex-col sm:flex-row gap-2 justify-center">
               <button
-                onClick={() => setShowAddStudentModal(true)}
+                onClick={() => setShowAddlearnerModal(true)}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
               >
                 <UserPlus className="w-4 h-4" />
-                Add Student
+                Add Learner
               </button>
             </div>
           )}
@@ -362,7 +362,7 @@ function MemberAssignments({
                         : 'bg-green-100 text-green-700'
                     }`}
                   >
-                    {member.memberType === 'educator' ? 'Educator' : 'Student'}
+                    {member.memberType === 'educator' ? 'Educator' : 'Learner'}
                   </span>
                 </div>
                 <div className="text-sm text-gray-500 truncate">{member.email}</div>
@@ -477,12 +477,12 @@ function MemberAssignments({
         </div>
       )}
 
-      {/* Add Student Modal */}
-      <AddStudentModal
-        isOpen={showAddStudentModal}
-        onClose={() => setShowAddStudentModal(false)}
+      {/* Add Learner Modal */}
+      <AddLearnerModal
+        isOpen={showAddlearnerModal}
+        onClose={() => setShowAddlearnerModal(false)}
         onSuccess={() => {
-          setShowAddStudentModal(false);
+          setShowAddlearnerModal(false);
           onMemberAdded?.();
         }}
       />
@@ -522,7 +522,7 @@ function MemberAssignments({
                       ? 'bg-blue-100 text-blue-700'
                       : 'bg-green-100 text-green-700'
                   }`}>
-                    {memberToRemove.memberType === 'educator' ? 'Educator' : 'Student'}
+                    {memberToRemove.memberType === 'educator' ? 'Educator' : 'Learner'}
                   </span>
                   {memberToRemove.hasLicense && (
                     <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium">

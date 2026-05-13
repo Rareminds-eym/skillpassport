@@ -14,12 +14,12 @@ export interface FeeStructure {
   updated_at: string;
 }
 
-export interface StudentLedger {
+export interface LearnerLedger {
   id: string;
-  student_id: string;
-  student_name: string;
+  learner_id: string;
+  learner_name: string;
   roll_number: string;
-  student_email?: string;
+  learner_email?: string;
   school_id: string;
   fee_structure_id: string;
   fee_head_id: string;
@@ -37,7 +37,7 @@ export interface StudentLedger {
 export interface FeePayment {
   id: string;
   ledger_id: string;
-  student_id: string;
+  learner_id: string;
   amount: number;
   mode: PaymentMode;
   reference_number?: string;
@@ -60,15 +60,15 @@ export interface FeePayment {
   updated_at: string;
 }
 
-export interface StudentFeeSummary {
-  student_id: string;
-  student_name: string;
+export interface LearnerFeeSummary {
+  learner_id: string;
+  learner_name: string;
   roll_number: string;
   total_due: number;
   total_paid: number;
   balance: number;
   status: PaymentStatus;
-  ledger_entries: StudentLedger[];
+  ledger_entries: LearnerLedger[];
 }
 
 export type PaymentStatus = 'paid' | 'partial' | 'pending' | 'overdue' | 'waived';

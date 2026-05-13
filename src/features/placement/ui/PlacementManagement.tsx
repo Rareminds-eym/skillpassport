@@ -12,7 +12,7 @@ const PlacementManagement: React.FC = () => {
   const [placementStats, setPlacementStats] = useState([
     { label: "Total Companies", value: "0", icon: Building2, color: "bg-blue-500" },
     { label: "Active Job Postings", value: "0", icon: Briefcase, color: "bg-purple-500" },
-    { label: "Students Placed", value: "0", icon: Users, color: "bg-green-500" },
+    { label: "Learners Placed", value: "0", icon: Users, color: "bg-green-500" },
     { label: "Placement Rate", value: "0%", icon: TrendingUp, color: "bg-orange-500" },
   ]);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
@@ -43,7 +43,7 @@ const PlacementManagement: React.FC = () => {
       setPlacementStats([
         { label: "Total Companies", value: companyStats.total.toString(), icon: Building2, color: "bg-blue-500" },
         { label: "Active Job Postings", value: opportunitiesStats.active.toString(), icon: Briefcase, color: "bg-purple-500" },
-        { label: "Students Placed", value: placementStats.studentsPlaced.toString(), icon: Users, color: "bg-green-500" },
+        { label: "Learners Placed", value: placementStats.learnersPlaced.toString(), icon: Users, color: "bg-green-500" },
         { label: "Placement Rate", value: `${placementStats.placementRate}%`, icon: TrendingUp, color: "bg-orange-500" },
       ]);
     } catch (error) {
@@ -51,7 +51,7 @@ const PlacementManagement: React.FC = () => {
       setPlacementStats([
         { label: "Total Companies", value: "0", icon: Building2, color: "bg-blue-500" },
         { label: "Active Job Postings", value: "0", icon: Briefcase, color: "bg-purple-500" },
-        { label: "Students Placed", value: "0", icon: Users, color: "bg-green-500" },
+        { label: "Learners Placed", value: "0", icon: Users, color: "bg-green-500" },
         { label: "Placement Rate", value: "0%", icon: TrendingUp, color: "bg-orange-500" },
       ]);
     } finally {

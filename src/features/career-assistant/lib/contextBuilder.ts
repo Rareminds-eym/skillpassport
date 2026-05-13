@@ -1,4 +1,4 @@
-import { StudentProfile, StudentContext, Opportunity, OpportunityContext } from '@/features/student-profile/model';
+import { LearnerProfile, LearnerContext, Opportunity, OpportunityContext } from '@/features/learner-profile/model';
 
 /**
  * Context Builder Utilities
@@ -6,9 +6,9 @@ import { StudentProfile, StudentContext, Opportunity, OpportunityContext } from 
  */
 
 /**
- * Build comprehensive student context for AI
+ * Build comprehensive learner context for AI
  */
-export function buildStudentContext(profile: StudentProfile): StudentContext {
+export function buildlearnerContext(profile: LearnerProfile): LearnerContext {
   const technicalSkills = profile.profile?.technicalSkills || [];
   const softSkills = profile.profile?.softSkills || [];
   const experience = profile.profile?.experience || [];

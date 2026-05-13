@@ -57,7 +57,7 @@ const UniversityDashboard: React.FC = () => {
     series: [878, 47429],
     options: {
       chart: { type: "donut" },
-      labels: ["Faculty (FDP)", "Students (SDP)"],
+      labels: ["Faculty (FDP)", "Learners (SDP)"],
       colors: ["#8b5cf6", "#3b82f6"],
       dataLabels: { enabled: true },
       legend: { position: "bottom" },
@@ -198,7 +198,7 @@ const UniversityDashboard: React.FC = () => {
     {
       id: 1,
       title: "GMP Program Completed",
-      description: "5,034 students trained across 199 colleges",
+      description: "5,034 learners trained across 199 colleges",
       time: "Recently completed",
       type: "success",
       icon: Award,
@@ -270,14 +270,14 @@ const UniversityDashboard: React.FC = () => {
         <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-indigo-100 text-sm mb-1">Student Programs</p>
+              <p className="text-indigo-100 text-sm mb-1">Learner Programs</p>
               <p className="text-3xl font-bold">27</p>
             </div>
             <div className="p-3 bg-white/10 rounded-xl">
               <GraduationCap className="h-7 w-7" />
             </div>
           </div>
-          <p className="text-sm text-indigo-100">47,629 students trained</p>
+          <p className="text-sm text-indigo-100">47,629 learners trained</p>
         </div>
 
         <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
@@ -331,7 +331,7 @@ const UniversityDashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            Learner Distribution: Faculty vs Students
+            Learner Distribution: Faculty vs Learners
           </h2>
           <ReactApexChart
             options={learnerDistribution.options}

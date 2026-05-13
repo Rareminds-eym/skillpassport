@@ -26,7 +26,7 @@ export interface GenerateCareerPathsRequest {
   programName: string;
   programCategory: string;
   programStream: string;
-  studentProfile: {
+  learnerProfile: {
     riasecScores: {
       R: number;
       I: number;

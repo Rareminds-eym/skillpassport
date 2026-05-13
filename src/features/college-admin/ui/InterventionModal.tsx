@@ -9,7 +9,7 @@ import {
   CheckCircleIcon
 } from '@heroicons/react/24/outline';
 
-interface Student {
+interface Learner {
   id: number;
   name: string;
   rollNo: string;
@@ -23,7 +23,7 @@ interface Student {
 }
 
 interface InterventionModalProps {
-  student: Student | null;
+  learner: Learner | null;
   noteText: string;
   noteOutcome: string;
   interventionType: 'academic' | 'personal' | 'career' | 'attendance' | 'behavioral' | 'financial' | 'other';
@@ -45,7 +45,7 @@ interface InterventionModalProps {
 }
 
 const InterventionModal: React.FC<InterventionModalProps> = ({
-  student,
+  learner,
   noteText,
   noteOutcome,
   interventionType,
@@ -86,37 +86,37 @@ const InterventionModal: React.FC<InterventionModalProps> = ({
         <div className="flex-1 overflow-y-auto p-6">
 
           <div className="space-y-6">
-            {/* Student Information */}
+            {/* Learner Information */}
             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
                   <UserCircleIcon className="h-8 w-8 text-gray-600" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-semibold text-gray-900">{student?.name}</h3>
-                  <p className="text-sm text-gray-600 mt-0.5">{student?.rollNo} • {student?.batch}</p>
+                  <h3 className="text-base font-semibold text-gray-900">{learner?.name}</h3>
+                  <p className="text-sm text-gray-600 mt-0.5">{learner?.rollNo} • {learner?.batch}</p>
 
                   <div className="grid grid-cols-3 gap-3 mt-3">
                     <div>
                       <p className="text-xs text-gray-500">Department</p>
-                      <p className="text-sm font-medium text-gray-900 mt-0.5">{student?.department}</p>
+                      <p className="text-sm font-medium text-gray-900 mt-0.5">{learner?.department}</p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Semester</p>
-                      <p className="text-sm font-medium text-gray-900 mt-0.5">{student?.semester}</p>
+                      <p className="text-sm font-medium text-gray-900 mt-0.5">{learner?.semester}</p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">CGPA</p>
-                      <p className="text-sm font-medium text-gray-900 mt-0.5">{student?.cgpa}</p>
+                      <p className="text-sm font-medium text-gray-900 mt-0.5">{learner?.cgpa}</p>
                     </div>
                   </div>
 
-                  {student?.atRisk && (
+                  {learner?.atRisk && (
                     <div className="mt-3 flex items-center gap-2 text-sm text-amber-700 bg-amber-50 px-3 py-2 rounded-md border border-amber-200">
                       <ExclamationTriangleIcon className="h-4 w-4 flex-shrink-0" />
-                      <span className="font-medium">At-Risk Student</span>
-                      {student?.riskFactors && student.riskFactors.length > 0 && (
-                        <span className="text-xs">• {student.riskFactors.join(', ')}</span>
+                      <span className="font-medium">At-Risk Learner</span>
+                      {learner?.riskFactors && learner.riskFactors.length > 0 && (
+                        <span className="text-xs">• {learner.riskFactors.join(', ')}</span>
                       )}
                     </div>
                   )}
@@ -213,7 +213,7 @@ const InterventionModal: React.FC<InterventionModalProps> = ({
                   onChange={(e) => onNoteChange(e.target.value)}
                   rows={5}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none text-sm"
-                  placeholder="Describe the intervention, discussion points, student response, and any observations..."
+                  placeholder="Describe the intervention, discussion points, learner response, and any observations..."
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   {noteText.length} characters

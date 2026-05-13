@@ -13,7 +13,7 @@ export type GradeLevel =
   | 'higher_secondary' // Grades 11-12
   | 'after10'          // After 10th grade
   | 'after12'          // After 12th grade
-  | 'college';         // UG/PG students
+  | 'college';         // UG/PG learners
 
 export type StreamCategory = 'science' | 'commerce' | 'arts';
 
@@ -109,7 +109,7 @@ export interface SectionTimings {
 
 export interface AssessmentAttempt {
   id: string;
-  student_id: string;
+  learner_id: string;
   stream_id: string | null;
   grade_level: GradeLevel;
   status: AttemptStatus;
@@ -285,7 +285,7 @@ export interface AssessmentFlowState {
   status: AssessmentFlowStatus;
   gradeLevel: GradeLevel | null;
   selectedCategory: StreamCategory | null;
-  studentStream: string | null;
+  learnerStream: string | null;
   currentSectionIndex: number;
   currentQuestionIndex: number;
   answers: Answers;
@@ -347,10 +347,10 @@ export interface AssessmentMapping {
 }
 
 // ============================================================================
-// Student Academic Data Types
+// Learner Academic Data Types
 // ============================================================================
 
-export interface StudentInfo {
+export interface LearnerInfo {
   name: string;
   regNo: string;
   rollNumberType: 'school' | 'institute' | 'university';

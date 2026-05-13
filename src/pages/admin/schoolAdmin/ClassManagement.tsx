@@ -28,13 +28,13 @@ interface SchoolClass {
   grade: string
   section: string
   academic_year: string
-  max_students: number
-  current_students: number
+  max_learners: number
+  current_learners: number
   account_status: string
   created_at: string
   updated_at: string
   metadata: any
-  students: Student[]
+  learners: Learner[]
   avg_progress: number
   performance_band: string
   skillAreas: string[]
@@ -49,7 +49,7 @@ interface Educator {
   email: string
 }
 
-interface Student {
+interface Learner {
   id: string
   name: string
   email: string
@@ -165,19 +165,19 @@ const formatDate = (value: string) => {
 const ClassDetailsDrawer = ({
   classItem,
   onClose,
-  onManageStudents,
+  onManagelearners,
   onAssignEducator,
   onEdit
 }: {
   classItem: SchoolClass | null
   onClose: () => void
-  onManageStudents: (classItem: SchoolClass) => void
+  onManagelearners: (classItem: SchoolClass) => void
   onAssignEducator: (classItem: SchoolClass) => void
   onEdit: (classItem: SchoolClass) => void
 }) => {
   if (!classItem) return null
 
-  const topStudents = classItem.students?.slice(0, 5) || []
+  const toplearners = classItem.learners?.slice(0, 5) || []
   const progressConfig = getProgressConfig(classItem.avg_progress || 0)
 
   return (
@@ -236,15 +236,15 @@ const ClassDetailsDrawer = ({
         <div className="border-b border-gray-200 bg-gray-50 px-6 py-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="rounded-lg border border-gray-200 bg-white p-4">
-              <p className="text-xs uppercase tracking-wide text-gray-500">Students</p>
+              <p className="text-xs uppercase tracking-wide text-gray-500">Learners</p>
               <p className={`mt-2 text-2xl font-semibold ${
-                classItem.current_students > classItem.max_students ? 'text-red-600' : 'text-gray-900'
+                classItem.current_learners > classItem.max_learners ? 'text-red-600' : 'text-gray-900'
               }`}>
-                {classItem.current_students} / {classItem.max_students}
+                {classItem.current_learners} / {classItem.max_learners}
               </p>
-              {classItem.current_students > classItem.max_students && (
+              {classItem.current_learners > classItem.max_learners && (
                 <p className="mt-1 text-xs text-red-600 font-medium">
-                  Over capacity by {classItem.current_students - classItem.max_students}
+                  Over capacity by {classItem.current_learners - classItem.max_learners}
                 </p>
               )}
             </div>
@@ -276,12 +276,12 @@ const ClassDetailsDrawer = ({
                 Edit Class
               </button>
               <button
-                onClick={() => onManageStudents(classItem)}
+                onClick={() => onManagelearners(classItem)}
                 className="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
                 type="button"
               >
                 <UserGroupIcon className="mr-1.5 h-4 w-4" />
-                Manage Students
+                Manage Learners
               </button>
               <button
                 onClick={() => onAssignEducator(classItem)}
@@ -298,41 +298,41 @@ const ClassDetailsDrawer = ({
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
           <section>
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900">Student Progress</h3>
-              {classItem.students && classItem.students.length > 5 && (
-                <span className="text-xs text-gray-500">Showing top 5 of {classItem.students.length}</span>
+              <h3 className="text-sm font-semibold text-gray-900">Learner Progress</h3>
+              {classItem.learners && classItem.learners.length > 5 && (
+                <span className="text-xs text-gray-500">Showing top 5 of {classItem.learners.length}</span>
               )}
             </div>
             <div className="mt-4 space-y-3">
-              {topStudents.length === 0 && (
+              {toplearners.length === 0 && (
                 <div className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-500">
-                  No students enrolled yet.
+                  No learners enrolled yet.
                 </div>
               )}
-              {topStudents.map((student) => {
-                const studentConfig = getProgressConfig(student.progress || 0)
-                const progressValue = Math.min(100, Math.max(0, student.progress || 0))
+              {toplearners.map((learner) => {
+                const learnerConfig = getProgressConfig(learner.progress || 0)
+                const progressValue = Math.min(100, Math.max(0, learner.progress || 0))
                 return (
-                  <div key={student.id} className="rounded-lg border border-gray-200 bg-white p-4">
+                  <div key={learner.id} className="rounded-lg border border-gray-200 bg-white p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{student.name}</p>
+                        <p className="text-sm font-medium text-gray-900">{learner.name}</p>
                         <a
-                          href={`mailto:${student.email}`}
+                          href={`mailto:${learner.email}`}
                           className="text-xs text-indigo-600 hover:text-indigo-700"
                         >
-                          {student.email}
+                          {learner.email}
                         </a>
                       </div>
                       <span className="text-sm font-semibold text-gray-900">{progressValue}%</span>
                     </div>
                     <div className="mt-3 h-2 w-full rounded-full bg-gray-100">
-                      <div className={`${studentConfig.bar} h-2 rounded-full`} style={{ width: `${progressValue}%` }} />
+                      <div className={`${learnerConfig.bar} h-2 rounded-full`} style={{ width: `${progressValue}%` }} />
                     </div>
-                    {student.lastActive && (
+                    {learner.lastActive && (
                       <div className="mt-2 flex items-center text-xs text-gray-500">
                         <ClockIcon className="mr-1 h-3.5 w-3.5" />
-                        Last active {formatDate(student.lastActive)}
+                        Last active {formatDate(learner.lastActive)}
                       </div>
                     )}
                   </div>
@@ -363,7 +363,7 @@ const AddEditClassModal = ({
   const [grade, setGrade] = useState("")
   const [section, setSection] = useState("")
   const [academicYear, setAcademicYear] = useState("")
-  const [maxStudents, setMaxStudents] = useState("40")
+  const [maxlearners, setMaxlearners] = useState("40")
   const [skillInput, setSkillInput] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -374,14 +374,14 @@ const AddEditClassModal = ({
       setGrade(editingClass.grade)
       setSection(editingClass.section)
       setAcademicYear(editingClass.academic_year)
-      setMaxStudents(String(editingClass.max_students))
+      setMaxlearners(String(editingClass.max_learners))
       setSkillInput(editingClass.skillAreas?.join(", ") || "")
     } else if (!isOpen) {
       setName("")
       setGrade("")
       setSection("")
       setAcademicYear("")
-      setMaxStudents("40")
+      setMaxlearners("40")
       setSkillInput("")
       setError(null)
       setSubmitting(false)
@@ -391,7 +391,7 @@ const AddEditClassModal = ({
   if (!isOpen) return null
 
   const handleSubmit = async () => {
-    if (!name.trim() || !grade.trim() || !section.trim() || !academicYear.trim() || !maxStudents.trim()) {
+    if (!name.trim() || !grade.trim() || !section.trim() || !academicYear.trim() || !maxlearners.trim()) {
       setError("Fill in all required fields")
       return
     }
@@ -401,9 +401,9 @@ const AddEditClassModal = ({
       return
     }
 
-    const maxStudentsNum = parseInt(maxStudents)
-    if (isNaN(maxStudentsNum) || maxStudentsNum <= 0) {
-      setError("Max students must be a positive number")
+    const maxlearnersNum = parseInt(maxlearners)
+    if (isNaN(maxlearnersNum) || maxlearnersNum <= 0) {
+      setError("Max learners must be a positive number")
       return
     }
 
@@ -424,7 +424,7 @@ const AddEditClassModal = ({
             grade: grade.trim(),
             section: section.trim(),
             academic_year: academicYear.trim(),
-            max_students: maxStudentsNum,
+            max_learners: maxlearnersNum,
             updated_at: new Date().toISOString(),
             metadata: {
               ...editingClass.metadata,
@@ -445,8 +445,8 @@ const AddEditClassModal = ({
               grade: grade.trim(),
               section: section.trim(),
               academic_year: academicYear.trim(),
-              max_students: maxStudentsNum,
-              current_students: 0,
+              max_learners: maxlearnersNum,
+              current_learners: 0,
               account_status: "active",
               metadata: {
                 skillAreas: skills
@@ -537,10 +537,10 @@ const AddEditClassModal = ({
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Max Students *</label>
+                <label className="mb-1 block text-xs font-medium text-gray-700">Max Learners *</label>
                 <input
-                  value={maxStudents}
-                  onChange={(e) => setMaxStudents(e.target.value)}
+                  value={maxlearners}
+                  onChange={(e) => setMaxlearners(e.target.value)}
                   type="number"
                   min="1"
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -593,7 +593,7 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
       </div>
       <h2 className="mt-4 text-lg font-semibold text-gray-900">No Class Present</h2>
       <p className="mt-2 text-sm text-gray-500 max-w-sm">
-        You haven't created any classes yet. Create your first class to start managing students and educators.
+        You haven't created any classes yet. Create your first class to start managing learners and educators.
       </p>
       <div className="mt-6">
         <button
@@ -611,13 +611,13 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
 const ClassManagement = () => {
   const [classes, setClasses] = useState<SchoolClass[]>([])
   const [educators, setEducators] = useState<Educator[]>([])
-  const [students, setStudents] = useState<Student[]>([])
+  const [learners, setlearners] = useState<Learner[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedClass, setSelectedClass] = useState<SchoolClass | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
-  const [showStudentsModal, setShowStudentsModal] = useState(false)
+  const [showlearnersModal, setShowlearnersModal] = useState(false)
   const [showAssignEducatorModal, setShowAssignEducatorModal] = useState(false)
   const [showDetailsDrawer, setShowDetailsDrawer] = useState(false)
   const [schoolId, setSchoolId] = useState<string | null>(null)
@@ -641,7 +641,7 @@ const ClassManagement = () => {
     if (schoolId) {
       fetchClasses()
       fetchEducators()
-      fetchStudents()
+      fetchlearners()
     }
   }, [schoolId])
 
@@ -747,29 +747,29 @@ const ClassManagement = () => {
       
       logger.info("Fetched classes", { count: data?.length || 0 })
       
-      // Enrich classes with student data and metadata
+      // Enrich classes with learner data and metadata
       const enrichedClasses = await Promise.all((data || []).map(async (cls) => {
-        const { data: classStudents } = await supabase
-          .from("students")
+        const { data: classlearners } = await supabase
+          .from("learners")
           .select("id, name, email, updated_at")
           .eq("school_class_id", cls.id)
           .eq("is_deleted", false)
 
-        const studentCount = classStudents?.length || 0
+        const learnerCount = classlearners?.length || 0
         const metadata = cls.metadata || {}
         
-        // Update current_students count in database if it doesn't match
-        if (cls.current_students !== studentCount) {
+        // Update current_learners count in database if it doesn't match
+        if (cls.current_learners !== learnerCount) {
           await supabase
             .from("school_classes")
-            .update({ current_students: studentCount })
+            .update({ current_learners: learnerCount })
             .eq("id", cls.id)
         }
         
         return {
           ...cls,
-          current_students: studentCount, // Use actual count
-          students: classStudents || [],
+          current_learners: learnerCount, // Use actual count
+          learners: classlearners || [],
           avg_progress: 0,
           performance_band: "N/A",
           skillAreas: metadata.skillAreas || [],
@@ -812,28 +812,28 @@ const ClassManagement = () => {
     }
   }
 
-  const fetchStudents = async () => {
+  const fetchlearners = async () => {
     if (!schoolId) {
-      logger.warn("No school ID available for fetching students")
+      logger.warn("No school ID available for fetching learners")
       return
     }
 
     try {
       const { data, error } = await supabase
-        .from("students")
+        .from("learners")
         .select("id, name, email, school_class_id")
         .eq("school_id", schoolId)
         .eq("is_deleted", false)
 
       if (error) {
-        logger.error("Error fetching students", error)
+        logger.error("Error fetching learners", error)
         throw error
       }
       
-      logger.info("Fetched students", { count: data?.length || 0 })
-      setStudents(data || [])
+      logger.info("Fetched learners", { count: data?.length || 0 })
+      setlearners(data || [])
     } catch (error: any) {
-      logger.error("Failed to fetch students", error)
+      logger.error("Failed to fetch learners", error)
     }
   }
 
@@ -969,7 +969,7 @@ const ClassManagement = () => {
     <div className="flex overflow-y-auto mb-4 flex-col h-screen">
       <div className='p-4 sm:p-6 lg:p-8 mb-2'>
         <h1 className="text-xl md:text-3xl font-bold text-gray-900">Class Management</h1>
-        <p className="text-base md:text-lg mt-2 text-gray-600">Manage classes, assign educators, and organize students</p>
+        <p className="text-base md:text-lg mt-2 text-gray-600">Manage classes, assign educators, and organize learners</p>
       </div>
 
       <div className="px-4 sm:px-6 lg:px-8 hidden lg:flex items-center p-4 bg-white border-b border-gray-200">
@@ -1193,34 +1193,34 @@ const ClassManagement = () => {
 
                     <div className="mb-4 space-y-3">
                       <div className="flex items-center justify-between text-sm text-gray-600">
-                        <span>Enrolled Students</span>
+                        <span>Enrolled Learners</span>
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
-                          classItem.current_students > classItem.max_students
+                          classItem.current_learners > classItem.max_learners
                             ? 'bg-red-100 text-red-700'
-                            : classItem.current_students === classItem.max_students
+                            : classItem.current_learners === classItem.max_learners
                               ? 'bg-yellow-100 text-yellow-700'
                               : 'bg-gray-100 text-gray-700'
                         }`}>
-                          {classItem.current_students} / {classItem.max_students}
+                          {classItem.current_learners} / {classItem.max_learners}
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
                           className={`h-2 rounded-full transition-all ${
-                            classItem.current_students > classItem.max_students
+                            classItem.current_learners > classItem.max_learners
                               ? 'bg-red-500'
-                              : classItem.current_students === classItem.max_students
+                              : classItem.current_learners === classItem.max_learners
                                 ? 'bg-yellow-500'
                                 : 'bg-indigo-600'
                           }`}
                           style={{
-                            width: `${Math.min(100, (classItem.current_students / classItem.max_students) * 100)}%`
+                            width: `${Math.min(100, (classItem.current_learners / classItem.max_learners) * 100)}%`
                           }}
                         />
                       </div>
-                      {classItem.current_students > classItem.max_students && (
+                      {classItem.current_learners > classItem.max_learners && (
                         <div className="text-xs text-red-600 font-medium">
-                          ⚠️ Over capacity by {classItem.current_students - classItem.max_students} student{classItem.current_students - classItem.max_students === 1 ? '' : 's'}
+                          ⚠️ Over capacity by {classItem.current_learners - classItem.max_learners} learner{classItem.current_learners - classItem.max_learners === 1 ? '' : 's'}
                         </div>
                       )}
                       {classItem.educator && classItem.educator !== "TBD" && (
@@ -1255,13 +1255,13 @@ const ClassManagement = () => {
                         <button
                           onClick={() => {
                             setSelectedClass(classItem)
-                            setShowStudentsModal(true)
+                            setShowlearnersModal(true)
                           }}
                           className="inline-flex items-center px-3 py-1.5 border border-indigo-200 rounded text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100"
                           type="button"
                         >
                           <UserGroupIcon className="h-4 w-4 mr-1" />
-                          Students
+                          Learners
                         </button>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1290,7 +1290,7 @@ const ClassManagement = () => {
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Students</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Learners</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
@@ -1305,10 +1305,10 @@ const ClassManagement = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{classItem.grade}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <div className="flex items-center space-x-2">
-                            <span className={classItem.current_students > classItem.max_students ? 'text-red-600 font-medium' : ''}>
-                              {classItem.current_students} / {classItem.max_students}
+                            <span className={classItem.current_learners > classItem.max_learners ? 'text-red-600 font-medium' : ''}>
+                              {classItem.current_learners} / {classItem.max_learners}
                             </span>
-                            {classItem.current_students > classItem.max_students && (
+                            {classItem.current_learners > classItem.max_learners && (
                               <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
                                 Over
                               </span>
@@ -1333,12 +1333,12 @@ const ClassManagement = () => {
                             <button 
                               onClick={() => {
                                 setSelectedClass(classItem)
-                                setShowStudentsModal(true)
+                                setShowlearnersModal(true)
                               }} 
                               className="text-indigo-600 hover:text-indigo-900" 
                               type="button"
                             >
-                              Students
+                              Learners
                             </button>
                             <button 
                               onClick={() => {
@@ -1404,17 +1404,17 @@ const ClassManagement = () => {
         schoolId={schoolId}
       />
 
-      {showStudentsModal && selectedClass && (
-        <ManageStudentsModalComponent
+      {showlearnersModal && selectedClass && (
+        <ManagelearnersModalComponent
           classItem={selectedClass}
-          students={students}
+          learners={learners}
           onClose={() => {
-            setShowStudentsModal(false)
+            setShowlearnersModal(false)
             setSelectedClass(null)
           }}
           onUpdate={() => {
             fetchClasses()
-            fetchStudents()
+            fetchlearners()
           }}
         />
       )}
@@ -1445,9 +1445,9 @@ const ClassManagement = () => {
             setShowEditModal(true)
             setShowDetailsDrawer(false)
           }}
-          onManageStudents={(item) => {
+          onManagelearners={(item) => {
             setSelectedClass(item)
-            setShowStudentsModal(true)
+            setShowlearnersModal(true)
             setShowDetailsDrawer(false)
           }}
           onAssignEducator={(item) => {
@@ -1462,7 +1462,7 @@ const ClassManagement = () => {
 }
 
 // Import modal components
-import { AssignEducatorModal as AssignEducatorModalComponent, ManageStudentsModal as ManageStudentsModalComponent } from '@/features/college-admin'
+import { AssignEducatorModal as AssignEducatorModalComponent, ManageLearnersModal as ManagelearnersModalComponent } from '@/features/college-admin'
 import { Pagination } from '@/shared/ui'
 import { authSessionService } from '@/features/auth';
 

@@ -1,6 +1,6 @@
 import React from "react";
 import { Coffee, Sun, Plus, Users, MapPin, UserCheck } from "lucide-react";
-import { Faculty, CollegeClass, ScheduleSlot, Break, TimePeriod, Substitution } from '@/features/student-profile/model';
+import { Faculty, CollegeClass, ScheduleSlot, Break, TimePeriod, Substitution } from '@/features/learner-profile/model';
 import { DAYS, BREAK_BG_COLORS, BREAK_TEXT_COLORS, BREAK_ICON_COLORS } from "../constants";
 import {
   formatDate,

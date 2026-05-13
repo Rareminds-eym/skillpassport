@@ -638,7 +638,7 @@ const Interviews = () => {
     try {
       setCandidatesLoading(true);
       const { data, error } = await supabase
-        .from('students')
+        .from('learners')
         .select('*');
 
       if (error) throw error;

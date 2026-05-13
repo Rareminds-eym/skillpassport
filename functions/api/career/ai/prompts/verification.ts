@@ -21,7 +21,7 @@ export function buildSelfVerificationChecklist(
 
 **Data Accuracy:**
 □ All job titles exist in <available_opportunities> (if mentioning jobs)
-□ All skills attributed to student are in <skills><technical> ONLY
+□ All skills attributed to learner are in <skills><technical> ONLY
 □ No skills assumed from hobbies, interests, or project descriptions
 □ Company names are from database or marked as "Not specified"
 
@@ -30,7 +30,7 @@ export function buildSelfVerificationChecklist(
 □ Includes at least one actionable next step
 □ Ends with follow-up question or offer to explore further
 □ Tone is friendly but professional
-□ Used student's name naturally (1-2 times)
+□ Used learner's name naturally (1-2 times)
 □ Included 2-3 contextual emojis
 
 **Anti-Hallucination:**
@@ -74,14 +74,14 @@ function getIntentSpecificChecks(intent: CareerIntent): string {
 
     'skill-gap': `
 **Intent-Specific Checks (skill-gap):**
-□ Current skills listed are ONLY from <student_skills>
+□ Current skills listed are ONLY from <learner_skills>
 □ Gaps are prioritized (High/Medium/Low)
 □ Course recommendations are from <courses> only
 □ Timeline estimates are realistic`,
 
     'interview-prep': `
 **Intent-Specific Checks (interview-prep):**
-□ Technical questions match student's actual skills
+□ Technical questions match learner's actual skills
 □ STAR examples reference their real projects/experience
 □ Questions are relevant to their field
 □ Mock interview offer included`,

@@ -53,9 +53,7 @@ export const getUserInitials = (user: User | null | undefined): string => {
 
 export const mapRoleToWorkerAPI = (role: UserRole): string => {
   const roleMapping: Record<string, string> = {
-    'student': 'school_student',
-    'school_student': 'school_student',
-    'college_student': 'college_student',
+    'learner': 'learner',
     'educator': 'school_educator',
     'school_educator': 'school_educator',
     'college_educator': 'college_educator',
@@ -66,16 +64,14 @@ export const mapRoleToWorkerAPI = (role: UserRole): string => {
     'university_admin': 'university_admin',
   };
 
-  return roleMapping[role] || 'school_student';
+  return roleMapping[role] || 'learner';
 };
 
 export const getRoleDisplayName = (role: UserRole | string | null | undefined): string => {
   if (!role) return 'User';
   
   const displayNames: Record<string, string> = {
-    'student': 'Student',
-    'school_student': 'School Student',
-    'college_student': 'College Student',
+    'learner': 'Learner',
     'educator': 'Educator',
     'school_educator': 'School Educator',
     'college_educator': 'College Educator',
@@ -90,7 +86,6 @@ export const getRoleDisplayName = (role: UserRole | string | null | undefined): 
     'it_admin': 'IT Admin',
     'class_teacher': 'Class Teacher',
     'subject_teacher': 'Subject Teacher',
-    'learner': 'Learner',
   };
   
   return displayNames[role] || role;

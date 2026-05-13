@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getStudentClassInfo } from '@/features/myclass';
+import { getlearnerClassInfo } from '@/features/myclass';
 import { SchoolClassInfo } from '@/features/myclass';
 
 interface UseClassInfoReturn {
@@ -12,7 +12,7 @@ interface UseClassInfoReturn {
  * Hook to fetch basic class information
  * Always loaded - needed for header display
  */
-export const useClassInfo = (studentId: string | undefined, authLoading: boolean): UseClassInfoReturn => {
+export const useClassInfo = (learnerId: string | undefined, authLoading: boolean): UseClassInfoReturn => {
   const [classInfo, setClassInfo] = useState<SchoolClassInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -20,7 +20,7 @@ export const useClassInfo = (studentId: string | undefined, authLoading: boolean
   useEffect(() => {
     const fetchData = async () => {
       if (authLoading) return;
-      if (!studentId) {
+      if (!learnerId) {
         setLoading(false);
         return;
       }
@@ -28,7 +28,7 @@ export const useClassInfo = (studentId: string | undefined, authLoading: boolean
       try {
         setLoading(true);
         setError(null);
-        const classData = await getStudentClassInfo(studentId);
+        const classData = await getlearnerClassInfo(learnerId);
         setClassInfo(classData);
       } catch (err) {
         setError(err as Error);
@@ -38,7 +38,7 @@ export const useClassInfo = (studentId: string | undefined, authLoading: boolean
     };
 
     fetchData();
-  }, [studentId, authLoading]);
+  }, [learnerId, authLoading]);
 
   return { classInfo, loading, error };
 };

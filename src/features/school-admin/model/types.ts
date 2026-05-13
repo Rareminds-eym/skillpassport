@@ -1,9 +1,9 @@
-// Student Management Types
+// Learner Management Types
 
 export interface AdmissionApplication {
   id: string;
   applicationNumber: string;
-  studentName: string;
+  learnerName: string;
   dateOfBirth: string;
   gender: 'male' | 'female' | 'other';
   aadharNumber?: string;
@@ -61,7 +61,7 @@ export interface AdmissionApplication {
   remarks?: string;
 }
 
-export interface StudentProfile {
+export interface LearnerProfile {
   id: string;
   enrollmentNumber: string;
   name: string;
@@ -155,7 +155,7 @@ export interface StudentProfile {
 
 export interface AttendanceRecord {
   id: string;
-  studentId: string;
+  learnerId: string;
   schoolId: string;
   date: string;
   status: 'present' | 'absent' | 'late' | 'excused';
@@ -169,8 +169,8 @@ export interface AttendanceRecord {
 
 export interface AttendanceAlert {
   id: string;
-  studentId: string;
-  studentName: string;
+  learnerId: string;
+  learnerName: string;
   alertType: 'consecutive_absent' | 'below_75' | 'irregular';
   message: string;
   daysAbsent?: number;
@@ -183,9 +183,9 @@ export interface AttendanceAlert {
 // Report Data Types
 export type ReportData = Record<string, unknown>;
 
-export interface StudentReport {
+export interface LearnerReport {
   id: string;
-  studentId: string;
+  learnerId: string;
   schoolId: string;
   reportType: 'attendance' | 'academic' | 'behavioral' | 'skill_assessment' | 'career_readiness';
   title: string;
@@ -247,7 +247,7 @@ export interface NotificationData {
   type: 'info' | 'warning' | 'error' | 'success';
   read: boolean;
   created_at: string;
-  student_id?: string;
+  learner_id?: string;
   metadata?: NotificationMetadata;
 }
 

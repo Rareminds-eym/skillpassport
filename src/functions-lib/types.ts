@@ -1,3 +1,4 @@
+/// <reference types="@cloudflare/workers-types" />
 /**
  * Shared TypeScript types for Cloudflare Pages Functions
  */
@@ -6,22 +7,45 @@
  * Standard environment variables available to all Pages Functions
  */
 export interface PagesEnv {
+  // SSO / Auth configuration
+  SSO_DOMAIN?: string;
+  VITE_SSO_URL?: string;
+  /** Cloudflare Service Binding to the SSO worker (sso-api) */
+  SSO_SERVICE?: Fetcher;
+
   // Supabase configuration
   SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
   VITE_SUPABASE_URL: string;
   VITE_SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
+  SUPABASE_JWT_SECRET?: string;
+
+  // Payment Worker configuration
+  VITE_PAYMENTS_API_URL?: string;
+  RAZORPAY_SERVICE_SECRET?: string;
+  RAZORPAY_KEY_ID?: string;
+
+  // Embedding Worker configuration
+  EMBEDDING_API_URL?: string;
+  EMBEDDING_API_KEY?: string;
+
+  // Email Worker configuration
+  EMAIL_WORKER_URL?: string;
+  INTERNAL_API_KEY?: string;
+  ADMIN_EMAIL?: string;
+
+  // App configuration
+  APP_URL?: string;
+
+  // Storage / Media configuration
+  SIGNING_SECRET?: string;
 
   // AI API keys
   CLAUDE_API_KEY?: string;
   VITE_CLAUDE_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
-
-  // Other service keys
-  RAZORPAY_KEY_ID?: string;
-  RAZORPAY_KEY_SECRET?: string;
-  RESEND_API_KEY?: string;
+  GEMINI_API_KEY?: string;
 
   // AWS credentials (for SNS, S3, etc.)
   AWS_ACCESS_KEY_ID?: string;

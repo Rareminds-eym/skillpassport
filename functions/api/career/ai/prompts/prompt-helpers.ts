@@ -1,7 +1,7 @@
 // Prompt Helper Functions
 
 import type { 
-  StudentProfile, 
+  LearnerProfile, 
   AssessmentResults, 
   CareerProgress, 
   Opportunity, 
@@ -42,26 +42,26 @@ export function getPhaseRules(phase: ConversationPhase): string {
   return rules[phase];
 }
 
-export function buildStudentContextXML(profile: StudentProfile): string {
-  // Determine if this is a school student (Grades 1-12)
-  const isSchoolStudent = profile.grade && profile.grade.toLowerCase().includes('grade');
+export function buildlearnerContextXML(profile: LearnerProfile): string {
+  // Determine if this is a school learner (Grades 1-12)
+  const isSchoolLearner = profile.grade && profile.grade.toLowerCase().includes('grade');
   const gradeNumber = (profile as any).gradeNumber;
   
-  // For school students in Grades 1-12, contextualize skills appropriately
+  // For school learners in Grades 1-12, contextualize skills appropriately
   let skillsNote = '';
-  if (isSchoolStudent && gradeNumber && gradeNumber <= 12) {
+  if (isSchoolLearner && gradeNumber && gradeNumber <= 12) {
     if (profile.technicalSkills.length > 0 || profile.softSkills.length > 0) {
       skillsNote = `
 <skills_context>
-⚠️ IMPORTANT: This is a ${profile.grade} student (age ~${gradeNumber + 5} years).
+⚠️ IMPORTANT: This is a ${profile.grade} learner (age ~${gradeNumber + 5} years).
 The skills listed below may be test/placeholder data and should NOT be emphasized in career guidance.
-For school students, focus on:
+For school learners, focus on:
 - Academic interests and subject preferences
 - Career domain exploration (not specific technical skills)
 - Stream selection guidance (Science/Commerce/Arts)
 - Age-appropriate skill development suggestions
 
-DO NOT say things like "I see you have skills in react/Programming" to a Grade 10 student.
+DO NOT say things like "I see you have skills in react/Programming" to a Grade 10 learner.
 Instead, ask about their favorite subjects, interests, and what they enjoy learning.
 </skills_context>`;
     }
@@ -76,7 +76,7 @@ Instead, ask about their favorite subjects, interests, and what they enjoy learn
     : 'None listed';
 
   return `
-<student_profile>
+<learner_profile>
 <name>${profile.name}</name>
 <field>${profile.department || 'Not specified'}</field>
 <university>${profile.university || 'Not specified'}</university>
@@ -84,10 +84,10 @@ Instead, ask about their favorite subjects, interests, and what they enjoy learn
 <year>${profile.yearOfPassing || 'Not specified'}</year>
 ${skillsNote}
 
-<student_skills>
+<learner_skills>
 <technical>${techSkills}</technical>
 <soft>${softSkills}</soft>
-</student_skills>
+</learner_skills>
 
 <education>
 ${profile.education.length > 0 ? profile.education.slice(0, 2).map((e: any) => 
@@ -109,14 +109,14 @@ ${profile.experience.slice(0, 2).map((e: any) => `- ${e.role} at ${e.organizatio
 ${profile.projects.length > 0 ? `<recent_projects>
 ${profile.projects.slice(0, 2).map((p: any) => `- ${p.title}: ${(p.tech_stack || []).slice(0, 3).join(', ')}`).join('\n')}
 </recent_projects>` : ''}
-</student_profile>`;
+</learner_profile>`;
 }
 
 export function buildAssessmentXML(assessment: AssessmentResults): string {
   if (!assessment.hasAssessment) {
     return `
 <assessment status="not_completed">
-<note>Student hasn't completed career assessment yet</note>
+<note>Learner hasn't completed career assessment yet</note>
 <suggestion>Encourage them to take the assessment for personalized guidance</suggestion>
 </assessment>`;
   }
@@ -239,14 +239,14 @@ EXAMPLE OF FORBIDDEN RESPONSE:
 </opportunities>`;
 }
 
-export function buildIntentGuidance(intent: string, ctx: { profile: StudentProfile }): string {
-  const studentName = ctx.profile.name.split(' ')[0];
+export function buildIntentGuidance(intent: string, ctx: { profile: LearnerProfile }): string {
+  const learnerName = ctx.profile.name.split(' ')[0];
   
   const guidance: Record<string, string> = {
     'find-jobs': `
 <task>JOB_MATCHING</task>
 <instructions>
-1. Match ${studentName}'s skills against <opportunities>
+1. Match ${learnerName}'s skills against <opportunities>
 2. Calculate honest match scores based on skill overlap
 3. Highlight matching skills AND skill gaps
 4. Recommend top 3-5 jobs with specific reasons
@@ -256,7 +256,7 @@ export function buildIntentGuidance(intent: string, ctx: { profile: StudentProfi
     'skill-gap': `
 <task>SKILL_GAP_ANALYSIS</task>
 <instructions>
-1. List ${studentName}'s current skills from <student_skills>
+1. List ${learnerName}'s current skills from <learner_skills>
 2. Compare against market requirements for their field
 3. Identify critical gaps with priority levels
 4. Suggest specific courses from <courses> to fill gaps
@@ -266,7 +266,7 @@ export function buildIntentGuidance(intent: string, ctx: { profile: StudentProfi
     'interview-prep': `
 <task>INTERVIEW_PREPARATION</task>
 <instructions>
-1. Tailor prep to ${studentName}'s field: ${ctx.profile.department}
+1. Tailor prep to ${learnerName}'s field: ${ctx.profile.department}
 2. Include technical questions for their skills
 3. Provide behavioral questions with STAR framework
 4. Reference their projects for example answers
@@ -276,7 +276,7 @@ export function buildIntentGuidance(intent: string, ctx: { profile: StudentProfi
     'learning-path': `
 <task>LEARNING_ROADMAP</task>
 <instructions>
-1. Assess current level from <student_skills>
+1. Assess current level from <learner_skills>
 2. Define target skill/role based on user's request
 3. Create phased roadmap (foundation → advanced)
 4. For courses: ONLY recommend from <courses> IF relevant
@@ -286,7 +286,7 @@ export function buildIntentGuidance(intent: string, ctx: { profile: StudentProfi
     'career-guidance': `
 <task>CAREER_GUIDANCE</task>
 <instructions>
-1. Analyze ${studentName}'s profile holistically
+1. Analyze ${learnerName}'s profile holistically
 2. Consider assessment results if available
 3. Present 2-3 career path options
 4. Explain growth trajectory for each
@@ -296,7 +296,7 @@ export function buildIntentGuidance(intent: string, ctx: { profile: StudentProfi
     'general': `
 <task>GENERAL_ASSISTANCE</task>
 <instructions>
-1. Respond helpfully to ${studentName}'s query
+1. Respond helpfully to ${learnerName}'s query
 2. Offer relevant career assistance options
 3. If greeting, welcome warmly and offer help
 4. Keep response concise and friendly

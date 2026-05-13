@@ -111,7 +111,7 @@ const LibraryManagement = () => {
     // Create a modal or detailed view for the transaction
     alert(`Transaction Details:
     
-Student: ${issue.student_name} (${issue.roll_number})
+Learner: ${issue.learner_name} (${issue.roll_number})
 Book: ${issue.book?.title} by ${issue.book?.author}
 Issue Date: ${issue.issue_date}
 Due Date: ${issue.due_date}
@@ -192,7 +192,7 @@ ${issue.fine_amount ? `Fine Amount: ₹${issue.fine_amount}` : ''}`);
                     }`} />
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">{issue.student_name}</p>
+                    <p className="font-medium text-gray-900">{issue.learner_name}</p>
                     <p className="text-sm text-gray-600">{issue.book?.title}</p>
                   </div>
                 </div>
@@ -225,7 +225,7 @@ ${issue.fine_amount ? `Fine Amount: ₹${issue.fine_amount}` : ''}`);
                     <AlertTriangle className="h-4 w-4 text-red-600" />
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">{overdue.student_name}</p>
+                    <p className="font-medium text-gray-900">{overdue.learner_name}</p>
                     <p className="text-sm text-gray-600">{overdue.title}</p>
                   </div>
                 </div>
@@ -383,7 +383,7 @@ ${issue.fine_amount ? `Fine Amount: ₹${issue.fine_amount}` : ''}`);
       <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
         <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
         <p className="text-gray-500 mb-2">Member management interface</p>
-        <p className="text-sm text-gray-400">Features: Student registration, Faculty access, Membership types, Access levels</p>
+        <p className="text-sm text-gray-400">Features: Learner registration, Faculty access, Membership types, Access levels</p>
       </div>
     </div>
   );
@@ -424,7 +424,7 @@ ${issue.fine_amount ? `Fine Amount: ₹${issue.fine_amount}` : ''}`);
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-                <th className="text-left p-4 font-semibold text-gray-700 text-sm">Student</th>
+                <th className="text-left p-4 font-semibold text-gray-700 text-sm">Learner</th>
                 <th className="text-left p-4 font-semibold text-gray-700 text-sm">Book</th>
                 <th className="text-center p-4 font-semibold text-gray-700 text-sm">Issue Date</th>
                 <th className="text-center p-4 font-semibold text-gray-700 text-sm">Due Date</th>
@@ -437,7 +437,7 @@ ${issue.fine_amount ? `Fine Amount: ₹${issue.fine_amount}` : ''}`);
                 <tr key={issue.id} className="border-b border-gray-100 hover:bg-purple-50/30 transition-colors">
                   <td className="p-4">
                     <div>
-                      <p className="font-medium text-gray-900">{issue.student_name}</p>
+                      <p className="font-medium text-gray-900">{issue.learner_name}</p>
                       <p className="text-sm text-gray-500">{issue.roll_number}</p>
                     </div>
                   </td>

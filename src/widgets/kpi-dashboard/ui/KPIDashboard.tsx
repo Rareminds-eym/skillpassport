@@ -36,7 +36,7 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
       setError(null)
       setLoading(true)
       
-      let totalStudents = 0
+      let totallearners = 0
       let attendancePercentage = 0
       let examsScheduled = 0
       let pendingAssessments = 0
@@ -46,20 +46,20 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
       let avgCareerReadiness = 0
       let libraryOverdue = 0
       
-      // Fetch Total Students
+      // Fetch Total Learners
       try {
         if (schoolId) {
-          const { count, error: studentsError } = await supabase
-            .from('students')
+          const { count, error: learnersError } = await supabase
+            .from('learners')
             .select('*', { count: 'exact', head: true })
             .eq('school_id', schoolId)
           
-          if (!studentsError) {
-            totalStudents = count || 0
+          if (!learnersError) {
+            totallearners = count || 0
           }
         }
       } catch (err) {
-        logger.warn('Failed to fetch students', { error: err });
+        logger.warn('Failed to fetch learners', { error: err });
       }
 
       // Fetch Attendance Today
@@ -200,7 +200,7 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
       }
 
       setKpiData({
-        totalStudents,
+        totallearners,
         attendanceToday: attendancePercentage,
         examsScheduled,
         pendingAssessments,
@@ -256,8 +256,8 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <KPICard
-        title="Total Students"
-        value={kpiData?.totalStudents || 0}
+        title="Total Learners"
+        value={kpiData?.totallearners || 0}
         icon={<UsersIcon className="h-6 w-6" />}
         color="blue"
         loading={loading}

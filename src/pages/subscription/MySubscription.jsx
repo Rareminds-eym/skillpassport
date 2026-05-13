@@ -24,9 +24,9 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { SubscriptionDashboard } from '@/features/subscription';
-import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
+import { useSubscriptionPlansData } from '@/features/subscription/model';
+import { useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
 
-import { supabase } from '@/shared/api/supabaseClient';
 import { getUserSubscriptions } from '@/features/subscription/api';
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '@/features/subscription';
 import { calculateDaysRemaining, calculateProgressPercentage, formatDate, getSubscriptionStatusChecks } from '@/features/subscription';
@@ -38,42 +38,42 @@ import { useUser } from '@/shared/model/authStore';
  * Get the settings path based on current URL path (more reliable than role)
  */
 function getSettingsPathFromUrl(pathname) {
-  if (pathname.startsWith('/student')) return '/student/settings';
+  if (pathname.startsWith('/learner')) return '/learner/settings';
   if (pathname.startsWith('/recruitment')) return '/recruitment/settings';
   if (pathname.startsWith('/educator')) return '/educator/settings';
   if (pathname.startsWith('/college-admin')) return '/college-admin/settings';
   if (pathname.startsWith('/school-admin')) return '/school-admin/settings';
   if (pathname.startsWith('/university-admin')) return '/university-admin/settings';
   if (pathname.startsWith('/admin')) return '/admin/settings';
-  return '/student/settings'; // fallback
+  return '/learner/settings'; // fallback
 }
 
 /**
  * Get the dashboard path based on current URL path
  */
 function getDashboardPathFromUrl(pathname) {
-  if (pathname.startsWith('/student')) return '/student/dashboard';
+  if (pathname.startsWith('/learner')) return '/learner/dashboard';
   if (pathname.startsWith('/recruitment')) return '/recruitment/overview';
   if (pathname.startsWith('/educator')) return '/educator/dashboard';
   if (pathname.startsWith('/college-admin')) return '/college-admin/dashboard';
   if (pathname.startsWith('/school-admin')) return '/school-admin/dashboard';
   if (pathname.startsWith('/university-admin')) return '/university-admin/dashboard';
   if (pathname.startsWith('/admin')) return '/admin/dashboard';
-  return '/student/dashboard'; // fallback
+  return '/learner/dashboard'; // fallback
 }
 
 /**
  * Get the user type for subscription plans based on current URL path (more reliable than role)
  */
 function getUserTypeFromUrl(pathname) {
-  if (pathname.startsWith('/student')) return 'student';
+  if (pathname.startsWith('/learner')) return 'learner';
   if (pathname.startsWith('/recruitment')) return 'recruiter';
   if (pathname.startsWith('/educator')) return 'educator';
   if (pathname.startsWith('/college-admin')) return 'college_admin';
   if (pathname.startsWith('/school-admin')) return 'school_admin';
   if (pathname.startsWith('/university-admin')) return 'university_admin';
   if (pathname.startsWith('/admin')) return 'admin';
-  return 'student'; // fallback
+  return 'learner'; // fallback
 }
 
 // Removed FALLBACK_PLANS as per requirement to use DB data only
@@ -787,20 +787,29 @@ function MySubscription() {
 
                     {/* Features List with smooth CSS transitions */}
                     <ul className="space-y-3">
-                      {displayFeatures.map((feature, index) => (
-                        <li
-                          key={`feature-${feature.slice(0, 20)}-${index}`}
-                          className="flex items-start gap-3 opacity-100 transform translate-y-0 transition-all duration-300 ease-out group"
-                          style={{
-                            transitionDelay: `${index * 30}ms`
-                          }}
-                        >
-                          <div className="w-5 h-5 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-lg group-hover:scale-110 transition-transform">
-                            <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                          </div>
-                          <span className="text-sm text-slate-700 font-medium leading-relaxed">{feature}</span>
-                        </li>
-                      ))}
+                      {displayFeatures.map((feature, index) => {
+                        // Features may be strings or objects with {name, feature_key}
+                        const featureName = typeof feature === 'string'
+                          ? feature
+                          : (feature?.name || feature?.feature_key || '');
+                        const featureKeyStr = typeof feature === 'string'
+                          ? feature.slice(0, 20)
+                          : (feature?.feature_key || feature?.name || String(index));
+                        return (
+                          <li
+                            key={`feature-${featureKeyStr}-${index}`}
+                            className="flex items-start gap-3 opacity-100 transform translate-y-0 transition-all duration-300 ease-out group"
+                            style={{
+                              transitionDelay: `${index * 30}ms`
+                            }}
+                          >
+                            <div className="w-5 h-5 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-lg group-hover:scale-110 transition-transform">
+                              <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                            </div>
+                            <span className="text-sm text-slate-700 font-medium leading-relaxed">{featureName}</span>
+                          </li>
+                        );
+                      })}
                     </ul>
 
                     {/* Show More/Less Toggle */}

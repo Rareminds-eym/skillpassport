@@ -20,7 +20,7 @@ const logger = getLogger('TalentPool');
 import { SearchBar } from '@/shared/ui';
 import { FeatureGate } from '@/features/subscription';
 
-import { useStudents } from '@/entities/student';
+import { useLearners } from '@/entities/learner';
 import { createInterview } from '@/features/opportunities';
 import { createSavedSearch } from '@/features/opportunities';
 import { addCandidateToShortlist, getShortlists } from '@/features/opportunities';
@@ -245,7 +245,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
 
       const interviewData = {
         id: `int_${Date.now()}`,
-        student_id: candidate.id,
+        learner_id: candidate.id,
         candidate_name: candidate.name,
         candidate_email: candidate.email,
         candidate_phone: candidate.phone,
@@ -826,14 +826,14 @@ type RecruiterOutletContext = {
 //     maxScore: 100
 //   });
 
-//   const { students, loading, error } = useStudents();
+//   const { learners, loading, error } = useLearners();
 
 //   // Dynamically generate filter options from actual data
 //   const skillOptions = useMemo(() => {
 //     const skillCounts = {};
-//     students.forEach(student => {
-//       if (student.skills && Array.isArray(student.skills)) {
-//         student.skills.forEach(skill => {
+//     learners.forEach(learner => {
+//       if (learner.skills && Array.isArray(learner.skills)) {
+//         learner.skills.forEach(skill => {
 //           const normalizedSkill = skill.toLowerCase();
 //           skillCounts[normalizedSkill] = (skillCounts[normalizedSkill] || 0) + 1;
 //         });
@@ -847,13 +847,13 @@ type RecruiterOutletContext = {
 //       }))
 //       .sort((a, b) => b.count - a.count)
 //       .slice(0, 20); // Show top 20 skills
-//   }, [students]);
+//   }, [learners]);
 
 //   const courseOptions = useMemo(() => {
 //     const courseCounts = {};
-//     students.forEach(student => {
-//       if (student.dept) {
-//         const normalizedCourse = student.dept.toLowerCase();
+//     learners.forEach(learner => {
+//       if (learner.dept) {
+//         const normalizedCourse = learner.dept.toLowerCase();
 //         courseCounts[normalizedCourse] = (courseCounts[normalizedCourse] || 0) + 1;
 //       }
 //     });
@@ -864,13 +864,13 @@ type RecruiterOutletContext = {
 //         count
 //       }))
 //       .sort((a, b) => b.count - a.count);
-//   }, [students]);
+//   }, [learners]);
 
 //   const badgeOptions = useMemo(() => {
 //     const badgeCounts = {};
-//     students.forEach(student => {
-//       if (student.badges && Array.isArray(student.badges)) {
-//         student.badges.forEach(badge => {
+//     learners.forEach(learner => {
+//       if (learner.badges && Array.isArray(learner.badges)) {
+//         learner.badges.forEach(badge => {
 //           badgeCounts[badge] = (badgeCounts[badge] || 0) + 1;
 //         });
 //       }
@@ -882,13 +882,13 @@ type RecruiterOutletContext = {
 //         count
 //       }))
 //       .sort((a, b) => b.count - a.count);
-//   }, [students]);
+//   }, [learners]);
 
 //   const locationOptions = useMemo(() => {
 //     const locationCounts = {};
-//     students.forEach(student => {
-//       if (student.location) {
-//         const normalizedLocation = student.location.toLowerCase();
+//     learners.forEach(learner => {
+//       if (learner.location) {
+//         const normalizedLocation = learner.location.toLowerCase();
 //         locationCounts[normalizedLocation] = (locationCounts[normalizedLocation] || 0) + 1;
 //       }
 //     });
@@ -899,13 +899,13 @@ type RecruiterOutletContext = {
 //         count
 //       }))
 //       .sort((a, b) => b.count - a.count);
-//   }, [students]);
+//   }, [learners]);
 
 //   const yearOptions = useMemo(() => {
 //     const yearCounts = {};
-//     students.forEach(student => {
-//       if (student.year) {
-//         yearCounts[student.year] = (yearCounts[student.year] || 0) + 1;
+//     learners.forEach(learner => {
+//       if (learner.year) {
+//         yearCounts[learner.year] = (yearCounts[learner.year] || 0) + 1;
 //       }
 //     });
 //     return Object.entries(yearCounts)
@@ -915,30 +915,30 @@ type RecruiterOutletContext = {
 //         count
 //       }))
 //       .sort((a, b) => b.count - a.count);
-//   }, [students]);
+//   }, [learners]);
 
-//   // Filter and sort students based on search query and filters
-//   const filteredAndSortedStudents = useMemo(() => {
-//     let result = students;
+//   // Filter and sort learners based on search query and filters
+//   const filteredAndSortedlearners = useMemo(() => {
+//     let result = learners;
 
 //     // Apply search query filter
 //     if (searchQuery && searchQuery.trim() !== '') {
 //       const query = searchQuery.toLowerCase().trim();
-//       result = result.filter(student => {
-//         if (student.name?.toLowerCase().includes(query)) return true;
-//         if (student.dept?.toLowerCase().includes(query)) return true;
-//         if (student.college?.toLowerCase().includes(query)) return true;
-//         if (student.location?.toLowerCase().includes(query)) return true;
-//         if (student.skills?.some(skill => skill.toLowerCase().includes(query))) return true;
-//         if (student.email?.toLowerCase().includes(query)) return true;
+//       result = result.filter(learner => {
+//         if (learner.name?.toLowerCase().includes(query)) return true;
+//         if (learner.dept?.toLowerCase().includes(query)) return true;
+//         if (learner.college?.toLowerCase().includes(query)) return true;
+//         if (learner.location?.toLowerCase().includes(query)) return true;
+//         if (learner.skills?.some(skill => skill.toLowerCase().includes(query))) return true;
+//         if (learner.email?.toLowerCase().includes(query)) return true;
 //         return false;
 //       });
 //     }
 
 //     // Apply skill filters
 //     if (filters.skills.length > 0) {
-//       result = result.filter(student =>
-//         student.skills?.some(skill =>
+//       result = result.filter(learner =>
+//         learner.skills?.some(skill =>
 //           filters.skills.includes(skill.toLowerCase())
 //         )
 //       );
@@ -946,15 +946,15 @@ type RecruiterOutletContext = {
 
 //     // Apply course/department filters
 //     if (filters.courses.length > 0) {
-//       result = result.filter(student =>
-//         filters.courses.includes(student.dept?.toLowerCase())
+//       result = result.filter(learner =>
+//         filters.courses.includes(learner.dept?.toLowerCase())
 //       );
 //     }
 
 //     // Apply badge filters
 //     if (filters.badges.length > 0) {
-//       result = result.filter(student =>
-//         student.badges?.some(badge =>
+//       result = result.filter(learner =>
+//         learner.badges?.some(badge =>
 //           filters.badges.includes(badge)
 //         )
 //       );
@@ -962,21 +962,21 @@ type RecruiterOutletContext = {
 
 //     // Apply location filters
 //     if (filters.locations.length > 0) {
-//       result = result.filter(student =>
-//         filters.locations.includes(student.location?.toLowerCase())
+//       result = result.filter(learner =>
+//         filters.locations.includes(learner.location?.toLowerCase())
 //       );
 //     }
 
 //     // Apply year filters
 //     if (filters.years.length > 0) {
-//       result = result.filter(student =>
-//         filters.years.includes(student.year)
+//       result = result.filter(learner =>
+//         filters.years.includes(learner.year)
 //       );
 //     }
 
 //     // Apply AI score range filter
-//     result = result.filter(student => {
-//       const score = student.ai_score_overall || 0;
+//     result = result.filter(learner => {
+//       const score = learner.ai_score_overall || 0;
 //       return score >= filters.minScore && score <= filters.maxScore;
 //     });
 
@@ -1001,7 +1001,7 @@ type RecruiterOutletContext = {
 //     }
 
 //     return sortedResult;
-//   }, [students, searchQuery, filters, sortBy]);
+//   }, [learners, searchQuery, filters, sortBy]);
 
 //   // Clear all filters
 //   const handleClearFilters = () => {
@@ -1057,7 +1057,7 @@ type RecruiterOutletContext = {
 //           <div className="inline-flex items-baseline">
 //             <h1 className="text-xl font-semibold text-gray-900">Talent Pool</h1>
 //             <span className="ml-2 text-sm text-gray-500">
-//               ({filteredAndSortedStudents.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates{(searchQuery || filters.skills.length > 0) && students.length !== filteredAndSortedStudents.length && ` of ${students.length} total`})
+//               ({filteredAndSortedlearners.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates{(searchQuery || filters.skills.length > 0) && learners.length !== filteredAndSortedlearners.length && ` of ${learners.length} total`})
 //             </span>
 //           </div>
 //         </div>
@@ -1128,7 +1128,7 @@ type RecruiterOutletContext = {
 //         <div className="text-left">
 //           <h1 className="text-xl font-semibold text-gray-900">Talent Pool</h1>
 //           <span className="text-sm text-gray-500">
-//             {filteredAndSortedStudents.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates{(searchQuery || filters.skills.length > 0) && students.length !== filteredAndSortedStudents.length && ` of ${students.length} total`}
+//             {filteredAndSortedlearners.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates{(searchQuery || filters.skills.length > 0) && learners.length !== filteredAndSortedlearners.length && ` of ${learners.length} total`}
 //           </span>
 //         </div>
 
@@ -1296,7 +1296,7 @@ type RecruiterOutletContext = {
 //           <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
 //             <div className="flex items-center justify-between">
 //               <p className="text-sm text-gray-700">
-//                 Showing <span className="font-medium">{filteredAndSortedStudents.length}</span> result{filteredAndSortedStudents.length !== 1 ? 's' : ''}
+//                 Showing <span className="font-medium">{filteredAndSortedlearners.length}</span> result{filteredAndSortedlearners.length !== 1 ? 's' : ''}
 //                 {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
 //               </p>
 //               <select 
@@ -1316,9 +1316,9 @@ type RecruiterOutletContext = {
 //           <div className="flex-1 overflow-y-auto p-4">
 //             {viewMode === 'grid' ? (
 //               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-//                 {loading && <div className="text-sm text-gray-500">Loading students...</div>}
+//                 {loading && <div className="text-sm text-gray-500">Loading learners...</div>}
 //                 {error && <div className="text-sm text-red-600">{error}</div>}
-//                 {!loading && filteredAndSortedStudents.map((candidate) => (
+//                 {!loading && filteredAndSortedlearners.map((candidate) => (
 //                   <CandidateCard
 //                     key={candidate.id}
 //                     candidate={candidate as any}
@@ -1327,12 +1327,12 @@ type RecruiterOutletContext = {
 //                     onScheduleInterview={handleScheduleInterviewClick}
 //                   />
 //                 ))}
-//                 {!loading && filteredAndSortedStudents.length === 0 && !error && (
+//                 {!loading && filteredAndSortedlearners.length === 0 && !error && (
 //                   <div className="col-span-full text-center py-8">
 //                     <p className="text-sm text-gray-500">
 //                       {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 
 //                         ? 'No candidates match your current filters' 
-//                         : 'No students found.'}
+//                         : 'No learners found.'}
 //                     </p>
 //                     <p className="text-xs text-gray-400 mt-2">
 //                       Try adjusting your search terms or filters.
@@ -1371,7 +1371,7 @@ type RecruiterOutletContext = {
 //                     </tr>
 //                   </thead>
 //                   <tbody className="bg-white divide-y divide-gray-200">
-//                     {filteredAndSortedStudents.map((candidate) => (
+//                     {filteredAndSortedlearners.map((candidate) => (
 //                       <tr key={candidate.id} className="hover:bg-gray-50">
 //                         <td className="px-6 py-4 whitespace-nowrap">
 //                           <div className="flex items-center">
@@ -1499,20 +1499,20 @@ type RecruiterOutletContext = {
 //     maxScore: 100
 //   });
 
-//   const { students, loading, error } = useStudents();
+//   const { learners, loading, error } = useLearners();
 
-//   // Debug: Log first student to see data structure
+//   // Debug: Log first learner to see data structure
 //   useEffect(() => {
-//     if (students.length > 0) {
+//     if (learners.length > 0) {
 //     }
-//   }, [students]);
+//   }, [learners]);
 
 //   // Dynamically generate filter options from actual data
 //   const skillOptions = useMemo(() => {
 //     const skillCounts = {};
-//     students.forEach(student => {
-//       const profile = (student as any).profile || student;
-//       const skillsToCheck = student.skills || profile.skills;
+//     learners.forEach(learner => {
+//       const profile = (learner as any).profile || learner;
+//       const skillsToCheck = learner.skills || profile.skills;
 //       if (skillsToCheck && Array.isArray(skillsToCheck)) {
 //         skillsToCheck.forEach(skill => {
 //           const skillName = typeof skill === 'string' ? skill : skill?.name;
@@ -1531,13 +1531,13 @@ type RecruiterOutletContext = {
 //       }))
 //       .sort((a, b) => b.count - a.count)
 //       .slice(0, 20);
-//   }, [students]);
+//   }, [learners]);
 
 //   const courseOptions = useMemo(() => {
 //     const courseCounts = {};
-//     students.forEach(student => {
-//       const profile = (student as any).profile || student;
-//       const dept = student.dept || profile.dept || profile.department;
+//     learners.forEach(learner => {
+//       const profile = (learner as any).profile || learner;
+//       const dept = learner.dept || profile.dept || profile.department;
 //       if (dept) {
 //         const normalizedCourse = dept.toLowerCase();
 //         courseCounts[normalizedCourse] = (courseCounts[normalizedCourse] || 0) + 1;
@@ -1550,13 +1550,13 @@ type RecruiterOutletContext = {
 //         count
 //       }))
 //       .sort((a, b) => b.count - a.count);
-//   }, [students]);
+//   }, [learners]);
 
 //   const badgeOptions = useMemo(() => {
 //     const badgeCounts = {};
-//     students.forEach(student => {
-//       if (student.badges && Array.isArray(student.badges)) {
-//         student.badges.forEach(badge => {
+//     learners.forEach(learner => {
+//       if (learner.badges && Array.isArray(learner.badges)) {
+//         learner.badges.forEach(badge => {
 //           badgeCounts[badge] = (badgeCounts[badge] || 0) + 1;
 //         });
 //       }
@@ -1568,13 +1568,13 @@ type RecruiterOutletContext = {
 //         count
 //       }))
 //       .sort((a, b) => b.count - a.count);
-//   }, [students]);
+//   }, [learners]);
 
 //   const locationOptions = useMemo(() => {
 //     const locationCounts = {};
-//     students.forEach(student => {
-//       const profile = (student as any).profile || student;
-//       const location = student.location || profile.location;
+//     learners.forEach(learner => {
+//       const profile = (learner as any).profile || learner;
+//       const location = learner.location || profile.location;
 //       if (location) {
 //         const normalizedLocation = location.toLowerCase();
 //         locationCounts[normalizedLocation] = (locationCounts[normalizedLocation] || 0) + 1;
@@ -1587,13 +1587,13 @@ type RecruiterOutletContext = {
 //         count
 //       }))
 //       .sort((a, b) => b.count - a.count);
-//   }, [students]);
+//   }, [learners]);
 
 //   const yearOptions = useMemo(() => {
 //     const yearCounts = {};
-//     students.forEach(student => {
-//       if (student.year) {
-//         yearCounts[student.year] = (yearCounts[student.year] || 0) + 1;
+//     learners.forEach(learner => {
+//       if (learner.year) {
+//         yearCounts[learner.year] = (yearCounts[learner.year] || 0) + 1;
 //       }
 //     });
 //     return Object.entries(yearCounts)
@@ -1603,20 +1603,20 @@ type RecruiterOutletContext = {
 //         count
 //       }))
 //       .sort((a, b) => b.count - a.count);
-//   }, [students]);
+//   }, [learners]);
 
 //   // Enhanced filter and sort with comprehensive search
-//   const filteredAndSortedStudents = useMemo(() => {
-//     let result = students;
+//   const filteredAndSortedlearners = useMemo(() => {
+//     let result = learners;
 
 //     // Apply comprehensive search query filter
 //     if (searchQuery && searchQuery.trim() !== '') {
 //       const query = searchQuery.toLowerCase().trim();
       
       
-//       result = result.filter(student => {
+//       result = result.filter(learner => {
 //         // Access the profile data - handles both nested and direct structures
-//         const profile = (student as any).profile || student;
+//         const profile = (learner as any).profile || learner;
         
 //         // Helper function to safely check string fields
 //         const matchesField = (field: any): boolean => {
@@ -1636,21 +1636,21 @@ type RecruiterOutletContext = {
 //           });
 //         };
 
-//         // Basic fields - check both student level and profile level
-//         if (matchesField(student.name) || matchesField(profile.name)) return true;
-//         if (matchesField(student.email) || matchesField(profile.email)) return true;
+//         // Basic fields - check both learner level and profile level
+//         if (matchesField(learner.name) || matchesField(profile.name)) return true;
+//         if (matchesField(learner.email) || matchesField(profile.email)) return true;
 //         if (matchesField(profile.age)) return true;
 //         if (matchesField(profile.skill)) return true;
 //         if (matchesField(profile.course)) return true;
-//         if (matchesField(student.dept) || matchesField(profile.dept)) return true;
+//         if (matchesField(learner.dept) || matchesField(profile.dept)) return true;
 //         if (matchesField(profile.department)) return true;
-//         if (matchesField(student.college) || matchesField(profile.college_school_name)) return true;
-//         if (matchesField(student.location) || matchesField(profile.location)) return true;
+//         if (matchesField(learner.college) || matchesField(profile.college_school_name)) return true;
+//         if (matchesField(learner.location) || matchesField(profile.location)) return true;
 //         if (matchesField(profile.university)) return true;
 //         if (matchesField(profile.registration_number)) return true;
         
 //         // Skills array - handle both formats (string array and object array)
-//         const skillsToCheck = student.skills || profile.skills;
+//         const skillsToCheck = learner.skills || profile.skills;
 //         if (skillsToCheck && Array.isArray(skillsToCheck)) {
 //           const skillMatch = skillsToCheck.some((skill: any) => {
 //             if (typeof skill === 'string') {
@@ -1774,9 +1774,9 @@ type RecruiterOutletContext = {
 
 //     // Apply skill filters
 //     if (filters.skills.length > 0) {
-//       result = result.filter(student => {
-//         const profile = (student as any).profile || student;
-//         const skillsToCheck = student.skills || profile.skills;
+//       result = result.filter(learner => {
+//         const profile = (learner as any).profile || learner;
+//         const skillsToCheck = learner.skills || profile.skills;
 //         return skillsToCheck?.some((skill: any) => {
 //           const skillName = typeof skill === 'string' ? skill : skill?.name;
 //           return skillName && filters.skills.includes(skillName.toLowerCase());
@@ -1786,17 +1786,17 @@ type RecruiterOutletContext = {
 
 //     // Apply course/department filters
 //     if (filters.courses.length > 0) {
-//       result = result.filter(student => {
-//         const profile = (student as any).profile || student;
-//         const dept = student.dept || profile.dept || profile.department;
+//       result = result.filter(learner => {
+//         const profile = (learner as any).profile || learner;
+//         const dept = learner.dept || profile.dept || profile.department;
 //         return dept && filters.courses.includes(dept.toLowerCase());
 //       });
 //     }
 
 //     // Apply badge filters
 //     if (filters.badges.length > 0) {
-//       result = result.filter(student =>
-//         student.badges?.some(badge =>
+//       result = result.filter(learner =>
+//         learner.badges?.some(badge =>
 //           filters.badges.includes(badge)
 //         )
 //       );
@@ -1804,23 +1804,23 @@ type RecruiterOutletContext = {
 
 //     // Apply location filters
 //     if (filters.locations.length > 0) {
-//       result = result.filter(student => {
-//         const profile = (student as any).profile || student;
-//         const location = student.location || profile.location;
+//       result = result.filter(learner => {
+//         const profile = (learner as any).profile || learner;
+//         const location = learner.location || profile.location;
 //         return location && filters.locations.includes(location.toLowerCase());
 //       });
 //     }
 
 //     // Apply year filters
 //     if (filters.years.length > 0) {
-//       result = result.filter(student =>
-//         filters.years.includes(student.year)
+//       result = result.filter(learner =>
+//         filters.years.includes(learner.year)
 //       );
 //     }
 
 //     // Apply AI score range filter
-//     result = result.filter(student => {
-//       const score = student.ai_score_overall || 0;
+//     result = result.filter(learner => {
+//       const score = learner.ai_score_overall || 0;
 //       return score >= filters.minScore && score <= filters.maxScore;
 //     });
 
@@ -1844,7 +1844,7 @@ type RecruiterOutletContext = {
 //     }
 
 //     return sortedResult;
-//   }, [students, searchQuery, filters, sortBy]);
+//   }, [learners, searchQuery, filters, sortBy]);
 
 //   // Clear all filters
 //   const handleClearFilters = () => {
@@ -1898,7 +1898,7 @@ type RecruiterOutletContext = {
 //           <div className="inline-flex items-baseline">
 //             <h1 className="text-xl font-semibold text-gray-900">Talent Pool</h1>
 //             <span className="ml-2 text-sm text-gray-500">
-//               ({filteredAndSortedStudents.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates{(searchQuery || filters.skills.length > 0) && students.length !== filteredAndSortedStudents.length && ` of ${students.length} total`})
+//               ({filteredAndSortedlearners.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates{(searchQuery || filters.skills.length > 0) && learners.length !== filteredAndSortedlearners.length && ` of ${learners.length} total`})
 //             </span>
 //           </div>
 //         </div>
@@ -1965,7 +1965,7 @@ type RecruiterOutletContext = {
 //         <div className="text-left">
 //           <h1 className="text-xl font-semibold text-gray-900">Talent Pool</h1>
 //           <span className="text-sm text-gray-500">
-//             {filteredAndSortedStudents.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates{(searchQuery || filters.skills.length > 0) && students.length !== filteredAndSortedStudents.length && ` of ${students.length} total`}
+//             {filteredAndSortedlearners.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates{(searchQuery || filters.skills.length > 0) && learners.length !== filteredAndSortedlearners.length && ` of ${learners.length} total`}
 //           </span>
 //         </div>
 
@@ -2131,7 +2131,7 @@ type RecruiterOutletContext = {
 //           <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
 //             <div className="flex items-center justify-between">
 //               <p className="text-sm text-gray-700">
-//                 Showing <span className="font-medium">{filteredAndSortedStudents.length}</span> result{filteredAndSortedStudents.length !== 1 ? 's' : ''}
+//                 Showing <span className="font-medium">{filteredAndSortedlearners.length}</span> result{filteredAndSortedlearners.length !== 1 ? 's' : ''}
 //                 {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
 //               </p>
 //               <select 
@@ -2151,9 +2151,9 @@ type RecruiterOutletContext = {
 //           <div className="flex-1 overflow-y-auto p-4">
 //             {viewMode === 'grid' ? (
 //               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-//                 {loading && <div className="text-sm text-gray-500">Loading students...</div>}
+//                 {loading && <div className="text-sm text-gray-500">Loading learners...</div>}
 //                 {error && <div className="text-sm text-red-600">{error}</div>}
-//                 {!loading && filteredAndSortedStudents.map((candidate) => (
+//                 {!loading && filteredAndSortedlearners.map((candidate) => (
 //                   <CandidateCard
 //                     key={candidate.id}
 //                     candidate={candidate as any}
@@ -2162,12 +2162,12 @@ type RecruiterOutletContext = {
 //                     onScheduleInterview={handleScheduleInterviewClick}
 //                   />
 //                 ))}
-//                 {!loading && filteredAndSortedStudents.length === 0 && !error && (
+//                 {!loading && filteredAndSortedlearners.length === 0 && !error && (
 //                   <div className="col-span-full text-center py-8">
 //                     <p className="text-sm text-gray-500">
 //                       {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 
 //                         ? 'No candidates match your current filters' 
-//                         : 'No students found.'}
+//                         : 'No learners found.'}
 //                     </p>
 //                     <p className="text-xs text-gray-400 mt-2">
 //                       Try adjusting your search terms or filters.
@@ -2206,7 +2206,7 @@ type RecruiterOutletContext = {
 //                     </tr>
 //                   </thead>
 //                   <tbody className="bg-white divide-y divide-gray-200">
-//                     {filteredAndSortedStudents.map((candidate) => (
+//                     {filteredAndSortedlearners.map((candidate) => (
 //                       <tr key={candidate.id} className="hover:bg-gray-50">
 //                         <td className="px-6 py-4 whitespace-nowrap">
 //                           <div className="flex items-center">
@@ -2335,20 +2335,20 @@ type RecruiterOutletContext = {
 //     maxScore: 100
 //   });
 
-//   const { students, loading, error } = useStudents();
+//   const { learners, loading, error } = useLearners();
 
-//   // Debug: Log first student to see data structure
+//   // Debug: Log first learner to see data structure
 //   useEffect(() => {
-//     if (students.length > 0) {
+//     if (learners.length > 0) {
 //     }
-//   }, [students]);
+//   }, [learners]);
 
 //   // Dynamically generate filter options from actual data
 //   const skillOptions = useMemo(() => {
 //     const skillCounts = {};
-//     students.forEach(student => {
-//       const profile = (student as any).profile || student;
-//       const skillsToCheck = student.skills || profile.skills;
+//     learners.forEach(learner => {
+//       const profile = (learner as any).profile || learner;
+//       const skillsToCheck = learner.skills || profile.skills;
 //       if (skillsToCheck && Array.isArray(skillsToCheck)) {
 //         skillsToCheck.forEach(skill => {
 //           const skillName = typeof skill === 'string' ? skill : skill?.name;
@@ -2367,13 +2367,13 @@ type RecruiterOutletContext = {
 //       }))
 //       .sort((a, b) => b.count - a.count)
 //       .slice(0, 20);
-//   }, [students]);
+//   }, [learners]);
 
 //   const courseOptions = useMemo(() => {
 //     const courseCounts = {};
-//     students.forEach(student => {
-//       const profile = (student as any).profile || student;
-//       const dept = student.dept || profile.dept || profile.department;
+//     learners.forEach(learner => {
+//       const profile = (learner as any).profile || learner;
+//       const dept = learner.dept || profile.dept || profile.department;
 //       if (dept) {
 //         const normalizedCourse = dept.toLowerCase();
 //         courseCounts[normalizedCourse] = (courseCounts[normalizedCourse] || 0) + 1;
@@ -2386,13 +2386,13 @@ type RecruiterOutletContext = {
 //         count
 //       }))
 //       .sort((a, b) => b.count - a.count);
-//   }, [students]);
+//   }, [learners]);
 
 //   const badgeOptions = useMemo(() => {
 //     const badgeCounts = {};
-//     students.forEach(student => {
-//       if (student.badges && Array.isArray(student.badges)) {
-//         student.badges.forEach(badge => {
+//     learners.forEach(learner => {
+//       if (learner.badges && Array.isArray(learner.badges)) {
+//         learner.badges.forEach(badge => {
 //           badgeCounts[badge] = (badgeCounts[badge] || 0) + 1;
 //         });
 //       }
@@ -2404,13 +2404,13 @@ type RecruiterOutletContext = {
 //         count
 //       }))
 //       .sort((a, b) => b.count - a.count);
-//   }, [students]);
+//   }, [learners]);
 
 //   const locationOptions = useMemo(() => {
 //     const locationCounts = {};
-//     students.forEach(student => {
-//       const profile = (student as any).profile || student;
-//       const location = student.location || profile.location;
+//     learners.forEach(learner => {
+//       const profile = (learner as any).profile || learner;
+//       const location = learner.location || profile.location;
 //       if (location) {
 //         const normalizedLocation = location.toLowerCase();
 //         locationCounts[normalizedLocation] = (locationCounts[normalizedLocation] || 0) + 1;
@@ -2423,13 +2423,13 @@ type RecruiterOutletContext = {
 //         count
 //       }))
 //       .sort((a, b) => b.count - a.count);
-//   }, [students]);
+//   }, [learners]);
 
 //   const yearOptions = useMemo(() => {
 //     const yearCounts = {};
-//     students.forEach(student => {
-//       if (student.year) {
-//         yearCounts[student.year] = (yearCounts[student.year] || 0) + 1;
+//     learners.forEach(learner => {
+//       if (learner.year) {
+//         yearCounts[learner.year] = (yearCounts[learner.year] || 0) + 1;
 //       }
 //     });
 //     return Object.entries(yearCounts)
@@ -2439,11 +2439,11 @@ type RecruiterOutletContext = {
 //         count
 //       }))
 //       .sort((a, b) => b.count - a.count);
-//   }, [students]);
+//   }, [learners]);
 
 //   // Enhanced filter and sort with comprehensive search - WITH LEXICOGRAPHICAL ORDERING
-//   const filteredAndSortedStudents = useMemo(() => {
-//     let result = students;
+//   const filteredAndSortedlearners = useMemo(() => {
+//     let result = learners;
 
 //     // Apply comprehensive search query filter with lexicographical sorting
 //     if (searchQuery && searchQuery.trim() !== '') {
@@ -2451,9 +2451,9 @@ type RecruiterOutletContext = {
       
       
 //       // Store match results with the matched field for sorting
-//       const resultsWithScores = students.map(student => {
+//       const resultsWithScores = learners.map(learner => {
 //         // Access the profile data - handles both nested and direct structures
-//         const profile = (student as any).profile || student;
+//         const profile = (learner as any).profile || learner;
 //         let matchedField = '';
 //         let isMatch = false;
         
@@ -2486,21 +2486,21 @@ type RecruiterOutletContext = {
 //           });
 //         };
 
-//         // Basic fields - check both student level and profile level
-//         if (matchesField(student.name, 'name') || matchesField(profile.name, 'name')) return { student, matchedField: matchedField || student.name?.toLowerCase() || '' };
-//         if (matchesField(student.email, 'email') || matchesField(profile.email, 'email')) return { student, matchedField: matchedField || student.email?.toLowerCase() || '' };
-//         if (matchesField(profile.age, 'age')) return { student, matchedField };
-//         if (matchesField(profile.skill, 'skill')) return { student, matchedField };
-//         if (matchesField(profile.course, 'course')) return { student, matchedField };
-//         if (matchesField(student.dept, 'dept') || matchesField(profile.dept, 'dept')) return { student, matchedField };
-//         if (matchesField(profile.department, 'department')) return { student, matchedField };
-//         if (matchesField(student.college, 'college') || matchesField(profile.college_school_name, 'college')) return { student, matchedField };
-//         if (matchesField(student.location, 'location') || matchesField(profile.location, 'location')) return { student, matchedField };
-//         if (matchesField(profile.university, 'university')) return { student, matchedField };
-//         if (matchesField(profile.registration_number, 'registration')) return { student, matchedField };
+//         // Basic fields - check both learner level and profile level
+//         if (matchesField(learner.name, 'name') || matchesField(profile.name, 'name')) return { learner, matchedField: matchedField || learner.name?.toLowerCase() || '' };
+//         if (matchesField(learner.email, 'email') || matchesField(profile.email, 'email')) return { learner, matchedField: matchedField || learner.email?.toLowerCase() || '' };
+//         if (matchesField(profile.age, 'age')) return { learner, matchedField };
+//         if (matchesField(profile.skill, 'skill')) return { learner, matchedField };
+//         if (matchesField(profile.course, 'course')) return { learner, matchedField };
+//         if (matchesField(learner.dept, 'dept') || matchesField(profile.dept, 'dept')) return { learner, matchedField };
+//         if (matchesField(profile.department, 'department')) return { learner, matchedField };
+//         if (matchesField(learner.college, 'college') || matchesField(profile.college_school_name, 'college')) return { learner, matchedField };
+//         if (matchesField(learner.location, 'location') || matchesField(profile.location, 'location')) return { learner, matchedField };
+//         if (matchesField(profile.university, 'university')) return { learner, matchedField };
+//         if (matchesField(profile.registration_number, 'registration')) return { learner, matchedField };
         
 //         // Skills array - handle both formats (string array and object array)
-//         const skillsToCheck = student.skills || profile.skills;
+//         const skillsToCheck = learner.skills || profile.skills;
 //         if (skillsToCheck && Array.isArray(skillsToCheck)) {
 //           const skillMatch = skillsToCheck.some((skill: any) => {
 //             if (typeof skill === 'string') {
@@ -2519,18 +2519,18 @@ type RecruiterOutletContext = {
 //             return false;
 //           });
 //           if (skillMatch) {
-//             return { student, matchedField };
+//             return { learner, matchedField };
 //           }
 //         }
         
 //         // Projects - search in title, tech, techStack, technologies, description
 //         if (searchInArray(profile.projects, ['title', 'id', 'link', 'tech', 'techStack', 'technologies', 'organization', 'description', 'skills', 'status','enabled','processing','duration','github'], 'projects')) {
-//           return { student, matchedField };
+//           return { learner, matchedField };
 //         }
         
 //         // Education - check all relevant fields
 //         if (searchInArray(profile.education, ['yearOfPassing', 'university', 'degree', 'department', 'college_school_name', 'level', 'cgpa', 'status'], 'education')) {
-//           return { student, matchedField };
+//           return { learner, matchedField };
 //         }
         
 //         // Experience - comprehensive check including verified status
@@ -2568,7 +2568,7 @@ type RecruiterOutletContext = {
 //             return false;
 //           });
 //           if (expMatch) {
-//             return { student, matchedField };
+//             return { learner, matchedField };
 //           }
 //         }
         
@@ -2584,7 +2584,7 @@ type RecruiterOutletContext = {
 //             return false;
 //           });
 //           if (softSkillMatch) {
-//             return { student, matchedField };
+//             return { learner, matchedField };
 //           }
 //         }
         
@@ -2632,7 +2632,7 @@ type RecruiterOutletContext = {
 //           });
           
 //           if (certMatch) {
-//             return { student, matchedField };
+//             return { learner, matchedField };
 //           }
 //         }
         
@@ -2653,7 +2653,7 @@ type RecruiterOutletContext = {
 //           });
           
 //           if (techMatch) {
-//             return { student, matchedField };
+//             return { learner, matchedField };
 //           }
 //         }
         
@@ -2668,7 +2668,7 @@ type RecruiterOutletContext = {
 //             return false;
 //           });
 //           if (trainingMatch) {
-//             return { student, matchedField };
+//             return { learner, matchedField };
 //           }
 //         }
         
@@ -2680,7 +2680,7 @@ type RecruiterOutletContext = {
 //         return a.matchedField.localeCompare(b.matchedField);
 //       });
       
-//       result = resultsWithScores.map(item => item.student);
+//       result = resultsWithScores.map(item => item.learner);
       
 //       if (result.length > 0) {
 //       }
@@ -2688,9 +2688,9 @@ type RecruiterOutletContext = {
 
 //     // Apply skill filters
 //     if (filters.skills.length > 0) {
-//       result = result.filter(student => {
-//         const profile = (student as any).profile || student;
-//         const skillsToCheck = student.skills || profile.skills;
+//       result = result.filter(learner => {
+//         const profile = (learner as any).profile || learner;
+//         const skillsToCheck = learner.skills || profile.skills;
 //         return skillsToCheck?.some((skill: any) => {
 //           const skillName = typeof skill === 'string' ? skill : skill?.name;
 //           return skillName && filters.skills.includes(skillName.toLowerCase());
@@ -2700,17 +2700,17 @@ type RecruiterOutletContext = {
 
 //     // Apply course/department filters
 //     if (filters.courses.length > 0) {
-//       result = result.filter(student => {
-//         const profile = (student as any).profile || student;
-//         const dept = student.dept || profile.dept || profile.department;
+//       result = result.filter(learner => {
+//         const profile = (learner as any).profile || learner;
+//         const dept = learner.dept || profile.dept || profile.department;
 //         return dept && filters.courses.includes(dept.toLowerCase());
 //       });
 //     }
 
 //     // Apply badge filters
 //     if (filters.badges.length > 0) {
-//       result = result.filter(student =>
-//         student.badges?.some(badge =>
+//       result = result.filter(learner =>
+//         learner.badges?.some(badge =>
 //           filters.badges.includes(badge)
 //         )
 //       );
@@ -2718,23 +2718,23 @@ type RecruiterOutletContext = {
 
 //     // Apply location filters
 //     if (filters.locations.length > 0) {
-//       result = result.filter(student => {
-//         const profile = (student as any).profile || student;
-//         const location = student.location || profile.location;
+//       result = result.filter(learner => {
+//         const profile = (learner as any).profile || learner;
+//         const location = learner.location || profile.location;
 //         return location && filters.locations.includes(location.toLowerCase());
 //       });
 //     }
 
 //     // Apply year filters
 //     if (filters.years.length > 0) {
-//       result = result.filter(student =>
-//         filters.years.includes(student.year)
+//       result = result.filter(learner =>
+//         filters.years.includes(learner.year)
 //       );
 //     }
 
 //     // Apply AI score range filter
-//     result = result.filter(student => {
-//       const score = student.ai_score_overall || 0;
+//     result = result.filter(learner => {
+//       const score = learner.ai_score_overall || 0;
 //       return score >= filters.minScore && score <= filters.maxScore;
 //     });
 
@@ -2761,7 +2761,7 @@ type RecruiterOutletContext = {
 //     }
 
 //     return result;
-//   }, [students, searchQuery, filters, sortBy]);
+//   }, [learners, searchQuery, filters, sortBy]);
 
 //   // Clear all filters
 //   const handleClearFilters = () => {
@@ -2815,7 +2815,7 @@ type RecruiterOutletContext = {
 //           <div className="inline-flex items-baseline">
 //             <h1 className="text-xl font-semibold text-gray-900">Talent Pool</h1>
 //             <span className="ml-2 text-sm text-gray-500">
-//               ({filteredAndSortedStudents.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates{(searchQuery || filters.skills.length > 0) && students.length !== filteredAndSortedStudents.length && ` of ${students.length} total`})
+//               ({filteredAndSortedlearners.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates{(searchQuery || filters.skills.length > 0) && learners.length !== filteredAndSortedlearners.length && ` of ${learners.length} total`})
 //             </span>
 //           </div>
 //         </div>
@@ -2882,7 +2882,7 @@ type RecruiterOutletContext = {
 //         <div className="text-left">
 //           <h1 className="text-xl font-semibold text-gray-900">Talent Pool</h1>
 //           <span className="text-sm text-gray-500">
-//             {filteredAndSortedStudents.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates{(searchQuery || filters.skills.length > 0) && students.length !== filteredAndSortedStudents.length && ` of ${students.length} total`}
+//             {filteredAndSortedlearners.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates{(searchQuery || filters.skills.length > 0) && learners.length !== filteredAndSortedlearners.length && ` of ${learners.length} total`}
 //           </span>
 //         </div>
 
@@ -3035,7 +3035,7 @@ type RecruiterOutletContext = {
 //           <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
 //             <div className="flex items-center justify-between">
 //               <p className="text-sm text-gray-700">
-//                 Showing <span className="font-medium">{filteredAndSortedStudents.length}</span> result{filteredAndSortedStudents.length !== 1 ? 's' : ''}
+//                 Showing <span className="font-medium">{filteredAndSortedlearners.length}</span> result{filteredAndSortedlearners.length !== 1 ? 's' : ''}
 //                 {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
 //               </p>
 //               <select 
@@ -3055,9 +3055,9 @@ type RecruiterOutletContext = {
 //           <div className="flex-1 overflow-y-auto p-4">
 //             {viewMode === 'grid' ? (
 //               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-//                 {loading && <div className="text-sm text-gray-500">Loading students...</div>}
+//                 {loading && <div className="text-sm text-gray-500">Loading learners...</div>}
 //                 {error && <div className="text-sm text-red-600">{error}</div>}
-//                 {!loading && filteredAndSortedStudents.map((candidate) => (
+//                 {!loading && filteredAndSortedlearners.map((candidate) => (
 //                   <CandidateCard
 //                     key={candidate.id}
 //                     candidate={candidate as any}
@@ -3066,12 +3066,12 @@ type RecruiterOutletContext = {
 //                     onScheduleInterview={handleScheduleInterviewClick}
 //                   />
 //                 ))}
-//                 {!loading && filteredAndSortedStudents.length === 0 && !error && (
+//                 {!loading && filteredAndSortedlearners.length === 0 && !error && (
 //                   <div className="col-span-full text-center py-8">
 //                     <p className="text-sm text-gray-500">
 //                       {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 
 //                         ? 'No candidates match your current filters' 
-//                         : 'No students found.'}
+//                         : 'No learners found.'}
 //                     </p>
 //                     <p className="text-xs text-gray-400 mt-2">
 //                       Try adjusting your search terms or filters.
@@ -3110,7 +3110,7 @@ type RecruiterOutletContext = {
 //                     </tr>
 //                   </thead>
 //                   <tbody className="bg-white divide-y divide-gray-200">
-//                     {filteredAndSortedStudents.map((candidate) => (
+//                     {filteredAndSortedlearners.map((candidate) => (
 //                       <tr key={candidate.id} className="hover:bg-gray-50">
 //                         <td className="px-6 py-4 whitespace-nowrap">
 //                           <div className="flex items-center">
@@ -3247,20 +3247,20 @@ const TalentPoolContent = () => {
   });
 
   const itemsPerPage = 10;
-  const { students, loading, error } = useStudents();
+  const { learners, loading, error } = useLearners();
 
-  // Debug: Log first student to see data structure
+  // Debug: Log first learner to see data structure
   useEffect(() => {
-    if (students.length > 0) {
+    if (learners.length > 0) {
     }
-  }, [students]);
+  }, [learners]);
 
   // Dynamically generate filter options from actual data
   const skillOptions = useMemo(() => {
     const skillCounts = {};
-    students.forEach(student => {
-      if (student.skills && Array.isArray(student.skills)) {
-        student.skills.forEach(skill => {
+    learners.forEach(learner => {
+      if (learner.skills && Array.isArray(learner.skills)) {
+        learner.skills.forEach(skill => {
           const skillName = typeof skill === 'string' ? skill : skill?.name;
           if (skillName) {
             const normalizedSkill = skillName.toLowerCase();
@@ -3277,12 +3277,12 @@ const TalentPoolContent = () => {
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 20);
-  }, [students]);
+  }, [learners]);
 
   const courseOptions = useMemo(() => {
     const courseCounts = {};
-    students.forEach(student => {
-      const dept = student.dept || student.course_name || student.branch_field;
+    learners.forEach(learner => {
+      const dept = learner.dept || learner.course_name || learner.branch_field;
       if (dept) {
         const normalizedCourse = dept.toLowerCase();
         courseCounts[normalizedCourse] = (courseCounts[normalizedCourse] || 0) + 1;
@@ -3295,13 +3295,13 @@ const TalentPoolContent = () => {
         count
       }))
       .sort((a, b) => b.count - a.count);
-  }, [students]);
+  }, [learners]);
 
   const badgeOptions = useMemo(() => {
     const badgeCounts = {};
-    students.forEach(student => {
-      if (student.badges && Array.isArray(student.badges)) {
-        student.badges.forEach(badge => {
+    learners.forEach(learner => {
+      if (learner.badges && Array.isArray(learner.badges)) {
+        learner.badges.forEach(badge => {
           badgeCounts[badge] = (badgeCounts[badge] || 0) + 1;
         });
       }
@@ -3313,12 +3313,12 @@ const TalentPoolContent = () => {
         count
       }))
       .sort((a, b) => b.count - a.count);
-  }, [students]);
+  }, [learners]);
 
   const locationOptions = useMemo(() => {
     const locationCounts = {};
-    students.forEach(student => {
-      const location = student.location || student.district_name;
+    learners.forEach(learner => {
+      const location = learner.location || learner.district_name;
       if (location) {
         const normalizedLocation = location.toLowerCase();
         locationCounts[normalizedLocation] = (locationCounts[normalizedLocation] || 0) + 1;
@@ -3331,13 +3331,13 @@ const TalentPoolContent = () => {
         count
       }))
       .sort((a, b) => b.count - a.count);
-  }, [students]);
+  }, [learners]);
 
   const yearOptions = useMemo(() => {
     const yearCounts = {};
-    students.forEach(student => {
-      if (student.year) {
-        yearCounts[student.year] = (yearCounts[student.year] || 0) + 1;
+    learners.forEach(learner => {
+      if (learner.year) {
+        yearCounts[learner.year] = (yearCounts[learner.year] || 0) + 1;
       }
     });
     return Object.entries(yearCounts)
@@ -3347,11 +3347,11 @@ const TalentPoolContent = () => {
         count
       }))
       .sort((a, b) => b.count - a.count);
-  }, [students]);
+  }, [learners]);
 
   // Enhanced filter and sort with comprehensive search - WITH LEXICOGRAPHICAL ORDERING
-  const filteredAndSortedStudents = useMemo(() => {
-    let result = students;
+  const filteredAndSortedlearners = useMemo(() => {
+    let result = learners;
 
     // Apply comprehensive search query filter with lexicographical sorting
     if (searchQuery && searchQuery.trim() !== '') {
@@ -3359,7 +3359,7 @@ const TalentPoolContent = () => {
       
       
       // Store match results with the matched field for sorting
-      const resultsWithScores = students.map(student => {
+      const resultsWithScores = learners.map(learner => {
         let matchedField = '';
         let isMatch = false;
         
@@ -3392,37 +3392,37 @@ const TalentPoolContent = () => {
           });
         };
 
-        // Basic fields - use direct student properties
-        if (matchesField(student.name, 'name')) return { student, matchedField: matchedField || student.name?.toLowerCase() || '' };
-        if (matchesField(student.email, 'email')) return { student, matchedField: matchedField || student.email?.toLowerCase() || '' };
-        if (matchesField(student.nm_id, 'nm_id')) return { student, matchedField: matchedField || 'nm_id' };
-        if (matchesField(student.contact_number?.toString(), 'contact')) return { student, matchedField: matchedField || 'contact' };
-        if (matchesField(student.alternate_number?.toString(), 'alternate contact')) return { student, matchedField: matchedField || 'alternate contact' };
-        if (matchesField(student.contact_dial_code?.toString(), 'dial code')) return { student, matchedField: matchedField || 'dial code' };
-        if (matchesField(student.date_of_birth, 'date of birth')) return { student, matchedField: matchedField || 'date of birth' };
-        if (matchesField(student.imported_at, 'imported date')) return { student, matchedField: matchedField || 'imported date' };
-        if (matchesField(student.updated_at, 'updated at')) return { student, matchedField: matchedField || 'updated at' };
-        if (matchesField(student.age?.toString(), 'age')) return { student, matchedField };
-        if (matchesField(student.course_name, 'course')) return { student, matchedField };
-        if (matchesField(student.university, 'university')) return { student, matchedField };
-        if (matchesField(student.branch_field, 'branch')) return { student, matchedField };
-        if (matchesField(student.trainer_name, 'trainer')) return { student, matchedField };
-        if (matchesField(student.district_name, 'district')) return { student, matchedField };
-        if (matchesField(student.college, 'college')) return { student, matchedField };
-        if (matchesField(student.registration_number?.toString(), 'registration')) return { student, matchedField };
-        if (matchesField(student.bio, 'bio')) return { student, matchedField };
+        // Basic fields - use direct learner properties
+        if (matchesField(learner.name, 'name')) return { learner, matchedField: matchedField || learner.name?.toLowerCase() || '' };
+        if (matchesField(learner.email, 'email')) return { learner, matchedField: matchedField || learner.email?.toLowerCase() || '' };
+        if (matchesField(learner.nm_id, 'nm_id')) return { learner, matchedField: matchedField || 'nm_id' };
+        if (matchesField(learner.contact_number?.toString(), 'contact')) return { learner, matchedField: matchedField || 'contact' };
+        if (matchesField(learner.alternate_number?.toString(), 'alternate contact')) return { learner, matchedField: matchedField || 'alternate contact' };
+        if (matchesField(learner.contact_dial_code?.toString(), 'dial code')) return { learner, matchedField: matchedField || 'dial code' };
+        if (matchesField(learner.date_of_birth, 'date of birth')) return { learner, matchedField: matchedField || 'date of birth' };
+        if (matchesField(learner.imported_at, 'imported date')) return { learner, matchedField: matchedField || 'imported date' };
+        if (matchesField(learner.updated_at, 'updated at')) return { learner, matchedField: matchedField || 'updated at' };
+        if (matchesField(learner.age?.toString(), 'age')) return { learner, matchedField };
+        if (matchesField(learner.course_name, 'course')) return { learner, matchedField };
+        if (matchesField(learner.university, 'university')) return { learner, matchedField };
+        if (matchesField(learner.branch_field, 'branch')) return { learner, matchedField };
+        if (matchesField(learner.trainer_name, 'trainer')) return { learner, matchedField };
+        if (matchesField(learner.district_name, 'district')) return { learner, matchedField };
+        if (matchesField(learner.college, 'college')) return { learner, matchedField };
+        if (matchesField(learner.registration_number?.toString(), 'registration')) return { learner, matchedField };
+        if (matchesField(learner.bio, 'bio')) return { learner, matchedField };
         
         // Social media and portfolio links
-        if (matchesField(student.github_link, 'github')) return { student, matchedField: matchedField || 'github' };
-        if (matchesField(student.linkedin_link, 'linkedin')) return { student, matchedField: matchedField || 'linkedin' };
-        if (matchesField(student.twitter_link, 'twitter')) return { student, matchedField: matchedField || 'twitter' };
-        if (matchesField(student.facebook_link, 'facebook')) return { student, matchedField: matchedField || 'facebook' };
-        if (matchesField(student.instagram_link, 'instagram')) return { student, matchedField: matchedField || 'instagram' };
-        if (matchesField(student.portfolio_link, 'portfolio')) return { student, matchedField: matchedField || 'portfolio' };
+        if (matchesField(learner.github_link, 'github')) return { learner, matchedField: matchedField || 'github' };
+        if (matchesField(learner.linkedin_link, 'linkedin')) return { learner, matchedField: matchedField || 'linkedin' };
+        if (matchesField(learner.twitter_link, 'twitter')) return { learner, matchedField: matchedField || 'twitter' };
+        if (matchesField(learner.facebook_link, 'facebook')) return { learner, matchedField: matchedField || 'facebook' };
+        if (matchesField(learner.instagram_link, 'instagram')) return { learner, matchedField: matchedField || 'instagram' };
+        if (matchesField(learner.portfolio_link, 'portfolio')) return { learner, matchedField: matchedField || 'portfolio' };
         
         // Other social links array
-        if (student.other_social_links && Array.isArray(student.other_social_links)) {
-          const socialMatch = student.other_social_links.some((link: any) => {
+        if (learner.other_social_links && Array.isArray(learner.other_social_links)) {
+          const socialMatch = learner.other_social_links.some((link: any) => {
             if (typeof link === 'string' && link.toLowerCase().includes(query)) {
               if (!isMatch) matchedField = 'social link';
               isMatch = true;
@@ -3430,15 +3430,15 @@ const TalentPoolContent = () => {
             }
             return false;
           });
-          if (socialMatch) return { student, matchedField };
+          if (socialMatch) return { learner, matchedField };
         }
         
-        if (matchesField(student.dept, 'dept')) return { student, matchedField };
-        if (matchesField(student.location, 'location')) return { student, matchedField };
+        if (matchesField(learner.dept, 'dept')) return { learner, matchedField };
+        if (matchesField(learner.location, 'location')) return { learner, matchedField };
         
         // Skills array - from skills table
-        if (student.skills && Array.isArray(student.skills)) {
-          const skillMatch = student.skills.some((skill: any) => {
+        if (learner.skills && Array.isArray(learner.skills)) {
+          const skillMatch = learner.skills.some((skill: any) => {
             if (typeof skill === 'string') {
               if (skill.toLowerCase().includes(query)) {
                 if (!isMatch) matchedField = skill.toLowerCase();
@@ -3455,13 +3455,13 @@ const TalentPoolContent = () => {
             return false;
           });
           if (skillMatch) {
-            return { student, matchedField };
+            return { learner, matchedField };
           }
         }
         
         // Projects - from projects table
-        if (student.projects && Array.isArray(student.projects)) {
-          const projectMatch = student.projects.some((project: any) => {
+        if (learner.projects && Array.isArray(learner.projects)) {
+          const projectMatch = learner.projects.some((project: any) => {
             if (!project) return false;
             
             if (matchesField(project.id, 'project')) return true;
@@ -3491,13 +3491,13 @@ const TalentPoolContent = () => {
             return false;
           });
           if (projectMatch) {
-            return { student, matchedField };
+            return { learner, matchedField };
           }
         }
         
         // Experience - from experience table
-        if (student.experience && Array.isArray(student.experience)) {
-          const expMatch = student.experience.some((exp: any) => {
+        if (learner.experience && Array.isArray(learner.experience)) {
+          const expMatch = learner.experience.some((exp: any) => {
             if (!exp) return false;
             
             // Check all text fields
@@ -3523,13 +3523,13 @@ const TalentPoolContent = () => {
             return false;
           });
           if (expMatch) {
-            return { student, matchedField };
+            return { learner, matchedField };
           }
         }
         
         // Certificates - from certificates table
-        if (student.certificates && Array.isArray(student.certificates)) {
-          const certMatch = student.certificates.some((cert: any) => {
+        if (learner.certificates && Array.isArray(learner.certificates)) {
+          const certMatch = learner.certificates.some((cert: any) => {
             if (!cert) return false;
             
             // Check all certificate fields
@@ -3559,13 +3559,13 @@ const TalentPoolContent = () => {
           });
           
           if (certMatch) {
-            return { student, matchedField };
+            return { learner, matchedField };
           }
         }
         
         // Trainings - from trainings table
-        if (student.trainings && Array.isArray(student.trainings)) {
-          const trainingMatch = student.trainings.some((training: any) => {
+        if (learner.trainings && Array.isArray(learner.trainings)) {
+          const trainingMatch = learner.trainings.some((training: any) => {
             if (!training) return false;
             if (matchesField(training.id, 'training')) return true;
             if (matchesField(training.title, 'training')) return true;
@@ -3577,7 +3577,7 @@ const TalentPoolContent = () => {
             return false;
           });
           if (trainingMatch) {
-            return { student, matchedField };
+            return { learner, matchedField };
           }
         }
         
@@ -3589,7 +3589,7 @@ const TalentPoolContent = () => {
         return a.matchedField.localeCompare(b.matchedField);
       });
       
-      result = resultsWithScores.map(item => item.student);
+      result = resultsWithScores.map(item => item.learner);
       
       if (result.length > 0) {
       }
@@ -3597,8 +3597,8 @@ const TalentPoolContent = () => {
 
     // Apply skill filters
     if (filters.skills.length > 0) {
-      result = result.filter(student => {
-        return student.skills?.some((skill: any) => {
+      result = result.filter(learner => {
+        return learner.skills?.some((skill: any) => {
           const skillName = typeof skill === 'string' ? skill : skill?.name;
           return skillName && filters.skills.includes(skillName.toLowerCase());
         });
@@ -3607,16 +3607,16 @@ const TalentPoolContent = () => {
 
     // Apply course/department filters
     if (filters.courses.length > 0) {
-      result = result.filter(student => {
-        const dept = student.dept || student.course_name || student.branch_field;
+      result = result.filter(learner => {
+        const dept = learner.dept || learner.course_name || learner.branch_field;
         return dept && filters.courses.includes(dept.toLowerCase());
       });
     }
 
     // Apply badge filters
     if (filters.badges.length > 0) {
-      result = result.filter(student =>
-        student.badges?.some(badge =>
+      result = result.filter(learner =>
+        learner.badges?.some(badge =>
           filters.badges.includes(badge)
         )
       );
@@ -3624,22 +3624,22 @@ const TalentPoolContent = () => {
 
     // Apply location filters
     if (filters.locations.length > 0) {
-      result = result.filter(student => {
-        const location = student.location || student.district_name;
+      result = result.filter(learner => {
+        const location = learner.location || learner.district_name;
         return location && filters.locations.includes(location.toLowerCase());
       });
     }
 
     // Apply year filters
     if (filters.years.length > 0) {
-      result = result.filter(student =>
-        filters.years.includes(student.year)
+      result = result.filter(learner =>
+        filters.years.includes(learner.year)
       );
     }
 
     // Apply AI score range filter
-    result = result.filter(student => {
-      const score = student.ai_score_overall || 0;
+    result = result.filter(learner => {
+      const score = learner.ai_score_overall || 0;
       return score >= filters.minScore && score <= filters.maxScore;
     });
 
@@ -3666,16 +3666,16 @@ const TalentPoolContent = () => {
     }
 
     return result;
-  }, [students, searchQuery, filters, sortBy]);
+  }, [learners, searchQuery, filters, sortBy]);
 
   // Pagination: Calculate paginated results
-  const paginatedStudents = useMemo(() => {
+  const paginatedlearners = useMemo(() => {
     const startIndex = currentPage * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    return filteredAndSortedStudents.slice(startIndex, endIndex);
-  }, [filteredAndSortedStudents, currentPage, itemsPerPage]);
+    return filteredAndSortedlearners.slice(startIndex, endIndex);
+  }, [filteredAndSortedlearners, currentPage, itemsPerPage]);
 
-  const pageCount = Math.ceil(filteredAndSortedStudents.length / itemsPerPage);
+  const pageCount = Math.ceil(filteredAndSortedlearners.length / itemsPerPage);
 
   // Reset to page 0 when filters change
   useEffect(() => {
@@ -3740,7 +3740,7 @@ const TalentPoolContent = () => {
           <div className="inline-flex items-baseline">
             <h1 className="text-xl font-semibold text-gray-900">Talent Pool</h1>
             <span className="ml-2 text-sm text-gray-500">
-              ({filteredAndSortedStudents.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates{(searchQuery || filters.skills.length > 0) && students.length !== filteredAndSortedStudents.length && ` of ${students.length} total`})
+              ({filteredAndSortedlearners.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates{(searchQuery || filters.skills.length > 0) && learners.length !== filteredAndSortedlearners.length && ` of ${learners.length} total`})
             </span>
           </div>
         </div>
@@ -3807,7 +3807,7 @@ const TalentPoolContent = () => {
         <div className="text-left">
           <h1 className="text-xl font-semibold text-gray-900">Talent Pool</h1>
           <span className="text-sm text-gray-500">
-            {filteredAndSortedStudents.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates{(searchQuery || filters.skills.length > 0) && students.length !== filteredAndSortedStudents.length && ` of ${students.length} total`}
+            {filteredAndSortedlearners.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates{(searchQuery || filters.skills.length > 0) && learners.length !== filteredAndSortedlearners.length && ` of ${learners.length} total`}
           </span>
         </div>
 
@@ -3960,12 +3960,12 @@ const TalentPoolContent = () => {
           <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <p className="text-sm text-gray-700">
-                Showing <span className="font-medium">{Math.min((currentPage * itemsPerPage) + 1, filteredAndSortedStudents.length)}</span> to <span className="font-medium">{Math.min((currentPage + 1) * itemsPerPage, filteredAndSortedStudents.length)}</span> of <span className="font-medium">{filteredAndSortedStudents.length}</span> result{filteredAndSortedStudents.length !== 1 ? 's' : ''}
+                Showing <span className="font-medium">{Math.min((currentPage * itemsPerPage) + 1, filteredAndSortedlearners.length)}</span> to <span className="font-medium">{Math.min((currentPage + 1) * itemsPerPage, filteredAndSortedlearners.length)}</span> of <span className="font-medium">{filteredAndSortedlearners.length}</span> result{filteredAndSortedlearners.length !== 1 ? 's' : ''}
                 {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
               </p>
               <div className="flex items-center gap-3">
                 {/* Top Pagination Controls */}
-                {!loading && filteredAndSortedStudents.length > 0 && pageCount > 1 && (
+                {!loading && filteredAndSortedlearners.length > 0 && pageCount > 1 && (
                   <ReactPaginate
                     previousLabel="←"
                     nextLabel="→"
@@ -4009,9 +4009,9 @@ const TalentPoolContent = () => {
             {viewMode === 'grid' ? (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {loading && <div className="text-sm text-gray-500">Loading students...</div>}
+                  {loading && <div className="text-sm text-gray-500">Loading learners...</div>}
                   {error && <div className="text-sm text-red-600">{error}</div>}
-                  {!loading && paginatedStudents.map((candidate) => (
+                  {!loading && paginatedlearners.map((candidate) => (
                     <CandidateCard
                       key={candidate.id}
                       candidate={candidate as any}
@@ -4020,12 +4020,12 @@ const TalentPoolContent = () => {
                       onScheduleInterview={handleScheduleInterviewClick}
                     />
                   ))}
-                  {!loading && filteredAndSortedStudents.length === 0 && !error && (
+                  {!loading && filteredAndSortedlearners.length === 0 && !error && (
                     <div className="col-span-full text-center py-8">
                       <p className="text-sm text-gray-500">
                         {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 
                           ? 'No candidates match your current filters' 
-                          : 'No students found.'}
+                          : 'No learners found.'}
                       </p>
                       <p className="text-xs text-gray-400 mt-2">
                         Try adjusting your search terms or filters.
@@ -4042,7 +4042,7 @@ const TalentPoolContent = () => {
                   )}
                 </div>
                 {/* Pagination Controls for Grid View */}
-                {!loading && filteredAndSortedStudents.length > 0 && pageCount > 1 && (
+                {!loading && filteredAndSortedlearners.length > 0 && pageCount > 1 && (
                   <div className="mt-6 flex justify-center">
                     <ReactPaginate
                       previousLabel="← Previous"
@@ -4094,7 +4094,7 @@ const TalentPoolContent = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {paginatedStudents.map((candidate) => (
+                      {paginatedlearners.map((candidate) => (
                         <tr key={candidate.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
@@ -4163,7 +4163,7 @@ const TalentPoolContent = () => {
                   </table>
                 </div>
                 {/* Pagination Controls for Table View */}
-                {!loading && filteredAndSortedStudents.length > 0 && pageCount > 1 && (
+                {!loading && filteredAndSortedlearners.length > 0 && pageCount > 1 && (
                   <div className="mt-6 flex justify-center">
                     <ReactPaginate
                       previousLabel="← Previous"

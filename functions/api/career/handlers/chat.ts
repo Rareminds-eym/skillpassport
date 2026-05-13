@@ -6,7 +6,7 @@
  * - Intent detection with chip-based overrides
  * - Conversation phase management
  * - Memory compression for long conversations
- * - Rich context builders (student, assessment, progress, courses, opportunities)
+ * - Rich context builders (learner, assessment, progress, courses, opportunities)
  * - Enhanced system prompt with few-shot examples and chain-of-thought
  */
 
@@ -25,7 +25,7 @@ import { getConversationPhase, getPhaseParameters } from '../ai/conversation-pha
 import { buildEnhancedSystemPrompt } from '../ai/prompts/enhanced-system-prompt';
 
 // Context builders
-import { buildStudentContext } from '../context/student';
+import { buildlearnerContext } from '../context/learner';
 import { buildAssessmentContext } from '../context/assessment';
 import { buildCareerProgressContext } from '../context/progress';
 import { buildCourseContext } from '../context/courses';
@@ -47,10 +47,10 @@ export async function handleCareerChat(request: Request, env: Record<string, str
   }
 
   const { user, supabase, supabaseAdmin } = auth;
-  const studentId = user.id;
+  const learnerId = user.id;
 
   // Rate limiting
-  if (!await checkRateLimit(studentId, env)) {
+  if (!await checkRateLimit(learnerId, env)) {
     return jsonResponse({ error: 'Too many requests. Please wait a moment.' }, 429);
   }
 
@@ -126,18 +126,18 @@ export async function handleCareerChat(request: Request, env: Record<string, str
     console.log(`[ANALYSIS] Phase: ${conversationPhase} | Intent: ${intentResult.intent} (${intentResult.confidence})`);
 
     // ==================== BUILD CONTEXT IN PARALLEL ====================
-    const [studentProfile, assessmentContext, progressContext, courseContext] = await Promise.all([
-      buildStudentContext(supabaseAdmin, studentId),
-      buildAssessmentContext(supabaseAdmin, studentId),
-      buildCareerProgressContext(supabase, studentId),
-      buildCourseContext(supabase, studentId)
+    const [learnerProfile, assessmentContext, progressContext, courseContext] = await Promise.all([
+      buildlearnerContext(supabaseAdmin, learnerId),
+      buildAssessmentContext(supabaseAdmin, learnerId),
+      buildCareerProgressContext(supabase, learnerId),
+      buildCourseContext(supabase, learnerId)
     ]);
 
-    if (!studentProfile) {
-      return jsonResponse({ error: 'Unable to load student profile' }, 500);
+    if (!learnerProfile) {
+      return jsonResponse({ error: 'Unable to load learner profile' }, 500);
     }
 
-    console.log(`[CONTEXT] Profile: ${studentProfile.name}, Skills: ${studentProfile.technicalSkills.length}`);
+    console.log(`[CONTEXT] Profile: ${learnerProfile.name}, Skills: ${learnerProfile.technicalSkills.length}`);
 
     // ==================== FETCH OPPORTUNITIES FOR RELEVANT INTENTS ====================
     let opportunities: Opportunity[] = [];
@@ -147,7 +147,7 @@ export async function handleCareerChat(request: Request, env: Record<string, str
       opportunities = await fetchSmartOpportunities(supabase, {
         userMessage: processedMessage,
         conversationHistory: existingMessages,
-        studentProfile,
+        learnerProfile,
         intent: intentResult.intent,
         openRouterKey
       });
@@ -161,7 +161,7 @@ export async function handleCareerChat(request: Request, env: Record<string, str
 
     // ==================== BUILD ENHANCED SYSTEM PROMPT ====================
     const systemPrompt = buildEnhancedSystemPrompt({
-      profile: studentProfile,
+      profile: learnerProfile,
       assessment: assessmentContext,
       progress: progressContext,
       opportunities,
@@ -352,7 +352,7 @@ export async function handleCareerChat(request: Request, env: Record<string, str
                 .from('career_ai_conversations')
                 .insert({
                   id: finalConversationId,
-                  student_id: studentId,
+                  learner_id: learnerId,
                   title: title.slice(0, 255),
                   messages: updatedMessages
                 });

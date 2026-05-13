@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Code, GraduationCap, FolderOpen, Award, TrendingUp, X, Github, Linkedin, Mail, Zap, Bot, Cpu, Brain, Atom } from 'lucide-react';
-import { Student, AnimationType, DisplayPreferences } from '@/shared/types/student';
+import { Learner, AnimationType, DisplayPreferences } from '@/shared/types/learner';
 
 interface AIPersonaLayoutProps {
-  student: Student;
+  learner: Learner;
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
@@ -15,7 +15,7 @@ interface AIPersonaLayoutProps {
 type ViewType = 'intro' | 'skills' | 'education' | 'projects' | 'achievements';
 
 const AIPersonaLayout: React.FC<AIPersonaLayoutProps> = ({ 
-  student, 
+  learner, 
   primaryColor,
   displayPreferences = {
     showSocialLinks: true,
@@ -31,10 +31,10 @@ const AIPersonaLayout: React.FC<AIPersonaLayoutProps> = ({
 
   // Combine both technical and soft skills
   const allSkills = [
-    ...(student.profile?.skills || []),
-    ...(student.profile?.technicalSkills || []),
-    ...(student.technicalSkills || []),
-    ...(student.skills || [])
+    ...(learner.profile?.skills || []),
+    ...(learner.profile?.technicalSkills || []),
+    ...(learner.technicalSkills || []),
+    ...(learner.skills || [])
   ];
   const uniqueSkills = allSkills.filter((skill, index, self) => 
     index === self.findIndex((s) => s.id === skill.id)
@@ -89,8 +89,8 @@ const AIPersonaLayout: React.FC<AIPersonaLayoutProps> = ({
                 >
                   <div className="relative">
                     <img
-                      src={student.profile.profileImage || '/api/placeholder/150/150'}
-                      alt={student.name || 'Profile'}
+                      src={learner.profile.profileImage || '/api/placeholder/150/150'}
+                      alt={learner.name || 'Profile'}
                       className="w-32 h-32 rounded-full object-cover border-4 border-cyan-500 shadow-2xl shadow-cyan-500/50"
                     />
                     <div className="absolute -top-2 -right-2 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full p-2 animate-bounce">
@@ -105,20 +105,20 @@ const AIPersonaLayout: React.FC<AIPersonaLayoutProps> = ({
                   transition={{ delay: 0.4 }}
                 >
                   <h1 className="text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-purple-400">
-                    Hi, I'm {student.name || student.profile.name}'s Digital Twin
+                    Hi, I'm {learner.name || learner.profile.name}'s Digital Twin
                   </h1>
                   <p className="text-xl text-gray-300 mb-2">
-                    {student.branch_field && `${student.branch_field} @ `}
-                    {student.school?.name || 
-                     student.profile?.school?.name || 
-                     student.college_school_name || 
-                     student.universityCollege?.name || 
-                     student.profile?.universityCollege?.name ||
-                     student.university || 'Student'}
+                    {learner.branch_field && `${learner.branch_field} @ `}
+                    {learner.school?.name || 
+                     learner.profile?.school?.name || 
+                     learner.college_school_name || 
+                     learner.universityCollege?.name || 
+                     learner.profile?.universityCollege?.name ||
+                     learner.university || 'Learner'}
                   </p>
-                  {student.profile.bio && (
+                  {learner.profile.bio && (
                     <p className="text-gray-400 max-w-2xl mx-auto leading-relaxed">
-                      {student.profile.bio}
+                      {learner.profile.bio}
                     </p>
                   )}
                 </motion.div>
@@ -133,9 +133,9 @@ const AIPersonaLayout: React.FC<AIPersonaLayoutProps> = ({
               >
                 {displayPreferences.showSocialLinks && (
                   <>
-                    {student.github_link && (
+                    {learner.github_link && (
                       <a
-                        href={student.github_link}
+                        href={learner.github_link}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-4 bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 hover:border-cyan-500 transition-all hover:shadow-lg hover:shadow-cyan-500/50"
@@ -143,9 +143,9 @@ const AIPersonaLayout: React.FC<AIPersonaLayoutProps> = ({
                         <Github className="w-6 h-6" />
                       </a>
                     )}
-                    {student.linkedin_link && (
+                    {learner.linkedin_link && (
                       <a
-                        href={student.linkedin_link}
+                        href={learner.linkedin_link}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-4 bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 hover:border-cyan-500 transition-all hover:shadow-lg hover:shadow-cyan-500/50"
@@ -156,7 +156,7 @@ const AIPersonaLayout: React.FC<AIPersonaLayoutProps> = ({
                   </>
                 )}
                 <a
-                  href={`mailto:${student.email}`}
+                  href={`mailto:${learner.email}`}
                   className="p-4 bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 hover:border-cyan-500 transition-all hover:shadow-lg hover:shadow-cyan-500/50"
                 >
                   <Mail className="w-6 h-6" />
@@ -273,7 +273,7 @@ const AIPersonaLayout: React.FC<AIPersonaLayoutProps> = ({
               </div>
 
               <div className="space-y-6">
-                {student.profile.education?.map((edu, index) => (
+                {learner.profile.education?.map((edu, index) => (
                   <motion.div
                     key={edu.id}
                     initial={{ opacity: 0, x: -50 }}
@@ -325,7 +325,7 @@ const AIPersonaLayout: React.FC<AIPersonaLayoutProps> = ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {student.profile.projects?.map((project, index) => (
+                {learner.profile.projects?.map((project, index) => (
                   <motion.div
                     key={project.id}
                     initial={{ opacity: 0, y: 30 }}
@@ -386,7 +386,7 @@ const AIPersonaLayout: React.FC<AIPersonaLayoutProps> = ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {student.profile.achievements?.map((achievement, index) => (
+                {learner.profile.achievements?.map((achievement, index) => (
                   <motion.div
                     key={achievement.id}
                     initial={{ opacity: 0, rotate: -5 }}

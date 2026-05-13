@@ -37,7 +37,7 @@ const UniversityExaminationManagement: React.FC = () => {
       endDate: "2024-12-30",
       status: "Scheduled",
       colleges: 45,
-      students: 12500,
+      learners: 12500,
       subjects: 180,
       progress: 0,
     },
@@ -51,7 +51,7 @@ const UniversityExaminationManagement: React.FC = () => {
       endDate: "2024-11-25",
       status: "Completed",
       colleges: 45,
-      students: 12500,
+      learners: 12500,
       subjects: 180,
       progress: 100,
     },
@@ -65,7 +65,7 @@ const UniversityExaminationManagement: React.FC = () => {
       endDate: "2025-01-20",
       status: "Draft",
       colleges: 45,
-      students: 8200,
+      learners: 8200,
       subjects: 95,
       progress: 0,
     },
@@ -78,9 +78,9 @@ const UniversityExaminationManagement: React.FC = () => {
       college: "ABC Engineering College",
       department: "Computer Science",
       semester: "5th Semester",
-      totalStudents: 120,
-      passedStudents: 108,
-      failedStudents: 12,
+      totallearners: 120,
+      passedlearners: 108,
+      failedlearners: 12,
       passPercentage: 90,
       averageMarks: 78.5,
       status: "Published",
@@ -92,9 +92,9 @@ const UniversityExaminationManagement: React.FC = () => {
       college: "XYZ Arts & Science College",
       department: "Mathematics",
       semester: "3rd Semester",
-      totalStudents: 85,
-      passedStudents: 82,
-      failedStudents: 3,
+      totallearners: 85,
+      passedlearners: 82,
+      failedlearners: 3,
       passPercentage: 96.5,
       averageMarks: 82.3,
       status: "Published",
@@ -104,9 +104,9 @@ const UniversityExaminationManagement: React.FC = () => {
 
   // Mock data for colleges (for future use)
   // const [colleges] = useState([
-  //   { id: 1, name: "ABC Engineering College", code: "AEC", students: 2500 },
-  //   { id: 2, name: "XYZ Arts & Science College", code: "XASC", students: 1800 },
-  //   { id: 3, name: "PQR Medical College", code: "PMC", students: 1200 },
+  //   { id: 1, name: "ABC Engineering College", code: "AEC", learners: 2500 },
+  //   { id: 2, name: "XYZ Arts & Science College", code: "XASC", learners: 1800 },
+  //   { id: 3, name: "PQR Medical College", code: "PMC", learners: 1200 },
   // ]);
 
   // Filter examinations
@@ -164,7 +164,7 @@ const UniversityExaminationManagement: React.FC = () => {
       endDate: "2025-02-20",
       status: "Draft",
       colleges: 0,
-      students: 0,
+      learners: 0,
       subjects: 0,
       progress: 0,
     };
@@ -233,7 +233,7 @@ const UniversityExaminationManagement: React.FC = () => {
               <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-2xl p-6 text-white shadow-lg">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <p className="text-green-100 text-sm mb-1">Total Students</p>
+                    <p className="text-green-100 text-sm mb-1">Total Learners</p>
                     <p className="text-3xl font-bold">33.2K</p>
                   </div>
                   <div className="p-3 bg-white/10 rounded-xl">
@@ -302,7 +302,7 @@ const UniversityExaminationManagement: React.FC = () => {
                   </div>
                   <div className="flex-1">
                     <p className="font-medium text-gray-900">Grade Calculation in Progress</p>
-                    <p className="text-sm text-gray-600">Final grades being calculated for 12,500 students</p>
+                    <p className="text-sm text-gray-600">Final grades being calculated for 12,500 learners</p>
                   </div>
                   <span className="text-sm text-gray-500">3 days ago</span>
                 </div>
@@ -375,7 +375,7 @@ const UniversityExaminationManagement: React.FC = () => {
                       Colleges
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                      Students
+                      Learners
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
                       Status
@@ -409,7 +409,7 @@ const UniversityExaminationManagement: React.FC = () => {
                         {exam.colleges}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900">
-                        {exam.students.toLocaleString()}
+                        {exam.learners.toLocaleString()}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(exam.status)}`}>
@@ -500,7 +500,7 @@ const UniversityExaminationManagement: React.FC = () => {
                       College & Department
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                      Students
+                      Learners
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
                       Pass Rate
@@ -533,9 +533,9 @@ const UniversityExaminationManagement: React.FC = () => {
                       </td>
                       <td className="px-4 py-3">
                         <div className="text-sm">
-                          <p className="text-gray-900">Total: {result.totalStudents}</p>
-                          <p className="text-green-600">Passed: {result.passedStudents}</p>
-                          <p className="text-red-600">Failed: {result.failedStudents}</p>
+                          <p className="text-gray-900">Total: {result.totallearners}</p>
+                          <p className="text-green-600">Passed: {result.passedlearners}</p>
+                          <p className="text-red-600">Failed: {result.failedlearners}</p>
                         </div>
                       </td>
                       <td className="px-4 py-3">

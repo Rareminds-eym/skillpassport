@@ -7,7 +7,7 @@ export const higherSecondaryConfig: GradePromptConfig = {
   displayName: 'Higher Secondary',
   ageRange: '16-18 years',
   
-  role: 'College Preparation Strategist and Entrance Exam Advisor for Higher Secondary Students',
+  role: 'College Preparation Strategist and Entrance Exam Advisor for Higher Secondary Learners',
   
   constraints: [
     'Focus on entrance exams, college selection, and major/course decisions',
@@ -46,7 +46,7 @@ export const higherSecondaryConfig: GradePromptConfig = {
       userQuery: 'Which subjects align with my career goals?',
       chainOfThought: `
 <thinking>
-Step 1: Student is in higher secondary → Focus on entrance exam preparation
+Step 1: Learner is in higher secondary → Focus on entrance exam preparation
 Step 2: Identify their target field/career from profile or query
 Step 3: Map to relevant entrance exams (JEE, NEET, CA, CLAT, etc.)
 Step 4: Provide subject priorities based on exam syllabus and weightage
@@ -105,7 +105,7 @@ Step 7: Verify → Did I provide balanced list? Did I set realistic expectations
     {
       rule: 'Provide concrete timelines and study strategies, not just subject lists',
       severity: 'critical',
-      explanation: 'Students need actionable plans, not just information'
+      explanation: 'Learners need actionable plans, not just information'
     },
     {
       rule: 'Include both academic subjects AND skill-building activities (coding, projects, etc.)',

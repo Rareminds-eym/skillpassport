@@ -21,8 +21,8 @@
       "description": "User authentication and authorization"
     },
     {
-      "name": "Students",
-      "description": "Student profile and academic operations"
+      "name": "Learners",
+      "description": "Learner profile and academic operations"
     },
     {
       "name": "Assessments",
@@ -63,7 +63,7 @@
                   },
                   "role": {
                     "type": "string",
-                    "enum": ["student", "educator", "admin", "recruiter"]
+                    "enum": ["learner", "educator", "admin", "recruiter"]
                   }
                 },
                 "required": ["email", "password"]
@@ -93,11 +93,11 @@
         }
       }
     },
-    "/students/{id}": {
+    "/learners/{id}": {
       "get": {
-        "tags": ["Students"],
-        "summary": "Get student profile",
-        "description": "Retrieve detailed student information",
+        "tags": ["Learners"],
+        "summary": "Get learner profile",
+        "description": "Retrieve detailed learner information",
         "parameters": [
           {
             "name": "id",
@@ -111,11 +111,11 @@
         ],
         "responses": {
           "200": {
-            "description": "Student profile",
+            "description": "Learner profile",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Student"
+                  "$ref": "#/components/schemas/Learner"
                 }
               }
             }
@@ -167,7 +167,7 @@
       "post": {
         "tags": ["Assessments"],
         "summary": "Submit assessment responses",
-        "description": "Submit student answers and get results",
+        "description": "Submit learner answers and get results",
         "parameters": [
           {
             "name": "id",
@@ -426,11 +426,11 @@
           },
           "role": {
             "type": "string",
-            "enum": ["student", "educator", "admin", "recruiter"]
+            "enum": ["learner", "educator", "admin", "recruiter"]
           }
         }
       },
-      "Student": {
+      "Learner": {
         "type": "object",
         "properties": {
           "id": {
@@ -499,7 +499,7 @@
             "type": "string",
             "format": "uuid"
           },
-          "student_id": {
+          "learner_id": {
             "type": "string",
             "format": "uuid"
           },
@@ -560,7 +560,7 @@
             "type": "string",
             "format": "uuid"
           },
-          "student_id": {
+          "learner_id": {
             "type": "string",
             "format": "uuid"
           },
@@ -609,7 +609,7 @@
             "type": "string",
             "format": "uuid"
           },
-          "student_id": {
+          "learner_id": {
             "type": "string",
             "format": "uuid"
           },

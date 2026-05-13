@@ -22,7 +22,7 @@ interface ResultsStepProps {
 }
 
 const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
-  const [selectedView, setSelectedView] = useState<'overview' | 'subject' | 'students' | 'classwise'>('overview');
+  const [selectedView, setSelectedView] = useState<'overview' | 'subject' | 'learners' | 'classwise'>('overview');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [classwiseData, setClasswiseData] = useState<any[]>([]);
   const [loadingClasswise, setLoadingClasswise] = useState(false);
@@ -55,28 +55,28 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
 
       if (classError) throw classError;
 
-      // For each class, get student statistics
+      // For each class, get learner statistics
       const classwiseStats = await Promise.all(
         classes.map(async (classInfo) => {
-          // Get students in this class
-          const { data: students, error: studentsError } = await supabase
-            .from('students')
+          // Get learners in this class
+          const { data: learners, error: learnersError } = await supabase
+            .from('learners')
             .select('id')
             .eq('school_class_id', classInfo.id)
             .or('is_deleted.is.null,is_deleted.eq.false');
 
-          if (studentsError) throw studentsError;
+          if (learnersError) throw learnersError;
 
-          const studentIds = students.map(s => s.id);
+          const learnerIds = learners.map(s => s.id);
           
-          if (studentIds.length === 0) {
+          if (learnerIds.length === 0) {
             return {
               class_id: classInfo.id,
               section: classInfo.section,
               class_name: classInfo.name,
-              total_students: 0,
-              students_with_marks: 0,
-              passed_students: 0,
+              total_learners: 0,
+              learners_with_marks: 0,
+              passed_learners: 0,
               average_marks: null,
               highest_marks: null,
               lowest_marks: null,
@@ -85,20 +85,20 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
             };
           }
 
-          // Get mark entries for these students in this exam
+          // Get mark entries for these learners in this exam
           const { data: markEntries, error: marksError } = await supabase
             .from('mark_entries')
-            .select('student_id, marks_obtained, is_absent, subject_id')
+            .select('learner_id, marks_obtained, is_absent, subject_id')
             .eq('assessment_id', exam.id)
-            .in('student_id', studentIds);
+            .in('learner_id', learnerIds);
 
           if (marksError) throw marksError;
 
           // Calculate statistics
-          const studentsWithMarks = new Set(
+          const learnersWithMarks = new Set(
             markEntries
               .filter(me => me.marks_obtained !== null && !me.is_absent)
-              .map(me => me.student_id)
+              .map(me => me.learner_id)
           ).size;
 
           const allMarks = markEntries
@@ -106,31 +106,31 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
             .map(me => me.marks_obtained);
 
           // For pass calculation, check against actual subject passing marks
-          const passedStudentIds = new Set();
+          const passedLearnerIds = new Set();
           
-          // Group marks by student and check if they pass all subjects
-          const studentMarksMap = new Map();
+          // Group marks by learner and check if they pass all subjects
+          const learnerMarksMap = new Map();
           markEntries.forEach(me => {
-            if (!studentMarksMap.has(me.student_id)) {
-              studentMarksMap.set(me.student_id, []);
+            if (!learnerMarksMap.has(me.learner_id)) {
+              learnerMarksMap.set(me.learner_id, []);
             }
-            studentMarksMap.get(me.student_id).push(me);
+            learnerMarksMap.get(me.learner_id).push(me);
           });
           
-          studentMarksMap.forEach((studentMarks, studentId) => {
-            const appearedSubjects = studentMarks.filter((sm: any) => !sm.is_absent);
+          learnerMarksMap.forEach((learnerMarks, learnerId) => {
+            const appearedSubjects = learnerMarks.filter((sm: any) => !sm.is_absent);
             const passedSubjects = appearedSubjects.filter((sm: any) => {
               const subject = exam.subjects.find(s => s.id === sm.subject_id);
               return sm.marks_obtained !== null && sm.marks_obtained >= (subject?.passingMarks || 0);
             });
             
-            // Student passes ONLY if they appeared for ALL subjects AND passed all of them
+            // Learner passes ONLY if they appeared for ALL subjects AND passed all of them
             if (appearedSubjects.length === exam.subjects.length && passedSubjects.length === exam.subjects.length) {
-              passedStudentIds.add(studentId);
+              passedLearnerIds.add(learnerId);
             }
           });
           
-          const passedStudents = passedStudentIds.size;
+          const passedlearners = passedLearnerIds.size;
 
           const averageMarks = allMarks.length > 0 ? 
             Math.round((allMarks.reduce((a, b) => a + b, 0) / allMarks.length) * 100) / 100 : null;
@@ -141,21 +141,21 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
             class_id: classInfo.id,
             section: classInfo.section,
             class_name: classInfo.name,
-            total_students: studentIds.length,
-            students_with_marks: studentsWithMarks,
-            passed_students: passedStudents,
+            total_learners: learnerIds.length,
+            learners_with_marks: learnersWithMarks,
+            passed_learners: passedlearners,
             average_marks: averageMarks,
             highest_marks: highestMarks,
             lowest_marks: lowestMarks,
-            pass_rate: studentsWithMarks > 0 ? Math.round((passedStudents / studentsWithMarks) * 100) : 0,
-            attendance_rate: studentIds.length > 0 ? Math.round((studentsWithMarks / studentIds.length) * 100) : 0
+            pass_rate: learnersWithMarks > 0 ? Math.round((passedlearners / learnersWithMarks) * 100) : 0,
+            attendance_rate: learnerIds.length > 0 ? Math.round((learnersWithMarks / learnerIds.length) * 100) : 0
           };
         })
       );
 
-      // Filter out classes with no students and sort by section
+      // Filter out classes with no learners and sort by section
       const filteredStats = classwiseStats
-        .filter(stat => stat.total_students > 0)
+        .filter(stat => stat.total_learners > 0)
         .sort((a, b) => a.section.localeCompare(b.section));
       
       setClasswiseData(filteredStats);
@@ -176,14 +176,14 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
 
   // Calculate overall statistics
   const overallStats = React.useMemo(() => {
-    const allStudents = exam.marks.flatMap(m => m.studentMarks);
-    const uniqueStudents = Array.from(new Set(allStudents.map(s => s.studentId)));
-    const totalStudents = uniqueStudents.length;
+    const alllearners = exam.marks.flatMap(m => m.learnerMarks);
+    const uniquelearners = Array.from(new Set(alllearners.map(s => s.learnerId)));
+    const totallearners = uniquelearners.length;
     
-    // Calculate pass/fail for each student across all subjects
-    const studentResults = uniqueStudents.map(studentId => {
-      const studentMarks = exam.marks.map(subjectMark => {
-        const mark = subjectMark.studentMarks.find(sm => sm.studentId === studentId);
+    // Calculate pass/fail for each learner across all subjects
+    const learnerResults = uniquelearners.map(learnerId => {
+      const learnerMarks = exam.marks.map(subjectMark => {
+        const mark = subjectMark.learnerMarks.find(sm => sm.learnerId === learnerId);
         const subject = exam.subjects.find(s => s.id === subjectMark.subjectId);
         const isModerated = mark?.originalMarks !== null && mark?.originalMarks !== mark?.marks;
         
@@ -199,11 +199,11 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
         };
       });
       
-      // Count subjects where student appeared (not absent)
-      const appearedSubjects = studentMarks.filter(sm => !sm.isAbsent);
-      const passedSubjects = studentMarks.filter(sm => sm.passed);
+      // Count subjects where learner appeared (not absent)
+      const appearedSubjects = learnerMarks.filter(sm => !sm.isAbsent);
+      const passedSubjects = learnerMarks.filter(sm => sm.passed);
       
-      // Student passes overall ONLY if they appeared for ALL subjects AND passed all of them
+      // Learner passes overall ONLY if they appeared for ALL subjects AND passed all of them
       // If absent for any subject, they fail overall
       const overallPassed = appearedSubjects.length === exam.subjects.length && passedSubjects.length === exam.subjects.length;
       
@@ -215,25 +215,25 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
       }, 0);
       const percentage = maxMarks > 0 ? Math.round((totalMarks / maxMarks) * 100) : 0;
       
-      // Calculate grade based on percentage - only if student appeared for ALL subjects and passed
+      // Calculate grade based on percentage - only if learner appeared for ALL subjects and passed
       let grade;
       if (appearedSubjects.length === 0) {
-        grade = '-'; // No grade for fully absent students
+        grade = '-'; // No grade for fully absent learners
       } else if (appearedSubjects.length < exam.subjects.length) {
         grade = 'F'; // Absent for any subject = Fail
       } else if (overallPassed) {
-        // If student appeared for all subjects and passed all, calculate grade based on percentage
+        // If learner appeared for all subjects and passed all, calculate grade based on percentage
         grade = percentage >= 90 ? 'A+' : 
                 percentage >= 80 ? 'A' : 
                 percentage >= 70 ? 'B+' : 
                 percentage >= 60 ? 'B' : 
-                percentage >= 50 ? 'C' : 'D'; // Minimum D for passing students
+                percentage >= 50 ? 'C' : 'D'; // Minimum D for passing learners
       } else {
         grade = 'F'; // Failed any subject = F
       }
       
       return {
-        studentId,
+        learnerId,
         passedSubjects: passedSubjects.length,
         appearedSubjects: appearedSubjects.length,
         totalSubjects: exam.subjects.length,
@@ -242,30 +242,30 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
         maxMarks,
         percentage,
         grade,
-        studentMarks
+        learnerMarks
       };
     });
     
-    // Count different categories of students
-    const fullyAbsentStudents = studentResults.filter(sr => sr.appearedSubjects === 0).length;
-    const partiallyAbsentStudents = studentResults.filter(sr => sr.appearedSubjects > 0 && sr.appearedSubjects < sr.totalSubjects).length;
-    const fullyAppearedStudents = studentResults.filter(sr => sr.appearedSubjects === sr.totalSubjects).length;
-    const passedStudents = studentResults.filter(sr => sr.overallPassed).length;
-    const failedStudents = totalStudents - passedStudents - fullyAbsentStudents;
+    // Count different categories of learners
+    const fullyAbsentlearners = learnerResults.filter(sr => sr.appearedSubjects === 0).length;
+    const partiallyAbsentlearners = learnerResults.filter(sr => sr.appearedSubjects > 0 && sr.appearedSubjects < sr.totalSubjects).length;
+    const fullyAppearedlearners = learnerResults.filter(sr => sr.appearedSubjects === sr.totalSubjects).length;
+    const passedlearners = learnerResults.filter(sr => sr.overallPassed).length;
+    const failedlearners = totallearners - passedlearners - fullyAbsentlearners;
     
-    // Pass rate based on all students (excluding fully absent)
-    const studentsWithSomeAppearance = totalStudents - fullyAbsentStudents;
-    const passRate = studentsWithSomeAppearance > 0 ? Math.round((passedStudents / studentsWithSomeAppearance) * 100) : 0;
+    // Pass rate based on all learners (excluding fully absent)
+    const learnersWithSomeAppearance = totallearners - fullyAbsentlearners;
+    const passRate = learnersWithSomeAppearance > 0 ? Math.round((passedlearners / learnersWithSomeAppearance) * 100) : 0;
     
     return {
-      totalStudents,
-      appearedStudents: fullyAppearedStudents,
-      absentStudents: fullyAbsentStudents,
-      partiallyAbsentStudents,
-      passedStudents,
-      failedStudents,
+      totallearners,
+      appearedlearners: fullyAppearedlearners,
+      absentlearners: fullyAbsentlearners,
+      partiallyAbsentlearners,
+      passedlearners,
+      failedlearners,
       passRate,
-      studentResults
+      learnerResults
     };
   }, [exam.marks, exam.subjects]);
 
@@ -273,16 +273,16 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
   const subjectStats = React.useMemo(() => {
     return exam.marks.map(subjectMark => {
       const subject = exam.subjects.find(s => s.id === subjectMark.subjectId);
-      const totalStudents = subjectMark.studentMarks.length;
-      const presentStudents = subjectMark.studentMarks.filter(s => !s.isAbsent);
-      const absentStudents = subjectMark.studentMarks.filter(s => s.isAbsent);
-      const passedStudents = presentStudents.filter(s => s.marks !== null && s.marks >= (subject?.passingMarks || 0));
-      const failedStudents = presentStudents.filter(s => s.marks !== null && s.marks < (subject?.passingMarks || 0));
-      const moderatedStudents = subjectMark.studentMarks.filter(s => s.originalMarks !== null && s.originalMarks !== s.marks);
+      const totallearners = subjectMark.learnerMarks.length;
+      const presentlearners = subjectMark.learnerMarks.filter(s => !s.isAbsent);
+      const absentlearners = subjectMark.learnerMarks.filter(s => s.isAbsent);
+      const passedlearners = presentlearners.filter(s => s.marks !== null && s.marks >= (subject?.passingMarks || 0));
+      const failedlearners = presentlearners.filter(s => s.marks !== null && s.marks < (subject?.passingMarks || 0));
+      const moderatedlearners = subjectMark.learnerMarks.filter(s => s.originalMarks !== null && s.originalMarks !== s.marks);
       
-      const passRate = presentStudents.length > 0 ? Math.round((passedStudents.length / presentStudents.length) * 100) : 0;
+      const passRate = presentlearners.length > 0 ? Math.round((passedlearners.length / presentlearners.length) * 100) : 0;
       
-      const validMarks = presentStudents.map(s => s.marks || 0).filter(m => m !== null);
+      const validMarks = presentlearners.map(s => s.marks || 0).filter(m => m !== null);
       const average = validMarks.length > 0 ? Math.round((validMarks.reduce((a, b) => a + b, 0) / validMarks.length) * 100) / 100 : 0;
       const highest = validMarks.length > 0 ? Math.max(...validMarks) : 0;
       const lowest = validMarks.length > 0 ? Math.min(...validMarks) : 0;
@@ -290,12 +290,12 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
       return {
         ...subjectMark,
         subject,
-        totalStudents,
-        presentStudents: presentStudents.length,
-        absentStudents: absentStudents.length,
-        passedStudents: passedStudents.length,
-        failedStudents: failedStudents.length,
-        moderatedStudents: moderatedStudents.length,
+        totallearners,
+        presentlearners: presentlearners.length,
+        absentlearners: absentlearners.length,
+        passedlearners: passedlearners.length,
+        failedlearners: failedlearners.length,
+        moderatedlearners: moderatedlearners.length,
         passRate,
         average,
         highest,
@@ -306,12 +306,12 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
 
   const exportResults = () => {
     const csvData = exam.marks.map(sm => 
-      sm.studentMarks.map(student => 
-        `${student.rollNumber},${student.studentName},${sm.subjectName},${student.marks || "Absent"}`
+      sm.learnerMarks.map(learner => 
+        `${learner.rollNumber},${learner.learnerName},${sm.subjectName},${learner.marks || "Absent"}`
       ).join('\n')
     ).join('\n');
     
-    const blob = new Blob([`Roll No,Student Name,Subject,Marks\n${csvData}`], { type: 'text/csv' });
+    const blob = new Blob([`Roll No,Learner Name,Subject,Marks\n${csvData}`], { type: 'text/csv' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `${exam.name.replace(/\s+/g, '_')}_results.csv`;
@@ -353,12 +353,12 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
             Subject Analysis
           </button>
           <button
-            onClick={() => setSelectedView('students')}
+            onClick={() => setSelectedView('learners')}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              selectedView === 'students' ? "bg-indigo-600 text-white shadow-sm" : "text-gray-700 hover:bg-white"
+              selectedView === 'learners' ? "bg-indigo-600 text-white shadow-sm" : "text-gray-700 hover:bg-white"
             }`}
           >
-            Student Results
+            Learner Results
           </button>
           {isWholeGradeExam && (
             <button
@@ -382,8 +382,8 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
               <div className="flex items-center gap-3">
                 <UserGroupIcon className="h-8 w-8 text-blue-600" />
                 <div>
-                  <p className="text-2xl font-bold text-blue-900">{overallStats.totalStudents}</p>
-                  <p className="text-sm text-blue-700">Total Students</p>
+                  <p className="text-2xl font-bold text-blue-900">{overallStats.totallearners}</p>
+                  <p className="text-sm text-blue-700">Total Learners</p>
                 </div>
               </div>
             </div>
@@ -391,7 +391,7 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
               <div className="flex items-center gap-3">
                 <UserGroupIcon className="h-8 w-8 text-indigo-600" />
                 <div>
-                  <p className="text-2xl font-bold text-indigo-900">{overallStats.appearedStudents}</p>
+                  <p className="text-2xl font-bold text-indigo-900">{overallStats.appearedlearners}</p>
                   <p className="text-sm text-indigo-700">Appeared</p>
                 </div>
               </div>
@@ -400,7 +400,7 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
               <div className="flex items-center gap-3">
                 <TrophyIcon className="h-8 w-8 text-green-600" />
                 <div>
-                  <p className="text-2xl font-bold text-green-900">{overallStats.passedStudents}</p>
+                  <p className="text-2xl font-bold text-green-900">{overallStats.passedlearners}</p>
                   <p className="text-sm text-green-700">Passed</p>
                 </div>
               </div>
@@ -409,7 +409,7 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
               <div className="flex items-center gap-3">
                 <ExclamationTriangleIcon className="h-8 w-8 text-red-600" />
                 <div>
-                  <p className="text-2xl font-bold text-red-900">{overallStats.failedStudents}</p>
+                  <p className="text-2xl font-bold text-red-900">{overallStats.failedlearners}</p>
                   <p className="text-sm text-red-700">Failed</p>
                 </div>
               </div>
@@ -426,16 +426,16 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
           </div>
           
           {/* Additional Statistics */}
-          {(overallStats.absentStudents > 0 || overallStats.partiallyAbsentStudents > 0) && (
+          {(overallStats.absentlearners > 0 || overallStats.partiallyAbsentlearners > 0) && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
               <div className="flex items-center gap-2">
                 <ExclamationTriangleIcon className="h-5 w-5 text-amber-600" />
                 <div className="text-amber-800 font-medium">
-                  {overallStats.absentStudents > 0 && (
-                    <div>{overallStats.absentStudents} student(s) were absent for all subjects</div>
+                  {overallStats.absentlearners > 0 && (
+                    <div>{overallStats.absentlearners} learner(s) were absent for all subjects</div>
                   )}
-                  {overallStats.partiallyAbsentStudents > 0 && (
-                    <div>{overallStats.partiallyAbsentStudents} student(s) were absent for some subjects (marked as Fail)</div>
+                  {overallStats.partiallyAbsentlearners > 0 && (
+                    <div>{overallStats.partiallyAbsentlearners} learner(s) were absent for some subjects (marked as Fail)</div>
                   )}
                 </div>
               </div>
@@ -452,7 +452,7 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Present:</span>
-                      <span className="font-medium text-gray-900">{stat.presentStudents}/{stat.totalStudents}</span>
+                      <span className="font-medium text-gray-900">{stat.presentlearners}/{stat.totallearners}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Pass Rate:</span>
@@ -472,16 +472,16 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
                       <span className="text-gray-600">Lowest:</span>
                       <span className="font-medium text-gray-900">{stat.lowest}</span>
                     </div>
-                    {stat.moderatedStudents > 0 && (
+                    {stat.moderatedlearners > 0 && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">Moderated:</span>
-                        <span className="font-medium text-purple-600">{stat.moderatedStudents}</span>
+                        <span className="font-medium text-purple-600">{stat.moderatedlearners}</span>
                       </div>
                     )}
-                    {stat.absentStudents > 0 && (
+                    {stat.absentlearners > 0 && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">Absent:</span>
-                        <span className="font-medium text-amber-600">{stat.absentStudents}</span>
+                        <span className="font-medium text-amber-600">{stat.absentlearners}</span>
                       </div>
                     )}
                   </div>
@@ -528,7 +528,7 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
                   </div>
                   <div>
                     <p className="text-gray-600">Present</p>
-                    <p className="font-semibold text-gray-900">{stat.presentStudents}</p>
+                    <p className="font-semibold text-gray-900">{stat.presentlearners}</p>
                   </div>
                   <div>
                     <p className="text-gray-600">Highest</p>
@@ -566,7 +566,7 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
                   <>
                     <div className="p-4 bg-gray-50 border-b border-gray-200">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-lg font-semibold text-gray-900">{subject.name} - Student Results</h4>
+                        <h4 className="text-lg font-semibold text-gray-900">{subject.name} - Learner Results</h4>
                         <div className="flex items-center gap-4 text-sm text-gray-600">
                           <span>Total Marks: {subject.totalMarks}</span>
                           <span>Passing Marks: {subject.passingMarks}</span>
@@ -580,7 +580,7 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
                         <thead className="bg-gray-50">
                           <tr>
                             <th className="text-left py-3 px-4 font-semibold text-gray-700">Roll No</th>
-                            <th className="text-left py-3 px-4 font-semibold text-gray-700">Student Name</th>
+                            <th className="text-left py-3 px-4 font-semibold text-gray-700">Learner Name</th>
                             <th className="text-center py-3 px-4 font-semibold text-gray-700">Marks Obtained</th>
                             <th className="text-center py-3 px-4 font-semibold text-gray-700">Percentage</th>
                             <th className="text-center py-3 px-4 font-semibold text-gray-700">Grade</th>
@@ -588,14 +588,14 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                          {subjectMark.studentMarks
+                          {subjectMark.learnerMarks
                             .sort((a, b) => a.rollNumber.localeCompare(b.rollNumber, undefined, { numeric: true }))
-                            .map(student => {
-                              const percentage = student.isAbsent || student.marks === null ? 0 : 
-                                Math.round((student.marks / subject.totalMarks) * 100);
+                            .map(learner => {
+                              const percentage = learner.isAbsent || learner.marks === null ? 0 : 
+                                Math.round((learner.marks / subject.totalMarks) * 100);
                               
-                              const grade = student.isAbsent ? 'AB' : 
-                                           student.marks === null ? 'N/A' :
+                              const grade = learner.isAbsent ? 'AB' : 
+                                           learner.marks === null ? 'N/A' :
                                            percentage >= 90 ? 'A+' :
                                            percentage >= 80 ? 'A' :
                                            percentage >= 70 ? 'B+' :
@@ -603,27 +603,27 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
                                            percentage >= 50 ? 'C' :
                                            percentage >= 40 ? 'D' : 'F';
                               
-                              const passed = !student.isAbsent && student.marks !== null && student.marks >= subject.passingMarks;
+                              const passed = !learner.isAbsent && learner.marks !== null && learner.marks >= subject.passingMarks;
                               
                               return (
-                                <tr key={student.studentId} className="hover:bg-gray-50">
-                                  <td className="py-3 px-4 font-medium text-gray-900">{student.rollNumber}</td>
-                                  <td className="py-3 px-4 text-gray-900">{student.studentName}</td>
+                                <tr key={learner.learnerId} className="hover:bg-gray-50">
+                                  <td className="py-3 px-4 font-medium text-gray-900">{learner.rollNumber}</td>
+                                  <td className="py-3 px-4 text-gray-900">{learner.learnerName}</td>
                                   <td className="py-3 px-4 text-center font-semibold">
-                                    {student.isAbsent ? (
+                                    {learner.isAbsent ? (
                                       <span className="text-gray-500">Absent</span>
                                     ) : (
                                       <span className={passed ? 'text-green-600' : 'text-red-600'}>
-                                        {student.marks}/{subject.totalMarks}
+                                        {learner.marks}/{subject.totalMarks}
                                       </span>
                                     )}
                                   </td>
                                   <td className="py-3 px-4 text-center font-medium">
-                                    {student.isAbsent ? '-' : `${percentage}%`}
+                                    {learner.isAbsent ? '-' : `${percentage}%`}
                                   </td>
                                   <td className="py-3 px-4 text-center">
                                     <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold ${
-                                      student.isAbsent ? 'bg-gray-100 text-gray-700' :
+                                      learner.isAbsent ? 'bg-gray-100 text-gray-700' :
                                       grade === 'A+' || grade === 'A' ? 'bg-green-100 text-green-800' :
                                       grade === 'B+' || grade === 'B' ? 'bg-blue-100 text-blue-800' :
                                       grade === 'C' ? 'bg-amber-100 text-amber-800' :
@@ -634,10 +634,10 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
                                   </td>
                                   <td className="py-3 px-4 text-center">
                                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                      student.isAbsent ? 'bg-gray-100 text-gray-800' :
+                                      learner.isAbsent ? 'bg-gray-100 text-gray-800' :
                                       passed ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                                     }`}>
-                                      {student.isAbsent ? 'Absent' : passed ? 'Pass' : 'Fail'}
+                                      {learner.isAbsent ? 'Absent' : passed ? 'Pass' : 'Fail'}
                                     </span>
                                   </td>
                                 </tr>
@@ -654,11 +654,11 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
         </div>
       )}
 
-      {/* Student Results */}
-      {selectedView === 'students' && (
+      {/* Learner Results */}
+      {selectedView === 'learners' && (
         <div className="bg-white border border-gray-200 rounded-lg p-6">
           <div className="flex items-center justify-between mb-4">
-            <h4 className="text-lg font-semibold text-gray-900">All Student Results</h4>
+            <h4 className="text-lg font-semibold text-gray-900">All Learner Results</h4>
             <div className="text-xs text-gray-500">
               <span className="text-purple-600 font-bold">*</span> = Moderated marks
             </div>
@@ -667,7 +667,7 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left py-2 px-3">Student</th>
+                  <th className="text-left py-2 px-3">Learner</th>
                   {exam.subjects.map(subject => (
                     <th key={subject.id} className="text-left py-2 px-3">{subject.name}</th>
                   ))}
@@ -678,34 +678,34 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
                 </tr>
               </thead>
               <tbody>
-                {overallStats.studentResults.map(result => {
-                  const firstMark = exam.marks[0]?.studentMarks.find(sm => sm.studentId === result.studentId);
+                {overallStats.learnerResults.map(result => {
+                  const firstMark = exam.marks[0]?.learnerMarks.find(sm => sm.learnerId === result.learnerId);
                   
                   return (
-                    <tr key={result.studentId} className="border-b border-gray-100">
+                    <tr key={result.learnerId} className="border-b border-gray-100">
                       <td className="py-2 px-3">
                         <div>
-                          <p className="font-medium">{firstMark?.studentName}</p>
+                          <p className="font-medium">{firstMark?.learnerName}</p>
                           <p className="text-xs text-gray-500">{firstMark?.rollNumber}</p>
                         </div>
                       </td>
                       {exam.subjects.map(subject => {
                         const subjectMark = exam.marks.find(m => m.subjectId === subject.id);
-                        const studentMark = subjectMark?.studentMarks.find(sm => sm.studentId === result.studentId);
-                        const passed = studentMark && !studentMark.isAbsent && studentMark.marks !== null && studentMark.marks >= subject.passingMarks;
-                        const isModerated = studentMark?.originalMarks !== null && studentMark?.originalMarks !== studentMark?.marks;
+                        const learnerMark = subjectMark?.learnerMarks.find(sm => sm.learnerId === result.learnerId);
+                        const passed = learnerMark && !learnerMark.isAbsent && learnerMark.marks !== null && learnerMark.marks >= subject.passingMarks;
+                        const isModerated = learnerMark?.originalMarks !== null && learnerMark?.originalMarks !== learnerMark?.marks;
                         
                         return (
                           <td key={subject.id} className="py-2 px-3">
                             <div className="flex items-center gap-1">
                               <span className={`font-medium ${
-                                studentMark?.isAbsent ? 'text-gray-500' :
+                                learnerMark?.isAbsent ? 'text-gray-500' :
                                 passed ? 'text-green-600' : 'text-red-600'
                               }`}>
-                                {studentMark?.isAbsent ? 'AB' : studentMark?.marks || 'N/A'}
+                                {learnerMark?.isAbsent ? 'AB' : learnerMark?.marks || 'N/A'}
                               </span>
                               {isModerated && (
-                                <span className="text-xs text-purple-600 font-bold" title={`Original: ${studentMark?.originalMarks}`}>
+                                <span className="text-xs text-purple-600 font-bold" title={`Original: ${learnerMark?.originalMarks}`}>
                                   *
                                 </span>
                               )}
@@ -791,26 +791,26 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
                     
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Total Students:</span>
-                        <span className="font-semibold text-gray-900">{classData.total_students}</span>
+                        <span className="text-sm text-gray-600">Total Learners:</span>
+                        <span className="font-semibold text-gray-900">{classData.total_learners}</span>
                       </div>
                       
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600">Appeared:</span>
                         <span className="font-semibold text-gray-900">
-                          {classData.students_with_marks} ({classData.attendance_rate}%)
+                          {classData.learners_with_marks} ({classData.attendance_rate}%)
                         </span>
                       </div>
                       
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600">Passed:</span>
-                        <span className="font-semibold text-green-600">{classData.passed_students}</span>
+                        <span className="font-semibold text-green-600">{classData.passed_learners}</span>
                       </div>
                       
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600">Failed:</span>
                         <span className="font-semibold text-red-600">
-                          {classData.students_with_marks - classData.passed_students}
+                          {classData.learners_with_marks - classData.passed_learners}
                         </span>
                       </div>
                       
@@ -872,7 +872,7 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="text-left py-3 px-4 font-semibold text-gray-700">Section</th>
-                          <th className="text-center py-3 px-4 font-semibold text-gray-700">Total Students</th>
+                          <th className="text-center py-3 px-4 font-semibold text-gray-700">Total Learners</th>
                           <th className="text-center py-3 px-4 font-semibold text-gray-700">Appeared</th>
                           <th className="text-center py-3 px-4 font-semibold text-gray-700">Passed</th>
                           <th className="text-center py-3 px-4 font-semibold text-gray-700">Pass Rate</th>
@@ -893,16 +893,16 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
                               </div>
                             </td>
                             <td className="py-3 px-4 text-center text-gray-900">
-                              {classData.total_students}
+                              {classData.total_learners}
                             </td>
                             <td className="py-3 px-4 text-center text-gray-900">
-                              {classData.students_with_marks}
+                              {classData.learners_with_marks}
                               <span className="text-xs text-gray-500 ml-1">
                                 ({classData.attendance_rate}%)
                               </span>
                             </td>
                             <td className="py-3 px-4 text-center font-semibold text-green-600">
-                              {classData.passed_students}
+                              {classData.passed_learners}
                             </td>
                             <td className="py-3 px-4 text-center">
                               <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
@@ -935,7 +935,7 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
                   <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No Class Data Available</h3>
                   <p className="text-gray-600">
-                    Class-wise results will appear here once marks are entered for students.
+                    Class-wise results will appear here once marks are entered for learners.
                   </p>
                 </div>
               )}

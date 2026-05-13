@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLatestResult, getInProgressAttempt } from '@/features/assessment';
 
-export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) => {
+export const useAssessmentRecommendations = (learnerIdOrUserId, enabled = true) => {
   const [recommendations, setRecommendations] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,7 +15,7 @@ export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) 
   const [latestAttemptId, setLatestAttemptId] = useState(null);
 
   useEffect(() => {
-    if (!studentIdOrUserId || !enabled) {
+    if (!learnerIdOrUserId || !enabled) {
       setLoading(false);
       return;
     }
@@ -26,9 +26,9 @@ export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) 
         setError(null);
 
         // Check for in-progress assessment first
-        // getInProgressAttempt expects student.id (from students table)
+        // getInProgressAttempt expects learner.id (from learners table)
         try {
-          const inProgress = await getInProgressAttempt(studentIdOrUserId);
+          const inProgress = await getInProgressAttempt(learnerIdOrUserId);
           
           if (inProgress) {
             console.log('✅ Found in-progress attempt:', inProgress.id);
@@ -44,8 +44,8 @@ export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) 
           setHasInProgressAssessment(false);
         }
 
-        // getLatestResult can handle both student.id and user.id
-        let result = await getLatestResult(studentIdOrUserId);
+        // getLatestResult can handle both learner.id and user.id
+        let result = await getLatestResult(learnerIdOrUserId);
         
         if (!result) {
           console.log('❌ No assessment result found');
@@ -139,7 +139,7 @@ export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) 
     };
 
     fetchRecommendations();
-  }, [studentIdOrUserId, enabled]);
+  }, [learnerIdOrUserId, enabled]);
 
   return {
     recommendations,

@@ -48,8 +48,8 @@ export const getGeographicDistribution = async (
     const { data: results, error: queryErr } = await supabase
       .from('pipeline_candidates')
       .select(`
-        student_id,
-        students!inner(
+        learner_id,
+        learners!inner(
           state
         )
       `)
@@ -66,7 +66,7 @@ export const getGeographicDistribution = async (
     let totalCount = 0;
 
     results.forEach((row: any) => {
-      const state = row.students?.state || 'Unknown';
+      const state = row.learners?.state || 'Unknown';
       locationCounts[state] = (locationCounts[state] || 0) + 1;
       totalCount += 1;
     });
@@ -102,8 +102,8 @@ export const getTopHiringColleges = async (
     const { data: pipelineCandidates, error: pipelineErr } = await supabase
       .from('pipeline_candidates')
       .select(`
-        student_id,
-        students!inner(
+        learner_id,
+        learners!inner(
           college_school_name
         )
       `)
@@ -120,7 +120,7 @@ export const getTopHiringColleges = async (
     let totalCount = 0;
 
     pipelineCandidates.forEach((row: any) => {
-      const collegeName = row.students?.college_school_name || 'Unknown';
+      const collegeName = row.learners?.college_school_name || 'Unknown';
       collegeCounts[collegeName] = (collegeCounts[collegeName] || 0) + 1;
       totalCount += 1;
     });
@@ -182,8 +182,8 @@ export const getQualityMetrics = async (
     const { data: hiredCandidates, error: queryErr } = await supabase
       .from('pipeline_candidates')
       .select(`
-        student_id,
-        students!inner(
+        learner_id,
+        learners!inner(
           currentCgpa,
           gender,
           age,
@@ -238,14 +238,14 @@ export const getQualityMetrics = async (
     const courseCounts: Record<string, number> = {};
 
     hiredCandidates.forEach((row: any) => {
-      const student = row.students;
+      const learner = row.learners;
 
-      if (student?.currentCgpa && student.currentCgpa > 0) {
-        totalCgpa += student.currentCgpa;
+      if (learner?.currentCgpa && learner.currentCgpa > 0) {
+        totalCgpa += learner.currentCgpa;
         cgpaCount++;
       }
 
-      const gender = (student?.gender || '').toLowerCase();
+      const gender = (learner?.gender || '').toLowerCase();
       if (gender === 'male' || gender === 'm') {
         maleCount++;
       } else if (gender === 'female' || gender === 'f') {
@@ -254,17 +254,17 @@ export const getQualityMetrics = async (
         otherCount++;
       }
 
-      if (student?.age && student.age > 0) {
-        totalAge += student.age;
+      if (learner?.age && learner.age > 0) {
+        totalAge += learner.age;
         ageCount++;
 
-        if (student.age <= 21) ageRanges['18-21']++;
-        else if (student.age <= 25) ageRanges['22-25']++;
-        else if (student.age <= 30) ageRanges['26-30']++;
+        if (learner.age <= 21) ageRanges['18-21']++;
+        else if (learner.age <= 25) ageRanges['22-25']++;
+        else if (learner.age <= 30) ageRanges['26-30']++;
         else ageRanges['30+']++;
       }
 
-      const course = student?.branch_field || 'Unknown';
+      const course = learner?.branch_field || 'Unknown';
       courseCounts[course] = (courseCounts[course] || 0) + 1;
     });
 

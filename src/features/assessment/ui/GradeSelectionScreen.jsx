@@ -18,15 +18,15 @@ import { useUser } from '@/shared/model/authStore';
 /**
  * @typedef {Object} GradeSelectionScreenProps
  * @property {Function} onGradeSelect - Callback when grade is selected
- * @property {string|null} studentGrade - Student's current grade from database
- * @property {string|null} detectedGradeLevel - Detected grade level from student's grade
- * @property {number|null} monthsInGrade - Months since student started current grade
- * @property {boolean} isCollegeStudent - Whether student is a college student
- * @property {boolean} loadingStudentGrade - Whether student grade is loading
+ * @property {string|null} learnerGrade - Learner's current grade from database
+ * @property {string|null} detectedGradeLevel - Detected grade level from learner's grade
+ * @property {number|null} monthsInGrade - Months since learner started current grade
+ * @property {boolean} isCollegeLearner - Whether learner is a college learner
+ * @property {boolean} loadinglearnerGrade - Whether learner grade is loading
  * @property {boolean} shouldShowAllOptions - Whether to show all grade options
  * @property {boolean} shouldFilterByGrade - Whether to filter options by grade
- * @property {string|null} studentProgram - Student's program name (for college students)
- * @property {Object|null} profileData - Complete student profile data for missing field analysis
+ * @property {string|null} learnerProgram - Learner's program name (for college learners)
+ * @property {Object|null} profileData - Complete learner profile data for missing field analysis
  */
 
 /**
@@ -36,42 +36,42 @@ const GRADE_OPTIONS = [
   {
     id: 'middle',
     title: 'Grades 6–8',
-    subtitle: 'Middle School Students',
+    subtitle: 'Middle School Learners',
     duration: '41 questions (50-60 minutes)',
     isAIPowered: false,
   },
   {
     id: 'highschool',
     title: 'Grades 9–10',
-    subtitle: 'High School Students',
+    subtitle: 'High School Learners',
     duration: '53 questions (55-65 minutes)',
     isAIPowered: false,
   },
   {
     id: 'higher_secondary',
     title: 'Grades 11–12',
-    subtitle: 'Higher Secondary Students',
+    subtitle: 'Higher Secondary Learners',
     duration: '53 questions (55-65 minutes)',
     isAIPowered: false,
   },
   {
     id: 'after10',
     title: 'After 10th',
-    subtitle: 'Students who have completed 10th grade',
+    subtitle: 'Learners who have completed 10th grade',
     duration: '(30-40 minutes)',
     isAIPowered: true,
   },
   {
     id: 'after12',
     title: 'After 12th',
-    subtitle: 'Students who have completed 12th grade',
+    subtitle: 'Learners who have completed 12th grade',
     duration: '(35-45 minutes)',
     isAIPowered: true,
   },
   {
     id: 'college',
     title: 'College (UG/PG)',
-    subtitle: 'Undergraduate & Postgraduate Students',
+    subtitle: 'Undergraduate & Postgraduate Learners',
     duration: '(45-60 minutes)',
     isAIPowered: true,
   },
@@ -95,9 +95,9 @@ const shouldShowOption = (optionId, {
   shouldShowAllOptions,
   shouldFilterByGrade,
   detectedGradeLevel,
-  studentGrade,
+  learnerGrade,
   monthsInGrade,
-  isCollegeStudent,
+  isCollegeLearner,
   profileData,
 }) => {
   // Always show all options if explicitly requested (currently disabled)
@@ -107,7 +107,7 @@ const shouldShowOption = (optionId, {
   if (!shouldFilterByGrade) return true;
 
   // Extract numeric grade from various formats (e.g., "Grade 10", "10th", "10")
-  const numericGrade = extractNumericGrade(studentGrade);
+  const numericGrade = extractNumericGrade(learnerGrade);
   const isGrade10 = numericGrade === 10;
   const isGrade12 = numericGrade === 12;
   const hasBeenInGrade6Months = monthsInGrade !== null && monthsInGrade >= 6;
@@ -117,30 +117,30 @@ const shouldShowOption = (optionId, {
       return detectedGradeLevel === 'middle';
 
     case 'highschool':
-      // Show for grades 9-10, but not for grade 10 students with 6+ months
+      // Show for grades 9-10, but not for grade 10 learners with 6+ months
       if (detectedGradeLevel !== 'highschool') return false;
       if (isGrade10 && hasBeenInGrade6Months) return false;
       if (isGrade12 && hasBeenInGrade6Months) return false;
       return true;
 
     case 'higher_secondary':
-      // Show for grades 11-12, but not for grade 12 students with 6+ months
+      // Show for grades 11-12, but not for grade 12 learners with 6+ months
       if (detectedGradeLevel !== 'higher_secondary') return false;
       if (isGrade12 && hasBeenInGrade6Months) return false;
       return true;
 
     case 'after10':
-      // Show for grade 10 students with 6+ months
+      // Show for grade 10 learners with 6+ months
       return detectedGradeLevel === 'highschool' && isGrade10 && (monthsInGrade === null || hasBeenInGrade6Months);
 
     case 'after12':
-      // Show for grade 12 students with 6+ months
+      // Show for grade 12 learners with 6+ months
       return detectedGradeLevel === 'higher_secondary' && isGrade12 && (monthsInGrade === null || hasBeenInGrade6Months);
 
     case 'college':
-      // Show for college students only if they have university information
+      // Show for college learners only if they have university information
       // Either university_college_id OR custom university name must be present
-      if (!isCollegeStudent) return false;
+      if (!isCollegeLearner) return false;
       
       // Check if university information is present
       const hasUniversityInfo = Boolean(
@@ -158,9 +158,9 @@ const shouldShowOption = (optionId, {
 /**
  * Get additional info text for grade option
  */
-const getAdditionalInfo = (optionId, { studentGrade, monthsInGrade }) => {
+const getAdditionalInfo = (optionId, { learnerGrade, monthsInGrade }) => {
   // Extract numeric grade from various formats (e.g., "Grade 10", "10th", "10")
-  const numericGrade = extractNumericGrade(studentGrade);
+  const numericGrade = extractNumericGrade(learnerGrade);
   const isGrade10 = numericGrade === 10;
   const isGrade12 = numericGrade === 12;
   const hasBeenInGrade6Months = monthsInGrade !== null && monthsInGrade >= 6;
@@ -189,14 +189,14 @@ const getAdditionalInfo = (optionId, { studentGrade, monthsInGrade }) => {
 /**
  * Grade Option Button Component
  */
-const GradeOptionButton = ({ option, onClick, additionalInfo, studentProgram }) => {
-  // For college option, show student's program name if available
-  const displayTitle = option.id === 'college' && studentProgram 
-    ? studentProgram 
+const GradeOptionButton = ({ option, onClick, additionalInfo, learnerProgram }) => {
+  // For college option, show learner's program name if available
+  const displayTitle = option.id === 'college' && learnerProgram 
+    ? learnerProgram 
     : option.title;
   
-  const displaySubtitle = option.id === 'college' && studentProgram
-    ? 'College/University Student'
+  const displaySubtitle = option.id === 'college' && learnerProgram
+    ? 'College/University Learner'
     : option.subtitle;
 
   return (
@@ -254,37 +254,37 @@ const LoadingScreen = () => (
  */
 export const GradeSelectionScreen = ({
   onGradeSelect,
-  studentGrade,
+  learnerGrade,
   detectedGradeLevel,
   monthsInGrade,
-  isCollegeStudent,
-  loadingStudentGrade,
+  isCollegeLearner,
+  loadinglearnerGrade,
   shouldShowAllOptions,
   shouldFilterByGrade,
-  studentProgram = null,
+  learnerProgram = null,
   profileData = null,
 }) => {
   const navigate = useNavigate();
   const user = useUser();
   const [showProfileModal, setShowProfileModal] = useState(false);
 
-  // Check if student has incomplete profile
-  // For school students: need grade information
-  // For college students: need university information (either ID or custom name)
+  // Check if learner has incomplete profile
+  // For school learners: need grade information
+  // For college learners: need university information (either ID or custom name)
   const hasIncompleteProfile = shouldFilterByGrade && (
-    (!detectedGradeLevel && !isCollegeStudent) || // Undetermined type
-    (isCollegeStudent && !profileData?.university_college_id && !profileData?.university) // College student without university
+    (!detectedGradeLevel && !isCollegeLearner) || // Undetermined type
+    (isCollegeLearner && !profileData?.university_college_id && !profileData?.university) // College learner without university
   );
 
-  // Show loading while fetching student grade
-  if (loadingStudentGrade && shouldFilterByGrade) {
+  // Show loading while fetching learner grade
+  if (loadinglearnerGrade && shouldFilterByGrade) {
     return <LoadingScreen />;
   }
 
   // Handle profile completion
   const handleProfileComplete = () => {
     setShowProfileModal(false);
-    // Refresh the page to re-evaluate the student's profile
+    // Refresh the page to re-evaluate the learner's profile
     window.location.reload();
   };
 
@@ -293,9 +293,9 @@ export const GradeSelectionScreen = ({
     shouldShowAllOptions,
     shouldFilterByGrade,
     detectedGradeLevel,
-    studentGrade,
+    learnerGrade,
     monthsInGrade,
-    isCollegeStudent,
+    isCollegeLearner,
     profileData,
   };
 
@@ -304,9 +304,9 @@ export const GradeSelectionScreen = ({
       shouldShowAllOptions,
       shouldFilterByGrade,
       detectedGradeLevel,
-      studentGrade,
+      learnerGrade,
       monthsInGrade,
-      isCollegeStudent,
+      isCollegeLearner,
       profileData,
     };
     return shouldShowOption(option.id, context);
@@ -355,8 +355,8 @@ export const GradeSelectionScreen = ({
                     key={option.id}
                     option={option}
                     onClick={onGradeSelect}
-                    additionalInfo={getAdditionalInfo(option.id, { studentGrade, monthsInGrade })}
-                    studentProgram={studentProgram}
+                    additionalInfo={getAdditionalInfo(option.id, { learnerGrade, monthsInGrade })}
+                    learnerProgram={learnerProgram}
                   />
                 ))}
 

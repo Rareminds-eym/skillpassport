@@ -16,7 +16,7 @@ export function generateInvitationEmailHtml(data: InvitationTemplateData): strin
   const { organizationName, memberType, invitationToken, expiresAt, customMessage } = data;
   
   const invitationLink = `${APP_URL}/accept-invitation?token=${invitationToken}`;
-  const memberTypeDisplay = memberType === 'educator' ? 'Educator' : 'Student';
+  const memberTypeDisplay = memberType === 'educator' ? 'Educator' : 'Learner';
   const expiresDate = new Date(expiresAt).toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',

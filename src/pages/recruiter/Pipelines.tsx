@@ -315,7 +315,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
 
       Object.keys(pipelineData).forEach(stage => {
         const found = pipelineData[stage as keyof typeof pipelineData].find(
-          c => c.student_id === pipelineCandidate?.student_id
+          c => c.learner_id === pipelineCandidate?.learner_id
         );
         if (found) {
           existingPipelineId = found.id;
@@ -327,13 +327,13 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         // Candidate exists in pipeline, move them
         await handleCandidateMove(existingPipelineId, 'screened');
       } else if (existingPipelineId && existingStage === 'screened') {
-        toast(`${rec.studentName} is already in the Screened stage`);
+        toast(`${rec.learnerName} is already in the Screened stage`);
       } else {
         // Candidate not in pipeline, add them directly to screened
         const result = await addCandidateToPipeline({
           opportunity_id: selectedJob,
-          student_id: pipelineCandidate?.student_id || rec.applicantId,  // UUID is already string
-          candidate_name: rec.studentName || pipelineCandidate?.name || 'Unknown',
+          learner_id: pipelineCandidate?.learner_id || rec.applicantId,  // UUID is already string
+          candidate_name: rec.learnerName || pipelineCandidate?.name || 'Unknown',
           candidate_email: pipelineCandidate?.email || '',
           stage: 'screened',
           source: 'ai_recommended',
@@ -343,7 +343,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         if (result.error) {
           const errorMsg = (result.error as any)?.message || 'Failed to add candidate';
           if (errorMsg.includes('already in this pipeline')) {
-            toast(`${rec.studentName} is already in the pipeline`);
+            toast(`${rec.learnerName} is already in the pipeline`);
           } else {
             toast.error(errorMsg);
           }
@@ -352,7 +352,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
 
         // Refresh pipeline data
         loadPipelineCandidates();
-        toast.success(`${rec.studentName} has been added to Screened stage`);
+        toast.success(`${rec.learnerName} has been added to Screened stage`);
       }
     } catch (error) {
       logger.error('Error moving AI recommended candidate:', error);

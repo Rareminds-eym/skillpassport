@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
 import { useUser } from '@/shared/model/authStore';
@@ -38,7 +39,7 @@ export function useEducatorId(): EducatorIdData {
         }
 
         // Get current Supabase session to ensure we have the right user ID
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await getCurrentSession();
         
         if (sessionError || !session?.user) {
           throw new Error('No active session found');

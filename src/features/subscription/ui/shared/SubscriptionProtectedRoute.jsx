@@ -14,10 +14,10 @@
  * 
  * Usage:
  * <SubscriptionProtectedRoute 
- *   allowedRoles={['school_student', 'college_student']}
+ *   allowedRoles={['learner', 'learner']}
  *   requireSubscription={true}
  * >
- *   <StudentLayout />
+ *   <LearnerLayout />
  * </SubscriptionProtectedRoute>
  */
 
@@ -26,7 +26,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import Loader from '@/shared/ui/Loader';
 import SubscriptionBanner from './SubscriptionBanner';
 
-import { useSubscriptionContext, useSubscriptionStore } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionContext, useSubscriptionStore, ACCESS_REASONS } from '@/features/subscription/model/subscriptionStore';
 import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/shared/model/authStore';
 // ============================================================================
 // CONSTANTS
@@ -56,7 +56,7 @@ const CONFIG = {
 
 /** User type mapping from URL path */
 const PATH_TO_USER_TYPE = {
-  '/student': 'student',
+  '/learner': 'learner',
   '/recruitment': 'recruiter',
   '/educator': 'educator',
   '/college-admin': 'college_admin',
@@ -88,7 +88,7 @@ function getUserTypeFromPath(pathname) {
       return userType;
     }
   }
-  return 'student'; // fallback
+  return 'learner'; // fallback
 }
 
 /**
@@ -304,11 +304,11 @@ function useGuardState({
       return GUARD_STATES.ACCESS_GRANTED;
     }
 
-    // Step 9: Post-payment sync failed but we should still check access
+    // Step 9: Post-payment sync failed but we should still grant access
+    // The user has already paid — blocking them here creates a redirect loop to plans.
     if (isPostPayment && postPaymentSync.syncFailed) {
-      // Even if sync failed, check if we have access now
-      console.log('🛡️ [Guard] Step 9: Post-payment sync failed, hasAccess=', hasAccess);
-      return hasAccess ? GUARD_STATES.ACCESS_GRANTED : GUARD_STATES.ACCESS_DENIED;
+      console.log('🛡️ [Guard] Step 9: Post-payment sync failed, GRANTING ACCESS to prevent redirect loop');
+      return GUARD_STATES.ACCESS_GRANTED;
     }
 
     console.log('🛡️ [Guard] Step 10: Fallback → ACCESS_DENIED. Full state:', {
@@ -483,7 +483,7 @@ const SubscriptionProtectedRoute = ({
   if (guardState === GUARD_STATES.ACCESS_DENIED) {
     // Not authenticated
     if (!isAuthenticated) {
-      const redirectPath = location.pathname.includes('student')
+      const redirectPath = location.pathname.includes('learner')
         ? loginFallbackPath
         : '/';
       log.info('Not authenticated, redirecting to:', redirectPath);
@@ -500,7 +500,7 @@ const SubscriptionProtectedRoute = ({
 
     if (!roleMatches && !adminRoleException) {
       // Role doesn't match and no admin exception applies
-      const expectedRole = allowedRoles[0] || 'student';
+      const expectedRole = allowedRoles[0] || 'learner';
       log.info('Role mismatch, redirecting to plans. Expected:', allowedRoles, 'Got:', role);
       return <Navigate to={`/subscription/plans?type=${expectedRole}`} replace />;
     }

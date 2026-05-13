@@ -5,7 +5,7 @@ import After10AssessmentResultTour from './components/After10AssessmentResultTou
 import After12AssessmentResultTour from './components/After12AssessmentResultTour';
 import GenericAssessmentResultTour from './components/GenericAssessmentResultTour';
 import AssessmentTestTour from './components/AssessmentTestTour';
-import StudentDashboardTour from './components/StudentDashboardTour';
+import LearnerDashboardTour from './components/LearnerDashboardTour';
 
 import { useUser } from '@/shared/model/authStore';
 import { useTourStore } from '@/shared/model/tourStore';
@@ -35,17 +35,17 @@ const TourWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const activeTour = useMemo(() => {
     const path = location.pathname;
     
-    if (path === '/student/dashboard') {
-      return <StudentDashboardTour />;
+    if (path === '/learner/dashboard') {
+      return <LearnerDashboardTour />;
     }
     
-    if (path.includes('/student/assessment/test')) {
+    if (path.includes('/learner/assessment/test')) {
       return <AssessmentTestTour />;
     }
     
-    if (path.includes('/student/assessment/result')) {
+    if (path.includes('/learner/assessment/result')) {
       // All three result tours will self-validate grade eligibility
-      // Only one will actually start based on student grade
+      // Only one will actually start based on learner grade
       return (
         <>
           <After10AssessmentResultTour />

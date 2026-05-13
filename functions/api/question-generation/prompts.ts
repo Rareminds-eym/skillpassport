@@ -3,15 +3,15 @@
  * Separated for better maintainability
  */
 
-export const SCHOOL_SUBJECT_PROMPT = `You are an expert educational assessment creator for 10th grade students in India who are about to choose their stream (Science/Commerce/Arts) for 11th-12th.
+export const SCHOOL_SUBJECT_PROMPT = `You are an expert educational assessment creator for 10th grade learners in India who are about to choose their stream (Science/Commerce/Arts) for 11th-12th.
 
-Generate questions to assess the student's aptitude across school subjects. This will help recommend the best stream for them.
+Generate questions to assess the learner's aptitude across school subjects. This will help recommend the best stream for them.
 
 Generate questions for these subjects with EXACT counts:
 {{CATEGORIES}}
 
 IMPORTANT CONTEXT:
-- Student has selected interest in {{STREAM_NAME}} stream
+- Learner has selected interest in {{STREAM_NAME}} stream
 - Questions should test fundamental understanding, not memorization
 - Mix of conceptual and application-based questions
 - Difficulty: 40% easy, 40% medium, 20% hard
@@ -141,7 +141,7 @@ Generate questions for these categories with EXACT counts:
 VERIFICATION: After generating, count your questions. You must have EXACTLY {{QUESTION_COUNT}} questions total.
 
 CRITICAL REQUIREMENT - 100% STREAM-RELATED QUESTIONS:
-This is for {{STREAM_NAME}} students. ALL questions MUST use {{STREAM_NAME}}-specific context, terminology, scenarios, and examples.
+This is for {{STREAM_NAME}} learners. ALL questions MUST use {{STREAM_NAME}}-specific context, terminology, scenarios, and examples.
 
 ⚠️ CRITICAL FOR SCIENCE STREAMS:
 - For PCM (Physics, Chemistry, Maths): ABSOLUTELY NO BIOLOGY QUESTIONS. Focus only on physics, chemistry, and mathematics.
@@ -155,7 +155,7 @@ Question Requirements:
 1. All questions must be MCQ with exactly 4 options (except Clerical which has 2 options: "Same" or "Different")
 2. Each question must have exactly ONE correct answer
 3. Mix difficulty levels: 40% easy, 40% medium, 20% hard
-4. For Science streams (PCM/PCB/PCMB/PCMS): Use 11th-12th grade difficulty - 30% medium, 50% hard, 20% very hard. Questions should challenge students preparing for competitive exams (JEE/NEET level).
+4. For Science streams (PCM/PCB/PCMB/PCMS): Use 11th-12th grade difficulty - 30% medium, 50% hard, 20% very hard. Questions should challenge learners preparing for competitive exams (JEE/NEET level).
 5. Each question must have exactly 4 unique options (A, B, C, D) - NO DUPLICATE OPTIONS ALLOWED
 5. 100% of questions MUST be directly related to {{STREAM_NAME}} field - use domain-specific terminology, scenarios, and real-world examples from this field
 6. NO generic questions - every question must have {{STREAM_NAME}} context
@@ -237,7 +237,7 @@ Question Requirements:
 2. Each question must have exactly ONE correct answer
 3. Difficulty distribution: 30% easy, 50% medium, 20% hard
 4. Test practical understanding, not memorization
-5. Questions should be relevant for students entering this field
+5. Questions should be relevant for learners entering this field
 
 Output Format - Respond with ONLY valid JSON:
 {

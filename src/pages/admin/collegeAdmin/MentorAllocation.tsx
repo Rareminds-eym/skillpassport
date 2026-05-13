@@ -24,7 +24,7 @@ import { KPICard } from '@/features/analytics';
 import { Pagination } from '@/shared/ui';
 import { useUser } from '@/shared/model/authStore';
 import {
-  StudentSelectionModal,
+  LearnerSelectionModal,
   MentorSelectionModal,
   AllocationConfigurationModal,
   InterventionModal,
@@ -35,7 +35,7 @@ import {
 } from '@/features/college-admin';
 
 // Legacy interfaces for compatibility with existing modals
-interface LegacyStudent {
+interface LegacyLearner {
   id: number;
   name: string;
   rollNo: string;
@@ -53,7 +53,7 @@ interface LegacyStudent {
 interface LegacyMentorAllocation {
   id: number;
   mentorId: number;
-  students: LegacyStudent[];
+  learners: LegacyLearner[];
   allocationPeriod: {
     startDate: string;
     endDate: string;
@@ -131,20 +131,20 @@ const MentorAllocation: React.FC = () => {
   // Use the dynamic hook
   const {
     mentors: dynamicMentors,
-    students: dynamicStudents,
-    unallocatedStudents: dynamicUnallocatedStudents,
+    learners: dynamiclearners,
+    unallocatedlearners: dynamicUnallocatedlearners,
     periods,
     uniqueDepartments,
     uniqueBatches,
     loading,
     error,
-    allocateStudents,
+    allocatelearners,
     addMentorNote,
-    reassignStudent,
+    reassignLearner,
     createPeriod,
     updatePeriod,
     getMentorCurrentLoad,
-    getMentorAtRiskStudents,
+    getMentorAtRisklearners,
     notes: dynamicNotes, // Get notes from the hook
     updateNoteFeedback,
     markNoteResolved,
@@ -152,19 +152,19 @@ const MentorAllocation: React.FC = () => {
   } = useMentorAllocation(collegeId);
 
   // Transform dynamic data to legacy format for compatibility
-  const transformStudentToLegacy = (student: any): LegacyStudent => ({
-    id: parseInt(student.id.replace(/-/g, '').substring(0, 8), 16), // Convert UUID to number
-    name: student.name || '',
-    rollNo: student.roll_number || '',
-    department: student.department_name || student.program_name || '',
-    semester: student.semester || 1,
-    cgpa: parseFloat(student.current_cgpa?.toString() || '0'),
-    atRisk: student.at_risk || false,
-    email: student.email || '',
-    batch: student.batch || '',
-    riskFactors: student.risk_factors || [],
-    lastInteraction: student.last_interaction || undefined,
-    interventionCount: student.intervention_count || 0,
+  const transformlearnerToLegacy = (learner: any): LegacyLearner => ({
+    id: parseInt(learner.id.replace(/-/g, '').substring(0, 8), 16), // Convert UUID to number
+    name: learner.name || '',
+    rollNo: learner.roll_number || '',
+    department: learner.department_name || learner.program_name || '',
+    semester: learner.semester || 1,
+    cgpa: parseFloat(learner.current_cgpa?.toString() || '0'),
+    atRisk: learner.at_risk || false,
+    email: learner.email || '',
+    batch: learner.batch || '',
+    riskFactors: learner.risk_factors || [],
+    lastInteraction: learner.last_interaction || undefined,
+    interventionCount: learner.intervention_count || 0,
   });
 
   const transformMentorToLegacy = (mentor: any): LegacyMentor => ({
@@ -193,7 +193,7 @@ const MentorAllocation: React.FC = () => {
       return {
         id: parseInt(allocation.id.replace(/-/g, '').substring(0, 8), 16),
         mentorId: parseInt(mentor.id.replace(/-/g, '').substring(0, 8), 16),
-        students: allocation.students?.map(transformStudentToLegacy) || [],
+        learners: allocation.learners?.map(transformlearnerToLegacy) || [],
         period: period, // Keep the original period object
         allocationPeriod: {
           startDate: period?.start_date || '',
@@ -213,8 +213,8 @@ const MentorAllocation: React.FC = () => {
 
   // Convert dynamic data to legacy format
   const mentors = dynamicMentors.map(transformMentorToLegacy);
-  const availableStudents = dynamicUnallocatedStudents.map(transformStudentToLegacy);
-  const unallocatedStudents = availableStudents; // Alias for compatibility
+  const availablelearners = dynamicUnallocatedlearners.map(transformlearnerToLegacy);
+  const unallocatedlearners = availablelearners; // Alias for compatibility
 
   // All allocations across all mentors (for audit trail)
   const allAllocations = mentors.flatMap(mentor => mentor.allocations);
@@ -225,35 +225,35 @@ const MentorAllocation: React.FC = () => {
   const [selectedBatch, setSelectedBatch] = useState<string>("all");
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [mentorDetailsRefreshKey, setMentorDetailsRefreshKey] = useState(0);
-  const [isRemovingStudent, setIsRemovingStudent] = useState(false);
+  const [isRemovingLearner, setIsRemovingLearner] = useState(false);
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(6); // 6 mentors per page
 
   // Modal States
-  const [showStudentSelectionModal, setShowStudentSelectionModal] = useState(false);
+  const [showlearnerSelectionModal, setShowlearnerSelectionModal] = useState(false);
   const [showMentorSelectionModal, setShowMentorSelectionModal] = useState(false);
   const [showAllocationConfigModal, setShowAllocationConfigModal] = useState(false);
   const [showInterventionModal, setShowInterventionModal] = useState(false);
   const [showMentorDetailsModal, setShowMentorDetailsModal] = useState(false);
   const [showReassignModal, setShowReassignModal] = useState(false);
   const [showCapacityModal, setShowCapacityModal] = useState(false);
-  const [showAddStudentsModal, setShowAddStudentsModal] = useState(false);
+  const [showAddlearnersModal, setShowAddlearnersModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   // Selected Items
   const [selectedMentor, setSelectedMentor] = useState<LegacyMentor | null>(null);
-  const [selectedStudent, setSelectedStudent] = useState<LegacyStudent | null>(null);
-  const [selectedStudentsForAllocation, setSelectedStudentsForAllocation] = useState<number[]>([]);
+  const [selectedLearner, setSelectedLearner] = useState<LegacyLearner | null>(null);
+  const [selectedlearnersForAllocation, setSelectedlearnersForAllocation] = useState<number[]>([]);
   const [selectedMentorForAllocation, setSelectedMentorForAllocation] = useState<LegacyMentor | null>(null);
-  const [studentToReassign, setStudentToReassign] = useState<LegacyStudent | null>(null);
+  const [learnerToReassign, setlearnerToReassign] = useState<LegacyLearner | null>(null);
   const [mentorForCapacityConfig, setMentorForCapacityConfig] = useState<LegacyMentor | null>(null);
   const [allocationForConfig, setAllocationForConfig] = useState<LegacyMentorAllocation | null>(null);
-  const [mentorForAddingStudents, setMentorForAddingStudents] = useState<LegacyMentor | null>(null);
+  const [mentorForAddinglearners, setMentorForAddinglearners] = useState<LegacyMentor | null>(null);
   const [selectedNoteForFeedback, setSelectedNoteForFeedback] = useState<any>(null);
-  const [assignedStudentsInfo, setAssignedStudentsInfo] = useState<Array<{ studentId: number; mentorName: string }>>([]);
-  const [allocationForAddingStudents, setAllocationForAddingStudents] = useState<LegacyMentorAllocation | null>(null);
+  const [assignedlearnersInfo, setAssignedlearnersInfo] = useState<Array<{ learnerId: number; mentorName: string }>>([]);
+  const [allocationForAddinglearners, setAllocationForAddinglearners] = useState<LegacyMentorAllocation | null>(null);
 
   // Intervention Form States
   const [noteText, setNoteText] = useState("");
@@ -269,36 +269,36 @@ const MentorAllocation: React.FC = () => {
   const filteredMentors = useMemo(() => {
     return mentors.filter(
       (m) =>
-        // Only show mentors who have active allocations with students
+        // Only show mentors who have active allocations with learners
         m.allocations.some(allocation => 
-          allocation.status === 'active' && allocation.students.length > 0
+          allocation.status === 'active' && allocation.learners.length > 0
         ) &&
         (m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         m.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
         m.designation.toLowerCase().includes(searchQuery.toLowerCase())) &&
         (selectedDepartment === "all" || m.department === selectedDepartment) &&
-        // Add batch filtering - check if mentor has students from selected batch
+        // Add batch filtering - check if mentor has learners from selected batch
         (selectedBatch === "all" || m.allocations.some(allocation =>
-          allocation.students.some(student => student.batch === selectedBatch)
+          allocation.learners.some(learner => learner.batch === selectedBatch)
         ))
     );
   }, [mentors, searchQuery, selectedDepartment, selectedBatch]);
 
   // Calculate filtered statistics based on current filters
   const filteredStatistics = useMemo(() => {
-    // Get all students from filtered mentors
-    const filteredMentorStudents = filteredMentors.flatMap(mentor =>
-      mentor.allocations.flatMap(allocation => allocation.students)
+    // Get all learners from filtered mentors
+    const filteredMentorlearners = filteredMentors.flatMap(mentor =>
+      mentor.allocations.flatMap(allocation => allocation.learners)
     );
     
-    // Remove duplicates (same student might appear in multiple allocations)
-    const uniqueStudentIds = new Set(filteredMentorStudents.map(s => s.id));
-    const uniqueFilteredStudents = Array.from(uniqueStudentIds).map(id =>
-      filteredMentorStudents.find(s => s.id === id)!
+    // Remove duplicates (same learner might appear in multiple allocations)
+    const uniqueLearnerIds = new Set(filteredMentorlearners.map(s => s.id));
+    const uniqueFilteredlearners = Array.from(uniqueLearnerIds).map(id =>
+      filteredMentorlearners.find(s => s.id === id)!
     );
     
-    // Calculate at-risk students from filtered mentors
-    const filteredAtRiskStudents = uniqueFilteredStudents.filter(s => s.atRisk);
+    // Calculate at-risk learners from filtered mentors
+    const filteredAtRisklearners = uniqueFilteredlearners.filter(s => s.atRisk);
     
     // Calculate interventions from filtered mentors
     const filteredMentorUuids = filteredMentors.map(mentor => {
@@ -313,8 +313,8 @@ const MentorAllocation: React.FC = () => {
 
     return {
       totalMentors: filteredMentors.length,
-      allocatedStudents: uniqueFilteredStudents.length,
-      totalAtRisk: filteredAtRiskStudents.length,
+      allocatedlearners: uniqueFilteredlearners.length,
+      totalAtRisk: filteredAtRisklearners.length,
       totalInterventions: filteredInterventions.length,
     };
   }, [filteredMentors, dynamicMentors, dynamicNotes]);
@@ -352,25 +352,25 @@ const MentorAllocation: React.FC = () => {
     return mentor?.allocations.filter(a => a.status === 'active') || [];
   };
 
-  const getMentorAtRiskStudentsLegacy = (mentorId: number) => {
+  const getMentorAtRisklearnersLegacy = (mentorId: number) => {
     const mentorUuid = dynamicMentors.find(m => 
       parseInt(m.id.replace(/-/g, '').substring(0, 8), 16) === mentorId
     )?.id;
-    return mentorUuid ? getMentorAtRiskStudents(mentorUuid).map(transformStudentToLegacy) : [];
+    return mentorUuid ? getMentorAtRisklearners(mentorUuid).map(transformlearnerToLegacy) : [];
   };
 
   // Event Handlers
   const handleStartAllocation = async () => {
-    setSelectedStudentsForAllocation([]);
+    setSelectedlearnersForAllocation([]);
     
-    // Fetch assigned students info
+    // Fetch assigned learners info
     try {
-      logger.info('Fetching assigned students info...');
+      logger.info('Fetching assigned learners info...');
       
       const { data: allocations, error } = await supabase
-        .from('college_mentor_student_allocations')
+        .from('college_mentor_learner_allocations')
         .select(`
-          student_id,
+          learner_id,
           mentor_id
         `)
         .in('status', ['active', 'pending']);
@@ -395,46 +395,46 @@ const MentorAllocation: React.FC = () => {
 
       if (!error && allocationsWithMentors) {
         const assignedInfo = allocationsWithMentors.map(allocation => {
-          // Find the student in dynamicStudents to get the legacy ID
-          const student = dynamicStudents.find(s => s.id === allocation.student_id);
-          if (!student) {
-            logger.warn('Student not found for allocation:', { studentId: allocation.student_id });
+          // Find the learner in dynamiclearners to get the legacy ID
+          const learner = dynamiclearners.find(s => s.id === allocation.learner_id);
+          if (!learner) {
+            logger.warn('Learner not found for allocation:', { learnerId: allocation.learner_id });
             return null;
           }
           
-          const studentLegacyId = parseInt(student.id.replace(/-/g, '').substring(0, 8), 16);
+          const learnerLegacyId = parseInt(learner.id.replace(/-/g, '').substring(0, 8), 16);
           const mentorName = allocation.college_lecturers 
             ? `${allocation.college_lecturers.first_name} ${allocation.college_lecturers.last_name}`.trim()
             : 'Unknown Mentor';
           
-          logger.info('Mapped student:', {
-            uuid: student.id,
-            legacyId: studentLegacyId,
-            name: student.name,
+          logger.info('Mapped learner:', {
+            uuid: learner.id,
+            legacyId: learnerLegacyId,
+            name: learner.name,
             mentorName
           });
           
           return {
-            studentId: studentLegacyId,
+            learnerId: learnerLegacyId,
             mentorName
           };
-        }).filter(Boolean) as Array<{ studentId: number; mentorName: string }>;
+        }).filter(Boolean) as Array<{ learnerId: number; mentorName: string }>;
         
-        logger.info('Final assigned students info:', { count: assignedInfo.length });
-        setAssignedStudentsInfo(assignedInfo);
+        logger.info('Final assigned learners info:', { count: assignedInfo.length });
+        setAssignedlearnersInfo(assignedInfo);
       } else if (error) {
         logger.error('Error fetching allocations:', error as Error);
       }
     } catch (error) {
-      logger.error('Error fetching assigned students:', error as Error);
+      logger.error('Error fetching assigned learners:', error as Error);
     }
     
-    setShowStudentSelectionModal(true);
+    setShowlearnerSelectionModal(true);
   };
 
-  const handleStudentSelectionComplete = (studentIds: number[]) => {
-    setSelectedStudentsForAllocation(studentIds);
-    setShowStudentSelectionModal(false);
+  const handlelearnerSelectionComplete = (learnerIds: number[]) => {
+    setSelectedlearnersForAllocation(learnerIds);
+    setShowlearnerSelectionModal(false);
     setShowMentorSelectionModal(true);
   };
 
@@ -450,18 +450,18 @@ const MentorAllocation: React.FC = () => {
   const handleBackToMentorSelection = () => {
     setShowAllocationConfigModal(false);
     setShowMentorSelectionModal(true);
-    // Keep selectedStudentsForAllocation and selectedMentorForAllocation for navigation
+    // Keep selectedlearnersForAllocation and selectedMentorForAllocation for navigation
   };
 
-  const handleBackToStudentSelection = () => {
+  const handleBackTolearnerSelection = () => {
     setShowMentorSelectionModal(false);
-    setShowStudentSelectionModal(true);
-    // Keep selectedStudentsForAllocation for navigation
+    setShowlearnerSelectionModal(true);
+    // Keep selectedlearnersForAllocation for navigation
   };
 
-  const handleAllocateStudents = async (
+  const handleAllocatelearners = async (
     mentorId: number, 
-    studentIds: number[],
+    learnerIds: number[],
     allocationPeriod: {startDate: string; endDate: string},
     capacityConfig: {capacity: number; officeLocation: string; availableHours: string}
   ) => {
@@ -471,30 +471,30 @@ const MentorAllocation: React.FC = () => {
         parseInt(m.id.replace(/-/g, '').substring(0, 8), 16) === mentorId
       )?.id;
       
-      const studentUuids = studentIds.map(id => 
-        dynamicUnallocatedStudents.find(s => 
+      const learnerUuids = learnerIds.map(id => 
+        dynamicUnallocatedlearners.find(s => 
           parseInt(s.id.replace(/-/g, '').substring(0, 8), 16) === id
         )?.id
       ).filter(Boolean) as string[];
 
-      if (!mentorUuid || studentUuids.length === 0) {
-        toast.error('Invalid mentor or student selection');
+      if (!mentorUuid || learnerUuids.length === 0) {
+        toast.error('Invalid mentor or learner selection');
         return;
       }
 
-      // ✅ VALIDATION: Check if any students are already assigned to a mentor
+      // ✅ VALIDATION: Check if any learners are already assigned to a mentor
       const { data: existingAllocations, error: checkError } = await supabase
-        .from('college_mentor_student_allocations')
+        .from('college_mentor_learner_allocations')
         .select(`
-          student_id,
+          learner_id,
           mentor_id
         `)
-        .in('student_id', studentUuids)
+        .in('learner_id', learnerUuids)
         .eq('status', 'active');
 
       if (checkError) {
         logger.error('Error checking existing allocations:', checkError as Error);
-        toast.error('Failed to validate student assignments');
+        toast.error('Failed to validate learner assignments');
         return;
       }
 
@@ -509,21 +509,21 @@ const MentorAllocation: React.FC = () => {
         const mentorMap = new Map(mentorsData?.map(m => [m.id, m]) || []);
         
         // Build error message with mentor names
-        const alreadyAssignedStudents = existingAllocations.map(allocation => {
-          const student = dynamicUnallocatedStudents.find(s => s.id === allocation.student_id);
+        const alreadyAssignedlearners = existingAllocations.map(allocation => {
+          const learner = dynamicUnallocatedlearners.find(s => s.id === allocation.learner_id);
           const mentor = mentorMap.get(allocation.mentor_id);
           const mentorName = mentor 
             ? `${mentor.first_name} ${mentor.last_name}`.trim()
             : 'Unknown Mentor';
           return {
-            studentName: student?.name || 'Unknown Student',
+            learnerName: learner?.name || 'Unknown Learner',
             mentorName
           };
         });
 
-        const errorMessage = alreadyAssignedStudents.length === 1
-          ? `${alreadyAssignedStudents[0].studentName} is already assigned to ${alreadyAssignedStudents[0].mentorName}`
-          : `${alreadyAssignedStudents.length} students are already assigned to mentors:\n${alreadyAssignedStudents.map(s => `• ${s.studentName} → ${s.mentorName}`).join('\n')}`;
+        const errorMessage = alreadyAssignedlearners.length === 1
+          ? `${alreadyAssignedlearners[0].learnerName} is already assigned to ${alreadyAssignedlearners[0].mentorName}`
+          : `${alreadyAssignedlearners.length} learners are already assigned to mentors:\n${alreadyAssignedlearners.map(s => `• ${s.learnerName} → ${s.mentorName}`).join('\n')}`;
 
         toast.error(errorMessage, { duration: 5000 });
         return;
@@ -618,46 +618,46 @@ const MentorAllocation: React.FC = () => {
         periodId: activePeriod.id,
         periodName: activePeriod.name,
         mentorUuid,
-        studentCount: studentUuids.length
+        learnerCount: learnerUuids.length
       });
 
-      // Now allocate students using the active period
-      await allocateStudents(mentorUuid, studentUuids, activePeriod.id, firstLecturer);
+      // Now allocate learners using the active period
+      await allocatelearners(mentorUuid, learnerUuids, activePeriod.id, firstLecturer);
       
-      toast.success(`Successfully allocated ${studentUuids.length} students to mentor`);
+      toast.success(`Successfully allocated ${learnerUuids.length} learners to mentor`);
       
       // Reset states
       setShowAllocationConfigModal(false);
-      setSelectedStudentsForAllocation([]);
+      setSelectedlearnersForAllocation([]);
       setSelectedMentorForAllocation(null);
-      setAssignedStudentsInfo([]); // Clear assigned students cache to force refresh on next allocation
+      setAssignedlearnersInfo([]); // Clear assigned learners cache to force refresh on next allocation
     } catch (error) {
-      logger.error('Error allocating students:', error as Error);
-      toast.error('Failed to allocate students. Please try again.');
+      logger.error('Error allocating learners:', error as Error);
+      toast.error('Failed to allocate learners. Please try again.');
     }
   };
 
   const handleAddIntervention = async () => {
-    if (!selectedMentor || !selectedStudent || !noteText) return;
+    if (!selectedMentor || !selectedLearner || !noteText) return;
 
     try {
-      // Find the allocation ID for this mentor-student pair
+      // Find the allocation ID for this mentor-learner pair
       const mentorUuid = dynamicMentors.find(m => 
         parseInt(m.id.replace(/-/g, '').substring(0, 8), 16) === selectedMentor.id
       )?.id;
       
-      const studentUuid = dynamicStudents.find(s => 
-        parseInt(s.id.replace(/-/g, '').substring(0, 8), 16) === selectedStudent.id
+      const learnerUuid = dynamiclearners.find(s => 
+        parseInt(s.id.replace(/-/g, '').substring(0, 8), 16) === selectedLearner.id
       )?.id;
 
-      if (!mentorUuid || !studentUuid) {
-        toast.error('Invalid mentor or student selection');
+      if (!mentorUuid || !learnerUuid) {
+        toast.error('Invalid mentor or learner selection');
         return;
       }
 
       // IMPORTANT: Admin-created notes MUST always start with status = 'pending'
       // This ensures the workflow starts correctly: pending → acknowledged → in_progress → completed
-      await addMentorNote('', mentorUuid, studentUuid, {
+      await addMentorNote('', mentorUuid, learnerUuid, {
         title: `Intervention - ${interventionType}`,
         note_text: noteText,
         outcome: noteOutcome,
@@ -735,8 +735,8 @@ const MentorAllocation: React.FC = () => {
     }
   };
 
-  const handleReassignStudent = async (newMentorId: number, newPeriodId: number) => {
-    if (!studentToReassign) return;
+  const handleReassignLearner = async (newMentorId: number, newPeriodId: number) => {
+    if (!learnerToReassign) return;
 
     try {
       // Convert legacy IDs to UUIDs
@@ -744,8 +744,8 @@ const MentorAllocation: React.FC = () => {
         parseInt(m.id.replace(/-/g, '').substring(0, 8), 16) === newMentorId
       )?.id;
 
-      const studentUuid = dynamicStudents.find(s => 
-        parseInt(s.id.replace(/-/g, '').substring(0, 8), 16) === studentToReassign.id
+      const learnerUuid = dynamiclearners.find(s => 
+        parseInt(s.id.replace(/-/g, '').substring(0, 8), 16) === learnerToReassign.id
       )?.id;
 
       // Convert period ID to UUID
@@ -753,28 +753,28 @@ const MentorAllocation: React.FC = () => {
         parseInt(p.id.replace(/-/g, '').substring(0, 8), 16) === newPeriodId
       )?.id;
 
-      if (!newMentorUuid || !studentUuid || !newPeriodUuid) {
-        toast.error('Invalid mentor, student, or period selection');
+      if (!newMentorUuid || !learnerUuid || !newPeriodUuid) {
+        toast.error('Invalid mentor, learner, or period selection');
         return;
       }
 
-      // Find the current mentor for this student
+      // Find the current mentor for this learner
       const currentMentorUuid = dynamicMentors.find(m => 
         m.allocations?.some(allocation => 
-          allocation.students?.some(s => s.id === studentUuid)
+          allocation.learners?.some(s => s.id === learnerUuid)
         )
       )?.id;
 
       if (!currentMentorUuid) {
-        toast.error('Unable to find current mentor allocation for this student');
+        toast.error('Unable to find current mentor allocation for this learner');
         return;
       }
 
       // Find the actual allocation ID
-      const allocationId = await findAllocationId(currentMentorUuid, studentUuid, 'active');
+      const allocationId = await findAllocationId(currentMentorUuid, learnerUuid, 'active');
       
       if (!allocationId) {
-        toast.error('No active allocation found for this student. Please check the allocation status.');
+        toast.error('No active allocation found for this learner. Please check the allocation status.');
         return;
       }
 
@@ -784,16 +784,16 @@ const MentorAllocation: React.FC = () => {
       logger.info('Starting reassignment process...');
       
       // Perform the reassignment (this will call fetchData() internally and update state)
-      await reassignStudent(allocationId, newMentorUuid, newPeriodUuid, 'Reassigned by admin');
+      await reassignLearner(allocationId, newMentorUuid, newPeriodUuid, 'Reassigned by admin');
       
       logger.info('Reassignment completed, data refreshed');
       
       // Close modals
       setShowReassignModal(false);
-      setStudentToReassign(null);
+      setlearnerToReassign(null);
       
       // Show success message
-      toast.success('Student reassigned successfully');
+      toast.success('Learner reassigned successfully');
       
       // Force a re-render of the drawer by incrementing the refresh key
       // The drawer will automatically pick up the updated mentor data from the mentors array
@@ -811,7 +811,7 @@ const MentorAllocation: React.FC = () => {
               mentorId: refreshedMentor.id,
               mentorName: refreshedMentor.name,
               totalAllocations: refreshedMentor.allocations.length,
-              totalStudents: refreshedMentor.allocations.reduce((sum, a) => sum + a.students.length, 0)
+              totallearners: refreshedMentor.allocations.reduce((sum, a) => sum + a.learners.length, 0)
             });
             setSelectedMentor(refreshedMentor);
           } else {
@@ -820,8 +820,8 @@ const MentorAllocation: React.FC = () => {
         }
       }, 100); // Small delay to ensure React has processed state updates
     } catch (error) {
-      logger.error('Error reassigning student:', error as Error);
-      toast.error('Failed to reassign student. Please try again.');
+      logger.error('Error reassigning learner:', error as Error);
+      toast.error('Failed to reassign learner. Please try again.');
     }
   };
 
@@ -937,50 +937,50 @@ const MentorAllocation: React.FC = () => {
     }
   };
 
-  const handleAddStudentsToMentor = (mentor: LegacyMentor) => {
-    setMentorForAddingStudents(mentor);
-    setShowAddStudentsModal(true);
+  const handleAddlearnersToMentor = (mentor: LegacyMentor) => {
+    setMentorForAddinglearners(mentor);
+    setShowAddlearnersModal(true);
   };
 
-  const handleAddStudentsToAllocation = (mentor: LegacyMentor, allocation: any) => {
-    logger.info('handleAddStudentsToAllocation - using allocation ID:', { allocationId: allocation.id });
+  const handleAddlearnersToAllocation = (mentor: LegacyMentor, allocation: any) => {
+    logger.info('handleAddlearnersToAllocation - using allocation ID:', { allocationId: allocation.id });
     
     // Simple approach: Just pass the allocation as-is
     // The modal will handle finding the period when needed
-    setMentorForAddingStudents(mentor);
-    setAllocationForAddingStudents(allocation);
-    setShowAddStudentsModal(true);
+    setMentorForAddinglearners(mentor);
+    setAllocationForAddinglearners(allocation);
+    setShowAddlearnersModal(true);
   };
 
-  const handleRemoveStudentFromAllocation = async (student: LegacyStudent, allocation: LegacyMentorAllocation) => {
-    if (isRemovingStudent) return; // Prevent double-clicks
+  const handleRemovelearnerFromAllocation = async (learner: LegacyLearner, allocation: LegacyMentorAllocation) => {
+    if (isRemovingLearner) return; // Prevent double-clicks
     
     try {
-      setIsRemovingStudent(true);
+      setIsRemovingLearner(true);
       
       // Convert legacy IDs to UUIDs
       const mentorUuid = dynamicMentors.find(m => 
         parseInt(m.id.replace(/-/g, '').substring(0, 8), 16) === allocation.mentorId
       )?.id;
       
-      const studentUuid = dynamicStudents.find(s => 
-        parseInt(s.id.replace(/-/g, '').substring(0, 8), 16) === student.id
+      const learnerUuid = dynamiclearners.find(s => 
+        parseInt(s.id.replace(/-/g, '').substring(0, 8), 16) === learner.id
       )?.id;
 
-      if (!mentorUuid || !studentUuid) {
-        toast.error('Invalid mentor or student selection');
+      if (!mentorUuid || !learnerUuid) {
+        toast.error('Invalid mentor or learner selection');
         return;
       }
 
       // Find the allocation ID - check for active or pending status
-      let allocationId = await findAllocationId(mentorUuid, studentUuid, 'active');
+      let allocationId = await findAllocationId(mentorUuid, learnerUuid, 'active');
       if (!allocationId) {
-        allocationId = await findAllocationId(mentorUuid, studentUuid, 'pending');
+        allocationId = await findAllocationId(mentorUuid, learnerUuid, 'pending');
       }
       
       if (!allocationId) {
-        // Student already removed - just refresh UI
-        toast.info('This student is not currently allocated to this mentor');
+        // Learner already removed - just refresh UI
+        toast.info('This learner is not currently allocated to this mentor');
         setShowMentorDetailsModal(false);
         setSelectedMentor(null);
         await refetch();
@@ -994,7 +994,7 @@ const MentorAllocation: React.FC = () => {
       });
 
       // Show success message
-      toast.success(`${student.name} removed from allocation`);
+      toast.success(`${learner.name} removed from allocation`);
       
       // Close modal and clear selection
       setShowMentorDetailsModal(false);
@@ -1004,10 +1004,10 @@ const MentorAllocation: React.FC = () => {
       await refetch();
       
     } catch (error) {
-      logger.error('Error removing student:', error as Error);
-      toast.error('Failed to remove student. Please try again.');
+      logger.error('Error removing learner:', error as Error);
+      toast.error('Failed to remove learner. Please try again.');
     } finally {
-      setIsRemovingStudent(false);
+      setIsRemovingLearner(false);
     }
   };
 
@@ -1031,9 +1031,9 @@ const MentorAllocation: React.FC = () => {
         return;
       }
 
-      // First, delete all student allocations for this period
+      // First, delete all learner allocations for this period
       const { error: allocError } = await supabase
-        .from('college_mentor_student_allocations')
+        .from('college_mentor_learner_allocations')
         .delete()
         .eq('period_id', periodId);
 
@@ -1069,25 +1069,25 @@ const MentorAllocation: React.FC = () => {
     }
   };
 
-  const handleAddStudentsComplete = async (studentIds: number[]) => {
-    if (!mentorForAddingStudents || studentIds.length === 0) return;
+  const handleAddlearnersComplete = async (learnerIds: number[]) => {
+    if (!mentorForAddinglearners || learnerIds.length === 0) return;
 
     try {
       // Convert legacy IDs to UUIDs
       const mentorUuid = dynamicMentors.find(m => 
-        parseInt(m.id.replace(/-/g, '').substring(0, 8), 16) === mentorForAddingStudents.id
+        parseInt(m.id.replace(/-/g, '').substring(0, 8), 16) === mentorForAddinglearners.id
       )?.id;
       
-      // Find students from dynamicStudents (not dynamicUnallocatedStudents)
-      // because the modal might include students that are already allocated
-      const studentUuids = studentIds.map(id => 
-        dynamicStudents.find(s => 
+      // Find learners from dynamiclearners (not dynamicUnallocatedlearners)
+      // because the modal might include learners that are already allocated
+      const learnerUuids = learnerIds.map(id => 
+        dynamiclearners.find(s => 
           parseInt(s.id.replace(/-/g, '').substring(0, 8), 16) === id
         )?.id
       ).filter(Boolean) as string[];
 
-      if (!mentorUuid || studentUuids.length === 0) {
-        toast.error('Invalid mentor or student selection');
+      if (!mentorUuid || learnerUuids.length === 0) {
+        toast.error('Invalid mentor or learner selection');
         return;
       }
 
@@ -1100,16 +1100,16 @@ const MentorAllocation: React.FC = () => {
       // Get the period ID from the allocation
       let periodId: string | undefined;
       
-      if (allocationForAddingStudents) {
-        logger.info('Allocation object:', { allocationId: allocationForAddingStudents.id });
+      if (allocationForAddinglearners) {
+        logger.info('Allocation object:', { allocationId: allocationForAddinglearners.id });
         
         // Check if allocation has a period property with an id
-        if (allocationForAddingStudents.period?.id) {
-          periodId = allocationForAddingStudents.period.id;
+        if (allocationForAddinglearners.period?.id) {
+          periodId = allocationForAddinglearners.period.id;
           logger.info('Found period ID from allocation.period:', { periodId });
         } else {
           // Fallback: The allocation ID in processed data IS the period ID
-          const allocationLegacyId = allocationForAddingStudents.id;
+          const allocationLegacyId = allocationForAddinglearners.id;
           logger.info('Trying to find period using allocation legacy ID:', { allocationLegacyId });
           
           const matchingPeriod = periods.find(p => {
@@ -1125,23 +1125,23 @@ const MentorAllocation: React.FC = () => {
       }
       
       if (!periodId) {
-        logger.error('Could not determine period ID', { allocation: allocationForAddingStudents });
+        logger.error('Could not determine period ID', { allocation: allocationForAddinglearners });
         logger.error('Available periods:', { periods: periods.map(p => ({ id: p.id, name: p.name })) });
         toast.error('Could not find period for this allocation. Please try again.');
         return;
       }
 
-      logger.info('Allocating students to period:', { periodId });
+      logger.info('Allocating learners to period:', { periodId });
       
-      // Perform the allocation - this will throw an error if students already have allocations
-      await allocateStudents(mentorUuid, studentUuids, periodId, firstLecturer);
+      // Perform the allocation - this will throw an error if learners already have allocations
+      await allocatelearners(mentorUuid, learnerUuids, periodId, firstLecturer);
 
-      // Close the add students modal
-      setShowAddStudentsModal(false);
-      setMentorForAddingStudents(null);
-      setAllocationForAddingStudents(null);
+      // Close the add learners modal
+      setShowAddlearnersModal(false);
+      setMentorForAddinglearners(null);
+      setAllocationForAddinglearners(null);
       
-      toast.success(`Successfully added ${studentUuids.length} students to mentor`);
+      toast.success(`Successfully added ${learnerUuids.length} learners to mentor`);
       
       // Close the details modal
       setShowMentorDetailsModal(false);
@@ -1151,12 +1151,12 @@ const MentorAllocation: React.FC = () => {
       await refetch();
       
     } catch (error: any) {
-      logger.error('Error adding students:', error as Error);
+      logger.error('Error adding learners:', error as Error);
       // Show more specific error message
       if (error.message && error.message.includes('already have active allocations')) {
         toast.error(error.message);
       } else {
-        toast.error('Failed to add students. Please try again.');
+        toast.error('Failed to add learners. Please try again.');
       }
     }
   };
@@ -1170,7 +1170,7 @@ const MentorAllocation: React.FC = () => {
           Mentor Allocation
         </h1>
         <p className="text-gray-600 text-sm sm:text-base">
-          Assign mentors to students and track mentoring interventions
+          Assign mentors to learners and track mentoring interventions
         </p>
       </div>
 
@@ -1184,14 +1184,14 @@ const MentorAllocation: React.FC = () => {
           />
 
           <KPICard
-            title="Students Allocated"
-            value={filteredStatistics.allocatedStudents}
+            title="Learners Allocated"
+            value={filteredStatistics.allocatedlearners}
             icon={<AcademicCapIcon className="h-6 w-6" />}
             color="green"
           />
 
           <KPICard
-            title="At-Risk Students"
+            title="At-Risk Learners"
             value={filteredStatistics.totalAtRisk}
             icon={<ExclamationTriangleIcon className="h-6 w-6" />}
             color="red"
@@ -1263,11 +1263,11 @@ const MentorAllocation: React.FC = () => {
 
               <button
                 onClick={handleStartAllocation}
-                disabled={unallocatedStudents.length === 0}
+                disabled={unallocatedlearners.length === 0}
                 className="flex items-center justify-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <PlusCircleIcon className="h-5 w-5" />
-                Allocate Students
+                Allocate Learners
               </button>
             </div>
           </div>
@@ -1384,11 +1384,11 @@ const MentorAllocation: React.FC = () => {
 
                     {/* Risk Indicator - Consistent Height */}
                     <div className="h-6 flex items-center gap-3">
-                      {getMentorAtRiskStudentsLegacy(mentor.id).length > 0 && (
+                      {getMentorAtRisklearnersLegacy(mentor.id).length > 0 && (
                         <div className="flex items-center gap-1">
                           <ExclamationTriangleIcon className="h-4 w-4 text-red-500" />
                           <span className="text-xs text-red-600 font-medium">
-                            {getMentorAtRiskStudentsLegacy(mentor.id).length} at-risk student{getMentorAtRiskStudentsLegacy(mentor.id).length > 1 ? 's' : ''}
+                            {getMentorAtRisklearnersLegacy(mentor.id).length} at-risk learner{getMentorAtRisklearnersLegacy(mentor.id).length > 1 ? 's' : ''}
                           </span>
                         </div>
                       )}
@@ -1449,7 +1449,7 @@ const MentorAllocation: React.FC = () => {
                         
                         if (currentAllocation) {
                           // Show capacity for current period only
-                          const currentLoad = currentAllocation.students.length;
+                          const currentLoad = currentAllocation.learners.length;
                           const maxCapacity = currentAllocation.capacity;
                           
                           return (
@@ -1532,17 +1532,17 @@ const MentorAllocation: React.FC = () => {
                         View Details
                       </button>
                       <button
-                        onClick={() => handleAddStudentsToMentor(mentor)}
+                        onClick={() => handleAddlearnersToMentor(mentor)}
                         disabled={(() => {
                           const currentLoad = getMentorCurrentLoadLegacy(mentor.id);
                           const activeAllocations = getMentorActiveAllocationsLegacy(mentor.id);
                           const maxCapacity = activeAllocations.length > 0 
                             ? Math.max(...activeAllocations.map(a => a.capacity))
                             : 15;
-                          return currentLoad >= maxCapacity || unallocatedStudents.length === 0 || activeAllocations.length === 0;
+                          return currentLoad >= maxCapacity || unallocatedlearners.length === 0 || activeAllocations.length === 0;
                         })()}
                         className="px-3 py-2 bg-green-100 text-green-700 hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
-                        title="Add Students"
+                        title="Add Learners"
                       >
                         <UserPlusIcon className="h-4 w-4" />
                       </button>
@@ -1559,11 +1559,11 @@ const MentorAllocation: React.FC = () => {
                     <div>
                       <h3 className="font-semibold text-gray-900">{mentor.name}</h3>
                       <p className="text-sm text-gray-600">{mentor.designation} • {mentor.department}</p>
-                      {getMentorAtRiskStudentsLegacy(mentor.id).length > 0 && (
+                      {getMentorAtRisklearnersLegacy(mentor.id).length > 0 && (
                         <div className="flex items-center gap-1 mt-1">
                           <ExclamationTriangleIcon className="h-3 w-3 text-red-500" />
                           <span className="text-xs text-red-600">
-                            {getMentorAtRiskStudentsLegacy(mentor.id).length} at-risk
+                            {getMentorAtRisklearnersLegacy(mentor.id).length} at-risk
                           </span>
                         </div>
                       )}
@@ -1585,7 +1585,7 @@ const MentorAllocation: React.FC = () => {
                     
                     <div className="text-center">
                       <p className="text-sm font-medium text-red-600">
-                        {getMentorAtRiskStudentsLegacy(mentor.id).length}
+                        {getMentorAtRisklearnersLegacy(mentor.id).length}
                       </p>
                       <p className="text-xs text-gray-500">At-Risk</p>
                     </div>
@@ -1601,17 +1601,17 @@ const MentorAllocation: React.FC = () => {
                         View Details
                       </button>
                       <button
-                        onClick={() => handleAddStudentsToMentor(mentor)}
+                        onClick={() => handleAddlearnersToMentor(mentor)}
                         disabled={(() => {
                           const currentLoad = getMentorCurrentLoadLegacy(mentor.id);
                           const activeAllocations = getMentorActiveAllocationsLegacy(mentor.id);
                           const maxCapacity = activeAllocations.length > 0 
                             ? Math.max(...activeAllocations.map(a => a.capacity))
                             : 15;
-                          return currentLoad >= maxCapacity || unallocatedStudents.length === 0 || activeAllocations.length === 0;
+                          return currentLoad >= maxCapacity || unallocatedlearners.length === 0 || activeAllocations.length === 0;
                         })()}
                         className="px-2 py-1.5 bg-green-100 text-green-700 hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
-                        title="Add Students"
+                        title="Add Learners"
                       >
                         <UserPlusIcon className="h-4 w-4" />
                       </button>
@@ -1730,28 +1730,28 @@ const MentorAllocation: React.FC = () => {
         )}
 
         {/* Modals */}
-        {showStudentSelectionModal && (
-          <StudentSelectionModal
-            key="allocate-students"
-            availableStudents={dynamicStudents.map(transformStudentToLegacy) as any}
-            onClose={() => setShowStudentSelectionModal(false)}
-            onNext={handleStudentSelectionComplete}
-            initialSelectedStudents={selectedStudentsForAllocation}
-            assignedStudents={assignedStudentsInfo}
+        {showlearnerSelectionModal && (
+          <LearnerSelectionModal
+            key="allocate-learners"
+            availablelearners={dynamiclearners.map(transformlearnerToLegacy) as any}
+            onClose={() => setShowlearnerSelectionModal(false)}
+            onNext={handlelearnerSelectionComplete}
+            initialSelectedlearners={selectedlearnersForAllocation}
+            assignedlearners={assignedlearnersInfo}
           />
         )}
 
         {showMentorSelectionModal && (
           <MentorSelectionModal
-            selectedStudents={selectedStudentsForAllocation.map(id => 
-              availableStudents.find(s => s.id === id)!
+            selectedlearners={selectedlearnersForAllocation.map(id => 
+              availablelearners.find(s => s.id === id)!
             ) as any}
             mentors={mentors as any}
             onClose={() => {
               setShowMentorSelectionModal(false);
-              setSelectedStudentsForAllocation([]);
+              setSelectedlearnersForAllocation([]);
             }}
-            onBack={handleBackToStudentSelection}
+            onBack={handleBackTolearnerSelection}
             onNext={handleMentorSelectionComplete}
             initialSelectedMentorId={selectedMentorForAllocation?.id || null}
             getMentorCurrentLoad={getMentorCurrentLoadLegacy}
@@ -1761,17 +1761,17 @@ const MentorAllocation: React.FC = () => {
 
         {showAllocationConfigModal && selectedMentorForAllocation && (
           <AllocationConfigurationModal
-            selectedStudents={selectedStudentsForAllocation.map(id => 
-              availableStudents.find(s => s.id === id)!
+            selectedlearners={selectedlearnersForAllocation.map(id => 
+              availablelearners.find(s => s.id === id)!
             ) as any}
             selectedMentor={selectedMentorForAllocation as any}
             onClose={() => {
               setShowAllocationConfigModal(false);
-              setSelectedStudentsForAllocation([]);
+              setSelectedlearnersForAllocation([]);
               setSelectedMentorForAllocation(null);
             }}
             onBack={handleBackToMentorSelection}
-            onAllocate={handleAllocateStudents}
+            onAllocate={handleAllocatelearners}
             getMentorCurrentLoad={getMentorCurrentLoadLegacy}
             getMentorActiveAllocations={getMentorActiveAllocationsLegacy as any}
             allAllocations={allAllocations as any}
@@ -1780,7 +1780,7 @@ const MentorAllocation: React.FC = () => {
 
         {showInterventionModal && (
           <InterventionModal
-            student={selectedStudent as any}
+            learner={selectedLearner as any}
             noteText={noteText}
             noteOutcome={noteOutcome}
             interventionType={interventionType}
@@ -1800,7 +1800,7 @@ const MentorAllocation: React.FC = () => {
             onClose={() => {
               setShowInterventionModal(false);
               setSelectedMentor(null);
-              setSelectedStudent(null);
+              setSelectedLearner(null);
             }}
             onSave={handleAddIntervention}
           />
@@ -1809,7 +1809,7 @@ const MentorAllocation: React.FC = () => {
         {showFeedbackModal && selectedNoteForFeedback && (
           <InterventionFeedbackModal
             note={selectedNoteForFeedback}
-            studentName={dynamicStudents.find(s => s.id === selectedNoteForFeedback.student_id)?.name || 'Unknown Student'}
+            learnerName={dynamiclearners.find(s => s.id === selectedNoteForFeedback.learner_id)?.name || 'Unknown Learner'}
             mentorName={(() => {
               const mentor = dynamicMentors.find(m => m.id === selectedNoteForFeedback.mentor_id);
               return mentor ? `${mentor.first_name} ${mentor.last_name}` : 'Unknown Mentor';
@@ -1846,7 +1846,7 @@ const MentorAllocation: React.FC = () => {
                   logger.info('Found matching note:', {
                     noteId: n.id,
                     mentorId: n.mentor_id,
-                    studentId: n.student_id,
+                    learnerId: n.learner_id,
                     noteText: n.note_text
                   });
                 }
@@ -1856,7 +1856,7 @@ const MentorAllocation: React.FC = () => {
               const transformedNotes = filteredNotes.map(note => ({
                 id: parseInt(note.id.replace(/-/g, '').substring(0, 8), 16),
                 mentorId: selectedMentor.id,
-                studentId: parseInt(note.student_id.replace(/-/g, '').substring(0, 8), 16),
+                learnerId: parseInt(note.learner_id.replace(/-/g, '').substring(0, 8), 16),
                 note: note.note_text || '',
                 date: note.note_date || note.created_at,
                 outcome: note.outcome || '',
@@ -1884,19 +1884,19 @@ const MentorAllocation: React.FC = () => {
               // Clear the delete handler when modal closes
               (window as any).__deletePeriodHandler = undefined;
             }}
-            onLogIntervention={(student) => {
-              setSelectedStudent(student as any);
+            onLogIntervention={(learner) => {
+              setSelectedLearner(learner as any);
               setShowInterventionModal(true);
             }}
-            onReassignStudent={(student) => {
-              setStudentToReassign(student as any);
+            onReassignLearner={(learner) => {
+              setlearnerToReassign(learner as any);
               setShowReassignModal(true);
             }}
             onConfigureAllocation={handleConfigureAllocation}
-            onAddStudentsToAllocation={(mentor, allocation) => {
-              handleAddStudentsToAllocation(mentor, allocation);
+            onAddlearnersToAllocation={(mentor, allocation) => {
+              handleAddlearnersToAllocation(mentor, allocation);
             }}
-            onRemoveStudent={handleRemoveStudentFromAllocation}
+            onRemoveLearner={handleRemovelearnerFromAllocation}
             onViewConversation={(note: any) => {
               // Use the full note data if available, otherwise use the transformed note
               const fullNote = note._fullNote || dynamicNotes.find(n => 
@@ -1909,15 +1909,15 @@ const MentorAllocation: React.FC = () => {
           />
         )}
 
-        {showReassignModal && studentToReassign && (
+        {showReassignModal && learnerToReassign && (
           <ReassignModal
-            student={studentToReassign as any}
+            learner={learnerToReassign as any}
             mentors={mentors as any}
             onClose={() => {
               setShowReassignModal(false);
-              setStudentToReassign(null);
+              setlearnerToReassign(null);
             }}
-            onReassign={handleReassignStudent}
+            onReassign={handleReassignLearner}
             getMentorCurrentLoad={getMentorCurrentLoadLegacy}
             getMentorActiveAllocations={getMentorActiveAllocationsLegacy as any}
           />
@@ -1936,33 +1936,33 @@ const MentorAllocation: React.FC = () => {
           />
         )}
 
-        {showAddStudentsModal && mentorForAddingStudents && (
-          <StudentSelectionModal
-            key={`add-students-${mentorForAddingStudents.id}`}
-            availableStudents={(unallocatedStudents || []).filter(student => 
-              (selectedBatch === "all" || student.batch === selectedBatch) &&
-              (selectedDepartment === "all" || student.department === selectedDepartment)
+        {showAddlearnersModal && mentorForAddinglearners && (
+          <LearnerSelectionModal
+            key={`add-learners-${mentorForAddinglearners.id}`}
+            availablelearners={(unallocatedlearners || []).filter(learner => 
+              (selectedBatch === "all" || learner.batch === selectedBatch) &&
+              (selectedDepartment === "all" || learner.department === selectedDepartment)
             ) as any}
-            title={`Add Students to ${mentorForAddingStudents.name}${allocationForAddingStudents ? ` - ${allocationForAddingStudents.academicYear}` : ''}`}
-            description={`Select students to assign to ${mentorForAddingStudents.name} (${mentorForAddingStudents.designation})${allocationForAddingStudents ? ` for the ${allocationForAddingStudents.academicYear} period` : ''}. Available capacity: ${(() => {
-              if (allocationForAddingStudents) {
-                const currentLoad = allocationForAddingStudents.students?.length || 0;
-                const maxCapacity = allocationForAddingStudents.capacity;
+            title={`Add Learners to ${mentorForAddinglearners.name}${allocationForAddinglearners ? ` - ${allocationForAddinglearners.academicYear}` : ''}`}
+            description={`Select learners to assign to ${mentorForAddinglearners.name} (${mentorForAddinglearners.designation})${allocationForAddinglearners ? ` for the ${allocationForAddinglearners.academicYear} period` : ''}. Available capacity: ${(() => {
+              if (allocationForAddinglearners) {
+                const currentLoad = allocationForAddinglearners.learners?.length || 0;
+                const maxCapacity = allocationForAddinglearners.capacity;
                 return maxCapacity - currentLoad;
               }
-              const currentLoad = getMentorCurrentLoadLegacy(mentorForAddingStudents.id);
-              const activeAllocations = getMentorActiveAllocationsLegacy(mentorForAddingStudents.id);
+              const currentLoad = getMentorCurrentLoadLegacy(mentorForAddinglearners.id);
+              const activeAllocations = getMentorActiveAllocationsLegacy(mentorForAddinglearners.id);
               const maxCapacity = activeAllocations.length > 0 
                 ? Math.max(...activeAllocations.map(a => a.capacity))
                 : 15;
               return maxCapacity - currentLoad;
-            })()} students`}
-            buttonText="Add Selected Students"
+            })()} learners`}
+            buttonText="Add Selected Learners"
             onClose={() => {
-              setShowAddStudentsModal(false);
-              setMentorForAddingStudents(null);
+              setShowAddlearnersModal(false);
+              setMentorForAddinglearners(null);
             }}
-            onNext={handleAddStudentsComplete}
+            onNext={handleAddlearnersComplete}
           />
         )}
       </div>

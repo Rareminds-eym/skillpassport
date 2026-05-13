@@ -15,8 +15,8 @@ interface SEOHeadProps {
 
 const SEOHead: React.FC<SEOHeadProps> = ({
   title = "Rareminds - Skillpassport",
-  description = "Comprehensive educational management platform with AI-powered career guidance, student tracking, recruitment pipeline, and course marketplace for K-12 schools, colleges, and universities.",
-  keywords = "educational management system, AI career guidance, student management, recruitment platform, course marketplace, attendance tracking, career assessment, job matching",
+  description = "Comprehensive educational management platform with AI-powered career guidance, learner tracking, recruitment pipeline, and course marketplace for K-12 schools, colleges, and universities.",
+  keywords = "educational management system, AI career guidance, learner management, recruitment platform, course marketplace, attendance tracking, career assessment, job matching",
   image,
   url = "https://skillpassport.rareminds.in/",
   type = "website",

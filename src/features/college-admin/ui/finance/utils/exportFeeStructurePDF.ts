@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { FeeStructure } from '@/features/student-profile/model';
+import { FeeStructure } from '@/features/learner-profile/model';
 
 const getYearLabel = (semester: number) => {
   if (semester === 1) return "1st Year";

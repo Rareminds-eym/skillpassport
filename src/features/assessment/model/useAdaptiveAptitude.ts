@@ -54,14 +54,14 @@ export interface TestProgress {
  * Options for the useAdaptiveAptitude hook
  */
 export interface UseAdaptiveAptitudeOptions {
-  /** Student ID for the test */
-  studentId: string;
+  /** Learner ID for the test */
+  learnerId: string;
   /** Grade level for the test */
   gradeLevel: GradeLevel;
   /** Assessment attempt ID to link the adaptive session to */
   attemptId?: string;
-  /** Student's course/program (for college students) */
-  studentCourse?: string | null;
+  /** Learner's course/program (for college learners) */
+  learnerCourse?: string | null;
   /** Callback when test completes */
   onTestComplete?: (results: TestResults) => void;
   /** Callback when an error occurs */
@@ -175,13 +175,13 @@ function calculateProgress(
  * 
  * Requirements: 5.2, 5.3, 7.3
  * 
- * @param options - Hook options including studentId and gradeLevel
+ * @param options - Hook options including learnerId and gradeLevel
  * @returns Hook state and actions
  */
 export function useAdaptiveAptitude(
   options: UseAdaptiveAptitudeOptions
 ): UseAdaptiveAptitudeReturn {
-  const { studentId, gradeLevel, attemptId, studentCourse, onTestComplete, onError } = options;
+  const { learnerId, gradeLevel, attemptId, learnerCourse, onTestComplete, onError } = options;
 
   // ==========================================================================
   // STATE
@@ -264,7 +264,7 @@ export function useAdaptiveAptitude(
   const startTest = useCallback(async () => {
     console.log('🚀🚀🚀 [useAdaptiveAptitude] ========== START TEST CALLED ==========');
     console.log('🚀 [useAdaptiveAptitude] Parameters:', {
-      studentId,
+      learnerId,
       gradeLevel,
       attemptId,
       hasAttemptId: !!attemptId,
@@ -277,9 +277,9 @@ export function useAdaptiveAptitude(
       // Initialize the test
       console.log('📡 [useAdaptiveAptitude] Step 1: Calling AdaptiveAptitudeService.initializeTest...');
       const initResult: InitializeTestResult = await AdaptiveAptitudeService.initializeTest({
-        studentId,
+        learnerId,
         gradeLevel,
-        studentCourse,
+        learnerCourse,
       });
       console.log('✅ [useAdaptiveAptitude] Step 1 Complete: initializeTest result:', {
         sessionId: initResult.session.id,
@@ -345,7 +345,7 @@ export function useAdaptiveAptitude(
     } finally {
       setLoading(false);
     }
-  }, [studentId, gradeLevel, attemptId, handleError]);
+  }, [learnerId, gradeLevel, attemptId, handleError]);
 
   /**
    * Submits an answer for the current question
@@ -561,7 +561,7 @@ export function useAdaptiveAptitude(
   }, [handleError]);
 
   /**
-   * Checks for and resumes any in-progress session for the student
+   * Checks for and resumes any in-progress session for the learner
    * 
    * @returns true if a session was found and resumed, false otherwise
    */
@@ -572,7 +572,7 @@ export function useAdaptiveAptitude(
     try {
       // Check for existing in-progress session
       const existingSession = await AdaptiveAptitudeService.findInProgressSession(
-        studentId,
+        learnerId,
         gradeLevel
       );
 
@@ -589,7 +589,7 @@ export function useAdaptiveAptitude(
     } finally {
       setLoading(false);
     }
-  }, [studentId, gradeLevel, resumeTest, handleError]);
+  }, [learnerId, gradeLevel, resumeTest, handleError]);
 
   /**
    * Abandons the current test session

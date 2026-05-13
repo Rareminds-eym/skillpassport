@@ -16,7 +16,7 @@ const logger = getLogger('field-domain-service');
  * Generate domain-specific keywords for a field of study using AI
  * This ensures ALL fields (not just hardcoded ones) get proper domain keywords
  * 
- * @param {string} fieldOfStudy - The student's field/stream (e.g., "B.COM", "Mechanical Engineering", "Animation")
+ * @param {string} fieldOfStudy - The learner's field/stream (e.g., "B.COM", "Mechanical Engineering", "Animation")
  * @returns {Promise<string>} - Domain-specific keywords for course matching
  */
 export async function generateDomainKeywords(fieldOfStudy) {

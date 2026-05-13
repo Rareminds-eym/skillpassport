@@ -18,9 +18,9 @@ export type AdminNotificationType =
   // Assessment notifications
   | "assessment_completed"
   | "assessment_submitted"
-  // Student notifications
-  | "student_enrolled"
-  | "student_achievement"
+  // Learner notifications
+  | "learner_enrolled"
+  | "learner_achievement"
   | "assignment_submitted"
   | "class_activity_pending"
   | "attendance_reminder"

@@ -9,10 +9,10 @@ interface TeacherMetrics {
   teacher_id: string;
   teacher_name: string;
   classes_taught: number;
-  students_count: number;
+  learners_count: number;
   lesson_plans_created: number;
   assignments_created: number;
-  average_student_performance: number;
+  average_learner_performance: number;
   attendance_rate: number;
 }
 
@@ -63,7 +63,7 @@ const TeacherPerformanceAnalytics: React.FC = () => {
     
     return {
       avgClasses: (metrics.reduce((sum, m) => sum + m.classes_taught, 0) / metrics.length).toFixed(1),
-      avgStudents: (metrics.reduce((sum, m) => sum + m.students_count, 0) / metrics.length).toFixed(0),
+      avglearners: (metrics.reduce((sum, m) => sum + m.learners_count, 0) / metrics.length).toFixed(0),
       avgLessonPlans: (metrics.reduce((sum, m) => sum + m.lesson_plans_created, 0) / metrics.length).toFixed(1),
       avgAssignments: (metrics.reduce((sum, m) => sum + m.assignments_created, 0) / metrics.length).toFixed(1),
     };
@@ -123,8 +123,8 @@ const TeacherPerformanceAnalytics: React.FC = () => {
                 AVG
               </span>
             </div>
-            <p className="text-2xl font-bold text-gray-900">{averages.avgStudents}</p>
-            <p className="text-sm text-gray-600">Students per Teacher</p>
+            <p className="text-2xl font-bold text-gray-900">{averages.avglearners}</p>
+            <p className="text-sm text-gray-600">Learners per Teacher</p>
           </div>
 
           <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 border border-purple-200">
@@ -176,7 +176,7 @@ const TeacherPerformanceAnalytics: React.FC = () => {
                 <div>
                   <p className="font-semibold text-gray-900">{teacher.teacher_name}</p>
                   <p className="text-sm text-gray-600">
-                    {teacher.classes_taught} classes • {teacher.students_count} students
+                    {teacher.classes_taught} classes • {teacher.learners_count} learners
                   </p>
                 </div>
               </div>
@@ -213,7 +213,7 @@ const TeacherPerformanceAnalytics: React.FC = () => {
                   Classes
                 </th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                  Students
+                  Learners
                 </th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
                   Lesson Plans
@@ -245,7 +245,7 @@ const TeacherPerformanceAnalytics: React.FC = () => {
                     <td className="px-6 py-4 text-center">
                       <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
                         <Users className="h-3 w-3" />
-                        {metric.students_count}
+                        {metric.learners_count}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">

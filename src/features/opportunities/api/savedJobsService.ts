@@ -6,17 +6,17 @@ import { supabase } from '@/shared/api/supabaseClient';
 export class SavedJobsService {
   /**
    * Save a job opportunity
-   * @param {string} studentId - Student's ID (students.id)
+   * @param {string} learnerId - Learner's ID (learners.id)
    * @param {string} opportunityId - Opportunity's ID (UUID)
    * @returns {Promise<Object>} Save result
    */
-  static async saveJob(studentId, opportunityId) {
+  static async saveJob(learnerId, opportunityId) {
     try {
       // Check if already saved (use maybeSingle instead of single)
       const { data: existing, error: checkError } = await supabase
         .from('saved_jobs')
         .select('id')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('opportunity_id', opportunityId)
         .maybeSingle(); // Changed from .single() to .maybeSingle()
 
@@ -38,7 +38,7 @@ export class SavedJobsService {
         .from('saved_jobs')
         .insert([
           {
-            student_id: studentId,
+            learner_id: learnerId,
             opportunity_id: opportunityId
           }
         ])
@@ -66,16 +66,16 @@ export class SavedJobsService {
 
   /**
    * Unsave a job opportunity
-   * @param {string} studentId - Student's UUID
+   * @param {string} learnerId - Learner's UUID
    * @param {number} opportunityId - Opportunity's ID
    * @returns {Promise<Object>} Unsave result
    */
-  static async unsaveJob(studentId, opportunityId) {
+  static async unsaveJob(learnerId, opportunityId) {
     try {
       const { data, error } = await supabase
         .from('saved_jobs')
         .delete()
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('opportunity_id', opportunityId)
         .select();
 
@@ -99,22 +99,22 @@ export class SavedJobsService {
 
   /**
    * Toggle save status of a job (save if not saved, unsave if saved)
-   * @param {string} studentId - Student's UUID
+   * @param {string} learnerId - Learner's UUID
    * @param {number} opportunityId - Opportunity's ID
    * @returns {Promise<Object>} Toggle result with isSaved status
    */
-  static async toggleSaveJob(studentId, opportunityId) {
+  static async toggleSaveJob(learnerId, opportunityId) {
     try {
-      const isSaved = await this.isSaved(studentId, opportunityId);
+      const isSaved = await this.isSaved(learnerId, opportunityId);
 
       if (isSaved) {
-        const result = await this.unsaveJob(studentId, opportunityId);
+        const result = await this.unsaveJob(learnerId, opportunityId);
         return {
           ...result,
           isSaved: false
         };
       } else {
-        const result = await this.saveJob(studentId, opportunityId);
+        const result = await this.saveJob(learnerId, opportunityId);
         return {
           ...result,
           isSaved: true
@@ -130,17 +130,17 @@ export class SavedJobsService {
   }
 
   /**
-   * Check if student has saved a job
-   * @param {string} studentId - Student's UUID
+   * Check if learner has saved a job
+   * @param {string} learnerId - Learner's UUID
    * @param {number} opportunityId - Opportunity's ID
    * @returns {Promise<boolean>} True if job is saved
    */
-  static async isSaved(studentId, opportunityId) {
+  static async isSaved(learnerId, opportunityId) {
     try {
       const { data, error } = await supabase
         .from('saved_jobs')
         .select('id')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('opportunity_id', opportunityId)
         .single();
 
@@ -155,16 +155,16 @@ export class SavedJobsService {
   }
 
   /**
-   * Get all saved jobs for a student (just IDs)
-   * @param {string} studentId - Student's UUID
+   * Get all saved jobs for a learner (just IDs)
+   * @param {string} learnerId - Learner's UUID
    * @returns {Promise<Array>} List of saved job IDs
    */
-  static async getSavedJobIds(studentId) {
+  static async getSavedJobIds(learnerId) {
     try {
       const { data, error } = await supabase
         .from('saved_jobs')
         .select('opportunity_id')
-        .eq('student_id', studentId);
+        .eq('learner_id', learnerId);
 
       if (error) {
         throw error;
@@ -177,12 +177,12 @@ export class SavedJobsService {
   }
 
   /**
-   * Get all saved jobs for a student with full opportunity details
-   * @param {string} studentId - Student's UUID
+   * Get all saved jobs for a learner with full opportunity details
+   * @param {string} learnerId - Learner's UUID
    * @param {Object} options - Query options
    * @returns {Promise<Array>} List of saved jobs with details
    */
-  static async getSavedJobsWithDetails(studentId, options = {}) {
+  static async getSavedJobsWithDetails(learnerId, options = {}) {
     try {
       let query = supabase
         .from('saved_jobs')
@@ -212,7 +212,7 @@ export class SavedJobsService {
             created_at
           )
         `)
-        .eq('student_id', studentId);
+        .eq('learner_id', learnerId);
 
       // Apply filters
       if (options.activeOnly) {
@@ -252,19 +252,19 @@ export class SavedJobsService {
 
   /**
    * Get saved jobs with applied status
-   * @param {string} studentId - Student's UUID
+   * @param {string} learnerId - Learner's UUID
    * @returns {Promise<Array>} Saved jobs with applied status
    */
-  static async getSavedJobsWithAppliedStatus(studentId) {
+  static async getSavedJobsWithAppliedStatus(learnerId) {
     try {
       // First get saved jobs
-      const savedJobs = await this.getSavedJobsWithDetails(studentId);
+      const savedJobs = await this.getSavedJobsWithDetails(learnerId);
 
       // Then get applied jobs
       const { data: appliedJobs, error } = await supabase
         .from('applied_jobs')
         .select('opportunity_id, application_status, applied_at')
-        .eq('student_id', studentId);
+        .eq('learner_id', learnerId);
 
       if (error) {
         return savedJobs; // Return without applied status
@@ -289,15 +289,15 @@ export class SavedJobsService {
 
   /**
    * Get count of saved jobs
-   * @param {string} studentId - Student's UUID
+   * @param {string} learnerId - Learner's UUID
    * @returns {Promise<number>} Count of saved jobs
    */
-  static async getSavedJobsCount(studentId) {
+  static async getSavedJobsCount(learnerId) {
     try {
       const { count, error } = await supabase
         .from('saved_jobs')
         .select('*', { count: 'exact', head: true })
-        .eq('student_id', studentId);
+        .eq('learner_id', learnerId);
 
       if (error) throw error;
 
@@ -309,13 +309,13 @@ export class SavedJobsService {
 
   /**
    * Remove all saved jobs for inactive opportunities
-   * @param {string} studentId - Student's UUID
+   * @param {string} learnerId - Learner's UUID
    * @returns {Promise<Object>} Result
    */
-  static async removeInactiveSavedJobs(studentId) {
+  static async removeInactiveSavedJobs(learnerId) {
     try {
       // Get all saved jobs
-      const savedJobs = await this.getSavedJobsWithDetails(studentId);
+      const savedJobs = await this.getSavedJobsWithDetails(learnerId);
       
       // Filter inactive ones
       const inactiveJobIds = savedJobs
@@ -334,7 +334,7 @@ export class SavedJobsService {
       const { error } = await supabase
         .from('saved_jobs')
         .delete()
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .in('opportunity_id', inactiveJobIds);
 
       if (error) throw error;
@@ -355,12 +355,12 @@ export class SavedJobsService {
 
   /**
    * Get saved jobs statistics
-   * @param {string} studentId - Student's UUID
+   * @param {string} learnerId - Learner's UUID
    * @returns {Promise<Object>} Statistics
    */
-  static async getSavedJobsStats(studentId) {
+  static async getSavedJobsStats(learnerId) {
     try {
-      const savedJobs = await this.getSavedJobsWithAppliedStatus(studentId);
+      const savedJobs = await this.getSavedJobsWithAppliedStatus(learnerId);
 
       const stats = {
         total: savedJobs.length,

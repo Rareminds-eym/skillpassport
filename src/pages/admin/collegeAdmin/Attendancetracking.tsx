@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { AddAttendanceSessionModal } from "@/features/admin";
 import { AttendanceDetailsModal } from "@/features/admin";
-import { StudentHistoryModal } from "@/features/admin";
+import { LearnerHistoryModal } from "@/features/admin";
 import { supabase } from "@/shared/api";
-import { AttendanceRecord, AttendanceSession, SubjectGroup, Student as AttendanceStudent } from "@/features/college-admin";
-import { Student as ProfileStudent } from "@/entities/student";
+import { AttendanceRecord, AttendanceSession, SubjectGroup, Learner as AttendanceLearner } from "@/features/college-admin";
+import { Learner as ProfileLearner } from "@/entities/learner";
 import { curriculumService } from "@/features/college-admin";
 import toast from "react-hot-toast";
 import { getLogger } from "@/shared/config/logging";
@@ -292,8 +292,8 @@ const AttendanceTracking: React.FC = () => {
   const [selectedSubjectGroup, setSelectedSubjectGroup] =
     useState<SubjectGroup | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<AttendanceStudent | null>(null);
-  const [showStudentHistoryModal, setShowStudentHistoryModal] = useState(false);
+  const [selectedLearner, setSelectedLearner] = useState<AttendanceLearner | null>(null);
+  const [showlearnerHistoryModal, setShowlearnerHistoryModal] = useState(false);
   const [dateRange, setDateRange] = useState({
     from: "",
     to: "",
@@ -311,7 +311,7 @@ const AttendanceTracking: React.FC = () => {
     endTime: "",
     roomNumber: "",
     remarks: "",
-    totalStudents: 0,
+    totallearners: 0,
   });
 
   // Dynamic data states
@@ -323,7 +323,7 @@ const AttendanceTracking: React.FC = () => {
     totalSessions: 0,
     completedSessions: 0,
     avgAttendance: "0",
-    totalStudents: 0,
+    totallearners: 0,
     totalPresent: 0,
     totalAbsent: 0,
     lowAttendanceSessions: 0,
@@ -421,7 +421,7 @@ const AttendanceTracking: React.FC = () => {
         sessions: [], // Will be populated when needed
         totalSessions: item.total_sessions,
         avgAttendancePercentage: item.avg_attendance_percentage,
-        totalStudents: item.total_students,
+        totallearners: item.total_learners,
         totalPresentCount: item.total_present_count,
         totalAbsentCount: item.total_absent_count,
         totalLateCount: item.total_late_count,
@@ -451,7 +451,7 @@ const AttendanceTracking: React.FC = () => {
           id,
           status,
           attendance_percentage,
-          total_students,
+          total_learners,
           present_count,
           absent_count
         `)
@@ -466,7 +466,7 @@ const AttendanceTracking: React.FC = () => {
       const avgAttendance = sessions.length > 0 
         ? (sessions.reduce((acc, s) => acc + (s.attendance_percentage || 0), 0) / sessions.length).toFixed(1)
         : "0";
-      const totalStudents = sessions.reduce((acc, s) => acc + (s.total_students || 0), 0);
+      const totallearners = sessions.reduce((acc, s) => acc + (s.total_learners || 0), 0);
       const totalPresent = sessions.reduce((acc, s) => acc + (s.present_count || 0), 0);
       const totalAbsent = sessions.reduce((acc, s) => acc + (s.absent_count || 0), 0);
       const lowAttendanceSessions = sessions.filter(s => (s.attendance_percentage || 0) < 75).length;
@@ -475,7 +475,7 @@ const AttendanceTracking: React.FC = () => {
         totalSessions,
         completedSessions,
         avgAttendance,
-        totalStudents,
+        totallearners,
         totalPresent,
         totalAbsent,
         lowAttendanceSessions,
@@ -640,8 +640,8 @@ const AttendanceTracking: React.FC = () => {
       // Transform Supabase data to match component structure
       const transformedRecords = (data || []).map((record: any) => ({
         id: record.id,
-        studentId: record.student_id,
-        studentName: record.student_name,
+        learnerId: record.learner_id,
+        learnerName: record.learner_name,
         rollNumber: record.roll_number,
         department: record.department_name,
         course: record.program_name,
@@ -664,20 +664,20 @@ const AttendanceTracking: React.FC = () => {
     }
   };
 
-  const fetchStudentCount = async (department: string, course: string, semester: string, section: string) => {
+  const fetchlearnerCount = async (department: string, course: string, semester: string, section: string) => {
     try {
-      logger.info('Fetching student count for:', { value: { department, course, semester, section } });
+      logger.info('Fetching learner count for:', { value: { department, course, semester, section } });
       
       const { data, error } = await supabase
         .from('program_sections_view')
-        .select('max_students, department_name, program_name, semester, section, status')
+        .select('max_learners, department_name, program_name, semester, section, status')
         .eq('department_name', department)
         .eq('program_name', course)
         .eq('semester', parseInt(semester))
         .eq('section', section)
         .eq('status', 'active');
 
-      logger.info('Student count query result:', { value: { data, error } });
+      logger.info('Learner count query result:', { value: { data, error } });
 
       if (error) {
         logger.error('Supabase error:', error as Error);
@@ -686,13 +686,13 @@ const AttendanceTracking: React.FC = () => {
       
       if (data && data.length > 0) {
         logger.info('Found matching record:', { value: data[0] });
-        return data[0].max_students || 0;
+        return data[0].max_learners || 0;
       } else {
         logger.info('No matching records found');
         return 0;
       }
     } catch (err: any) {
-      logger.error('Failed to fetch student count:', err as Error);
+      logger.error('Failed to fetch learner count:', err as Error);
       return 0;
     }
   };
@@ -944,7 +944,7 @@ const AttendanceTracking: React.FC = () => {
         course: session.program_name,
         semester: session.semester,
         section: session.section,
-        totalStudents: session.total_students,
+        totallearners: session.total_learners,
         presentCount: session.present_count,
         absentCount: session.absent_count,
         lateCount: session.late_count,
@@ -1023,7 +1023,7 @@ const AttendanceTracking: React.FC = () => {
   const handleExportSession = (session: AttendanceSession, records: AttendanceRecord[]) => {
     const exportData = records.map(record => ({
       'Roll Number': record.rollNumber,
-      'Student Name': record.studentName,
+      'Learner Name': record.learnerName,
       'Status': record.status,
       'Time In': record.timeIn || '',
       'Time Out': record.timeOut || '',
@@ -1036,23 +1036,23 @@ const AttendanceTracking: React.FC = () => {
     exportToCSV(exportData, `${session.subject}_${formatDate(session.date).replace(/\//g, '-')}_attendance.csv`);
   };
 
-  const handleExportMonthly = (session: AttendanceSession, students: ProfileStudent[], allRecords: AttendanceRecord[]) => {
-    // Since ProfileStudent doesn't have the same structure as AttendanceStudent,
+  const handleExportMonthly = (session: AttendanceSession, learners: ProfileLearner[], allRecords: AttendanceRecord[]) => {
+    // Since ProfileLearner doesn't have the same structure as AttendanceLearner,
     // we'll create a simplified export with available data
-    const exportData = students.map(student => {
-      const studentRecords = allRecords.filter(r => r.studentId === student.id && r.subject === session.subject);
+    const exportData = learners.map(learner => {
+      const learnerRecords = allRecords.filter(r => r.learnerId === learner.id && r.subject === session.subject);
       const stats = {
-        present: studentRecords.filter((r) => r.status === "present").length,
-        absent: studentRecords.filter((r) => r.status === "absent").length,
-        late: studentRecords.filter((r) => r.status === "late").length,
-        excused: studentRecords.filter((r) => r.status === "excused").length,
-        total: studentRecords.length,
-        percentage: studentRecords.length > 0 ? ((studentRecords.filter((r) => r.status === "present" || r.status === "late" || r.status === "excused").length / studentRecords.length) * 100).toFixed(1) : "0",
+        present: learnerRecords.filter((r) => r.status === "present").length,
+        absent: learnerRecords.filter((r) => r.status === "absent").length,
+        late: learnerRecords.filter((r) => r.status === "late").length,
+        excused: learnerRecords.filter((r) => r.status === "excused").length,
+        total: learnerRecords.length,
+        percentage: learnerRecords.length > 0 ? ((learnerRecords.filter((r) => r.status === "present" || r.status === "late" || r.status === "excused").length / learnerRecords.length) * 100).toFixed(1) : "0",
       };
 
       return {
-        'Student ID': student.id,
-        'Student Name': student.name,
+        'Learner ID': learner.id,
+        'Learner Name': learner.name,
         'Present': stats.present,
         'Absent': stats.absent,
         'Late': stats.late,
@@ -1065,10 +1065,10 @@ const AttendanceTracking: React.FC = () => {
     exportToCSV(exportData, `${session.subject}_monthly_summary.csv`);
   };
 
-  const handleExportStudentHistory = (student: AttendanceStudent, session: AttendanceSession, allRecords: AttendanceRecord[]) => {
-    const studentHistory = allRecords.filter((record) => record.studentId === student.id && record.subject === session.subject);
+  const handleExportlearnerHistory = (learner: AttendanceLearner, session: AttendanceSession, allRecords: AttendanceRecord[]) => {
+    const learnerHistory = allRecords.filter((record) => record.learnerId === learner.id && record.subject === session.subject);
 
-    const exportData = studentHistory.map(record => ({
+    const exportData = learnerHistory.map(record => ({
       'Date': record.date,
       'Status': record.status,
       'Time In': record.timeIn || '',
@@ -1078,7 +1078,7 @@ const AttendanceTracking: React.FC = () => {
       'Faculty': record.facultyName,
     }));
 
-    exportToCSV(exportData, `${student.name}_${student.id}_attendance_history.csv`);
+    exportToCSV(exportData, `${learner.name}_${learner.id}_attendance_history.csv`);
   };
 
   // Add session handlers
@@ -1088,7 +1088,7 @@ const AttendanceTracking: React.FC = () => {
       [field]: value,
     }));
 
-    // Auto-update total students when class details change
+    // Auto-update total learners when class details change
     if (field === 'department' || field === 'course' || field === 'semester' || field === 'section') {
       const department = field === 'department' ? value : sessionFormData.department;
       const course = field === 'course' ? value : sessionFormData.course;
@@ -1096,10 +1096,10 @@ const AttendanceTracking: React.FC = () => {
       const section = field === 'section' ? value : sessionFormData.section;
 
       if (department && course && semester && section) {
-        const studentCount = await fetchStudentCount(department, course, semester, section);
+        const learnerCount = await fetchlearnerCount(department, course, semester, section);
         setSessionFormData(prev => ({
           ...prev,
-          totalStudents: studentCount,
+          totallearners: learnerCount,
         }));
       }
     }
@@ -1230,7 +1230,7 @@ const AttendanceTracking: React.FC = () => {
         endTime: "",
         roomNumber: "",
         remarks: "",
-        totalStudents: 0,
+        totallearners: 0,
       });
     } catch (err: any) {
       alert(`Error creating session: ${err.message}`);
@@ -1363,7 +1363,7 @@ const AttendanceTracking: React.FC = () => {
               Attendance Tracking
             </h1>
             <p className="text-sm sm:text-base mt-2 text-gray-600">
-              Monitor and manage student attendance across all subjects
+              Monitor and manage learner attendance across all subjects
             </p>
           </div>
           <div className="flex gap-2">
@@ -1402,8 +1402,8 @@ const AttendanceTracking: React.FC = () => {
             changeLabel="vs last week"
           />
           <KPICard
-            title="Total Students"
-            value={analytics.totalStudents}
+            title="Total Learners"
+            value={analytics.totallearners}
             icon={<UserGroupIcon className="h-6 w-6" />}
             color="purple"
           />
@@ -1864,35 +1864,35 @@ const AttendanceTracking: React.FC = () => {
         records={attendanceRecords.filter(
           (r) => r.subject === selectedSubjectGroup?.subject
         )}
-        students={[]}
+        learners={[]}
         allRecords={attendanceRecords}
-        onViewStudentHistory={(student) => {
-          // Convert ProfileStudent to AttendanceStudent
-          const attendanceStudent: AttendanceStudent = {
-            id: student.id,
-            rollNumber: student.registration_number || student.id,
-            name: student.name || 'Unknown',
-            department: student.branch_field || 'Unknown',
-            course: student.branch_field || 'Unknown',
-            semester: student.semester || 1,
-            section: student.section || 'A',
-            email: student.email,
+        onViewlearnerHistory={(learner) => {
+          // Convert ProfileLearner to AttendanceLearner
+          const attendanceLearner: AttendanceLearner = {
+            id: learner.id,
+            rollNumber: learner.registration_number || learner.id,
+            name: learner.name || 'Unknown',
+            department: learner.branch_field || 'Unknown',
+            course: learner.branch_field || 'Unknown',
+            semester: learner.semester || 1,
+            section: learner.section || 'A',
+            email: learner.email,
           };
-          setSelectedStudent(attendanceStudent);
-          setShowStudentHistoryModal(true);
+          setSelectedLearner(attendanceLearner);
+          setShowlearnerHistoryModal(true);
         }}
         onExportSession={handleExportSession}
         onExportMonthly={handleExportMonthly}
       />
 
-      {/* Student History Modal */}
-      <StudentHistoryModal
-        isOpen={showStudentHistoryModal}
-        onClose={() => setShowStudentHistoryModal(false)}
-        student={selectedStudent}
+      {/* Learner History Modal */}
+      <LearnerHistoryModal
+        isOpen={showlearnerHistoryModal}
+        onClose={() => setShowlearnerHistoryModal(false)}
+        learner={selectedLearner}
         allRecords={attendanceRecords}
         session={selectedSubjectGroup?.sessions[0] || null}
-        onExportHistory={handleExportStudentHistory}
+        onExportHistory={handleExportlearnerHistory}
       />
 
       {/* Add Attendance Session Modal */}
@@ -1909,7 +1909,7 @@ const AttendanceTracking: React.FC = () => {
         sections={sectionOptions}
         subjects={coursesData.map(course => ({ value: course.id, label: `${course.course_code} - ${course.course_name}` }))}
         faculty={filterOptions.faculty}
-        students={[]}
+        learners={[]}
       />
     </div>
   );

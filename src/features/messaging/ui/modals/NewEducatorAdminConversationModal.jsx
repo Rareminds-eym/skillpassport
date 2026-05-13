@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, ShieldCheck, MessageCircle } from 'lucide-react';
 import { supabase } from '@/shared/api/supabaseClient';
+import { getCurrentUser } from '@/shared/api/authUtils';
 
 const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConversationCreated }) => {
   const [school, setSchool] = useState(null);
@@ -13,7 +14,7 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
   const adminSubjects = [
     'General Inquiry',
     'Resource Request',
-    'Student Issue',
+    'Learner Issue',
     'Curriculum Support',
     'Technical Support',
     'Policy Question',
@@ -62,7 +63,7 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
         console.log('🔄 First attempt failed, trying by email...');
         
         // Get current user email from auth
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        const { data: { user }, error: userError } = await getCurrentUser();
         
         if (!userError && user?.email) {
           console.log('📧 Trying with email:', user.email);

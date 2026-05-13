@@ -156,7 +156,7 @@ const CaseHighlights = () => {
 
               {/* Table Rows */}
               {[
-                { label: 'Students Reached', nm: '145,000+', rcu: '900' },
+                { label: 'Learners Reached', nm: '145,000+', rcu: '900' },
                 { label: 'Duration', nm: '45 hrs/semester (9 weeks)', rcu: '6 days intensive' },
                 { label: 'Location', nm: 'Statewide Tamil Nadu', rcu: 'Belagavi' },
                 { label: 'Timeline', nm: 'Ongoing since 2023', rcu: 'Sept 22-28, 2025' },
@@ -199,7 +199,7 @@ const CaseHighlights = () => {
                   {/* Timeline Steps */}
                   <div className="space-y-8">
                     {[
-                      { icon: Target, title: 'The Challenge', desc: 'Equip 145,000+ students across Tamil Nadu with industry-aligned, future-ready skills.' },
+                      { icon: Target, title: 'The Challenge', desc: 'Equip 145,000+ learners across Tamil Nadu with industry-aligned, future-ready skills.' },
                       { icon: Lightbulb, title: 'Our Approach', desc: '45-hour structured training using 4Cs Learning Model over 9 weeks.' },
                       { icon: Award, title: 'Impact Achieved', desc: 'Improved confidence, job readiness, and stronger placement rates.' }
                     ].map((step, idx) => {
@@ -233,7 +233,7 @@ const CaseHighlights = () => {
                   {/* Timeline Steps */}
                   <div className="space-y-8">
                     {[
-                      { icon: Target, title: 'The Challenge', desc: 'Equip 900 mixed-discipline students with confidence in public speaking, structured thinking, and job-search readiness.' },
+                      { icon: Target, title: 'The Challenge', desc: 'Equip 900 mixed-discipline learners with confidence in public speaking, structured thinking, and job-search readiness.' },
                       { icon: Lightbulb, title: 'Our Approach', desc: '6-day intensive program blending 21st-century mindset, critical thinking, and career readiness.' },
                       { icon: Award, title: 'Impact Achieved', desc: 'Stronger stage confidence, clearer articulation, and career artifacts created in-session.' }
                     ].map((step, idx) => {
@@ -287,7 +287,7 @@ const CaseHighlights = () => {
                     <span className="text-red-600">Naan Mudhalvan</span>
                   </h3>
                   <p className="text-case-subtitle text-gray-800 font-bold drop-shadow-md">
-                    Empowering 145,000+ Students Across Tamil Nadu
+                    Empowering 145,000+ Learners Across Tamil Nadu
                   </p>
                 </div>
 
@@ -320,7 +320,7 @@ const CaseHighlights = () => {
                 <div className="text-stat md:text-6xl font-black text-amber-400 mb-3">
                   <AnimatedCounter end={145} suffix="K+" />
                 </div>
-                <p className="text-black font-bold text-base sm:text-lg">Students Trained</p>
+                <p className="text-black font-bold text-base sm:text-lg">Learners Trained</p>
                 <p className="text-sm text-gray-600 mt-2 font-medium">Since 2023</p>
               </div>
 
@@ -430,7 +430,7 @@ const CaseHighlights = () => {
                   <h3 className="text-lg sm:text-xl font-black text-black">The Challenge</h3>
                 </div>
                 <p className="text-gray-700 leading-relaxed text-xs sm:text-sm">
-                  To equip Arts and Science students across Tamil Nadu with industry-aligned, future-ready skills
+                  To equip Arts and Science learners across Tamil Nadu with industry-aligned, future-ready skills
                   that enhance employability. The challenge was to scale a consistent, engaging, and competency-based
                   model that blends theory with application — reaching thousands of learners statewide.
                 </p>
@@ -472,7 +472,7 @@ const CaseHighlights = () => {
                 </div>
                 <ul className="space-y-3">
                   {[
-                    '145,000+ students upskilled with practical exposure',
+                    '145,000+ learners upskilled with practical exposure',
                     'Improved confidence & job readiness',
                     'Stronger participation & placement rates'
                   ].map((impact, idx) => (
@@ -530,7 +530,7 @@ const CaseHighlights = () => {
                   </div>
                   <div className="flex items-center space-x-2 px-4 py-2.5 rounded-full bg-black/80 backdrop-blur-sm border border-black text-white hover:bg-black transition-colors shadow-lg">
                     <Users className="w-4 h-4" />
-                    <span className="font-semibold text-pill">900 Students</span>
+                    <span className="font-semibold text-pill">900 Learners</span>
                   </div>
                   <div className="flex items-center space-x-2 px-4 py-2.5 rounded-full bg-black/80 backdrop-blur-sm border border-black text-white hover:bg-black transition-colors shadow-lg">
                     <BookOpen className="w-4 h-4" />

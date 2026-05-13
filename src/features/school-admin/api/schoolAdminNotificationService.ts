@@ -70,11 +70,11 @@ export class SchoolAdminNotificationService {
         .from('trainings')
         .select(`
           *,
-          student:students!trainings_student_id_fkey (
+          learner:learners!trainings_learner_id_fkey (
             id,
             name,
             email,
-            student_type,
+            learner_type,
             school_id,
             university_college_id
           )
@@ -90,8 +90,8 @@ export class SchoolAdminNotificationService {
 
       // Filter by school_id to ensure security
       const filteredTrainings = (data || []).filter(training => {
-        const studentSchoolId = training.student?.school_id;
-        return studentSchoolId === schoolId;
+        const learnerSchoolId = training.learner?.school_id;
+        return learnerSchoolId === schoolId;
       });
 
       // FALLBACK: If no trainings found, check for Rareminds trainings that should be school_admin
@@ -100,11 +100,11 @@ export class SchoolAdminNotificationService {
           .from('trainings')
           .select(`
             *,
-            student:students!trainings_student_id_fkey (
+            learner:learners!trainings_learner_id_fkey (
               id,
               name,
               email,
-              student_type,
+              learner_type,
               school_id,
               university_college_id
             )
@@ -117,26 +117,26 @@ export class SchoolAdminNotificationService {
           throw fallbackError;
         }
 
-        // Manual filtering for Rareminds trainings from school students
+        // Manual filtering for Rareminds trainings from school learners
         const fallbackTrainings = (fallbackData || []).filter(training => {
           const provider = (training.organization || '').toLowerCase();
-          const studentSchoolId = training.student?.school_id;
-          const studentType = training.student?.student_type;
+          const learnerSchoolId = training.learner?.school_id;
+          const learnerType = training.learner?.learner_type;
 
-          // Show Rareminds trainings from non-college students in this school
+          // Show Rareminds trainings from non-college learners in this school
           return provider === 'rareminds' &&
-                 studentSchoolId === schoolId &&
-                 studentType !== 'college_student';
+                 learnerSchoolId === schoolId &&
+                 learnerType !== 'learner';
         });
 
         if (fallbackTrainings.length > 0) {
           // Format fallback trainings
           const formattedFallback = fallbackTrainings.map(training => ({
             ...training,
-            student_name: training.student?.name || 'Unknown Student',
-            student_email: training.student?.email || 'No email',
-            student_school_id: training.student?.school_id,
-            student_college_id: training.student?.university_college_id,
+            learner_name: training.learner?.name || 'Unknown Learner',
+            learner_email: training.learner?.email || 'No email',
+            learner_school_id: training.learner?.school_id,
+            learner_college_id: training.learner?.university_college_id,
             _needsApprovalAuthorityFix: true
           }));
 
@@ -147,10 +147,10 @@ export class SchoolAdminNotificationService {
       // Format for UI
       const formattedTrainings = filteredTrainings.map(training => ({
         ...training,
-        student_name: training.student?.name || 'Unknown Student',
-        student_email: training.student?.email || 'No email',
-        student_school_id: training.student?.school_id,
-        student_college_id: training.student?.university_college_id
+        learner_name: training.learner?.name || 'Unknown Learner',
+        learner_email: training.learner?.email || 'No email',
+        learner_school_id: training.learner?.school_id,
+        learner_college_id: training.learner?.university_college_id
       }));
 
       return formattedTrainings;
@@ -167,16 +167,16 @@ export class SchoolAdminNotificationService {
    */
   static async getPendingExperiences(schoolId) {
     try {
-      // Get experiences where approval_authority = 'school_admin' and student belongs to this school
+      // Get experiences where approval_authority = 'school_admin' and learner belongs to this school
       const { data, error } = await supabase
         .from('experience')
         .select(`
           *,
-          student:students!experience_student_id_fkey (
+          learner:learners!experience_learner_id_fkey (
             id,
             name,
             email,
-            student_type,
+            learner_type,
             school_id,
             university_college_id
           )
@@ -192,18 +192,18 @@ export class SchoolAdminNotificationService {
 
       // Filter by school_id to ensure security
       const filteredExperiences = (data || []).filter(experience => {
-        const studentSchoolId = experience.student?.school_id;
-        return studentSchoolId === schoolId;
+        const learnerSchoolId = experience.learner?.school_id;
+        return learnerSchoolId === schoolId;
       });
 
       // Format for UI
       const formattedExperiences = filteredExperiences.map(experience => ({
         ...experience,
-        student_name: experience.student?.name || 'Unknown Student',
-        student_email: experience.student?.email || 'No email',
-        student_school_id: experience.student?.school_id,
-        student_college_id: experience.student?.university_college_id,
-        student_type: experience.student?.student_type
+        learner_name: experience.learner?.name || 'Unknown Learner',
+        learner_email: experience.learner?.email || 'No email',
+        learner_school_id: experience.learner?.school_id,
+        learner_college_id: experience.learner?.university_college_id,
+        learner_type: experience.learner?.learner_type
       }));
 
       return formattedExperiences;
@@ -422,11 +422,11 @@ export class SchoolAdminNotificationService {
         .from('projects')
         .select(`
           *,
-          student:students!projects_student_id_fkey (
+          learner:learners!projects_learner_id_fkey (
             id,
             name,
             email,
-            student_type,
+            learner_type,
             school_id,
             university_college_id
           )
@@ -442,8 +442,8 @@ export class SchoolAdminNotificationService {
 
       // Filter by school_id to ensure security
       const filteredProjects = (data || []).filter(project => {
-        const studentSchoolId = project.student?.school_id;
-        return studentSchoolId === schoolId;
+        const learnerSchoolId = project.learner?.school_id;
+        return learnerSchoolId === schoolId;
       });
 
       // FALLBACK: If no projects found, check for projects that should be school_admin
@@ -452,11 +452,11 @@ export class SchoolAdminNotificationService {
           .from('projects')
           .select(`
             *,
-            student:students!projects_student_id_fkey (
+            learner:learners!projects_learner_id_fkey (
               id,
               name,
               email,
-              student_type,
+              learner_type,
               school_id,
               university_college_id
             )
@@ -469,24 +469,24 @@ export class SchoolAdminNotificationService {
           throw fallbackError;
         }
 
-        // Manual filtering for projects from school students
+        // Manual filtering for projects from school learners
         const fallbackProjects = (fallbackData || []).filter(project => {
-          const studentSchoolId = project.student?.school_id;
-          const studentType = project.student?.student_type;
+          const learnerSchoolId = project.learner?.school_id;
+          const learnerType = project.learner?.learner_type;
 
-          // Show projects from non-college students in this school
-          return studentSchoolId === schoolId &&
-                 studentType !== 'college_student';
+          // Show projects from non-college learners in this school
+          return learnerSchoolId === schoolId &&
+                 learnerType !== 'learner';
         });
 
         if (fallbackProjects.length > 0) {
           // Format fallback projects
           const formattedFallback = fallbackProjects.map(project => ({
             ...project,
-            student_name: project.student?.name || 'Unknown Student',
-            student_email: project.student?.email || 'No email',
-            student_school_id: project.student?.school_id,
-            student_college_id: project.student?.university_college_id,
+            learner_name: project.learner?.name || 'Unknown Learner',
+            learner_email: project.learner?.email || 'No email',
+            learner_school_id: project.learner?.school_id,
+            learner_college_id: project.learner?.university_college_id,
             _needsApprovalAuthorityFix: true
           }));
 
@@ -497,10 +497,10 @@ export class SchoolAdminNotificationService {
       // Format for UI
       const formattedProjects = filteredProjects.map(project => ({
         ...project,
-        student_name: project.student?.name || 'Unknown Student',
-        student_email: project.student?.email || 'No email',
-        student_school_id: project.student?.school_id,
-        student_college_id: project.student?.university_college_id
+        learner_name: project.learner?.name || 'Unknown Learner',
+        learner_email: project.learner?.email || 'No email',
+        learner_school_id: project.learner?.school_id,
+        learner_college_id: project.learner?.university_college_id
       }));
 
       return formattedProjects;

@@ -43,7 +43,7 @@ This plan consolidates 42 messaging-related hooks into a unified system with 1 b
     - Define UseMessagesOptions interface (userId, userRole, conversationId, conversationType, enableRealtime, enabled)
     - Define UseMessagesReturn interface with all data, loading states, mutations, and errors
     - Accept userId and userRole parameters for role-agnostic operation
-    - Support all UserRole types (student, recruiter, educator, college_educator, school_admin, college_admin, university_admin)
+    - Support all UserRole types (learner, recruiter, educator, college_educator, school_admin, college_admin, university_admin)
     - _Requirements: 2.1, 2.2, 2.3, 2.8_
   
   - [x] 2.2 Implement React Query queries in useMessages
@@ -92,7 +92,7 @@ This plan consolidates 42 messaging-related hooks into a unified system with 1 b
   
   - [x] 2.7 Implement createConversation mutation
     - Create createConversation mutation accepting CreateConversationParams
-    - Support all conversation types (student_recruiter, student_educator, etc.)
+    - Support all conversation types (learner_recruiter, learner_educator, etc.)
     - Call MessageService.getOrCreateConversation()
     - Return existing conversation if already exists between users
     - Invalidate conversations list query after successful creation
@@ -145,8 +145,8 @@ This plan consolidates 42 messaging-related hooks into a unified system with 1 b
 - [x] 4. Phase 3: Role-Specific Wrapper Hooks
   - [x] 4.1 Implement useStudentMessages wrapper
     - Create features/messaging/model/useStudentMessages.ts
-    - Accept studentId and optional UseMessagesOptions (omit userId, userRole)
-    - Delegate to useMessages with userRole='student'
+    - Accept learnerId and optional UseMessagesOptions (omit userId, userRole)
+    - Delegate to useMessages with userRole='learner'
     - Export through features/messaging/model/index.ts
     - _Requirements: 7.1, 7.5, 7.6_
   
@@ -199,8 +199,8 @@ This plan consolidates 42 messaging-related hooks into a unified system with 1 b
     - _Requirements: 18.2, 18.3, 18.4, 18.5_
 
 - [x] 5. Phase 4: Component Migration
-  - [x] 5.1 Migrate student components to new hooks
-    - Find all student components using old messaging hooks
+  - [x] 5.1 Migrate learner components to new hooks
+    - Find all learner components using old messaging hooks
     - Update imports to use useStudentMessages from @/features/messaging
     - Replace old hook calls with new hook API
     - Test messaging functionality (send, receive, read)
@@ -267,9 +267,9 @@ This plan consolidates 42 messaging-related hooks into a unified system with 1 b
     - Remove useCollegeEducatorAdminMessagesForEducator, useCollegeEducatorAdminMessagesForAdmin
     - _Requirements: 11.5, 16.4, 16.6_
   
-  - [x] 7.4 Remove deprecated hooks from student-profile and entities layers
-    - Remove 1 hook from student-profile feature (useStudentMessages old version)
-    - Remove 17 hooks from entities/student layer
+  - [x] 7.4 Remove deprecated hooks from learner-profile and entities layers
+    - Remove 1 hook from learner-profile feature (useStudentMessages old version)
+    - Remove 17 hooks from entities/learner layer
     - Remove useStudentMessages, useStudentUnreadCount, useStudentConversations
     - Remove useStudentAdminMessages, useStudentAdminConversations, useCreateStudentAdminConversation
     - Remove useStudentCollegeAdminMessages, useStudentCollegeAdminConversations, useCreateStudentCollegeAdminConversation

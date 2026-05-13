@@ -122,7 +122,7 @@ export const normalizeAssessmentResults = (results) => {
         normalized.careerFit = normalized.gemini_results.careerFit;
     }
 
-    // 🔧 CRITICAL FIX: Lift recommendedStream to streamRecommendation for after10 students
+    // 🔧 CRITICAL FIX: Lift recommendedStream to streamRecommendation for after10 learners
     if (normalized.gemini_results?.recommendedStream && !normalized.streamRecommendation) {
         console.log('🔧 Lifting recommendedStream from gemini_results to streamRecommendation');
         normalized.streamRecommendation = normalized.gemini_results.recommendedStream;

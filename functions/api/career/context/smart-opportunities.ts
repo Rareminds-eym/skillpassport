@@ -1,12 +1,12 @@
 // Smart Opportunities Fetcher - AI-Driven Context-Aware Job Matching
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Opportunity, StudentProfile, StoredMessage } from '../types';
+import type { Opportunity, LearnerProfile, StoredMessage } from '../types';
 
 interface FetchContext {
   userMessage: string;
   conversationHistory: StoredMessage[];
-  studentProfile: StudentProfile;
+  learnerProfile: LearnerProfile;
   intent: string;
   openRouterKey: string;
 }
@@ -32,24 +32,24 @@ interface AIFilterResponse {
  * Uses chain-of-thought reasoning for accurate filter extraction
  */
 async function extractFiltersWithAI(context: FetchContext): Promise<OpportunityFilters> {
-  const { userMessage, conversationHistory, studentProfile, openRouterKey } = context;
+  const { userMessage, conversationHistory, learnerProfile, openRouterKey } = context;
   
   const recentContext = conversationHistory
     .slice(-5)
     .map(m => `${m.role}: ${m.content}`)
     .join('\n');
 
-  const studentSkills = studentProfile.technicalSkills.map(s => s.name).join(', ') || 'None listed';
-  const studentExperience = studentProfile.experience?.map(e => e.title || e.role).join(', ') || 'No experience';
-  const studentField = studentProfile.department || 'Not specified';
+  const learnerSkills = learnerProfile.technicalSkills.map(s => s.name).join(', ') || 'None listed';
+  const learnerExperience = learnerProfile.experience?.map(e => e.title || e.role).join(', ') || 'No experience';
+  const learnerField = learnerProfile.department || 'Not specified';
 
   const prompt = `You are an expert job search analyst. Extract precise search filters from the user's message.
 
-<student_profile>
-Field: ${studentField}
-Skills: ${studentSkills}
-Experience: ${studentExperience}
-</student_profile>
+<learner_profile>
+Field: ${learnerField}
+Skills: ${learnerSkills}
+Experience: ${learnerExperience}
+</learner_profile>
 
 <conversation_history>
 ${recentContext || 'No previous conversation'}
@@ -66,7 +66,7 @@ Analyze the message and extract:
    - Include exact phrases if they mention job titles
    - Include individual words that are meaningful
    - Include technologies/skills mentioned
-   - If message is vague, use student's top skills
+   - If message is vague, use learner's top skills
    - Return 2-5 terms
 
 2. location: Extract ONLY if explicitly mentioned
@@ -157,7 +157,7 @@ JSON:`;
     }
 
     // Experience level from profile
-    const experienceCount = studentProfile.experience?.length || 0;
+    const experienceCount = learnerProfile.experience?.length || 0;
     if (experienceCount === 0) {
       filters.experienceLevel = 'entry';
     } else if (experienceCount <= 2) {
@@ -171,15 +171,15 @@ JSON:`;
   } catch (error) {
     console.error('❌ AI filter extraction failed, using intelligent fallback:', error);
     
-    // Intelligent fallback: Use student's profile intelligently
-    const topSkills = studentProfile.technicalSkills
+    // Intelligent fallback: Use learner's profile intelligently
+    const topSkills = learnerProfile.technicalSkills
       .slice(0, 3)
       .map(s => s.name)
       .filter(name => name && name.trim() !== '');
 
     return {
-      searchQuery: topSkills.length > 0 ? topSkills.join(' ') : studentProfile.department || '',
-      experienceLevel: studentProfile.experience?.length === 0 ? 'entry' : 'junior',
+      searchQuery: topSkills.length > 0 ? topSkills.join(' ') : learnerProfile.department || '',
+      experienceLevel: learnerProfile.experience?.length === 0 ? 'entry' : 'junior',
       limit: 15
     };
   }
@@ -228,27 +228,27 @@ function buildQuery(
 
 /**
  * Calculate skill match score for ranking
- * Matches student skills against job requirements
+ * Matches learner skills against job requirements
  */
 function calculateMatchScore(
   opportunity: any,
-  studentSkills: string[],
+  learnerSkills: string[],
   searchTerms: string[]
 ): number {
-  if (studentSkills.length === 0) return 0;
+  if (learnerSkills.length === 0) return 0;
   
   let score = 0;
   const requiredSkills = Array.isArray(opportunity.skills_required)
     ? opportunity.skills_required
     : [];
   
-  const studentSkillsLower = studentSkills.map(s => s.toLowerCase());
+  const learnerSkillsLower = learnerSkills.map(s => s.toLowerCase());
   const searchTermsLower = searchTerms.map(s => s.toLowerCase());
   
   // Score based on required skills match
   if (requiredSkills.length > 0) {
     const matchingSkills = requiredSkills.filter((skill: string) =>
-      studentSkillsLower.some(s => skill.toLowerCase().includes(s) || s.includes(skill.toLowerCase()))
+      learnerSkillsLower.some(s => skill.toLowerCase().includes(s) || s.includes(skill.toLowerCase()))
     );
     score += Math.round((matchingSkills.length / requiredSkills.length) * 60);
   }
@@ -311,14 +311,14 @@ export async function fetchSmartOpportunities(
     let filters: OpportunityFilters;
     
     if (isGenericQuery && context.userMessage.length < 50) {
-      // Fast path: Use student skills directly without AI call
-      console.log('⚡ Fast path: Using student skills directly');
+      // Fast path: Use learner skills directly without AI call
+      console.log('⚡ Fast path: Using learner skills directly');
       filters = {
-        searchQuery: context.studentProfile.technicalSkills
+        searchQuery: context.learnerProfile.technicalSkills
           .slice(0, 3)
           .map(s => s.name)
           .join(' '),
-        experienceLevel: context.studentProfile.experience?.length === 0 ? 'entry' : 'junior',
+        experienceLevel: context.learnerProfile.experience?.length === 0 ? 'entry' : 'junior',
         limit: 15
       };
     } else {
@@ -410,22 +410,22 @@ export async function fetchSmartOpportunities(
     if (filteredOpportunities.length === 0) {
       console.log('📭 No opportunities matched search criteria, returning all fetched');
       // Return all opportunities if search is too restrictive
-      const studentSkills = context.studentProfile.technicalSkills.map(s => s.name);
+      const learnerSkills = context.learnerProfile.technicalSkills.map(s => s.name);
       return opportunities
         .map(opp => ({
           ...opp,
-          matchScore: calculateMatchScore(opp, studentSkills, searchTerms)
+          matchScore: calculateMatchScore(opp, learnerSkills, searchTerms)
         }))
         .sort((a, b) => b.matchScore - a.matchScore)
         .slice(0, filters.limit || 15);
     }
     
     // Calculate match scores and sort by relevance
-    const studentSkills = context.studentProfile.technicalSkills.map(s => s.name);
+    const learnerSkills = context.learnerProfile.technicalSkills.map(s => s.name);
     const rankedOpportunities = filteredOpportunities
       .map(opp => ({
         ...opp,
-        matchScore: calculateMatchScore(opp, studentSkills, searchTerms)
+        matchScore: calculateMatchScore(opp, learnerSkills, searchTerms)
       }))
       .sort((a, b) => b.matchScore - a.matchScore)
       .slice(0, filters.limit || 15); // Limit final results

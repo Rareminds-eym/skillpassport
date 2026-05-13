@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Github, Linkedin, Twitter, Mail, Phone, MapPin, ExternalLink, Code, Briefcase, GraduationCap, ChevronRight, Moon, Sun, User, FolderOpen } from 'lucide-react';
-import { Student, AnimationType, DisplayPreferences } from '@/shared/types/student';
+import { Learner, AnimationType, DisplayPreferences } from '@/shared/types/learner';
 import { useTheme } from '@/shared/model/themeStore';
 
 
 interface SplitScreenLayoutProps {
-  student: Student;
+  learner: Learner;
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
@@ -15,7 +15,7 @@ interface SplitScreenLayoutProps {
 }
 
 const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({ 
-  student, 
+  learner, 
   primaryColor, 
   secondaryColor, 
   accentColor,
@@ -36,10 +36,10 @@ const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({
 
   // Combine both technical and soft skills
   const allSkills = [
-    ...(student.profile?.skills || []),
-    ...(student.profile?.technicalSkills || []),
-    ...(student.technicalSkills || []),
-    ...(student.skills || [])
+    ...(learner.profile?.skills || []),
+    ...(learner.profile?.technicalSkills || []),
+    ...(learner.technicalSkills || []),
+    ...(learner.skills || [])
   ];
   const uniqueSkills = allSkills.filter((skill, index, self) => 
     index === self.findIndex((s) => s.id === skill.id)
@@ -94,8 +94,8 @@ const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({
           >
             <div className="relative">
               <img
-                src={student.profile.profileImage || '/api/placeholder/200/200'}
-                alt={student.name || 'Profile'}
+                src={learner.profile.profileImage || '/api/placeholder/200/200'}
+                alt={learner.name || 'Profile'}
                 className="w-48 h-48 rounded-full object-cover border-4 shadow-2xl dark:border-gray-700"
                 style={{ borderColor: primaryColor }}
               />
@@ -116,30 +116,30 @@ const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({
             className="text-center mb-6"
           >
             <h1 className="text-4xl font-bold mb-2 dark:text-white" style={{ color: secondaryColor }}>
-              {student.name || student.profile.name}
+              {learner.name || learner.profile.name}
             </h1>
             <p className="text-xl text-gray-600 dark:text-gray-300 mb-2">
-              {student.branch_field}
+              {learner.branch_field}
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {student.school?.name || 
-               student.profile?.school?.name || 
-               student.college_school_name || 
-               student.universityCollege?.name || 
-               student.profile?.universityCollege?.name ||
-               student.university || 'Student'}
+              {learner.school?.name || 
+               learner.profile?.school?.name || 
+               learner.college_school_name || 
+               learner.universityCollege?.name || 
+               learner.profile?.universityCollege?.name ||
+               learner.university || 'Learner'}
             </p>
           </motion.div>
 
           {/* Tagline/Bio */}
-          {student.profile.bio && (
+          {learner.profile.bio && (
             <motion.p
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.5 }}
               className="text-center text-gray-700 dark:text-gray-300 mb-8 max-w-md leading-relaxed px-4"
             >
-              {student.profile.bio}
+              {learner.profile.bio}
             </motion.p>
           )}
 
@@ -152,23 +152,23 @@ const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({
           >
             <div className="flex items-center space-x-3 bg-white dark:bg-gray-800 p-3 rounded-lg shadow">
               <Mail className="w-5 h-5" style={{ color: primaryColor }} />
-              <span className="text-sm dark:text-gray-300">{student.email}</span>
+              <span className="text-sm dark:text-gray-300">{learner.email}</span>
             </div>
-            {student.contact_number && (
+            {learner.contact_number && (
               <div className="flex items-center space-x-3 bg-white dark:bg-gray-800 p-3 rounded-lg shadow">
                 <Phone className="w-5 h-5" style={{ color: primaryColor }} />
-                <span className="text-sm dark:text-gray-300">{student.contact_number}</span>
+                <span className="text-sm dark:text-gray-300">{learner.contact_number}</span>
               </div>
             )}
-            {(student.district_name || student.city || student.state || student.country) && (
+            {(learner.district_name || learner.city || learner.state || learner.country) && (
               <div className="flex items-center space-x-3 bg-white dark:bg-gray-800 p-3 rounded-lg shadow">
                 <MapPin className="w-5 h-5" style={{ color: primaryColor }} />
                 <span className="text-sm dark:text-gray-300">
                   {[
-                    student.city,
-                    student.district_name,
-                    student.state,
-                    student.country
+                    learner.city,
+                    learner.district_name,
+                    learner.state,
+                    learner.country
                   ].filter(Boolean).join(', ') || 'Location not specified'}
                 </span>
               </div>
@@ -184,9 +184,9 @@ const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({
           >
             {displayPreferences.showSocialLinks && (
               <>
-                {student.github_link && (
+                {learner.github_link && (
                   <a
-                    href={student.github_link}
+                    href={learner.github_link}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-3 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-all transform hover:scale-110"
@@ -195,9 +195,9 @@ const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({
                     <Github className="w-6 h-6" />
                   </a>
                 )}
-                {student.linkedin_link && (
+                {learner.linkedin_link && (
                   <a
-                    href={student.linkedin_link}
+                    href={learner.linkedin_link}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-3 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-all transform hover:scale-110"
@@ -206,9 +206,9 @@ const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({
                     <Linkedin className="w-6 h-6" />
                   </a>
                 )}
-                {student.twitter_link && (
+                {learner.twitter_link && (
                   <a
-                    href={student.twitter_link}
+                    href={learner.twitter_link}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-3 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-all transform hover:scale-110"
@@ -280,7 +280,7 @@ const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({
           )}
 
           {/* Projects Section */}
-          {activeSection === 'projects' && student.profile.projects && student.profile.projects.length > 0 && (
+          {activeSection === 'projects' && learner.profile.projects && learner.profile.projects.length > 0 && (
             <motion.section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -290,7 +290,7 @@ const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({
                 Projects
               </h2>
               <div className="space-y-6">
-                {student.profile.projects.map((project, index) => (
+                {learner.profile.projects.map((project, index) => (
                   <motion.div
                     key={project.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -346,7 +346,7 @@ const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({
           )}
 
           {/* Education Section */}
-          {activeSection === 'education' && student.profile.education && student.profile.education.length > 0 && (
+          {activeSection === 'education' && learner.profile.education && learner.profile.education.length > 0 && (
             <motion.section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -356,7 +356,7 @@ const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({
                 Education
               </h2>
               <div className="space-y-6">
-                {student.profile.education.map((edu, index) => (
+                {learner.profile.education.map((edu, index) => (
                   <motion.div
                     key={edu.id}
                     initial={{ opacity: 0, x: -20 }}
@@ -387,7 +387,7 @@ const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({
           )}
 
           {/* Experience Section */}
-          {activeSection === 'experience' && student.profile.experience && student.profile.experience.length > 0 && (
+          {activeSection === 'experience' && learner.profile.experience && learner.profile.experience.length > 0 && (
             <motion.section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -397,7 +397,7 @@ const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({
                 Experience
               </h2>
               <div className="space-y-6">
-                {student.profile.experience.map((exp, index) => (
+                {learner.profile.experience.map((exp, index) => (
                   <motion.div
                     key={exp.id}
                     initial={{ opacity: 0, x: -20 }}

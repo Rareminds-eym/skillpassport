@@ -40,7 +40,7 @@ export interface EducatorSignupRequest {
   specialization?: string;
 }
 
-export interface StudentSignupRequest {
+export interface LearnerSignupRequest {
   email: string;
   password: string;
   name: string;
@@ -103,7 +103,7 @@ export interface CollegeEducatorSignupRequest {
   dateOfJoining?: string;
 }
 
-export interface CollegeStudentSignupRequest {
+export interface CollegelearnerSignupRequest {
   email: string;
   password: string;
   name: string;
@@ -163,7 +163,7 @@ export interface UniversityEducatorSignupRequest {
   specialization?: string;
 }
 
-export interface UniversityStudentSignupRequest {
+export interface UniversitylearnerSignupRequest {
   email: string;
   password: string;
   name: string;
@@ -228,10 +228,10 @@ export interface UnifiedSignupRequest {
   password: string;
   firstName: string;
   lastName: string;
-  role: 'school_admin' | 'school_educator' | 'school_student' | 
-        'college_admin' | 'college_educator' | 'college_student' |
-        'university_admin' | 'university_educator' | 'university_student' |
-        'recruiter_admin' | 'recruiter';
+  role: 'school_admin' | 'school_educator' | 'learner' | 
+        'college_admin' | 'college_educator' | 'learner' |
+        'university_admin' | 'university_educator' | 'university_learner' |
+        'recruiter_admin' | 'recruiter' | 'learner';
   phone?: string;
   dateOfBirth?: string;
   country?: string;

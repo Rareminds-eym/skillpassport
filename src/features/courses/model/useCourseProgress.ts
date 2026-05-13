@@ -6,7 +6,7 @@ import { queryKeys } from '@/shared/lib/queryKeys';
  * Hook for managing video progress tracking
  */
 export const useVideoProgress = (
-  studentId: string | null,
+  learnerId: string | null,
   courseId: string | null,
   lessonId: string | null
 ) => {
@@ -14,12 +14,12 @@ export const useVideoProgress = (
 
   // Query for getting saved video position
   const positionQuery = useQuery({
-    queryKey: queryKeys.courses.progress.videoPosition(studentId, courseId, lessonId),
+    queryKey: queryKeys.courses.progress.videoPosition(learnerId, courseId, lessonId),
     queryFn: async () => {
-      if (!studentId || !courseId || !lessonId) return null;
-      return await courseProgressService.getVideoPosition(studentId, courseId, lessonId);
+      if (!learnerId || !courseId || !lessonId) return null;
+      return await courseProgressService.getVideoPosition(learnerId, courseId, lessonId);
     },
-    enabled: !!studentId && !!courseId && !!lessonId,
+    enabled: !!learnerId && !!courseId && !!lessonId,
     staleTime: 10 * 1000, // 10 seconds
   });
 
@@ -32,11 +32,11 @@ export const useVideoProgress = (
       position: number;
       duration: number
     }) => {
-      if (!studentId || !courseId || !lessonId) {
+      if (!learnerId || !courseId || !lessonId) {
         throw new Error('Missing required parameters');
       }
       return await courseProgressService.saveVideoPosition(
-        studentId,
+        learnerId,
         courseId,
         lessonId,
         position,
@@ -44,23 +44,23 @@ export const useVideoProgress = (
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.videoPosition(studentId, courseId, lessonId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.byLesson(studentId, courseId, lessonId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.videoPosition(learnerId, courseId, lessonId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.byLesson(learnerId, courseId, lessonId) });
     },
   });
 
   // Mutation for marking video as completed
   const markCompletedMutation = useMutation({
     mutationFn: async () => {
-      if (!studentId || !courseId || !lessonId) {
+      if (!learnerId || !courseId || !lessonId) {
         throw new Error('Missing required parameters');
       }
-      return await courseProgressService.markVideoCompleted(studentId, courseId, lessonId);
+      return await courseProgressService.markVideoCompleted(learnerId, courseId, lessonId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.videoPosition(studentId, courseId, lessonId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.byLesson(studentId, courseId, lessonId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.summary(studentId, courseId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.videoPosition(learnerId, courseId, lessonId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.byLesson(learnerId, courseId, lessonId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.summary(learnerId, courseId) });
     },
   });
 
@@ -79,17 +79,17 @@ export const useVideoProgress = (
 /**
  * Hook for managing session restore points
  */
-export const useRestorePoint = (studentId: string | null, courseId: string | null) => {
+export const useRestorePoint = (learnerId: string | null, courseId: string | null) => {
   const queryClient = useQueryClient();
 
   // Query for getting restore point
   const restoreQuery = useQuery({
-    queryKey: queryKeys.courses.progress.restorePoint(studentId, courseId),
+    queryKey: queryKeys.courses.progress.restorePoint(learnerId, courseId),
     queryFn: async () => {
-      if (!studentId || !courseId) return null;
-      return await courseProgressService.getRestorePoint(studentId, courseId);
+      if (!learnerId || !courseId) return null;
+      return await courseProgressService.getRestorePoint(learnerId, courseId);
     },
-    enabled: !!studentId && !!courseId,
+    enabled: !!learnerId && !!courseId,
     staleTime: 30 * 1000, // 30 seconds
   });
 
@@ -106,11 +106,11 @@ export const useRestorePoint = (studentId: string | null, courseId: string | nul
       lessonId: string;
       videoPosition?: number
     }) => {
-      if (!studentId || !courseId) {
+      if (!learnerId || !courseId) {
         throw new Error('Missing required parameters');
       }
       return await courseProgressService.saveRestorePoint(
-        studentId,
+        learnerId,
         courseId,
         moduleIndex,
         lessonIndex,
@@ -119,20 +119,20 @@ export const useRestorePoint = (studentId: string | null, courseId: string | nul
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.restorePoint(studentId, courseId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.restorePoint(learnerId, courseId) });
     },
   });
 
   // Mutation for clearing restore point
   const clearRestoreMutation = useMutation({
     mutationFn: async () => {
-      if (!studentId || !courseId) {
+      if (!learnerId || !courseId) {
         throw new Error('Missing required parameters');
       }
-      return await courseProgressService.clearRestorePoint(studentId, courseId);
+      return await courseProgressService.clearRestorePoint(learnerId, courseId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.restorePoint(studentId, courseId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.restorePoint(learnerId, courseId) });
     },
   });
 
@@ -153,7 +153,7 @@ export const useRestorePoint = (studentId: string | null, courseId: string | nul
  * Hook for managing lesson progress
  */
 export const useLessonProgress = (
-  studentId: string | null,
+  learnerId: string | null,
   courseId: string | null,
   lessonId: string | null
 ) => {
@@ -161,39 +161,39 @@ export const useLessonProgress = (
 
   // Query for getting lesson progress
   const progressQuery = useQuery({
-    queryKey: queryKeys.courses.progress.byLesson(studentId, courseId, lessonId),
+    queryKey: queryKeys.courses.progress.byLesson(learnerId, courseId, lessonId),
     queryFn: async () => {
-      if (!studentId || !courseId || !lessonId) return null;
-      return await courseProgressService.getLessonProgress(studentId, courseId, lessonId);
+      if (!learnerId || !courseId || !lessonId) return null;
+      return await courseProgressService.getLessonProgress(learnerId, courseId, lessonId);
     },
-    enabled: !!studentId && !!courseId && !!lessonId,
+    enabled: !!learnerId && !!courseId && !!lessonId,
     staleTime: 30 * 1000, // 30 seconds
   });
 
   // Mutation for updating lesson status
   const updateStatusMutation = useMutation({
     mutationFn: async (status: string) => {
-      if (!studentId || !courseId || !lessonId) {
+      if (!learnerId || !courseId || !lessonId) {
         throw new Error('Missing required parameters');
       }
-      return await courseProgressService.updateLessonStatus(studentId, courseId, lessonId, status);
+      return await courseProgressService.updateLessonStatus(learnerId, courseId, lessonId, status);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.byLesson(studentId, courseId, lessonId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.summary(studentId, courseId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.byLesson(learnerId, courseId, lessonId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.summary(learnerId, courseId) });
     },
   });
 
   // Mutation for saving time spent
   const saveTimeMutation = useMutation({
     mutationFn: async (additionalSeconds: number) => {
-      if (!studentId || !courseId || !lessonId) {
+      if (!learnerId || !courseId || !lessonId) {
         throw new Error('Missing required parameters');
       }
-      return await courseProgressService.saveTimeSpent(studentId, courseId, lessonId, additionalSeconds);
+      return await courseProgressService.saveTimeSpent(learnerId, courseId, lessonId, additionalSeconds);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.byLesson(studentId, courseId, lessonId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.byLesson(learnerId, courseId, lessonId) });
     },
   });
 
@@ -212,17 +212,17 @@ export const useLessonProgress = (
 /**
  * Hook for managing quiz progress
  */
-export const useQuizProgress = (studentId: string | null, quizId: string | null) => {
+export const useQuizProgress = (learnerId: string | null, quizId: string | null) => {
   const queryClient = useQueryClient();
 
   // Query for getting in-progress quiz
   const quizQuery = useQuery({
-    queryKey: queryKeys.courses.progress.quiz(studentId, quizId),
+    queryKey: queryKeys.courses.progress.quiz(learnerId, quizId),
     queryFn: async () => {
-      if (!studentId || !quizId) return null;
-      return await courseProgressService.getQuizProgress(studentId, quizId);
+      if (!learnerId || !quizId) return null;
+      return await courseProgressService.getQuizProgress(learnerId, quizId);
     },
-    enabled: !!studentId && !!quizId,
+    enabled: !!learnerId && !!quizId,
     staleTime: 10 * 1000, // 10 seconds
   });
 
@@ -237,11 +237,11 @@ export const useQuizProgress = (studentId: string | null, quizId: string | null)
       lessonId: string;
       totalQuestions: number
     }) => {
-      if (!studentId || !quizId) {
+      if (!learnerId || !quizId) {
         throw new Error('Missing required parameters');
       }
       return await courseProgressService.startQuizAttempt(
-        studentId,
+        learnerId,
         courseId,
         lessonId,
         quizId,
@@ -249,7 +249,7 @@ export const useQuizProgress = (studentId: string | null, quizId: string | null)
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.quiz(studentId, quizId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.quiz(learnerId, quizId) });
     },
   });
 
@@ -264,11 +264,11 @@ export const useQuizProgress = (studentId: string | null, quizId: string | null)
       questionId: string;
       answer: any
     }) => {
-      if (!studentId || !quizId) {
+      if (!learnerId || !quizId) {
         throw new Error('Missing required parameters');
       }
       return await courseProgressService.saveQuizAnswer(
-        studentId,
+        learnerId,
         quizId,
         attemptNumber,
         questionId,
@@ -276,7 +276,7 @@ export const useQuizProgress = (studentId: string | null, quizId: string | null)
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.quiz(studentId, quizId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.quiz(learnerId, quizId) });
     },
   });
 
@@ -291,11 +291,11 @@ export const useQuizProgress = (studentId: string | null, quizId: string | null)
       correctAnswers: number;
       totalQuestions: number
     }) => {
-      if (!studentId || !quizId) {
+      if (!learnerId || !quizId) {
         throw new Error('Missing required parameters');
       }
       return await courseProgressService.submitQuiz(
-        studentId,
+        learnerId,
         quizId,
         attemptNumber,
         correctAnswers,
@@ -303,8 +303,8 @@ export const useQuizProgress = (studentId: string | null, quizId: string | null)
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.quiz(studentId, quizId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.summary(studentId, courseId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.quiz(learnerId, quizId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.progress.summary(learnerId, courseId) });
     },
   });
 
@@ -326,14 +326,14 @@ export const useQuizProgress = (studentId: string | null, quizId: string | null)
 /**
  * Hook for getting comprehensive course progress summary
  */
-export const useCourseProgressSummary = (studentId: string | null, courseId: string | null) => {
+export const useCourseProgressSummary = (learnerId: string | null, courseId: string | null) => {
   const query = useQuery({
-    queryKey: queryKeys.courses.progress.summary(studentId, courseId),
+    queryKey: queryKeys.courses.progress.summary(learnerId, courseId),
     queryFn: async () => {
-      if (!studentId || !courseId) return null;
-      return await courseProgressService.getCourseProgressSummary(studentId, courseId);
+      if (!learnerId || !courseId) return null;
+      return await courseProgressService.getCourseProgressSummary(learnerId, courseId);
     },
-    enabled: !!studentId && !!courseId,
+    enabled: !!learnerId && !!courseId,
     staleTime: 30 * 1000, // 30 seconds
   });
 
@@ -349,14 +349,14 @@ export const useCourseProgressSummary = (studentId: string | null, courseId: str
 /**
  * Hook for getting progress across all enrolled courses
  */
-export const useAllCoursesProgress = (studentId: string | null) => {
+export const useAllCoursesProgress = (learnerId: string | null) => {
   const query = useQuery({
-    queryKey: queryKeys.courses.progress.allByStudent(studentId),
+    queryKey: queryKeys.courses.progress.allByLearner(learnerId),
     queryFn: async () => {
-      if (!studentId) return [];
-      return await courseProgressService.getAllCoursesProgress(studentId);
+      if (!learnerId) return [];
+      return await courseProgressService.getAllCoursesProgress(learnerId);
     },
-    enabled: !!studentId,
+    enabled: !!learnerId,
     staleTime: 30 * 1000, // 30 seconds
   });
 

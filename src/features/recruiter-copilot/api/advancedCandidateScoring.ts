@@ -119,9 +119,9 @@ class AdvancedCandidateScoringService {
    */
   async fetchEnrichedCandidates(limit: number = 50): Promise<EnrichedCandidate[]> {
     try {
-      // Fetch students with all related data
-      const { data: students, error } = await supabase
-        .from('students')
+      // Fetch learners with all related data
+      const { data: learners, error } = await supabase
+        .from('learners')
         .select(`
           user_id,
           name,
@@ -145,55 +145,55 @@ class AdvancedCandidateScoringService {
         .order('updated_at', { ascending: false })
         .limit(limit);
 
-      if (error || !students) {
+      if (error || !learners) {
         return [];
       }
 
       // Batch fetch all related data
-      const studentIds = students.map(s => s.user_id);
+      const learnerIds = learners.map(s => s.user_id);
       
       const [skillsData, trainingsData, certsData, appliedJobsData] = await Promise.all([
         // Fetch all skills
         supabase
           .from('skills')
-          .select('student_id, name, level, type, enabled')
-          .in('student_id', studentIds)
+          .select('learner_id, name, level, type, enabled')
+          .in('learner_id', learnerIds)
           .eq('enabled', true),
         
         // Fetch trainings
         supabase
           .from('trainings')
-          .select('student_id, trainingName, organization, completedDate')
-          .in('student_id', studentIds),
+          .select('learner_id, trainingName, organization, completedDate')
+          .in('learner_id', learnerIds),
         
         // Fetch certificates
         supabase
           .from('certificates')
-          .select('student_id, certificateName, issuedBy, issuedDate, enabled')
-          .in('student_id', studentIds)
+          .select('learner_id, certificateName, issuedBy, issuedDate, enabled')
+          .in('learner_id', learnerIds)
           .eq('enabled', true),
         
         // Fetch application history
         supabase
           .from('applied_jobs')
-          .select('student_id, opportunity_id, application_status, applied_at')
-          .in('student_id', studentIds)
+          .select('learner_id, opportunity_id, application_status, applied_at')
+          .in('learner_id', learnerIds)
       ]);
 
-      // Group data by student
-      const skillsByStudent = this.groupByStudent(skillsData.data || []);
-      const trainingsByStudent = this.groupByStudent(trainingsData.data || []);
-      const certsByStudent = this.groupByStudent(certsData.data || []);
-      const applicationsByStudent = this.groupByStudent(appliedJobsData.data || []);
+      // Group data by learner
+      const skillsByLearner = this.groupByLearner(skillsData.data || []);
+      const trainingsByLearner = this.groupByLearner(trainingsData.data || []);
+      const certsByLearner = this.groupByLearner(certsData.data || []);
+      const applicationsByLearner = this.groupByLearner(appliedJobsData.data || []);
 
       // Enrich each candidate
-      return students.map(student => 
+      return learners.map(learner => 
         this.enrichCandidate(
-          student,
-          skillsByStudent.get(student.user_id) || [],
-          trainingsByStudent.get(student.user_id) || [],
-          certsByStudent.get(student.user_id) || [],
-          applicationsByStudent.get(student.user_id) || []
+          learner,
+          skillsByLearner.get(learner.user_id) || [],
+          trainingsByLearner.get(learner.user_id) || [],
+          certsByLearner.get(learner.user_id) || [],
+          applicationsByLearner.get(learner.user_id) || []
         )
       );
     } catch (error) {
@@ -205,7 +205,7 @@ class AdvancedCandidateScoringService {
    * Enrich single candidate with comprehensive analysis
    */
   private enrichCandidate(
-    student: any,
+    learner: any,
     skills: any[],
     trainings: any[],
     certs: any[],
@@ -216,9 +216,9 @@ class AdvancedCandidateScoringService {
     
     // Calculate scores
     const technicalScore = this.calculateTechnicalScore(skills, trainings, certs);
-    const educationScore = this.calculateEducationScore(student);
+    const educationScore = this.calculateEducationScore(learner);
     const experienceScore = this.calculateExperienceScore(trainings, certs, applications);
-    const engagementScore = this.calculateEngagementScore(student, applications);
+    const engagementScore = this.calculateEngagementScore(learner, applications);
     
     const overallScore = Math.round(
       technicalScore * 0.35 +
@@ -232,34 +232,34 @@ class AdvancedCandidateScoringService {
       education: educationScore,
       experience: experienceScore,
       engagement: engagementScore,
-      hasResume: !!student.resumeUrl,
-      profileComplete: this.calculateProfileCompleteness(student, skills, trainings, certs)
+      hasResume: !!learner.resumeUrl,
+      profileComplete: this.calculateProfileCompleteness(learner, skills, trainings, certs)
     });
     
     // Detect flags
-    const redFlags = this.detectRedFlags(student, skills, applications);
-    const greenFlags = this.detectGreenFlags(student, skills, trainings, certs);
-    const dataQualityIssues = this.detectDataQualityIssues(student, skills);
+    const redFlags = this.detectRedFlags(learner, skills, applications);
+    const greenFlags = this.detectGreenFlags(learner, skills, trainings, certs);
+    const dataQualityIssues = this.detectDataQualityIssues(learner, skills);
     
     // Calculate account age
     const accountAge = Math.floor(
-      (new Date().getTime() - new Date(student.created_at).getTime()) / (1000 * 60 * 60 * 24)
+      (new Date().getTime() - new Date(learner.created_at).getTime()) / (1000 * 60 * 60 * 24)
     );
     
     return {
-      id: student.user_id,
-      name: student.name,
-      email: student.email,
-      phone: student.phone,
+      id: learner.user_id,
+      name: learner.name,
+      email: learner.email,
+      phone: learner.phone,
       
-      university: student.university || 'Not specified',
-      branch: student.branch_field || 'Not specified',
-      cgpa: student.currentCgpa,
-      graduationYear: student.expectedGraduationDate?.split('-')[0] || 'Unknown',
+      university: learner.university || 'Not specified',
+      branch: learner.branch_field || 'Not specified',
+      cgpa: learner.currentCgpa,
+      graduationYear: learner.expectedGraduationDate?.split('-')[0] || 'Unknown',
       
-      city: student.city || '',
-      state: student.state || '',
-      country: student.country || 'India',
+      city: learner.city || '',
+      state: learner.state || '',
+      country: learner.country || 'India',
       
       skills: skills.map(s => ({
         name: s.name,
@@ -282,13 +282,13 @@ class AdvancedCandidateScoringService {
       })),
       
       projectCount: 0, // TODO: Add projects table
-      hasGitHub: !!student.githubUrl,
-      hasLinkedIn: !!student.linkedinUrl,
-      hasPortfolio: !!student.portfolioUrl,
-      resumeUrl: student.resumeUrl,
+      hasGitHub: !!learner.githubUrl,
+      hasLinkedIn: !!learner.linkedinUrl,
+      hasPortfolio: !!learner.portfolioUrl,
+      resumeUrl: learner.resumeUrl,
       
-      profileCompleteness: this.calculateProfileCompleteness(student, skills, trainings, certs),
-      lastActive: student.updated_at,
+      profileCompleteness: this.calculateProfileCompleteness(learner, skills, trainings, certs),
+      lastActive: learner.updated_at,
       accountAge,
       
       responsiveness: this.assessResponsiveness(applications),
@@ -342,21 +342,21 @@ class AdvancedCandidateScoringService {
   /**
    * Calculate education quality score
    */
-  private calculateEducationScore(student: any): number {
+  private calculateEducationScore(learner: any): number {
     let score = 50; // Base score
     
     // CGPA (0-30 points)
-    if (student.currentCgpa) {
-      if (student.currentCgpa >= 9.0) score += 30;
-      else if (student.currentCgpa >= 8.0) score += 25;
-      else if (student.currentCgpa >= 7.0) score += 20;
-      else if (student.currentCgpa >= 6.0) score += 10;
+    if (learner.currentCgpa) {
+      if (learner.currentCgpa >= 9.0) score += 30;
+      else if (learner.currentCgpa >= 8.0) score += 25;
+      else if (learner.currentCgpa >= 7.0) score += 20;
+      else if (learner.currentCgpa >= 6.0) score += 10;
     }
     
     // University reputation (0-20 points) - can be enhanced with university rankings
-    if (student.university) {
+    if (learner.university) {
       const topUniversities = ['IIT', 'NIT', 'BITS', 'VIT', 'Manipal', 'SRM'];
-      if (topUniversities.some(uni => student.university.includes(uni))) {
+      if (topUniversities.some(uni => learner.university.includes(uni))) {
         score += 20;
       } else {
         score += 10;
@@ -390,24 +390,24 @@ class AdvancedCandidateScoringService {
   /**
    * Calculate engagement score
    */
-  private calculateEngagementScore(student: any, applications: any[]): number {
+  private calculateEngagementScore(learner: any, applications: any[]): number {
     let score = 0;
     
     // Profile completeness (0-30 points)
     const profileFields = [
-      student.phone, student.city, student.university, 
-      student.branch_field, student.currentCgpa, student.resumeUrl
+      learner.phone, learner.city, learner.university, 
+      learner.branch_field, learner.currentCgpa, learner.resumeUrl
     ];
     const completedFields = profileFields.filter(f => !!f).length;
     score += (completedFields / profileFields.length) * 30;
     
     // Social presence (0-20 points)
-    if (student.linkedinUrl) score += 10;
-    if (student.githubUrl) score += 10;
+    if (learner.linkedinUrl) score += 10;
+    if (learner.githubUrl) score += 10;
     
     // Recent activity (0-25 points)
     const daysSinceUpdate = Math.floor(
-      (new Date().getTime() - new Date(student.updated_at).getTime()) / (1000 * 60 * 60 * 24)
+      (new Date().getTime() - new Date(learner.updated_at).getTime()) / (1000 * 60 * 60 * 24)
     );
     if (daysSinceUpdate <= 7) score += 25;
     else if (daysSinceUpdate <= 30) score += 15;
@@ -455,26 +455,26 @@ class AdvancedCandidateScoringService {
    * Calculate profile completeness
    */
   private calculateProfileCompleteness(
-    student: any,
+    learner: any,
     skills: any[],
     trainings: any[],
     certs: any[]
   ): number {
     const checks = {
-      hasName: !!student.name,
-      hasEmail: !!student.email,
-      hasPhone: !!student.phone,
-      hasUniversity: !!student.university,
-      hasBranch: !!student.branch_field,
-      hasCGPA: !!student.currentCgpa,
-      hasLocation: !!(student.city && student.state),
-      hasGradYear: !!student.expectedGraduationDate,
-      hasResume: !!student.resumeUrl,
+      hasName: !!learner.name,
+      hasEmail: !!learner.email,
+      hasPhone: !!learner.phone,
+      hasUniversity: !!learner.university,
+      hasBranch: !!learner.branch_field,
+      hasCGPA: !!learner.currentCgpa,
+      hasLocation: !!(learner.city && learner.state),
+      hasGradYear: !!learner.expectedGraduationDate,
+      hasResume: !!learner.resumeUrl,
       hasSkills: skills.length >= 3,
       hasTraining: trainings.length > 0,
       hasCerts: certs.length > 0,
-      hasLinkedIn: !!student.linkedinUrl,
-      hasGitHub: !!student.githubUrl
+      hasLinkedIn: !!learner.linkedinUrl,
+      hasGitHub: !!learner.githubUrl
     };
     
     const completed = Object.values(checks).filter(Boolean).length;
@@ -486,7 +486,7 @@ class AdvancedCandidateScoringService {
   /**
    * Detect red flags
    */
-  private detectRedFlags(student: any, skills: any[], applications: any[]): string[] {
+  private detectRedFlags(learner: any, skills: any[], applications: any[]): string[] {
     const flags: string[] = [];
     
     // No skills listed
@@ -504,13 +504,13 @@ class AdvancedCandidateScoringService {
     }
     
     // No resume
-    if (!student.resumeUrl) {
+    if (!learner.resumeUrl) {
       flags.push('📄 No resume uploaded');
     }
     
     // Very low CGPA
-    if (student.currentCgpa && student.currentCgpa < 5.5) {
-      flags.push(`📊 Low CGPA: ${student.currentCgpa}/10`);
+    if (learner.currentCgpa && learner.currentCgpa < 5.5) {
+      flags.push(`📊 Low CGPA: ${learner.currentCgpa}/10`);
     }
     
     // Applied to many jobs but no progress
@@ -525,7 +525,7 @@ class AdvancedCandidateScoringService {
     
     // Stale profile
     const daysSinceUpdate = Math.floor(
-      (new Date().getTime() - new Date(student.updated_at).getTime()) / (1000 * 60 * 60 * 24)
+      (new Date().getTime() - new Date(learner.updated_at).getTime()) / (1000 * 60 * 60 * 24)
     );
     if (daysSinceUpdate > 180) {
       flags.push(`🕐 Inactive profile (last updated ${Math.floor(daysSinceUpdate / 30)} months ago)`);
@@ -537,12 +537,12 @@ class AdvancedCandidateScoringService {
   /**
    * Detect green flags (positive signals)
    */
-  private detectGreenFlags(student: any, skills: any[], trainings: any[], certs: any[]): string[] {
+  private detectGreenFlags(learner: any, skills: any[], trainings: any[], certs: any[]): string[] {
     const flags: string[] = [];
     
     // Strong CGPA
-    if (student.currentCgpa && student.currentCgpa >= 8.5) {
-      flags.push(`✅ Excellent academics: ${student.currentCgpa}/10 CGPA`);
+    if (learner.currentCgpa && learner.currentCgpa >= 8.5) {
+      flags.push(`✅ Excellent academics: ${learner.currentCgpa}/10 CGPA`);
     }
     
     // Rich skill set
@@ -561,19 +561,19 @@ class AdvancedCandidateScoringService {
     }
     
     // GitHub presence
-    if (student.githubUrl) {
+    if (learner.githubUrl) {
       flags.push('✅ Active GitHub profile');
     }
     
     // Complete profile
-    const completeness = this.calculateProfileCompleteness(student, skills, trainings, certs);
+    const completeness = this.calculateProfileCompleteness(learner, skills, trainings, certs);
     if (completeness >= 80) {
       flags.push(`✅ Complete profile: ${completeness}%`);
     }
     
     // Recent activity
     const daysSinceUpdate = Math.floor(
-      (new Date().getTime() - new Date(student.updated_at).getTime()) / (1000 * 60 * 60 * 24)
+      (new Date().getTime() - new Date(learner.updated_at).getTime()) / (1000 * 60 * 60 * 24)
     );
     if (daysSinceUpdate <= 7) {
       flags.push('✅ Recently active');
@@ -585,7 +585,7 @@ class AdvancedCandidateScoringService {
   /**
    * Detect data quality issues
    */
-  private detectDataQualityIssues(student: any, skills: any[]): string[] {
+  private detectDataQualityIssues(learner: any, skills: any[]): string[] {
     const issues: string[] = [];
     
     // Suspicious skill names
@@ -597,9 +597,9 @@ class AdvancedCandidateScoringService {
     }
     
     // Missing critical info
-    if (!student.phone) issues.push('Missing phone number');
-    if (!student.city && !student.state) issues.push('Missing location');
-    if (!student.expectedGraduationDate) issues.push('Missing graduation date');
+    if (!learner.phone) issues.push('Missing phone number');
+    if (!learner.city && !learner.state) issues.push('Missing location');
+    if (!learner.expectedGraduationDate) issues.push('Missing graduation date');
     
     return issues;
   }
@@ -648,13 +648,13 @@ class AdvancedCandidateScoringService {
   }
 
   /**
-   * Group array by student_id
+   * Group array by learner_id
    */
-  private groupByStudent<T extends { student_id: string }>(items: T[]): Map<string, T[]> {
+  private groupByLearner<T extends { learner_id: string }>(items: T[]): Map<string, T[]> {
     const map = new Map<string, T[]>();
     items.forEach(item => {
-      const existing = map.get(item.student_id) || [];
-      map.set(item.student_id, [...existing, item]);
+      const existing = map.get(item.learner_id) || [];
+      map.set(item.learner_id, [...existing, item]);
     });
     return map;
   }

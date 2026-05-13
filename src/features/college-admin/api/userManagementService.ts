@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 // @ts-ignore - userApiService is a .js file
@@ -60,7 +61,7 @@ export const userManagementService = {
       }
 
       // Get auth token for worker API
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await getCurrentSession();
       if (!session?.access_token) {
         return {
           success: false,
@@ -72,7 +73,7 @@ export const userManagementService = {
       }
 
       // Get college ID from current user context
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const { data: { user: currentUser } } = await getCurrentUser();
       let collegeId = null;
 
       if (currentUser?.id || currentUser?.email) {
@@ -152,7 +153,7 @@ export const userManagementService = {
           password: Math.random().toString(36).slice(-8) + 'Temp@123',
           firstName,
           lastName,
-          role: 'college_student',
+          role: 'learner',
         });
 
         if (!result.success) {
@@ -424,7 +425,7 @@ export const userManagementService = {
   /**
    * Get users with filters
    * Property 6: User filtering correctness
-   * Fetches from both college_lecturers and students tables
+   * Fetches from both college_lecturers and learners tables
    */
   async getUsers(filters: {
     role?: string;
@@ -436,7 +437,7 @@ export const userManagementService = {
       const users: User[] = [];
 
       // Get current user's college ID
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const { data: { user: currentUser } } = await getCurrentUser();
       if (!currentUser) {
         throw new Error('Not authenticated');
       }
@@ -599,8 +600,8 @@ export const userManagementService = {
         }
       }
 
-      // NOTE: Students are NOT included in User Management
-      // Students should be managed through the Student Admission module
+      // NOTE: Learners are NOT included in User Management
+      // Learners should be managed through the Learner Admission module
 
       // Apply role filter
       let filteredUsers = users;

@@ -1,15 +1,15 @@
 /**
  * CoverPage Component
  * School notebook label style cover page for Assessment Report PrintView
- * Features Rareminds branding, themed illustrations, and student info
+ * Features Rareminds branding, themed illustrations, and learner info
  * Optimized for A4 print (210mm x 297mm) with 15mm margins
  */
 
 import { formatStreamId } from '@/shared/lib/utils/formatters';
 
 /**
- * @typedef {Object} StudentInfo
- * @property {string} name - Student's full name
+ * @typedef {Object} LearnerInfo
+ * @property {string} name - Learner's full name
  * @property {string} regNo - Registration number
  * @property {string} college - School or college name
  * @property {string} stream - Programme/stream
@@ -17,7 +17,7 @@ import { formatStreamId } from '@/shared/lib/utils/formatters';
 
 /**
  * @typedef {Object} CoverPageProps
- * @property {StudentInfo} studentInfo - Student information to display
+ * @property {LearnerInfo} learnerInfo - Learner information to display
  */
 
 // Branding constants
@@ -213,28 +213,28 @@ const IllustrationContainer = () => {
 
 /**
  * NotebookLabel Component
- * Displays all student profile details in a notebook label style with dashed border
+ * Displays all learner profile details in a notebook label style with dashed border
  * Uses 3x2 grid layout for details (3 columns, 2 rows)
  * @param {Object} props - Component props
- * @param {Object} props.studentInfo - Student information object
- * @param {string} props.studentInfo.name - Student's full name
- * @param {string} props.studentInfo.regNo - Registration number
- * @param {string} props.studentInfo.college - School or college name
- * @param {string} props.studentInfo.stream - Programme/stream
- * @param {string} props.studentInfo.grade - Grade level
- * @param {string} props.studentInfo.school - School name
+ * @param {Object} props.learnerInfo - Learner information object
+ * @param {string} props.learnerInfo.name - Learner's full name
+ * @param {string} props.learnerInfo.regNo - Registration number
+ * @param {string} props.learnerInfo.college - School or college name
+ * @param {string} props.learnerInfo.stream - Programme/stream
+ * @param {string} props.learnerInfo.grade - Grade level
+ * @param {string} props.learnerInfo.school - School name
  * @param {string} [props.description] - Optional description text
  * @returns {JSX.Element} Notebook label component
  */
-const NotebookLabel = ({ studentInfo, description }) => {
-  // Safe student info with fallback values
+const NotebookLabel = ({ learnerInfo, description }) => {
+  // Safe learner info with fallback values
   const safeInfo = {
-    name: studentInfo?.name && studentInfo.name.trim() ? studentInfo.name : '—',
-    regNo: studentInfo?.regNo && studentInfo.regNo.trim() ? studentInfo.regNo : '—',
-    college: studentInfo?.college && studentInfo.college.trim() ? studentInfo.college : '—',
-    stream: studentInfo?.stream && studentInfo.stream.trim() ? studentInfo.stream : '—',
-    grade: studentInfo?.grade && studentInfo.grade.toString().trim() ? studentInfo.grade : '—',
-    school: studentInfo?.school && studentInfo.school.trim() ? studentInfo.school : '—'
+    name: learnerInfo?.name && learnerInfo.name.trim() ? learnerInfo.name : '—',
+    regNo: learnerInfo?.regNo && learnerInfo.regNo.trim() ? learnerInfo.regNo : '—',
+    college: learnerInfo?.college && learnerInfo.college.trim() ? learnerInfo.college : '—',
+    stream: learnerInfo?.stream && learnerInfo.stream.trim() ? learnerInfo.stream : '—',
+    grade: learnerInfo?.grade && learnerInfo.grade.toString().trim() ? learnerInfo.grade : '—',
+    school: learnerInfo?.school && learnerInfo.school.trim() ? learnerInfo.school : '—'
   };
   
   // Default description about transforming education
@@ -310,7 +310,7 @@ const NotebookLabel = ({ studentInfo, description }) => {
           boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
         }}
       >
-        {/* Student Details - 3x2 Grid Layout (3 columns, 2 rows) */}
+        {/* Learner Details - 3x2 Grid Layout (3 columns, 2 rows) */}
         <div 
           style={{ 
             display: 'grid',
@@ -319,9 +319,9 @@ const NotebookLabel = ({ studentInfo, description }) => {
             marginBottom: '14px'
           }}
         >
-          {/* Row 1, Col 1: Student Name */}
+          {/* Row 1, Col 1: Learner Name */}
           <div>
-            <span style={labelStyle}>Student Name</span>
+            <span style={labelStyle}>Learner Name</span>
             <span style={valueStyle}>{safeInfo.name}</span>
           </div>
           
@@ -379,17 +379,17 @@ const NotebookLabel = ({ studentInfo, description }) => {
 /**
  * CoverPage component for Assessment Report PrintView
  * @param {CoverPageProps} props - Component props
- * @param {Object} props.studentInfo - Student information
+ * @param {Object} props.learnerInfo - Learner information
  * @param {string} props.generatedAt - Report generation date (optional)
  * @returns {JSX.Element} Cover page component
  */
-const CoverPage = ({ studentInfo, generatedAt }) => {
-  // Debug: Log what studentInfo is received
-  console.log('CoverPage - studentInfo received:', studentInfo);
-  console.log('CoverPage - studentInfo keys:', studentInfo ? Object.keys(studentInfo) : 'null');
-  console.log('CoverPage - grade value:', studentInfo?.grade);
-  console.log('CoverPage - school value:', studentInfo?.school);
-  console.log('CoverPage - college value:', studentInfo?.college);
+const CoverPage = ({ learnerInfo, generatedAt }) => {
+  // Debug: Log what learnerInfo is received
+  console.log('CoverPage - learnerInfo received:', learnerInfo);
+  console.log('CoverPage - learnerInfo keys:', learnerInfo ? Object.keys(learnerInfo) : 'null');
+  console.log('CoverPage - grade value:', learnerInfo?.grade);
+  console.log('CoverPage - school value:', learnerInfo?.school);
+  console.log('CoverPage - college value:', learnerInfo?.college);
   console.log('CoverPage - generatedAt:', generatedAt);
   
   // Format generation date
@@ -407,20 +407,20 @@ const CoverPage = ({ studentInfo, generatedAt }) => {
     });
   };
   
-  // Safe student info with fallback values and better handling
-  const safeStudentInfo = {
-    name: studentInfo?.name || '—',
-    regNo: studentInfo?.regNo || '—',
-    college: studentInfo?.college || studentInfo?.school || '—',
-    stream: studentInfo?.stream || '—',
+  // Safe learner info with fallback values and better handling
+  const safelearnerInfo = {
+    name: learnerInfo?.name || '—',
+    regNo: learnerInfo?.regNo || '—',
+    college: learnerInfo?.college || learnerInfo?.school || '—',
+    stream: learnerInfo?.stream || '—',
     // Try multiple possible field names for grade
-    grade: studentInfo?.grade?.toString() || studentInfo?.class || studentInfo?.gradeLevel || '—',
+    grade: learnerInfo?.grade?.toString() || learnerInfo?.class || learnerInfo?.gradeLevel || '—',
     // Try multiple possible field names for school
-    school: studentInfo?.school || studentInfo?.college || studentInfo?.schoolName || studentInfo?.institution || '—'
+    school: learnerInfo?.school || learnerInfo?.college || learnerInfo?.schoolName || learnerInfo?.institution || '—'
   };
   
-  // Debug: Log safeStudentInfo
-  console.log('CoverPage - safeStudentInfo created:', safeStudentInfo);
+  // Debug: Log safelearnerInfo
+  console.log('CoverPage - safelearnerInfo created:', safelearnerInfo);
 
   return (
     <div 
@@ -445,8 +445,8 @@ const CoverPage = ({ studentInfo, generatedAt }) => {
         {/* IllustrationContainer - Task 3 */}
         <IllustrationContainer />
         
-        {/* NotebookLabel - Task 4 - Now displays all student profile details */}
-        <NotebookLabel studentInfo={safeStudentInfo} />
+        {/* NotebookLabel - Task 4 - Now displays all learner profile details */}
+        <NotebookLabel learnerInfo={safelearnerInfo} />
         
         {/* ✅ NEW: Generation Date at bottom */}
         <div style={{

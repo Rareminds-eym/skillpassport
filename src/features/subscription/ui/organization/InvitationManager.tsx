@@ -32,7 +32,7 @@ const logger = getLogger('invitation-manager');
 interface LicensePool {
   id: string;
   poolName: string;
-  memberType: 'educator' | 'student';
+  memberType: 'educator' | 'learner';
   availableSeats: number;
 }
 
@@ -59,7 +59,7 @@ function InvitationManager({
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteForm, setInviteForm] = useState({
     email: '',
-    memberType: 'student' as 'educator' | 'student',
+    memberType: 'learner' as 'educator' | 'learner',
     autoAssignSubscription: false,
     licensePoolId: '',
     invitationMessage: '',
@@ -140,7 +140,7 @@ function InvitationManager({
       setIsInviteModalOpen(false);
       setInviteForm({
         email: '',
-        memberType: 'student',
+        memberType: 'learner',
         autoAssignSubscription: false,
         licensePoolId: '',
         invitationMessage: '',
@@ -197,9 +197,9 @@ function InvitationManager({
     });
   };
 
-  // Convert full role name to display name (school_student -> Student)
+  // Convert full role name to display name (learner -> Learner)
   const getMemberTypeDisplay = (memberType: string) => {
-    if (memberType.includes('student')) return 'Student';
+    if (memberType.includes('learner')) return 'Learner';
     if (memberType.includes('educator')) return 'Educator';
     return memberType;
   };
@@ -457,19 +457,19 @@ function InvitationManager({
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => setInviteForm(prev => ({ ...prev, memberType: 'student', licensePoolId: '' }))}
+                    onClick={() => setInviteForm(prev => ({ ...prev, memberType: 'learner', licensePoolId: '' }))}
                     className={`p-3 rounded-xl border-2 transition-all ${
-                      inviteForm.memberType === 'student'
+                      inviteForm.memberType === 'learner'
                         ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
                     <UserPlus className={`w-5 h-5 mx-auto mb-1 ${
-                      inviteForm.memberType === 'student' ? 'text-blue-600' : 'text-gray-400'
+                      inviteForm.memberType === 'learner' ? 'text-blue-600' : 'text-gray-400'
                     }`} />
                     <span className={`text-sm font-medium ${
-                      inviteForm.memberType === 'student' ? 'text-blue-700' : 'text-gray-600'
-                    }`}>Student</span>
+                      inviteForm.memberType === 'learner' ? 'text-blue-700' : 'text-gray-600'
+                    }`}>Learner</span>
                   </button>
                   <button
                     type="button"

@@ -55,7 +55,7 @@ export interface OrganizationSubscription {
   totalSeats: number;
   assignedSeats: number;
   availableSeats: number;
-  targetMemberType: 'educator' | 'student' | 'both';
+  targetMemberType: 'educator' | 'learner' | 'both';
   status: 'active' | 'paused' | 'cancelled' | 'expired' | 'grace_period';
   startDate: string;
   endDate: string;
@@ -77,7 +77,7 @@ export interface OrgSubscriptionPurchaseRequest {
   organizationType: OrganizationType;
   planId: string;
   seatCount: number;
-  targetMemberType: 'educator' | 'student' | 'both';
+  targetMemberType: 'educator' | 'learner' | 'both';
   billingCycle: 'monthly' | 'annual';
   autoRenew: boolean;
   paymentMethod: string;
@@ -109,7 +109,7 @@ export interface OrganizationMember {
   userId: string;
   name: string;
   email: string;
-  memberType: 'educator' | 'student';
+  memberType: 'educator' | 'learner';
   department?: string;
   designation?: string;
   grade?: string;
@@ -126,7 +126,7 @@ export interface OrganizationMember {
 export interface FetchMembersOptions {
   organizationId: string;
   organizationType: OrganizationType;
-  memberType?: 'educator' | 'student' | 'all';
+  memberType?: 'educator' | 'learner' | 'all';
   includeAssignmentStatus?: boolean;
   searchQuery?: string;
   limit?: number;
@@ -148,7 +148,7 @@ export interface OrganizationInvitation {
   organizationId: string;
   organizationType: OrganizationType;
   email: string;
-  memberType: 'educator' | 'student';
+  memberType: 'educator' | 'learner';
   invitedBy: string;
   status: 'pending' | 'accepted' | 'rejected' | 'expired';
   invitedAt: string;

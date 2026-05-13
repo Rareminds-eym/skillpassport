@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SparklesIcon } from '@heroicons/react/24/outline';
-import { AIRecommendations, PipelineCandidate, AIRecommendation } from '@/features/student-profile/model';
+import { AIRecommendations, PipelineCandidate, AIRecommendation } from '@/features/learner-profile/model';
 
 const scrollbarStyles = `
   .ai-scrollbar::-webkit-scrollbar {
@@ -135,7 +135,7 @@ export const AIRecommendedColumn: React.FC<AIRecommendedColumnProps> = ({
               </div>
 
               {/* Candidate Name */}
-              <h4 className="text-base font-bold text-gray-900 mb-1">{rec.studentName}</h4>
+              <h4 className="text-base font-bold text-gray-900 mb-1">{rec.learnerName}</h4>
               
               {/* Applied Job Name */}
               {rec.positionTitle && (

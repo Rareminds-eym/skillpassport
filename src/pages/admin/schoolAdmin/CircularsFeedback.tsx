@@ -29,9 +29,9 @@ interface Circular {
   title: string;
   content: string;
   category: "academic" | "event" | "fee" | "general" | "urgent";
-  targetAudience: "all" | "class-specific" | "student-specific";
+  targetAudience: "all" | "class-specific" | "learner-specific";
   targetClasses?: string[];
-  targetStudents?: string[];
+  targetlearners?: string[];
   createdAt: string;
   createdBy: string;
   status: "draft" | "sent" | "scheduled";
@@ -47,8 +47,8 @@ const logger = getLogger('school-admin-circulars-feedback');
 interface Feedback {
   id: string;
   parentName: string;
-  studentName: string;
-  studentClass: string;
+  learnerName: string;
+  learnerClass: string;
   category: "academic" | "infrastructure" | "transport" | "staff" | "other";
   subject: string;
   message: string;
@@ -63,8 +63,8 @@ interface Grievance {
   id: string;
   ticketNumber: string;
   parentName: string;
-  studentName: string;
-  studentClass: string;
+  learnerName: string;
+  learnerClass: string;
   category:
     | "academic"
     | "discipline"
@@ -540,7 +540,7 @@ const FeedbackCard = ({
             {feedback.subject}
           </h3>
           <p className="text-sm text-gray-600 mb-2">
-            {feedback.parentName} • {feedback.studentName} ({feedback.studentClass})
+            {feedback.parentName} • {feedback.learnerName} ({feedback.learnerClass})
           </p>
         </div>
         <div className="flex items-center gap-1">
@@ -656,7 +656,7 @@ const GrievanceCard = ({
         </span>
       </div>
 
-      {/* Parent & Student Info */}
+      {/* Parent & Learner Info */}
       <div className="bg-gray-50 rounded-lg p-3 mb-3">
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div>
@@ -664,9 +664,9 @@ const GrievanceCard = ({
             <p className="font-medium text-gray-900">{grievance.parentName}</p>
           </div>
           <div>
-            <p className="text-xs text-gray-600">Student</p>
+            <p className="text-xs text-gray-600">Learner</p>
             <p className="font-medium text-gray-900">
-              {grievance.studentName} ({grievance.studentClass})
+              {grievance.learnerName} ({grievance.learnerClass})
             </p>
           </div>
         </div>
@@ -816,15 +816,15 @@ const GrievanceDetailsModal = ({
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Student Name</p>
+                  <p className="text-sm text-gray-600 mb-1">Learner Name</p>
                   <p className="font-semibold text-gray-900">
-                    {grievance.studentName}
+                    {grievance.learnerName}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Class</p>
                   <p className="font-semibold text-gray-900">
-                    {grievance.studentClass}
+                    {grievance.learnerClass}
                   </p>
                 </div>
                 <div>
@@ -1053,8 +1053,8 @@ const CircularsFeedback: React.FC = () => {
     {
       id: "1",
       parentName: "Rajesh Kumar",
-      studentName: "Ananya Kumar",
-      studentClass: "10-A",
+      learnerName: "Ananya Kumar",
+      learnerClass: "10-A",
       category: "academic",
       subject: "Request for Extra Classes",
       message:
@@ -1066,8 +1066,8 @@ const CircularsFeedback: React.FC = () => {
     {
       id: "2",
       parentName: "Priya Sharma",
-      studentName: "Rohan Sharma",
-      studentClass: "9-B",
+      learnerName: "Rohan Sharma",
+      learnerClass: "9-B",
       category: "infrastructure",
       subject: "Library Facilities",
       message:
@@ -1083,8 +1083,8 @@ const CircularsFeedback: React.FC = () => {
       id: "1",
       ticketNumber: "GRV-2025-001",
       parentName: "Rajesh Kumar",
-      studentName: "Ananya Kumar",
-      studentClass: "10-A",
+      learnerName: "Ananya Kumar",
+      learnerClass: "10-A",
       category: "academic",
       priority: "high",
       subject: "Excessive Homework Load",
@@ -1098,13 +1098,13 @@ const CircularsFeedback: React.FC = () => {
       id: "2",
       ticketNumber: "GRV-2025-002",
       parentName: "Priya Sharma",
-      studentName: "Rohan Sharma",
-      studentClass: "9-B",
+      learnerName: "Rohan Sharma",
+      learnerClass: "9-B",
       category: "discipline",
       priority: "critical",
       subject: "Bullying Incident",
       description:
-        "My son has been subjected to bullying by senior students for the past week. This is affecting his mental health and he is scared to come to school. Immediate action required.",
+        "My son has been subjected to bullying by senior learners for the past week. This is affecting his mental health and he is scared to come to school. Immediate action required.",
       status: "in-progress",
       submittedAt: "Jan 5, 2025 2:15 PM",
       assignedTo: "Principal",
@@ -1124,13 +1124,13 @@ const CircularsFeedback: React.FC = () => {
       id: "3",
       ticketNumber: "GRV-2025-003",
       parentName: "Amit Patel",
-      studentName: "Diya Patel",
-      studentClass: "11-C",
+      learnerName: "Diya Patel",
+      learnerClass: "11-C",
       category: "infrastructure",
       priority: "medium",
       subject: "Laboratory Equipment Issues",
       description:
-        "The chemistry lab lacks proper equipment for practical sessions. Students are not getting hands-on experience which is crucial for board exams.",
+        "The chemistry lab lacks proper equipment for practical sessions. Learners are not getting hands-on experience which is crucial for board exams.",
       status: "resolved",
       submittedAt: "Jan 3, 2025 11:00 AM",
       assignedTo: "Lab Coordinator",
@@ -1159,7 +1159,7 @@ const CircularsFeedback: React.FC = () => {
         grievance.ticketNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
         grievance.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
         grievance.parentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        grievance.studentName.toLowerCase().includes(searchQuery.toLowerCase());
+        grievance.learnerName.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesStatus =
         filterStatus === "all" || grievance.status === filterStatus;

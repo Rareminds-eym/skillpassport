@@ -16,9 +16,9 @@ export const courseProgressService = {
   /**
    * Save video playback position for resume functionality
    */
-  async saveVideoPosition(studentId, courseId, lessonId, positionSeconds, durationSeconds) {
+  async saveVideoPosition(learnerId, courseId, lessonId, positionSeconds, durationSeconds) {
     try {
-      if (!studentId || !courseId || !lessonId) {
+      if (!learnerId || !courseId || !lessonId) {
         return { success: false, error: 'Missing required parameters' };
       }
 
@@ -30,9 +30,9 @@ export const courseProgressService = {
       const videoCompleted = durationSeconds > 0 && (positionSeconds / durationSeconds) >= 0.9;
 
       const { error } = await supabase
-        .from('student_course_progress')
+        .from('learner_course_progress')
         .upsert({
-          student_id: studentId,
+          learner_id: learnerId,
           course_id: courseId,
           lesson_id: lessonId,
           video_position_seconds: Math.floor(positionSeconds),
@@ -41,7 +41,7 @@ export const courseProgressService = {
           last_accessed: new Date().toISOString(),
           status: videoCompleted ? 'completed' : 'in_progress'
         }, {
-          onConflict: 'student_id,course_id,lesson_id'
+          onConflict: 'learner_id,course_id,lesson_id'
         });
 
       if (error) throw error;
@@ -55,14 +55,14 @@ export const courseProgressService = {
   /**
    * Get saved video position for resume
    */
-  async getVideoPosition(studentId, courseId, lessonId) {
+  async getVideoPosition(learnerId, courseId, lessonId) {
     try {
-      if (!studentId || !courseId || !lessonId) return null;
+      if (!learnerId || !courseId || !lessonId) return null;
 
       const { data, error } = await supabase
-        .from('student_course_progress')
+        .from('learner_course_progress')
         .select('video_position_seconds, video_duration_seconds, video_completed')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('course_id', courseId)
         .eq('lesson_id', lessonId)
         .maybeSingle();
@@ -78,12 +78,12 @@ export const courseProgressService = {
   /**
    * Mark video as completed
    */
-  async markVideoCompleted(studentId, courseId, lessonId) {
+  async markVideoCompleted(learnerId, courseId, lessonId) {
     try {
       const { error } = await supabase
-        .from('student_course_progress')
+        .from('learner_course_progress')
         .upsert({
-          student_id: studentId,
+          learner_id: learnerId,
           course_id: courseId,
           lesson_id: lessonId,
           video_completed: true,
@@ -91,7 +91,7 @@ export const courseProgressService = {
           completed_at: new Date().toISOString(),
           last_accessed: new Date().toISOString()
         }, {
-          onConflict: 'student_id,course_id,lesson_id'
+          onConflict: 'learner_id,course_id,lesson_id'
         });
 
       if (error) throw error;
@@ -109,9 +109,9 @@ export const courseProgressService = {
   /**
    * Save current position for session restore
    */
-  async saveRestorePoint(studentId, courseId, moduleIndex, lessonIndex, lessonId, videoPosition = 0) {
+  async saveRestorePoint(learnerId, courseId, moduleIndex, lessonIndex, lessonId, videoPosition = 0) {
     try {
-      if (!studentId || !courseId) {
+      if (!learnerId || !courseId) {
         return { success: false, error: 'Missing required parameters' };
       }
 
@@ -124,7 +124,7 @@ export const courseProgressService = {
           last_video_position: Math.floor(videoPosition),
           last_accessed: new Date().toISOString()
         })
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('course_id', courseId);
 
       if (error) {
@@ -142,9 +142,9 @@ export const courseProgressService = {
   /**
    * Get restore point for course re-entry
    */
-  async getRestorePoint(studentId, courseId) {
+  async getRestorePoint(learnerId, courseId) {
     try {
-      if (!studentId || !courseId) return null;
+      if (!learnerId || !courseId) return null;
 
       const { data, error } = await supabase
         .from('course_enrollments')
@@ -159,7 +159,7 @@ export const courseProgressService = {
           status,
           course_title
         `)
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('course_id', courseId)
         .maybeSingle();
 
@@ -188,7 +188,7 @@ export const courseProgressService = {
   /**
    * Clear restore point (when user chooses "Start Fresh")
    */
-  async clearRestorePoint(studentId, courseId) {
+  async clearRestorePoint(learnerId, courseId) {
     try {
       const { error } = await supabase
         .from('course_enrollments')
@@ -198,7 +198,7 @@ export const courseProgressService = {
           last_lesson_id: null,
           last_video_position: 0
         })
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('course_id', courseId);
 
       if (error) throw error;
@@ -216,14 +216,14 @@ export const courseProgressService = {
   /**
    * Get detailed progress for a specific lesson
    */
-  async getLessonProgress(studentId, courseId, lessonId) {
+  async getLessonProgress(learnerId, courseId, lessonId) {
     try {
-      if (!studentId || !courseId || !lessonId) return null;
+      if (!learnerId || !courseId || !lessonId) return null;
 
       const { data, error } = await supabase
-        .from('student_course_progress')
+        .from('learner_course_progress')
         .select('*')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('course_id', courseId)
         .eq('lesson_id', lessonId)
         .maybeSingle();
@@ -239,10 +239,10 @@ export const courseProgressService = {
   /**
    * Update lesson status
    */
-  async updateLessonStatus(studentId, courseId, lessonId, status) {
+  async updateLessonStatus(learnerId, courseId, lessonId, status) {
     try {
       const updateData = {
-        student_id: studentId,
+        learner_id: learnerId,
         course_id: courseId,
         lesson_id: lessonId,
         status: status,
@@ -254,9 +254,9 @@ export const courseProgressService = {
       }
 
       const { error } = await supabase
-        .from('student_course_progress')
+        .from('learner_course_progress')
         .upsert(updateData, {
-          onConflict: 'student_id,course_id,lesson_id'
+          onConflict: 'learner_id,course_id,lesson_id'
         });
 
       if (error) throw error;
@@ -270,13 +270,13 @@ export const courseProgressService = {
   /**
    * Save time spent on lesson
    */
-  async saveTimeSpent(studentId, courseId, lessonId, additionalSeconds) {
+  async saveTimeSpent(learnerId, courseId, lessonId, additionalSeconds) {
     try {
       // First get current time spent
       const { data: existing } = await supabase
-        .from('student_course_progress')
+        .from('learner_course_progress')
         .select('time_spent_seconds')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('course_id', courseId)
         .eq('lesson_id', lessonId)
         .maybeSingle();
@@ -285,15 +285,15 @@ export const courseProgressService = {
       const newTime = currentTime + additionalSeconds;
 
       const { error } = await supabase
-        .from('student_course_progress')
+        .from('learner_course_progress')
         .upsert({
-          student_id: studentId,
+          learner_id: learnerId,
           course_id: courseId,
           lesson_id: lessonId,
           time_spent_seconds: newTime,
           last_accessed: new Date().toISOString()
         }, {
-          onConflict: 'student_id,course_id,lesson_id'
+          onConflict: 'learner_id,course_id,lesson_id'
         });
 
       if (error) throw error;
@@ -311,13 +311,13 @@ export const courseProgressService = {
   /**
    * Start or resume a quiz attempt
    */
-  async startQuizAttempt(studentId, courseId, lessonId, quizId, totalQuestions) {
+  async startQuizAttempt(learnerId, courseId, lessonId, quizId, totalQuestions) {
     try {
       // Check for existing in-progress attempt
       const { data: existing } = await supabase
-        .from('student_quiz_progress')
+        .from('learner_quiz_progress')
         .select('*')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('quiz_id', quizId)
         .eq('status', 'in_progress')
         .order('attempt_number', { ascending: false })
@@ -330,9 +330,9 @@ export const courseProgressService = {
 
       // Get highest attempt number
       const { data: lastAttempt } = await supabase
-        .from('student_quiz_progress')
+        .from('learner_quiz_progress')
         .select('attempt_number')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('quiz_id', quizId)
         .order('attempt_number', { ascending: false })
         .limit(1)
@@ -342,9 +342,9 @@ export const courseProgressService = {
 
       // Create new attempt
       const { data, error } = await supabase
-        .from('student_quiz_progress')
+        .from('learner_quiz_progress')
         .insert({
-          student_id: studentId,
+          learner_id: learnerId,
           course_id: courseId,
           lesson_id: lessonId,
           quiz_id: quizId,
@@ -367,13 +367,13 @@ export const courseProgressService = {
   /**
    * Save quiz answer
    */
-  async saveQuizAnswer(studentId, quizId, attemptNumber, questionId, answer) {
+  async saveQuizAnswer(learnerId, quizId, attemptNumber, questionId, answer) {
     try {
       // Get current answers
       const { data: current } = await supabase
-        .from('student_quiz_progress')
+        .from('learner_quiz_progress')
         .select('answers, current_question_index')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('quiz_id', quizId)
         .eq('attempt_number', attemptNumber)
         .maybeSingle();
@@ -382,13 +382,13 @@ export const courseProgressService = {
       answers[questionId] = answer;
 
       const { error } = await supabase
-        .from('student_quiz_progress')
+        .from('learner_quiz_progress')
         .update({
           answers: answers,
           current_question_index: (current?.current_question_index || 0) + 1,
           updated_at: new Date().toISOString()
         })
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('quiz_id', quizId)
         .eq('attempt_number', attemptNumber);
 
@@ -403,12 +403,12 @@ export const courseProgressService = {
   /**
    * Get in-progress quiz for resume
    */
-  async getQuizProgress(studentId, quizId) {
+  async getQuizProgress(learnerId, quizId) {
     try {
       const { data, error } = await supabase
-        .from('student_quiz_progress')
+        .from('learner_quiz_progress')
         .select('*')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('quiz_id', quizId)
         .eq('status', 'in_progress')
         .order('attempt_number', { ascending: false })
@@ -426,7 +426,7 @@ export const courseProgressService = {
   /**
    * Submit quiz and calculate score
    */
-  async submitQuiz(studentId, quizId, attemptNumber, correctAnswers, totalQuestions) {
+  async submitQuiz(learnerId, quizId, attemptNumber, correctAnswers, totalQuestions) {
     try {
       const scorePercentage = totalQuestions > 0 
         ? (correctAnswers / totalQuestions) * 100 
@@ -434,7 +434,7 @@ export const courseProgressService = {
       const passed = scorePercentage >= 70;
 
       const { data, error } = await supabase
-        .from('student_quiz_progress')
+        .from('learner_quiz_progress')
         .update({
           status: 'completed',
           correct_answers: correctAnswers,
@@ -443,7 +443,7 @@ export const courseProgressService = {
           completed_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('quiz_id', quizId)
         .eq('attempt_number', attemptNumber)
         .select()
@@ -451,7 +451,7 @@ export const courseProgressService = {
 
       if (error) throw error;
 
-      // Embedding regeneration handled by database trigger on student_quiz_progress
+      // Embedding regeneration handled by database trigger on learner_quiz_progress
 
       return { success: true, data, score: scorePercentage, passed };
     } catch (error) {
@@ -467,13 +467,13 @@ export const courseProgressService = {
   /**
    * Get comprehensive course progress summary
    */
-  async getCourseProgressSummary(studentId, courseId) {
+  async getCourseProgressSummary(learnerId, courseId) {
     try {
       // Get enrollment data
       const { data: enrollment, error: enrollError } = await supabase
         .from('course_enrollments')
         .select('*')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('course_id', courseId)
         .maybeSingle();
 
@@ -481,9 +481,9 @@ export const courseProgressService = {
 
       // Get all lesson progress
       const { data: lessonProgress, error: progressError } = await supabase
-        .from('student_course_progress')
+        .from('learner_course_progress')
         .select('*')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('course_id', courseId);
 
       if (progressError) throw progressError;
@@ -517,7 +517,7 @@ export const courseProgressService = {
   /**
    * Get progress for all enrolled courses
    */
-  async getAllCoursesProgress(studentId) {
+  async getAllCoursesProgress(learnerId) {
     try {
       const { data, error } = await supabase
         .from('course_enrollments')
@@ -532,7 +532,7 @@ export const courseProgressService = {
           total_lessons,
           completed_lessons
         `)
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .order('last_accessed', { ascending: false });
 
       if (error) throw error;
@@ -546,12 +546,12 @@ export const courseProgressService = {
   /**
    * Update total time spent on course
    */
-  async updateCourseTotalTime(studentId, courseId, additionalSeconds) {
+  async updateCourseTotalTime(learnerId, courseId, additionalSeconds) {
     try {
       const { data: current } = await supabase
         .from('course_enrollments')
         .select('total_time_spent_seconds')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('course_id', courseId)
         .maybeSingle();
 
@@ -563,7 +563,7 @@ export const courseProgressService = {
           total_time_spent_seconds: newTotal,
           last_accessed: new Date().toISOString()
         })
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .eq('course_id', courseId);
 
       if (error) throw error;

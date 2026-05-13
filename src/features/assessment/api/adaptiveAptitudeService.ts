@@ -40,14 +40,14 @@ export type {
  * Requirements: 1.1
  * Task 66: Now calls API instead of direct Supabase
  * 
- * @param options - Options containing studentId and gradeLevel
+ * @param options - Options containing learnerId and gradeLevel
  * @returns InitializeTestResult with session and first question
  */
 export async function initializeTest(
   options: AdaptiveAptitudeApiService.InitializeTestOptions
 ): Promise<AdaptiveAptitudeApiService.InitializeTestResult> {
   console.log('🚀 [AdaptiveAptitudeService] initializeTest (API wrapper):', options);
-  return AdaptiveAptitudeApiService.initializeTest(options.studentId, options.gradeLevel, options.studentCourse);
+  return AdaptiveAptitudeApiService.initializeTest(options.learnerId, options.gradeLevel, options.learnerCourse);
 }
 
 /**
@@ -116,23 +116,23 @@ export async function resumeTest(
 }
 
 /**
- * Finds an in-progress session for a student
+ * Finds an in-progress session for a learner
  * 
  * Task 66: Now calls API instead of direct Supabase
  * 
- * @param studentId - The student ID
+ * @param learnerId - The learner ID
  * @param gradeLevel - Optional grade level filter
  * @returns The in-progress session or null
  */
 export async function findInProgressSession(
-  studentId: string,
+  learnerId: string,
   gradeLevel?: GradeLevel
 ): Promise<TestSession | null> {
   console.log('🔍 [AdaptiveAptitudeService] findInProgressSession (API wrapper):', {
-    studentId,
+    learnerId,
     gradeLevel,
   });
-  return AdaptiveAptitudeApiService.findInProgressSession(studentId, gradeLevel);
+  return AdaptiveAptitudeApiService.findInProgressSession(learnerId, gradeLevel);
 }
 
 /**
@@ -161,16 +161,16 @@ export async function getTestResults(sessionId: string): Promise<TestResults | n
 }
 
 /**
- * Gets all test results for a student
+ * Gets all test results for a learner
  * 
  * Task 66: Now calls API instead of direct Supabase
  * 
- * @param studentId - The student ID
+ * @param learnerId - The learner ID
  * @returns Array of TestResults
  */
-export async function getStudentTestResults(studentId: string): Promise<TestResults[]> {
-  console.log('📊 [AdaptiveAptitudeService] getStudentTestResults (API wrapper):', { studentId });
-  return AdaptiveAptitudeApiService.getStudentTestResults(studentId);
+export async function getlearnerTestResults(learnerId: string): Promise<TestResults[]> {
+  console.log('📊 [AdaptiveAptitudeService] getlearnerTestResults (API wrapper):', { learnerId });
+  return AdaptiveAptitudeApiService.getlearnerTestResults(learnerId);
 }
 
 // =============================================================================
@@ -231,13 +231,13 @@ export class AdaptiveAptitudeService {
   }
 
   /**
-   * Finds an in-progress session for a student
+   * Finds an in-progress session for a learner
    */
   static async findInProgressSession(
-    studentId: string,
+    learnerId: string,
     gradeLevel?: GradeLevel
   ): Promise<TestSession | null> {
-    return findInProgressSession(studentId, gradeLevel);
+    return findInProgressSession(learnerId, gradeLevel);
   }
 
   /**
@@ -255,10 +255,10 @@ export class AdaptiveAptitudeService {
   }
 
   /**
-   * Gets all test results for a student
+   * Gets all test results for a learner
    */
-  static async getStudentTestResults(studentId: string): Promise<TestResults[]> {
-    return getStudentTestResults(studentId);
+  static async getlearnerTestResults(learnerId: string): Promise<TestResults[]> {
+    return getlearnerTestResults(learnerId);
   }
 }
 

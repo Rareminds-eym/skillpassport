@@ -27,7 +27,7 @@ export interface StreamsByCategory {
 }
 
 /**
- * Stream categories for After 10th/12th students
+ * Stream categories for After 10th/12th learners
  */
 export const STREAM_CATEGORIES: StreamCategory[] = [
   { 

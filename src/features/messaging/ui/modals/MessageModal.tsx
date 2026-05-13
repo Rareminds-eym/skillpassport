@@ -6,22 +6,22 @@ import { useConversation, useMessages } from '@/features/messaging';
 interface MessageModalProps {
   isOpen: boolean;
   onClose: () => void;
-  studentId: string;
+  learnerId: string;
   recruiterId: string;
-  studentName: string;
+  learnerName: string;
   applicationId?: number;
   opportunityId?: number;
   jobTitle?: string;
   currentUserId: string; // ID of the current user (whoever is logged in)
-  currentUserType: 'student' | 'recruiter'; // Type of current user
+  currentUserType: 'learner' | 'recruiter'; // Type of current user
 }
 
 export const MessageModal: React.FC<MessageModalProps> = ({
   isOpen,
   onClose,
-  studentId,
+  learnerId,
   recruiterId,
-  studentName,
+  learnerName,
   applicationId,
   opportunityId,
   jobTitle,
@@ -38,7 +38,7 @@ export const MessageModal: React.FC<MessageModalProps> = ({
     error: conversationError,
     markAsRead 
   } = useConversation(
-    studentId,
+    learnerId,
     recruiterId,
     applicationId,
     opportunityId,
@@ -105,8 +105,8 @@ export const MessageModal: React.FC<MessageModalProps> = ({
 
     try {
       // Determine receiver based on current user type
-      const receiverId = currentUserType === 'student' ? recruiterId : studentId;
-      const receiverType = currentUserType === 'student' ? 'recruiter' : 'student';
+      const receiverId = currentUserType === 'learner' ? recruiterId : learnerId;
+      const receiverType = currentUserType === 'learner' ? 'recruiter' : 'learner';
       
       sendMessage({
         senderId: currentUserId,
@@ -122,7 +122,7 @@ export const MessageModal: React.FC<MessageModalProps> = ({
     } catch (error) {
       toast.error('Failed to send message');
     }
-  }, [newMessage, conversation, isSending, currentUserType, recruiterId, studentId, currentUserId, sendMessage, applicationId, opportunityId]);
+  }, [newMessage, conversation, isSending, currentUserType, recruiterId, learnerId, currentUserId, sendMessage, applicationId, opportunityId]);
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -153,10 +153,10 @@ export const MessageModal: React.FC<MessageModalProps> = ({
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-semibold">
-                {studentName?.charAt(0).toUpperCase() || '?'}
+                {learnerName?.charAt(0).toUpperCase() || '?'}
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">{studentName}</h3>
+                <h3 className="text-lg font-semibold text-gray-900">{learnerName}</h3>
                 {jobTitle && (
                   <p className="text-sm text-gray-600 flex items-center gap-1">
                     <Briefcase className="w-3 h-3" />

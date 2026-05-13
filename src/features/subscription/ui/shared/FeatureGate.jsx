@@ -127,11 +127,11 @@ function LockedCard({ featureKey, addOn, upgradePrice, showUpgradePrompt, onUpgr
   const benefits = {
     career_ai: ['AI-powered career guidance', 'Personalized recommendations', 'Industry insights'],
     video_portfolio: ['Professional video showcase', 'Easy hosting & sharing', 'Portfolio builder'],
-    educator_ai: ['AI teaching assistant', 'Content generation', 'Student insights'],
+    educator_ai: ['AI teaching assistant', 'Content generation', 'Learner insights'],
     recruiter_ai: ['AI candidate matching', 'Smart screening', 'Talent insights'],
     kpi_dashboard: ['Real-time metrics', 'Custom reports', 'Performance tracking'],
     curriculum_builder: ['Drag & drop builder', 'Template library', 'Standards alignment'],
-    mentor_notes: ['Private student notes', 'Progress tracking', 'Intervention alerts'],
+    mentor_notes: ['Private learner notes', 'Progress tracking', 'Intervention alerts'],
     ai_job_matching: ['Smart job matching', 'Skill-based recommendations', 'Application tracking'],
     talent_pool_access: ['Verified candidates', 'Advanced filters', 'Direct messaging'],
     pipeline_management: ['Visual pipelines', 'Stage tracking', 'Team collaboration'],

@@ -26,7 +26,7 @@ export default function AboutRaremindsSection() {
             About Rareminds
           </h2>
           <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl mx-auto mb-12 leading-relaxed px-4">
-            Rareminds is a learning and transformation organization focused on building future-ready skills for students and professionals.
+            Rareminds is a learning and transformation organization focused on building future-ready skills for learners and professionals.
           </p>
 
           {/* Simple Flex List */}

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This implementation plan migrates 46 files from hardcoded React Query keys to a centralized, type-safe query key factory. The migration follows a 7-phase approach: Phase 0 creates the factory module, then 6 migration phases cover student messaging, educator messaging, college/recruiter messaging, admin pages, analytics/courses, and shared hooks. Each phase is designed to be independently deployable with validation checkpoints.
+This implementation plan migrates 46 files from hardcoded React Query keys to a centralized, type-safe query key factory. The migration follows a 7-phase approach: Phase 0 creates the factory module, then 6 migration phases cover learner messaging, educator messaging, college/recruiter messaging, admin pages, analytics/courses, and shared hooks. Each phase is designed to be independently deployable with validation checkpoints.
 
 ## Tasks
 
@@ -12,8 +12,8 @@ This implementation plan migrates 46 files from hardcoded React Query keys to a 
     - Create `src/shared/lib/queryKeys/types.ts` with QueryKey, UserType, ConversationType, and ArchiveStatus types
     - _Requirements: 1.1, 1.2, 9.1_
   
-  - [x] 0.2 Implement student domain query keys
-    - Create `src/shared/lib/queryKeys/student.ts` with studentKeys factory
+  - [x] 0.2 Implement learner domain query keys
+    - Create `src/shared/lib/queryKeys/learner.ts` with learnerKeys factory
     - Include messages, conversations, unread, and activities key generators
     - Use readonly tuples with `as const` assertions
     - _Requirements: 1.2, 1.3, 1.4, 1.5, 1.6, 9.4_
@@ -70,44 +70,44 @@ This implementation plan migrates 46 files from hardcoded React Query keys to a 
   - Run unit tests to confirm key structure
   - Ask the user if questions arise
 
-- [x] 2. Migrate Phase 1: Student messaging files (9 files)
-  - [x] 2.1 Migrate src/entities/student/model/useStudentMessages.ts
-    - Replace hardcoded query keys with `queryKeys.student.messages.*` calls
+- [x] 2. Migrate Phase 1: learner messaging files (9 files)
+  - [x] 2.1 Migrate src/entities/learner/model/useStudentMessages.ts
+    - Replace hardcoded query keys with `queryKeys.learner.messages.*` calls
     - Add import: `import { queryKeys } from '@/shared/lib/queryKeys'`
     - Update cache invalidation calls to use base keys
     - _Requirements: 2.1, 2.2, 2.5, 2.6, 8.1, 8.2, 9.1_
   
-  - [x] 2.2 Migrate src/features/student-profile/model/useStudentMessages.ts
+  - [x] 2.2 Migrate src/features/learner-profile/model/useStudentMessages.ts
     - Replace hardcoded query keys with factory calls
     - Update realtime subscription invalidations
     - _Requirements: 2.1, 2.2, 2.5, 2.6, 8.1, 8.2_
   
-  - [x] 2.3 Migrate src/features/student-profile/model/useStudentEducatorMessages.ts
-    - Replace hardcoded query keys with `queryKeys.student.messages.*` calls
+  - [x] 2.3 Migrate src/features/learner-profile/model/useStudentEducatorMessages.ts
+    - Replace hardcoded query keys with `queryKeys.learner.messages.*` calls
     - _Requirements: 2.1, 2.3, 2.5, 2.6, 8.1, 8.2_
   
-  - [x] 2.4 Migrate src/features/student-profile/model/useStudentAdminMessages.ts
+  - [x] 2.4 Migrate src/features/learner-profile/model/useStudentAdminMessages.ts
     - Replace hardcoded query keys with factory calls
     - _Requirements: 2.1, 2.3, 2.5, 2.6, 8.1, 8.2_
   
-  - [x] 2.5 Migrate src/features/student-profile/model/useStudentCollegeAdminMessages.ts
+  - [x] 2.5 Migrate src/features/learner-profile/model/useStudentCollegeAdminMessages.ts
     - Replace hardcoded query keys with factory calls
     - _Requirements: 2.1, 2.3, 2.5, 2.6, 8.1, 8.2_
   
-  - [x] 2.6 Migrate src/features/student-profile/model/useStudentCollegeLecturerMessages.ts
+  - [x] 2.6 Migrate src/features/learner-profile/model/useStudentCollegeLecturerMessages.ts
     - Replace hardcoded query keys with factory calls
     - _Requirements: 2.1, 2.3, 2.5, 2.6, 8.1, 8.2_
   
-  - [x] 2.7 Migrate src/pages/student/Messages.jsx
+  - [x] 2.7 Migrate src/pages/learner/Messages.jsx
     - Replace hardcoded query keys with factory calls
     - Update imports to include queryKeys
     - _Requirements: 2.1, 2.4, 2.5, 2.6, 8.1, 8.2_
   
-  - [x] 2.8 Migrate src/pages/student/EducatorMessages.jsx
+  - [x] 2.8 Migrate src/pages/learner/EducatorMessages.jsx
     - Replace hardcoded query keys with factory calls
     - _Requirements: 2.1, 2.4, 2.5, 2.6, 8.1, 8.2_
   
-  - [x] 2.9 Migrate src/pages/student/Applications.jsx
+  - [x] 2.9 Migrate src/pages/learner/Applications.jsx
     - Replace hardcoded query keys with factory calls
     - _Requirements: 2.1, 2.4, 2.5, 2.6, 8.1, 8.2_
   
@@ -119,7 +119,7 @@ This implementation plan migrates 46 files from hardcoded React Query keys to a 
 
 - [x] 3. Checkpoint - Verify Phase 1 migration
   - Run `npm run build:dev` to check for TypeScript errors
-  - Test student messaging features in development
+  - Test learner messaging features in development
   - Verify query keys in React Query DevTools
   - Ensure all tests pass, ask the user if questions arise
 
@@ -142,8 +142,8 @@ This implementation plan migrates 46 files from hardcoded React Query keys to a 
     - Support optional ArchiveStatus parameter
     - _Requirements: 3.1, 3.2, 3.5, 3.6, 8.1, 8.2_
   
-  - [x] 4.5 Migrate src/entities/student/model/useConversationStudents.ts
-    - Replace hardcoded query keys with `queryKeys.educator.conversations.students()` calls
+  - [x] 4.5 Migrate src/entities/learner/model/useConversationStudents.ts
+    - Replace hardcoded query keys with `queryKeys.educator.conversations.learners()` calls
     - _Requirements: 3.1, 3.2, 3.5, 3.6, 8.1, 8.2_
   
   - [x] 4.6 Migrate src/pages/educator/Communication.tsx
@@ -183,7 +183,7 @@ This implementation plan migrates 46 files from hardcoded React Query keys to a 
   
   - [x] 6.4 Migrate src/features/messaging/model/useMessages.ts
     - Replace hardcoded query keys with appropriate domain factory calls
-    - Handle multiple user types (student, educator, recruiter, college)
+    - Handle multiple user types (learner, educator, recruiter, college)
     - _Requirements: 4.1, 4.3, 4.5, 4.6, 8.1, 8.2_
   
   - [x] 6.5 Migrate src/features/messaging/model/useUnreadMessagesCount.ts
@@ -214,11 +214,11 @@ This implementation plan migrates 46 files from hardcoded React Query keys to a 
     - Replace hardcoded query keys with `queryKeys.educator.*` calls
     - _Requirements: 5.1, 5.2, 5.4, 5.5, 8.1, 8.2_
   
-  - [x] 8.2 Migrate src/pages/admin/schoolAdmin/StudentCommunication.tsx
-    - Replace hardcoded query keys with `queryKeys.student.*` calls
+  - [x] 8.2 Migrate src/pages/admin/schoolAdmin/learnerCommunication.tsx
+    - Replace hardcoded query keys with `queryKeys.learner.*` calls
     - _Requirements: 5.1, 5.2, 5.4, 5.5, 8.1, 8.2_
   
-  - [x] 8.3 Migrate src/pages/admin/collegeAdmin/StudentCollegeAdminCommunication.tsx
+  - [x] 8.3 Migrate src/pages/admin/collegeAdmin/learnerCollegeAdminCommunication.tsx
     - Replace hardcoded query keys with factory calls
     - _Requirements: 5.1, 5.2, 5.4, 5.5, 8.1, 8.2_
   
@@ -320,7 +320,7 @@ This implementation plan migrates 46 files from hardcoded React Query keys to a 
     - _Requirements: 7.1, 7.2, 7.4, 7.5, 8.1, 8.2_
   
   - [x] 12.2 Migrate src/shared/hooks/useStudentRealtimeActivities.ts
-    - Replace hardcoded query keys with `queryKeys.student.activities.realtime()` calls
+    - Replace hardcoded query keys with `queryKeys.learner.activities.realtime()` calls
     - _Requirements: 7.1, 7.2, 7.4, 7.5, 8.1, 8.2_
   
   - [x] 12.3 Migrate src/shared/hooks/useSubscriptionQuery.js
@@ -334,7 +334,7 @@ This implementation plan migrates 46 files from hardcoded React Query keys to a 
   
   - [ ]* 12.5 Write integration tests for Phase 6 migrations
     - Test subscription and promotional event queries
-    - Test student realtime activities
+    - Test learner realtime activities
     - _Requirements: 7.4, 7.5, 8.1_
 
 - [x] 13. Checkpoint - Verify Phase 6 migration
@@ -368,8 +368,8 @@ This implementation plan migrates 46 files from hardcoded React Query keys to a 
     - _Requirements: 2.6, 3.6, 4.6, 5.5, 6.6, 7.5, 9.1, 9.2_
   
   - [x] 14.4 Test cache invalidation patterns
-    - Test domain-level invalidation (e.g., `queryKeys.student.all`)
-    - Test resource-level invalidation (e.g., `queryKeys.student.messages.all`)
+    - Test domain-level invalidation (e.g., `queryKeys.learner.all`)
+    - Test resource-level invalidation (e.g., `queryKeys.learner.messages.all`)
     - Test specific query invalidation
     - Verify hierarchical invalidation works correctly
     - _Requirements: 10.1, 10.2, 10.3, 10.4_

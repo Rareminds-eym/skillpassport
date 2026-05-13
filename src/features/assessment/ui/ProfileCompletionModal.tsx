@@ -2,7 +2,7 @@
  * Profile Completion Modal
  * 
  * Shows a modal with required profile fields for assessment completion.
- * Handles both school and college students with appropriate field validation.
+ * Handles both school and college learners with appropriate field validation.
  * Uses the same logic and data structure as the Settings page.
  */
 
@@ -12,10 +12,10 @@ import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/ui';
 import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
 // @ts-ignore - JS hook without types
-import { useStudentSettings } from '@/features/student-profile';
+import { useLearnerSettings } from '@/features/learner-profile';
 // @ts-ignore - JS hook without types
 import { useInstitutions } from '@/entities/institution/model/useInstitutions';
-import { isCollegeStudent as checkIsCollegeStudent, isSchoolStudent as checkIsSchoolStudent } from '@/entities/student/lib/studentType';
+import { isCollegeLearner as checkIsCollegeLearner, isSchoolLearner as checkIsSchoolLearner } from '@/entities/learner/lib/learnerType';
 
 const logger = getLogger('ProfileCompletionModal');
 
@@ -81,8 +81,8 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
     portfolio: "",
   });
 
-  // Student type selection state
-  const [studentType, setStudentType] = useState<'school' | 'college' | ''>('');
+  // Learner type selection state
+  const [learnerType, setlearnerType] = useState<'school' | 'college' | ''>('');
 
   // Custom institution states
   const [showCustomSchool, setShowCustomSchool] = useState(false);
@@ -95,7 +95,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
   const [customProgramName, setCustomProgramName] = useState('');
 
   // Hooks
-  const { updateProfile } = useStudentSettings(userEmail);
+  const { updateProfile } = useLearnerSettings(userEmail);
   const {
     schools,
     universities,
@@ -151,14 +151,14 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
         portfolio: initialProfileData.portfolio_link || initialProfileData.portfolio || "",
       });
 
-      // Detect student type based on user role from signup (priority)
-      // Role is stored in users table as 'college_student' or 'school_student'
+      // Detect learner type based on user role from signup (priority)
+      // Role is stored in users table as 'learner' or 'learner'
       // The role comes from the joined users table as an array with one object
       const userRole = initialProfileData.role || 
                        initialProfileData.users?.role || 
                        (Array.isArray(initialProfileData.users) && initialProfileData.users[0]?.role);
       
-      console.log('🔍 ProfileCompletionModal - Detecting student type:', {
+      console.log('🔍 ProfileCompletionModal - Detecting learner type:', {
         fullProfileData: initialProfileData,
         directRole: initialProfileData.role,
         nestedRole: initialProfileData.users?.role,
@@ -168,35 +168,35 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
         hasUniversityId: initialProfileData.university_college_id || initialProfileData.universityId
       });
 
-      if (userRole === 'school_student') {
-        logger.debug('Detected school_student from role');
-        setStudentType('school');
-      } else if (userRole === 'college_student') {
-        logger.debug('Detected college_student from role');
-        setStudentType('college');
+      if (userRole === 'learner') {
+        logger.debug('Detected learner from role');
+        setlearnerType('school');
+      } else if (userRole === 'learner') {
+        logger.debug('Detected learner from role');
+        setlearnerType('college');
       } else {
-        // Fallback: Detect student type based on existing data
+        // Fallback: Detect learner type based on existing data
         const hasSchoolId = initialProfileData.school_id || initialProfileData.schoolId;
         const hasUniversityId = initialProfileData.university_college_id || initialProfileData.universityId;
 
         logger.debug('No role found, using fallback detection', { hasSchoolId, hasUniversityId });
         if (hasSchoolId && !hasUniversityId) {
-          logger.debug('Detected school student from school_id');
-          setStudentType('school');
+          logger.debug('Detected school learner from school_id');
+          setlearnerType('school');
         } else if (hasUniversityId && !hasSchoolId) {
-          logger.debug('Detected college student from university_college_id');
-          setStudentType('college');
+          logger.debug('Detected college learner from university_college_id');
+          setlearnerType('college');
         } else {
-          logger.warn('Could not determine student type');
+          logger.warn('Could not determine learner type');
         }
       }
 
       // Detect custom entries and show custom input fields based on role
       // Use role to determine if college_school_name represents a school or college
-      // IMPORTANT: Only show custom school/college if it matches the student's role
+      // IMPORTANT: Only show custom school/college if it matches the learner's role
       if (initialProfileData.college_school_name) {
-        if (userRole === 'school_student' && !initialProfileData.school_id) {
-          // School student with custom school name (and no university data)
+        if (userRole === 'learner' && !initialProfileData.school_id) {
+          // School learner with custom school name (and no university data)
           const hasUniversityData = initialProfileData.university_college_id || 
                                    initialProfileData.universityId || 
                                    initialProfileData.university ||
@@ -207,8 +207,8 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
             setShowCustomSchool(true);
             setCustomSchoolName(initialProfileData.college_school_name);
           }
-        } else if (userRole === 'college_student' && !initialProfileData.university_college_id) {
-          // College student with custom college name (and no school data)
+        } else if (userRole === 'learner' && !initialProfileData.university_college_id) {
+          // College learner with custom college name (and no school data)
           const hasSchoolData = initialProfileData.school_id || 
                                initialProfileData.school_class_id;
           
@@ -233,9 +233,9 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
     }
   }, [initialProfileData, userEmail]);
 
-  // Handle student type change
-  const handleStudentTypeChange = (type: 'school' | 'college' | '') => {
-    setStudentType(type);
+  // Handle learner type change
+  const handlelearnerTypeChange = (type: 'school' | 'college' | '') => {
+    setlearnerType(type);
 
     // Clear opposite type data when switching
     if (type === 'school') {
@@ -263,15 +263,15 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
     }
   };
 
-  // Determine student type using centralized utility
-  const studentDataForTypeCheck = {
+  // Determine learner type using centralized utility
+  const learnerDataForTypeCheck = {
     university_college_id: profileData.universityCollegeId || profileData.universityId,
     school_id: profileData.schoolId,
-    role: studentType === 'college' ? 'college_student' : studentType === 'school' ? 'school_student' : undefined
+    role: learnerType === 'college' ? 'learner' : learnerType === 'school' ? 'learner' : undefined
   };
-  const isSchoolStudent = checkIsSchoolStudent(studentDataForTypeCheck);
-  const isCollegeStudent = checkIsCollegeStudent(studentDataForTypeCheck);
-  const isUndetermined = !studentType && !profileData.schoolId && !profileData.universityId && !profileData.universityCollegeId;
+  const isSchoolLearner = checkIsSchoolLearner(learnerDataForTypeCheck);
+  const isCollegeLearner = checkIsCollegeLearner(learnerDataForTypeCheck);
+  const isUndetermined = !learnerType && !profileData.schoolId && !profileData.universityId && !profileData.universityCollegeId;
 
   // Get filtered options based on selections
   const filteredColleges = universityColleges?.filter((college: any) =>
@@ -339,12 +339,12 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
   const validateForm = () => {
     const errors: string[] = [];
 
-    if (!studentType && isUndetermined) {
-      errors.push('Please select student type (School or College)');
+    if (!learnerType && isUndetermined) {
+      errors.push('Please select learner type (School or College)');
       return errors;
     }
 
-    if (studentType === 'school' || isSchoolStudent) {
+    if (learnerType === 'school' || isSchoolLearner) {
       if (!profileData.grade) {
         errors.push('Grade information is required');
       }
@@ -354,7 +354,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       }
     }
 
-    if (studentType === 'college' || isCollegeStudent) {
+    if (learnerType === 'college' || isCollegeLearner) {
       // Accept either universityId OR custom university name
       if (!profileData.universityId && !customUniversityName) {
         errors.push('University selection is required');
@@ -382,7 +382,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       const dataToSave = {};
       
       // Map custom entries to correct database columns
-      // Based on studentSettingsService.js field mapping:
+      // Based on learnerSettingsService.js field mapping:
       
       // Custom school name -> college_school_name (via 'college' field)
       if (customSchoolName) {
@@ -423,7 +423,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       toast.success("Your profile has been updated successfully!");
 
       // Dispatch event to notify other components
-      window.dispatchEvent(new CustomEvent('student_settings_updated', {
+      window.dispatchEvent(new CustomEvent('learner_settings_updated', {
         detail: { type: 'profile_updated', data: dataToSave }
       }));
 
@@ -477,35 +477,35 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
             </CardHeader>
 
             <CardContent className="space-y-6">
-              {/* Student Type Selection */}
+              {/* Learner Type Selection */}
               {isUndetermined && (
                 <div className="space-y-4">
                   <div className="bg-blue-50/70 rounded-xl p-4 border border-blue-200/50 backdrop-blur-sm">
                     <p className="text-sm font-semibold text-blue-800 mb-2">
-                      Student Type Not Determined
+                      Learner Type Not Determined
                     </p>
                     <p className="text-sm text-blue-700 mb-4">
-                      Please select whether you are a school student or college student.
+                      Please select whether you are a school learner or college learner.
                     </p>
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-gray-700">I am a *</label>
                     <select
-                      value={studentType}
-                      onChange={(e) => handleStudentTypeChange(e.target.value as 'school' | 'college' | '')}
+                      value={learnerType}
+                      onChange={(e) => handlelearnerTypeChange(e.target.value as 'school' | 'college' | '')}
                       className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
                     >
-                      <option value="">Select Student Type</option>
-                      <option value="school">School Student</option>
-                      <option value="college">College Student</option>
+                      <option value="">Select Learner Type</option>
+                      <option value="school">School Learner</option>
+                      <option value="college">College Learner</option>
                     </select>
                   </div>
                 </div>
               )}
 
-              {/* School Student Fields */}
-              {isSchoolStudent && (
+              {/* School Learner Fields */}
+              {isSchoolLearner && (
                 <div className="space-y-4">
                   <h3 className="font-semibold text-gray-800 border-b border-slate-100 pb-2">
                     School Information
@@ -587,8 +587,8 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
                 </div>
               )}
 
-              {/* College Student Fields */}
-              {isCollegeStudent && (
+              {/* College Learner Fields */}
+              {isCollegeLearner && (
                 <div className="space-y-4">
                   <h3 className="font-semibold text-gray-800 border-b border-slate-100 pb-2">
                     College Information
@@ -784,11 +784,11 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={studentType && !profileData.schoolId && !profileData.universityId ? () => handleStudentTypeChange('') : onClose}
+                  onClick={learnerType && !profileData.schoolId && !profileData.universityId ? () => handlelearnerTypeChange('') : onClose}
                   disabled={isSaving}
                   className="px-6 border-slate-200 hover:bg-slate-50 rounded-xl"
                 >
-                  {studentType && !profileData.schoolId && !profileData.universityId ? 'Back' : 'Cancel'}
+                  {learnerType && !profileData.schoolId && !profileData.universityId ? 'Back' : 'Cancel'}
                 </Button>
               </div>
             </CardContent>

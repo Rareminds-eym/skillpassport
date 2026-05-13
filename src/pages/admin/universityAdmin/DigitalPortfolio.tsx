@@ -89,33 +89,33 @@ const BadgeComponent = ({ badges }: { badges: string[] }) => {
 };
 
 // Portfolio Card Component
-const PortfolioCard = ({ student, onViewPortfolio }: any) => {
+const PortfolioCard = ({ learner, onViewPortfolio }: any) => {
   return (
     <div 
       className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-all duration-200 cursor-pointer group"
-      onClick={() => onViewPortfolio(student)}
+      onClick={() => onViewPortfolio(learner)}
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center space-x-3 flex-1 min-w-0">
           <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
             <span className="text-white font-semibold text-lg">
-              {student.name?.charAt(0)?.toUpperCase()}
+              {learner.name?.charAt(0)?.toUpperCase()}
             </span>
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
-              {student.name}
+              {learner.name}
             </h3>
-            <p className="text-sm text-gray-600 truncate">{student.dept}</p>
-            <p className="text-xs text-gray-500 truncate">{student.college}</p>
+            <p className="text-sm text-gray-600 truncate">{learner.dept}</p>
+            <p className="text-xs text-gray-500 truncate">{learner.college}</p>
           </div>
         </div>
         <div className="flex flex-col items-end space-y-1 ml-3">
           <div className="flex items-center bg-yellow-50 px-2 py-1 rounded-full">
             <StarIcon className="h-3.5 w-3.5 text-yellow-400 fill-current mr-1" />
-            <span className="text-xs font-medium text-yellow-700">{student.ai_score_overall || 'N/A'}</span>
+            <span className="text-xs font-medium text-yellow-700">{learner.ai_score_overall || 'N/A'}</span>
           </div>
-          <BadgeComponent badges={student.badges || []} />
+          <BadgeComponent badges={learner.badges || []} />
         </div>
       </div>
 
@@ -125,9 +125,9 @@ const PortfolioCard = ({ student, onViewPortfolio }: any) => {
           <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Portfolio Highlights</span>
         </div>
         <div className="space-y-2">
-          {student.skills && student.skills.length > 0 && (
+          {learner.skills && learner.skills.length > 0 && (
             <div className="flex flex-wrap gap-1">
-              {student.skills.slice(0, 4).map((skill: any, index: number) => (
+              {learner.skills.slice(0, 4).map((skill: any, index: number) => (
                 <span
                   key={index}
                   className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
@@ -135,22 +135,22 @@ const PortfolioCard = ({ student, onViewPortfolio }: any) => {
                   {typeof skill === 'string' ? skill : skill?.name}
                 </span>
               ))}
-              {student.skills.length > 4 && (
-                <span className="text-xs text-gray-500 self-center">+{student.skills.length - 4} more</span>
+              {learner.skills.length > 4 && (
+                <span className="text-xs text-gray-500 self-center">+{learner.skills.length - 4} more</span>
               )}
             </div>
           )}
           <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
-            {student.projects && student.projects.length > 0 && (
+            {learner.projects && learner.projects.length > 0 && (
               <div className="flex items-center space-x-1">
                 <span className="font-medium">📁 Projects:</span>
-                <span>{student.projects.length}</span>
+                <span>{learner.projects.length}</span>
               </div>
             )}
-            {student.internship && (
+            {learner.internship && (
               <div className="flex items-center space-x-1 col-span-2 truncate">
                 <span className="font-medium">💼 Internship:</span>
-                <span className="truncate">{student.internship.org}</span>
+                <span className="truncate">{learner.internship.org}</span>
               </div>
             )}
           </div>
@@ -159,12 +159,12 @@ const PortfolioCard = ({ student, onViewPortfolio }: any) => {
 
       <div className="flex items-center justify-between">
         <span className="text-xs text-gray-500">
-          Updated {student.last_updated ? new Date(student.last_updated).toLocaleDateString() : 'N/A'}
+          Updated {learner.last_updated ? new Date(learner.last_updated).toLocaleDateString() : 'N/A'}
         </span>
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onViewPortfolio(student);
+            onViewPortfolio(learner);
           }}
           className="inline-flex items-center px-3 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md hover:bg-indigo-100 transition-colors text-xs font-medium"
         >
@@ -180,7 +180,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
   const navigate = useNavigate();
   
   // State
-  const [students, setStudents] = useState<any[]>([]);
+  const [learners, setlearners] = useState<any[]>([]);
   const [colleges, setColleges] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -201,8 +201,8 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
     maxScore: 100
   });
 
-  // Fetch students for this university
-  const fetchStudents = async () => {
+  // Fetch learners for this university
+  const fetchlearners = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -238,7 +238,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
       }
 
       let query = supabase
-        .from('students')
+        .from('learners')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -253,10 +253,10 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
       const { data, error: fetchError } = await query;
 
       if (fetchError) throw fetchError;
-      setStudents(data || []);
+      setlearners(data || []);
     } catch (err: any) {
-      logger.error('Error fetching students:', err as Error);
-      setError(err?.message || 'Failed to load students');
+      logger.error('Error fetching learners:', err as Error);
+      setError(err?.message || 'Failed to load learners');
     } finally {
       setLoading(false);
     }
@@ -314,7 +314,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchStudents();
+    fetchlearners();
     fetchColleges();
   }, []);
 
@@ -325,9 +325,9 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
   // Generate filter options from data
   const skillOptions = useMemo(() => {
     const skillCounts: Record<string, number> = {};
-    students.forEach(student => {
-      if (student.skills && Array.isArray(student.skills)) {
-        student.skills.forEach((skill: any) => {
+    learners.forEach(learner => {
+      if (learner.skills && Array.isArray(learner.skills)) {
+        learner.skills.forEach((skill: any) => {
           const skillName = typeof skill === 'string' ? skill : skill?.name;
           if (skillName) {
             const normalized = skillName.toLowerCase();
@@ -344,13 +344,13 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 15);
-  }, [students]);
+  }, [learners]);
 
   const departmentOptions = useMemo(() => {
     const deptCounts: Record<string, number> = {};
-    students.forEach(student => {
-      if (student.dept) {
-        const normalized = student.dept.toLowerCase();
+    learners.forEach(learner => {
+      if (learner.dept) {
+        const normalized = learner.dept.toLowerCase();
         deptCounts[normalized] = (deptCounts[normalized] || 0) + 1;
       }
     });
@@ -361,13 +361,13 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
         count
       }))
       .sort((a, b) => b.count - a.count);
-  }, [students]);
+  }, [learners]);
 
   const badgeOptions = useMemo(() => {
     const badgeCounts: Record<string, number> = {};
-    students.forEach(student => {
-      if (student.badges && Array.isArray(student.badges)) {
-        student.badges.forEach((badge: string) => {
+    learners.forEach(learner => {
+      if (learner.badges && Array.isArray(learner.badges)) {
+        learner.badges.forEach((badge: string) => {
           badgeCounts[badge] = (badgeCounts[badge] || 0) + 1;
         });
       }
@@ -379,13 +379,13 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
         count
       }))
       .sort((a, b) => b.count - a.count);
-  }, [students]);
+  }, [learners]);
 
   const collegeOptions = useMemo(() => {
     const collegeCounts: Record<string, number> = {};
-    students.forEach(student => {
-      if (student.college) {
-        const normalized = student.college.toLowerCase();
+    learners.forEach(learner => {
+      if (learner.college) {
+        const normalized = learner.college.toLowerCase();
         collegeCounts[normalized] = (collegeCounts[normalized] || 0) + 1;
       }
     });
@@ -396,20 +396,20 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
         count
       }))
       .sort((a, b) => b.count - a.count);
-  }, [students]);
+  }, [learners]);
 
   // Apply filters and sorting
-  const filteredStudents = useMemo(() => {
-    let result = students;
+  const filteredlearners = useMemo(() => {
+    let result = learners;
 
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(student =>
-        student.name?.toLowerCase().includes(query) ||
-        student.dept?.toLowerCase().includes(query) ||
-        student.college?.toLowerCase().includes(query) ||
-        student.skills?.some((skill: any) => {
+      result = result.filter(learner =>
+        learner.name?.toLowerCase().includes(query) ||
+        learner.dept?.toLowerCase().includes(query) ||
+        learner.college?.toLowerCase().includes(query) ||
+        learner.skills?.some((skill: any) => {
           const skillName = typeof skill === 'string' ? skill : skill?.name;
           return skillName?.toLowerCase().includes(query);
         })
@@ -418,8 +418,8 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
 
     // Skills filter
     if (filters.skills.length > 0) {
-      result = result.filter(student =>
-        student.skills?.some((skill: any) => {
+      result = result.filter(learner =>
+        learner.skills?.some((skill: any) => {
           const skillName = typeof skill === 'string' ? skill : skill?.name;
           return skillName && filters.skills.includes(skillName.toLowerCase());
         })
@@ -428,28 +428,28 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
 
     // Department filter
     if (filters.departments.length > 0) {
-      result = result.filter(student =>
-        student.dept && filters.departments.includes(student.dept.toLowerCase())
+      result = result.filter(learner =>
+        learner.dept && filters.departments.includes(learner.dept.toLowerCase())
       );
     }
 
     // Badge filter
     if (filters.badges.length > 0) {
-      result = result.filter(student =>
-        student.badges?.some((badge: string) => filters.badges.includes(badge))
+      result = result.filter(learner =>
+        learner.badges?.some((badge: string) => filters.badges.includes(badge))
       );
     }
 
     // College filter
     if (filters.colleges.length > 0) {
-      result = result.filter(student =>
-        student.college && filters.colleges.includes(student.college.toLowerCase())
+      result = result.filter(learner =>
+        learner.college && filters.colleges.includes(learner.college.toLowerCase())
       );
     }
 
     // AI score filter
-    result = result.filter(student => {
-      const score = student.ai_score_overall || 0;
+    result = result.filter(learner => {
+      const score = learner.ai_score_overall || 0;
       return score >= filters.minScore && score <= filters.maxScore;
     });
 
@@ -472,16 +472,16 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
     }
 
     return sorted;
-  }, [students, searchQuery, filters, sortBy]);
+  }, [learners, searchQuery, filters, sortBy]);
 
   // Pagination
-  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredlearners.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedStudents = filteredStudents.slice(startIndex, endIndex);
+  const paginatedlearners = filteredlearners.slice(startIndex, endIndex);
 
-  const handleViewPortfolio = (student: any) => {
-    navigate('/digital-pp/homepage', { state: { candidate: student } });
+  const handleViewPortfolio = (learner: any) => {
+    navigate('/digital-pp/homepage', { state: { candidate: learner } });
   };
 
   const handleClearFilters = () => {
@@ -517,14 +517,14 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Digital Portfolios</h1>
             <p className="text-sm text-gray-600 mt-1">
-              Browse student portfolios across all affiliated colleges
+              Browse learner portfolios across all affiliated colleges
             </p>
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <BuildingOffice2Icon className="h-5 w-5" />
             <span>{colleges.length} Colleges</span>
             <span className="mx-2">•</span>
-            <span>{students.length} Students</span>
+            <span>{learners.length} Learners</span>
           </div>
         </div>
 
@@ -662,14 +662,14 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <p className="text-red-800">Error: {error}</p>
             </div>
-          ) : paginatedStudents.length === 0 ? (
+          ) : paginatedlearners.length === 0 ? (
             <div className="text-center py-12">
               <FolderIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No portfolios found</h3>
               <p className="text-sm text-gray-500 mb-4">
                 {searchQuery || activeFilterCount > 0
                   ? 'Try adjusting your search or filters'
-                  : 'No student portfolios available'}
+                  : 'No learner portfolios available'}
               </p>
               {activeFilterCount > 0 && (
                 <button
@@ -683,15 +683,15 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
           ) : (
             <>
               <div className="mb-4 text-sm text-gray-600">
-                Showing {startIndex + 1}-{Math.min(endIndex, filteredStudents.length)} of {filteredStudents.length} portfolios
+                Showing {startIndex + 1}-{Math.min(endIndex, filteredlearners.length)} of {filteredlearners.length} portfolios
               </div>
 
               {viewMode === 'grid' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {paginatedStudents.map((student) => (
+                  {paginatedlearners.map((learner) => (
                     <PortfolioCard
-                      key={student.id}
-                      student={student}
+                      key={learner.id}
+                      learner={learner}
                       onViewPortfolio={handleViewPortfolio}
                     />
                   ))}
@@ -701,7 +701,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Learner</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">College</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Skills</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">AI Score</th>
@@ -709,27 +709,27 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {paginatedStudents.map((student) => (
-                        <tr key={student.id} className="hover:bg-gray-50">
+                      {paginatedlearners.map((learner) => (
+                        <tr key={learner.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                                 <span className="text-white font-semibold text-sm">
-                                  {student.name?.charAt(0)?.toUpperCase()}
+                                  {learner.name?.charAt(0)?.toUpperCase()}
                                 </span>
                               </div>
                               <div className="ml-4">
-                                <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                                <div className="text-sm text-gray-500">{student.dept}</div>
+                                <div className="text-sm font-medium text-gray-900">{learner.name}</div>
+                                <div className="text-sm text-gray-500">{learner.dept}</div>
                               </div>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {student.college}
+                            {learner.college}
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex flex-wrap gap-1">
-                              {student.skills?.slice(0, 3).map((skill: any, index: number) => (
+                              {learner.skills?.slice(0, 3).map((skill: any, index: number) => (
                                 <span
                                   key={index}
                                   className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"
@@ -737,20 +737,20 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
                                   {typeof skill === 'string' ? skill : skill?.name}
                                 </span>
                               ))}
-                              {student.skills && student.skills.length > 3 && (
-                                <span className="text-xs text-gray-500">+{student.skills.length - 3}</span>
+                              {learner.skills && learner.skills.length > 3 && (
+                                <span className="text-xs text-gray-500">+{learner.skills.length - 3}</span>
                               )}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <StarIcon className="h-4 w-4 text-yellow-400 fill-current mr-1" />
-                              <span className="text-sm font-medium">{student.ai_score_overall || 'N/A'}</span>
+                              <span className="text-sm font-medium">{learner.ai_score_overall || 'N/A'}</span>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <button
-                              onClick={() => handleViewPortfolio(student)}
+                              onClick={() => handleViewPortfolio(learner)}
                               className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
                             >
                               View Portfolio

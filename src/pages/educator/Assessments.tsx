@@ -17,7 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
 import React, { useEffect, useMemo, useState } from 'react';
-import { AssignmentFileUpload, StudentSelectionModal } from '@/features/college-admin';
+import { AssignmentFileUpload, LearnerSelectionModal } from '@/features/college-admin';
 import { ConfirmationModal } from '@/shared/ui';
 import { NotificationModal } from '@/shared/ui';
 import { useAuth } from '@/features/auth';
@@ -31,7 +31,7 @@ const logger = getLogger('EducatorAssessments');
 import { authSessionService } from '@/features/auth';
 import { useUser, useIsAuthenticated } from '@/shared/model/authStore';
 import {
-    assignTaskToStudents,
+    assignTaskTolearners,
     createCollegeAssignment,
     deleteAssignment,
     fetchEducatorAssignments,
@@ -75,17 +75,17 @@ const ProgressBar = ({ current, total, color = 'emerald' }: { current: number; t
 };
 
 // Task Card Component
-const TaskCard = ({ task, onView, onEdit, onAssess, onDelete, onAssignStudents, assignedClasses }: {
+const TaskCard = ({ task, onView, onEdit, onAssess, onDelete, onAssignlearners, assignedClasses }: {
     task: Task;
     onView: (task: Task) => void;
     onEdit: (task: Task) => void;
     onAssess: (task: Task) => void;
     onDelete: (task: Task) => void;
-    onAssignStudents: (task: Task) => void;
+    onAssignlearners: (task: Task) => void;
     assignedClasses: Array<{ id: string; name: string }>;
 }) => {
     const [showActions, setShowActions] = useState(false);
-    const completionRate = task.totalStudents > 0 ? ((task.submissions / task.totalStudents) * 100).toFixed(0) : 0;
+    const completionRate = task.totallearners > 0 ? ((task.submissions / task.totallearners) * 100).toFixed(0) : 0;
     
     // Get class names from IDs
     const getClassNames = () => {
@@ -125,8 +125,8 @@ const TaskCard = ({ task, onView, onEdit, onAssess, onDelete, onAssignStudents, 
                             <button onClick={() => { onAssess(task); setShowActions(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
                                 <ClipboardDocumentListIcon className="h-4 w-4" /> Grade Submissions
                             </button>
-                            <button onClick={() => { onAssignStudents(task); setShowActions(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
-                                <UsersIcon className="h-4 w-4" /> Assign Students
+                            <button onClick={() => { onAssignlearners(task); setShowActions(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                                <UsersIcon className="h-4 w-4" /> Assign Learners
                             </button>
                             <button onClick={() => { onDelete(task); setShowActions(false); }} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
                                 <TrashIcon className="h-4 w-4" /> Delete
@@ -156,7 +156,7 @@ const TaskCard = ({ task, onView, onEdit, onAssess, onDelete, onAssignStudents, 
                     </div>
                 </div>
 
-                <ProgressBar current={task.submissions} total={task.totalStudents} />
+                <ProgressBar current={task.submissions} total={task.totallearners} />
             </div>
 
             <div className="flex items-center justify-between pt-3 border-t border-gray-100">
@@ -194,7 +194,7 @@ interface Task {
     submissions: number;
     pending: number;
     averageScore: number;
-    totalStudents: number;
+    totallearners: number;
     totalPoints: number;
     attachments: string[];
     rubric: any[];
@@ -217,7 +217,7 @@ const Assessments = () => {
     const [showGradingModal, setShowGradingModal] = useState(false);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [currentEducatorId, setCurrentEducatorId] = useState<string | null>(null);
-    const [showStudentSelectionModal, setShowStudentSelectionModal] = useState(false);
+    const [showlearnerSelectionModal, setShowlearnerSelectionModal] = useState(false);
     const [newlyCreatedAssignmentId, setNewlyCreatedAssignmentId] = useState<string | null>(null);
     const [selectedClassesForAssignment, setSelectedClassesForAssignment] = useState<string[]>([]);
     const [assignedClasses, setAssignedClasses] = useState<Array<{ id: string; name: string }>>([]);
@@ -381,7 +381,7 @@ const Assessments = () => {
                         submissions: stats.submitted + stats.graded,
                         pending: stats.submitted,
                         averageScore: stats.averageGrade,
-                        totalStudents: stats.total,
+                        totallearners: stats.total,
                         totalPoints: assignment.total_points,
                         attachments: assignment.assignment_attachments?.map((a: any) => a.file_name) || [],
                         rubric: []
@@ -616,7 +616,7 @@ const Assessments = () => {
                     submissions: stats.submitted + stats.graded,
                     pending: stats.submitted,
                     averageScore: stats.averageGrade,
-                    totalStudents: stats.total,
+                    totallearners: stats.total,
                     totalPoints: baseAssignmentData.total_points,
                     attachments: newTask.attachments,
                     rubric: []
@@ -637,7 +637,7 @@ const Assessments = () => {
                 
                 const createdAssignments = [createdAssignment];
 
-                // Then assign to students if needed
+                // Then assign to learners if needed
                 if (selectedFiles.length > 0 && fileUploadRef.current) {
                     for (const assignment of createdAssignments) {
                         try {
@@ -662,7 +662,7 @@ const Assessments = () => {
                     submissions: 0,
                     pending: 0,
                     averageScore: 0,
-                    totalStudents: 0,
+                    totallearners: 0,
                     totalPoints: assignment.total_points,
                     attachments: assignment.instruction_files?.map((f: any) => f.file_name) || [],
                     rubric: []
@@ -671,11 +671,11 @@ const Assessments = () => {
                 setTasks([...tasks, ...newUiTasks]);
                 setShowTaskModal(false);
 
-                // Open student selection modal for the first created assignment
+                // Open learner selection modal for the first created assignment
                 if (createdAssignments.length > 0) {
                     setNewlyCreatedAssignmentId(createdAssignments[0].assignment_id);
                     setSelectedClassesForAssignment([createdAssignments[0].school_class_id]);
-                    setShowStudentSelectionModal(true);
+                    setShowlearnerSelectionModal(true);
                 }
             }
         } catch (err) {
@@ -857,35 +857,35 @@ const Assessments = () => {
         setDrawerInstructionFiles([]);
     };
 
-    const handleStudentsAssigned = async (studentIds: string[]) => {
+    const handlelearnersAssigned = async (learnerIds: string[]) => {
         try {
-            if (newlyCreatedAssignmentId && studentIds.length > 0) {
-                await assignTaskToStudents(newlyCreatedAssignmentId, studentIds);
+            if (newlyCreatedAssignmentId && learnerIds.length > 0) {
+                await assignTaskTolearners(newlyCreatedAssignmentId, learnerIds);
 
                 // Refresh assignment statistics
                 const stats = await getAssignmentStatistics(newlyCreatedAssignmentId);
 
-                // Update the task in the list with new student count
+                // Update the task in the list with new learner count
                 setTasks(prev => prev.map(task =>
                     task.id === newlyCreatedAssignmentId
-                        ? { ...task, totalStudents: stats.total }
+                        ? { ...task, totallearners: stats.total }
                         : task
                 ));
 
             }
 
-            setShowStudentSelectionModal(false);
+            setShowlearnerSelectionModal(false);
             setNewlyCreatedAssignmentId(null);
             setSelectedClassesForAssignment([]);
             resetTaskForm();
         } catch (err) {
-            logger.error('Error assigning students', err);
-            showNotificationModal('error', 'Assignment Failed', 'Failed to assign students. Please try again.');
+            logger.error('Error assigning learners', err);
+            showNotificationModal('error', 'Assignment Failed', 'Failed to assign learners. Please try again.');
         }
     };
 
-    const handleStudentSelectionClose = () => {
-        setShowStudentSelectionModal(false);
+    const handlelearnerSelectionClose = () => {
+        setShowlearnerSelectionModal(false);
         setNewlyCreatedAssignmentId(null);
         setSelectedClassesForAssignment([]);
         resetTaskForm();
@@ -1063,7 +1063,7 @@ const Assessments = () => {
                 <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
                     <ClipboardDocumentListIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No tasks found</h3>
-                    <p className="text-gray-600 mb-4">Create your first skill task to start tracking student progress</p>
+                    <p className="text-gray-600 mb-4">Create your first skill task to start tracking learner progress</p>
                     <button
                         onClick={() => setShowTaskModal(true)}
                         className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
@@ -1097,9 +1097,9 @@ const Assessments = () => {
                                         .single();
 
                                     if (!error && assignment) {
-                                        // Get instruction files (educator files - no STUDENT: prefix)
+                                        // Get instruction files (educator files - no LEARNER: prefix)
                                         const instructionFiles = assignment.assignment_attachments?.filter(
-                                            (att: any) => !att.file_name.startsWith('STUDENT:')
+                                            (att: any) => !att.file_name.startsWith('LEARNER:')
                                         ) || [];
 
                                         // Populate form with full assignment data
@@ -1144,10 +1144,10 @@ const Assessments = () => {
                                 setSelectedTask(task);
                                 setShowGradingModal(true);
                             }}
-                            onAssignStudents={(task) => {
+                            onAssignlearners={(task) => {
                                 setNewlyCreatedAssignmentId(task.id);
                                 setSelectedClassesForAssignment(task.assignedTo);
-                                setShowStudentSelectionModal(true);
+                                setShowlearnerSelectionModal(true);
                             }}
                             onDelete={async (task) => {
                                 setTaskToDelete(task);
@@ -1211,7 +1211,7 @@ const Assessments = () => {
                                             onChange={(e) => setNewTask({ ...newTask, instructions: e.target.value })}
                                             rows={3}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                            placeholder="Detailed instructions for students..."
+                                            placeholder="Detailed instructions for learners..."
                                         />
                                     </div>
                                 </div>
@@ -1524,8 +1524,8 @@ const Assessments = () => {
                                         <p className="text-sm font-semibold text-gray-900">{new Date(selectedTask.deadline).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
                                     </div>
                                     <div className="p-4 bg-gray-50 rounded-lg">
-                                        <p className="text-xs text-gray-600 mb-1">Total Students</p>
-                                        <p className="text-sm font-semibold text-gray-900">{selectedTask.totalStudents}</p>
+                                        <p className="text-xs text-gray-600 mb-1">Total Learners</p>
+                                        <p className="text-sm font-semibold text-gray-900">{selectedTask.totallearners}</p>
                                     </div>
                                 </div>
 
@@ -1535,12 +1535,12 @@ const Assessments = () => {
                                         <div>
                                             <div className="flex justify-between text-sm mb-2">
                                                 <span className="text-gray-600">Submissions</span>
-                                                <span className="font-semibold text-gray-900">{selectedTask.submissions}/{selectedTask.totalStudents}</span>
+                                                <span className="font-semibold text-gray-900">{selectedTask.submissions}/{selectedTask.totallearners}</span>
                                             </div>
                                             <div className="w-full bg-gray-200 rounded-full h-3">
                                                 <div
                                                     className="bg-emerald-500 h-3 rounded-full"
-                                                    style={{ width: `${(selectedTask.submissions / selectedTask.totalStudents) * 100}%` }}
+                                                    style={{ width: `${(selectedTask.submissions / selectedTask.totallearners) * 100}%` }}
                                                 />
                                             </div>
                                         </div>
@@ -1647,12 +1647,12 @@ const Assessments = () => {
                 </div>
             )}
 
-            {/* Student Selection Modal */}
-            {showStudentSelectionModal && newlyCreatedAssignmentId && (
-                <StudentSelectionModal
-                    isOpen={showStudentSelectionModal}
-                    onClose={handleStudentSelectionClose}
-                    onAssign={handleStudentsAssigned}
+            {/* Learner Selection Modal */}
+            {showlearnerSelectionModal && newlyCreatedAssignmentId && (
+                <LearnerSelectionModal
+                    isOpen={showlearnerSelectionModal}
+                    onClose={handlelearnerSelectionClose}
+                    onAssign={handlelearnersAssigned}
                     assignmentId={newlyCreatedAssignmentId}
                     schoolId={educatorSchool?.id}
                     classIds={selectedClassesForAssignment}

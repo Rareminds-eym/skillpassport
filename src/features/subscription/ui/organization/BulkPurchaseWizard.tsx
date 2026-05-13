@@ -26,7 +26,7 @@ import {
     X,
 } from 'lucide-react';
 import { memo, useCallback, useMemo, useState } from 'react';
-import { AddStudentModal } from '@/features/educator';
+import { AddLearnerModal } from '@/features/educator';
 import MemberTypeSelector, { MemberType } from './MemberTypeSelector';
 import PricingBreakdown, { PricingBreakdownData } from './PricingBreakdown';
 import SeatSelector from './SeatSelector';
@@ -45,7 +45,7 @@ interface Member {
   id: string;
   name: string;
   email: string;
-  type: 'educator' | 'student';
+  type: 'educator' | 'learner';
   department?: string;
   grade?: string;
 }
@@ -141,7 +141,7 @@ function BulkPurchaseWizard({
   const [currentStep, setCurrentStep] = useState(1);
   const [state, setState] = useState<WizardState>(initialState);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [showAddlearnerModal, setShowAddlearnerModal] = useState(false);
 
   // Filter members by type
   const filteredMembers = useMemo(() => {
@@ -367,7 +367,7 @@ function BulkPurchaseWizard({
               onClearSelection={handleClearSelection}
               onPoolNameChange={(name) => setState((prev) => ({ ...prev, poolName: name }))}
               onAutoAssignChange={(auto) => setState((prev) => ({ ...prev, autoAssignNewMembers: auto }))}
-              onAddStudent={() => setShowAddStudentModal(true)}
+              onAddLearner={() => setShowAddlearnerModal(true)}
             />
           )}
 
@@ -427,12 +427,12 @@ function BulkPurchaseWizard({
         </div>
       </div>
 
-      {/* Add Student Modal */}
-      <AddStudentModal
-        isOpen={showAddStudentModal}
-        onClose={() => setShowAddStudentModal(false)}
+      {/* Add Learner Modal */}
+      <AddLearnerModal
+        isOpen={showAddlearnerModal}
+        onClose={() => setShowAddlearnerModal(false)}
         onSuccess={() => {
-          setShowAddStudentModal(false);
+          setShowAddlearnerModal(false);
           onMemberAdded?.();
         }}
       />
@@ -547,12 +547,15 @@ function Step1PlanSelection({
                 <p className="text-sm text-gray-500 mb-3">{plan.description}</p>
               )}
               <ul className="space-y-1">
-                {plan.features.slice(0, 3).map((feature, idx) => (
-                  <li key={idx} className="flex items-center gap-2 text-sm text-gray-600">
-                    <Check className="w-3.5 h-3.5 text-green-500" />
-                    {feature}
-                  </li>
-                ))}
+                {plan.features.slice(0, 3).map((feature, idx) => {
+                  const featureName = typeof feature === 'string' ? feature : (feature?.name || feature?.feature_key || '');
+                  return (
+                    <li key={idx} className="flex items-center gap-2 text-sm text-gray-600">
+                      <Check className="w-3.5 h-3.5 text-green-500" />
+                      {featureName}
+                    </li>
+                  );
+                })}
               </ul>
             </button>
           );
@@ -669,7 +672,7 @@ interface Step3Props {
   onClearSelection: () => void;
   onPoolNameChange: (name: string) => void;
   onAutoAssignChange: (auto: boolean) => void;
-  onAddStudent: () => void;
+  onAddLearner: () => void;
 }
 
 function Step3MemberSelection({
@@ -686,7 +689,7 @@ function Step3MemberSelection({
   onClearSelection,
   onPoolNameChange,
   onAutoAssignChange,
-  onAddStudent,
+  onAddLearner,
 }: Step3Props) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -712,11 +715,11 @@ function Step3MemberSelection({
           </p>
         </div>
         <button
-          onClick={onAddStudent}
+          onClick={onAddLearner}
           className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
         >
           <UserPlus className="w-4 h-4" />
-          Add Student
+          Add Learner
         </button>
       </div>
 
@@ -792,7 +795,7 @@ function Step3MemberSelection({
                 </p>
                 <p className="text-sm text-gray-500">
                   {members.length === 0
-                    ? 'Add students or educators to your organization first'
+                    ? 'Add learners or educators to your organization first'
                     : members.length > seatCount
                     ? `${members.length - seatCount} members won't receive licenses (not enough seats)`
                     : 'All current members will receive licenses'}
@@ -856,15 +859,15 @@ function Step3MemberSelection({
                 <p className="mb-2">No members found</p>
                 <p className="text-xs text-gray-400 mb-3">
                   {members.length === 0 
-                    ? 'Add students or educators to your organization first'
+                    ? 'Add learners or educators to your organization first'
                     : 'Try a different search term'}
                 </p>
                 <button
-                  onClick={onAddStudent}
+                  onClick={onAddLearner}
                   className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                 >
                   <UserPlus className="w-4 h-4" />
-                  Add Student
+                  Add Learner
                 </button>
               </div>
             ) : (

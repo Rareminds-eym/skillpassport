@@ -548,7 +548,7 @@ const SyllabusApproval: React.FC = () => {
         // Show additional success message for approvals
         if (reviewAction === 'approve') {
           setTimeout(() => {
-            toast.success('Curriculum is now published and accessible to students', {
+            toast.success('Curriculum is now published and accessible to learners', {
               duration: 4000,
               icon: '🎓'
             });
@@ -632,7 +632,7 @@ const SyllabusApproval: React.FC = () => {
         // Show additional success message for approvals
         if (changeReviewAction === 'approve') {
           setTimeout(() => {
-            toast.success('Changes are now visible to college admins and students', {
+            toast.success('Changes are now visible to college admins and learners', {
               duration: 4000,
               icon: '✅'
             });
@@ -1711,7 +1711,7 @@ const SyllabusApproval: React.FC = () => {
                         <ul className="space-y-1 text-xs">
                           <li>• The curriculum will be automatically published</li>
                           <li>• The college will be notified of the approval</li>
-                          <li>• Students and faculty will have access to the curriculum</li>
+                          <li>• Learners and faculty will have access to the curriculum</li>
                         </ul>
                       </div>
                     </div>
@@ -2055,7 +2055,7 @@ const SyllabusApproval: React.FC = () => {
                           </li>
                           <li className="flex items-center gap-2">
                             <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
-                            The change will be visible to students and faculty
+                            The change will be visible to learners and faculty
                           </li>
                         </ul>
                       </div>

@@ -7,7 +7,7 @@ export type QueryKey = readonly [string, ...any[]];
  * User type discriminator for messaging queries
  */
 export type UserType =
-    | 'student'
+    | 'learner'
     | 'recruiter'
     | 'educator'
     | 'admin'
@@ -19,11 +19,11 @@ export type UserType =
  * Conversation type discriminator
  */
 export type ConversationType =
-    | 'student_recruiter'
-    | 'student_educator'
-    | 'student_admin'
-    | 'student_college_admin'
-    | 'student_college_educator'
+    | 'learner_recruiter'
+    | 'learner_educator'
+    | 'learner_admin'
+    | 'learner_college_admin'
+    | 'learner_college_educator'
     | 'educator_admin'
     | 'college_educator_admin';
 

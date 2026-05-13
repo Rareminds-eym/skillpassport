@@ -16,17 +16,17 @@ interface Props {
 }
 
 const CSVImportPreview: React.FC<Props> = ({ validatedRows, summary, onConfirm, onCancel, loading }) => {
-  const validStudents = validatedRows.filter(r => r.isValid)
-  const invalidStudents = validatedRows.filter(r => !r.isValid)
+  const validlearners = validatedRows.filter(r => r.isValid)
+  const invalidlearners = validatedRows.filter(r => !r.isValid)
   
   const downloadErrorCSV = () => {
-    if (invalidStudents.length === 0) return
+    if (invalidlearners.length === 0) return
     
     // Create CSV with errors
-    const headers = ['Row', 'Student Name', 'Email', 'Errors']
-    const rows = invalidStudents.map(row => [
+    const headers = ['Row', 'Learner Name', 'Email', 'Errors']
+    const rows = invalidlearners.map(row => [
       row.rowNumber,
-      row.data.student_name || '',
+      row.data.learner_name || '',
       row.data.email || '',
       row.errors.map(e => `${e.field}: ${e.message}`).join('; ')
     ])
@@ -82,13 +82,13 @@ const CSVImportPreview: React.FC<Props> = ({ validatedRows, summary, onConfirm, 
         </div>
       )}
       
-      {/* Valid Students Section */}
-      {validStudents.length > 0 && (
+      {/* Valid Learners Section */}
+      {validlearners.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-base font-semibold text-gray-900 flex items-center">
               <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2" />
-              Valid Students ({validStudents.length})
+              Valid Learners ({validlearners.length})
             </h4>
           </div>
           
@@ -98,7 +98,7 @@ const CSVImportPreview: React.FC<Props> = ({ validatedRows, summary, onConfirm, 
                 <thead className="bg-gray-50 sticky top-0">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Row</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Learner Name</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Grade & Section</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Guardian</th>
@@ -106,10 +106,10 @@ const CSVImportPreview: React.FC<Props> = ({ validatedRows, summary, onConfirm, 
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {validStudents.map((row) => (
+                  {validlearners.map((row) => (
                     <tr key={row.rowNumber} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm text-gray-500">{row.rowNumber}</td>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{row.data.student_name}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{row.data.learner_name}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{row.data.email}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {row.data.grade} {row.data.section}
@@ -135,13 +135,13 @@ const CSVImportPreview: React.FC<Props> = ({ validatedRows, summary, onConfirm, 
         </div>
       )}
       
-      {/* Invalid Students Section */}
-      {invalidStudents.length > 0 && (
+      {/* Invalid Learners Section */}
+      {invalidlearners.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-base font-semibold text-gray-900 flex items-center">
               <XCircleIcon className="h-5 w-5 text-red-500 mr-2" />
-              Invalid Students ({invalidStudents.length})
+              Invalid Learners ({invalidlearners.length})
             </h4>
             <button
               onClick={downloadErrorCSV}
@@ -158,18 +158,18 @@ const CSVImportPreview: React.FC<Props> = ({ validatedRows, summary, onConfirm, 
                 <thead className="bg-red-50 sticky top-0">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Row</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Learner Name</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Grade & Section</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Errors</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {invalidStudents.map((row) => (
+                  {invalidlearners.map((row) => (
                     <tr key={row.rowNumber} className="hover:bg-red-50">
                       <td className="px-4 py-3 text-sm text-gray-500">{row.rowNumber}</td>
                       <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                        {row.data.student_name || <span className="text-gray-400 italic">Missing</span>}
+                        {row.data.learner_name || <span className="text-gray-400 italic">Missing</span>}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {row.data.email || <span className="text-gray-400 italic">Missing</span>}
@@ -211,12 +211,12 @@ const CSVImportPreview: React.FC<Props> = ({ validatedRows, summary, onConfirm, 
       {/* Action Buttons */}
       <div className="flex items-center justify-between pt-4 border-t border-gray-200">
         <div className="text-sm text-gray-600">
-          {validStudents.length > 0 ? (
+          {validlearners.length > 0 ? (
             <span>
-              <span className="font-medium text-gray-900">{validStudents.length}</span> student(s) ready to import
+              <span className="font-medium text-gray-900">{validlearners.length}</span> learner(s) ready to import
             </span>
           ) : (
-            <span className="text-red-600 font-medium">No valid students to import</span>
+            <span className="text-red-600 font-medium">No valid learners to import</span>
           )}
         </div>
         
@@ -229,7 +229,7 @@ const CSVImportPreview: React.FC<Props> = ({ validatedRows, summary, onConfirm, 
             Cancel
           </button>
           
-          {validStudents.length > 0 && (
+          {validlearners.length > 0 && (
             <button
               onClick={onConfirm}
               disabled={loading}
@@ -246,7 +246,7 @@ const CSVImportPreview: React.FC<Props> = ({ validatedRows, summary, onConfirm, 
               ) : (
                 <>
                   <CheckCircleIcon className="h-4 w-4 mr-1" />
-                  Confirm Import ({validStudents.length})
+                  Confirm Import ({validlearners.length})
                 </>
               )}
             </button>

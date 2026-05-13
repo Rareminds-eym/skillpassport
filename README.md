@@ -8,7 +8,7 @@
 
 ## Overview
 
-Skill Ecosystem is an integrated platform that connects students, educators, and employers through intelligent technology. We provide end-to-end solutions for academic management, personalized career guidance, and streamlined recruitment.
+Skill Ecosystem is an integrated platform that connects learners, educators, and employers through intelligent technology. We provide end-to-end solutions for academic management, personalized career guidance, and streamlined recruitment.
 
 ### Key Features
 
@@ -21,7 +21,7 @@ Skill Ecosystem is an integrated platform that connects students, educators, and
 
 ## Quick Start
 
-### For Students
+### For learners
 
 1. **Sign Up** at [skillpassport.rareminds.in](https://skillpassport.rareminds.in)
 2. **Complete Profile** - Add your academic details and interests
@@ -32,7 +32,7 @@ Skill Ecosystem is an integrated platform that connects students, educators, and
 ### For Educators
 
 1. **Get Invited** by your institution admin
-2. **Set Up Classes** - Import or add students
+2. **Set Up Classes** - Import or add learners
 3. **Plan Lessons** - Use curriculum builder and resources
 4. **Track Progress** - Monitor attendance, grades, and engagement
 5. **Generate Reports** - Export analytics and insights
@@ -71,6 +71,20 @@ Skill Ecosystem is an integrated platform that connects students, educators, and
 - Cloudflare (CDN & Workers)
 - Razorpay (Payments)
 
+## Developer Setup
+
+To work with internal packages (such as those under the `@rareminds-eym` scope) and run the project locally, you must configure your NPM registry. 
+
+Ensure your `.npmrc` file at the root of the project contains the following configuration:
+
+```ini
+legacy-peer-deps=true
+@rareminds-eym:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${NPM_TOKEN}
+```
+
+**Note**: You need to export the `NPM_TOKEN` environment variable in your shell using a GitHub Personal Access Token (PAT) that has `read:packages` permissions before running `npm install`.
+
 ## Documentation
 
 - 📖 [Master Truth Page](./ai-master-truth.md) - Complete product overview
@@ -93,8 +107,8 @@ const client = new SkillPassport.Client({
   apiSecret: 'your_api_secret'
 });
 
-// Get student profile
-const student = await client.students.get('student_id');
+// Get learner profile
+const learner = await client.learners.get('learner_id');
 
 // Search opportunities
 const jobs = await client.opportunities.search({
@@ -105,7 +119,7 @@ const jobs = await client.opportunities.search({
 
 // Apply to opportunity
 await client.applications.create({
-  student_id: 'student_id',
+  learner_id: 'learner_id',
   opportunity_id: 'job_id',
   cover_letter: 'I am excited to apply...'
 });
@@ -122,8 +136,8 @@ const courses = await yourLMS.getCourses();
 await client.courses.bulkCreate(courses);
 
 // Listen for enrollments
-client.webhooks.on('student.enrolled', async (event) => {
-  await yourLMS.enrollStudent(event.data.student_id, event.data.course_id);
+client.webhooks.on('learner.enrolled', async (event) => {
+  await yourLMS.enrollStudent(event.data.learner_id, event.data.course_id);
 });
 ```
 
@@ -148,8 +162,8 @@ See [Integration Guide](./docs/INTEGRATION_GUIDE.md) for more examples.
 
 | Plan | Price | Features |
 |------|-------|----------|
-| **Basic** | ₹50/student/year | Core academic management |
-| **Professional** | ₹100/student/year | + Career services + Analytics |
+| **Basic** | ₹50/learner/year | Core academic management |
+| **Professional** | ₹100/learner/year | + Career services + Analytics |
 | **Enterprise** | Custom | + API access + Dedicated support |
 
 **Free Trial:** 30 days, no credit card required

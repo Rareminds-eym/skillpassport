@@ -121,7 +121,7 @@ export const detectAptitudePatterns = (aptitudeAnswers, sectionTimings = {}) => 
   // Process each category
   ['verbal', 'numerical', 'abstract', 'spatial', 'clerical'].forEach(category => {
     const answers = aptitudeAnswers[category] || [];
-    categoryAnswers[category] = answers.map(a => a.studentAnswer || a.answer || a);
+    categoryAnswers[category] = answers.map(a => a.learnerAnswer || a.answer || a);
     allAnswers.push(...categoryAnswers[category]);
   });
 
@@ -138,7 +138,7 @@ export const detectAptitudePatterns = (aptitudeAnswers, sectionTimings = {}) => 
     });
     results.warnings.push(
       'Aptitude responses appear invalid - all answers are the same. ' +
-      'This suggests the student clicked through without engaging with the questions.'
+      'This suggests the learner clicked through without engaging with the questions.'
     );
   }
 
@@ -304,7 +304,7 @@ export const validateAssessmentResults = (results, rawAnswers = {}, sectionTimin
     };
   }
 
-  // 3. Validate stream recommendation for after10 students
+  // 3. Validate stream recommendation for after10 learners
   if (results.streamRecommendation?.isAfter10) {
     const streamRec = results.streamRecommendation;
     

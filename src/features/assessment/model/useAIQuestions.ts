@@ -43,10 +43,10 @@ interface ProgressState {
 
 interface UseAIQuestionsOptions {
   gradeLevel: GradeLevel | null;
-  studentStream: string | null;
-  studentId: string | null;
+  learnerStream: string | null;
+  learnerId: string | null;
   attemptId: string | null;
-  studentProgram: string | null;
+  learnerProgram: string | null;
 }
 
 interface UseAIQuestionsResult {
@@ -81,10 +81,10 @@ const normalizeAIQuestion = (q: any): AIQuestion => {
  */
 export const useAIQuestions = ({
   gradeLevel,
-  studentStream,
-  studentId,
+  learnerStream,
+  learnerId,
   attemptId,
-  studentProgram
+  learnerProgram
 }: UseAIQuestionsOptions): UseAIQuestionsResult => {
   const [aiQuestions, setAiQuestions] = useState<AIQuestionsState>({
     aptitude: null,
@@ -131,11 +131,11 @@ export const useAIQuestions = ({
     const usesAI = gradeLevel && ['higher_secondary', 'after10', 'after12', 'college'].includes(gradeLevel);
 
     // For after10, we use 'general' stream if no specific stream is set
-    const effectiveStream = studentStream || (gradeLevel === 'after10' ? 'general' : null);
+    const effectiveStream = learnerStream || (gradeLevel === 'after10' ? 'general' : null);
 
     console.log('🔍 useAIQuestions.loadQuestions called:', {
       gradeLevel,
-      studentStream,
+      learnerStream,
       effectiveStream,
       usesAI,
       willLoad: usesAI && !!effectiveStream
@@ -146,7 +146,7 @@ export const useAIQuestions = ({
         usesAI,
         effectiveStream,
         gradeLevel,
-        studentStream,
+        learnerStream,
         reason: !usesAI ? 'Grade level does not use AI' : 'No stream selected yet'
       });
       return;
@@ -164,7 +164,7 @@ export const useAIQuestions = ({
     const TOTAL_TIME = TYPICAL_APTITUDE_TIME + TYPICAL_KNOWLEDGE_TIME;
 
     try {
-      console.log(`🤖 Loading AI questions for ${gradeLevel} student, stream:`, effectiveStream);
+      console.log(`🤖 Loading AI questions for ${gradeLevel} learner, stream:`, effectiveStream);
 
       // Stage 1: Loading aptitude questions
       setProgress({
@@ -194,9 +194,9 @@ export const useAIQuestions = ({
       const questions = await loadCareerAssessmentQuestions(
         effectiveStream,
         gradeLevel,
-        studentId || null,
+        learnerId || null,
         attemptId || null,
-        studentProgram || null
+        learnerProgram || null
       );
 
       // Clear aptitude progress interval
@@ -288,7 +288,7 @@ export const useAIQuestions = ({
       setLoading(false);
       isLoadingRef.current = false;
     }
-  }, [gradeLevel, studentStream, studentId, attemptId, studentProgram]);
+  }, [gradeLevel, learnerStream, learnerId, attemptId, learnerProgram]);
 
   useEffect(() => {
     loadQuestions();

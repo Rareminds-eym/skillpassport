@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api';
 
 export interface Circular {
@@ -50,7 +51,7 @@ class CircularService {
    * Create a new circular
    */
   async createCircular(data: CreateCircularData): Promise<Circular> {
-    const { data: user } = await supabase.auth.getUser();
+    const { data: user } = await getCurrentUser();
     if (!user.user) throw new Error('Not authenticated');
 
     const { data: circular, error } = await supabase
@@ -179,7 +180,7 @@ class CircularService {
    * Get circulars for current user
    */
   async getMyCirculars(): Promise<Circular[]> {
-    const { data: user } = await supabase.auth.getUser();
+    const { data: user } = await getCurrentUser();
     if (!user.user) throw new Error('Not authenticated');
 
     const { data, error } = await supabase
@@ -200,7 +201,7 @@ class CircularService {
    * Get unread circulars count
    */
   async getUnreadCount(): Promise<number> {
-    const { data: user } = await supabase.auth.getUser();
+    const { data: user } = await getCurrentUser();
     if (!user.user) throw new Error('Not authenticated');
 
     const { count, error } = await supabase
@@ -217,7 +218,7 @@ class CircularService {
    * Mark circular as read
    */
   async markAsRead(circularId: string): Promise<void> {
-    const { data: user } = await supabase.auth.getUser();
+    const { data: user } = await getCurrentUser();
     if (!user.user) throw new Error('Not authenticated');
 
     const { error } = await supabase.rpc('mark_circular_read', {

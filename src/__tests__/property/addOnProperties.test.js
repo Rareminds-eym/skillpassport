@@ -362,11 +362,11 @@ describe('Property-Based Tests: Add-On Subscription System', () => {
     it('should ensure role-specific add-ons match allowed roles', () => {
       fc.assert(
         fc.property(
-          fc.constantFrom('student', 'educator', 'admin', 'recruiter'),
+          fc.constantFrom('learner', 'educator', 'admin', 'recruiter'),
           fc.constantFrom('career_ai', 'educator_ai', 'recruiter_ai', 'kpi_dashboard'),
           (userRole, featureKey) => {
             const roleFeatureMapping = {
-              career_ai: ['student'],
+              career_ai: ['learner'],
               educator_ai: ['educator'],
               recruiter_ai: ['recruiter'],
               kpi_dashboard: ['admin', 'educator']

@@ -8,7 +8,7 @@ import type { MarkEntry, GradingScale, ApiResponse, BulkImportResult } from '@/s
 
 export const markEntryService = {
   /**
-   * Enter marks for students
+   * Enter marks for learners
    * Property 20: Marks range validation
    */
   async enterMarks(entries: Partial<MarkEntry>[]): Promise<ApiResponse<MarkEntry[]>> {
@@ -26,7 +26,7 @@ export const markEntryService = {
 
         if (assessmentError) {
           errors.push({
-            student_id: entry.student_id,
+            learner_id: entry.learner_id,
             message: 'Assessment not found',
           });
           continue;
@@ -36,7 +36,7 @@ export const markEntryService = {
         if (entry.marks_obtained !== undefined && 
             (entry.marks_obtained < 0 || entry.marks_obtained > assessment.total_marks)) {
           errors.push({
-            student_id: entry.student_id,
+            learner_id: entry.learner_id,
             message: `Marks must be between 0 and ${assessment.total_marks}`,
           });
           continue;
@@ -88,7 +88,7 @@ export const markEntryService = {
 
       const entries = csvData.map((row, index) => ({
         assessment_id: assessmentId,
-        student_id: row.student_id,
+        learner_id: row.learner_id,
         marks_obtained: parseFloat(row.marks_obtained),
         is_absent: row.is_absent === 'true' || row.is_absent === true,
         is_exempt: row.is_exempt === 'true' || row.is_exempt === true,
@@ -300,15 +300,15 @@ export const markEntryService = {
   },
 
   /**
-   * Update SGPA and CGPA for student
+   * Update SGPA and CGPA for learner
    */
-  async updateSGPACGPA(studentId: string): Promise<ApiResponse<void>> {
+  async updateSGPACGPA(learnerId: string): Promise<ApiResponse<void>> {
     try {
-      // Get all completed assessments for student
+      // Get all completed assessments for learner
       const { data: entries, error } = await supabase
         .from('mark_entries')
         .select('grade, assessment_id')
-        .eq('student_id', studentId)
+        .eq('learner_id', learnerId)
         .not('grade', 'is', null);
 
       if (error) throw error;
@@ -325,11 +325,11 @@ export const markEntryService = {
 
       const cgpa = entries && entries.length > 0 ? totalPoints / entries.length : 0;
 
-      // Update student admission record
+      // Update learner admission record
       const { error: updateError } = await supabase
-        .from('student_admissions')
+        .from('learner_admissions')
         .update({ cgpa: cgpa.toFixed(2) })
-        .eq('user_id', studentId);
+        .eq('user_id', learnerId);
 
       if (updateError) throw updateError;
 
@@ -350,14 +350,14 @@ export const markEntryService = {
    */
   async getMarkEntries(filters: {
     assessment_id?: string;
-    student_id?: string;
+    learner_id?: string;
     is_locked?: boolean;
   }): Promise<ApiResponse<MarkEntry[]>> {
     try {
       let query = supabase.from('mark_entries').select('*');
 
       if (filters.assessment_id) query = query.eq('assessment_id', filters.assessment_id);
-      if (filters.student_id) query = query.eq('student_id', filters.student_id);
+      if (filters.learner_id) query = query.eq('learner_id', filters.learner_id);
       if (filters.is_locked !== undefined) query = query.eq('is_locked', filters.is_locked);
 
       const { data, error } = await query;

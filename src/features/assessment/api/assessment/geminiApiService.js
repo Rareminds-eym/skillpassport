@@ -7,6 +7,7 @@
 
 import { prepareAssessmentData, validateResults } from './assessmentDataPrep.js';
 import { addCourseRecommendations } from './courseIntegration.js';
+import { getCurrentSession } from '@/shared/api/authUtils';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('gemini-api-service');
@@ -42,8 +43,8 @@ export const callOpenRouterAssessment = async (assessmentData) => {
   logger.info('[FRONTEND] Assessment data:', {
     gradeLevel: assessmentData.gradeLevel,
     stream: assessmentData.stream,
-    hasStudentContext: !!assessmentData.studentContext,
-    studentContext: assessmentData.studentContext,
+    haslearnerContext: !!assessmentData.learnerContext,
+    learnerContext: assessmentData.learnerContext,
     hasAdaptiveResults: !!assessmentData.adaptiveAptitudeResults,
     riasecAnswersCount: Object.keys(assessmentData.riasecAnswers || {}).length,
     aptitudeScores: assessmentData.aptitudeScores
@@ -52,9 +53,9 @@ export const callOpenRouterAssessment = async (assessmentData) => {
   const { getApiUrl } = await import('@/shared/api/apiUtils');
   const API_URL = getApiUrl('analyze-assessment');
 
-  // Get auth token
+  // Get auth token (via SSO, not Supabase auth which is disabled)
   updateProgress('sending', 'Authenticating...');
-  const { data: { session } } = await import('@/shared/api/supabaseClient').then(m => m.supabase.auth.getSession());
+  const { data: { session } } = await getCurrentSession();
   const token = session?.access_token;
 
   if (!token) {
@@ -65,7 +66,7 @@ export const callOpenRouterAssessment = async (assessmentData) => {
 
   logger.info('[FRONTEND] 🤖 Sending assessment data to backend for analysis...');
   logger.info('[FRONTEND] 📊 Grade Level:', { gradeLevel: assessmentData.gradeLevel, stream: assessmentData.stream });
-  logger.info('[FRONTEND] 🎯 STREAM CONTEXT: Student is in', { stream: assessmentData.stream, message: 'stream, AI should recommend careers from this stream' });
+  logger.info('[FRONTEND] 🎯 STREAM CONTEXT: Learner is in', { stream: assessmentData.stream, message: 'stream, AI should recommend careers from this stream' });
 
   updateProgress('analyzing', 'AI is processing your responses...');
 
@@ -171,13 +172,13 @@ export const callOpenRouterAssessment = async (assessmentData) => {
  * Orchestrates the entire assessment analysis pipeline
  * 
  * @param {Object} answers - Raw assessment answers
- * @param {string} stream - Student's stream/program
+ * @param {string} stream - Learner's stream/program
  * @param {Object} questionBanks - Question banks for all sections
  * @param {Object} sectionTimings - Time spent on each section
- * @param {string} gradeLevel - Student's grade level
+ * @param {string} gradeLevel - Learner's grade level
  * @param {Object} preCalculatedScores - Pre-calculated scores (optional)
- * @param {string} studentId - Student ID for course recommendations
- * @param {Object} studentContext - Additional student context
+ * @param {string} learnerId - Learner ID for course recommendations
+ * @param {Object} learnerContext - Additional learner context
  * @param {Object} adaptiveResults - Adaptive aptitude results
  * @returns {Promise<Object>} - AI-analyzed results with course recommendations
  */
@@ -188,14 +189,14 @@ export const analyzeAssessmentWithOpenRouter = async (
   sectionTimings = {}, 
   gradeLevel = 'after12', 
   preCalculatedScores = null, 
-  studentId = null, 
-  studentContext = {}, 
+  learnerId = null, 
+  learnerContext = {}, 
   adaptiveResults = null
 ) => {
   logger.info('=== analyzeAssessmentWithGemini START ===', {
     gradeLevel,
     stream,
-    studentId: studentId || 'Not provided',
+    learnerId: learnerId || 'Not provided',
     hasAdaptiveResults: !!adaptiveResults,
     hasPreCalculatedScores: !!preCalculatedScores,
     questionBanks: {
@@ -211,7 +212,7 @@ export const analyzeAssessmentWithOpenRouter = async (
   updateProgress('preparing', 'Preparing your assessment data...');
   
   try {
-    // Prepare the assessment data (includes rule-based stream hint for after10 and student context)
+    // Prepare the assessment data (includes rule-based stream hint for after10 and learner context)
     const assessmentData = prepareAssessmentData(
       answers, 
       stream, 
@@ -219,14 +220,14 @@ export const analyzeAssessmentWithOpenRouter = async (
       sectionTimings, 
       gradeLevel, 
       preCalculatedScores, 
-      studentContext, 
+      learnerContext, 
       adaptiveResults
     );
 
     // Call the Cloudflare Worker (handles prompt building and AI call)
     let parsedResults = await callOpenRouterAssessment(assessmentData);
 
-    // Validate stream recommendation for After 10th students
+    // Validate stream recommendation for After 10th learners
     if (gradeLevel === 'after10' && parsedResults.streamRecommendation) {
       logger.info('🎯 Validating After 10th stream recommendation with rule-based engine...', {
         ruleBasedStreams: calculateStreamRecommendations(parsedResults).map(s => s.stream)

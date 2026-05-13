@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { CollegeEvent, EventType, EventStatus } from '@/features/student-profile/model';
+import { CollegeEvent, EventType, EventStatus } from '@/features/learner-profile/model';
 
 interface Props {
   isOpen: boolean;

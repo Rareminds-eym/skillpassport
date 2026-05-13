@@ -19,7 +19,7 @@ import { STREAMS_BY_CATEGORY, STREAM_CATEGORIES, AFTER10_STREAMS_BY_CATEGORY } f
  * @property {string} selectedCategory - Selected category (science/commerce/arts)
  * @property {string} gradeLevel - Selected grade level
  * @property {boolean} isLoading - Whether streams are loading
- * @property {string|null} studentProgram - Student's program name (for college students)
+ * @property {string|null} learnerProgram - Learner's program name (for college learners)
  */
 
 /**
@@ -95,7 +95,7 @@ export const StreamSelectionScreen = ({
   selectedCategory,
   gradeLevel,
   isLoading = false,
-  studentProgram = null,
+  learnerProgram = null,
 }) => {
   // Use different streams based on grade level
   // For higher_secondary (11th/12th) and after12, use the school stream config (PCMB, Commerce with Maths, etc.)
@@ -109,10 +109,10 @@ export const StreamSelectionScreen = ({
   const streams = selectedCategory ? (streamsConfig[selectedCategory] || []) : [];
   const categoryLabel = getCategoryLabel(selectedCategory);
 
-  // Check if a stream matches student's program (for recommendations)
+  // Check if a stream matches learner's program (for recommendations)
   const isStreamRecommended = (stream) => {
-    if (!studentProgram) return false;
-    const programLower = studentProgram.toLowerCase();
+    if (!learnerProgram) return false;
+    const programLower = learnerProgram.toLowerCase();
     const streamLabel = stream.label.toLowerCase();
     const streamId = stream.id.toLowerCase();
     
@@ -204,11 +204,11 @@ export const StreamSelectionScreen = ({
             </div>
           )}
 
-          {/* Student Program Info */}
-          {studentProgram && (
+          {/* Learner Program Info */}
+          {learnerProgram && (
             <div className="mt-6 p-4 bg-green-50 rounded-xl border border-green-100">
               <p className="text-sm text-green-700">
-                <strong>Your Program:</strong> {studentProgram}
+                <strong>Your Program:</strong> {learnerProgram}
                 <br />
                 <span className="text-xs">Streams matching your program are highlighted.</span>
               </p>

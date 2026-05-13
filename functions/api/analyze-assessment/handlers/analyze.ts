@@ -342,10 +342,10 @@ function validateAssessmentStructure(result: any, gradeLevel?: string): { valid:
       });
     }
     
-    // Validate degreePrograms (CRITICAL for after12 students ONLY)
+    // Validate degreePrograms (CRITICAL for after12 learners ONLY)
     if (gradeLevel === 'after12') {
       if (!result.careerFit.degreePrograms || !Array.isArray(result.careerFit.degreePrograms)) {
-        const error = 'careerFit.degreePrograms must be an array (required for after12 students)';
+        const error = 'careerFit.degreePrograms must be an array (required for after12 learners)';
         errors.push(error);
         console.error('[VALIDATION] ❌', error);
       } else {
@@ -632,9 +632,9 @@ async function analyzeAssessment(
     basePrompt = buildAfter12Prompt(assessmentData, seed);
     console.log(`[ASSESSMENT] ✅ Using AFTER 12TH prompt (college-bound with degree programs)`);
   } else {
-    // College/University students: Use college prompt
+    // College/University learners: Use college prompt
     basePrompt = buildCollegePrompt(assessmentData, seed);
-    console.log(`[ASSESSMENT] ✅ Using COLLEGE prompt (university students)`);
+    console.log(`[ASSESSMENT] ✅ Using COLLEGE prompt (university learners)`);
   }
   console.log('[ASSESSMENT] 📊 AI will analyze raw answers and calculate RIASEC scores');
   console.log('[ASSESSMENT] 🎯 Career recommendations will be based on AI-calculated RIASEC');
@@ -922,12 +922,12 @@ export async function handleAnalyzeAssessment(
 
   console.log('[ASSESSMENT-API] Development mode:', isDevelopment);
 
-  let studentId: string;
+  let learnerId: string;
 
   // Authentication
   if (isDevelopment) {
-    studentId = 'test-student-' + Date.now();
-    console.log('[ASSESSMENT-API] [DEV MODE] Bypassing authentication, using test student ID:', studentId);
+    learnerId = 'test-learner-' + Date.now();
+    console.log('[ASSESSMENT-API] [DEV MODE] Bypassing authentication, using test learner ID:', learnerId);
   } else {
     console.log('[ASSESSMENT-API] Authenticating user...');
     const auth = await authenticateUser(request, env as unknown as Record<string, string>);
@@ -935,14 +935,14 @@ export async function handleAnalyzeAssessment(
       console.error('[ASSESSMENT-API] ❌ Authentication failed');
       return jsonResponse({ error: 'Authentication required' }, 401);
     }
-    studentId = auth.user.id;
-    console.log('[ASSESSMENT-API] ✅ Authenticated student:', studentId);
+    learnerId = auth.user.id;
+    console.log('[ASSESSMENT-API] ✅ Authenticated learner:', learnerId);
   }
 
   // Rate limiting
-  console.log('[ASSESSMENT-API] Checking rate limit for student:', studentId);
-  if (!checkRateLimit(studentId)) {
-    console.error('[ASSESSMENT-API] ❌ Rate limit exceeded for student:', studentId);
+  console.log('[ASSESSMENT-API] Checking rate limit for learner:', learnerId);
+  if (!checkRateLimit(learnerId)) {
+    console.error('[ASSESSMENT-API] ❌ Rate limit exceeded for learner:', learnerId);
     return jsonResponse({ 
       error: 'Rate limit exceeded. Please try again in a minute.' 
     }, 429);
@@ -968,18 +968,18 @@ export async function handleAnalyzeAssessment(
   }
 
   console.log('[ASSESSMENT-API] === ASSESSMENT DATA RECEIVED ===');
-  console.log('[ASSESSMENT-API] Student ID:', studentId);
+  console.log('[ASSESSMENT-API] Learner ID:', learnerId);
   console.log('[ASSESSMENT-API] Stream:', assessmentData.stream);
   console.log('[ASSESSMENT-API] Grade Level:', assessmentData.gradeLevel);
   console.log('[ASSESSMENT-API] Has RIASEC Answers:', !!assessmentData.riasecAnswers);
   console.log('[ASSESSMENT-API] RIASEC Answers count:', assessmentData.riasecAnswers ? Object.keys(assessmentData.riasecAnswers).length : 0);
-  console.log('[ASSESSMENT-API] Has Student Context:', !!assessmentData.studentContext);
-  if (assessmentData.studentContext) {
-    console.log('[ASSESSMENT-API] Student Context:', {
-      rawGrade: assessmentData.studentContext.rawGrade,
-      programName: assessmentData.studentContext.programName,
-      programCode: assessmentData.studentContext.programCode,
-      degreeLevel: assessmentData.studentContext.degreeLevel
+  console.log('[ASSESSMENT-API] Has Learner Context:', !!assessmentData.learnerContext);
+  if (assessmentData.learnerContext) {
+    console.log('[ASSESSMENT-API] Learner Context:', {
+      rawGrade: assessmentData.learnerContext.rawGrade,
+      programName: assessmentData.learnerContext.programName,
+      programCode: assessmentData.learnerContext.programCode,
+      degreeLevel: assessmentData.learnerContext.degreeLevel
     });
   }
   console.log('[ASSESSMENT-API] Has Adaptive Results:', !!assessmentData.adaptiveAptitudeResults);
@@ -1037,20 +1037,20 @@ export async function handleAnalyzeAssessment(
   }
 
   // ============================================================================
-  // FETCH STUDENT PROFILE DATA
+  // FETCH LEARNER PROFILE DATA
   // Fetch skills, projects, certificates, internships, education from database
   // ============================================================================
-  console.log('[ASSESSMENT-API] === FETCHING STUDENT PROFILE DATA ===');
+  console.log('[ASSESSMENT-API] === FETCHING LEARNER PROFILE DATA ===');
   try {
     const supabase = createSupabaseAdminClient(env);
     
     // Fetch all profile data in parallel
     const [skillsData, projectsData, certificatesData, internshipsData, educationData] = await Promise.all([
-      supabase.from('student_skills').select('*').eq('student_id', studentId).eq('is_deleted', false),
-      supabase.from('student_projects').select('*').eq('student_id', studentId).eq('is_deleted', false),
-      supabase.from('student_certificates').select('*').eq('student_id', studentId).eq('is_deleted', false),
-      supabase.from('student_experience').select('*').eq('student_id', studentId).eq('is_deleted', false).eq('experience_type', 'internship'),
-      supabase.from('student_education').select('*').eq('student_id', studentId).eq('is_deleted', false)
+      supabase.from('learner_skills').select('*').eq('learner_id', learnerId).eq('is_deleted', false),
+      supabase.from('learner_projects').select('*').eq('learner_id', learnerId).eq('is_deleted', false),
+      supabase.from('learner_certificates').select('*').eq('learner_id', learnerId).eq('is_deleted', false),
+      supabase.from('learner_experience').select('*').eq('learner_id', learnerId).eq('is_deleted', false).eq('experience_type', 'internship'),
+      supabase.from('learner_education').select('*').eq('learner_id', learnerId).eq('is_deleted', false)
     ]);
 
     const profileData: any = {};
@@ -1082,10 +1082,10 @@ export async function handleAnalyzeAssessment(
 
     // Add profile data to assessment data
     if (Object.keys(profileData).length > 0) {
-      assessmentData.studentProfile = profileData;
-      console.log('[ASSESSMENT-API] ✅ Student profile data added to assessment');
+      assessmentData.learnerProfile = profileData;
+      console.log('[ASSESSMENT-API] ✅ Learner profile data added to assessment');
     } else {
-      console.log('[ASSESSMENT-API] ℹ️ No profile data found for student');
+      console.log('[ASSESSMENT-API] ℹ️ No profile data found for learner');
     }
   } catch (profileError) {
     console.error('[ASSESSMENT-API] ⚠️ Failed to fetch profile data:', profileError);
@@ -1105,7 +1105,7 @@ export async function handleAnalyzeAssessment(
     const results = await analyzeAssessment(env, assessmentData);
 
     console.log('[ASSESSMENT-API] === AI ANALYSIS COMPLETED ===');
-    console.log('[ASSESSMENT-API] ✅ Successfully analyzed for student:', studentId);
+    console.log('[ASSESSMENT-API] ✅ Successfully analyzed for learner:', learnerId);
     console.log('[ASSESSMENT-API] Results has careerFit:', !!results?.careerFit);
     console.log('[ASSESSMENT-API] Results has riasec:', !!results?.riasec);
     // ============================================================================
@@ -1122,7 +1122,7 @@ export async function handleAnalyzeAssessment(
       console.log('[ASSESSMENT] ℹ️ No adaptive aptitude results to include');
     }
 
-    console.log(`[ASSESSMENT] Successfully analyzed for student ${studentId}`);
+    console.log(`[ASSESSMENT] Successfully analyzed for learner ${learnerId}`);
     
     // ============================================================================
     // RIASEC SCORE PRESERVATION (Frontend Bug Workaround)

@@ -71,7 +71,7 @@ This specification addresses the remaining Feature-Sliced Design (FSD) architect
 #### Acceptance Criteria
 
 1. THE Shared_Config SHALL include mockData.js with educationData, trainingData, experienceData, technicalSkills, and softSkills
-2. WHEN StudentLayout imports mock data, THE Layout SHALL import from @/shared/config/mockData
+2. WHEN learnerLayout imports mock data, THE Layout SHALL import from @/shared/config/mockData
 3. THE Widgets_Student_Dashboard_Model SHALL NOT export mockData (remove the file or export)
 4. THE Mock_Data SHALL be structured identically in shared layer as it was in widgets layer
 5. FOR ALL components using mock data, changing the import path SHALL NOT break functionality

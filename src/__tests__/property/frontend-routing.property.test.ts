@@ -47,7 +47,7 @@ const SERVICES: ServiceConfig[] = [
   {
     name: 'user',
     pagesPath: '/api/user',
-    endpoints: ['/signup', '/signup/school-admin', '/signup/educator', '/signup/student', '/schools', '/check-school-code', '/check-email', '/create-student', '/create-teacher', '/reset-password'],
+    endpoints: ['/signup', '/signup/school-admin', '/signup/educator', '/signup/learner', '/schools', '/check-school-code', '/check-email', '/create-learner', '/create-teacher', '/reset-password'],
   },
 ];
 

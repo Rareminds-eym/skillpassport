@@ -1,5 +1,5 @@
 import { AttendanceRecord, AttendanceSession } from '@/features/college-admin';
-import { Student } from '@/entities/student/model/types';
+import { Learner } from '@/entities/learner/model/types';
 import { BuildingOfficeIcon, ChartBarIcon, ChartPieIcon, ClipboardDocumentCheckIcon, DocumentArrowDownIcon, ExclamationCircleIcon, TableCellsIcon, UserGroupIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { CalendarIcon, CheckCircleIcon, ClockIcon, ShieldCheckIcon, SparklesIcon, XCircleIcon } from 'lucide-react';
 import React, { useState } from 'react'
@@ -20,7 +20,7 @@ interface SubjectGroup {
     sessions: AttendanceSession[];
     totalSessions: number;
     avgAttendancePercentage: number;
-    totalStudents: number;
+    totallearners: number;
     totalPresentCount: number;
     totalAbsentCount: number;
     totalLateCount: number;
@@ -139,9 +139,9 @@ const AttendanceDetailsModal = ({
     onClose,
     subjectGroup,
     records,
-    students,
+    learners,
     allRecords,
-    onViewStudentHistory,
+    onViewlearnerHistory,
     onExportSession,
     onExportMonthly,
 }: {
@@ -149,11 +149,11 @@ const AttendanceDetailsModal = ({
     onClose: () => void;
     subjectGroup: SubjectGroup | null;
     records: AttendanceRecord[];
-    students: Student[];
+    learners: Learner[];
     allRecords: AttendanceRecord[];
-    onViewStudentHistory: (student: Student) => void;
+    onViewlearnerHistory: (learner: Learner) => void;
     onExportSession: (session: AttendanceSession, records: AttendanceRecord[]) => void;
-    onExportMonthly: (session: AttendanceSession, students: Student[], allRecords: AttendanceRecord[]) => void;
+    onExportMonthly: (session: AttendanceSession, learners: Learner[], allRecords: AttendanceRecord[]) => void;
 }) => {
     // Default to first session
     const [selectedSessionId, setSelectedSessionId] = useState<string>("");
@@ -228,28 +228,28 @@ const AttendanceDetailsModal = ({
     // Get the selected session
     const session = subjectGroup.sessions.find(s => s.id === selectedSessionId) || subjectGroup.sessions[0];
 
-    // Get class students for this subject
-    const classStudents = students.filter(
-        (student) =>
-            student.department === subjectGroup.department &&
-            student.course === subjectGroup.course &&
-            student.semester === subjectGroup.semester &&
-            student.section === subjectGroup.section
+    // Get class learners for this subject
+    const classlearners = learners.filter(
+        (learner) =>
+            learner.department === subjectGroup.department &&
+            learner.course === subjectGroup.course &&
+            learner.semester === subjectGroup.semester &&
+            learner.section === subjectGroup.section
     );
 
-    // Get today's records (for selected session) with full student list
+    // Get today's records (for selected session) with full learner list
     const sessionRecords = allRecords.filter(r => r.date === session.date && r.subject === subjectGroup.subject);
-    const todaysRecords = classStudents.map((student) => {
-        const record = sessionRecords.find((r) => r.studentId === student.id);
+    const todaysRecords = classlearners.map((learner) => {
+        const record = sessionRecords.find((r) => r.learnerId === learner.id);
         return record || {
-            id: `not-marked-${student.id}`,
-            studentId: student.id,
-            studentName: student.name,
-            rollNumber: student.rollNumber,
-            department: student.department,
-            course: student.course,
-            semester: student.semester,
-            section: student.section,
+            id: `not-marked-${learner.id}`,
+            learnerId: learner.id,
+            learnerName: learner.name,
+            rollNumber: learner.rollNumber,
+            department: learner.department,
+            course: learner.course,
+            semester: learner.semester,
+            section: learner.section,
             date: session.date,
             status: "not-marked" as const,
             subject: session.subject,
@@ -258,13 +258,13 @@ const AttendanceDetailsModal = ({
         };
     });
 
-    // Student history data
-    const getStudentHistory = (studentId: string) => {
-        return allRecords.filter((record) => record.studentId === studentId && record.subject === subjectGroup.subject);
+    // Learner history data
+    const getlearnerHistory = (learnerId: string) => {
+        return allRecords.filter((record) => record.learnerId === learnerId && record.subject === subjectGroup.subject);
     };
 
-    const getStudentStats = (studentId: string, monthFilter?: string) => {
-        const history = getStudentHistory(studentId);
+    const getlearnerStats = (learnerId: string, monthFilter?: string) => {
+        const history = getlearnerHistory(learnerId);
         const filteredHistory = monthFilter
             ? history.filter((r) => r.date.startsWith(monthFilter))
             : history;
@@ -405,9 +405,9 @@ const AttendanceDetailsModal = ({
                         <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
                             <div className="text-center p-3 bg-white rounded-lg border border-gray-200">
                                 <p className="text-2xl font-bold text-gray-900">
-                                    {session.totalStudents}
+                                    {session.totallearners}
                                 </p>
-                                <p className="text-xs text-gray-600 mt-1">Total Students</p>
+                                <p className="text-xs text-gray-600 mt-1">Total Learners</p>
                             </div>
                             <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
                                 <p className="text-2xl font-bold text-green-800">
@@ -491,7 +491,7 @@ const AttendanceDetailsModal = ({
                                                     Roll No
                                                 </th>
                                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Student Name
+                                                    Learner Name
                                                 </th>
                                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     Status
@@ -517,7 +517,7 @@ const AttendanceDetailsModal = ({
                                                         {record.rollNumber}
                                                     </td>
                                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                                                        {record.studentName}
+                                                        {record.learnerName}
                                                     </td>
                                                     <td className="px-4 py-3 whitespace-nowrap">
                                                         <StatusBadge status={record.status} />
@@ -534,8 +534,8 @@ const AttendanceDetailsModal = ({
                                                     <td className="px-4 py-3 whitespace-nowrap text-sm">
                                                         <button
                                                             onClick={() => {
-                                                                const student = classStudents.find(s => s.id === record.studentId);
-                                                                if (student) onViewStudentHistory(student);
+                                                                const learner = classlearners.find(s => s.id === record.learnerId);
+                                                                if (learner) onViewlearnerHistory(learner);
                                                             }}
                                                             className="text-indigo-600 hover:text-indigo-900"
                                                         >
@@ -643,10 +643,10 @@ const AttendanceDetailsModal = ({
                                     </div>
                                 </div>
 
-                                {/* Student-wise Monthly Summary */}
+                                {/* Learner-wise Monthly Summary */}
                                 <div className="mt-6">
                                     <h4 className="text-md font-semibold text-gray-900 mb-4">
-                                        Student-wise Monthly Summary ({new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})
+                                        Learner-wise Monthly Summary ({new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})
                                     </h4>
                                     <div className="overflow-x-auto">
                                         <table className="min-w-full divide-y divide-gray-200">
@@ -656,7 +656,7 @@ const AttendanceDetailsModal = ({
                                                         Roll No
                                                     </th>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                        Student Name
+                                                        Learner Name
                                                     </th>
                                                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                         Present
@@ -679,15 +679,15 @@ const AttendanceDetailsModal = ({
                                                 </tr>
                                             </thead>
                                             <tbody className="bg-white divide-y divide-gray-200">
-                                                {classStudents.map((student) => {
-                                                    const stats = getStudentStats(student.id, selectedMonth);
+                                                {classlearners.map((learner) => {
+                                                    const stats = getlearnerStats(learner.id, selectedMonth);
                                                     return (
-                                                        <tr key={student.id} className="hover:bg-gray-50">
+                                                        <tr key={learner.id} className="hover:bg-gray-50">
                                                             <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                                {student.rollNumber}
+                                                                {learner.rollNumber}
                                                             </td>
                                                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                                                                {student.name}
+                                                                {learner.name}
                                                             </td>
                                                             <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-green-600 font-medium">
                                                                 {stats.present}
@@ -751,7 +751,7 @@ const AttendanceDetailsModal = ({
                                                     Roll No
                                                 </th>
                                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Student Name
+                                                    Learner Name
                                                 </th>
                                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     Status
@@ -786,7 +786,7 @@ const AttendanceDetailsModal = ({
                                                             {record.rollNumber}
                                                         </td>
                                                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                                                            {record.studentName}
+                                                            {record.learnerName}
                                                         </td>
                                                         <td className="px-4 py-3 whitespace-nowrap">
                                                             <StatusBadge status={record.status} />
@@ -831,38 +831,38 @@ const AttendanceDetailsModal = ({
                                             toast.success('Session attendance exported successfully!');
                                         } else if (activeTab === "monthly") {
                                             // Export monthly summary for selected month
-                                            const monthlyStudents = students.filter(
-                                                (student) =>
-                                                    student.department === subjectGroup.department &&
-                                                    student.course === subjectGroup.course &&
-                                                    student.semester === subjectGroup.semester &&
-                                                    student.section === subjectGroup.section
+                                            const monthlylearners = learners.filter(
+                                                (learner) =>
+                                                    learner.department === subjectGroup.department &&
+                                                    learner.course === subjectGroup.course &&
+                                                    learner.semester === subjectGroup.semester &&
+                                                    learner.section === subjectGroup.section
                                             );
 
-                                            if (monthlyStudents.length === 0) {
-                                                toast.error('No students found for this class');
+                                            if (monthlylearners.length === 0) {
+                                                toast.error('No learners found for this class');
                                                 return;
                                             }
 
-                                            const monthlyExportData = monthlyStudents.map(student => {
-                                                const studentRecords = allRecords.filter(r =>
-                                                    r.studentId === student.id &&
+                                            const monthlyExportData = monthlylearners.map(learner => {
+                                                const learnerRecords = allRecords.filter(r =>
+                                                    r.learnerId === learner.id &&
                                                     r.subject === subjectGroup.subject &&
                                                     r.date.startsWith(selectedMonth)
                                                 );
 
                                                 const stats = {
-                                                    present: studentRecords.filter((r) => r.status === "present").length,
-                                                    absent: studentRecords.filter((r) => r.status === "absent").length,
-                                                    late: studentRecords.filter((r) => r.status === "late").length,
-                                                    excused: studentRecords.filter((r) => r.status === "excused").length,
-                                                    total: studentRecords.length,
-                                                    percentage: studentRecords.length > 0 ? ((studentRecords.filter((r) => r.status === "present" || r.status === "late" || r.status === "excused").length / studentRecords.length) * 100).toFixed(1) : "0",
+                                                    present: learnerRecords.filter((r) => r.status === "present").length,
+                                                    absent: learnerRecords.filter((r) => r.status === "absent").length,
+                                                    late: learnerRecords.filter((r) => r.status === "late").length,
+                                                    excused: learnerRecords.filter((r) => r.status === "excused").length,
+                                                    total: learnerRecords.length,
+                                                    percentage: learnerRecords.length > 0 ? ((learnerRecords.filter((r) => r.status === "present" || r.status === "late" || r.status === "excused").length / learnerRecords.length) * 100).toFixed(1) : "0",
                                                 };
 
                                                 return {
-                                                    'Roll Number': student.rollNumber || 'N/A',
-                                                    'Student Name': student.name || 'N/A',
+                                                    'Roll Number': learner.rollNumber || 'N/A',
+                                                    'Learner Name': learner.name || 'N/A',
                                                     'Present': stats.present,
                                                     'Absent': stats.absent,
                                                     'Late': stats.late,
@@ -893,7 +893,7 @@ const AttendanceDetailsModal = ({
                                             const exportData = subjectRecords.map(record => ({
                                                 'Date': formatDate(record.date),
                                                 'Roll Number': record.rollNumber,
-                                                'Student Name': record.studentName,
+                                                'Learner Name': record.learnerName,
                                                 'Status': record.status,
                                                 'Time In': record.timeIn || '',
                                                 'Time Out': record.timeOut || '',

@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * User Entity - API Queries
  * Data fetching functions for user data
@@ -53,7 +54,7 @@ export const getUsers = async (filters?: {
 
 
 export const getCurrentUser = async (): Promise<User | null> => {
-  const { data: { user }, error } = await supabase.auth.getUser();
+  const { data: { user }, error } = await getCurrentUser();
   
   if (error || !user) return null;
   

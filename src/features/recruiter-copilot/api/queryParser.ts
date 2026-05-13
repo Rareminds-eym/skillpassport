@@ -198,7 +198,7 @@ CRITICAL EXAMPLES FOR INSTITUTION FILTERING:
 - "top universities" → specific_institutions: ["IIT", "NIT", "IIIT", "BITS"]
 - "tier-1 colleges" → specific_institutions: ["IIT", "NIT", "IIIT", "BITS"]
 - "premier institutions" → specific_institutions: ["IIT", "NIT", "IIIT", "BITS"]
-- "IIT students" → specific_institutions: ["IIT"]
+- "IIT learners" → specific_institutions: ["IIT"]
 - "from NIT" → specific_institutions: ["NIT"]
 - "IIT Delhi, NIT Trichy" → specific_institutions: ["IIT Delhi", "NIT Trichy"]
 

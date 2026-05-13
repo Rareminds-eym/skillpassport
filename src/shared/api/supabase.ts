@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Student } from '@/shared/types/student';
+import { Learner } from '@/shared/types/learner';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('supabase-utils');
@@ -15,13 +15,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing required Supabase environment variables: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
 }
 
-// Note: For most use cases, prefer importing supabase from '@/shared/api/supabaseClient'
-// which has full auth configuration. This client is for specific utility functions.
+// Note: Auth is DISABLED on this client. All authentication is handled by the SSO Worker
+// via @rareminds-eym/auth-client (ssoClient). For data operations, prefer importing
+// supabase from '@/shared/api/supabaseClient' which also has auth disabled.
+// This client is kept for specific utility functions only.
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
   },
   global: {
     headers: {
@@ -31,70 +33,70 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-export const studentService = {
-  async getStudent(id: string): Promise<Student | null> {
+export const learnerService = {
+  async getLearner(id: string): Promise<Learner | null> {
     try {
       const { data, error } = await supabase
-        .from('students')
+        .from('learners')
         .select('*')
         .eq('id', id)
         .single();
 
       if (error) {
-        logger.error('Error fetching student', error as Error);
+        logger.error('Error fetching learner', error as Error);
         return null;
       }
 
       return data;
     } catch (error) {
-      logger.error('Error fetching student', error as Error);
+      logger.error('Error fetching learner', error as Error);
       return null;
     }
   },
 
-  async getStudentByEmail(email: string): Promise<Student | null> {
+  async getlearnerByEmail(email: string): Promise<Learner | null> {
     try {
       const { data, error } = await supabase
-        .from('students')
+        .from('learners')
         .select('*')
         .eq('email', email)
         .single();
 
       if (error) {
-        logger.error('Error fetching student by email', error as Error);
+        logger.error('Error fetching learner by email', error as Error);
         return null;
       }
 
       return data;
     } catch (error) {
-      logger.error('Error fetching student by email', error as Error);
+      logger.error('Error fetching learner by email', error as Error);
       return null;
     }
   },
 
-  async updateStudentProfile(id: string, profile: any): Promise<boolean> {
+  async updateLearnerProfile(id: string, profile: any): Promise<boolean> {
     try {
       const { error } = await supabase
-        .from('students')
+        .from('learners')
         .update({ profile })
         .eq('id', id);
 
       if (error) {
-        logger.error('Error updating student profile', error as Error);
+        logger.error('Error updating learner profile', error as Error);
         return false;
       }
 
       return true;
     } catch (error) {
-      logger.error('Error updating student profile', error as Error);
+      logger.error('Error updating learner profile', error as Error);
       return false;
     }
   },
 
-  async uploadProfileImage(file: File, studentId: string): Promise<string | null> {
+  async uploadProfileImage(file: File, learnerId: string): Promise<string | null> {
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${studentId}/profile.${fileExt}`;
+      const fileName = `${learnerId}/profile.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('profile-images')
@@ -118,7 +120,7 @@ export const studentService = {
 };
 
 // Mock data for development/demo purposes
-export const mockStudent: Student = {
+export const mockLearner: Learner = {
   id: '123e4567-e89b-12d3-a456-426614174000',
   universityId: '123e4567-e89b-12d3-a456-426614174001',
   profile: {

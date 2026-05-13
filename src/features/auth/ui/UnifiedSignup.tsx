@@ -22,12 +22,12 @@ import {
   FULL_REGISTRATION_START_DATE
 } from '@/shared/config';
 // @ts-ignore - JS module without types
-import { sendOtp, verifyOtp as verifyOtpApi } from '@/features/auth/api';
-// @ts-ignore - JS module without types
 import { DatePicker } from '@/features/subscription';
-import { supabase } from '@/shared/api';
+import { ssoClient } from '@/shared/api/ssoClient';
+import { useAuthStore } from '@/shared/model/authStore';
+import { AuthFetchError } from '@rareminds-eym/auth-client';
 
-type UserRole = 'school_student' | 'college_student' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
+type UserRole = 'learner' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
 
 interface SignupState {
   firstName: string;
@@ -245,7 +245,7 @@ const UnifiedSignup = () => {
 
   // Get plan context from location.state (if user selected a plan before signing up)
   const planFromState = (location.state as any)?.plan;
-  const studentTypeFromState = (location.state as any)?.studentType;
+  const learnerTypeFromState = (location.state as any)?.learnerType;
   const returnToFromState = (location.state as any)?.returnTo;
 
   // Get return URL from query params or session storage (for invitation flow)
@@ -279,11 +279,11 @@ const UnifiedSignup = () => {
 
   const selectedCountry = COUNTRY_CODES.find(cc => cc.dialCode === state.countryCode) || COUNTRY_CODES[0];
 
-  const allRoles: UserRole[] = ['school_student', 'college_student', 'school_educator', 'college_educator', 'recruiter', 'school_admin', 'college_admin', 'university_admin'];
+  const allRoles: UserRole[] = ['learner', 'school_educator', 'college_educator', 'recruiter', 'school_admin', 'college_admin', 'university_admin'];
 
   const getRoleDisplayName = (role: UserRole): string => {
     const names: Record<UserRole, string> = {
-      school_student: 'School Student', college_student: 'College Student',
+      learner: 'Learner',
       school_educator: 'School Educator', college_educator: 'College Educator',
       recruiter: 'Recruiter',
       school_admin: 'School Administrator', college_admin: 'College Administrator', university_admin: 'University Administrator'
@@ -323,33 +323,11 @@ const UnifiedSignup = () => {
   };
 
   const handleSendOtp = async () => {
-    if (!state.phone || state.phone.length < 7 || state.phone.length > 15) {
-      setState(prev => ({ ...prev, error: 'Please enter a valid phone number (7-15 digits)' }));
-      return;
-    }
-    setState(prev => ({ ...prev, sendingOtp: true, error: '' }));
-    try {
-      const result = await sendOtp(state.phone);
-      if (result.success) setState(prev => ({ ...prev, otpSent: true, sendingOtp: false }));
-      else setState(prev => ({ ...prev, error: result.error || 'Failed to send OTP', sendingOtp: false }));
-    } catch {
-      setState(prev => ({ ...prev, error: 'Failed to send OTP. Please try again.', sendingOtp: false }));
-    }
+    // OTP removed — phone verification is no longer supported in SSO mode
   };
 
   const handleVerifyOtp = async () => {
-    if (!state.otp || state.otp.length !== 6) {
-      setState(prev => ({ ...prev, error: 'Please enter a valid 6-digit OTP' }));
-      return;
-    }
-    setState(prev => ({ ...prev, verifyingOtp: true, error: '' }));
-    try {
-      const result = await verifyOtpApi(state.phone, state.otp);
-      if (result.success) setState(prev => ({ ...prev, otpVerified: true, verifyingOtp: false }));
-      else setState(prev => ({ ...prev, error: result.error || 'Invalid OTP', verifyingOtp: false }));
-    } catch {
-      setState(prev => ({ ...prev, error: 'Failed to verify OTP. Please try again.', verifyingOtp: false }));
-    }
+    // OTP removed — phone verification is no longer supported in SSO mode
   };
 
   // Check if OTP verification should be skipped (for localhost/development and production)
@@ -412,19 +390,58 @@ const UnifiedSignup = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      // Use the Pages Function API for signup with proper rollback support
-      // This ensures no orphaned auth users are created
+      const isAdminRole = ['school_admin', 'college_admin', 'university_admin'].includes(state.selectedRole!);
+
+      // Step 1: Create SSO user
+      let ssoUserId: string;
+
+      if (isAdminRole) {
+        // Admin signup creates user + org
+        const orgName = `${state.firstName} ${state.lastName}'s Institution`;
+        const ssoResult = await ssoClient.signup({
+          email: state.email,
+          password: state.password,
+          org_name: orgName,
+        });
+        ssoUserId = ssoResult.user.id;
+      } else {
+        // Member signup (learner, educator, recruiter) — no org creation
+        const ssoResult = await ssoClient.signupMember({
+          email: state.email,
+          password: state.password,
+          role: state.selectedRole!,
+        });
+        ssoUserId = ssoResult.user.id;
+      }
+
+      // Update auth store with the new user
+      const me = await ssoClient.getMe();
+      useAuthStore.setState({
+        user: {
+          id: me.sub,
+          email: me.email,
+          role: state.selectedRole ?? undefined,
+          orgId: me.org_id,
+          roles: me.roles,
+          products: me.products,
+          membershipStatus: me.membership_status,
+          isEmailVerified: me.is_email_verified,
+          isDemoMode: false,
+        },
+        isAuthenticated: true,
+        role: state.selectedRole,
+      });
+
+      // Step 2: Create app profile via Pages Function
       const { getApiUrl } = await import('@/shared/api/apiUtils');
       const USER_API_URL = getApiUrl('user');
 
-      const response = await fetch(`${USER_API_URL}/signup`, {
+      const response = await ssoClient.fetch(`${USER_API_URL}/signup`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          userId: ssoUserId,
           email: state.email,
-          password: state.password,
           firstName: state.firstName,
           lastName: state.lastName,
           phone: state.phone || undefined,
@@ -438,34 +455,14 @@ const UnifiedSignup = () => {
         }),
       });
 
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to create account');
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error((result as any).error || 'Failed to create profile');
       }
 
-      const userId = result.data.userId;
-
-      // CRITICAL FIX: Auto-login after successful signup
-      // This establishes a Supabase session so the user is authenticated
-      console.log('🔐 Auto-logging in after signup...');
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: state.email,
-        password: state.password,
-      });
-
-      if (signInError) {
-        console.error('⚠️ Auto-login failed:', signInError.message);
-        // Even if auto-login fails, the account was created successfully
-        // User can manually log in
-      } else {
-        console.log('✅ Auto-login successful, session established');
-      }
-
-      // Map role to entity type for subscription plans
+      // Step 3: Redirect based on role
       const entityTypeMap: Record<UserRole, string> = {
-        school_student: 'student',
-        college_student: 'college-student',
+        learner: 'learner',
         school_educator: 'educator',
         college_educator: 'college-educator',
         recruiter: 'recruitment-recruiter',
@@ -473,35 +470,57 @@ const UnifiedSignup = () => {
         college_admin: 'college',
         university_admin: 'university-admin'
       };
-      const entityType = state.selectedRole ? entityTypeMap[state.selectedRole] : 'student';
+      const entityType = state.selectedRole ? entityTypeMap[state.selectedRole] : 'learner';
 
-      // Check for return URL (invitation flow) - redirect there instead of subscription plans
       if (returnUrl) {
-        // Clear the stored return URL
         sessionStorage.removeItem('invitation_return_url');
         navigate(returnUrl);
       } else if (returnToFromState === '/subscription/payment' && planFromState) {
-        // User selected a plan before signing up - go directly to payment
-        console.log('💳 User had pre-selected plan, redirecting to payment page');
         navigate('/subscription/payment', {
           state: {
             plan: planFromState,
-            studentType: studentTypeFromState || entityType,
+            learnerType: learnerTypeFromState || entityType,
             isUpgrade: false
           }
         });
       } else {
-        // Redirect to subscription plans page to choose a plan
         navigate(`/subscription/plans/${entityType}/purchase`, {
           state: {
             message: 'Account created successfully! Please choose a plan to continue.',
             email: state.email,
-            userId: userId
+            userId: ssoUserId
           }
         });
       }
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred during signup';
+      let errorMessage = 'An error occurred during signup';
+      if (error instanceof AuthFetchError) {
+        if (error.status === 409) errorMessage = 'An account with this email already exists';
+        else if (error.status === 429) errorMessage = 'Too many attempts. Please try again later.';
+        else errorMessage = error.message || errorMessage;
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
+      // Rollback: If SSO user was created but app profile failed,
+      // delete the SSO account entirely so the user can retry cleanly.
+      if (ssoClient.isAuthenticated()) {
+        try {
+          // Delete the SSO user (cascades to sessions, memberships, etc.)
+          await ssoClient.fetch(`${import.meta.env.VITE_SSO_URL}/auth/delete-account`, {
+            method: 'POST',
+          });
+        } catch {
+          // If delete fails, at least logout to revoke the session
+          try { await ssoClient.logout(); } catch { /* best-effort */ }
+        }
+        useAuthStore.setState({
+          user: null,
+          isAuthenticated: false,
+          role: null,
+        });
+      }
+
       setState(prev => ({ ...prev, loading: false, error: errorMessage }));
     }
   };
@@ -537,10 +556,10 @@ const UnifiedSignup = () => {
           <div className="relative z-10 max-w-lg mx-auto space-y-16">
             <div className="space-y-4">
               <h1 className="text-4xl md:text-5xl font-bold leading-tight">
-                Empower Students. Verify Real Skills.
+                Empower Learners. Verify Real Skills.
               </h1>
               <p className="text-lg text-slate-300 leading-relaxed">
-                Guide students and verify their skills for better opportunities.
+                Guide learners and verify their skills for better opportunities.
               </p>
             </div>
 
@@ -664,10 +683,10 @@ const UnifiedSignup = () => {
           {/* Hero Text */}
           <div className="space-y-4">
             <h1 className="text-4xl md:text-5xl font-bold leading-tight">
-              Empower Students. Verify Real Skills.
+              Empower Learners. Verify Real Skills.
             </h1>
             <p className="text-lg text-slate-300 leading-relaxed">
-              Guide students and verify their skills for better opportunities.
+              Guide learners and verify their skills for better opportunities.
             </p>
           </div>
 

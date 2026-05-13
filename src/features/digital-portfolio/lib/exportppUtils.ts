@@ -3,7 +3,7 @@ import html2canvas from 'html2canvas';
 import QRCode from 'qrcode';
 import { saveAs } from 'file-saver';
 import { getLogger } from '@/shared/config/logging';
-import type { Student, PortfolioSettings } from '@/shared/types/student';
+import type { Learner, PortfolioSettings } from '@/shared/types/learner';
 
 const logger = getLogger('ExportUtils');
 
@@ -67,13 +67,13 @@ export const exportAsPDF = async (
 
 // Export portfolio data as JSON
 export const exportAsJSON = (
-  student: Student,
+  learner: Learner,
   settings: PortfolioSettings,
   filename: string = 'portfolio-data.json'
 ): void => {
   try {
     const data = {
-      student,
+      learner,
       settings,
       exportedAt: new Date().toISOString(),
       version: '1.0'
@@ -91,7 +91,7 @@ export const exportAsJSON = (
 // Export as standalone HTML - captures actual rendered portfolio
 
 export const exportAsHTML = async (
-  student: Student,
+  learner: Learner,
   settings: PortfolioSettings,
   preferences: any,
   filename: string = 'portfolio.html'
@@ -139,8 +139,8 @@ export const exportAsHTML = async (
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Professional portfolio of ${student.profile.name || 'Portfolio'}">
-    <title>${student.profile.name || 'Portfolio'} - Professional Portfolio</title>
+    <meta name="description" content="Professional portfolio of ${learner.profile.name || 'Portfolio'}">
+    <title>${learner.profile.name || 'Portfolio'} - Professional Portfolio</title>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -216,9 +216,9 @@ export const exportAsHTML = async (
     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; padding: 40px 20px; margin-top: 60px;">
         <p style="font-size: 1.1em; font-weight: 600;">Generated on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
         <p style="margin-top: 10px; opacity: 0.9; font-size: 0.95em;">This portfolio was created using Rareminds Skill Ecosystem Platform</p>
-        ${preferences.includeContactDetails && student.profile.email ? `
+        ${preferences.includeContactDetails && learner.profile.email ? `
         <div style="margin-top: 20px;">
-            <a href="mailto:${student.profile.email}" style="color: white; text-decoration: none; opacity: 0.9;">📧 ${student.profile.email}</a>
+            <a href="mailto:${learner.profile.email}" style="color: white; text-decoration: none; opacity: 0.9;">📧 ${learner.profile.email}</a>
         </div>
         ` : ''}
     </div>
@@ -339,7 +339,7 @@ export const generateShareableLink = (userId?: string): string => {
 
 // Export resume as simple formatted PDF
 export const exportResume = async (
-  student: Student,
+  learner: Learner,
   filename: string = 'resume.pdf'
 ): Promise<void> => {
   try {
@@ -356,28 +356,28 @@ export const exportResume = async (
     // Header - Name and Contact
     pdf.setFontSize(24);
     pdf.setFont('helvetica', 'bold');
-    pdf.text(student.profile.name || 'Portfolio', leftMargin, yPosition);
+    pdf.text(learner.profile.name || 'Portfolio', leftMargin, yPosition);
     yPosition += 10;
 
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
-    if (student.profile.email) {
-      pdf.text(student.profile.email, leftMargin, yPosition);
+    if (learner.profile.email) {
+      pdf.text(learner.profile.email, leftMargin, yPosition);
       yPosition += 5;
     }
-    // Note: phone and location fields are in Student object
-    const studentData = student as Student;
-    if (studentData.contact_number) {
-      pdf.text(studentData.contact_number, leftMargin, yPosition);
+    // Note: phone and location fields are in Learner object
+    const learnerData = learner as Learner;
+    if (learnerData.contact_number) {
+      pdf.text(learnerData.contact_number, leftMargin, yPosition);
       yPosition += 5;
     }
-    if (studentData.district_name) {
-      pdf.text(studentData.district_name, leftMargin, yPosition);
+    if (learnerData.district_name) {
+      pdf.text(learnerData.district_name, leftMargin, yPosition);
       yPosition += 10;
     }
 
     // Bio/Summary
-    if (student.profile.bio) {
+    if (learner.profile.bio) {
       pdf.setFontSize(12);
       pdf.setFont('helvetica', 'bold');
       pdf.text('Professional Summary', leftMargin, yPosition);
@@ -385,19 +385,19 @@ export const exportResume = async (
       
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      const bioLines = pdf.splitTextToSize(student.profile.bio, pageWidth - 40);
+      const bioLines = pdf.splitTextToSize(learner.profile.bio, pageWidth - 40);
       pdf.text(bioLines, leftMargin, yPosition);
       yPosition += bioLines.length * 5 + 5;
     }
 
     // Education
-    if (student.profile.education && student.profile.education.length > 0) {
+    if (learner.profile.education && learner.profile.education.length > 0) {
       pdf.setFontSize(12);
       pdf.setFont('helvetica', 'bold');
       pdf.text('Education', leftMargin, yPosition);
       yPosition += 7;
 
-      student.profile.education.forEach(edu => {
+      learner.profile.education.forEach(edu => {
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'bold');
         pdf.text(edu.degree, leftMargin, yPosition);
@@ -416,7 +416,7 @@ export const exportResume = async (
     }
 
     // Skills
-    if (student.profile.skills && student.profile.skills.length > 0) {
+    if (learner.profile.skills && learner.profile.skills.length > 0) {
       pdf.setFontSize(12);
       pdf.setFont('helvetica', 'bold');
       pdf.text('Skills', leftMargin, yPosition);
@@ -424,20 +424,20 @@ export const exportResume = async (
 
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      const skillsText = student.profile.skills.map(s => s.name).join(', ');
+      const skillsText = learner.profile.skills.map(s => s.name).join(', ');
       const skillsLines = pdf.splitTextToSize(skillsText, pageWidth - 40);
       pdf.text(skillsLines, leftMargin, yPosition);
       yPosition += skillsLines.length * 5 + 5;
     }
 
     // Projects
-    if (student.profile.projects && student.profile.projects.length > 0) {
+    if (learner.profile.projects && learner.profile.projects.length > 0) {
       pdf.setFontSize(12);
       pdf.setFont('helvetica', 'bold');
       pdf.text('Projects', leftMargin, yPosition);
       yPosition += 7;
 
-      student.profile.projects.forEach(project => {
+      learner.profile.projects.forEach(project => {
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'bold');
         pdf.text(project.title, leftMargin, yPosition);

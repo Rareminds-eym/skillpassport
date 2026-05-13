@@ -4,7 +4,7 @@ export interface Class {
   section: string;
   grade: string;
   teacher: string;
-  studentCount: number;
+  learnerCount: number;
   schedule: string;
   room: string;
   subject?: string;
@@ -17,7 +17,7 @@ export const mockClasses: Class[] = [
     section: 'A',
     grade: '10',
     teacher: 'Mrs. Anderson',
-    studentCount: 28,
+    learnerCount: 28,
     schedule: 'Mon, Wed, Fri 9:00-10:30',
     room: 'Room 205',
     subject: 'General'
@@ -28,7 +28,7 @@ export const mockClasses: Class[] = [
     section: 'B',
     grade: '10',
     teacher: 'Mr. Williams',
-    studentCount: 25,
+    learnerCount: 25,
     schedule: 'Tue, Thu 9:00-10:30',
     room: 'Room 206',
     subject: 'General'
@@ -39,7 +39,7 @@ export const mockClasses: Class[] = [
     section: 'A',
     grade: '9',
     teacher: 'Ms. Davis',
-    studentCount: 30,
+    learnerCount: 30,
     schedule: 'Mon, Wed, Fri 11:00-12:30',
     room: 'Room 101',
     subject: 'General'
@@ -50,7 +50,7 @@ export const mockClasses: Class[] = [
     section: 'A',
     grade: '11',
     teacher: 'Dr. Thompson',
-    studentCount: 22,
+    learnerCount: 22,
     schedule: 'Tue, Thu 13:00-14:30',
     room: 'Room 301',
     subject: 'General'
@@ -61,7 +61,7 @@ export const mockClasses: Class[] = [
     section: 'B',
     grade: '11',
     teacher: 'Mrs. Brown',
-    studentCount: 24,
+    learnerCount: 24,
     schedule: 'Mon, Wed 13:00-14:30',
     room: 'Room 302',
     subject: 'General'

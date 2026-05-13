@@ -730,12 +730,12 @@ const SchoolAdmin = () => {
 
             <section>
               <h3 className="font-semibold text-lg mb-2">4. Data Privacy</h3>
-              <p>We collect and process schoolal and student data in accordance with our Privacy Policy and educational data protection regulations.</p>
+              <p>We collect and process schoolal and learner data in accordance with our Privacy Policy and educational data protection regulations.</p>
             </section>
 
             <section>
               <h3 className="font-semibold text-lg mb-2">5. Schoolal Data</h3>
-              <p>You agree to handle student and schoolal data responsibly and in compliance with applicable educational data protection laws.</p>
+              <p>You agree to handle learner and schoolal data responsibly and in compliance with applicable educational data protection laws.</p>
             </section>
 
             <section>

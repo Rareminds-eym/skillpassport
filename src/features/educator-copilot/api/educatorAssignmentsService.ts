@@ -5,10 +5,10 @@ const logger = getLogger('educator-assignments-service');
 
 /**
  * Educator Assignments Service
- * Handles educator-specific assignment operations like grading and viewing student submissions
+ * Handles educator-specific assignment operations like grading and viewing learner submissions
  */
 
-interface Student {
+interface Learner {
   id: string;
   name: string;
   email: string;
@@ -27,10 +27,10 @@ interface SubmissionFile {
   original_filename: string;
 }
 
-interface StudentAssignment {
-  student_assignment_id: string;
+interface LearnerAssignment {
+  learner_assignment_id: string;
   assignment_id: string;
-  student_id: string;
+  learner_id: string;
   status: string;
   grade_received?: number;
   grade_percentage?: number;
@@ -42,7 +42,7 @@ interface StudentAssignment {
   graded_date?: string;
   assigned_date?: string;
   updated_date?: string;
-  student?: Student;
+  learner?: Learner;
   submission_files?: SubmissionFile[];
 }
 
@@ -53,30 +53,30 @@ interface GradingData {
 }
 
 /**
- * Get all submission files for an assignment grouped by student
+ * Get all submission files for an assignment grouped by learner
  */
-const getStudentSubmissionFiles = async (assignmentId: string): Promise<Record<string, SubmissionFile[]>> => {
+const getlearnerSubmissionFiles = async (assignmentId: string): Promise<Record<string, SubmissionFile[]>> => {
   try {
     const { data, error } = await supabase
       .from('assignment_attachments')
       .select('*')
       .eq('assignment_id', assignmentId)
-      .like('file_name', 'STUDENT:%')
+      .like('file_name', 'LEARNER:%')
       .order('uploaded_date', { ascending: false });
       
     if (error) throw error;
     
     const groupedFiles: Record<string, SubmissionFile[]> = {};
     data?.forEach(file => {
-      const match = file.file_name.match(/^STUDENT:([^:]+):/);
+      const match = file.file_name.match(/^LEARNER:([^:]+):/);
       if (match) {
-        const studentAssignmentId = match[1];
-        if (!groupedFiles[studentAssignmentId]) {
-          groupedFiles[studentAssignmentId] = [];
+        const learnerAssignmentId = match[1];
+        if (!groupedFiles[learnerAssignmentId]) {
+          groupedFiles[learnerAssignmentId] = [];
         }
         
-        const originalFilename = file.file_name.replace(/^STUDENT:[^:]+:/, '');
-        groupedFiles[studentAssignmentId].push({
+        const originalFilename = file.file_name.replace(/^LEARNER:[^:]+:/, '');
+        groupedFiles[learnerAssignmentId].push({
           ...file,
           original_filename: originalFilename
         });
@@ -85,21 +85,21 @@ const getStudentSubmissionFiles = async (assignmentId: string): Promise<Record<s
     
     return groupedFiles;
   } catch (error) {
-    logger.error('Fetch student submission files failed', error instanceof Error ? error : new Error(String(error)), { assignmentId });
+    logger.error('Fetch learner submission files failed', error instanceof Error ? error : new Error(String(error)), { assignmentId });
     throw error;
   }
 };
 
 /**
- * Get all students assigned to a specific assignment with their submission status and files
+ * Get all learners assigned to a specific assignment with their submission status and files
  */
-export const getAssignmentStudents = async (assignmentId: string): Promise<StudentAssignment[]> => {
+export const getAssignmentLearners = async (assignmentId: string): Promise<LearnerAssignment[]> => {
   try {
     const { data, error } = await supabase
-      .from('student_assignments')
+      .from('learner_assignments')
       .select(`
         *,
-        students (
+        learners (
           id,
           name,
           email,
@@ -115,41 +115,41 @@ export const getAssignmentStudents = async (assignmentId: string): Promise<Stude
 
     if (error) throw error;
 
-    const submissionFiles = await getStudentSubmissionFiles(assignmentId);
+    const submissionFiles = await getlearnerSubmissionFiles(assignmentId);
 
     const flattenedData = data?.map(item => {
-      const student = item.students;
-      const studentSubmissionFiles = submissionFiles[item.student_assignment_id] || [];
+      const learner = item.learners;
+      const learnerSubmissionFiles = submissionFiles[item.learner_assignment_id] || [];
 
       return {
         ...item,
-        student: {
-          id: student?.id,
-          name: student?.name || 'Unknown',
-          email: student?.email || '',
-          university: student?.university || '',
-          branch_field: student?.branch_field || '',
-          college_school_name: student?.college_school_name || '',
-          registration_number: student?.registration_number || ''
+        learner: {
+          id: learner?.id,
+          name: learner?.name || 'Unknown',
+          email: learner?.email || '',
+          university: learner?.university || '',
+          branch_field: learner?.branch_field || '',
+          college_school_name: learner?.college_school_name || '',
+          registration_number: learner?.registration_number || ''
         },
-        submission_files: studentSubmissionFiles
+        submission_files: learnerSubmissionFiles
       };
     }) || [];
 
     return flattenedData;
   } catch (error) {
-    logger.error('Fetch assignment students failed', error instanceof Error ? error : new Error(String(error)), { assignmentId });
+    logger.error('Fetch assignment learners failed', error instanceof Error ? error : new Error(String(error)), { assignmentId });
     throw error;
   }
 };
 
 /**
- * Grade a student's assignment submission
+ * Grade a learner's assignment submission
  */
-export const gradeAssignment = async (studentAssignmentId: string, gradingData: GradingData): Promise<StudentAssignment> => {
+export const gradeAssignment = async (learnerAssignmentId: string, gradingData: GradingData): Promise<LearnerAssignment> => {
   try {
     const { data, error } = await supabase
-      .from('student_assignments')
+      .from('learner_assignments')
       .update({
         grade_received: gradingData.grade_received,
         instructor_feedback: gradingData.instructor_feedback,
@@ -159,14 +159,14 @@ export const gradeAssignment = async (studentAssignmentId: string, gradingData: 
         status: 'graded',
         updated_date: new Date().toISOString()
       })
-      .eq('student_assignment_id', studentAssignmentId)
+      .eq('learner_assignment_id', learnerAssignmentId)
       .select()
       .single();
 
     if (error) throw error;
     return data;
   } catch (error) {
-    logger.error('Grade assignment failed', error instanceof Error ? error : new Error(String(error)), { studentAssignmentId });
+    logger.error('Grade assignment failed', error instanceof Error ? error : new Error(String(error)), { learnerAssignmentId });
     throw error;
   }
 };

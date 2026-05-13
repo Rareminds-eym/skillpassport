@@ -23,7 +23,7 @@ export default function WhoIsThisForSection() {
           <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl mx-auto px-4">
             {isCorporate 
               ? 'Skill Ecosystem helps organizations discover and hire candidates with relevant skills and learning portfolios'
-              : `${brandName} is designed for students who are serious about their career`
+              : `${brandName} is designed for learners who are serious about their career`
             }
           </p>
           {/* Lottie Animation - Mobile Only */}
@@ -64,7 +64,7 @@ export default function WhoIsThisForSection() {
               },
               { 
                 icon: Target, 
-                desc: 'Companies building structured pipelines of skilled student talent',
+                desc: 'Companies building structured pipelines of skilled learner talent',
                 color: 'from-blue-500 to-blue-600'
               },
               { 
@@ -75,17 +75,17 @@ export default function WhoIsThisForSection() {
             ] : [
               { 
                 icon: GraduationCap, 
-                desc: 'Undergraduate & postgraduate students',
+                desc: 'Undergraduate & postgraduate learners',
                 color: 'from-blue-500 to-blue-600'
               },
               { 
                 icon: Briefcase, 
-                desc: 'Final-year students preparing for placements',
+                desc: 'Final-year learners preparing for placements',
                 color: 'from-blue-500 to-blue-600'
               },
               { 
                 icon: Target, 
-                desc: 'Students applying for internships or apprenticeships',
+                desc: 'Learners applying for internships or apprenticeships',
                 color: 'from-blue-500 to-blue-600'
               },
               { 
@@ -158,7 +158,7 @@ export default function WhoIsThisForSection() {
               },
               { 
                 icon: Target, 
-                desc: 'Companies building structured pipelines of skilled student talent',
+                desc: 'Companies building structured pipelines of skilled learner talent',
                 color: 'from-blue-500 to-blue-600',
                 position: 'bottom-[15%] left-[8%]',
                 textAlign: 'right',
@@ -175,7 +175,7 @@ export default function WhoIsThisForSection() {
             ] : [
               { 
                 icon: GraduationCap, 
-                desc: 'Undergraduate & postgraduate students',
+                desc: 'Undergraduate & postgraduate learners',
                 color: 'from-blue-500 to-blue-600',
                 position: 'top-[5%] right-[-5%]',
                 textAlign: 'left',
@@ -183,7 +183,7 @@ export default function WhoIsThisForSection() {
               },
               { 
                 icon: Briefcase, 
-                desc: 'Final-year students preparing for placements',
+                desc: 'Final-year learners preparing for placements',
                 color: 'from-blue-500 to-blue-600',
                 position: 'bottom-[15%] right-[8%]',
                 textAlign: 'left',
@@ -191,7 +191,7 @@ export default function WhoIsThisForSection() {
               },
               { 
                 icon: Target, 
-                desc: 'Students applying for internships or apprenticeships',
+                desc: 'Learners applying for internships or apprenticeships',
                 color: 'from-blue-500 to-blue-600',
                 position: 'bottom-[15%] left-[8%]',
                 textAlign: 'right',

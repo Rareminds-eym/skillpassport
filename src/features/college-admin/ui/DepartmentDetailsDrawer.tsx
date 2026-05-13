@@ -146,10 +146,10 @@ const DepartmentDetailsDrawer: React.FC<DepartmentDetailsDrawerProps> = ({
             </div>
             <div className="rounded-lg border border-gray-200 bg-white p-3 sm:p-4">
               <p className="text-xs uppercase tracking-wide text-gray-500">
-                Students
+                Learners
               </p>
               <p className="mt-1 sm:mt-2 text-xl sm:text-2xl font-semibold text-gray-900">
-                {department.student_count || 0}
+                {department.learner_count || 0}
               </p>
             </div>
             <div className="rounded-lg border border-gray-200 bg-white p-3 sm:p-4">

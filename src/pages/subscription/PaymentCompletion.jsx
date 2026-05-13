@@ -40,9 +40,9 @@ function getManagePath(userRole) {
     school_educator: '/educator/subscription/manage',
     college_educator: '/educator/subscription/manage',
     recruiter: '/recruitment/subscription/manage',
-    student: '/student/subscription/manage',
-    school_student: '/student/subscription/manage',
-    college_student: '/student/subscription/manage',
+    learner: '/learner/subscription/manage',
+    'school-learner': '/learner/subscription/manage',
+    'college-learner': '/learner/subscription/manage',
   };
   return manageRoutes[userRole] || null; // Return null for unknown roles
 }
@@ -143,12 +143,18 @@ const PlanCard = memo(({ plan }) => (
       </div>
 
       <div className="border-t border-white/20 pt-4 space-y-2.5">
-        {plan.features?.slice(0, 4).map((feature, index) => (
-          <div key={index} className="flex items-center gap-2.5">
-            <Check className="w-4 h-4 text-blue-200" strokeWidth={2.5} />
-            <span className="text-sm text-blue-100">{feature}</span>
-          </div>
-        ))}
+        {plan.features?.slice(0, 4).map((feature, index) => {
+          // Features may be strings or objects with {name, feature_key}
+          const featureName = typeof feature === 'string'
+            ? feature
+            : (feature?.name || feature?.feature_key || '');
+          return (
+            <div key={index} className="flex items-center gap-2.5">
+              <Check className="w-4 h-4 text-blue-200" strokeWidth={2.5} />
+              <span className="text-sm text-blue-100">{featureName}</span>
+            </div>
+          );
+        })}
         {plan.features?.length > 4 && (
           <p className="text-xs text-blue-200 pl-6">+{plan.features.length - 4} more features</p>
         )}
@@ -215,7 +221,7 @@ function PaymentCompletion() {
   const { role } = useUserRole();
   const managePath = useMemo(() => getManagePath(role), [role]);
 
-  const { plan, studentType, isUpgrade, isRenewal } = useMemo(() => location.state || {}, [location.state]);
+  const { plan, learnerType, isUpgrade, isRenewal } = useMemo(() => location.state || {}, [location.state]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -225,8 +231,8 @@ function PaymentCompletion() {
   const { subscriptionData, loading: subscriptionLoading } = useSubscription();
 
   const plansUrl = useMemo(() => {
-    return studentType ? `/subscription/plans/${studentType}` : '/subscription/plans/student';
-  }, [studentType]);
+    return learnerType ? `/subscription/plans/${learnerType}` : '/subscription/plans/learner';
+  }, [learnerType]);
 
   // Validate user exists in database and redirect if not authenticated
   useEffect(() => {
@@ -237,11 +243,11 @@ function PaymentCompletion() {
       if (!isAuthenticated || !user) {
         console.log('❌ User not authenticated, redirecting to signup');
         if (plan) {
-          localStorage.setItem('payment_plan_details', JSON.stringify({ ...plan, studentType }));
+          localStorage.setItem('payment_plan_details', JSON.stringify({ ...plan, learnerType }));
         }
         navigate('/signup', {
           replace: true,
-          state: { plan, studentType, returnTo: '/subscription/payment' },
+          state: { plan, learnerType, returnTo: '/subscription/payment' },
         });
         return;
       }
@@ -259,11 +265,11 @@ function PaymentCompletion() {
           localStorage.removeItem('pendingUser');
 
           if (plan) {
-            localStorage.setItem('payment_plan_details', JSON.stringify({ ...plan, studentType }));
+            localStorage.setItem('payment_plan_details', JSON.stringify({ ...plan, learnerType }));
           }
           navigate('/signup', {
             replace: true,
-            state: { plan, studentType, returnTo: '/subscription/payment' },
+            state: { plan, learnerType, returnTo: '/subscription/payment' },
           });
           return;
         }
@@ -320,7 +326,7 @@ function PaymentCompletion() {
     };
 
     validateAndFetchUser();
-  }, [authLoading, isAuthenticated, user, navigate, plan, studentType]);
+  }, [authLoading, isAuthenticated, user, navigate, plan, learnerType]);
 
   // Redirect if active subscription (including cancelled but not expired)
   // CRITICAL: Skip redirect entirely when user is upgrading or renewing
@@ -407,18 +413,58 @@ function PaymentCompletion() {
       try {
         await initiateRazorpayPayment({
           plan,
-          userDetails: { ...userDetails, studentType },
+          userDetails: { ...userDetails, learnerType },
           isUpgrade,
-          onSuccess: (verificationResult) => {
-            const routes = { school: '/signin/school', university: '/signin/university', default: '/signup' };
-            navigate(routes[studentType] || routes.default, {
-              state: { paymentDetails: verificationResult },
+          onSuccess: (result) => {
+            setLoading(false);
+            // Navigate to success page via React Router — no page reload
+            navigate('/subscription/payment/success', {
+              state: {
+                razorpay_payment_id: result.razorpay_payment_id,
+                razorpay_order_id: result.razorpay_order_id,
+                razorpay_signature: result.razorpay_signature,
+                plan: result.plan,
+                verificationResult: result.verificationResult,
+                learnerType,
+              },
               replace: true,
             });
           },
-          onFailure: (err) => {
+          onFailure: (result) => {
             setLoading(false);
-            setError(err.message || 'Payment failed. Please try again.');
+
+            // SUBSCRIPTION_EXISTS → navigate to manage page
+            if (result.error_code === 'SUBSCRIPTION_EXISTS') {
+              const targetPath = managePath || `/subscription/plans?type=${learnerType || 'learner'}`;
+              navigate(targetPath, {
+                state: { message: result.error_description },
+                replace: true,
+              });
+              return;
+            }
+
+            // PAYMENT_CANCELLED → silently reset (user chose to cancel)
+            if (result.error_code === 'PAYMENT_CANCELLED') {
+              setError('');
+              return;
+            }
+
+            // All other failures → show inline error with option to navigate to failure page
+            navigate('/subscription/payment/failure', {
+              state: {
+                error_code: result.error_code,
+                error_description: result.error_description,
+                error_reason: result.error_reason,
+                razorpay_order_id: result.razorpay_order_id,
+                razorpay_payment_id: result.razorpay_payment_id,
+                plan,
+                learnerType,
+              },
+            });
+          },
+          onCancel: () => {
+            // User dismissed modal — no error, just reset loading state
+            setLoading(false);
           },
         });
       } catch {
@@ -426,7 +472,7 @@ function PaymentCompletion() {
         setLoading(false);
       }
     },
-    [loading, userDetails, plan, studentType, navigate, validateField, isUpgrade]
+    [loading, userDetails, plan, learnerType, navigate, validateField, isUpgrade]
   );
 
   const handleBack = useCallback(() => navigate(plansUrl), [navigate, plansUrl]);

@@ -1,8 +1,8 @@
 // ==================== TYPES ====================
 export interface AttendanceRecord {
   id: string;
-  studentId: string;
-  studentName: string;
+  learnerId: string;
+  learnerName: string;
   rollNumber: string;
   department: string;
   course: string;
@@ -30,7 +30,7 @@ export interface AttendanceSession {
   course: string;
   semester: number;
   section: string;
-  totalStudents: number;
+  totallearners: number;
   presentCount: number;
   absentCount: number;
   lateCount: number;
@@ -51,7 +51,7 @@ export interface Course {
   code: string;
 }
 
-export interface Student {
+export interface Learner {
   id: string;
   rollNumber: string;
   name: string;
@@ -73,7 +73,7 @@ export interface SubjectGroup {
   sessions: AttendanceSession[];
   totalSessions: number;
   avgAttendancePercentage: number;
-  totalStudents: number;
+  totallearners: number;
   totalPresentCount: number;
   totalAbsentCount: number;
   totalLateCount: number;

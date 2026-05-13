@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -8,7 +9,7 @@ export interface Circular {
   college_id?: string;
   title: string;
   content: string;
-  audience: 'all' | 'students' | 'faculty' | 'staff';
+  audience: 'all' | 'learners' | 'faculty' | 'staff';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   publish_date: string;
   expire_date?: string;
@@ -25,7 +26,7 @@ export interface Circular {
 export interface CreateCircularData {
   title: string;
   content: string;
-  audience: 'all' | 'students' | 'faculty' | 'staff';
+  audience: 'all' | 'learners' | 'faculty' | 'staff';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   publish_date: string;
   expire_date?: string;
@@ -137,7 +138,7 @@ class CircularsService {
   // Get user's college ID
   private async getUserCollegeId(): Promise<string | null> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await getCurrentUser();
       if (!user) {
         logger.warn('No authenticated user found for college lookup');
         return null;
@@ -189,7 +190,7 @@ class CircularsService {
   async createCircular(circularData: CreateCircularData): Promise<{ data: Circular | null; error: any }> {
     try {
       // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await getCurrentUser();
       
       // Get user's college ID
       const collegeId = await this.getUserCollegeId();

@@ -1,17 +1,17 @@
 import React, { useState } from "react";
 import { X } from "lucide-react";
 import toast from 'react-hot-toast';
-import { StudentFeeSummary, FeePayment, PaymentMode } from '@/features/student-profile/model';
+import { LearnerFeeSummary, FeePayment, PaymentMode } from '@/features/learner-profile/model';
 import { PAYMENT_MODES } from '../types';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (ledgerId: string, studentId: string, data: Partial<FeePayment>) => Promise<boolean>;
-  student: StudentFeeSummary | null;
+  onSave: (ledgerId: string, learnerId: string, data: Partial<FeePayment>) => Promise<boolean>;
+  learner: LearnerFeeSummary | null;
 }
 
-export const PaymentFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, student }) => {
+export const PaymentFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, learner }) => {
   const [formData, setFormData] = useState<Partial<FeePayment>>({
     amount: 0,
     mode: "Cash",
@@ -21,9 +21,9 @@ export const PaymentFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, stu
   const [saving, setSaving] = useState(false);
   const [selectedLedgerId, setSelectedLedgerId] = useState<string>("");
 
-  if (!isOpen || !student) return null;
+  if (!isOpen || !learner) return null;
 
-  const pendingLedgers = student.ledger_entries.filter((l) => (l.balance || 0) > 0);
+  const pendingLedgers = learner.ledger_entries.filter((l) => (l.balance || 0) > 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +36,7 @@ export const PaymentFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, stu
       return;
     }
     setSaving(true);
-    const success = await onSave(selectedLedgerId, student.student_id, formData);
+    const success = await onSave(selectedLedgerId, learner.learner_id, formData);
     setSaving(false);
     if (success) {
       onClose();
@@ -61,11 +61,11 @@ export const PaymentFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, stu
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            {/* Student Info */}
+            {/* Learner Info */}
             <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-              <p className="font-semibold text-blue-900">{student.student_name}</p>
-              <p className="text-sm text-blue-700">Roll No: {student.roll_number}</p>
-              <p className="text-sm text-blue-700">Balance: ₹{student.balance.toLocaleString()}</p>
+              <p className="font-semibold text-blue-900">{learner.learner_name}</p>
+              <p className="text-sm text-blue-700">Roll No: {learner.roll_number}</p>
+              <p className="text-sm text-blue-700">Balance: ₹{learner.balance.toLocaleString()}</p>
             </div>
 
             {/* Select Fee Head */}

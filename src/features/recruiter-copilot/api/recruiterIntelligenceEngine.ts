@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import { buildRecruiterSystemPrompt, buildIntentClassificationPrompt, buildGeneralResponsePrompt } from '../lib/prompts/intelligentPrompt';
 import { buildRecruiterContext } from '@/features/recruiter-copilot';
-import { RecruiterAIResponse, RecruiterIntent } from '@/features/student-profile/model';
+import { RecruiterAIResponse, RecruiterIntent } from '@/features/learner-profile/model';
 import { recruiterInsights } from './recruiterInsights';
 import { talentAnalytics } from './talentAnalytics';
 import { queryParser } from './queryParser';
@@ -398,85 +398,85 @@ Format:
         
         const oppIds = opportunities.map(o => o.id);
         
-        // STEP 1: Find matching students first (proper name filtering)
-        const { data: matchingStudents } = await supabase
-          .from('students')
+        // STEP 1: Find matching learners first (proper name filtering)
+        const { data: matchinglearners } = await supabase
+          .from('learners')
           .select('user_id, name, email, university, currentCgpa, city, state')
           .ilike('name', `%${candidateName}%`);
         
-        if (!matchingStudents || matchingStudents.length === 0) {
+        if (!matchinglearners || matchinglearners.length === 0) {
           return {
             success: true,
             message: `No candidate found with name matching "${candidateName}".\n\nPossible reasons:\n• Name spelling might be different\n• Candidate hasn't applied to your jobs\n• Try the full exact name\n\n**Tip:** Use "Show all applicants" to see everyone who applied.`
           };
         }
         
-        const studentIds = matchingStudents.map(s => s.user_id);
+        const learnerIds = matchinglearners.map(s => s.user_id);
 
         // STEP 2: Get their applications in pipeline_candidates
         const { data: pipelineCandidates } = await supabase
           .from('pipeline_candidates')
-          .select('id, opportunity_id, student_id, stage, status, created_at')
+          .select('id, opportunity_id, learner_id, stage, status, created_at')
           .in('opportunity_id', oppIds)
-          .in('student_id', studentIds);
+          .in('learner_id', learnerIds);
         
         // STEP 3: Get their formal applications
         const { data: appliedJobs } = await supabase
           .from('applied_jobs')
-          .select('id, student_id, opportunity_id, application_status, applied_at')
+          .select('id, learner_id, opportunity_id, application_status, applied_at')
           .in('opportunity_id', oppIds)
-          .in('student_id', studentIds);
+          .in('learner_id', learnerIds);
         
-        // Combine results with student data
+        // Combine results with learner data
         const allMatches = [];
         
-        // Create student lookup map
-        const studentMap = new Map(matchingStudents.map(s => [s.user_id, s]));
+        // Create learner lookup map
+        const learnerMap = new Map(matchinglearners.map(s => [s.user_id, s]));
         
         if (pipelineCandidates && pipelineCandidates.length > 0) {
           pipelineCandidates.forEach(candidate => {
-            const student = studentMap.get(candidate.student_id);
+            const learner = learnerMap.get(candidate.learner_id);
             const opp = opportunities.find(o => o.id === candidate.opportunity_id);
             allMatches.push({
-              student_id: candidate.student_id,
-              candidate_name: student?.name || 'Unknown',
+              learner_id: candidate.learner_id,
+              candidate_name: learner?.name || 'Unknown',
               opportunity_title: opp?.job_title || 'Unknown',
               company: opp?.company_name || 'Unknown',
               status: candidate.status || candidate.stage || 'In Pipeline',
               source: 'pipeline',
               date: candidate.created_at,
-              university: student?.university,
-              cgpa: student?.currentCgpa,
-              location: `${student?.city || ''}, ${student?.state || ''}`.trim().replace(/^,\s*|\s*,$/, '')
+              university: learner?.university,
+              cgpa: learner?.currentCgpa,
+              location: `${learner?.city || ''}, ${learner?.state || ''}`.trim().replace(/^,\s*|\s*,$/, '')
             });
           });
         }
         
         if (appliedJobs && appliedJobs.length > 0) {
           appliedJobs.forEach(application => {
-            const student = studentMap.get(application.student_id);
+            const learner = learnerMap.get(application.learner_id);
             const opp = opportunities.find(o => o.id === application.opportunity_id);
             allMatches.push({
-              student_id: application.student_id,
-              candidate_name: student?.name || 'Unknown',
+              learner_id: application.learner_id,
+              candidate_name: learner?.name || 'Unknown',
               opportunity_title: opp?.job_title || 'Unknown',
               company: opp?.company_name || 'Unknown',
               status: application.application_status || 'Applied',
               source: 'applied',
               date: application.applied_at,
-              university: student?.university,
-              cgpa: student?.currentCgpa,
-              location: `${student?.city || ''}, ${student?.state || ''}`.trim().replace(/^,\s*|\s*,$/, '')
+              university: learner?.university,
+              cgpa: learner?.currentCgpa,
+              location: `${learner?.city || ''}, ${learner?.state || ''}`.trim().replace(/^,\s*|\s*,$/, '')
             });
           });
         }
         
         if (allMatches.length === 0) {
-          // Student exists but hasn't applied to this recruiter's jobs
-          const studentNames = matchingStudents.map(s => s.name).join(', ');
+          // Learner exists but hasn't applied to this recruiter's jobs
+          const learnerNames = matchinglearners.map(s => s.name).join(', ');
           return {
             success: true,
-            message: `Found candidate(s) matching "${candidateName}": **${studentNames}**\n\nHowever, they haven't applied to any of your opportunities yet.\n\n**Next steps:**\n• Source them for your open positions\n• Send them an invitation to apply\n• Add them to your pipeline manually`
+            message: `Found candidate(s) matching "${candidateName}": **${learnerNames}**\n\nHowever, they haven't applied to any of your opportunities yet.\n\n**Next steps:**\n• Source them for your open positions\n• Send them an invitation to apply\n• Add them to your pipeline manually`
           };
         }
         
@@ -596,7 +596,7 @@ Format:
             emptyResultsMessage += `\n\n💡 Skills available in database:\n${availableSkills.map(s => `  • ${s.skill} (${s.count} candidate${s.count !== 1 ? 's' : ''})`).slice(0, 8).join('\n')}`;
             emptyResultsMessage += `\n\nTry searching for one of these skills instead.`;
           } else {
-            emptyResultsMessage += `\n\n⚠️ Your database has very limited skill data. Consider:\n• Importing skills from resumes\n• Asking students to update their profiles\n• Using "Show all candidates" to see everyone`;
+            emptyResultsMessage += `\n\n⚠️ Your database has very limited skill data. Consider:\n• Importing skills from resumes\n• Asking learners to update their profiles\n• Using "Show all candidates" to see everyone`;
           }
         } else {
           emptyResultsMessage += `\n\nTry:\n• Broadening skill requirements\n• Expanding location search\n• Lowering CGPA threshold`;
@@ -705,11 +705,11 @@ Format:
           .select(`
             id,
             opportunity_id,
-            student_id,
+            learner_id,
             stage,
             status,
             created_at,
-            students:student_id (
+            learners:learner_id (
               name,
               email,
               university,
@@ -763,7 +763,7 @@ Format:
           totalApplicants > 0 ? `Showing opportunities with applicants first:` : `Showing ${displayedOpps.length} most recent opportunities:`,
           ``,
           ...displayedOpps.map((opp, i) => 
-            `${i + 1}. **${opp.job_title}** at ${opp.company_name}\n   👥 ${opp.applicant_count} applicant${opp.applicant_count !== 1 ? 's' : ''}${opp.applicant_count > 0 ? ` - ${opp.applicants.map((a: any) => a.students?.name || 'Unknown').slice(0, 2).join(', ')}${opp.applicant_count > 2 ? ` +${opp.applicant_count - 2} more` : ''}` : ''}`
+            `${i + 1}. **${opp.job_title}** at ${opp.company_name}\n   👥 ${opp.applicant_count} applicant${opp.applicant_count !== 1 ? 's' : ''}${opp.applicant_count > 0 ? ` - ${opp.applicants.map((a: any) => a.learners?.name || 'Unknown').slice(0, 2).join(', ')}${opp.applicant_count > 2 ? ` +${opp.applicant_count - 2} more` : ''}` : ''}`
           ),
           hasMore ? `\n... and ${opportunities.length - displayLimit} more opportunities` : '',
           ``
@@ -781,7 +781,7 @@ Format:
                 title: opp.job_title,
                 company: opp.company_name,
                 applicantCount: opp.applicant_count,
-                recentApplicants: opp.applicants.slice(0, 3).map((a: any) => a.students?.name || 'Unknown')
+                recentApplicants: opp.applicants.slice(0, 3).map((a: any) => a.learners?.name || 'Unknown')
               }
             })),
             metadata: {
@@ -832,11 +832,11 @@ Format:
           .from('applied_jobs')
           .select(`
             id,
-            student_id,
+            learner_id,
             opportunity_id,
             application_status,
             applied_at,
-            students:student_id (
+            learners:learner_id (
               user_id,
               name,
               email,
@@ -860,24 +860,24 @@ Format:
         }
         
         // Fetch skills for applicants
-        const studentIds = applications.map(a => a.student_id);
+        const learnerIds = applications.map(a => a.learner_id);
         const { data: skills } = await supabase
           .from('skills')
-          .select('student_id, name, level')
-          .in('student_id', studentIds)
+          .select('learner_id, name, level')
+          .in('learner_id', learnerIds)
           .eq('enabled', true);
         
-        // Group skills by student
-        const skillsByStudent = new Map<string, any[]>();
+        // Group skills by learner
+        const skillsByLearner = new Map<string, any[]>();
         skills?.forEach(skill => {
-          const existing = skillsByStudent.get(skill.student_id) || [];
-          skillsByStudent.set(skill.student_id, [...existing, skill]);
+          const existing = skillsByLearner.get(skill.learner_id) || [];
+          skillsByLearner.set(skill.learner_id, [...existing, skill]);
         });
         
         // Enrich applicants with skills
         const enrichedApplicants = applications.map(app => ({
           ...app,
-          skills: skillsByStudent.get(app.student_id) || []
+          skills: skillsByLearner.get(app.learner_id) || []
         }));
         
         // Use AI to analyze and recommend
@@ -889,11 +889,11 @@ ${opportunities.map(o => `- ${o.job_title}: ${o.description || 'No description'}
 
 APPLICANTS:
 ${enrichedApplicants.slice(0, 15).map((app, i) => `
-${i + 1}. ${app.students?.name || 'Unknown'}
-   University: ${app.students?.university || 'N/A'}
-   CGPA: ${app.students?.currentCgpa || 'N/A'}
+${i + 1}. ${app.learners?.name || 'Unknown'}
+   University: ${app.learners?.university || 'N/A'}
+   CGPA: ${app.learners?.currentCgpa || 'N/A'}
    Skills: ${app.skills.map(s => s.name).join(', ') || 'None listed'}
-   Location: ${app.students?.city || 'N/A'}
+   Location: ${app.learners?.city || 'N/A'}
    Status: ${app.application_status}
    Applied: ${new Date(app.applied_at).toLocaleDateString()}`).join('\n')}
 
@@ -1287,7 +1287,7 @@ Next Step: [action]
             metadata: {
               intentHandled: 'Data Health Check',
               nextSteps: healthReport.status === 'critical' 
-                ? ['Import missing skills data', 'Update student profiles', 'Add location information']
+                ? ['Import missing skills data', 'Update learner profiles', 'Add location information']
                 : ['Continue with candidate searches', 'Review data quality periodically'],
               encouragement: healthReport.status === 'healthy' 
                 ? 'Your data quality is excellent! Ready for intelligent matching.'

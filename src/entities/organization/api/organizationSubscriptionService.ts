@@ -1,3 +1,4 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Organization Subscription Service
  * 
@@ -24,7 +25,7 @@ export interface OrganizationSubscription {
   totalSeats: number;
   assignedSeats: number;
   availableSeats: number;
-  targetMemberType: 'educator' | 'student' | 'both';
+  targetMemberType: 'educator' | 'learner' | 'both';
   status: 'active' | 'paused' | 'cancelled' | 'expired' | 'grace_period';
   startDate: string;
   endDate: string;
@@ -46,7 +47,7 @@ export interface OrgSubscriptionPurchaseRequest {
   organizationType: 'school' | 'college' | 'university';
   planId: string;
   seatCount: number;
-  targetMemberType: 'educator' | 'student' | 'both';
+  targetMemberType: 'educator' | 'learner' | 'both';
   billingCycle: 'monthly' | 'annual';
   autoRenew: boolean;
   paymentMethod: string;
@@ -151,7 +152,7 @@ export class OrganizationSubscriptionService {
       }
 
       // 4. Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await getCurrentUser();
       if (!user) {
         throw new Error('User not authenticated');
       }

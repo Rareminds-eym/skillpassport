@@ -1,7 +1,7 @@
 # User API - Migration Status
 
 ## Overview
-The user-api handles all user signup and management operations across different user types (students, educators, admins, recruiters) and institutions (schools, colleges, universities, companies).
+The user-api handles all user signup and management operations across different user types (learners, educators, admins, recruiters) and institutions (schools, colleges, universities, companies).
 
 ## Status: ⚠️ REQUIRES HANDLER MIGRATION
 
@@ -15,17 +15,17 @@ This API has 20+ endpoints organized into multiple handler files. Full migration
 ### School Signup (3)
 2. **POST /signup/school-admin** - School admin signup
 3. **POST /signup/educator** - Educator signup
-4. **POST /signup/student** - Student signup
+4. **POST /signup/learner** - learner signup
 
 ### College Signup (3)
 5. **POST /signup/college-admin** - College admin signup
 6. **POST /signup/college-educator** - College educator signup
-7. **POST /signup/college-student** - College student signup
+7. **POST /signup/college-learner** - College learner signup
 
 ### University Signup (3)
 8. **POST /signup/university-admin** - University admin signup
 9. **POST /signup/university-educator** - University educator signup
-10. **POST /signup/university-student** - University student signup
+10. **POST /signup/university-learner** - University learner signup
 
 ### Recruiter Signup (2)
 11. **POST /signup/recruiter-admin** - Recruiter admin signup
@@ -43,10 +43,10 @@ This API has 20+ endpoints organized into multiple handler files. Full migration
 21. **POST /check-email** - Check email availability
 
 ### Authenticated Endpoints (7)
-22. **POST /create-student** - Create student (requires auth)
+22. **POST /create-learner** - Create learner (requires auth)
 23. **POST /create-teacher** - Create teacher (requires auth)
 24. **POST /create-college-staff** - Create college staff (requires auth)
-25. **POST /update-student-documents** - Update student documents (requires auth)
+25. **POST /update-learner-documents** - Update learner documents (requires auth)
 26. **POST /create-event-user** - Create event user (requires auth)
 27. **POST /send-interview-reminder** - Send interview reminder (requires auth)
 28. **POST /reset-password** - Reset password
@@ -79,13 +79,13 @@ cloudflare-workers/user-api/src/utils/
 ## Implementation Notes
 
 ### Key Features
-- Multiple user types (student, educator, admin, recruiter)
+- Multiple user types (learner, educator, admin, recruiter)
 - Multiple institution types (school, college, university, company)
 - Email validation and uniqueness checks
 - Code validation for institutions
 - Password reset functionality
 - Event user creation
-- Document management for students
+- Document management for learners
 
 ### Dependencies
 - @supabase/supabase-js

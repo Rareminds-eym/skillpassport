@@ -1,36 +1,36 @@
 /**
  * PrintViewMiddleHighSchool Component
- * Grade-level-specific print view for Middle School and High School students (Grades 6-10)
+ * Grade-level-specific print view for Middle School and High School learners (Grades 6-10)
  * Requirements: 1.1, 2.1 - Simplified career exploration without MCQ test scores
  */
 
 import CoverPage from './CoverPage';
 import PrintStyles from './shared/PrintStyles';
 import { printStyles } from '../lib/printStyles';
-import { safeRender, getSafeStudentInfo, riasecDescriptions, defaultRiasecNames, getScoreStyle } from '../lib/printUtils';
+import { safeRender, getSafelearnerInfo, riasecDescriptions, defaultRiasecNames, getScoreStyle } from '../lib/printUtils';
 import RiasecIcon from './shared/RiasecIcon';
 import Watermarks, { DataPrivacyNotice, ReportDisclaimer, RepeatingHeader, RepeatingFooter } from './shared/Watermarks';
 import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
 
 /**
  * PrintViewMiddleHighSchool Component
- * Renders assessment report for middle and high school students
+ * Renders assessment report for middle and high school learners
  * 
  * @param {Object} props - Component props
  * @param {Object} props.results - Assessment results data
- * @param {Object} props.studentInfo - Student information
+ * @param {Object} props.learnerInfo - Learner information
  * @param {Object} props.riasecNames - RIASEC code to name mapping (optional)
- * @param {Object} props.streamRecommendation - Stream recommendation for after10 students (optional)
- * @param {Object} props.studentAcademicData - Student academic data (optional)
+ * @param {Object} props.streamRecommendation - Stream recommendation for after10 learners (optional)
+ * @param {Object} props.learnerAcademicData - Learner academic data (optional)
  * @param {string} props.gradeLevel - Grade level (middle, highschool) (optional)
  * @returns {JSX.Element} - Print view component
  */
 const PrintViewMiddleHighSchool = ({ 
   results, 
-  studentInfo, 
+  learnerInfo, 
   riasecNames,
   streamRecommendation,
-  studentAcademicData,
+  learnerAcademicData,
   gradeLevel
 }) => {
   // Handle null results
@@ -132,10 +132,10 @@ const PrintViewMiddleHighSchool = ({
   // Determine if this is middle school (grades 6-8)
   // Used to pass correct gradeLevel to DetailedAssessmentBreakdown
   const isMiddleSchool = gradeLevel === 'middle' || 
-                         (studentInfo?.grade && parseInt(studentInfo.grade.toString().match(/\d+/)?.[0]) <= 8);
+                         (learnerInfo?.grade && parseInt(learnerInfo.grade.toString().match(/\d+/)?.[0]) <= 8);
 
-  // Safe student info with defaults
-  const safeStudentInfo = getSafeStudentInfo(studentInfo);
+  // Safe learner info with defaults
+  const safelearnerInfo = getSafelearnerInfo(learnerInfo);
 
   // Safe RIASEC names with defaults
   const safeRiasecNames = riasecNames || defaultRiasecNames;
@@ -146,7 +146,7 @@ const PrintViewMiddleHighSchool = ({
       <PrintStyles />
 
       {/* Cover Page */}
-      <CoverPage studentInfo={safeStudentInfo} />
+      <CoverPage learnerInfo={safelearnerInfo} />
 
       {/* Watermarks */}
       <Watermarks />
@@ -176,8 +176,8 @@ const PrintViewMiddleHighSchool = ({
                 <OverallSummarySection overallSummary={overallSummary} />
               )}
 
-              {/* Section 1: Student Profile Snapshot */}
-              <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
+              {/* Section 1: Learner Profile Snapshot */}
+              <h2 style={printStyles.sectionTitle}>1. Learner Profile Snapshot</h2>
 
               {/* Profile Snapshot Details */}
               {profileSnapshot && (profileSnapshot.interestHighlights || profileSnapshot.personalityInsights) && (
@@ -503,7 +503,7 @@ const InterestExplorerSection = ({ riasec, safeRiasecNames }) => {
       }}>
         <strong>Your Top Interests:</strong> {topInterestsText}. {hasStrongInterests 
           ? 'These interests indicate your natural preferences and can guide your career exploration.' 
-          : 'The student has not expressed any strong interests in any of the RIASEC categories, indicating a need for exploration in various fields.'}
+          : 'The learner has not expressed any strong interests in any of the RIASEC categories, indicating a need for exploration in various fields.'}
       </div>
     </div>
   );
@@ -1620,7 +1620,7 @@ const AdaptiveAptitudeSection = ({ adaptiveAptitudeResults }) => {
 
 /**
  * StreamRecommendationSection Component
- * Renders stream recommendation for after 10th students
+ * Renders stream recommendation for after 10th learners
  */
 const StreamRecommendationSection = ({ streamRecommendation }) => {
   if (!streamRecommendation || !streamRecommendation.recommendedStream) return null;

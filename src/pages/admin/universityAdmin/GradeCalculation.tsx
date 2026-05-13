@@ -35,9 +35,9 @@ const GradeCalculation: React.FC = () => {
       college: "ABC Engineering College",
       department: "Computer Science",
       semester: "5th Semester",
-      totalStudents: 120,
-      calculatedStudents: 0,
-      pendingStudents: 120,
+      totallearners: 120,
+      calculatedlearners: 0,
+      pendinglearners: 120,
       status: "Pending",
       dueDate: "2025-01-15",
       subjects: ["Data Structures", "DBMS", "Computer Networks", "Software Engineering"],
@@ -54,9 +54,9 @@ const GradeCalculation: React.FC = () => {
       college: "XYZ Arts & Science College",
       department: "Mathematics",
       semester: "3rd Semester",
-      totalStudents: 85,
-      calculatedStudents: 85,
-      pendingStudents: 0,
+      totallearners: 85,
+      calculatedlearners: 85,
+      pendinglearners: 0,
       status: "Completed",
       dueDate: "2024-12-01",
       subjects: ["Calculus", "Linear Algebra", "Statistics", "Discrete Mathematics"],
@@ -73,9 +73,9 @@ const GradeCalculation: React.FC = () => {
       college: "PQR Medical College",
       department: "Biochemistry",
       semester: "4th Semester",
-      totalStudents: 60,
-      calculatedStudents: 30,
-      pendingStudents: 30,
+      totallearners: 60,
+      calculatedlearners: 30,
+      pendinglearners: 30,
       status: "In Progress",
       dueDate: "2025-01-25",
       subjects: ["Clinical Biochemistry", "Molecular Biology", "Enzymology"],
@@ -207,8 +207,8 @@ const GradeCalculation: React.FC = () => {
         <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl p-6 text-white shadow-lg">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-purple-100 text-sm mb-1">Total Students</p>
-              <p className="text-3xl font-bold">{gradeCalculations.reduce((sum, calc) => sum + calc.totalStudents, 0).toLocaleString()}</p>
+              <p className="text-purple-100 text-sm mb-1">Total Learners</p>
+              <p className="text-3xl font-bold">{gradeCalculations.reduce((sum, calc) => sum + calc.totallearners, 0).toLocaleString()}</p>
             </div>
             <div className="p-3 bg-white/10 rounded-xl">
               <Users className="h-7 w-7" />
@@ -443,7 +443,7 @@ const GradeCalculation: React.FC = () => {
                       College & Department
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                      Students
+                      Learners
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
                       Progress
@@ -488,9 +488,9 @@ const GradeCalculation: React.FC = () => {
                       </td>
                       <td className="px-4 py-3">
                         <div className="text-sm">
-                          <p className="text-gray-900">Total: {calc.totalStudents}</p>
-                          <p className="text-green-600">Calculated: {calc.calculatedStudents}</p>
-                          <p className="text-yellow-600">Pending: {calc.pendingStudents}</p>
+                          <p className="text-gray-900">Total: {calc.totallearners}</p>
+                          <p className="text-green-600">Calculated: {calc.calculatedlearners}</p>
+                          <p className="text-yellow-600">Pending: {calc.pendinglearners}</p>
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -498,11 +498,11 @@ const GradeCalculation: React.FC = () => {
                           <div className="w-16 bg-gray-200 rounded-full h-2">
                             <div 
                               className={`h-2 rounded-full ${getProgressColor(calc.status)}`}
-                              style={{ width: `${(calc.calculatedStudents / calc.totalStudents) * 100}%` }}
+                              style={{ width: `${(calc.calculatedlearners / calc.totallearners) * 100}%` }}
                             ></div>
                           </div>
                           <span className="text-sm text-gray-600">
-                            {Math.round((calc.calculatedStudents / calc.totalStudents) * 100)}%
+                            {Math.round((calc.calculatedlearners / calc.totallearners) * 100)}%
                           </span>
                         </div>
                       </td>

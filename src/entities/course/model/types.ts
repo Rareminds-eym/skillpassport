@@ -80,14 +80,14 @@ export interface CourseAnalytics {
   completionRate: number;
   evidenceSubmissionRate?: number;
   averageGrade?: number;
-  enrolledStudents?: number;
+  enrolledLearners?: number;
 }
 
 export interface SkillProgress {
   skillName: string;
-  studentProgress: {
-    studentId: string;
-    studentName: string;
+  learnerProgress: {
+    learnerId: string;
+    learnerName: string;
     proficiencyLevel: number;
   }[];
 }

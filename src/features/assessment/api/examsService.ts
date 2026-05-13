@@ -1,8 +1,9 @@
+import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 
 // Helper function to get current user ID
 const getCurrentUserId = async (): Promise<string> => {
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await getCurrentUser();
   return user?.id || 'system';
 };
 
@@ -89,7 +90,7 @@ export interface ExamRoom {
 export interface MarkEntry {
   id: string;
   assessment_id: string;
-  student_id: string;
+  learner_id: string;
   subject_id?: string; // Add subject_id field
   marks_obtained?: number;
   total_marks: number;
@@ -107,7 +108,7 @@ export interface MarkEntry {
   is_locked: boolean;
 }
 
-export interface Student {
+export interface Learner {
   id: string;
   name: string;
   email: string;
@@ -156,8 +157,8 @@ export interface SchoolClass {
   grade: string;
   section?: string;
   academic_year: string;
-  max_students?: number;
-  current_students?: number;
+  max_learners?: number;
+  current_learners?: number;
   school_id: string;
   room_no?: string;
 }
@@ -223,20 +224,20 @@ class ExamsService {
     }
   }
 
-  // Get students by target classes (replaces old methods)
-  async getStudentsByTargetClasses(targetClasses: any): Promise<Student[]> {
+  // Get learners by target classes (replaces old methods)
+  async getlearnersByTargetClasses(targetClasses: any): Promise<Learner[]> {
     if (!targetClasses?.class_ids || targetClasses.class_ids.length === 0) {
       return [];
     }
 
     const { data, error } = await supabase
-      .from('students')
+      .from('learners')
       .select('id, name, email, roll_number, admission_number, grade, section, school_id, college_id')
       .in('school_class_id', targetClasses.class_ids)
       .or('is_deleted.is.null,is_deleted.eq.false');
 
     if (error) {
-      console.error('Error loading students by target classes:', error);
+      console.error('Error loading learners by target classes:', error);
       throw error;
     }
 
@@ -313,7 +314,7 @@ class ExamsService {
   async getSchoolClasses(schoolId: string, academicYear?: string) {
     let query = supabase
       .from('school_classes')
-      .select('id, name, grade, section, academic_year, max_students, current_students, school_id, room_no')
+      .select('id, name, grade, section, academic_year, max_learners, current_learners, school_id, room_no')
       .eq('school_id', schoolId);
     
     if (academicYear) {
@@ -362,10 +363,10 @@ class ExamsService {
     return data as ExamRoom[];
   }
 
-  // Students
-  async getStudents(schoolId?: string, collegeId?: string, grade?: string, section?: string) {
+  // Learners
+  async getLearners(schoolId?: string, collegeId?: string, grade?: string, section?: string) {
     let query = supabase
-      .from('students')
+      .from('learners')
       .select('id, name, email, roll_number, admission_number, grade, section, school_id, college_id')
       .or('is_deleted.is.null,is_deleted.eq.false'); // Handle null values properly
     
@@ -382,7 +383,7 @@ class ExamsService {
     // Handle section filtering with fallback logic
     if (section && section.trim() !== '') {
       // Use OR condition to match either the exact section OR null section
-      // This handles cases where exam has section "A" but students have section null
+      // This handles cases where exam has section "A" but learners have section null
       query = query.or(`section.eq.${section},section.is.null`);
     }
     
@@ -390,20 +391,20 @@ class ExamsService {
     
     if (error) throw error;
     
-    return data as Student[];
+    return data as Learner[];
   }
 
-  // Get students by class_id (better approach)
-  async getStudentsByClassId(classId: string) {
+  // Get learners by class_id (better approach)
+  async getlearnersByClassId(classId: string) {
     const { data, error } = await supabase
-      .from('students')
+      .from('learners')
       .select('id, name, email, roll_number, admission_number, grade, section, school_id, college_id')
-      .eq('school_class_id', classId) // Assuming students table has school_class_id field
+      .eq('school_class_id', classId) // Assuming learners table has school_class_id field
       .or('is_deleted.is.null,is_deleted.eq.false')
       .order('roll_number');
     
     if (error) throw error;
-    return data as Student[];
+    return data as Learner[];
   }
 
   // Get all available rooms for a school (from multiple sources)
@@ -634,7 +635,7 @@ class ExamsService {
       .from('mark_entries')
       .select(`
         *,
-        students!inner(id, name, roll_number, admission_number),
+        learners!inner(id, name, roll_number, admission_number),
         mark_moderation_log(
           id,
           moderation_type, 
@@ -662,8 +663,8 @@ class ExamsService {
     // Sort by roll_number in JavaScript since we can't order by joined table fields directly
     if (data) {
       data.sort((a, b) => {
-        const rollA = a.students?.roll_number || a.students?.admission_number || '';
-        const rollB = b.students?.roll_number || b.students?.admission_number || '';
+        const rollA = a.learners?.roll_number || a.learners?.admission_number || '';
+        const rollB = b.learners?.roll_number || b.learners?.admission_number || '';
         return rollA.localeCompare(rollB, undefined, { numeric: true });
       });
     }
@@ -675,7 +676,7 @@ class ExamsService {
     const { data, error } = await supabase
       .from('mark_entries')
       .upsert(markEntries, {
-        onConflict: 'assessment_id,student_id,subject_id',
+        onConflict: 'assessment_id,learner_id,subject_id',
         ignoreDuplicates: false
       })
       .select();
@@ -686,7 +687,7 @@ class ExamsService {
 
   async moderateMarks(markEntryId: string, moderationData: {
     assessment_id: string;
-    student_id: string;
+    learner_id: string;
     subject_id: string; // Add subject_id parameter
     original_marks: number;
     marks_obtained: number;
@@ -700,7 +701,7 @@ class ExamsService {
       .delete()
       .eq('mark_entry_id', markEntryId)
       .eq('assessment_id', moderationData.assessment_id)
-      .eq('student_id', moderationData.student_id)
+      .eq('learner_id', moderationData.learner_id)
       .eq('subject_id', moderationData.subject_id);
 
     if (deleteError) {
@@ -713,7 +714,7 @@ class ExamsService {
       .insert({
         mark_entry_id: markEntryId,
         assessment_id: moderationData.assessment_id,
-        student_id: moderationData.student_id,
+        learner_id: moderationData.learner_id,
         subject_id: moderationData.subject_id, // Include subject_id in the log
         original_marks: moderationData.original_marks,
         moderated_marks: moderationData.marks_obtained,
