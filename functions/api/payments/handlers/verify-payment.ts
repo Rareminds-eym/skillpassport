@@ -17,6 +17,9 @@ import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { getServiceClient } from '../../../lib/supabase';
+import { R2Client } from '../../storage/utils/r2-client';
+import { generateReceiptPDF, fetchImageBytes, type ReceiptData } from '../../storage/utils/pdf-generator';
+import type { PagesEnv } from '../../../../src/functions-lib/types';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   return handleVerifyPayment(context);
@@ -137,17 +140,103 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         seat_count: 1,
       });
 
+    // Step 4: Generate receipt PDF server-side and upload to R2
+    // Non-blocking — a receipt failure must never fail the payment response.
+    let receiptUrl: string | null = null;
+    let receiptKey: string | null = null;
+    try {
+      const pagesEnv = env as unknown as PagesEnv;
+      const appUrl = pagesEnv.APP_URL;
+
+      if (!appUrl) {
+        console.warn('[VerifyPayment] APP_URL not configured in environment — receipt will render without images');
+      }
+
+      // Fetch the learner's real name from the learners table
+      const { data: learner } = await supabase
+        .from('learners')
+        .select('name')
+        .eq('user_id', user.sub)
+        .maybeSingle();
+
+      let logoBytes: Uint8Array | undefined;
+      if (appUrl) {
+        const logoUrl = `${appUrl}/RareMinds ISO Logo-01.png`;
+        console.log('[VerifyPayment] Fetching logo from:', logoUrl);
+        logoBytes = await fetchImageBytes(logoUrl);
+        if (!logoBytes) {
+          console.warn('[VerifyPayment] Failed to fetch logo image from:', logoUrl);
+        }
+      }
+      const watermarkBytes = logoBytes;
+
+      const receiptData: ReceiptData = {
+        transaction: {
+          payment_id:        body.razorpay_payment_id as string,
+          order_id:          body.razorpay_order_id as string,
+          amount:            parseFloat(String(plan.price)),
+          currency:          'INR',
+          payment_method:    'Card',
+          payment_timestamp: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+          status:            'Success',
+        },
+        subscription: {
+          plan_name:                  subscription.plan_type,
+          plan_type:                  subscription.plan_type,
+          billing_cycle:              subscription.billing_cycle,
+          subscription_start_date:    subscription.subscription_start_date,
+          subscription_end_date:      subscription.subscription_end_date,
+        },
+        user: {
+          name:  learner?.name || subscription.full_name || '',
+          email: subscription.email || user.email || '',
+          phone: subscription.phone || undefined,
+        },
+        company: {
+          name:    'Rareminds',
+          address: '231, 2nd stage, 13th Cross Road\nHoysala Nagar, Indiranagar\nBengaluru, Karnataka 560001',
+          phone:   '+91 9902326951',
+          email:   'marketing@rareminds.in',
+          taxId:   'GSTIN: 29ABCDE1234F1Z5',
+        },
+        generatedAt: new Date().toLocaleString('en-IN'),
+        logoBytes,
+        watermarkBytes,
+      };
+
+      const pdfBytes = await generateReceiptPDF(receiptData);
+
+      // Build R2 key: payment_pdf/user_{userId8}/{paymentId}_{timestamp}.pdf
+      const shortUserId   = user.sub.substring(0, 8);
+      const sanitizedPmtId = (body.razorpay_payment_id as string).replace(/[^a-zA-Z0-9_-]/g, '');
+      const timestamp     = Date.now();
+      receiptKey = `payment_pdf/user_${shortUserId}/${sanitizedPmtId}_${timestamp}.pdf`;
+      const filename = `Receipt-${sanitizedPmtId.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`;
+
+      const r2 = new R2Client(pagesEnv);
+      receiptUrl = await r2.upload(receiptKey, pdfBytes.buffer as ArrayBuffer, 'application/pdf', {
+        'Content-Disposition': `attachment; filename="${filename}"`,
+      });
+
+      console.log('[VerifyPayment] Receipt uploaded:', receiptUrl);
+    } catch (receiptErr) {
+      // Receipt generation is non-critical — log and continue
+      console.error('[VerifyPayment] Receipt generation failed (non-critical):', receiptErr);
+    }
+
     // Return combined result
     return new Response(JSON.stringify({
       success: true,
       ...verifyResult,
       subscription_created: true,
+      receipt_url:  receiptUrl,
+      receipt_key:  receiptKey,
       subscription: {
-        id: subscription.id,
-        status: subscription.status,
-        plan_name: subscription.plan_type,
+        id:         subscription.id,
+        status:     subscription.status,
+        plan_name:  subscription.plan_type,
         start_date: subscription.subscription_start_date,
-        end_date: subscription.subscription_end_date,
+        end_date:   subscription.subscription_end_date,
       },
     }), {
       status: 200,

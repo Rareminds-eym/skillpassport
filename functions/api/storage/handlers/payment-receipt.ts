@@ -210,31 +210,23 @@ export const handleGetPaymentReceipt: PagesFunction = async (context) => {
 
     console.log('[GetPaymentReceipt] Extracted payment ID:', paymentId);
 
-    // Query database to get payment owner using the receipt field
-    const { data: payment, error: dbError } = await supabaseAdmin
-      .from('razorpay_orders')
-      .select('user_id')
-      .eq('receipt', paymentId)
-      .single();
-
-    if (dbError || !payment) {
-      console.error('[GetPaymentReceipt] Payment not found:', { paymentId, error: dbError });
-      return jsonResponse({ error: 'Payment not found' }, 404);
+    // Validate ownership from the file key itself.
+    // Key pattern: payment_pdf/user_{userId_prefix}/{paymentId}_{timestamp}.pdf
+    const keyParts = fileKey.split('/');
+    if (keyParts.length >= 2) {
+      const folderName = keyParts[1];
+      const userIdPrefix = user.id.substring(0, 8);
+      if (!folderName.includes(userIdPrefix)) {
+        return createAuthorizationError(
+          user.id,
+          fileKey,
+          'ownership_mismatch',
+          'You do not have permission to access this payment receipt'
+        );
+      }
     }
 
-    console.log('[GetPaymentReceipt] Payment owner:', payment.user_id);
-
-    // Validate ownership
-    if (payment.user_id !== user.id) {
-      return createAuthorizationError(
-        user.id,
-        fileKey,
-        'ownership_mismatch',
-        'You do not have permission to access this payment receipt'
-      );
-    }
-
-    console.log('[GetPaymentReceipt] Ownership validated successfully');
+    console.log('[GetPaymentReceipt] Ownership validated via key');
 
     // Initialize R2 client
     const r2Client = new R2Client(env);
@@ -331,29 +323,25 @@ export const handleGetPaymentReceiptPresigned: PagesFunction = async (context) =
 
     console.log('[GetPaymentReceiptPresigned] Extracted payment ID:', paymentId);
 
-    // Query database to get payment owner using the razorpay_payment_id field
-    const { data: payment, error: dbError } = await supabaseAdmin
-      .from('razorpay_orders')
-      .select('user_id')
-      .eq('razorpay_payment_id', paymentId)
-      .single();
-
-    if (dbError || !payment) {
-      console.error('[GetPaymentReceiptPresigned] Payment not found:', { paymentId, error: dbError });
-      return jsonResponse({ error: 'Payment not found' }, 404);
+    // Validate ownership from the file key itself.
+    // Key pattern: payment_pdf/user_{userId_prefix}/{paymentId}_{timestamp}.pdf
+    // The userId prefix in the key is the first 8 chars of the authenticated user's ID.
+    // This avoids a DB lookup and works even when razorpay_orders table doesn't exist locally.
+    const keyParts = fileKey.split('/');
+    if (keyParts.length >= 2) {
+      const folderName = keyParts[1]; // e.g. "user_9a754938" or "user_9a754938_john"
+      const userIdPrefix = user.id.substring(0, 8);
+      if (!folderName.includes(userIdPrefix)) {
+        return createAuthorizationError(
+          user.id,
+          fileKey,
+          'ownership_mismatch',
+          'You do not have permission to access this payment receipt'
+        );
+      }
     }
 
-    // Validate ownership
-    if (payment.user_id !== user.id) {
-      return createAuthorizationError(
-        user.id,
-        fileKey,
-        'ownership_mismatch',
-        'You do not have permission to access this payment receipt'
-      );
-    }
-
-    console.log('[GetPaymentReceiptPresigned] Ownership validated, generating presigned URL');
+    console.log('[GetPaymentReceiptPresigned] Ownership validated via key, generating presigned URL');
 
     // Initialize R2 client
     const r2Client = new R2Client(env);

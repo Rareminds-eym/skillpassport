@@ -363,15 +363,29 @@ export async function getPaymentReceiptPresignedUrl(fileKeyOrUrl: string, expire
   
   // Extract file key from full URL if needed
   let fileKey = fileKeyOrUrl;
-  if (fileKeyOrUrl.includes('/api/storage/payment-receipt?key=')) {
-    try {
-      const url = new URL(fileKeyOrUrl);
-      const keyFromUrl = url.searchParams.get('key');
-      if (keyFromUrl) {
-        fileKey = keyFromUrl;
+  if (fileKeyOrUrl.startsWith('http')) {
+    // It's a URL — extract the key from it
+    if (fileKeyOrUrl.includes('/api/storage/payment-receipt?key=')) {
+      try {
+        const url = new URL(fileKeyOrUrl);
+        const keyFromUrl = url.searchParams.get('key');
+        if (keyFromUrl) {
+          fileKey = keyFromUrl;
+        }
+      } catch {
+        // If URL parsing fails, use as-is
       }
-    } catch {
-      // If URL parsing fails, use as-is
+    } else {
+      // Raw R2 public URL or custom domain — extract path after domain as the key
+      try {
+        const url = new URL(fileKeyOrUrl);
+        const pathname = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+        if (pathname) {
+          fileKey = pathname;
+        }
+      } catch {
+        // If URL parsing fails, use as-is
+      }
     }
   }
   
