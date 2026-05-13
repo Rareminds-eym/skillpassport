@@ -5,3 +5,13 @@ export type { FileValidationOptions, FileValidationResult } from './fileValidati
 export { getBrowserFingerprint, getDeviceContext } from './fingerprint';
 export { formatStreamId } from './formatters';
 export { convertISBN10to13, formatISBN, validateISBN } from './isbnValidator';
+export { 
+  isLocalhost, 
+  isDevelopment, 
+  isProduction, 
+  isStaging, 
+  getEnvironment, 
+  isDomain, 
+  getBaseUrl, 
+  isHttps 
+} from './environment';
