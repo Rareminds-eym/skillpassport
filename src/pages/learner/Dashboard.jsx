@@ -80,7 +80,7 @@ import {
   useLearnerAssessment,
   useLearnerAIRecommendations
 } from "@/features/learner-profile";
-import { useLearnerMessageNotifications, useLearnerUnreadCount } from '@/entities/learner';
+import { useLearnerMessageNotifications, useLearnerUnreadCount,useLearnerDataByEmail } from '@/entities/learner';
 import { useLearnerAchievements } from '@/entities/learner';
 import { useLearnerRealtimeActivities } from '@/entities/learner/model/useLearnerRealtimeActivities';
 import { supabase } from '@/shared/api/supabaseClient';
@@ -753,16 +753,68 @@ const LearnerDashboard = () => {
   const refreshTechnicalSkills = refresh;
   const refreshSoftSkills = refresh;
 
-  // Stub update functions (these should be moved to backend API calls too)
-  const updateProfile = async () => { console.warn('updateProfile not implemented with backend API'); };
-  const updateEducation = async () => { console.warn('updateEducation not implemented with backend API'); };
-  const updateTraining = async () => { console.warn('updateTraining not implemented with backend API'); };
-  const updateExperience = async () => { console.warn('updateExperience not implemented with backend API'); };
-  const updateSkills = async () => { console.warn('updateSkills not implemented with backend API'); };
-  const updateTechnicalSkills = async () => { console.warn('updateTechnicalSkills not implemented with backend API'); };
-  const updateSoftSkills = async () => { console.warn('updateSoftSkills not implemented with backend API'); };
-  const updateProjects = async () => { console.warn('updateProjects not implemented with backend API'); };
-  const updateCertificates = async () => { console.warn('updateCertificates not implemented with backend API'); };
+  // Get update functions from useLearnerDataByEmail hook (for all sections)
+  // Only call the hook if we have a userEmail
+  const learnerDataByEmailHook = useLearnerDataByEmail(userEmail);
+  
+  const {
+    updateProfile: updateProfileFromHook,
+    updateEducation: updateEducationFromHook,
+    updateTraining: updateTrainingFromHook,
+    updateExperience: updateExperienceFromHook,
+    updateSkills: updateSkillsFromHook,
+    updateTechnicalSkills: updateTechnicalSkillsFromHook,
+    updateSoftSkills: updateSoftSkillsFromHook,
+    updateProjects: updateProjectsFromHook,
+    updateCertificates: updateCertificatesFromHook,
+  } = learnerDataByEmailHook || {};
+
+  // Use real update functions from useLearnerDataByEmail hook with fallbacks
+  const updateProfile = updateProfileFromHook || (async () => { 
+   
+    toast.error('Unable to save: User email not available');
+    return { success: false, error: 'User email not available' };
+  });
+  const updateEducation = updateEducationFromHook || (async () => { 
+   
+    toast.error('Unable to save: User email not available');
+    return { success: false, error: 'User email not available' };
+  });
+  const updateTraining = updateTrainingFromHook || (async () => { 
+   
+    toast.error('Unable to save: User email not available');
+    return { success: false, error: 'User email not available' };
+  });
+  const updateExperience = updateExperienceFromHook || (async () => { 
+   
+    toast.error('Unable to save: User email not available');
+    return { success: false, error: 'User email not available' };
+  });
+  const updateSkills = updateSkillsFromHook || (async () => { 
+    
+    toast.error('Unable to save: User email not available');
+    return { success: false, error: 'User email not available' };
+  });
+  const updateTechnicalSkills = updateTechnicalSkillsFromHook || (async () => { 
+    
+    toast.error('Unable to save: User email not available');
+    return { success: false, error: 'User email not available' };
+  });
+  const updateSoftSkills = updateSoftSkillsFromHook || (async () => { 
+   
+    toast.error('Unable to save: User email not available');
+    return { success: false, error: 'User email not available' };
+  });
+  const updateProjects = updateProjectsFromHook || (async () => { 
+    
+    toast.error('Unable to save: User email not available');
+    return { success: false, error: 'User email not available' };
+  });
+  const updateCertificates = updateCertificatesFromHook || (async () => { 
+    
+    toast.error('Unable to save: User email not available');
+    return { success: false, error: 'User email not available' };
+  });
 
   // Get learner ID for messaging
   const learnerId = learnerData?.id;
@@ -1276,7 +1328,7 @@ const LearnerDashboard = () => {
 
         // Run debug for recent updates (commented out to prevent automatic execution)
         // await debugRecentUpdates();
-        // To debug recent updates, run: await window.debugRecentUpdates() in console
+       
       } catch (err) {
         // Handle error silently
       }
@@ -1326,88 +1378,201 @@ const LearnerDashboard = () => {
     }
   }, [learnerData, tableTraining, tableCertificates, tableProjects, tableExperience]);
 
-  // Save handler with DB update logic (like ProfileEditSection)
-  const handleSave = async (section, data) => {
-    // Immediately update UI
-    setUserData((prev) => ({
-      ...prev,
-      [section]: data,
-    }));
-
-    // Save to Supabase if learnerData exists
-    if (userEmail && learnerData?.profile) {
-      try {
-        let result;
-        switch (section) {
-          case "education":
-            result = await updateEducation(data);
-            break;
-          case "training":
-            result = await updateTraining(data);
-            break;
-          case "experience":
-            result = await updateExperience(data);
-            break;
-          case "skills":
-            // Save skills with their selected type (technical 
-            result = await updateSkills(data);
-            break;
-          case "technicalSkills":
-            result = await updateTechnicalSkills(data);
-            break;
-          case "softSkills":
-            result = await updateSoftSkills(data);
-            break;
-          case "projects":
-            result = await updateProjects(data); // Use dedicated function
-            break;
-          case "certificates":
-            result = await updateCertificates(data);
-            break;
-          case "personalInfo":
-            result = await updateProfile(data);
-            break;
-          default:
-            return;
-        }
-        if (result?.success) {
-          // Refresh from database to ensure sync
-          await refresh();
-
-          // Refresh table data based on section
-          if (section === 'training') {
-            refreshTraining();
-          } else if (section === 'certificates') {
-            refreshCertificates();
-          } else if (section === 'projects') {
-            refreshProjects();
-          } else if (section === 'experience') {
-            refreshExperience();
-          } else if (section === 'education') {
-            refreshEducation();
-          } else if (section === 'skills' || section === 'technicalSkills') {
-            refreshTechnicalSkills();
-          } else if (section === 'softSkills') {
-            refreshSoftSkills();
-          }
-
-          // Refresh Recent Updates to show the new activity
-          refreshRecentUpdates();
-        }
-      } catch (err) {
-        logger.error("Error saving", err);
+  // Dedicated save handlers for each card type (matching Settings pattern)
+  
+  // Projects save handler
+  const handleProjectsSave = async (projectsList) => {
+    try {
+      const result = await updateProjects(projectsList);
+      
+      if (!result) {
+        throw new Error('No response from update function');
       }
+      
+      if (result.success) {
+        // Refresh projects from table
+        if (refreshProjects) {
+          await refreshProjects();
+        }
+        
+        toast.success("Projects updated successfully");
+        return { success: true };
+      } else {
+        throw new Error(result.error || 'Failed to update projects');
+      }
+    } catch (error) {
+    
+      toast.error(error.message || "Failed to save projects");
+      return { success: false, error: error.message };
     }
   };
 
-  // Create refresh-enabled save handlers for each section
-  const createSaveHandler = (section, refreshFn) => {
-    const handler = async (data) => {
-      await handleSave(section, data);
-    };
-    // Attach refresh function so modal can call it
-    handler.refresh = refreshFn;
-    return handler;
+  // Certificates save handler
+  const handleCertificatesSave = async (certificatesList) => {
+    try {
+      const result = await updateCertificates(certificatesList);
+      
+      if (!result) {
+        throw new Error('No response from update function');
+      }
+      
+      if (result.success) {
+        // Refresh certificates from table
+        if (refreshCertificates) {
+          await refreshCertificates();
+        }
+        
+        toast.success("Certificates updated successfully");
+        return { success: true };
+      } else {
+        throw new Error(result.error || 'Failed to update certificates');
+      }
+    } catch (error) {
+    
+      toast.error(error.message || "Failed to save certificates");
+      return { success: false, error: error.message };
+    }
+  };
+
+  // Education save handler
+  const handleEducationSave = async (educationList) => {
+    try {
+      const result = await updateEducation(educationList);
+      
+      if (!result) {
+        throw new Error('No response from update function');
+      }
+      
+      if (result.success) {
+        // Refresh education from table
+        if (refreshEducation) {
+          await refreshEducation();
+        }
+        
+        toast.success("Education updated successfully");
+        return { success: true };
+      } else {
+        throw new Error(result.error || 'Failed to update education');
+      }
+    } catch (error) {
+      
+      toast.error(error.message || "Failed to save education");
+      return { success: false, error: error.message };
+    }
+  };
+
+  // Training save handler
+  const handleTrainingSave = async (trainingList) => {
+    try {
+      const result = await updateTraining(trainingList);
+      
+      if (!result) {
+        throw new Error('No response from update function');
+      }
+      
+      if (result.success) {
+        // Refresh training from table
+        if (refreshTraining) {
+          await refreshTraining();
+        }
+        
+        toast.success("Training updated successfully");
+        return { success: true };
+      } else {
+        throw new Error(result.error || 'Failed to update training');
+      }
+    } catch (error) {
+    
+      toast.error(error.message || "Failed to save training");
+      return { success: false, error: error.message };
+    }
+  };
+
+  // Experience save handler
+  const handleExperienceSave = async (experienceList) => {
+    try {
+      const result = await updateExperience(experienceList);
+      
+      if (!result) {
+        throw new Error('No response from update function');
+      }
+      
+      if (result.success) {
+        // Refresh experience from table
+        if (refreshExperience) {
+          await refreshExperience();
+        }
+        
+        toast.success("Experience updated successfully");
+        return { success: true };
+      } else {
+        throw new Error(result.error || 'Failed to update experience');
+      }
+    } catch (error) {
+   
+      toast.error(error.message || "Failed to save experience");
+      return { success: false, error: error.message };
+    }
+  };
+
+  // Technical Skills save handler
+  const handleTechnicalSkillsSave = async (skillsList) => {
+    try {
+      // Ensure all skills have type: "technical"
+      const skillsWithType = skillsList.map(skill => ({
+        ...skill,
+        type: "technical"
+      }));
+      
+      const result = await updateSkills(skillsWithType);
+      
+      if (!result) {
+        throw new Error('No response from update function');
+      }
+      
+      if (result.success) {
+        // Refresh technical skills from table
+        if (refreshTechnicalSkills) {
+          await refreshTechnicalSkills();
+        }
+        
+        toast.success("Technical skills updated successfully");
+        return { success: true };
+      } else {
+        throw new Error(result.error || 'Failed to update technical skills');
+      }
+    } catch (error) {
+    
+      toast.error(error.message || "Failed to save technical skills");
+      return { success: false, error: error.message };
+    }
+  };
+
+  // Soft Skills save handler
+  const handleSoftSkillsSave = async (skillsList) => {
+    try {
+      const result = await updateSoftSkills(skillsList);
+      
+      if (!result) {
+        throw new Error('No response from update function');
+      }
+      
+      if (result.success) {
+        // Refresh soft skills from table
+        if (refreshSoftSkills) {
+          await refreshSoftSkills();
+        }
+        
+        toast.success("Soft skills updated successfully");
+        return { success: true };
+      } else {
+        throw new Error(result.error || 'Failed to update soft skills');
+      }
+    } catch (error) {
+     
+      toast.error(error.message || "Failed to save soft skills");
+      return { success: false, error: error.message };
+    }
   };
 
   // Technical Skills toggle enabled handler
@@ -3146,7 +3311,7 @@ const LearnerDashboard = () => {
           isOpen
           onClose={() => setActiveModal(null)}
           data={Array.isArray(tableEducation) && tableEducation.length > 0 ? tableEducation : userData.education}
-          onSave={createSaveHandler("education", refreshEducation)}
+          onSave={handleEducationSave}
         />
       )}
 
@@ -3155,7 +3320,7 @@ const LearnerDashboard = () => {
           isOpen
           onClose={() => setActiveModal(null)}
           data={userData.training}
-          onSave={createSaveHandler("training", refreshTraining)}
+          onSave={handleTrainingSave}
         />
       )}
 
@@ -3164,7 +3329,7 @@ const LearnerDashboard = () => {
           isOpen
           onClose={() => setActiveModal(null)}
           data={Array.isArray(tableExperience) && tableExperience.length > 0 ? tableExperience : userData.experience}
-          onSave={createSaveHandler("experience", refreshExperience)}
+          onSave={handleExperienceSave}
         />
       )}
 
@@ -3173,7 +3338,7 @@ const LearnerDashboard = () => {
           isOpen
           onClose={() => setActiveModal(null)}
           data={tableSoftSkills || []}
-          onSave={createSaveHandler("softSkills", refreshSoftSkills)}
+          onSave={handleSoftSkillsSave}
           title="Soft Skills"
         />
       )}
@@ -3183,7 +3348,7 @@ const LearnerDashboard = () => {
           isOpen
           onClose={() => setActiveModal(null)}
           data={tableTechnicalSkills || []}
-          onSave={createSaveHandler("technicalSkills", refreshTechnicalSkills)}
+          onSave={handleTechnicalSkillsSave}
           title="Technical Skills"
         />
       )}
@@ -3193,7 +3358,7 @@ const LearnerDashboard = () => {
           isOpen
           onClose={() => setActiveModal(null)}
           data={Array.isArray(tableProjects) && tableProjects.length > 0 ? tableProjects : userData.projects}
-          onSave={createSaveHandler("projects", refreshProjects)}
+          onSave={handleProjectsSave}
         />
       )}
 
@@ -3202,7 +3367,7 @@ const LearnerDashboard = () => {
           isOpen
           onClose={() => setActiveModal(null)}
           data={Array.isArray(tableCertificates) && tableCertificates.length > 0 ? tableCertificates : userData.certificates}
-          onSave={createSaveHandler("certificates", refreshCertificates)}
+          onSave={handleCertificatesSave}
         />
       )}
     </div>
