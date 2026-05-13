@@ -1,0 +1,166 @@
+/* OTP Input Container */
+.otp-input-container {
+  display: flex;
+  gap: 8px;
+  flex-direction: column;
+  align-items: center;
+}
+
+.otp-input-container[role="group"] {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+}
+
+/* Individual OTP Input */
+.otp-input {
+  width: 48px;
+  height: 56px;
+  font-size: 24px;
+  font-weight: 600;
+  text-align: center;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  background-color: #ffffff;
+  color: #1f2937;
+  transition: all 0.2s ease-in-out;
+  outline: none;
+  caret-color: #3b82f6;
+}
+
+/* Focus State */
+.otp-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Hover State */
+.otp-input:hover:not(:disabled):not(.otp-input--error) {
+  border-color: #9ca3af;
+}
+
+/* Filled State */
+.otp-input:not(:placeholder-shown) {
+  border-color: #6b7280;
+}
+
+/* Error State */
+.otp-input--error {
+  border-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.otp-input--error:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* Disabled State */
+.otp-input--disabled {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+  border-color: #e5e7eb;
+}
+
+.otp-input--disabled:hover {
+  border-color: #e5e7eb;
+}
+
+/* Error Message */
+.otp-input-error {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #ef4444;
+  text-align: center;
+  width: 100%;
+}
+
+/* Mobile Responsive */
+@media (max-width: 640px) {
+  .otp-input {
+    width: 40px;
+    height: 48px;
+    font-size: 20px;
+  }
+
+  .otp-input-container[role="group"] {
+    gap: 6px;
+  }
+}
+
+/* Small Mobile */
+@media (max-width: 380px) {
+  .otp-input {
+    width: 36px;
+    height: 44px;
+    font-size: 18px;
+  }
+
+  .otp-input-container[role="group"] {
+    gap: 4px;
+  }
+}
+
+/* Dark Mode Support (Optional) */
+@media (prefers-color-scheme: dark) {
+  .otp-input {
+    background-color: #1f2937;
+    color: #f9fafb;
+    border-color: #4b5563;
+  }
+
+  .otp-input:focus {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+  }
+
+  .otp-input:hover:not(:disabled):not(.otp-input--error) {
+    border-color: #6b7280;
+  }
+
+  .otp-input--error {
+    border-color: #f87171;
+    background-color: #7f1d1d;
+  }
+
+  .otp-input--disabled {
+    background-color: #374151;
+    color: #6b7280;
+    border-color: #4b5563;
+  }
+}
+
+/* Animation for error shake */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+.otp-input--error {
+  animation: shake 0.4s ease-in-out;
+}
+
+/* Accessibility - High Contrast Mode */
+@media (prefers-contrast: high) {
+  .otp-input {
+    border-width: 3px;
+  }
+
+  .otp-input:focus {
+    outline: 3px solid currentColor;
+    outline-offset: 2px;
+  }
+}
+
+/* Remove number input spinners */
+.otp-input::-webkit-outer-spin-button,
+.otp-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.otp-input[type="number"] {
+  -moz-appearance: textfield;
+}
