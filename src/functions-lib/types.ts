@@ -1,3 +1,4 @@
+/// <reference types="@cloudflare/workers-types" />
 /**
  * Shared TypeScript types for Cloudflare Pages Functions
  */
@@ -9,6 +10,8 @@ export interface PagesEnv {
   // SSO / Auth configuration
   SSO_DOMAIN?: string;
   VITE_SSO_URL?: string;
+  /** Cloudflare Service Binding to the SSO worker (sso-api) */
+  SSO_SERVICE?: Fetcher;
 
   // Supabase configuration
   SUPABASE_URL?: string;
@@ -19,11 +22,9 @@ export interface PagesEnv {
   SUPABASE_JWT_SECRET?: string;
 
   // Payment Worker configuration
-  PAYMENTS_API_URL?: string;
   VITE_PAYMENTS_API_URL?: string;
   RAZORPAY_SERVICE_SECRET?: string;
   RAZORPAY_KEY_ID?: string;
-  RAZORPAY_KEY_SECRET?: string; // Only used by payment-worker, not Pages Functions
 
   // Embedding Worker configuration
   EMBEDDING_API_URL?: string;
@@ -45,9 +46,6 @@ export interface PagesEnv {
   VITE_CLAUDE_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
   GEMINI_API_KEY?: string;
-
-  // @deprecated — email-worker uses INTERNAL_API_KEY instead
-  RESEND_API_KEY?: string;
 
   // AWS credentials (for SNS, S3, etc.)
   AWS_ACCESS_KEY_ID?: string;
