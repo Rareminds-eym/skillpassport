@@ -19,6 +19,9 @@ export const OpportunitiesCard: React.FC<OpportunitiesCardProps> = ({
     return <Card><CardContent>Loading opportunities...</CardContent></Card>;
   }
 
+  // Filter opportunities to show only those with applications_count > 0
+  const filteredOpportunities = opportunities.filter(opp => opp.applications_count > 0);
+
   const renderOpportunityCard = (opp: any) => {
     const isFactoryVisit = opp.employment_type === 'factory_visit';
     const isInternship = opp.employment_type === 'internship';
@@ -96,17 +99,25 @@ export const OpportunitiesCard: React.FC<OpportunitiesCardProps> = ({
       </CardHeader>
       <CardContent>
         <div className="space-y-3 max-h-[500px] overflow-y-auto">
-          {opportunities.slice(0, 5).map(renderOpportunityCard)}
-          
-          <div className="text-center pt-2">
-            <Button
-              onClick={() => navigate('/learner/opportunities')}
-              variant="outline"
-              size="sm"
-            >
-              View All Opportunities
-            </Button>
-          </div>
+          {filteredOpportunities.length > 0 ? (
+            <>
+              {filteredOpportunities.slice(0, 5).map(renderOpportunityCard)}
+              
+              <div className="text-center pt-2">
+                <Button
+                  onClick={() => navigate('/learner/opportunities')}
+                  variant="outline"
+                  size="sm"
+                >
+                  View All Opportunities
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>No opportunities with applications available at the moment.</p>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

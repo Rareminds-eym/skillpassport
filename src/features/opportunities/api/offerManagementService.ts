@@ -9,8 +9,8 @@ class OfferManagementService {
       const { data, error } = await supabase
         .from('applied_jobs')
         .update({
-          offer_status: 'accepted',
           application_status: 'accepted',
+          responded_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
         .eq('id', applicationId)
@@ -38,14 +38,20 @@ class OfferManagementService {
    */
   async rejectOffer(applicationId, reason = null) {
     try {
+      const updateData: any = {
+        
+        application_status: 'rejected',
+        responded_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      if (reason) {
+        updateData.notes = reason;
+      }
+
       const { data, error } = await supabase
         .from('applied_jobs')
-        .update({
-          offer_status: 'rejected',
-          application_status: 'rejected',
-          rejection_reason: reason,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', applicationId)
         .select()
         .single();
@@ -92,7 +98,7 @@ class OfferManagementService {
           accepted_count:applied_jobs(count)
         `)
         .eq('id', opportunityId)
-        .eq('applied_jobs.offer_status', 'accepted')
+        .eq('applied_jobs.application_status', 'accepted')
         .single();
 
       if (error) throw error;

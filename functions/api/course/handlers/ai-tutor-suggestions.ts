@@ -8,7 +8,7 @@
  * - Fetches lesson and module data from Supabase
  * - Uses AI to generate contextual questions
  * - Graceful degradation with default questions
- * - No authentication required (public endpoint)
+ * - Requires authentication (protected by withAuth middleware)
  */
 
 import { createSupabaseClient } from '../../../../src/functions-lib/supabase';

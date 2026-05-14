@@ -2,6 +2,8 @@
 // Shared across all APIs
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { verifyJWT } from '@rareminds-eym/auth-core';
+import { initAuthFromEnv } from '../../lib/auth';
 
 export interface AuthUser {
   id: string;
@@ -36,23 +38,21 @@ export async function authenticateUser(
     return null;
   }
 
-  // SECURITY: Use Supabase's getUser() which validates JWT signature
-  // This prevents token forgery attacks
+  // SECURITY: Use auth-core's verifyJWT to validate the custom SSO token
+  // This prevents token forgery attacks and supports the new microservice architecture
   try {
-    const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-    const { data: { user: authUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
-    if (authError || !authUser) {
-      console.warn('Authentication failed:', authError?.message);
-      return null;
-    }
+    // Initialize auth-core first so it knows the SSO domain to fetch JWKS from
+    initAuthFromEnv(env as any);
 
-    const userId = authUser.id;
+    const authUser = await verifyJWT(token);
+    
+    const userId = authUser.sub;
     const userEmail = authUser.email;
     
     console.log(`✓ Auth: User authenticated - ${userId}`);
 
     // Create Supabase clients
+    const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });

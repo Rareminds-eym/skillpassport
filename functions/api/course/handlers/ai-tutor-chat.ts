@@ -9,10 +9,11 @@
  * - Title generation for new conversations
  */
 
+import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { createSupabaseClient, createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
-import { authenticateUser } from '../../shared/auth';
+import { getServiceClient } from '../../lib/auth';
 import { getAPIKeys, API_CONFIG, AI_MODELS } from '../../shared/ai-config';
 import { 
   buildCourseContext, 
@@ -37,24 +38,19 @@ interface StoredMessage {
 /**
  * Handle AI tutor chat with streaming responses
  */
-export const handleAiTutorChat: PagesFunction<PagesEnv> = async (context) => {
-  const { request, env } = context;
+export const handleAiTutorChat = async (context: AuthenticatedContext) => {
+  const { request, env, data } = context;
+  const user = data.user;
 
   if (request.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
 
-  // Authenticate user (required)
-  const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-  if (!auth) {
-    return jsonResponse({ error: 'Unauthorized' }, 401);
-  }
-  
-  const { user, supabase } = auth;
-  const learnerId = user.id;
+  const learnerId = user.sub;
+  const supabase = getServiceClient(env as any);
   
   // Use admin client for database writes
-  const supabaseAdmin = createSupabaseAdminClient(env);
+  const supabaseAdmin = createSupabaseAdminClient(env as any);
 
   // Parse request body
   let body: any;

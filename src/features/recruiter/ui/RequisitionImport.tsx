@@ -28,6 +28,7 @@ interface ImportRow {
   skills_required: string;
   benefits: string;
   deadline: string;
+  applications_count: number;
   recruiter_email?: string;
 }
 
@@ -63,6 +64,7 @@ const RequisitionImport: React.FC<RequisitionImportProps> = ({
         skills_required: 'React | Node.js | TypeScript | PostgreSQL | AWS',
         benefits: 'Health Insurance | Remote Work | Learning Budget | Stock Options',
         deadline: '2026-03-31',
+        applications_count: 0,
         recruiter_email: 'recruiter@example.com'
       },
       {
@@ -83,6 +85,7 @@ const RequisitionImport: React.FC<RequisitionImportProps> = ({
         skills_required: 'SQL | Python | Tableau | Excel | Statistics',
         benefits: 'Health Insurance | Flexible Hours | Training Programs',
         deadline: '2026-02-28',
+        applications_count: 0,
         recruiter_email: 'hr@analytics.com'
       }
     ];
@@ -110,6 +113,7 @@ const RequisitionImport: React.FC<RequisitionImportProps> = ({
       { wch: 40 }, // skills_required
       { wch: 40 }, // benefits
       { wch: 12 }, // deadline
+      { wch: 15 }, // applications_count
       { wch: 25 }  // recruiter_email
     ];
 
@@ -256,7 +260,7 @@ const RequisitionImport: React.FC<RequisitionImportProps> = ({
             skills_required: parseArrayField(row.skills_required),
             benefits: parseArrayField(row.benefits),
             deadline: row.deadline ? new Date(row.deadline).toISOString() : null,
-            applications_count: 0,
+            applications_count: row.applications_count ? Number(row.applications_count) : 0,
             messages_count: 0,
             views_count: 0,
             created_by: userId,
@@ -383,6 +387,7 @@ const RequisitionImport: React.FC<RequisitionImportProps> = ({
               <li>experience_level: Entry, Mid, Senior, Lead</li>
               <li>status: draft, open, closed, on_hold</li>
               <li>mode (optional): Remote, On-site, Hybrid</li>
+              <li>applications_count (optional): Number of applications (default: 0)</li>
             </ul>
             <p className="text-xs text-gray-500 mt-2">
               Use pipe (|) to separate multiple items in requirements, responsibilities, skills, and benefits

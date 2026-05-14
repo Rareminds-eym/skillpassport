@@ -7,9 +7,9 @@
  * Requirements: 7.5
  */
 
+import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
-import { authenticateUser } from '../../shared/auth';
-import { createSupabaseClient } from '../../../../src/functions-lib/supabase';
+import { getServiceClient } from '../../lib/auth';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 
 interface FeedbackRequestBody {
@@ -34,18 +34,12 @@ interface FeedbackRequestBody {
  * - success: boolean
  * - message: string
  */
-export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
+export const onRequestPost = async (context: AuthenticatedContext) => {
   try {
-    const { request, env } = context;
-
-    // Authenticate user
-    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!auth) {
-      return jsonResponse({ error: 'Unauthorized' }, 401);
-    }
-
-    const { user, supabase } = auth;
-    const learnerId = user.id;
+    const { request, env, data } = context;
+    const user = data.user;
+    const learnerId = user.sub;
+    const supabase = getServiceClient(env as any);
 
     // Parse request body
     let body: FeedbackRequestBody;

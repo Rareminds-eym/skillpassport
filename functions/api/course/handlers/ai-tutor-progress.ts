@@ -8,8 +8,9 @@
  * Requirements: 7.6
  */
 
+import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
-import { authenticateUser } from '../../shared/auth';
+import { getServiceClient } from '../../lib/auth';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 
 interface UpdateProgressRequestBody {
@@ -35,18 +36,12 @@ interface UpdateProgressRequestBody {
  * - lastAccessedAt: string | null
  * - progress: array of progress records
  */
-export const onRequestGet: PagesFunction<PagesEnv> = async (context) => {
+export const onRequestGet = async (context: AuthenticatedContext) => {
   try {
-    const { request, env } = context;
-
-    // Authenticate user
-    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!auth) {
-      return jsonResponse({ error: 'Unauthorized' }, 401);
-    }
-
-    const { user, supabase } = auth;
-    const learnerId = user.id;
+    const { request, env, data } = context;
+    const user = data.user;
+    const learnerId = user.sub;
+    const supabase = getServiceClient(env as any);
 
     // Parse query parameters
     const url = new URL(request.url);
@@ -116,18 +111,12 @@ export const onRequestGet: PagesFunction<PagesEnv> = async (context) => {
  * - success: boolean
  * - progress: object with updated progress record
  */
-export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
+export const onRequestPost = async (context: AuthenticatedContext) => {
   try {
-    const { request, env } = context;
-
-    // Authenticate user
-    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!auth) {
-      return jsonResponse({ error: 'Unauthorized' }, 401);
-    }
-
-    const { user, supabase } = auth;
-    const learnerId = user.id;
+    const { request, env, data } = context;
+    const user = data.user;
+    const learnerId = user.sub;
+    const supabase = getServiceClient(env as any);
 
     // Parse request body
     let body: UpdateProgressRequestBody;

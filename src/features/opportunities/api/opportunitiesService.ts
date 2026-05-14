@@ -344,6 +344,9 @@ class OpportunitiesService {
           query = query.eq('is_active', true);
         }
 
+        // Filter to show only opportunities with applications_count > 0
+        query = query.gt('applications_count', 0);
+
         // Apply employment type filter EARLY (before other filters)
         if (filters.employmentType && filters.employmentType.length > 0) {
           query = query.in('employment_type', filters.employmentType);
@@ -405,6 +408,9 @@ class OpportunitiesService {
       if (activeOnly) {
         countQuery = countQuery.eq('is_active', true);
       }
+      // Filter to show only opportunities with applications_count > 0
+      countQuery = countQuery.gt('applications_count', 0);
+      
       if (filters.employmentType && filters.employmentType.length > 0) {
         countQuery = countQuery.in('employment_type', filters.employmentType);
       }
