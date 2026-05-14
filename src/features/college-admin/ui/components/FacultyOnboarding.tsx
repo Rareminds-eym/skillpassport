@@ -11,12 +11,6 @@ import { authSessionService } from '@/features/auth';
 import { useUser } from '@/shared/model/authStore';
 
 const logger = getLogger('college-admin:FacultyOnboarding');
-// Global flag to prevent redirects during faculty onboarding
-declare global {
-  interface Window {
-    facultyOnboardingInProgress?: boolean;
-  }
-}
 
 interface SubjectExpertise {
   name: string;
@@ -70,13 +64,9 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
-  // Cleanup effect to ensure global flag is cleared when component unmounts
+  // Cleanup effect placeholder (global bypass removed for security)
   useEffect(() => {
-    return () => {
-      if (typeof window !== 'undefined' && window.facultyOnboardingInProgress) {
-        window.facultyOnboardingInProgress = false;
-      }
-    };
+    return () => {};
   }, []);
 
   const departments = [
@@ -238,17 +228,10 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
     setMessage(null);
     setValidationErrors({});
 
-    // Set global flag to prevent ProtectedRoute redirects during onboarding
-    if (typeof window !== 'undefined') {
-      window.facultyOnboardingInProgress = true;
-    }
 
     if (!collegeId) {
       setMessage({ type: "error", text: "College ID not found. Please ensure you're logged in as a college admin." });
       setLoading(false);
-      if (typeof window !== 'undefined') {
-        window.facultyOnboardingInProgress = false;
-      }
       return;
     }
 
@@ -280,9 +263,6 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
       setValidationErrors(errors);
       setMessage({ type: "error", text: "Please fix the validation errors before submitting." });
       setLoading(false);
-      if (typeof window !== 'undefined') {
-        window.facultyOnboardingInProgress = false;
-      }
       return;
     }
 
@@ -303,17 +283,11 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
         setValidationErrors({ employee_id: "This Employee ID already exists in your college" });
         setMessage({ type: "error", text: "Employee ID already exists. Please choose a different ID." });
         setLoading(false);
-        if (typeof window !== 'undefined') {
-          window.facultyOnboardingInProgress = false;
-        }
         return;
       }
     } catch (error: any) {
       setMessage({ type: "error", text: error.message || "Failed to validate employee ID" });
       setLoading(false);
-      if (typeof window !== 'undefined') {
-        window.facultyOnboardingInProgress = false;
-      }
       return;
     }
 
@@ -443,11 +417,6 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
       setMessage({ type: "error", text: error.message || "Failed to onboard faculty member" });
     } finally {
       setLoading(false);
-      
-      // Always clear the global flag when process completes (success or error)
-      if (typeof window !== 'undefined') {
-        window.facultyOnboardingInProgress = false;
-      }
     }
   };
 

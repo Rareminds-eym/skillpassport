@@ -63,7 +63,7 @@ const PublicLayoutContent = () => {
       // If user has active subscription, show role-specific header
       if (userRole) {
         // Learner roles
-        if (userRole === 'learner' || userRole === 'school-learner' || userRole === 'college-learner') {
+        if (userRole === 'learner') {
           return <LearnerHeader activeTab={activeTab} setActiveTab={setActiveTab} />;
         }
 

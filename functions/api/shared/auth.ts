@@ -71,6 +71,8 @@ export async function authenticateUser(
     return null;
   }
 
+  // SECURITY: Use auth-core's verifyJWT to validate the custom SSO token
+  // This prevents token forgery attacks and supports the new microservice architecture
   try {
     // Initialize auth-core once per isolate — calling initAuth on every request
     // resets the JWKS cache and creates a race condition under concurrent load.
@@ -82,6 +84,7 @@ export async function authenticateUser(
     console.log(`✓ Auth: User authenticated via SSO JWT - ${ssoUser.sub}`);
 
     // Build Supabase clients for downstream handlers that need DB access
+    // NOTE: SSO JWTs are generally NOT valid for Supabase PostgREST unless setup specially.
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });

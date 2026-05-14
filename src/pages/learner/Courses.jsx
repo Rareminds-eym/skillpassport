@@ -88,12 +88,13 @@ const Courses = () => {
   // Fetch courses and enrollments from Supabase
   // Use user?.email as dependency instead of user object to prevent re-fetches on object reference changes
   useEffect(() => {
-    // Only fetch courses once on mount, but wait for learner info to be loaded
-    if (!hasFetchedCoursesRef.current && (learnerBranch !== null || learnerGrade !== null)) {
+    // Fetch courses once on mount - don't wait for learner info if it's taking too long
+    // We'll show all courses if grade/branch is not available
+    if (!hasFetchedCoursesRef.current) {
       hasFetchedCoursesRef.current = true;
       fetchCourses();
     }
-  }, [learnerBranch, learnerGrade]);
+  }, []); // Empty dependency array - fetch once on mount
 
   // Fetch courses when search, filter, sort, or page changes
   useEffect(() => {
@@ -118,6 +119,12 @@ const Courses = () => {
         if (!error && data) {
           setlearnerGrade(data.grade);
           setlearnerBranch(data.branch_field);
+          
+          // Re-fetch courses with proper filtering once learner info is available
+          // Only if courses have already been fetched once
+          if (hasFetchedCoursesRef.current) {
+            fetchCourses();
+          }
         }
       } catch (error) {
         logger.error('Error fetching learner info', error);
@@ -163,7 +170,8 @@ const Courses = () => {
         .in('status', ['Active', 'Upcoming'])
         .is('deleted_at', null);
 
-      // Apply classification filter based on learner grade (ALWAYS applied)
+      // Apply classification filter based on learner grade (ALWAYS applied if grade exists)
+      // If no grade, show all courses (fallback)
       if (learnerGrade) {
         let classification = null;
         
@@ -189,6 +197,7 @@ const Courses = () => {
           query = query.or(`classification.eq.${classification},classification.is.null`);
         }
       }
+      // FALLBACK: If no grade is set, show all courses (no classification filter)
 
       // Apply branch/category filter based on learner's branch_field
       // Only filter if learner has a branch AND toggle is enabled AND no category filter is already applied

@@ -28,12 +28,11 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 
   // Security: only allow fetching your own data (unless admin)
   const isAdmin = user.roles?.some((r: string) =>
-    ['admin', 'super_admin', 'org_admin', 'college_admin', 'university_admin'].includes(r)
+    ['admin', 'super_admin', 'org_admin', 'college_admin', 'university_admin', 'school_admin'].includes(r)
   );
   if (!isAdmin && user.email !== email) {
-    console.log(`[LearnersByEmail] Security check: JWT email="${user.email}", requested="${email}"`);
-    // Note: We don't block here because the SSO email might differ from the learner email.
-    // The query below will restrict it to either email OR user_id.
+    console.log(`[LearnersByEmail] BLOCKED: JWT email="${user.email}" tried to access "${email}"`);
+    return apiError(403, 'FORBIDDEN', 'You can only access your own data', context.request, { startTime });
   }
 
   try {

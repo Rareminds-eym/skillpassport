@@ -12,10 +12,10 @@
  * Requirements: 7.7, 7.8
  */
 
+import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
 import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { authenticateUser } from '../../shared/auth';
 import { transcribeVideo } from '../utils/transcription';
 import { 
   generateVideoSummary, 
@@ -56,18 +56,11 @@ interface VideoSummarizerRequestBody {
  * Response (200 OK - Cached):
  * - Full video summary data
  */
-export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
+export const onRequestPost = async (context: AuthenticatedContext) => {
   try {
-    const { request, env, waitUntil } = context;
-
-    // Authenticate user (required)
-    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!auth) {
-      return jsonResponse({ error: 'Authentication required' }, 401);
-    }
-
-    const { user } = auth;
-    const userId = user.id;
+    const { request, env, waitUntil, data } = context;
+    const user = data.user;
+    const userId = user.sub;
 
     // Parse request body
     let body: VideoSummarizerRequestBody;

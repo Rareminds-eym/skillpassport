@@ -7,8 +7,6 @@ import { useIsAuthenticated, useUserRole, useAuthLoading } from '@/shared/model/
 const getRoleCategory = (role) => {
   const roleMap = {
     learner: 'learner',
-    'school-learner': 'learner',
-    'college-learner': 'learner',
     school_educator: 'educator',
     college_educator: 'educator',
     school_admin: 'school_admin',
@@ -25,11 +23,6 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { role } = useUserRole();
   const loading = useAuthLoading();
   const location = useLocation();
-
-  // Check if faculty onboarding is in progress - if so, prevent redirects
-  if (typeof window !== 'undefined' && window.facultyOnboardingInProgress) {
-    return children;
-  }
 
   if (loading) {
     return <Loader />;

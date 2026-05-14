@@ -11,24 +11,36 @@ const logger = getLogger('learner-notification');
 export class LearnerNotificationService {
   /**
    * Get all notifications for a learner
-   * @param {string} learnerId - Learner's UUID
+   * @param {string} learnerId - Learner's UUID from learners table
    * @param {Object} options - Query options
    * @returns {Promise<Array>} List of notifications
    */
   static async getlearnerNotifications(learnerId, options = {}) {
     try {
+      // Map learner_id to user_id (notifications.recipient_id references users.id)
+      const { data: learnerData, error: learnerError } = await supabase
+        .from('learners')
+        .select('user_id')
+        .eq('id', learnerId)
+        .single();
+
+      if (learnerError || !learnerData?.user_id) {
+        logger.warn('Learner not found or has no user_id', { learnerId });
+        return [];
+      }
+
       let query = supabase
-        .from('learner_notifications')
+        .from('notifications')
         .select('*')
-        .eq('learner_id', learnerId)
+        .eq('recipient_id', learnerData.user_id)
         .order('created_at', { ascending: false });
 
       if (options.unreadOnly) {
-        query = query.eq('is_read', false);
+        query = query.eq('read', false);
       }
 
       if (options.type) {
-        query = query.eq('notification_type', options.type);
+        query = query.eq('type', options.type);
       }
 
       if (options.limit) {
@@ -48,16 +60,28 @@ export class LearnerNotificationService {
 
   /**
    * Get unread notification count
-   * @param {string} learnerId - Learner's UUID
+   * @param {string} learnerId - Learner's UUID from learners table
    * @returns {Promise<number>} Count of unread notifications
    */
   static async getUnreadCount(learnerId) {
     try {
+      // Map learner_id to user_id
+      const { data: learnerData, error: learnerError } = await supabase
+        .from('learners')
+        .select('user_id')
+        .eq('id', learnerId)
+        .single();
+
+      if (learnerError || !learnerData?.user_id) {
+        logger.warn('Learner not found or has no user_id', { learnerId });
+        return 0;
+      }
+
       const { count, error } = await supabase
-        .from('learner_notifications')
+        .from('notifications')
         .select('*', { count: 'exact', head: true })
-        .eq('learner_id', learnerId)
-        .eq('is_read', false);
+        .eq('recipient_id', learnerData.user_id)
+        .eq('read', false);
 
       if (error) throw error;
 
@@ -70,20 +94,31 @@ export class LearnerNotificationService {
 
   /**
    * Mark notification as read
-   * @param {number} notificationId - Notification ID
+   * @param {string} notificationId - Notification ID (UUID)
    * @param {string} learnerId - Learner's UUID for verification
    * @returns {Promise<boolean>} Success status
    */
   static async markAsRead(notificationId, learnerId) {
     try {
+      // Map learner_id to user_id
+      const { data: learnerData, error: learnerError } = await supabase
+        .from('learners')
+        .select('user_id')
+        .eq('id', learnerId)
+        .single();
+
+      if (learnerError || !learnerData?.user_id) {
+        logger.warn('Learner not found or has no user_id', { learnerId });
+        return false;
+      }
+
       const { data, error } = await supabase
-        .from('learner_notifications')
+        .from('notifications')
         .update({
-          is_read: true,
-          read_at: new Date().toISOString()
+          read: true
         })
         .eq('id', notificationId)
-        .eq('learner_id', learnerId)
+        .eq('recipient_id', learnerData.user_id)
         .select()
         .single();
 
@@ -103,14 +138,25 @@ export class LearnerNotificationService {
    */
   static async markAllAsRead(learnerId) {
     try {
+      // Map learner_id to user_id
+      const { data: learnerData, error: learnerError } = await supabase
+        .from('learners')
+        .select('user_id')
+        .eq('id', learnerId)
+        .single();
+
+      if (learnerError || !learnerData?.user_id) {
+        logger.warn('Learner not found or has no user_id', { learnerId });
+        return false;
+      }
+
       const { error } = await supabase
-        .from('learner_notifications')
+        .from('notifications')
         .update({
-          is_read: true,
-          read_at: new Date().toISOString()
+          read: true
         })
-        .eq('learner_id', learnerId)
-        .eq('is_read', false);
+        .eq('recipient_id', learnerData.user_id)
+        .eq('read', false);
 
       if (error) throw error;
 
@@ -129,17 +175,14 @@ export class LearnerNotificationService {
   static async createNotification(notificationData) {
     try {
       const { data, error } = await supabase
-        .from('learner_notifications')
+        .from('notifications')
         .insert([{
-          learner_id: notificationData.learner_id,
-          notification_type: notificationData.notification_type,
+          recipient_id: notificationData.learner_id || notificationData.recipient_id,
+          type: notificationData.notification_type || notificationData.type,
           title: notificationData.title,
           message: notificationData.message,
-          pipeline_candidate_id: notificationData.pipeline_candidate_id || null,
-          opportunity_id: notificationData.opportunity_id || null,
-          interview_id: notificationData.interview_id || null,
-          application_id: notificationData.application_id || null,
-          metadata: notificationData.metadata || null
+          read: false,
+          created_at: new Date().toISOString()
         }])
         .select()
         .single();
@@ -148,24 +191,36 @@ export class LearnerNotificationService {
 
       return data;
     } catch (error) {
-      logger.error('Error creating notification', error, { learnerId });
+      logger.error('Error creating notification', error, { learnerId: notificationData.learner_id });
       throw error;
     }
   }
 
   /**
    * Delete a notification
-   * @param {number} notificationId - Notification ID
+   * @param {string} notificationId - Notification ID (UUID)
    * @param {string} learnerId - Learner's UUID for verification
    * @returns {Promise<boolean>} Success status
    */
   static async deleteNotification(notificationId, learnerId) {
     try {
+      // Map learner_id to user_id
+      const { data: learnerData, error: learnerError } = await supabase
+        .from('learners')
+        .select('user_id')
+        .eq('id', learnerId)
+        .single();
+
+      if (learnerError || !learnerData?.user_id) {
+        logger.warn('Learner not found or has no user_id', { learnerId });
+        return false;
+      }
+
       const { error } = await supabase
-        .from('learner_notifications')
+        .from('notifications')
         .delete()
         .eq('id', notificationId)
-        .eq('learner_id', learnerId);
+        .eq('recipient_id', learnerData.user_id);
 
       if (error) throw error;
 
@@ -178,40 +233,57 @@ export class LearnerNotificationService {
 
   /**
    * Subscribe to real-time notifications
-   * @param {string} learnerId - Learner's UUID
-   * @param {Function} onNotification - Callback when new notification arrives
-   * @returns {Object} Supabase subscription channel
    */
-  static subscribeToNotifications(learnerId, onNotification) {
-    const channel = supabase
-      .channel(`learner-notifications-${learnerId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'learner_notifications',
-          filter: `learner_id=eq.${learnerId}`
-        },
-        (payload) => {
-          onNotification(payload.new);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'learner_notifications',
-          filter: `learner_id=eq.${learnerId}`
-        },
-        (payload) => {
-          onNotification(payload.new);
-        }
-      )
-      .subscribe();
+  static async subscribeToNotifications(learnerId: string, onNotification: (notification: any) => void) {
+    try {
+      // Map learner_id to user_id
+      const { data: learnerData, error: learnerError } = await supabase
+        .from('learners')
+        .select('user_id')
+        .eq('id', learnerId)
+        .single();
 
-    return channel;
+      if (learnerError || !learnerData?.user_id) {
+        logger.warn('Learner not found or has no user_id', { learnerId });
+        return null;
+      }
+
+      const userId = learnerData.user_id;
+
+      const channel = supabase
+        .channel(`learner-notifications-${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `recipient_id=eq.${userId}`
+          },
+          (payload) => {
+            onNotification(payload.new);
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'notifications',
+            filter: `recipient_id=eq.${userId}`
+          },
+          (payload) => {
+            onNotification(payload.new);
+          }
+        )
+        .subscribe();
+
+      logger.info('Subscribed to notifications', { learnerId, userId });
+      return channel;
+    } catch (error: unknown) {
+      logger.error('Error subscribing to notifications', error as Error, { learnerId });
+      return null;
+    }
   }
 
   /**

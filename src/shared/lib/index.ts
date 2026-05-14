@@ -15,3 +15,4 @@ export * from './utils/fingerprint';
 export * from './utils/formatters';
 export * from './utils/isbnValidator';
 export * from './utils/certificateUtils';
+export * from './utils/environment';

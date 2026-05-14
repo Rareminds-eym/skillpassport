@@ -89,7 +89,7 @@ const TokenPasswordReset = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      await ssoClient.forgotPassword({ email: state.email });
+      await ssoClient.forgotPassword({ email: state.email, redirect_url: window.location.origin });
 
       // Always show success (prevents email enumeration)
       setState(prev => ({

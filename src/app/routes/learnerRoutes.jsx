@@ -14,7 +14,7 @@ const DigitalProfileSettings = lazy(() => import('@/pages/digital-pp/settings/Pr
 const DigitalSharingSettings = lazy(() => import('@/pages/digital-pp/settings/SharingSettings'));
 const DigitalThemeSettings = lazy(() => import('@/pages/digital-pp/settings/ThemeSettings'));
 
-const LEARNER_ROLES = ["learner", "school-learner", "college-learner"];
+const LEARNER_ROLES = ["learner"];
 
 const LearnerDashboard = lazy(() => import("@/pages/learner/Dashboard"));
 const Profile = lazy(() => import("@/pages/learner/Profile"));

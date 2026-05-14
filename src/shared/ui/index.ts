@@ -29,6 +29,7 @@ export { default as DemoModal } from './DemoModal';
 export { default as CareerAIToolsGrid } from './CareerAIToolsGrid';
 export { ConfirmModal } from './ConfirmModal';
 export { default as OTPInput } from './OTPInput';
+export { OtpInput, type OtpInputProps } from './OtpInput/index';
 export { default as SEOHead } from './SEOHead';
 export { default as SuspenseWrapper } from './SuspenseWrapper';
 

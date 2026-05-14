@@ -84,3 +84,19 @@ export function useConversationLearners(
     }
   };
 }
+
+/**
+ * Helper function to extract unique learners from conversations
+ */
+function extractlearnersFromConversations(conversations: any[]): UICandidate[] {
+  const learnersMap = new Map<string, UICandidate>();
+  
+  conversations.forEach(conversation => {
+    if (conversation.learner) {
+      const learner = conversation.learner;
+      learnersMap.set(learner.id, learner);
+    }
+  });
+  
+  return Array.from(learnersMap.values());
+}

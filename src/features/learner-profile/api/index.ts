@@ -52,6 +52,7 @@ export * from './learnerDocumentService';
 export * from './learnerManagementService';
 export * from './learnerEnrollmentService';
 export * from './learnerExamService';
+export * from './learnerDashboardService';
 export {
   addCourseEnrollmentActivity,
   notifyAlllearnersNewCourse,

@@ -118,7 +118,7 @@ export const createLearner = async (learnerData: LearnerData, userId: string): P
       referralCode
     } = learnerData;
 
-    const normalizedlearnerType = learnerType?.toLowerCase().replace('-learner', '').replace('-educator', '') || 'school';
+    const normalizedlearnerType = learnerType?.toLowerCase().replace('-learner', '').replace('-educator', '') || 'learner';
 
     const learner = {
       id: userId,

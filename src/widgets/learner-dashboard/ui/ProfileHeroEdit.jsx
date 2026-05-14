@@ -30,7 +30,6 @@ import { QRCodeSVG } from "qrcode.react";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { useLearnerDataByEmail } from '@/entities/learner';
 import { supabase } from "@/shared/api/supabaseClient";
 import { generateBadges } from "@/features/digital-portfolio";
 import {
@@ -243,7 +242,7 @@ const DetailItem = ({ label, value, highlight }) => (
   </div>
 );
 
-const ProfileHeroEdit = ({ onEditClick }) => {
+const ProfileHeroEdit = ({ onEditClick, learnerData: propLearnerData, loading: propLoading }) => {
   // Add custom animations for scroll button
   React.useEffect(() => {
     const style = document.createElement('style');
@@ -268,10 +267,14 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   const navigate = useNavigate();
 
   // Get auth state
+  const user = useUser();
   const { role: userRole } = useUserRole();
 
-  // Get logged-in user's email from localStorage
-  const userEmail = localStorage.getItem("userEmail");
+  // Use learner data from props (passed from Dashboard which uses backend API)
+  const reallearnerData = propLearnerData;
+  const loading = propLoading || false;
+  const error = null;
+  const userEmail = reallearnerData?.email || user?.email;
 
   // State for copy/share functionality
   const [copied, setCopied] = useState(false);
@@ -301,13 +304,6 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   // State for institution name and location
   const [fetchedInstitutionName, setFetchedInstitutionName] = useState(null);
   const [fetchedInstitutionLocation, setFetchedInstitutionLocation] = useState(null);
-
-  // Fetch real learner data
-  const {
-    learnerData: reallearnerData,
-    loading,
-    error,
-  } = useLearnerDataByEmail(userEmail);
 
   // Calculate employability score and generate badges when learner data changes
   useEffect(() => {
