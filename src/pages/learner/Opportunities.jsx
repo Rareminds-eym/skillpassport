@@ -16,6 +16,7 @@ import {
   Filter,
   Grid3x3,
   List,
+  Lock,
   MapPin,
   MessageSquare,
   RefreshCw,
@@ -44,6 +45,10 @@ import offerManagementService from '@/features/opportunities/api/offerManagement
 import { factoryVisitsService } from '@/features/college-admin';
 import { isSchoolLearner, isCollegeLearner, isLearner } from '@/entities/learner/lib/learnerType';
 import { getLogger } from '@/shared/config/logging';
+import { useUser } from '@/shared/model/authStore';
+import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
+import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
+import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
 
 const logger = getLogger('Opportunities');
 
@@ -52,14 +57,13 @@ import { useMessageNotifications } from '@/features/messaging';
 import { MessageService } from '@/features/messaging';
 import { learnerPipelineService as LearnerPipelineService } from '@/features/learner-profile/api';
 
-import { useUser } from '@/shared/model/authStore';
 // Helper function to check if institution details are complete
 const checkInstitutionDetailsComplete = (learnerData) => {
   if (!learnerData) return false;
-  
+
   // Learners don't need institution details
   if (isLearner(learnerData)) return true;
-  
+
   logger.info('Checking institution details:', {
     universityId: learnerData.universityId,
     university: learnerData.university,
@@ -75,29 +79,29 @@ const checkInstitutionDetailsComplete = (learnerData) => {
     grade: learnerData.grade,
     school_id: learnerData.school_id
   });
-  
+
   const gradeStr = String(learnerData.grade || '').toUpperCase().trim();
   const isSchool = gradeStr.match(/(\d+)/) || gradeStr.includes('DIPLOMA');
-  const isCollege = gradeStr.includes('UG') || gradeStr.includes('PG') || 
-                    gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') || 
-                    gradeStr.includes('POSTGRADUATE') || gradeStr.includes('BACHELOR') || 
-                    gradeStr.includes('MASTER');
-  
+  const isCollege = gradeStr.includes('UG') || gradeStr.includes('PG') ||
+    gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') ||
+    gradeStr.includes('POSTGRADUATE') || gradeStr.includes('BACHELOR') ||
+    gradeStr.includes('MASTER');
+
   if (isSchool && !isCollege) {
     // School learners need: school_id OR college/college_school_name (custom school)
     const isComplete = !!(learnerData.school_id || learnerData.college || learnerData.college_school_name);
-   
+
     return isComplete;
   } else if (isCollege) {
     // College learners need: college + program (university is optional for custom entries)
     const hasCollege = !!(learnerData.university_college_id || learnerData.college || learnerData.college_school_name);
     const hasProgram = !!(learnerData.program_id || learnerData.branch_field || learnerData.branch);
-    
+
     // Consider complete if at least college and program are filled
     const isComplete = hasCollege && hasProgram;
-    logger.info('College learner check:', { 
-      isComplete, 
-      hasCollege, 
+    logger.info('College learner check:', {
+      isComplete,
+      hasCollege,
       hasProgram,
       universityId: learnerData.universityId,
       university: learnerData.university,
@@ -110,7 +114,7 @@ const checkInstitutionDetailsComplete = (learnerData) => {
     });
     return isComplete;
   }
-  
+
   return false;
 };
 
@@ -118,23 +122,23 @@ const checkInstitutionDetailsComplete = (learnerData) => {
 const EmptyOpportunitiesState = ({ learnerData, navigate }) => {
   const [showModal, setShowModal] = useState(false);
   const isComplete = checkInstitutionDetailsComplete(learnerData);
-  
+
   useEffect(() => {
     // Show modal automatically if institution details are incomplete
     if (!isComplete) {
       setShowModal(true);
     }
   }, [isComplete]);
-  
+
   const handleCompleteDetails = () => {
-    navigate('/learner/settings', { 
-      state: { 
+    navigate('/learner/settings', {
+      state: {
         activeTab: 'profile',
         activeSubTab: 'institution'
-      } 
+      }
     });
   };
-  
+
   if (!isComplete && showModal) {
     return (
       <>
@@ -153,12 +157,12 @@ const EmptyOpportunitiesState = ({ learnerData, navigate }) => {
             >
               <X className="w-5 h-5" />
             </button>
-            
+
             {/* Icon */}
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Briefcase className="w-8 h-8 text-blue-600" />
             </div>
-            
+
             {/* Content */}
             <h3 className="text-xl font-semibold text-gray-900 text-center mb-2">
               Complete Your Institution Details
@@ -166,18 +170,18 @@ const EmptyOpportunitiesState = ({ learnerData, navigate }) => {
             <p className="text-gray-600 text-center mb-6">
               To view relevant opportunities, please complete your institution information in your profile settings.
             </p>
-            
+
             {/* Required fields info */}
             <div className="bg-blue-50 rounded-lg p-4 mb-6">
               <p className="text-sm font-semibold text-gray-800 mb-2">Required Information:</p>
               {(() => {
                 const gradeStr = String(learnerData?.grade || '').toUpperCase().trim();
                 const isSchool = gradeStr.match(/(\d+)/) || gradeStr.includes('DIPLOMA');
-                const isCollege = gradeStr.includes('UG') || gradeStr.includes('PG') || 
-                                  gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') || 
-                                  gradeStr.includes('POSTGRADUATE') || gradeStr.includes('BACHELOR') || 
-                                  gradeStr.includes('MASTER');
-                
+                const isCollege = gradeStr.includes('UG') || gradeStr.includes('PG') ||
+                  gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') ||
+                  gradeStr.includes('POSTGRADUATE') || gradeStr.includes('BACHELOR') ||
+                  gradeStr.includes('MASTER');
+
                 if (isSchool && !isCollege) {
                   return (
                     <ul className="text-sm text-gray-700 space-y-1">
@@ -213,7 +217,7 @@ const EmptyOpportunitiesState = ({ learnerData, navigate }) => {
                     </ul>
                   );
                 }
-                
+
                 return (
                   <p className="text-sm text-gray-700">
                     Please complete your institution details
@@ -221,7 +225,7 @@ const EmptyOpportunitiesState = ({ learnerData, navigate }) => {
                 );
               })()}
             </div>
-            
+
             {/* Actions */}
             <div className="flex gap-3">
               <button
@@ -239,7 +243,7 @@ const EmptyOpportunitiesState = ({ learnerData, navigate }) => {
             </div>
           </motion.div>
         </div>
-        
+
         {/* Background empty state */}
         <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
           <MapPin className="w-16 h-16 mx-auto text-gray-300 mb-4" />
@@ -249,7 +253,7 @@ const EmptyOpportunitiesState = ({ learnerData, navigate }) => {
       </>
     );
   }
-  
+
   // If details are complete, show regular empty state
   return (
     <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
@@ -269,6 +273,16 @@ const Opportunities = () => {
   const { learnerData } = useLearnerDataByEmail(userEmail);
   const learnerId = learnerData?.id; // Use learners.id (database ID)
 
+  // Feature gating for job applications
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const subscriptionContext = useSubscriptionContext();
+  const subscription = subscriptionContext?.subscription;
+  const userPlan = subscription?.plan || PLAN_IDS.PAY_AS_YOU_GO;
+
+  // Check feature access for job applications
+  const accessResult = checkFeatureAccess(userPlan, 'opportunities_access', [], {}, user?.id);
+  const canAccessOpportunities = accessResult.hasAccess;
+
   // Check institution details completion
   const [showInstitutionModal, setShowInstitutionModal] = useState(false);
   const isInstitutionComplete = checkInstitutionDetailsComplete(learnerData);
@@ -287,41 +301,41 @@ const Opportunities = () => {
   const getDefaultTab = () => {
     if (!learnerData) return 'my-jobs'; // Temporary default while loading
     const gradeStr = String(learnerData.grade || '').toUpperCase().trim();
-    
+
     // Check for college/university grades (UG, PG, etc.) - default to my-jobs
-    if (gradeStr.includes('UG') || gradeStr.includes('PG') || 
-        gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') || 
-        gradeStr.includes('POSTGRADUATE') || gradeStr.includes('BACHELOR') || 
-        gradeStr.includes('MASTER')) {
+    if (gradeStr.includes('UG') || gradeStr.includes('PG') ||
+      gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') ||
+      gradeStr.includes('POSTGRADUATE') || gradeStr.includes('BACHELOR') ||
+      gradeStr.includes('MASTER')) {
       return 'my-jobs';
     }
-    
+
     // Check for Diploma explicitly - treat as high school
     if (gradeStr.includes('DIPLOMA')) {
       return 'industrial-visits';
     }
-    
+
     // Extract numeric part from strings like "GRADE 10", "10", "10TH", etc.
     const match = gradeStr.match(/(\d+)/);
-    
+
     if (match) {
       const gradeNum = parseInt(match[1], 10);
-      
+
       // Middle school (6-8): Default to industrial visits
       if (gradeNum >= 6 && gradeNum <= 8) {
         return 'industrial-visits';
       }
-      
+
       // High school (9-12): Default to industrial visits
       if (gradeNum >= 9 && gradeNum <= 12) {
         return 'industrial-visits';
       }
     }
-    
+
     // College: Default to my-jobs
     return 'my-jobs';
   };
-  
+
   const [activeTab, setActiveTab] = useState(getDefaultTab()); // 'my-jobs', 'my-applications', 'industrial-visits', or 'history'
 
   // Handle navigation state to set active tab
@@ -335,7 +349,7 @@ const Opportunities = () => {
   useEffect(() => {
     // Don't override if we have a navigation state
     if (location.state?.activeTab) return;
-    
+
     if (learnerData && learnerData.grade) {
       const correctTab = getDefaultTab();
       if (activeTab !== correctTab) {
@@ -392,23 +406,23 @@ const Opportunities = () => {
   // Memoize learner type to prevent unnecessary recalculations
   const learnerType = React.useMemo(() => {
     if (!learnerData) return { isSchoolLearner: false, isUniversityLearner: false, isMiddleSchool: false, isHighSchool: false, isLearner: false };
-    
+
     const isSchool = isSchoolLearner(learnerData);
     const isUniversity = isCollegeLearner(learnerData);
     const isLearnerType = isLearner(learnerData);
-    
+
     // Determine specific school level
     let isMiddleSchool = false;
     let isHighSchool = false;
-    
+
     if (learnerData.grade) {
       const gradeStr = String(learnerData.grade).toUpperCase().trim();
-      
+
       // Check for college/university grades (UG, PG, etc.)
-      if (gradeStr.includes('UG') || gradeStr.includes('PG') || 
-          gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') || 
-          gradeStr.includes('POSTGRADUATE') || gradeStr.includes('BACHELOR') || 
-          gradeStr.includes('MASTER')) {
+      if (gradeStr.includes('UG') || gradeStr.includes('PG') ||
+        gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') ||
+        gradeStr.includes('POSTGRADUATE') || gradeStr.includes('BACHELOR') ||
+        gradeStr.includes('MASTER')) {
         // These are college learners, not high school
         isMiddleSchool = false;
         isHighSchool = false;
@@ -419,7 +433,7 @@ const Opportunities = () => {
       } else {
         // Extract numeric part from strings like "GRADE 10", "10", "10TH", etc.
         const match = gradeStr.match(/(\d+)/);
-        
+
         if (match) {
           const gradeNum = parseInt(match[1], 10);
           isMiddleSchool = gradeNum >= 6 && gradeNum <= 8;
@@ -427,9 +441,9 @@ const Opportunities = () => {
         }
       }
     }
-    
-    return { 
-      isSchoolLearner: isSchool, 
+
+    return {
+      isSchoolLearner: isSchool,
       isUniversityLearner: isUniversity,
       isMiddleSchool,
       isHighSchool,
@@ -491,14 +505,14 @@ const Opportunities = () => {
   // Fetch opportunities with server-side pagination
   // IMPORTANT: Only fetch after learnerData is loaded to ensure correct filters
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Determine if we should fetch opportunities based on learner type and active tab
   const shouldFetchOpportunities = React.useMemo(() => {
     if (!learnerData) return false;
     // Fetch opportunities for high school, college learners, and learners when on my-jobs tab
     return (learnerType.isHighSchool || learnerType.isUniversityLearner || learnerType.isLearner) && activeTab === 'my-jobs';
   }, [learnerData, learnerType.isHighSchool, learnerType.isUniversityLearner, learnerType.isLearner, activeTab]);
-  
+
   const {
     opportunities,
     loading: dataLoading,
@@ -584,7 +598,7 @@ const Opportunities = () => {
       if (!industrialVisitsLoading) {
         setIsLoading(false);
       }
-    } 
+    }
     // For high school and college, wait for opportunities to load
     else if (learnerType.isHighSchool || learnerType.isUniversityLearner) {
       if (!dataLoading) {
@@ -694,9 +708,9 @@ const Opportunities = () => {
     const fetchIndustrialVisits = async () => {
       // Only fetch if on industrial-visits tab
       // OR if middle/high school learner AND on their default view (not on my-applications)
-      const shouldFetch = activeTab === 'industrial-visits' || 
-                         ((learnerType.isMiddleSchool || learnerType.isHighSchool) && activeTab !== 'my-applications');
-      
+      const shouldFetch = activeTab === 'industrial-visits' ||
+        ((learnerType.isMiddleSchool || learnerType.isHighSchool) && activeTab !== 'my-applications');
+
       if (shouldFetch) {
         setIndustrialVisitsLoading(true);
         try {
@@ -705,15 +719,15 @@ const Opportunities = () => {
           if (learnerId) {
             promises.push(factoryVisitsService.getlearnerRegistrations(learnerId));
           }
-          
+
           const [data, registrations] = await Promise.all(promises);
-          
+
           setIndustrialVisits(data);
           // Auto-select first visit if none selected
           if (data && data.length > 0 && !selectedIndustrialVisit) {
             setSelectedIndustrialVisit(data[0]);
           }
-          
+
           // Set registered visits
           if (registrations) {
             const registeredIds = new Set(registrations.map(r => r.opportunity_id));
@@ -790,19 +804,30 @@ const Opportunities = () => {
   };
 
   const handleApply = async (opportunity) => {
+    // Check feature access first
+    if (!canAccessOpportunities) {
+      console.log('[Feature Gating] Blocking job application - Freemium user');
+      setShowUpgradePrompt(true);
+      toast.error('Upgrade required to apply for jobs');
+      return;
+    }
+
     if (!learnerId) {
       logger.error('Please log in to apply for jobs');
+      toast.error('Please log in to apply for jobs');
       return;
     }
 
     // Check if profile is complete before allowing application
     if (needsProfileCompletion) {
+      toast.error('Please complete your profile before applying');
       // Navigate to settings page
       navigate('/learner/settings');
       return;
     }
 
     if (appliedJobs.has(opportunity.id)) {
+      toast.info('You have already applied to this job');
       return;
     }
 
@@ -816,6 +841,9 @@ const Opportunities = () => {
 
         if (result.success) {
           setAppliedJobs(prev => new Set([...prev, opportunity.id]));
+          toast.success('Application submitted successfully!');
+        } else {
+          toast.error(result.message || 'Failed to submit application');
         }
 
         // Open external link
@@ -829,11 +857,14 @@ const Opportunities = () => {
 
       if (result.success) {
         setAppliedJobs(prev => new Set([...prev, opportunity.id]));
+        toast.success('Application submitted successfully!');
       } else {
+        toast.error(result.message || 'Failed to submit application');
         logger.error('Application failed:', result.message);
       }
     } catch (error) {
       logger.error('Error applying to job:', error);
+      toast.error('An error occurred while applying');
     } finally {
       setIsApplying(false);
     }
@@ -879,115 +910,115 @@ const Opportunities = () => {
         <>
           {/* Full white background overlay */}
           <div className="fixed inset-0 bg-white z-40"></div>
-          
+
           {/* Modal backdrop and content */}
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative"
-          >
-            <button
-              onClick={() => {
-                setShowInstitutionModal(false);
-                navigate('/learner/dashboard');
-              }}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative"
             >
-              <X className="w-5 h-5" />
-            </button>
-            
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Briefcase className="w-8 h-8 text-blue-600" />
-            </div>
-            
-            <h3 className="text-xl font-semibold text-gray-900 text-center mb-2">
-              Complete Your Institution Details
-            </h3>
-            <p className="text-gray-600 text-center mb-6">
-              To view relevant opportunities, please complete your institution information in your profile settings.
-            </p>
-            
-            <div className="bg-blue-50 rounded-lg p-4 mb-6">
-              <p className="text-sm font-semibold text-gray-800 mb-2">Required Information:</p>
-              {(() => {
-                const gradeStr = String(learnerData?.grade || '').toUpperCase().trim();
-                const isSchool = gradeStr.match(/(\d+)/) || gradeStr.includes('DIPLOMA');
-                const isCollege = gradeStr.includes('UG') || gradeStr.includes('PG') || 
-                                  gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') || 
-                                  gradeStr.includes('POSTGRADUATE') || gradeStr.includes('BACHELOR') || 
-                                  gradeStr.includes('MASTER');
-                
-                if (isSchool && !isCollege) {
-                  return (
-                    <ul className="text-sm text-gray-700 space-y-1">
-                      <li className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                        School Name
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                        Section (A, B, C, etc.)
-                      </li>
-                    </ul>
-                  );
-                } else if (isCollege) {
-                  return (
-                    <ul className="text-sm text-gray-700 space-y-1">
-                      <li className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                        University Name
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                        College Name
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                        Program/Course Name
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                        Current Semester & Section
-                      </li>
-                    </ul>
-                  );
-                }
-                
-                return (
-                  <p className="text-sm text-gray-700">
-                    Please complete your institution details
-                  </p>
-                );
-              })()}
-            </div>
-            
-            <div className="flex gap-3">
               <button
                 onClick={() => {
                   setShowInstitutionModal(false);
                   navigate('/learner/dashboard');
                 }}
-                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
               >
-                Later
+                <X className="w-5 h-5" />
               </button>
-              <button
-                onClick={() => {
-                  navigate('/learner/settings', { 
-                    state: { 
-                      activeTab: 'profile',
-                      activeSubTab: 'institution'
-                    } 
-                  });
-                }}
-                className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-              >
-                Complete Now
-              </button>
-            </div>
-          </motion.div>
-        </div>
+
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Briefcase className="w-8 h-8 text-blue-600" />
+              </div>
+
+              <h3 className="text-xl font-semibold text-gray-900 text-center mb-2">
+                Complete Your Institution Details
+              </h3>
+              <p className="text-gray-600 text-center mb-6">
+                To view relevant opportunities, please complete your institution information in your profile settings.
+              </p>
+
+              <div className="bg-blue-50 rounded-lg p-4 mb-6">
+                <p className="text-sm font-semibold text-gray-800 mb-2">Required Information:</p>
+                {(() => {
+                  const gradeStr = String(learnerData?.grade || '').toUpperCase().trim();
+                  const isSchool = gradeStr.match(/(\d+)/) || gradeStr.includes('DIPLOMA');
+                  const isCollege = gradeStr.includes('UG') || gradeStr.includes('PG') ||
+                    gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') ||
+                    gradeStr.includes('POSTGRADUATE') || gradeStr.includes('BACHELOR') ||
+                    gradeStr.includes('MASTER');
+
+                  if (isSchool && !isCollege) {
+                    return (
+                      <ul className="text-sm text-gray-700 space-y-1">
+                        <li className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                          School Name
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                          Section (A, B, C, etc.)
+                        </li>
+                      </ul>
+                    );
+                  } else if (isCollege) {
+                    return (
+                      <ul className="text-sm text-gray-700 space-y-1">
+                        <li className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                          University Name
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                          College Name
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                          Program/Course Name
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                          Current Semester & Section
+                        </li>
+                      </ul>
+                    );
+                  }
+
+                  return (
+                    <p className="text-sm text-gray-700">
+                      Please complete your institution details
+                    </p>
+                  );
+                })()}
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowInstitutionModal(false);
+                    navigate('/learner/dashboard');
+                  }}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                >
+                  Later
+                </button>
+                <button
+                  onClick={() => {
+                    navigate('/learner/settings', {
+                      state: {
+                        activeTab: 'profile',
+                        activeSubTab: 'institution'
+                      }
+                    });
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Complete Now
+                </button>
+              </div>
+            </motion.div>
+          </div>
         </>
       )}
 
@@ -1028,24 +1059,22 @@ const Opportunities = () => {
         {!isLoading && (
           <div className="mb-8">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2">
-              <div className={`grid ${
-                learnerType.isMiddleSchool 
-                  ? 'grid-cols-2' 
-                  : learnerType.isHighSchool 
+              <div className={`grid ${learnerType.isMiddleSchool
+                ? 'grid-cols-2'
+                : learnerType.isHighSchool
+                  ? 'grid-cols-3'
+                  : learnerType.isLearner
                     ? 'grid-cols-3'
-                    : learnerType.isLearner
-                      ? 'grid-cols-3'
-                      : 'grid-cols-3'
-              } gap-2`}>
+                    : 'grid-cols-3'
+                } gap-2`}>
                 {/* Industrial Visits Tab - Hide for learners */}
                 {!learnerType.isLearner && (
                   <button
                     onClick={() => setActiveTab('industrial-visits')}
-                    className={`relative text-left p-4 rounded-lg transition-all ${
-                      activeTab === 'industrial-visits'
-                        ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
-                        : 'hover:bg-gray-50'
-                    }`}
+                    className={`relative text-left p-4 rounded-lg transition-all ${activeTab === 'industrial-visits'
+                      ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
+                      : 'hover:bg-gray-50'
+                      }`}
                   >
                     <div className="flex items-start gap-3">
                       <div className={`p-2 rounded-lg ${activeTab === 'industrial-visits' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
@@ -1067,11 +1096,10 @@ const Opportunities = () => {
                 {learnerType.isMiddleSchool && (
                   <button
                     onClick={() => setActiveTab('history')}
-                    className={`relative text-left p-4 rounded-lg transition-all ${
-                      activeTab === 'history'
-                        ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
-                        : 'hover:bg-gray-50'
-                    }`}
+                    className={`relative text-left p-4 rounded-lg transition-all ${activeTab === 'history'
+                      ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
+                      : 'hover:bg-gray-50'
+                      }`}
                   >
                     <div className="flex items-start gap-3">
                       <div className={`p-2 rounded-lg ${activeTab === 'history' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
@@ -1093,11 +1121,10 @@ const Opportunities = () => {
                 {(learnerType.isHighSchool || learnerType.isUniversityLearner || learnerType.isLearner) && (
                   <button
                     onClick={() => setActiveTab('my-jobs')}
-                    className={`relative text-left p-4 rounded-lg transition-all ${
-                      activeTab === 'my-jobs'
-                        ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
-                        : 'hover:bg-gray-50'
-                    }`}
+                    className={`relative text-left p-4 rounded-lg transition-all ${activeTab === 'my-jobs'
+                      ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
+                      : 'hover:bg-gray-50'
+                      }`}
                   >
                     <div className="flex items-start gap-3">
                       <div className={`p-2 rounded-lg ${activeTab === 'my-jobs' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
@@ -1108,7 +1135,7 @@ const Opportunities = () => {
                           My Jobs
                         </h1>
                         <p className="text-sm text-gray-600 mt-1">
-                          {learnerType.isUniversityLearner 
+                          {learnerType.isUniversityLearner
                             ? 'Browse internships and full-time opportunities'
                             : learnerType.isLearner
                               ? 'Explore job opportunities'
@@ -1123,11 +1150,10 @@ const Opportunities = () => {
                 {(learnerType.isHighSchool || learnerType.isUniversityLearner || learnerType.isLearner) && (
                   <button
                     onClick={() => setActiveTab('my-applications')}
-                    className={`relative text-left p-4 rounded-lg transition-all ${
-                      activeTab === 'my-applications'
-                        ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
-                        : 'hover:bg-gray-50'
-                    }`}
+                    className={`relative text-left p-4 rounded-lg transition-all ${activeTab === 'my-applications'
+                      ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
+                      : 'hover:bg-gray-50'
+                      }`}
                   >
                     <div className="flex items-start gap-3">
                       <div className={`p-2 rounded-lg ${activeTab === 'my-applications' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
@@ -1196,6 +1222,8 @@ const Opportunities = () => {
                 needsProfileCompletion={needsProfileCompletion}
                 navigate={navigate}
                 learnerData={learnerData}
+                showUpgradePrompt={showUpgradePrompt}
+                setShowUpgradePrompt={setShowUpgradePrompt}
               />
             )}
 
@@ -1218,6 +1246,8 @@ const Opportunities = () => {
                 opportunities={opportunities}
                 setSelectedOpportunity={setSelectedOpportunity}
                 onApplicationsUpdate={fetchApplicationsData}
+                showUpgradePrompt={showUpgradePrompt}
+                setShowUpgradePrompt={setShowUpgradePrompt}
               />
             )}
 
@@ -1238,7 +1268,7 @@ const Opportunities = () => {
                 {/* Registrations List */}
                 {(() => {
                   // Filter applications to only show factory visits
-                  const visitRegistrations = applications.filter(app => 
+                  const visitRegistrations = applications.filter(app =>
                     app.type === 'factory_visit'
                   );
 
@@ -1266,7 +1296,7 @@ const Opportunities = () => {
                           accepted: { label: 'Confirmed', color: 'text-green-700', bg: 'bg-green-50', icon: CheckCircle2 },
                           rejected: { label: 'Not Selected', color: 'text-gray-600', bg: 'bg-gray-50', icon: XCircle },
                         }[app.status] || { label: 'Registered', color: 'text-blue-700', bg: 'bg-blue-50', icon: Clock };
-                        
+
                         const StatusIcon = statusConfig.icon;
 
                         return (
@@ -1329,7 +1359,7 @@ const Opportunities = () => {
             {activeTab === 'industrial-visits' && (() => {
               // Filter logic
               const filteredVisits = industrialVisits.filter(visit => {
-                const matchesSearch = ivSearchTerm === '' || 
+                const matchesSearch = ivSearchTerm === '' ||
                   visit.company_name.toLowerCase().includes(ivSearchTerm.toLowerCase()) ||
                   visit.location.toLowerCase().includes(ivSearchTerm.toLowerCase()) ||
                   visit.sector.toLowerCase().includes(ivSearchTerm.toLowerCase());
@@ -1412,17 +1442,15 @@ const Opportunities = () => {
                         <div className="flex items-center bg-white border border-slate-200/60 rounded-2xl p-1 shadow-sm h-12">
                           <button
                             onClick={() => setIvViewMode('grid')}
-                            className={`flex-1 sm:flex-none p-2.5 rounded-xl transition-all duration-200 ${
-                              ivViewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'
-                            }`}
+                            className={`flex-1 sm:flex-none p-2.5 rounded-xl transition-all duration-200 ${ivViewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'
+                              }`}
                           >
                             <Grid3x3 className="w-4 h-4 mx-auto" />
                           </button>
                           <button
                             onClick={() => setIvViewMode('list')}
-                            className={`flex-1 sm:flex-none p-2.5 rounded-xl transition-all duration-200 ${
-                              ivViewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'
-                            }`}
+                            className={`flex-1 sm:flex-none p-2.5 rounded-xl transition-all duration-200 ${ivViewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'
+                              }`}
                           >
                             <List className="w-4 h-4 mx-auto" />
                           </button>
@@ -1475,11 +1503,10 @@ const Opportunities = () => {
                             {paginatedVisits.map((visit) => (
                               <div
                                 key={visit.id}
-                                className={`bg-white border rounded-2xl p-5 hover:shadow-lg transition-all cursor-pointer ${
-                                  selectedIndustrialVisit?.id === visit.id
-                                    ? 'border-blue-500 shadow-md ring-2 ring-blue-200'
-                                    : 'border-gray-200 hover:border-blue-300'
-                                }`}
+                                className={`bg-white border rounded-2xl p-5 hover:shadow-lg transition-all cursor-pointer ${selectedIndustrialVisit?.id === visit.id
+                                  ? 'border-blue-500 shadow-md ring-2 ring-blue-200'
+                                  : 'border-gray-200 hover:border-blue-300'
+                                  }`}
                                 onClick={() => setSelectedIndustrialVisit(visit)}
                               >
                                 <div className="flex items-start justify-between mb-3">
@@ -1490,11 +1517,11 @@ const Opportunities = () => {
                                     Visit
                                   </span>
                                 </div>
-                                
+
                                 <h3 className="font-bold text-lg text-gray-900 mb-2 line-clamp-2">
                                   {visit.company_name}
                                 </h3>
-                                
+
                                 <div className="space-y-2 text-sm text-gray-600 mb-4">
                                   <div className="flex items-center gap-2">
                                     <Building2 className="w-4 h-4 flex-shrink-0" />
@@ -1513,18 +1540,17 @@ const Opportunities = () => {
                             {paginatedVisits.map((visit) => (
                               <div
                                 key={visit.id}
-                                className={`bg-white border rounded-2xl p-5 hover:shadow-md transition-all cursor-pointer ${
-                                  selectedIndustrialVisit?.id === visit.id
-                                    ? 'border-blue-500 shadow-md ring-2 ring-blue-200'
-                                    : 'border-gray-200 hover:border-blue-300'
-                                }`}
+                                className={`bg-white border rounded-2xl p-5 hover:shadow-md transition-all cursor-pointer ${selectedIndustrialVisit?.id === visit.id
+                                  ? 'border-blue-500 shadow-md ring-2 ring-blue-200'
+                                  : 'border-gray-200 hover:border-blue-300'
+                                  }`}
                                 onClick={() => setSelectedIndustrialVisit(visit)}
                               >
                                 <div className="flex items-start gap-4">
                                   <div className="p-3 bg-blue-50 rounded-lg flex-shrink-0">
                                     <Factory className="w-6 h-6 text-blue-600" />
                                   </div>
-                                  
+
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-start justify-between gap-4 mb-2">
                                       <h3 className="font-bold text-lg text-gray-900">
@@ -1534,7 +1560,7 @@ const Opportunities = () => {
                                         Visit
                                       </span>
                                     </div>
-                                    
+
                                     <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-3">
                                       <div className="flex items-center gap-2">
                                         <Building2 className="w-4 h-4 flex-shrink-0" />
@@ -1545,7 +1571,7 @@ const Opportunities = () => {
                                         <span>{visit.location}</span>
                                       </div>
                                     </div>
-                                    
+
                                     {visit.description && (
                                       <p className="text-sm text-gray-600 line-clamp-2">
                                         {visit.description}
@@ -1592,6 +1618,42 @@ const Opportunities = () => {
             })()}
           </div>
         )}
+
+        {/* Upgrade Prompt Modal */}
+        {showUpgradePrompt && (
+          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60] backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
+            >
+              <div className="flex items-center justify-center w-12 h-12 mx-auto bg-blue-100 rounded-full mb-4">
+                <Lock className="w-6 h-6 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-center mb-2">Upgrade Required</h3>
+              <p className="text-gray-600 text-center mb-6">
+                Job applications are not available on the Freemium plan. Upgrade to a paid plan to apply for opportunities.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowUpgradePrompt(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowUpgradePrompt(false);
+                    navigate('/subscription/plans?type=learner');
+                  }}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  View Plans
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1634,7 +1696,9 @@ const MyJobsContent = ({
   isServerPaginated = false,
   canApplyToJobs,
   needsProfileCompletion,
-  navigate
+  navigate,
+  showUpgradePrompt,
+  setShowUpgradePrompt
 }) => {
   // Use server-side pagination values when available
   const totalPages = isServerPaginated ? serverTotalPages : Math.max(1, Math.ceil(opportunities.length / opportunitiesPerPage));
@@ -1913,7 +1977,7 @@ const MyJobsContent = ({
                   )}
                 </>
               ) : (
-                <EmptyOpportunitiesState 
+                <EmptyOpportunitiesState
                   learnerData={learnerData}
                   navigate={navigate}
                 />
@@ -1932,6 +1996,8 @@ const MyJobsContent = ({
                 needsProfileCompletion={needsProfileCompletion}
                 navigate={navigate}
                 learnerData={learnerData}
+                canAccessOpportunities={canAccessOpportunities}
+                onShowUpgradePrompt={() => setShowUpgradePrompt(true)}
               />
             </div>
           </div>
@@ -1976,7 +2042,9 @@ const MyApplicationsContent = ({
   setActiveTab,
   opportunities,
   setSelectedOpportunity,
-  onApplicationsUpdate
+  onApplicationsUpdate,
+  showUpgradePrompt,
+  setShowUpgradePrompt
 }) => {
   const [respondingToOffer, setRespondingToOffer] = useState(null);
   const [showRejectModal, setShowRejectModal] = useState(null);
@@ -2421,12 +2489,12 @@ const MyApplicationsContent = ({
                                     {/* Stage Number Circle */}
                                     <div className="relative z-10 mb-2">
                                       <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${isCompleted
-                                          ? 'bg-green-500 text-white shadow-lg shadow-green-200'
-                                          : isCurrent
-                                            ? 'bg-blue-500 text-white shadow-lg shadow-blue-200 ring-4 ring-blue-200 animate-pulse'
-                                            : isRejected && index > getStageOrder('sourced')
-                                              ? 'bg-gray-200 text-gray-400'
-                                              : 'bg-white text-gray-400 border-2 border-gray-300'
+                                        ? 'bg-green-500 text-white shadow-lg shadow-green-200'
+                                        : isCurrent
+                                          ? 'bg-blue-500 text-white shadow-lg shadow-blue-200 ring-4 ring-blue-200 animate-pulse'
+                                          : isRejected && index > getStageOrder('sourced')
+                                            ? 'bg-gray-200 text-gray-400'
+                                            : 'bg-white text-gray-400 border-2 border-gray-300'
                                         }`}>
                                         {isCompleted ? (
                                           <CheckCircle2 className="w-6 h-6" />
@@ -2444,10 +2512,10 @@ const MyApplicationsContent = ({
 
                                     {/* Stage Label */}
                                     <div className={`text-xs font-medium text-center px-1 transition-all ${isCurrent
-                                        ? 'text-blue-700 font-bold'
-                                        : isCompleted
-                                          ? 'text-green-700'
-                                          : 'text-gray-500'
+                                      ? 'text-blue-700 font-bold'
+                                      : isCompleted
+                                        ? 'text-green-700'
+                                        : 'text-gray-500'
                                       }`}>
                                       {stageLabel}
                                     </div>
@@ -2629,6 +2697,42 @@ const MyApplicationsContent = ({
           })
         )}
       </div>
+
+      {/* Upgrade Prompt Modal */}
+      {showUpgradePrompt && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[60] backdrop-blur-md">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
+          >
+            <div className="flex items-center justify-center w-12 h-12 mx-auto bg-blue-100 rounded-full mb-4">
+              <Lock className="w-6 h-6 text-blue-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-center mb-2">Upgrade Required</h3>
+            <p className="text-gray-600 text-center mb-6">
+              Job applications are not available on the Freemium plan. Upgrade to a paid plan to apply for opportunities.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowUpgradePrompt(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowUpgradePrompt(false);
+                  navigate('/subscription/plans?type=learner');
+                }}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                View Plans
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </>
   );
 };

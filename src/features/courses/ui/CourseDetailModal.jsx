@@ -1,7 +1,24 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Award, BookOpen, CheckCircle, Clock, Play, RotateCcw, Users, X } from 'lucide-react';
+import { Award, BookOpen, CheckCircle, Clock, Lock, Play, RotateCcw, Users, X } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useUser } from '@/shared/model/authStore';
+import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
+import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
+import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
 
 const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentProgress }) => {
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const navigate = useNavigate();
+  const user = useUser();
+  const subscriptionContext = useSubscriptionContext();
+  const subscription = subscriptionContext?.subscription;
+  const userPlan = subscription?.plan || PLAN_IDS.PAY_AS_YOU_GO;
+
+  // Check feature access for course enrollment
+  const accessResult = checkFeatureAccess(userPlan, 'course_enrollment', [], {}, user?.id);
+  const canEnroll = accessResult.hasAccess;
+
   if (!isOpen || !course) return null;
 
   // Get progress for this course
@@ -27,8 +44,54 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
   const buttonContent = getButtonContent();
   const ButtonIcon = buttonContent.icon;
 
+  // Handle start course with feature gating
+  const handleStartCourse = () => {
+    if (!canEnroll) {
+      setShowUpgradePrompt(true);
+      return;
+    }
+    onStartCourse(course);
+  };
+
   return (
     <AnimatePresence>
+      {/* Upgrade Prompt Modal */}
+      {showUpgradePrompt && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[60] backdrop-blur-md">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
+          >
+            <div className="flex items-center justify-center w-12 h-12 mx-auto bg-blue-100 rounded-full mb-4">
+              <Lock className="w-6 h-6 text-blue-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-center mb-2">Upgrade Required</h3>
+            <p className="text-gray-600 text-center mb-6">
+              Course enrollment is not available on the Freemium plan. Upgrade to a paid plan to start learning.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowUpgradePrompt(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowUpgradePrompt(false);
+                  onClose();
+                  navigate('/subscription/plans?type=learner');
+                }}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                View Plans
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -61,11 +124,10 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
 
             {/* Status Badge */}
             <div className="absolute top-4 left-4 flex gap-2">
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                course.status === 'Active'
-                  ? 'bg-emerald-500 text-white'
-                  : 'bg-blue-500 text-white'
-              }`}>
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${course.status === 'Active'
+                ? 'bg-emerald-500 text-white'
+                : 'bg-blue-500 text-white'
+                }`}>
                 {course.status}
               </span>
               {isCompleted && (
@@ -94,11 +156,10 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
               <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div
                   style={{ width: `${progress.progress}%` }}
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    isCompleted 
-                      ? 'bg-gradient-to-r from-emerald-500 to-green-500' 
-                      : 'bg-gradient-to-r from-indigo-500 to-purple-500'
-                  }`}
+                  className={`h-full rounded-full transition-all duration-500 ${isCompleted
+                    ? 'bg-gradient-to-r from-emerald-500 to-green-500'
+                    : 'bg-gradient-to-r from-indigo-500 to-purple-500'
+                    }`}
                 />
               </div>
             </div>
@@ -238,10 +299,10 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
                   {isCompleted
                     ? 'You have completed this course'
                     : isInProgress
-                    ? 'Continue where you left off'
-                    : course.status === 'Active'
-                    ? 'Start learning now'
-                    : 'Available soon'}
+                      ? 'Continue where you left off'
+                      : course.status === 'Active'
+                        ? 'Start learning now'
+                        : 'Available soon'}
                 </p>
               </div>
               <div className="flex gap-3">
@@ -252,20 +313,22 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
                   Close
                 </button>
                 <button
-                  onClick={() => onStartCourse(course)}
+                  onClick={handleStartCourse}
                   disabled={buttonContent.disabled}
-                  className={`px-6 py-2.5 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                    buttonContent.disabled
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : isCompleted
+                  className={`px-6 py-2.5 rounded-lg font-medium transition-colors flex items-center gap-2 ${buttonContent.disabled
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : isCompleted
                       ? 'bg-emerald-600 text-white hover:bg-emerald-700'
                       : isInProgress
-                      ? 'bg-amber-500 text-white hover:bg-amber-600'
-                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                  }`}
+                        ? 'bg-amber-500 text-white hover:bg-amber-600'
+                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    }`}
                 >
                   <ButtonIcon className="w-5 h-5" />
                   {buttonContent.text}
+                  {!canEnroll && !isInProgress && !isCompleted && (
+                    <Lock className="w-4 h-4 ml-1" />
+                  )}
                 </button>
               </div>
             </div>

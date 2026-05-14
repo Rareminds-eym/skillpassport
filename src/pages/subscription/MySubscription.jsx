@@ -33,7 +33,7 @@ import { calculateDaysRemaining, calculateProgressPercentage, formatDate, getSub
 import { useUsageStatistics } from '@/features/analytics/model/useUsageStatistics';
 import { authSessionService } from '@/features/auth';
 
-import { useUser } from '@/shared/model/authStore';
+import { useUser, useUserRole, useAuthLoading } from '@/shared/model/authStore';
 /**
  * Get the settings path based on current URL path (more reliable than role)
  */
@@ -152,8 +152,6 @@ function MySubscription() {
     calculateProgressPercentage(subscriptionData?.startDate, subscriptionData?.endDate),
     [subscriptionData?.startDate, subscriptionData?.endDate]
   );
-
-  const formatDate = useCallback((dateString) => formatDateUtil(dateString), []);
 
   const handleUpgradePlan = () => {
     // Use userType from URL path (more reliable than role from auth)
@@ -391,7 +389,7 @@ function MySubscription() {
     const planId = subscriptionData.plan.toLowerCase();
 
     // Find plan in database plans by exact ID match only
-    let plan = plans.find(p => p.id === planId);
+    const plan = plans.find(p => p.id === planId);
 
     // If still not found, use subscription data to build plan info
     if (!plan) {

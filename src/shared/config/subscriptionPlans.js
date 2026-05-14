@@ -44,10 +44,11 @@ export const PAY_AS_YOU_GO_FEATURES = {
   profile_creation: true,
   marketplace_access: true,
   view_pricing: true,
-  opportunities_access: true,
-  courses_listing_access: true,
-  
+  opportunities_listing_access: true, // Can VIEW opportunities
+  courses_listing_access: true, // Can VIEW courses
+
   // Locked features (require upgrade)
+  opportunities_access: false, // Cannot APPLY to opportunities
   assessments: false,
   projects: false,
   storage: false,
