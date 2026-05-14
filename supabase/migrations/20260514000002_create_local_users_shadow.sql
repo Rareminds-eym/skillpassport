@@ -26,7 +26,7 @@ DROP CONSTRAINT IF EXISTS audit_logs_actorid_fkey;
 
 ALTER TABLE public.audit_logs 
 ADD CONSTRAINT audit_logs_users_shadow_fkey 
-FOREIGN KEY (actorId) REFERENCES public.users_shadow(id) ON DELETE SET NULL;
+FOREIGN KEY ("actorId") REFERENCES public.users_shadow(id) ON DELETE SET NULL;
 
 -- Add comments
 COMMENT ON TABLE public.users_shadow 
