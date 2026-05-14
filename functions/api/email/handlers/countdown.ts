@@ -10,6 +10,7 @@ import { EMAIL_STATUS } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib';
 import { generateCountdownEmailHtml, getCountdownSubject } from '../services/templates';
 import { apiLogger } from '../../../lib/logger';
+import { sendEmail } from '../../../lib/email-service';
 import { 
   findPreRegistrationByEmail, 
   createEmailTracking, 
@@ -59,38 +60,17 @@ export async function handleCountdownEmail(
     }
 
     // Generate and send email
-    if (!env.INTERNAL_API_KEY) {
-      throw new Error('INTERNAL_API_KEY environment variable is not configured');
-    }
-    if (!env.EMAIL_WORKER_URL) {
-      throw new Error('EMAIL_WORKER_URL environment variable is not configured');
-    }
-
     const html = generateCountdownEmailHtml({ fullName, countdownDay, launchDate });
     const subject = getCountdownSubject(countdownDay);
 
-    const response = await fetch(`${env.EMAIL_WORKER_URL}/send`, {
-
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Internal-Api-Key': env.INTERNAL_API_KEY,
-      },
-      body: JSON.stringify({ to, subject, html }),
+    const result = await sendEmail(env, {
+      to,
+      subject,
+      html,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Email worker failed with status ${response.status}: ${errorText}`);
-    }
-
-    // Parse JSON response with error handling
-    let result;
-    try {
-      result = await response.json();
-    } catch (parseError) {
-      const errorMessage = parseError instanceof Error ? parseError.message : 'Unknown parsing error';
-      throw new Error(`Email worker returned invalid JSON response: ${errorMessage}`);
+    if (!result.success) {
+      throw new Error(result.error || 'Email sending failed');
     }
 
     // Update tracking status to sent

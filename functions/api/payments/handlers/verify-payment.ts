@@ -11,6 +11,8 @@
  * 1. Worker verifies HMAC signature via RPC (cryptographic guarantee)
  * 2. Pages Function creates subscription in DB (worker has no DB access)
  * 3. Pages Function logs payment transaction
+ * 4. Pages Function generates receipt PDF and uploads to R2
+ * 5. Pages Function sends payment confirmation email
  */
 
 import { withAuth } from '../../../lib/auth';
@@ -20,6 +22,9 @@ import { getServiceClient } from '../../../lib/supabase';
 import { R2Client } from '../../storage/utils/r2-client';
 import { generateReceiptPDF, fetchImageBytes, type ReceiptData } from '../../storage/utils/pdf-generator';
 import type { PagesEnv } from '../../../../src/functions-lib/types';
+import { generateUserConfirmationHtml, getUserConfirmationSubject } from '../../email/services/templates';
+import type { EventConfirmationTemplateData } from '../../email/types';
+import { sendEmailSafe } from '../../../lib/email-service';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   return handleVerifyPayment(context);
@@ -218,10 +223,31 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         'Content-Disposition': `attachment; filename="${filename}"`,
       });
 
+      // Generate a presigned URL for secure access (valid for 7 days)
+      receiptUrl = await r2.generatePresignedGetUrl(receiptKey, 604800); // 7 days = 604800 seconds
+
       console.log('[VerifyPayment] Receipt uploaded:', receiptUrl);
     } catch (receiptErr) {
       // Receipt generation is non-critical — log and continue
       console.error('[VerifyPayment] Receipt generation failed (non-critical):', receiptErr);
+    }
+
+    // Step 5: Send payment confirmation email
+    // Non-blocking — email failure must never fail the payment response
+    try {
+      await sendPaymentSuccessEmail(env as unknown as PagesEnv, {
+        name: subscription.full_name,
+        email: subscription.email,
+        phone: subscription.phone || '',
+        amount: parseFloat(String(plan.price)),
+        orderId: body.razorpay_order_id as string,
+        campaign: subscription.plan_type,
+        receiptUrl: receiptUrl || undefined, // Pass the R2 receipt URL
+      });
+      console.log('[VerifyPayment] Payment confirmation email sent successfully');
+    } catch (emailErr) {
+      // Email sending is non-critical — log and continue
+      console.error('[VerifyPayment] Failed to send payment confirmation email (non-critical):', emailErr);
     }
 
     // Return combined result
@@ -257,4 +283,27 @@ function parseDurationMonths(duration: string): number {
   if (lower.includes('quarter')) return 3;
   if (lower.includes('month')) return 1;
   return 1;
+}
+
+/**
+ * Send payment success email via email worker
+ */
+async function sendPaymentSuccessEmail(
+  env: PagesEnv,
+  data: EventConfirmationTemplateData
+): Promise<void> {
+  const html = generateUserConfirmationHtml(data);
+  const subject = getUserConfirmationSubject(data.name);
+
+  const success = await sendEmailSafe(env, {
+    to: data.email,
+    subject,
+    html,
+  });
+
+  if (success) {
+    console.log('[VerifyPayment] Payment confirmation email sent successfully');
+  } else {
+    console.error('[VerifyPayment] Failed to send payment confirmation email (non-critical)');
+  }
 }

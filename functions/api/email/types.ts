@@ -94,6 +94,7 @@ export interface EventConfirmationTemplateData {
   orderId?: string;
   campaign?: string;
   baseUrl?: string;
+  receiptUrl?: string; // Optional receipt download URL from R2
 }
 
 export interface OTPTemplateData {
