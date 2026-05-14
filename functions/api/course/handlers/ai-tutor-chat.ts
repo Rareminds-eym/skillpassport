@@ -13,7 +13,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { createSupabaseClient, createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
-import { getServiceClient } from '../../lib/auth';
+import { getServiceClient } from '../../../lib/auth';
 import { getAPIKeys, API_CONFIG, AI_MODELS } from '../../shared/ai-config';
 import {
   buildCourseContext,
